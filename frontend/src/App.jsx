@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import ResourceList from './components/ResourceList';
 import LogViewer from './components/LogViewer';
@@ -22,6 +22,10 @@ function App() {
     // Bottom Panel Tabs State
     const [bottomTabs, setBottomTabs] = useState([]);
     const [activeTabId, setActiveTabId] = useState(null);
+
+    // Resizable Panel State
+    const [panelHeight, setPanelHeight] = useState(40); // Percentage
+    const isDragging = useRef(false);
 
     useEffect(() => {
         fetchContexts();
@@ -59,7 +63,7 @@ function App() {
     const fetchNamespaces = async () => {
         try {
             const ns = await ListNamespaces();
-            setNamespaces(ns || []);
+            setNamespaces(ns ? ns.map(n => n.metadata.name) : []);
         } catch (err) {
             console.error("Failed to fetch namespaces", err);
             setNamespaces([]);
@@ -124,6 +128,29 @@ function App() {
         }
     };
 
+    // Resizing Logic
+    const handleMouseDown = (e) => {
+        isDragging.current = true;
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleMouseMove = (e) => {
+        if (!isDragging.current) return;
+        const windowHeight = window.innerHeight;
+        const newHeight = ((windowHeight - e.clientY) / windowHeight) * 100;
+        // Limit height between 20% and 80%
+        if (newHeight > 20 && newHeight < 80) {
+            setPanelHeight(newHeight);
+        }
+    };
+
+    const handleMouseUp = () => {
+        isDragging.current = false;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+    };
+
     const getColumns = (view) => {
         switch (view) {
             case 'pods':
@@ -177,6 +204,8 @@ function App() {
         }
     };
 
+    const showNamespaceSelector = activeView !== 'nodes';
+
     return (
         <div className="flex h-screen bg-background text-text font-sans">
             <Sidebar
@@ -185,38 +214,43 @@ function App() {
                 contexts={contexts}
                 currentContext={currentContext}
                 onContextChange={handleContextSwitch}
-                namespaces={namespaces}
-                currentNamespace={currentNamespace}
-                onNamespaceChange={setCurrentNamespace}
             />
             <main className="flex-1 flex flex-col overflow-hidden">
-                <header className="h-14 border-b border-border flex items-center px-4 bg-surface shrink-0">
-                    <div className="text-sm font-medium text-gray-400">
-                        Cluster / <span className="text-text capitalize">{activeView}</span>
-                    </div>
-                </header>
-
                 {/* Split View Container */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Top Pane: Resource List */}
-                    <div className={`flex-1 overflow-hidden ${bottomTabs.length > 0 ? 'h-[60%]' : 'h-full'}`}>
+                    <div
+                        className="flex-1 overflow-hidden"
+                        style={{ height: bottomTabs.length > 0 ? `${100 - panelHeight}%` : '100%' }}
+                    >
                         <ResourceList
                             title={activeView.charAt(0).toUpperCase() + activeView.slice(1)}
                             columns={getColumns(activeView)}
                             data={data}
                             isLoading={loading}
+                            namespaces={namespaces}
+                            currentNamespace={currentNamespace}
+                            onNamespaceChange={setCurrentNamespace}
+                            showNamespaceSelector={showNamespaceSelector}
                         />
                     </div>
 
                     {/* Bottom Pane */}
                     {bottomTabs.length > 0 && (
-                        <BottomPanel
-                            tabs={bottomTabs}
-                            activeTabId={activeTabId}
-                            onTabChange={setActiveTabId}
-                            onTabClose={closeTab}
-                            height="40%"
-                        />
+                        <>
+                            {/* Drag Handle */}
+                            <div
+                                className="h-1 bg-border hover:bg-primary cursor-row-resize transition-colors"
+                                onMouseDown={handleMouseDown}
+                            />
+                            <BottomPanel
+                                tabs={bottomTabs}
+                                activeTabId={activeTabId}
+                                onTabChange={setActiveTabId}
+                                onTabClose={closeTab}
+                                height={`${panelHeight}%`}
+                            />
+                        </>
                     )}
                 </div>
             </main>

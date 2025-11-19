@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GetPodLogs } from '../../wailsjs/go/main/App';
+import Convert from 'ansi-to-html';
+
+const converter = new Convert({
+    fg: '#FFF',
+    bg: '#1e1e1e',
+    newline: true,
+    escapeXML: true
+});
 
 export default function LogViewer({ namespace, pod }) {
     const [logs, setLogs] = useState('');
@@ -30,6 +38,11 @@ export default function LogViewer({ namespace, pod }) {
         }
     }, [logs]);
 
+    const getHtmlLogs = () => {
+        if (!logs) return { __html: "No logs available." };
+        return { __html: converter.toHtml(logs) };
+    };
+
     return (
         <div className="h-full w-full bg-[#1e1e1e] text-gray-300 font-mono text-xs overflow-auto p-4">
             {loading ? (
@@ -37,10 +50,10 @@ export default function LogViewer({ namespace, pod }) {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
             ) : (
-                <pre className="whitespace-pre-wrap break-all">
-                    {logs || "No logs available."}
+                <div className="whitespace-pre-wrap break-all">
+                    <div dangerouslySetInnerHTML={getHtmlLogs()} />
                     <div ref={logsEndRef} />
-                </pre>
+                </div>
             )}
         </div>
     );
