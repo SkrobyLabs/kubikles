@@ -4,7 +4,9 @@ import Sidebar from './components/Sidebar';
 import ResourceList from './components/ResourceList';
 import LogViewer from './components/LogViewer';
 import BottomPanel from './components/BottomPanel';
-import { ListPods, ListNodes, ListServices, ListConfigMaps, ListSecrets, ListDeployments, ListNamespaces, ListContexts, SwitchContext, GetCurrentContext } from '../wailsjs/go/main/App';
+import PodActionsMenu from './components/PodActionsMenu';
+import YamlEditor from './components/YamlEditor';
+import { ListPods, ListNodes, ListServices, ListConfigMaps, ListSecrets, ListDeployments, ListNamespaces, ListContexts, SwitchContext, GetCurrentContext, DeletePod, ForceDeletePod, GetPodYaml, UpdatePodYaml, OpenTerminal } from '../wailsjs/go/main/App';
 
 function App() {
     const [activeView, setActiveView] = useState('pods');
@@ -27,10 +29,40 @@ function App() {
     const [panelHeight, setPanelHeight] = useState(40); // Percentage
     const isDragging = useRef(false);
 
+    // Data Fetching State
+    const fetchIdRef = useRef(0);
+
+    // Menu State
+    const [activeMenuUid, setActiveMenuUid] = useState(null);
+
+    // Persistence Helpers
+    const loadContextState = (ctx) => {
+        const saved = localStorage.getItem(`kubikles_state_${ctx}`);
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                console.error("Failed to parse saved state", e);
+            }
+        }
+        return { view: 'pods', namespace: 'default' };
+    };
+
+    const saveContextState = (ctx, view, ns) => {
+        if (!ctx) return;
+        localStorage.setItem(`kubikles_state_${ctx}`, JSON.stringify({ view, namespace: ns }));
+    };
+
     useEffect(() => {
         fetchContexts();
         fetchNamespaces();
     }, []);
+
+    useEffect(() => {
+        if (currentContext) {
+            saveContextState(currentContext, activeView, currentNamespace);
+        }
+    }, [currentContext, activeView, currentNamespace]);
 
     useEffect(() => {
         fetchData(activeView, currentNamespace);
@@ -43,6 +75,11 @@ function App() {
             // Sort contexts alphabetically
             const sortedList = (list || []).sort((a, b) => a.localeCompare(b));
             setContexts(sortedList);
+
+            // Load saved state
+            const savedState = loadContextState(curr);
+            setActiveView(savedState.view);
+            setCurrentNamespace(savedState.namespace);
             setCurrentContext(curr);
         } catch (err) {
             console.error("Failed to fetch contexts", err);
@@ -52,9 +89,14 @@ function App() {
     const handleContextSwitch = async (newContext) => {
         try {
             await SwitchContext(newContext);
+
+            // Load saved state
+            const savedState = loadContextState(newContext);
+            setActiveView(savedState.view);
+            setCurrentNamespace(savedState.namespace);
+
             setCurrentContext(newContext);
             await fetchNamespaces();
-            fetchData(activeView, currentNamespace);
         } catch (err) {
             console.error("Failed to switch context", err);
         }
@@ -71,6 +113,7 @@ function App() {
     };
 
     const fetchData = async (view, ns) => {
+        const fetchId = ++fetchIdRef.current;
         setLoading(true);
         setData([]);
         try {
@@ -97,11 +140,16 @@ function App() {
                 default:
                     break;
             }
-            setData(result || []);
+            // Only update if this is the latest request
+            if (fetchId === fetchIdRef.current) {
+                setData(result || []);
+                setLoading(false);
+            }
         } catch (err) {
-            console.error(`Failed to fetch ${view}`, err);
-        } finally {
-            setLoading(false);
+            if (fetchId === fetchIdRef.current) {
+                console.error(`Failed to fetch ${view}`, err);
+                setLoading(false);
+            }
         }
     };
 
@@ -151,6 +199,56 @@ function App() {
         document.removeEventListener('mouseup', handleMouseUp);
     };
 
+    // Action Handlers
+    const openYamlEditor = (pod) => {
+        const tabId = `yaml-${pod.metadata.uid}`;
+        // Check if tab already exists
+        if (!bottomTabs.find(t => t.id === tabId)) {
+            const newTab = {
+                id: tabId,
+                title: `YAML: ${pod.metadata.name}`,
+                content: (
+                    <YamlEditor
+                        namespace={pod.metadata.namespace}
+                        podName={pod.metadata.name}
+                        onClose={() => closeTab(tabId)}
+                    />
+                )
+            };
+            setBottomTabs([...bottomTabs, newTab]);
+        }
+        setActiveTabId(tabId);
+    };
+
+    const handleDeletePod = async (pod) => {
+        const isTerminating = pod.metadata.deletionTimestamp;
+        const action = isTerminating ? "Force Delete" : "Delete";
+        if (!confirm(`Are you sure you want to ${action} pod ${pod.metadata.name}?`)) return;
+
+        try {
+            if (isTerminating) {
+                await ForceDeletePod(pod.metadata.namespace, pod.metadata.name);
+            } else {
+                await DeletePod(pod.metadata.namespace, pod.metadata.name);
+            }
+            fetchData(activeView, currentNamespace); // Refresh
+        } catch (err) {
+            console.error(`Failed to ${action} pod`, err);
+            alert(`Failed to ${action} pod: ` + err);
+        }
+    };
+
+    const handleShell = async (pod) => {
+        try {
+            // Default to first container if multiple? Or just let kubectl pick default?
+            // We'll pass empty container string to let kubectl decide or pick first.
+            await OpenTerminal(pod.metadata.namespace, pod.metadata.name, "");
+        } catch (err) {
+            console.error("Failed to open shell", err);
+            alert("Failed to open shell: " + err);
+        }
+    };
+
     const getColumns = (view) => {
         switch (view) {
             case 'pods':
@@ -161,12 +259,17 @@ function App() {
                     { key: 'age', label: 'Age', render: (item) => item.metadata?.creationTimestamp ? new Date(item.metadata.creationTimestamp).toLocaleString() : '' },
                     {
                         key: 'actions', label: 'Actions', render: (item) => (
-                            <button
-                                onClick={(e) => { e.stopPropagation(); openLogs(item.metadata.name); }}
-                                className="text-primary hover:underline text-xs"
-                            >
-                                Logs
-                            </button>
+                            <div className="flex items-center justify-end">
+                                <PodActionsMenu
+                                    pod={item}
+                                    isOpen={activeMenuUid === item.metadata.uid}
+                                    onOpenChange={(isOpen) => setActiveMenuUid(isOpen ? item.metadata.uid : null)}
+                                    onLogs={() => openLogs(item.metadata.name)}
+                                    onEditYaml={openYamlEditor}
+                                    onDelete={handleDeletePod}
+                                    onShell={handleShell}
+                                />
+                            </div>
                         )
                     },
                 ];
@@ -232,6 +335,7 @@ function App() {
                             currentNamespace={currentNamespace}
                             onNamespaceChange={setCurrentNamespace}
                             showNamespaceSelector={showNamespaceSelector}
+                            highlightedUid={activeMenuUid}
                         />
                     </div>
 

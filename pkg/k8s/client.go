@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"sigs.k8s.io/yaml"
 )
 
 type Client struct {
@@ -96,10 +97,21 @@ func (c *Client) ListContexts() ([]string, error) {
 
 // --- Resources ---
 
-func (c *Client) ListPods(namespace string) ([]v1.Pod, error) {
+func (c *Client) getClientset() (*kubernetes.Clientset, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	pods, err := c.clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+	if c.clientset == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return c.clientset, nil
+}
+
+func (c *Client) ListPods(namespace string) ([]v1.Pod, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -107,9 +119,11 @@ func (c *Client) ListPods(namespace string) ([]v1.Pod, error) {
 }
 
 func (c *Client) ListNodes() ([]v1.Node, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	nodes, err := c.clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := cs.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -117,9 +131,11 @@ func (c *Client) ListNodes() ([]v1.Node, error) {
 }
 
 func (c *Client) ListNamespaces() ([]v1.Namespace, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	namespaces, err := c.clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	namespaces, err := cs.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -127,9 +143,11 @@ func (c *Client) ListNamespaces() ([]v1.Namespace, error) {
 }
 
 func (c *Client) ListServices(namespace string) ([]v1.Service, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	services, err := c.clientset.CoreV1().Services(namespace).List(context.TODO(), metav1.ListOptions{})
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	services, err := cs.CoreV1().Services(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -137,9 +155,11 @@ func (c *Client) ListServices(namespace string) ([]v1.Service, error) {
 }
 
 func (c *Client) ListConfigMaps(namespace string) ([]v1.ConfigMap, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	cms, err := c.clientset.CoreV1().ConfigMaps(namespace).List(context.TODO(), metav1.ListOptions{})
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	cms, err := cs.CoreV1().ConfigMaps(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -147,9 +167,11 @@ func (c *Client) ListConfigMaps(namespace string) ([]v1.ConfigMap, error) {
 }
 
 func (c *Client) ListSecrets(namespace string) ([]v1.Secret, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	secrets, err := c.clientset.CoreV1().Secrets(namespace).List(context.TODO(), metav1.ListOptions{})
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	secrets, err := cs.CoreV1().Secrets(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -158,9 +180,11 @@ func (c *Client) ListSecrets(namespace string) ([]v1.Secret, error) {
 }
 
 func (c *Client) ListDeployments(namespace string) ([]appsv1.Deployment, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	deployments, err := c.clientset.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{})
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	deployments, err := cs.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -168,10 +192,12 @@ func (c *Client) ListDeployments(namespace string) ([]appsv1.Deployment, error) 
 }
 
 func (c *Client) GetPodLogs(namespace, podName string) (string, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
 
-	req := c.clientset.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{
+	req := cs.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{
 		TailLines: func(i int64) *int64 { return &i }(100), // Default to last 100 lines
 	})
 
@@ -187,4 +213,64 @@ func (c *Client) GetPodLogs(namespace, podName string) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+func (c *Client) DeletePod(namespace, name string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	return cs.CoreV1().Pods(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+func (c *Client) ForceDeletePod(namespace, name string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	gracePeriod := int64(0)
+	return cs.CoreV1().Pods(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{
+		GracePeriodSeconds: &gracePeriod,
+	})
+}
+
+func (c *Client) GetPodYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	pod, err := cs.CoreV1().Pods(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	// Remove managed fields to make it cleaner for editing
+	pod.ManagedFields = nil
+
+	y, err := yaml.Marshal(pod)
+	if err != nil {
+		return "", err
+	}
+	return string(y), nil
+}
+
+func (c *Client) UpdatePodYaml(namespace, name, content string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+
+	// Parse the YAML to a Pod object
+	var pod v1.Pod
+	if err := yaml.Unmarshal([]byte(content), &pod); err != nil {
+		return fmt.Errorf("failed to parse yaml: %w", err)
+	}
+
+	// Ensure namespace and name match
+	if pod.Namespace != namespace || pod.Name != name {
+		return fmt.Errorf("namespace/name mismatch in yaml")
+	}
+
+	_, err = cs.CoreV1().Pods(namespace).Update(context.TODO(), &pod, metav1.UpdateOptions{})
+	return err
 }

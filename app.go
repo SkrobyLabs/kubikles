@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubikles/pkg/k8s"
+	"os/exec"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -114,4 +115,48 @@ func (a *App) GetPodLogs(namespace, podName string) (string, error) {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.GetPodLogs(namespace, podName)
+}
+
+func (a *App) DeletePod(namespace, name string) error {
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeletePod(namespace, name)
+}
+
+func (a *App) ForceDeletePod(namespace, name string) error {
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ForceDeletePod(namespace, name)
+}
+
+func (a *App) GetPodYaml(namespace, name string) (string, error) {
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetPodYaml(namespace, name)
+}
+
+func (a *App) UpdatePodYaml(namespace, name, content string) error {
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdatePodYaml(namespace, name, content)
+}
+
+func (a *App) OpenTerminal(namespace, pod, container string) error {
+	// Construct the kubectl command
+	// We assume kubectl is in the path.
+	cmdStr := fmt.Sprintf("kubectl exec -it -n %s %s", namespace, pod)
+	if container != "" {
+		cmdStr += fmt.Sprintf(" -c %s", container)
+	}
+	cmdStr += " -- /bin/sh -c 'if command -v bash >/dev/null 2>&1; then exec bash; else exec sh; fi'"
+
+	// Open Terminal.app on macOS
+	// We use osascript to tell Terminal to run the command
+	script := fmt.Sprintf(`tell application "Terminal" to do script "%s"`, cmdStr)
+	cmd := exec.Command("osascript", "-e", script)
+	return cmd.Run()
 }

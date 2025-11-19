@@ -1,17 +1,21 @@
 import React from 'react';
 import {
-    ServerIcon,
     CubeIcon,
+    ServerIcon,
     GlobeAltIcon,
-    Cog6ToothIcon,
-    CpuChipIcon,
-    RocketLaunchIcon,
+    DocumentTextIcon,
     LockClosedIcon,
-    DocumentTextIcon
+    RocketLaunchIcon
 } from '@heroicons/react/24/outline';
+import SearchSelect from './SearchSelect';
 
-export default function Sidebar({ activeView, onViewChange, contexts, currentContext, onContextChange }) {
-
+export default function Sidebar({
+    activeView,
+    onViewChange,
+    contexts,
+    currentContext,
+    onContextChange
+}) {
     const menuGroups = [
         {
             title: 'Cluster',
@@ -27,73 +31,80 @@ export default function Sidebar({ activeView, onViewChange, contexts, currentCon
             ]
         },
         {
-            title: 'Network',
+            title: 'Config',
             items: [
-                { id: 'services', label: 'Services', icon: GlobeAltIcon },
+                { id: 'configmaps', label: 'ConfigMaps', icon: DocumentTextIcon },
+                { id: 'secrets', label: 'Secrets', icon: LockClosedIcon },
             ]
         },
         {
-            title: 'Config',
+            title: 'Network',
             items: [
-                { id: 'configmaps', label: 'ConfigMaps', icon: Cog6ToothIcon },
-                { id: 'secrets', label: 'Secrets', icon: LockClosedIcon },
+                { id: 'services', label: 'Services', icon: GlobeAltIcon },
             ]
         }
     ];
 
     return (
         <div className="w-64 bg-surface border-r border-border flex flex-col h-full">
-            {/* Header */}
-            <div className="h-14 flex items-center justify-center border-b border-border">
-                <h1 className="text-xl font-bold text-text">Kubikles</h1>
+            {/* App Header */}
+            <div className="h-14 flex items-center px-4 border-b border-border shrink-0">
+                <div className="flex items-center gap-2 text-primary font-bold text-xl">
+                    <CubeIcon className="h-6 w-6" />
+                    <span>Kubikles</span>
+                </div>
             </div>
 
             {/* Context Selector */}
-            <div className="p-4 border-b border-border space-y-4">
-                <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1">Context</label>
-                    <select
-                        className="w-full bg-background border border-border text-text text-sm rounded px-2 py-1 focus:outline-none focus:border-primary"
-                        value={currentContext}
-                        onChange={(e) => onContextChange(e.target.value)}
-                    >
-                        {contexts.map((ctx) => (
-                            <option key={ctx} value={ctx}>{ctx}</option>
-                        ))}
-                    </select>
-                </div>
+            <div className="p-4 border-b border-border shrink-0">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">
+                    Context
+                </label>
+                <SearchSelect
+                    options={contexts}
+                    value={currentContext}
+                    onChange={onContextChange}
+                    placeholder="Select Context..."
+                />
             </div>
 
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto py-4">
                 {menuGroups.map((group) => (
                     <div key={group.title} className="mb-6">
-                        <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                            {group.title}
-                        </h3>
-                        <ul className="space-y-1">
-                            {group.items.map((item) => (
-                                <li key={item.id}>
-                                    <button
-                                        onClick={() => onViewChange(item.id)}
-                                        className={`w-full flex items-center px-4 py-2 text-sm font-medium transition-colors ${activeView === item.id
-                                                ? 'bg-primary/10 text-primary border-r-2 border-primary'
-                                                : 'text-gray-400 hover:bg-white/5 hover:text-text'
-                                            }`}
-                                    >
-                                        <item.icon className="h-5 w-5 mr-3" />
-                                        {item.label}
-                                    </button>
-                                </li>
-                            ))}
+                        <div className="px-4 mb-2">
+                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                {group.title}
+                            </span>
+                        </div>
+                        <ul className="space-y-1 px-2">
+                            {group.items.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                    <li key={item.id}>
+                                        <button
+                                            onClick={() => onViewChange(item.id)}
+                                            className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${activeView === item.id
+                                                    ? 'bg-primary/10 text-primary font-medium'
+                                                    : 'text-gray-400 hover:text-text hover:bg-white/5'
+                                                }`}
+                                        >
+                                            <Icon className="h-5 w-5" />
+                                            {item.label}
+                                        </button>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </div>
                 ))}
             </nav>
 
-            {/* Footer / Status */}
-            <div className="p-4 border-t border-border text-xs text-gray-500 text-center">
-                Cluster / {activeView}
+            {/* Footer */}
+            <div className="p-4 border-t border-border shrink-0">
+                <div className="text-xs text-gray-500 text-center">
+                    v0.1.0
+                </div>
             </div>
         </div>
     );
