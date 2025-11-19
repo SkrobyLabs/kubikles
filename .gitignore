@@ -1,0 +1,20 @@
+# Wails
+build/
+bin/
+
+# Frontend
+frontend/dist/
+frontend/node_modules/
+
+# System
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Go
+go.work

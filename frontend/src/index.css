@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-background text-text font-sans antialiased;
+  margin: 0;
+  overflow: hidden; /* Prevent scroll on body, handle in main */
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-surface;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary;
+}
