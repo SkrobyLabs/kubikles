@@ -6,6 +6,7 @@ import LogViewer from './components/LogViewer';
 import BottomPanel from './components/BottomPanel';
 import PodActionsMenu from './components/PodActionsMenu';
 import YamlEditor from './components/YamlEditor';
+import Terminal from './components/Terminal';
 import { ListPods, ListNodes, ListServices, ListConfigMaps, ListSecrets, ListDeployments, ListNamespaces, ListContexts, SwitchContext, GetCurrentContext, DeletePod, ForceDeletePod, GetPodYaml, UpdatePodYaml, OpenTerminal } from '../wailsjs/go/main/App';
 
 function App() {
@@ -240,9 +241,19 @@ function App() {
 
     const handleShell = async (pod) => {
         try {
-            // Default to first container if multiple? Or just let kubectl pick default?
-            // We'll pass empty container string to let kubectl decide or pick first.
-            await OpenTerminal(pod.metadata.namespace, pod.metadata.name, "");
+            const url = await OpenTerminal(currentContext, pod.metadata.namespace, pod.metadata.name, "");
+
+            const tabId = `shell-${pod.metadata.uid}`;
+            // Check if tab already exists
+            if (!bottomTabs.find(t => t.id === tabId)) {
+                const newTab = {
+                    id: tabId,
+                    title: `Shell: ${pod.metadata.name}`,
+                    content: <Terminal url={url} />
+                };
+                setBottomTabs([...bottomTabs, newTab]);
+            }
+            setActiveTabId(tabId);
         } catch (err) {
             console.error("Failed to open shell", err);
             alert("Failed to open shell: " + err);

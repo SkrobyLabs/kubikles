@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubikles/pkg/k8s"
-	"os/exec"
+	"kubikles/pkg/terminal"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -12,8 +12,9 @@ import (
 
 // App struct
 type App struct {
-	ctx       context.Context
-	k8sClient *k8s.Client
+	ctx             context.Context
+	k8sClient       *k8s.Client
+	terminalService *terminal.Service
 }
 
 // NewApp creates a new App application struct
@@ -23,7 +24,8 @@ func NewApp() *App {
 		fmt.Printf("Error initializing K8s client: %v\n", err)
 	}
 	return &App{
-		k8sClient: client,
+		k8sClient:       client,
+		terminalService: terminal.NewService(),
 	}
 }
 
@@ -31,6 +33,9 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	if err := a.terminalService.Start(); err != nil {
+		fmt.Printf("Failed to start terminal service: %v\n", err)
+	}
 }
 
 // Greet returns a greeting for the given name
@@ -145,18 +150,13 @@ func (a *App) UpdatePodYaml(namespace, name, content string) error {
 	return a.k8sClient.UpdatePodYaml(namespace, name, content)
 }
 
-func (a *App) OpenTerminal(namespace, pod, container string) error {
-	// Construct the kubectl command
-	// We assume kubectl is in the path.
-	cmdStr := fmt.Sprintf("kubectl exec -it -n %s %s", namespace, pod)
-	if container != "" {
-		cmdStr += fmt.Sprintf(" -c %s", container)
+func (a *App) OpenTerminal(contextName, namespace, pod, container string) (string, error) {
+	if a.terminalService == nil || a.terminalService.Port == 0 {
+		return "", fmt.Errorf("terminal service not running")
 	}
-	cmdStr += " -- /bin/sh -c 'if command -v bash >/dev/null 2>&1; then exec bash; else exec sh; fi'"
 
-	// Open Terminal.app on macOS
-	// We use osascript to tell Terminal to run the command
-	script := fmt.Sprintf(`tell application "Terminal" to do script "%s"`, cmdStr)
-	cmd := exec.Command("osascript", "-e", script)
-	return cmd.Run()
+	url := fmt.Sprintf("ws://localhost:%d/terminal?context=%s&namespace=%s&pod=%s&container=%s",
+		a.terminalService.Port, contextName, namespace, pod, container)
+
+	return url, nil
 }

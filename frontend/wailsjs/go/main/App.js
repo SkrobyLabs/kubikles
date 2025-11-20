@@ -58,8 +58,8 @@ export function ListServices(arg1) {
   return window['go']['main']['App']['ListServices'](arg1);
 }
 
-export function OpenTerminal(arg1, arg2, arg3) {
-  return window['go']['main']['App']['OpenTerminal'](arg1, arg2, arg3);
+export function OpenTerminal(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['OpenTerminal'](arg1, arg2, arg3, arg4);
 }
 
 export function SwitchContext(arg1) {
