@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -315,5 +316,67 @@ func (c *Client) UpdatePodYaml(namespace, name, content string) error {
 	}
 
 	_, err = cs.CoreV1().Pods(namespace).Update(context.TODO(), &pod, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) GetDeploymentYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	deployment, err := cs.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	// Remove managed fields
+	deployment.ManagedFields = nil
+
+	y, err := yaml.Marshal(deployment)
+	if err != nil {
+		return "", err
+	}
+	return string(y), nil
+}
+
+func (c *Client) UpdateDeploymentYaml(namespace, name, content string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+
+	var deployment appsv1.Deployment
+	if err := yaml.Unmarshal([]byte(content), &deployment); err != nil {
+		return fmt.Errorf("failed to parse yaml: %w", err)
+	}
+
+	if deployment.Namespace != namespace || deployment.Name != name {
+		return fmt.Errorf("namespace/name mismatch in yaml")
+	}
+
+	_, err = cs.AppsV1().Deployments(namespace).Update(context.TODO(), &deployment, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteDeployment(contextName, namespace, name string) error {
+	fmt.Printf("Deleting deployment: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.AppsV1().Deployments(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+func (c *Client) RestartDeployment(contextName, namespace, name string) error {
+	fmt.Printf("Restarting deployment: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+
+	// Patch the deployment to trigger a rollout
+	// We update the spec.template.metadata.annotations with a timestamp
+	patch := fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, metav1.Now().String())
+	_, err = cs.AppsV1().Deployments(namespace).Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{})
 	return err
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { GetPodYaml, UpdatePodYaml } from '../../wailsjs/go/main/App';
+import { GetPodYaml, UpdatePodYaml, GetDeploymentYaml, UpdateDeploymentYaml } from '../../wailsjs/go/main/App';
 
-export default function YamlEditor({ namespace, podName, onClose }) {
+export default function YamlEditor({ namespace, podName, isDeployment, onClose }) {
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -15,7 +15,12 @@ export default function YamlEditor({ namespace, podName, onClose }) {
         setLoading(true);
         setError(null);
         try {
-            const yaml = await GetPodYaml(namespace, podName);
+            let yaml;
+            if (isDeployment) {
+                yaml = await GetDeploymentYaml(namespace, podName);
+            } else {
+                yaml = await GetPodYaml(namespace, podName);
+            }
             setContent(yaml);
         } catch (err) {
             setError(`Failed to load YAML: ${err}`);
@@ -27,7 +32,11 @@ export default function YamlEditor({ namespace, podName, onClose }) {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await UpdatePodYaml(namespace, podName, content);
+            if (isDeployment) {
+                await UpdateDeploymentYaml(namespace, podName, content);
+            } else {
+                await UpdatePodYaml(namespace, podName, content);
+            }
             // Optionally show success message or just close/refresh?
             // For now, we'll just stay open to allow further edits, or maybe close?
             // The user requirement implies a "Save" button, usually implies saving and staying or saving and closing.

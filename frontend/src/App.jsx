@@ -6,14 +6,16 @@ import LogViewer from './components/LogViewer';
 import BottomPanel from './components/BottomPanel';
 import PodActionsMenu from './components/PodActionsMenu';
 import YamlEditor from './components/YamlEditor';
+import DeploymentActionsMenu from './components/DeploymentActionsMenu';
 import Terminal from './components/Terminal';
 import DebugLogViewer from './components/DebugLogViewer';
-import { ListPods, ListNodes, ListServices, ListConfigMaps, ListSecrets, ListDeployments, ListNamespaces, ListContexts, SwitchContext, GetCurrentContext, DeletePod, ForceDeletePod, GetPodYaml, UpdatePodYaml, OpenTerminal, StartPodWatcher, LogDebug } from '../wailsjs/go/main/App';
+import { ListPods, ListNodes, ListServices, ListConfigMaps, ListSecrets, ListDeployments, ListNamespaces, ListContexts, SwitchContext, GetCurrentContext, DeletePod, ForceDeletePod, GetPodYaml, UpdatePodYaml, OpenTerminal, StartPodWatcher, LogDebug, GetDeploymentYaml, UpdateDeploymentYaml, DeleteDeployment, RestartDeployment } from '../wailsjs/go/main/App';
 
 function App() {
     const [activeView, setActiveView] = useState('pods');
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [podsLoading, setPodsLoading] = useState(false);
 
     // Namespace State
     const [namespaces, setNamespaces] = useState([]);
@@ -189,6 +191,8 @@ function App() {
         }
     };
 
+    const [allPods, setAllPods] = useState([]);
+
     const fetchData = async (view, ns) => {
         const fetchId = ++fetchIdRef.current;
         setLoading(true);
@@ -212,8 +216,33 @@ function App() {
                     result = await ListSecrets(ns);
                     break;
                 case 'deployments':
-                    result = await ListDeployments(ns);
-                    break;
+                    setLoading(true);
+                    setPodsLoading(true);
+                    try {
+                        const items = await ListDeployments(ns);
+                        setData(items);
+                        setLoading(false); // Deployments loaded, main loading off
+
+                        // Load pods in background
+                        ListPods(ns).then(pods => {
+                            setAllPods(pods);
+                            setPodsLoading(false);
+                        }).catch(err => {
+                            console.error("Failed to load pods for deployments:", err);
+                            setPodsLoading(false);
+                        });
+                    } catch (err) {
+                        console.error("Failed to fetch deployments:", err);
+                        setLoading(false);
+                        setPodsLoading(false);
+                    }
+                    // No 'break;' here as the instruction implies the following block is for other cases.
+                    // However, the original code had a break here.
+                    // To make it syntactically correct and follow the instruction,
+                    // I'll assume the instruction wants the `if (fetchId === fetchIdRef.current)` block
+                    // to only apply to cases that set `result` directly.
+                    // For 'deployments', `setData` and `setLoading` are handled internally.
+                    return; // Exit fetchData early for deployments case
                 default:
                     break;
             }
@@ -229,6 +258,83 @@ function App() {
             }
         }
     };
+
+    // ... existing code ...
+
+    const getDeploymentPods = (deployment) => {
+        if (!deployment.spec?.selector?.matchLabels) return [];
+        const selector = deployment.spec.selector.matchLabels;
+        return allPods.filter(pod => {
+            if (pod.metadata.namespace !== deployment.metadata.namespace) return false;
+            for (const [key, value] of Object.entries(selector)) {
+                if (pod.metadata.labels?.[key] !== value) return false;
+            }
+            return true;
+        });
+    };
+
+    const getEffectivePodStatus = (pod) => {
+        // If pod is terminating, that's the status
+        if (pod.metadata?.deletionTimestamp) return 'Terminating';
+
+        const containerStatuses = pod.status?.containerStatuses || [];
+
+        // If multiple containers, ignore Succeeded ones (unless all are succeeded)
+        let statusesToCheck = containerStatuses;
+        if (containerStatuses.length > 1) {
+            const nonSucceeded = containerStatuses.filter(s =>
+                !(s.state?.terminated && s.state.terminated.exitCode === 0)
+            );
+            if (nonSucceeded.length > 0) {
+                statusesToCheck = nonSucceeded;
+            }
+        }
+
+        // Find worst status among relevant containers
+        let worstStatus = null;
+        let worstPriority = -1;
+
+        // Reuse the severity logic from getPodStatus
+        const getStatusSeverity = (s) => {
+            switch (s) {
+                case 'Failed': return 100;
+                case 'Terminating': return 90;
+                case 'ErrImagePull': return 80;
+                case 'CrashLoopBackOff': return 70;
+                case 'ImagePullBackOff': return 60;
+                case 'ContainerCreating': return 50;
+                case 'Pending': return 40;
+                case 'Running': return 30;
+                case 'Succeeded': return 20;
+                default: return 0;
+            }
+        };
+
+        for (const status of statusesToCheck) {
+            let currentStatus = null;
+            if (status.state?.waiting) {
+                currentStatus = status.state.waiting.reason;
+            } else if (status.state?.terminated && status.state.terminated.exitCode !== 0) {
+                currentStatus = 'Failed';
+            } else if (status.state?.running) {
+                currentStatus = 'Running';
+            } else if (status.state?.terminated && status.state.terminated.exitCode === 0) {
+                currentStatus = 'Succeeded';
+            }
+
+            if (currentStatus) {
+                const severity = getStatusSeverity(currentStatus);
+                if (severity > worstPriority) {
+                    worstPriority = severity;
+                    worstStatus = currentStatus;
+                }
+            }
+        }
+
+        return worstStatus || pod.status?.phase || 'Unknown';
+    };
+
+
 
     const openLogs = (podName) => {
         const tabId = `logs-${podName}`;
@@ -330,6 +436,56 @@ function App() {
             console.error(errMsg);
             await LogDebug(errMsg);
             alert(errMsg);
+        }
+    };
+
+    const handleEditDeploymentYaml = (deployment) => {
+        const tabId = `yaml-deploy-${deployment.metadata.uid}`;
+        if (!bottomTabs.find(t => t.id === tabId)) {
+            const newTab = {
+                id: tabId,
+                title: `YAML: ${deployment.metadata.name}`,
+                content: (
+                    <YamlEditor
+                        namespace={deployment.metadata.namespace}
+                        podName={deployment.metadata.name} // Reusing prop name, but logic needs to handle deployment
+                        isDeployment={true} // New prop to distinguish
+                        onClose={() => closeTab(tabId)}
+                    />
+                )
+            };
+            setBottomTabs([...bottomTabs, newTab]);
+        }
+        setActiveTabId(tabId);
+    };
+
+    const handleRestartDeployment = async (deployment) => {
+        const msg = `Restarting deployment: ${deployment.metadata.name}`;
+        console.log(msg);
+        try {
+            await LogDebug(msg);
+            await RestartDeployment(currentContext, deployment.metadata.namespace, deployment.metadata.name);
+            console.log("Restart triggered successfully");
+            fetchData(activeView, currentNamespace);
+        } catch (err) {
+            console.error("Failed to restart deployment", err);
+            alert(`Failed to restart deployment: ${err}`);
+        }
+    };
+
+    const handleDeleteDeployment = async (deployment) => {
+        if (!confirm(`Are you sure you want to delete deployment ${deployment.metadata.name}?`)) return;
+
+        const msg = `Deleting deployment: ${deployment.metadata.name}`;
+        console.log(msg);
+        try {
+            await LogDebug(msg);
+            await DeleteDeployment(currentContext, deployment.metadata.namespace, deployment.metadata.name);
+            console.log("Delete triggered successfully");
+            fetchData(activeView, currentNamespace);
+        } catch (err) {
+            console.error("Failed to delete deployment", err);
+            alert(`Failed to delete deployment: ${err}`);
         }
     };
 
@@ -436,6 +592,45 @@ function App() {
         setActiveTabId(debugTabId);
     };
 
+
+    const getPodStatusPriority = (status) => {
+        // User requested Ascending order:
+        // Succeeded -> Running -> Pending -> ContainerCreating -> ImagePullBackOff -> CrashLoop -> ErrImagePull -> Terminating -> Failed
+        // So we assign lower numbers to the top of the list
+        switch (status) {
+            case 'Succeeded': return 1;
+            case 'Running': return 2;
+            case 'Pending': return 3;
+            case 'ContainerCreating': return 4;
+            case 'ImagePullBackOff': return 5;
+            case 'CrashLoopBackOff': return 6;
+            case 'ErrImagePull': return 7;
+            case 'Terminating': return 8;
+            case 'Failed': return 9;
+            case 'Unknown': return 10;
+            default: return 11;
+        }
+    };
+
+
+    const getContainerStatusColor = (status) => {
+        if (status.state?.running) return 'bg-success';
+        if (status.state?.terminated) {
+            return status.state.terminated.exitCode === 0 ? 'bg-success/50' : 'bg-error';
+        }
+        if (status.state?.waiting) {
+            const reason = status.state.waiting.reason;
+            if (reason === 'CrashLoopBackOff' || reason === 'ImagePullBackOff' || reason === 'ErrImagePull') {
+                return 'bg-red-orange';
+            }
+            if (reason === 'ContainerCreating') {
+                return 'bg-warning';
+            }
+            return 'bg-warning';
+        }
+        return 'bg-surface'; // Unknown
+    };
+
     const formatAge = (timestamp) => {
         if (!timestamp) return '';
         const start = new Date(timestamp);
@@ -525,43 +720,6 @@ function App() {
         }
     };
 
-    const getPodStatusPriority = (status) => {
-        // User requested Ascending order:
-        // Succeeded -> Running -> Pending -> ContainerCreating -> ImagePullBackOff -> CrashLoop -> ErrImagePull -> Terminating -> Failed
-        // So we assign lower numbers to the top of the list
-        switch (status) {
-            case 'Succeeded': return 1;
-            case 'Running': return 2;
-            case 'Pending': return 3;
-            case 'ContainerCreating': return 4;
-            case 'ImagePullBackOff': return 5;
-            case 'CrashLoopBackOff': return 6;
-            case 'ErrImagePull': return 7;
-            case 'Terminating': return 8;
-            case 'Failed': return 9;
-            case 'Unknown': return 10;
-            default: return 11;
-        }
-    };
-
-    const getContainerStatusColor = (status) => {
-        if (status.state?.running) return 'bg-success';
-        if (status.state?.terminated) {
-            return status.state.terminated.exitCode === 0 ? 'bg-success/50' : 'bg-error';
-        }
-        if (status.state?.waiting) {
-            const reason = status.state.waiting.reason;
-            if (reason === 'CrashLoopBackOff' || reason === 'ImagePullBackOff' || reason === 'ErrImagePull') {
-                return 'bg-red-orange';
-            }
-            if (reason === 'ContainerCreating') {
-                return 'bg-warning';
-            }
-            return 'bg-warning';
-        }
-        return 'bg-surface'; // Unknown
-    };
-
     const getColumns = (view) => {
         switch (view) {
             case 'pods':
@@ -641,9 +799,62 @@ function App() {
                 ];
             case 'deployments':
                 return [
-                    { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-                    { key: 'ready', label: 'Ready', render: (item) => `${item.status?.readyReplicas || 0}/${item.status?.replicas || 0}`, getValue: (item) => `${item.status?.readyReplicas || 0}/${item.status?.replicas || 0}` },
+                    { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
+                    {
+                        key: 'pods',
+                        label: 'Pods',
+                        render: (item) => {
+                            if (podsLoading) {
+                                // Show placeholders based on replicas count
+                                const count = item.spec?.replicas ?? 1;
+                                if (count === 0) return null;
+                                return (
+                                    <div className="flex gap-1">
+                                        {Array.from({ length: Math.min(count, 5) }).map((_, i) => (
+                                            <div
+                                                key={i}
+                                                className="w-3 h-3 rounded-sm bg-gray-700 animate-pulse"
+                                                title="Loading pods..."
+                                            />
+                                        ))}
+                                        {count > 5 && <span className="text-xs text-gray-500">...</span>}
+                                    </div>
+                                );
+                            }
+                            return (
+                                <div className="flex gap-1">
+                                    {getDeploymentPods(item).map((pod) => {
+                                        const status = getEffectivePodStatus(pod);
+                                        const colorClass = getPodStatusColor(status).replace('text-', 'bg-');
+                                        return (
+                                            <div
+                                                key={pod.metadata.uid}
+                                                className={`w-3 h-3 rounded-sm ${colorClass}`}
+                                                title={`${pod.metadata.name}: ${status}`}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            );
+                        },
+                        getValue: (item) => getDeploymentPods(item).length
+                    },
+                    { key: 'ready', label: 'Ready', render: (item) => `${item.status?.readyReplicas || 0}/${item.status?.replicas || 0}`, getValue: (item) => item.status?.readyReplicas || 0 },
                     { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+                    {
+                        key: 'actions', label: 'Actions', render: (item) => (
+                            <div className="flex items-center justify-end">
+                                <DeploymentActionsMenu
+                                    deployment={item}
+                                    isOpen={activeMenuUid === item.metadata.uid}
+                                    onOpenChange={(isOpen) => setActiveMenuUid(isOpen ? item.metadata.uid : null)}
+                                    onEditYaml={() => handleEditDeploymentYaml(item)}
+                                    onRestart={() => handleRestartDeployment(item)}
+                                    onDelete={() => handleDeleteDeployment(item)}
+                                />
+                            </div>
+                        )
+                    },
                 ];
             default:
                 return [];

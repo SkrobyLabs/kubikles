@@ -261,3 +261,47 @@ func (a *App) watchPodsLoop(ctx context.Context, namespace string) {
 		}
 	}
 }
+
+func (a *App) GetDeploymentYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetDeploymentYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetDeploymentYaml(namespace, name)
+}
+
+func (a *App) UpdateDeploymentYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdateDeploymentYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateDeploymentYaml(namespace, name, yamlContent)
+}
+
+func (a *App) DeleteDeployment(contextName, namespace, name string) error {
+	a.LogDebug("DeleteDeployment called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	err := a.k8sClient.DeleteDeployment(contextName, namespace, name)
+	if err != nil {
+		a.LogDebug("DeleteDeployment error: %v", err)
+	} else {
+		a.LogDebug("DeleteDeployment success")
+	}
+	return err
+}
+
+func (a *App) RestartDeployment(contextName, namespace, name string) error {
+	a.LogDebug("RestartDeployment called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	err := a.k8sClient.RestartDeployment(contextName, namespace, name)
+	if err != nil {
+		a.LogDebug("RestartDeployment error: %v", err)
+	} else {
+		a.LogDebug("RestartDeployment success")
+	}
+	return err
+}
