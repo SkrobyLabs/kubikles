@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { LogDebug } from '../../wailsjs/go/main/App';
 
-export default function PodActionsMenu({ pod, isOpen, onOpenChange, onLogs, onEditYaml, onDelete, onShell }) {
+export default function PodActionsMenu({ pod, isOpen, onOpenChange, onLogs, onEditYaml, onDelete, onForceDelete, onShell }) {
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const buttonRef = useRef(null);
 
@@ -81,10 +82,15 @@ export default function PodActionsMenu({ pod, isOpen, onOpenChange, onLogs, onEd
             <button
                 onClick={(e) => {
                     e.stopPropagation();
-                    console.log("Delete clicked in menu for:", pod.metadata.name);
+                    const msg = `Delete clicked. isTerminating: ${!!isTerminating}, Pod: ${pod.metadata.name}`;
+                    console.log(msg);
+                    LogDebug(msg).catch(console.error);
+
                     if (isTerminating) {
+                        console.log("Triggering onForceDelete");
                         handleAction(() => onForceDelete(pod));
                     } else {
+                        console.log("Triggering onDelete");
                         handleAction(() => onDelete(pod));
                     }
                 }}
@@ -92,7 +98,7 @@ export default function PodActionsMenu({ pod, isOpen, onOpenChange, onLogs, onEd
             >
                 {isTerminating ? 'Force Delete' : 'Delete'}
             </button>
-        </div>
+        </div >
     );
 
     return (

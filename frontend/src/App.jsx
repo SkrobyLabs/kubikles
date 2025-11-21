@@ -323,7 +323,7 @@ function App() {
                 await DeletePod(currentContext, pod.metadata.namespace, pod.metadata.name);
             }
             console.log("Backend DeletePod returned success");
-            fetchData(activeView, currentNamespace); // Refresh
+            // fetchData(activeView, currentNamespace); // Removed to rely on watcher events
         } catch (err) {
             const action = isTerminating ? 'force delete' : 'delete';
             const errMsg = `Failed to ${action} pod: ${err}`;
