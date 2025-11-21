@@ -13,6 +13,24 @@ export default {
         primary: '#007acc',
         text: '#cccccc',
         border: '#3e3e42',
+
+        // Status Colors
+        success: {
+          DEFAULT: '#4CC38A',
+          dark: '#3AA876',
+        },
+        error: {
+          DEFAULT: '#E5484D',
+          dark: '#C33A3F',
+        },
+        warning: {
+          DEFAULT: '#F5A623',
+          dark: '#D98C1C',
+        },
+        'red-orange': {
+          DEFAULT: '#E66B2F',
+          dark: '#C75A27',
+        },
       }
     },
   },

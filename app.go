@@ -5,16 +5,20 @@ import (
 	"fmt"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/terminal"
+	"sync"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 )
 
 // App struct
 type App struct {
-	ctx             context.Context
-	k8sClient       *k8s.Client
-	terminalService *terminal.Service
+	ctx              context.Context
+	k8sClient        *k8s.Client
+	terminalService  *terminal.Service
+	podWatcherCancel context.CancelFunc
+	podWatcherMutex  sync.Mutex
 }
 
 // NewApp creates a new App application struct
@@ -41,6 +45,11 @@ func (a *App) startup(ctx context.Context) {
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
+}
+
+// TestEmit emits a test debug log event
+func (a *App) TestEmit() {
+	a.LogDebug("TestEmit called from frontend")
 }
 
 // --- K8s Methods Exposed to Frontend ---
@@ -116,47 +125,139 @@ func (a *App) ListDeployments(namespace string) ([]appsv1.Deployment, error) {
 }
 
 func (a *App) GetPodLogs(namespace, podName string) (string, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetPodLogs called: context=%s, ns=%s, pod=%s", currentContext, namespace, podName)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.GetPodLogs(namespace, podName)
 }
 
-func (a *App) DeletePod(namespace, name string) error {
-	if a.k8sClient == nil {
-		return fmt.Errorf("k8s client not initialized")
+// LogDebug sends a debug message to the frontend
+func (a *App) LogDebug(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	fmt.Println("DEBUG:", msg)
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "debug-log", msg)
 	}
-	return a.k8sClient.DeletePod(namespace, name)
 }
 
-func (a *App) ForceDeletePod(namespace, name string) error {
+func (a *App) DeletePod(contextName, namespace, name string) error {
+	a.LogDebug("DeletePod called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.ForceDeletePod(namespace, name)
+	err := a.k8sClient.DeletePod(contextName, namespace, name)
+	if err != nil {
+		a.LogDebug("DeletePod error: %v", err)
+	} else {
+		a.LogDebug("DeletePod success")
+	}
+	return err
+}
+
+func (a *App) ForceDeletePod(contextName, namespace, name string) error {
+	a.LogDebug("ForceDeletePod called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	err := a.k8sClient.ForceDeletePod(contextName, namespace, name)
+	if err != nil {
+		a.LogDebug("ForceDeletePod error: %v", err)
+	} else {
+		a.LogDebug("ForceDeletePod success")
+	}
+	return err
 }
 
 func (a *App) GetPodYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetPodYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.GetPodYaml(namespace, name)
 }
 
-func (a *App) UpdatePodYaml(namespace, name, content string) error {
+func (a *App) UpdatePodYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdatePodYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.UpdatePodYaml(namespace, name, content)
+	return a.k8sClient.UpdatePodYaml(namespace, name, yamlContent)
 }
 
-func (a *App) OpenTerminal(contextName, namespace, pod, container string) (string, error) {
-	if a.terminalService == nil || a.terminalService.Port == 0 {
-		return "", fmt.Errorf("terminal service not running")
+func (a *App) OpenTerminal(contextName, namespace, podName, containerName string) (string, error) {
+	a.LogDebug("OpenTerminal called: context=%s, ns=%s, pod=%s, container=%s", contextName, namespace, podName, containerName)
+	if a.terminalService == nil {
+		return "", fmt.Errorf("terminal service not initialized")
 	}
 
+	// Generate a unique ID for the terminal session (unused for now, but good for future)
+	// terminalID := fmt.Sprintf("%s-%s-%s", namespace, podName, containerName)
 	url := fmt.Sprintf("ws://localhost:%d/terminal?context=%s&namespace=%s&pod=%s&container=%s",
-		a.terminalService.Port, contextName, namespace, pod, container)
+		a.terminalService.Port, contextName, namespace, podName, containerName)
 
 	return url, nil
+}
+
+// --- Watcher ---
+
+type PodEvent struct {
+	Type string  `json:"type"`
+	Pod  *v1.Pod `json:"pod"`
+}
+
+func (a *App) StartPodWatcher(namespace string) {
+	a.LogDebug("Starting pod watcher for namespace: %s", namespace)
+
+	// Cancel existing watcher if any
+	a.podWatcherMutex.Lock()
+	if a.podWatcherCancel != nil {
+		a.podWatcherCancel()
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	a.podWatcherCancel = cancel
+	a.podWatcherMutex.Unlock()
+
+	go a.watchPodsLoop(ctx, namespace)
+}
+
+func (a *App) watchPodsLoop(ctx context.Context, namespace string) {
+	defer func() {
+		a.LogDebug("Pod watcher stopped for namespace: %s", namespace)
+	}()
+
+	watcher, err := a.k8sClient.WatchPods(ctx, namespace)
+	if err != nil {
+		a.LogDebug("Failed to start pod watcher: %v", err)
+		return
+	}
+	defer watcher.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event, ok := <-watcher.ResultChan():
+			if !ok {
+				a.LogDebug("Watcher channel closed")
+				return
+			}
+
+			// Cast to Pod
+			pod, ok := event.Object.(*v1.Pod)
+			if !ok {
+				continue
+			}
+
+			// Emit event to frontend
+			// We only care about ADDED, MODIFIED, DELETED
+			if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
+				runtime.EventsEmit(a.ctx, "pod-event", PodEvent{
+					Type: string(event.Type),
+					Pod:  pod,
+				})
+			}
+		}
+	}
 }

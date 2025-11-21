@@ -14,7 +14,8 @@ export default function Sidebar({
     onViewChange,
     contexts,
     currentContext,
-    onContextChange
+    onContextChange,
+    onToggleDebug
 }) {
     const menuGroups = [
         {
@@ -45,11 +46,28 @@ export default function Sidebar({
         }
     ];
 
+    // Debug Log Trigger
+    const [debugClicks, setDebugClicks] = React.useState(0);
+
+    React.useEffect(() => {
+        if (debugClicks >= 10) {
+            onToggleDebug();
+            setDebugClicks(0);
+        }
+    }, [debugClicks]);
+
+    const handleLogoClick = () => {
+        setDebugClicks(prev => prev + 1);
+    };
+
     return (
-        <div className="w-64 bg-surface border-r border-border flex flex-col h-full">
+        <div className="w-64 bg-surface border-r border-border flex flex-col h-full relative">
             {/* App Header */}
             <div className="h-14 flex items-center px-4 border-b border-border shrink-0">
-                <div className="flex items-center gap-2 text-primary font-bold text-xl">
+                <div
+                    className="flex items-center gap-2 text-primary font-bold text-xl cursor-pointer select-none"
+                    onClick={handleLogoClick}
+                >
                     <CubeIcon className="h-6 w-6" />
                     <span>Kubikles</span>
                 </div>
@@ -85,8 +103,8 @@ export default function Sidebar({
                                         <button
                                             onClick={() => onViewChange(item.id)}
                                             className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${activeView === item.id
-                                                    ? 'bg-primary/10 text-primary font-medium'
-                                                    : 'text-gray-400 hover:text-text hover:bg-white/5'
+                                                ? 'bg-primary/10 text-primary font-medium'
+                                                : 'text-gray-400 hover:text-text hover:bg-white/5'
                                                 }`}
                                         >
                                             <Icon className="h-5 w-5" />

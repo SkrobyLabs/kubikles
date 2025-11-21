@@ -5,7 +5,8 @@
 body {
   @apply bg-background text-text font-sans antialiased;
   margin: 0;
-  overflow: hidden; /* Prevent scroll on body, handle in main */
+  overflow: hidden;
+  /* Prevent scroll on body, handle in main */
 }
 
 /* Custom Scrollbar */
@@ -13,12 +14,21 @@ body {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   @apply bg-surface;
 }
+
 ::-webkit-scrollbar-thumb {
   @apply bg-border rounded;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-primary;
+}
+
+/* Fix xterm scrollbar interactivity */
+.xterm-viewport {
+  z-index: 10 !important;
+  overflow-y: scroll !important;
 }

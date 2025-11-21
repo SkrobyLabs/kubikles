@@ -79,7 +79,15 @@ export default function PodActionsMenu({ pod, isOpen, onOpenChange, onLogs, onEd
                 Shell
             </button>
             <button
-                onClick={(e) => { e.stopPropagation(); handleAction(() => onDelete(pod)); }}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    console.log("Delete clicked in menu for:", pod.metadata.name);
+                    if (isTerminating) {
+                        handleAction(() => onForceDelete(pod));
+                    } else {
+                        handleAction(() => onDelete(pod));
+                    }
+                }}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-white/5 transition-colors ${isTerminating ? 'text-red-500 font-semibold' : 'text-red-400'}`}
             >
                 {isTerminating ? 'Force Delete' : 'Delete'}

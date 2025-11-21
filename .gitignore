@@ -20,3 +20,9 @@ Thumbs.db
 go.work
 
 kubikles
+
+.gemini/walkthrough.md
+
+.gemini/task.md
+
+.gemini/implementation_plan.md

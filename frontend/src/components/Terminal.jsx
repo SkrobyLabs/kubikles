@@ -26,7 +26,16 @@ const Terminal = ({ url }) => {
         fitAddonRef.current = fitAddon;
 
         term.open(terminalRef.current);
-        fitAddon.fit();
+
+        // Slight delay to ensure container has dimensions
+        setTimeout(() => {
+            try {
+                fitAddon.fit();
+                console.log("Terminal fit complete", fitAddon.proposeDimensions());
+            } catch (e) {
+                console.error("Terminal fit failed", e);
+            }
+        }, 100);
 
         xtermRef.current = term;
 
@@ -35,6 +44,7 @@ const Terminal = ({ url }) => {
         wsRef.current = ws;
 
         ws.onopen = () => {
+            console.log("WebSocket connected");
             term.write('\r\n\x1b[32mConnected to terminal...\x1b[0m\r\n');
         };
 
@@ -55,6 +65,7 @@ const Terminal = ({ url }) => {
         };
 
         ws.onerror = (err) => {
+            console.error("WebSocket error:", err);
             term.write(`\r\n\x1b[31mWebSocket error: ${err}\x1b[0m\r\n`);
         };
 
@@ -80,25 +91,65 @@ const Terminal = ({ url }) => {
         };
     }, [url]);
 
-    // Re-fit when the container size changes (e.g. split view resize)
+    // Re-fit when the container size changes or becomes visible
     useEffect(() => {
-        const observer = new ResizeObserver(() => {
-            if (fitAddonRef.current) {
-                fitAddonRef.current.fit();
+        const fit = () => {
+            if (fitAddonRef.current && terminalRef.current) {
+                try {
+                    // Check dimensions before fitting
+                    const { clientWidth, clientHeight } = terminalRef.current;
+
+                    if (clientWidth > 0 && clientHeight > 0) {
+                        fitAddonRef.current.fit();
+                    }
+                } catch (e) {
+                    console.error("Fit failed", e);
+                }
+            }
+        };
+
+        const resizeObserver = new ResizeObserver(() => {
+            requestAnimationFrame(fit);
+        });
+
+        const intersectionObserver = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                setTimeout(fit, 100);
             }
         });
+
         if (terminalRef.current) {
-            observer.observe(terminalRef.current);
+            resizeObserver.observe(terminalRef.current);
+            intersectionObserver.observe(terminalRef.current);
         }
-        return () => observer.disconnect();
+
+        return () => {
+            resizeObserver.disconnect();
+            intersectionObserver.disconnect();
+        };
     }, []);
 
     return (
-        <div
-            ref={terminalRef}
-            className="h-full w-full bg-[#1e1e1e]"
-            style={{ padding: '10px' }}
-        />
+        <div className="h-full w-full bg-[#1e1e1e] p-2 overflow-hidden relative">
+            <style>{`
+                .xterm { cursor: text; position: relative; user-select: none; -ms-user-select: none; -webkit-user-select: none; }
+                .xterm.focus, .xterm:focus { outline: none; }
+                .xterm .xterm-helpers { position: absolute; z-index: 5; }
+                .xterm .xterm-helper-textarea { position: absolute; opacity: 0; z-index: -5; top: 0; left: 0; width: 0; height: 0; overflow: hidden; margin: 0; padding: 0; border: 0; }
+                .xterm .xterm-viewport { background-color: transparent !important; overflow-y: scroll; cursor: default; position: absolute; right: 0; left: 0; top: 0; bottom: 0; }
+                .xterm .xterm-screen { position: relative; }
+                .xterm .xterm-screen canvas { position: absolute; left: 0; top: 0; }
+                .xterm .xterm-scroll-area { visibility: hidden; }
+                .xterm-char-measure-element { display: inline-block; visibility: hidden; position: absolute; top: 0; left: -9999em; line-height: normal; }
+                .xterm.enable-mouse-events { cursor: default; }
+                .xterm .xterm-cursor-pointer { cursor: pointer; }
+                .xterm .xterm-cursor-text { cursor: text; }
+            `}</style>
+            <div
+                ref={terminalRef}
+                className="h-full w-full"
+            />
+        </div>
     );
 };
 

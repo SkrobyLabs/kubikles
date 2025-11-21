@@ -111,6 +111,9 @@ func (s *Service) handleTerminal(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
+		// Send a clean exit message when pty closes
+		conn.WriteMessage(websocket.TextMessage, []byte("\r\n\x1b[33mProcess exited. Terminal disconnected.\x1b[0m\r\n"))
+		conn.Close()
 	}()
 
 	// Pipe websocket to pty

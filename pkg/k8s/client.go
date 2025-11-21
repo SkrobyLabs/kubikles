@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -118,6 +119,14 @@ func (c *Client) ListPods(namespace string) ([]v1.Pod, error) {
 	return pods.Items, nil
 }
 
+func (c *Client) WatchPods(ctx context.Context, namespace string) (watch.Interface, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	return cs.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{})
+}
+
 func (c *Client) ListNodes() ([]v1.Node, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -215,18 +224,52 @@ func (c *Client) GetPodLogs(namespace, podName string) (string, error) {
 	return buf.String(), nil
 }
 
-func (c *Client) DeletePod(namespace, name string) error {
-	cs, err := c.getClientset()
+func (c *Client) getClientForContext(contextName string) (*kubernetes.Clientset, error) {
+	c.mu.RLock()
+	if contextName == "" || contextName == c.currentContext {
+		defer c.mu.RUnlock()
+		if c.clientset == nil {
+			return nil, fmt.Errorf("k8s client not initialized")
+		}
+		return c.clientset, nil
+	}
+	c.mu.RUnlock()
+
+	// Create a temporary config for the requested context
+	// We don't want to lock here as loadConfig does, but we are creating a new config
+	// entirely separate from the struct's state.
+	// Actually, we can reuse the loading logic but we need to be careful not to modify c.configLoading
+	// if it's shared.
+	// Simplest way: create a new loader.
+
+	home := homedir.HomeDir()
+	kubeconfigPath := filepath.Join(home, ".kube", "config")
+	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
+	configOverrides := &clientcmd.ConfigOverrides{CurrentContext: contextName}
+
+	configLoader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+	config, err := configLoader.ClientConfig()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to load client config for context %s: %w", contextName, err)
+	}
+
+	return kubernetes.NewForConfig(config)
+}
+
+func (c *Client) DeletePod(contextName, namespace, name string) error {
+	fmt.Printf("Deleting pod: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	return cs.CoreV1().Pods(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
 
-func (c *Client) ForceDeletePod(namespace, name string) error {
-	cs, err := c.getClientset()
+func (c *Client) ForceDeletePod(contextName, namespace, name string) error {
+	fmt.Printf("Force deleting pod: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	gracePeriod := int64(0)
 	return cs.CoreV1().Pods(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{

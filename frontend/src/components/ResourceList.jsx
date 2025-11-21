@@ -11,13 +11,44 @@ export default function ResourceList({
     currentNamespace,
     onNamespaceChange,
     showNamespaceSelector = true,
-    highlightedUid = null
+    highlightedUid = null,
+    initialSort = null
 }) {
+    const [sortConfig, setSortConfig] = useState(initialSort || { key: null, direction: 'asc' });
     const [searchTerm, setSearchTerm] = useState('');
+
+    const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
 
     const filteredData = data.filter(item =>
         item.metadata?.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const sortedData = React.useMemo(() => {
+        if (!sortConfig.key) return filteredData;
+
+        return [...filteredData].sort((a, b) => {
+            const column = columns.find(col => col.key === sortConfig.key);
+            if (!column) return 0;
+
+            const getValue = column.getValue || ((item) => item[column.key]);
+            const aValue = getValue(a);
+            const bValue = getValue(b);
+
+            if (aValue < bValue) {
+                return sortConfig.direction === 'asc' ? -1 : 1;
+            }
+            if (aValue > bValue) {
+                return sortConfig.direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+    }, [filteredData, sortConfig, columns]);
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -56,8 +87,19 @@ export default function ResourceList({
                     <thead className="bg-surface sticky top-0 z-10">
                         <tr>
                             {columns.map((col) => (
-                                <th key={col.key} className="p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border">
-                                    {col.label}
+                                <th
+                                    key={col.key}
+                                    className="p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border cursor-pointer hover:text-text select-none"
+                                    onClick={() => handleSort(col.key)}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        {col.label}
+                                        {sortConfig.key === col.key && (
+                                            <span className="text-primary">
+                                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
                                 </th>
                             ))}
                         </tr>
@@ -69,14 +111,14 @@ export default function ResourceList({
                                     Loading...
                                 </td>
                             </tr>
-                        ) : filteredData.length === 0 ? (
+                        ) : sortedData.length === 0 ? (
                             <tr>
                                 <td colSpan={columns.length} className="p-4 text-center text-gray-500">
                                     No resources found
                                 </td>
                             </tr>
                         ) : (
-                            filteredData.map((item, index) => (
+                            sortedData.map((item, index) => (
                                 <tr
                                     key={item.metadata?.uid || index}
                                     className={`transition-colors ${highlightedUid === item.metadata?.uid ? 'bg-white/5' : 'hover:bg-white/5'}`}

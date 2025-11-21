@@ -31,7 +31,15 @@ export default function BottomPanel({ tabs, activeTabId, onTabChange, onTabClose
                 ))}
             </div>
             <div className="flex-1 overflow-hidden relative">
-                {activeTab && activeTab.content}
+                {tabs.map(tab => (
+                    <div
+                        key={tab.id}
+                        className="h-full w-full"
+                        style={{ display: tab.id === activeTabId ? 'block' : 'none' }}
+                    >
+                        {tab.content}
+                    </div>
+                ))}
             </div>
         </div>
     );
