@@ -34,5 +34,12 @@ export default {
       }
     },
   },
+  safelist: [
+    'text-success',
+    'text-success/70',
+    'text-error',
+    'text-warning',
+    'text-red-orange',
+  ],
   plugins: [],
 }

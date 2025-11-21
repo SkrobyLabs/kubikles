@@ -454,17 +454,76 @@ function App() {
         return `${days}d ${hours % 24}h`;
     };
 
+    const getPodStatus = (pod) => {
+        if (pod.metadata?.deletionTimestamp) return 'Terminating';
+
+        // Check for specific container states that override the general phase
+        const containerStatuses = pod.status?.containerStatuses || [];
+        for (const status of containerStatuses) {
+            if (status.state?.waiting && status.state.waiting.reason === 'CrashLoopBackOff') {
+                return 'CrashLoopBackOff';
+            }
+            if (status.state?.waiting && status.state.waiting.reason === 'ImagePullBackOff') {
+                return 'ImagePullBackOff';
+            }
+            if (status.state?.waiting && status.state.waiting.reason === 'ContainerCreating') {
+                return 'ContainerCreating';
+            }
+        }
+
+        return pod.status?.phase || 'Unknown';
+    };
+
+    const getPodStatusColor = (status) => {
+        switch (status) {
+            case 'Running':
+                return 'text-success';
+            case 'Succeeded':
+                return 'text-success/70'; // Dimmed green
+            case 'Pending':
+            case 'ContainerCreating':
+                return 'text-warning'; // Orange
+            case 'Terminating':
+            case 'CrashLoopBackOff':
+            case 'ImagePullBackOff':
+            case 'Unknown':
+                return 'text-red-orange'; // Orange-red
+            case 'Failed':
+                return 'text-error'; // Red
+            default:
+                return 'text-text';
+        }
+    };
+
+    const getPodStatusPriority = (status) => {
+        switch (status) {
+            case 'Terminating': return 1;
+            case 'Failed': return 2;
+            case 'CrashLoopBackOff': return 2;
+            case 'ImagePullBackOff': return 2;
+            case 'Unknown': return 2;
+            case 'Pending': return 3;
+            case 'ContainerCreating': return 3;
+            case 'Running': return 4;
+            case 'Succeeded': return 5;
+            default: return 6;
+        }
+    };
+
     const getColumns = (view) => {
         switch (view) {
             case 'pods':
                 return [
                     { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
-                    { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
                     {
                         key: 'status',
                         label: 'Status',
-                        render: (item) => item.metadata?.deletionTimestamp ? 'Terminating' : item.status?.phase,
-                        getValue: (item) => item.metadata?.deletionTimestamp ? 'Terminating' : item.status?.phase
+                        render: (item) => {
+                            const status = getPodStatus(item);
+                            const colorClass = getPodStatusColor(status);
+                            return <span className={`font-medium ${colorClass}`}>{status}</span>;
+                        },
+                        getValue: (item) => getPodStatusPriority(getPodStatus(item))
                     },
                     { key: 'restarts', label: 'Restarts', render: (item) => item.status?.containerStatuses?.reduce((acc, curr) => acc + curr.restartCount, 0) || 0, getValue: (item) => item.status?.containerStatuses?.reduce((acc, curr) => acc + curr.restartCount, 0) || 0 },
                     { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
