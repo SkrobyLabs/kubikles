@@ -46,6 +46,27 @@ export default function ResourceList({
             if (aValue > bValue) {
                 return sortConfig.direction === 'asc' ? 1 : -1;
             }
+
+            // Tie-breakers (always ascending)
+
+            // 1. Age (if available and not primary sort)
+            if (sortConfig.key !== 'age') {
+                const aDate = a.metadata?.creationTimestamp;
+                const bDate = b.metadata?.creationTimestamp;
+                if (aDate && bDate && aDate !== bDate) {
+                    // User wants "Ascending Age" (Newest to Oldest)
+                    // Newest = Larger Timestamp
+                    return aDate > bDate ? -1 : 1;
+                }
+            }
+
+            // 2. Name (if not primary sort)
+            if (sortConfig.key !== 'name') {
+                const aName = a.metadata?.name || '';
+                const bName = b.metadata?.name || '';
+                return aName.localeCompare(bName);
+            }
+
             return 0;
         });
     }, [filteredData, sortConfig, columns]);
@@ -66,6 +87,9 @@ export default function ResourceList({
                             className="w-full bg-background border border-border rounded-md pl-9 pr-4 py-1.5 text-sm text-text focus:outline-none focus:border-primary transition-colors"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            autoComplete="off"
+                            autoCorrect="off"
+                            spellCheck="false"
                         />
                     </div>
                 </div>

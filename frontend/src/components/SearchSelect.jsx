@@ -55,6 +55,9 @@ export default function SearchSelect({ options, value, onChange, placeholder = "
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onClick={(e) => e.stopPropagation()}
+                                autoComplete="off"
+                                autoCorrect="off"
+                                spellCheck="false"
                             />
                         </div>
                     </div>

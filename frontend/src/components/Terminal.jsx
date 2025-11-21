@@ -61,10 +61,16 @@ const Terminal = ({ url }) => {
         };
 
         ws.onclose = () => {
-            term.write('\r\n\x1b[33mTerminal disconnected...\x1b[0m\r\n');
+            // Backend sends a disconnect message, so we don't need to print another one here.
+            console.log("WebSocket closed");
         };
 
         ws.onerror = (err) => {
+            // Suppress generic "Event" errors which happen on normal close
+            if (err instanceof Event && err.type === 'error') {
+                console.log("WebSocket connection closed (cleanly or with generic error)");
+                return;
+            }
             console.error("WebSocket error:", err);
             term.write(`\r\n\x1b[31mWebSocket error: ${err}\x1b[0m\r\n`);
         };

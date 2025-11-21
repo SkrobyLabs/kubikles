@@ -40,6 +40,12 @@ export default {
     'text-error',
     'text-warning',
     'text-red-orange',
+    'bg-success',
+    'bg-success/50',
+    'bg-error',
+    'bg-warning',
+    'bg-red-orange',
+    'bg-surface',
   ],
   plugins: [],
 }

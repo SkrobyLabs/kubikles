@@ -458,18 +458,47 @@ function App() {
         if (pod.metadata?.deletionTimestamp) return 'Terminating';
 
         // Check for specific container states that override the general phase
+        // We want to pick the "worst" state if multiple containers have issues
         const containerStatuses = pod.status?.containerStatuses || [];
+        let worstStatus = null;
+        let worstPriority = -1;
+
+        // Helper to check priority of a specific status string
+        // Higher number = "worse" / higher priority to show
+        const getStatusSeverity = (s) => {
+            switch (s) {
+                case 'Failed': return 100;
+                case 'Terminating': return 90;
+                case 'ErrImagePull': return 80;
+                case 'CrashLoopBackOff': return 70;
+                case 'ImagePullBackOff': return 60;
+                case 'ContainerCreating': return 50;
+                case 'Pending': return 40;
+                case 'Running': return 30;
+                case 'Succeeded': return 20;
+                default: return 0;
+            }
+        };
+
+        // First check container statuses
         for (const status of containerStatuses) {
-            if (status.state?.waiting && status.state.waiting.reason === 'CrashLoopBackOff') {
-                return 'CrashLoopBackOff';
+            let currentStatus = null;
+            if (status.state?.waiting) {
+                currentStatus = status.state.waiting.reason; // e.g. CrashLoopBackOff
+            } else if (status.state?.terminated && status.state.terminated.exitCode !== 0) {
+                currentStatus = 'Failed'; // Terminated with error
             }
-            if (status.state?.waiting && status.state.waiting.reason === 'ImagePullBackOff') {
-                return 'ImagePullBackOff';
-            }
-            if (status.state?.waiting && status.state.waiting.reason === 'ContainerCreating') {
-                return 'ContainerCreating';
+
+            if (currentStatus) {
+                const severity = getStatusSeverity(currentStatus);
+                if (severity > worstPriority) {
+                    worstPriority = severity;
+                    worstStatus = currentStatus;
+                }
             }
         }
+
+        if (worstStatus) return worstStatus;
 
         return pod.status?.phase || 'Unknown';
     };
@@ -486,6 +515,7 @@ function App() {
             case 'Terminating':
             case 'CrashLoopBackOff':
             case 'ImagePullBackOff':
+            case 'ErrImagePull':
             case 'Unknown':
                 return 'text-red-orange'; // Orange-red
             case 'Failed':
@@ -496,18 +526,40 @@ function App() {
     };
 
     const getPodStatusPriority = (status) => {
+        // User requested Ascending order:
+        // Succeeded -> Running -> Pending -> ContainerCreating -> ImagePullBackOff -> CrashLoop -> ErrImagePull -> Terminating -> Failed
+        // So we assign lower numbers to the top of the list
         switch (status) {
-            case 'Terminating': return 1;
-            case 'Failed': return 2;
-            case 'CrashLoopBackOff': return 2;
-            case 'ImagePullBackOff': return 2;
-            case 'Unknown': return 2;
+            case 'Succeeded': return 1;
+            case 'Running': return 2;
             case 'Pending': return 3;
-            case 'ContainerCreating': return 3;
-            case 'Running': return 4;
-            case 'Succeeded': return 5;
-            default: return 6;
+            case 'ContainerCreating': return 4;
+            case 'ImagePullBackOff': return 5;
+            case 'CrashLoopBackOff': return 6;
+            case 'ErrImagePull': return 7;
+            case 'Terminating': return 8;
+            case 'Failed': return 9;
+            case 'Unknown': return 10;
+            default: return 11;
         }
+    };
+
+    const getContainerStatusColor = (status) => {
+        if (status.state?.running) return 'bg-success';
+        if (status.state?.terminated) {
+            return status.state.terminated.exitCode === 0 ? 'bg-success/50' : 'bg-error';
+        }
+        if (status.state?.waiting) {
+            const reason = status.state.waiting.reason;
+            if (reason === 'CrashLoopBackOff' || reason === 'ImagePullBackOff' || reason === 'ErrImagePull') {
+                return 'bg-red-orange';
+            }
+            if (reason === 'ContainerCreating') {
+                return 'bg-warning';
+            }
+            return 'bg-warning';
+        }
+        return 'bg-surface'; // Unknown
     };
 
     const getColumns = (view) => {
@@ -515,6 +567,22 @@ function App() {
             case 'pods':
                 return [
                     { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
+                    {
+                        key: 'containers',
+                        label: 'Containers',
+                        render: (item) => (
+                            <div className="flex gap-1">
+                                {(item.status?.containerStatuses || []).map((status, i) => (
+                                    <div
+                                        key={i}
+                                        className={`w-3 h-3 rounded-sm ${getContainerStatusColor(status)}`}
+                                        title={`${status.name}: ${Object.keys(status.state || {})[0]} (${status.state?.waiting?.reason || ''})`}
+                                    />
+                                ))}
+                            </div>
+                        ),
+                        getValue: (item) => getPodStatusPriority(getPodStatus(item))
+                    },
                     {
                         key: 'status',
                         label: 'Status',
