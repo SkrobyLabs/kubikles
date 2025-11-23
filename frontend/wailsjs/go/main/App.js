@@ -38,8 +38,8 @@ export function GetDeploymentYaml(arg1, arg2) {
   return window['go']['main']['App']['GetDeploymentYaml'](arg1, arg2);
 }
 
-export function GetPodLogs(arg1, arg2) {
-  return window['go']['main']['App']['GetPodLogs'](arg1, arg2);
+export function GetPodLogs(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetPodLogs'](arg1, arg2, arg3);
 }
 
 export function GetPodYaml(arg1, arg2) {

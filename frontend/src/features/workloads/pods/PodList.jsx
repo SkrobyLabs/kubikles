@@ -55,7 +55,13 @@ export default function PodList({ isVisible }) {
                     pod={item}
                     isOpen={activeMenuId === `pod-${item.metadata.uid}`}
                     onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `pod-${item.metadata.uid}` : null)}
-                    onLogs={() => openLogs(item.metadata.namespace, item.metadata.name)}
+                    onLogs={() => {
+                        const containers = [
+                            ...(item.spec?.initContainers || []).map(c => c.name),
+                            ...(item.spec?.containers || []).map(c => c.name)
+                        ];
+                        openLogs(item.metadata.namespace, item.metadata.name, containers);
+                    }}
                     onShell={() => handleShell(item.metadata.namespace, item.metadata.name)}
                     onDelete={() => handleDelete(item.metadata.namespace, item.metadata.name, false)}
                     onForceDelete={() => handleDelete(item.metadata.namespace, item.metadata.name, true)}

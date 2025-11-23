@@ -174,13 +174,13 @@ func (a *App) ListDeployments(namespace string) ([]appsv1.Deployment, error) {
 	return a.k8sClient.ListDeployments(namespace)
 }
 
-func (a *App) GetPodLogs(namespace, podName string) (string, error) {
+func (a *App) GetPodLogs(namespace, podName, containerName string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetPodLogs called: context=%s, ns=%s, pod=%s", currentContext, namespace, podName)
+	a.LogDebug("GetPodLogs called: context=%s, ns=%s, pod=%s, container=%s", currentContext, namespace, podName, containerName)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.GetPodLogs(namespace, podName)
+	return a.k8sClient.GetPodLogs(namespace, podName, containerName)
 }
 
 // LogDebug sends a debug message to the frontend

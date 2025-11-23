@@ -285,15 +285,20 @@ func (c *Client) ListDeployments(namespace string) ([]appsv1.Deployment, error) 
 	return deployments.Items, nil
 }
 
-func (c *Client) GetPodLogs(namespace, podName string) (string, error) {
+func (c *Client) GetPodLogs(namespace, podName, containerName string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return "", err
 	}
 
-	req := cs.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{
+	opts := &v1.PodLogOptions{
 		TailLines: func(i int64) *int64 { return &i }(100), // Default to last 100 lines
-	})
+	}
+	if containerName != "" {
+		opts.Container = containerName
+	}
+
+	req := cs.CoreV1().Pods(namespace).GetLogs(podName, opts)
 
 	podLogs, err := req.Stream(context.TODO())
 	if err != nil {

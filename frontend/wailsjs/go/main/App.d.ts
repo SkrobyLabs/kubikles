@@ -20,7 +20,7 @@ export function GetCurrentContext():Promise<string>;
 
 export function GetDeploymentYaml(arg1:string,arg2:string):Promise<string>;
 
-export function GetPodLogs(arg1:string,arg2:string):Promise<string>;
+export function GetPodLogs(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function GetPodYaml(arg1:string,arg2:string):Promise<string>;
 
