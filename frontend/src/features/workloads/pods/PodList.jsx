@@ -7,7 +7,7 @@ import { usePodActions } from './usePodActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
 import { formatAge } from '../../../utils/formatting';
-import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusPriority } from '../../../utils/k8s-helpers';
+import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusPriority, getPodController } from '../../../utils/k8s-helpers';
 
 export default function PodList({ isVisible }) {
     const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
@@ -46,6 +46,21 @@ export default function PodList({ isVisible }) {
         },
         { key: 'restarts', label: 'Restarts', render: (item) => item.status?.containerStatuses?.reduce((acc, curr) => acc + curr.restartCount, 0) || 0, getValue: (item) => item.status?.containerStatuses?.reduce((acc, curr) => acc + curr.restartCount, 0) || 0 },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        {
+            key: 'controlledBy',
+            label: 'Controlled By',
+            render: (item) => {
+                const controller = getPodController(item);
+                return controller ? (
+                    <span className="text-gray-400" title={controller.name}>
+                        {controller.kind}
+                    </span>
+                ) : (
+                    <span className="text-gray-600">-</span>
+                );
+            },
+            getValue: (item) => getPodController(item)?.kind || ''
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

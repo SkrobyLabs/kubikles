@@ -144,3 +144,14 @@ export const getDeploymentPods = (deployment, allPods) => {
         return true;
     });
 };
+
+export const getPodController = (pod) => {
+    const owners = pod.metadata?.ownerReferences || [];
+    const controller = owners.find(owner => owner.controller);
+    if (!controller) return null;
+    return {
+        kind: controller.kind,
+        name: controller.name,
+        uid: controller.uid
+    };
+};
