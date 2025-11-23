@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { GetPodYaml, UpdatePodYaml, GetDeploymentYaml, UpdateDeploymentYaml, GetStatefulSetYaml, UpdateStatefulSetYaml } from '../../../wailsjs/go/main/App';
+import {
+    GetPodYaml, UpdatePodYaml,
+    GetDeploymentYaml, UpdateDeploymentYaml,
+    GetStatefulSetYaml, UpdateStatefulSetYaml,
+    GetConfigMapYaml, UpdateConfigMapYaml,
+    GetSecretYaml, UpdateSecretYaml
+} from '../../../wailsjs/go/main/App';
 
-export default function YamlEditor({ namespace, podName, isDeployment, isStatefulSet, onClose }) {
+export default function YamlEditor({ namespace, podName, isDeployment, isStatefulSet, isConfigMap, isSecret, onClose }) {
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -22,6 +28,10 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
                 yaml = await GetDeploymentYaml(namespace, podName);
             } else if (isStatefulSet) {
                 yaml = await GetStatefulSetYaml(namespace, podName);
+            } else if (isConfigMap) {
+                yaml = await GetConfigMapYaml(namespace, podName);
+            } else if (isSecret) {
+                yaml = await GetSecretYaml(namespace, podName);
             } else {
                 yaml = await GetPodYaml(namespace, podName);
             }
@@ -40,6 +50,10 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
                 await UpdateDeploymentYaml(namespace, podName, content);
             } else if (isStatefulSet) {
                 await UpdateStatefulSetYaml(namespace, podName, content);
+            } else if (isConfigMap) {
+                await UpdateConfigMapYaml(namespace, podName, content);
+            } else if (isSecret) {
+                await UpdateSecretYaml(namespace, podName, content);
             } else {
                 await UpdatePodYaml(namespace, podName, content);
             }

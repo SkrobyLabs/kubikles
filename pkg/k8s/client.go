@@ -189,6 +189,90 @@ func (c *Client) ListSecrets(namespace string) ([]v1.Secret, error) {
 	return secrets.Items, nil
 }
 
+// ConfigMap YAML operations
+func (c *Client) GetConfigMapYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	configMap, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	// Remove managed fields
+	configMap.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(configMap)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateConfigMapYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var configMap v1.ConfigMap
+	if err := yaml.Unmarshal([]byte(yamlContent), &configMap); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.CoreV1().ConfigMaps(namespace).Update(context.TODO(), &configMap, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteConfigMap(namespace, name string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	return cs.CoreV1().ConfigMaps(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// Secret YAML operations
+func (c *Client) GetSecretYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	secret, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	// Remove managed fields
+	secret.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(secret)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateSecretYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var secret v1.Secret
+	if err := yaml.Unmarshal([]byte(yamlContent), &secret); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.CoreV1().Secrets(namespace).Update(context.TODO(), &secret, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteSecret(namespace, name string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	return cs.CoreV1().Secrets(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
 func (c *Client) ListDeployments(namespace string) ([]appsv1.Deployment, error) {
 	cs, err := c.getClientset()
 	if err != nil {

@@ -117,6 +117,56 @@ func (a *App) ListSecrets(namespace string) ([]v1.Secret, error) {
 	return a.k8sClient.ListSecrets(namespace)
 }
 
+// ConfigMap YAML operations
+func (a *App) GetConfigMapYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetConfigMapYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetConfigMapYaml(namespace, name)
+}
+
+func (a *App) UpdateConfigMapYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdateConfigMapYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateConfigMapYaml(namespace, name, yamlContent)
+}
+
+func (a *App) DeleteConfigMap(namespace, name string) error {
+	a.LogDebug("DeleteConfigMap called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteConfigMap(namespace, name)
+}
+
+// Secret YAML operations
+func (a *App) GetSecretYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetSecretYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetSecretYaml(namespace, name)
+}
+
+func (a *App) UpdateSecretYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdateSecretYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateSecretYaml(namespace, name, yamlContent)
+}
+
+func (a *App) DeleteSecret(namespace, name string) error {
+	a.LogDebug("DeleteSecret called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteSecret(namespace, name)
+}
+
 func (a *App) ListDeployments(namespace string) ([]appsv1.Deployment, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
