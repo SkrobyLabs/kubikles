@@ -1,5 +1,11 @@
-
 import React, { useState, useEffect, useRef } from 'react';
+import {
+    CubeIcon,
+    CommandLineIcon,
+    TrashIcon,
+    ArrowPathIcon,
+    EllipsisHorizontalIcon
+} from '@heroicons/react/24/outline';
 import Sidebar from './components/Sidebar';
 import ResourceList from './components/ResourceList';
 import LogViewer from './components/LogViewer';
@@ -37,11 +43,11 @@ function App() {
     const fetchIdRef = useRef(0);
 
     // Menu State
-    const [activeMenuUid, setActiveMenuUid] = useState(null);
+    const [activeMenuId, setActiveMenuId] = useState(null); // Changed from activeMenuId to activeMenuId
 
     // Persistence Helpers
     const loadContextState = (ctx) => {
-        const saved = localStorage.getItem(`kubikles_state_${ctx}`);
+        const saved = localStorage.getItem(`kubikles_state_${ctx} `);
         if (saved) {
             try {
                 return JSON.parse(saved);
@@ -54,7 +60,7 @@ function App() {
 
     const saveContextState = (ctx, view, ns) => {
         if (!ctx) return;
-        localStorage.setItem(`kubikles_state_${ctx}`, JSON.stringify({ view, namespace: ns }));
+        localStorage.setItem(`kubikles_state_${ctx} `, JSON.stringify({ view, namespace: ns }));
     };
 
     useEffect(() => {
@@ -89,8 +95,8 @@ function App() {
     useEffect(() => {
         fetchData(activeView, currentNamespace);
 
-        // Start watcher if in pods view
-        if (activeView === 'pods' && currentNamespace) {
+        // Start watcher if in pods or deployments view
+        if ((activeView === 'pods' || activeView === 'deployments') && currentNamespace) {
             StartPodWatcher(currentNamespace);
         }
     }, [activeView, currentNamespace, currentContext]);
@@ -98,22 +104,36 @@ function App() {
     // Pod Event Listener
     useEffect(() => {
         const handlePodEvent = (event) => {
-            if (activeView !== 'pods') return;
+            if (activeView !== 'pods' && activeView !== 'deployments') return;
 
             const { type, pod } = event;
             console.log(`Pod Event: ${type} - ${pod.metadata.name} (${pod.status?.phase})`);
 
-            setData(prevData => {
-                if (type === 'ADDED') {
-                    if (prevData.find(p => p.metadata.uid === pod.metadata.uid)) return prevData;
-                    return [...prevData, pod];
-                } else if (type === 'MODIFIED') {
-                    return prevData.map(p => p.metadata.uid === pod.metadata.uid ? pod : p);
-                } else if (type === 'DELETED') {
-                    return prevData.filter(p => p.metadata.uid !== pod.metadata.uid);
-                }
-                return prevData;
-            });
+            if (activeView === 'pods') {
+                setData(prevData => {
+                    if (type === 'ADDED') {
+                        if (prevData.find(p => p.metadata.uid === pod.metadata.uid)) return prevData;
+                        return [...prevData, pod];
+                    } else if (type === 'MODIFIED') {
+                        return prevData.map(p => p.metadata.uid === pod.metadata.uid ? pod : p);
+                    } else if (type === 'DELETED') {
+                        return prevData.filter(p => p.metadata.uid !== pod.metadata.uid);
+                    }
+                    return prevData;
+                });
+            } else if (activeView === 'deployments') {
+                setAllPods(prevPods => {
+                    if (type === 'ADDED') {
+                        if (prevPods.find(p => p.metadata.uid === pod.metadata.uid)) return prevPods;
+                        return [...prevPods, pod];
+                    } else if (type === 'MODIFIED') {
+                        return prevPods.map(p => p.metadata.uid === pod.metadata.uid ? pod : p);
+                    } else if (type === 'DELETED') {
+                        return prevPods.filter(p => p.metadata.uid !== pod.metadata.uid);
+                    }
+                    return prevPods;
+                });
+            }
         };
 
         if (window.runtime) {
@@ -225,7 +245,7 @@ function App() {
 
                         // Load pods in background
                         ListPods(ns).then(pods => {
-                            setAllPods(pods);
+                            setAllPods(pods || []);
                             setPodsLoading(false);
                         }).catch(err => {
                             console.error("Failed to load pods for deployments:", err);
@@ -253,7 +273,7 @@ function App() {
             }
         } catch (err) {
             if (fetchId === fetchIdRef.current) {
-                console.error(`Failed to fetch ${view}`, err);
+                console.error(`Failed to fetch ${view} `, err);
                 setLoading(false);
             }
         }
@@ -264,7 +284,7 @@ function App() {
     const getDeploymentPods = (deployment) => {
         if (!deployment.spec?.selector?.matchLabels) return [];
         const selector = deployment.spec.selector.matchLabels;
-        return allPods.filter(pod => {
+        return (allPods || []).filter(pod => {
             if (pod.metadata.namespace !== deployment.metadata.namespace) return false;
             for (const [key, value] of Object.entries(selector)) {
                 if (pod.metadata.labels?.[key] !== value) return false;
@@ -342,7 +362,7 @@ function App() {
         if (!bottomTabs.find(t => t.id === tabId)) {
             const newTab = {
                 id: tabId,
-                title: `Logs: ${podName}`,
+                title: `Logs: ${podName} `,
                 content: <LogViewer namespace={currentNamespace} pod={podName} />
             };
             setBottomTabs([...bottomTabs, newTab]);
@@ -383,13 +403,13 @@ function App() {
     };
 
     // Action Handlers
-    const openYamlEditor = (pod) => {
+    const handleEditPodYaml = (pod) => { // Renamed from openYamlEditor to handleEditPodYaml
         const tabId = `yaml-${pod.metadata.uid}`;
         // Check if tab already exists
         if (!bottomTabs.find(t => t.id === tabId)) {
             const newTab = {
                 id: tabId,
-                title: `YAML: ${pod.metadata.name}`,
+                title: `YAML: ${pod.metadata.name} `,
                 content: (
                     <YamlEditor
                         namespace={pod.metadata.namespace}
@@ -403,9 +423,9 @@ function App() {
         setActiveTabId(tabId);
     };
 
-    const handleDeletePod = async (pod, isTerminating = false) => {
+    const handleDeletePod = async (namespace, name, isTerminating = false) => { // Updated signature
         const actionType = isTerminating ? 'Force Delete' : 'Delete';
-        const msg = `handleDeletePod (${actionType}) called for: ${pod.metadata.name}, Namespace: ${pod.metadata.namespace}, Context: ${currentContext}`;
+        const msg = `handleDeletePod(${actionType}) called for: ${name}, Namespace: ${namespace}, Context: ${currentContext} `;
         console.log(msg);
         try {
             await LogDebug(msg);
@@ -414,7 +434,7 @@ function App() {
         }
 
         /*
-        if (!confirm(`Are you sure you want to delete pod ${pod.metadata.name}?`)) {
+        if (!confirm(`Are you sure you want to delete pod ${ pod.metadata.name }?`)) {
             console.log("Delete cancelled by user");
             return;
         }
@@ -424,15 +444,15 @@ function App() {
         try {
             console.log("Calling backend DeletePod...");
             if (isTerminating) {
-                await ForceDeletePod(currentContext, pod.metadata.namespace, pod.metadata.name);
+                await ForceDeletePod(currentContext, namespace, name);
             } else {
-                await DeletePod(currentContext, pod.metadata.namespace, pod.metadata.name);
+                await DeletePod(currentContext, namespace, name);
             }
             console.log("Backend DeletePod returned success");
             // fetchData(activeView, currentNamespace); // Removed to rely on watcher events
         } catch (err) {
             const action = isTerminating ? 'force delete' : 'delete';
-            const errMsg = `Failed to ${action} pod: ${err}`;
+            const errMsg = `Failed to ${action} pod: ${err} `;
             console.error(errMsg);
             await LogDebug(errMsg);
             alert(errMsg);
@@ -444,7 +464,7 @@ function App() {
         if (!bottomTabs.find(t => t.id === tabId)) {
             const newTab = {
                 id: tabId,
-                title: `YAML: ${deployment.metadata.name}`,
+                title: `YAML: ${deployment.metadata.name} `,
                 content: (
                     <YamlEditor
                         namespace={deployment.metadata.namespace}
@@ -466,7 +486,7 @@ function App() {
             await LogDebug(msg);
             await RestartDeployment(currentContext, deployment.metadata.namespace, deployment.metadata.name);
             console.log("Restart triggered successfully");
-            fetchData(activeView, currentNamespace);
+            // fetchData(activeView, currentNamespace); // Removed to rely on watcher events
         } catch (err) {
             console.error("Failed to restart deployment", err);
             alert(`Failed to restart deployment: ${err}`);
@@ -476,7 +496,7 @@ function App() {
     const handleDeleteDeployment = async (deployment) => {
         if (!confirm(`Are you sure you want to delete deployment ${deployment.metadata.name}?`)) return;
 
-        const msg = `Deleting deployment: ${deployment.metadata.name}`;
+        const msg = `Deleting deployment: ${deployment.metadata.name} `;
         console.log(msg);
         try {
             await LogDebug(msg);
@@ -485,20 +505,20 @@ function App() {
             fetchData(activeView, currentNamespace);
         } catch (err) {
             console.error("Failed to delete deployment", err);
-            alert(`Failed to delete deployment: ${err}`);
+            alert(`Failed to delete deployment: ${err} `);
         }
     };
 
-    const handleShell = async (pod) => {
+    const handleShell = async (podName) => { // Updated signature to accept podName directly
         try {
-            const url = await OpenTerminal(currentContext, pod.metadata.namespace, pod.metadata.name, "");
+            const url = await OpenTerminal(currentContext, currentNamespace, podName, ""); // Use currentNamespace
 
-            const tabId = `shell-${pod.metadata.uid}`;
+            const tabId = `shell-${podName}`; // Use podName for tabId
             // Check if tab already exists
             if (!bottomTabs.find(t => t.id === tabId)) {
                 const newTab = {
                     id: tabId,
-                    title: `Shell: ${pod.metadata.name}`,
+                    title: `Shell: ${podName} `,
                     content: <Terminal url={url} />
                 };
                 setBottomTabs([...bottomTabs, newTab]);
@@ -520,7 +540,7 @@ function App() {
             console.log("Registering debug-log listener");
             window.runtime.EventsOn("debug-log", (msg) => {
                 console.log("Backend Debug Log Received:", msg);
-                setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+                setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg} `]);
             });
             isListenerRegistered.current = true;
         } else if (!window.runtime) {
@@ -551,7 +571,7 @@ function App() {
                             logs={debugLogs}
                             onTestEmit={(type) => {
                                 if (type === 'ui') {
-                                    setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Test Log (UI Only)`]);
+                                    setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Test Log(UI Only)`]);
                                 } else {
                                     window.go.main.App.TestEmit();
                                 }
@@ -579,7 +599,7 @@ function App() {
                         logs={debugLogs}
                         onTestEmit={(type) => {
                             if (type === 'ui') {
-                                setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Test Log (UI Only)`]);
+                                setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Test Log(UI Only)`]);
                             } else {
                                 window.go.main.App.TestEmit();
                             }
@@ -637,16 +657,16 @@ function App() {
         const now = new Date();
         const diff = Math.floor((now - start) / 1000); // seconds
 
-        if (diff < 60) return `${diff}s`;
+        if (diff < 60) return `${diff} s`;
 
         const minutes = Math.floor(diff / 60);
-        if (minutes < 60) return `${minutes}m ${diff % 60}s`;
+        if (minutes < 60) return `${minutes}m ${diff % 60} s`;
 
         const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h ${minutes % 60}m`;
+        if (hours < 24) return `${hours}h ${minutes % 60} m`;
 
         const days = Math.floor(hours / 24);
-        return `${days}d ${hours % 24}h`;
+        return `${days}d ${hours % 24} h`;
     };
 
     const getPodStatus = (pod) => {
@@ -754,20 +774,21 @@ function App() {
                     { key: 'restarts', label: 'Restarts', render: (item) => item.status?.containerStatuses?.reduce((acc, curr) => acc + curr.restartCount, 0) || 0, getValue: (item) => item.status?.containerStatuses?.reduce((acc, curr) => acc + curr.restartCount, 0) || 0 },
                     { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
                     {
-                        key: 'actions', label: 'Actions', render: (item) => (
-                            <div className="flex items-center justify-end">
-                                <PodActionsMenu
-                                    pod={item}
-                                    isOpen={activeMenuUid === item.metadata.uid}
-                                    onOpenChange={(isOpen) => setActiveMenuUid(isOpen ? item.metadata.uid : null)}
-                                    onDelete={() => handleDeletePod(item)}
-                                    onForceDelete={() => handleDeletePod(item, true)}
-                                    onLogs={() => openLogs(item.metadata.name)}
-                                    onEditYaml={() => openYamlEditor(item)}
-                                    onShell={() => handleShell(item)}
-                                />
-                            </div>
-                        )
+                        key: 'actions',
+                        label: <EllipsisHorizontalIcon className="h-5 w-5" />,
+                        render: (item) => (
+                            <PodActionsMenu
+                                pod={item}
+                                isOpen={activeMenuId === `pod-${item.metadata.uid}`}
+                                onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `pod-${item.metadata.uid}` : null)}
+                                onLogs={() => openLogs(item.metadata.name)}
+                                onShell={() => handleShell(item.metadata.name)}
+                                onDelete={() => handleDeletePod(item.metadata.namespace, item.metadata.name)}
+                                onEditYaml={() => handleEditPodYaml(item)}
+                            />
+                        ),
+                        isColumnSelector: true,
+                        disableSort: true
                     },
                 ];
             case 'nodes':
@@ -842,18 +863,20 @@ function App() {
                     { key: 'ready', label: 'Ready', render: (item) => `${item.status?.readyReplicas || 0}/${item.status?.replicas || 0}`, getValue: (item) => item.status?.readyReplicas || 0 },
                     { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
                     {
-                        key: 'actions', label: 'Actions', render: (item) => (
-                            <div className="flex items-center justify-end">
-                                <DeploymentActionsMenu
-                                    deployment={item}
-                                    isOpen={activeMenuUid === item.metadata.uid}
-                                    onOpenChange={(isOpen) => setActiveMenuUid(isOpen ? item.metadata.uid : null)}
-                                    onEditYaml={() => handleEditDeploymentYaml(item)}
-                                    onRestart={() => handleRestartDeployment(item)}
-                                    onDelete={() => handleDeleteDeployment(item)}
-                                />
-                            </div>
-                        )
+                        key: 'actions',
+                        label: <EllipsisHorizontalIcon className="h-5 w-5" />,
+                        render: (item) => (
+                            <DeploymentActionsMenu
+                                deployment={item}
+                                isOpen={activeMenuId === `deploy-${item.metadata.uid}`}
+                                onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `deploy-${item.metadata.uid}` : null)}
+                                onEditYaml={() => handleEditDeploymentYaml(item)}
+                                onRestart={() => handleRestartDeployment(item)}
+                                onDelete={() => handleDeleteDeployment(item)}
+                            />
+                        ),
+                        isColumnSelector: true,
+                        disableSort: true
                     },
                 ];
             default:
@@ -890,7 +913,7 @@ function App() {
                             currentNamespace={currentNamespace}
                             onNamespaceChange={setCurrentNamespace}
                             showNamespaceSelector={showNamespaceSelector}
-                            highlightedUid={activeMenuUid}
+                            highlightedUid={activeMenuId}
                             initialSort={activeView === 'pods' ? { key: 'age', direction: 'asc' } : null}
                         />
                     </div>
