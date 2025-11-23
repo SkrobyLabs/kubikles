@@ -5,6 +5,7 @@ import Sidebar from './components/layout/Sidebar';
 import BottomPanel from './components/layout/BottomPanel';
 import PodList from './features/workloads/pods/PodList';
 import DeploymentList from './features/workloads/deployments/DeploymentList';
+import StatefulSetList from './features/workloads/statefulsets/StatefulSetList';
 import NodeList from './features/cluster/nodes/NodeList';
 import ServiceList from './features/network/services/ServiceList';
 import ConfigMapList from './features/config/configmaps/ConfigMapList';
@@ -91,6 +92,7 @@ function MainLayout() {
         switch (activeView) {
             case 'pods': return <PodList isVisible={true} />;
             case 'deployments': return <DeploymentList isVisible={true} />;
+            case 'statefulsets': return <StatefulSetList isVisible={true} />;
             case 'nodes': return <NodeList isVisible={true} />;
             case 'services': return <ServiceList isVisible={true} />;
             case 'configmaps': return <ConfigMapList isVisible={true} />;

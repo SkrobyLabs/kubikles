@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { GetPodYaml, UpdatePodYaml, GetDeploymentYaml, UpdateDeploymentYaml } from '../../../wailsjs/go/main/App';
+import { GetPodYaml, UpdatePodYaml, GetDeploymentYaml, UpdateDeploymentYaml, GetStatefulSetYaml, UpdateStatefulSetYaml } from '../../../wailsjs/go/main/App';
 
-export default function YamlEditor({ namespace, podName, isDeployment, onClose }) {
+export default function YamlEditor({ namespace, podName, isDeployment, isStatefulSet, onClose }) {
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -18,6 +18,8 @@ export default function YamlEditor({ namespace, podName, isDeployment, onClose }
             let yaml;
             if (isDeployment) {
                 yaml = await GetDeploymentYaml(namespace, podName);
+            } else if (isStatefulSet) {
+                yaml = await GetStatefulSetYaml(namespace, podName);
             } else {
                 yaml = await GetPodYaml(namespace, podName);
             }
@@ -34,6 +36,8 @@ export default function YamlEditor({ namespace, podName, isDeployment, onClose }
         try {
             if (isDeployment) {
                 await UpdateDeploymentYaml(namespace, podName, content);
+            } else if (isStatefulSet) {
+                await UpdateStatefulSetYaml(namespace, podName, content);
             } else {
                 await UpdatePodYaml(namespace, podName, content);
             }

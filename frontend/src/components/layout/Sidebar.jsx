@@ -29,6 +29,7 @@ export default function Sidebar({
             items: [
                 { id: 'pods', label: 'Pods', icon: CubeIcon },
                 { id: 'deployments', label: 'Deployments', icon: RocketLaunchIcon },
+                { id: 'statefulsets', label: 'StatefulSets', icon: CubeIcon },
             ]
         },
         {

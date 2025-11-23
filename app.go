@@ -305,3 +305,55 @@ func (a *App) RestartDeployment(contextName, namespace, name string) error {
 	}
 	return err
 }
+
+// StatefulSet operations
+func (a *App) ListStatefulSets(contextName, namespace string) ([]appsv1.StatefulSet, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListStatefulSets(contextName, namespace)
+}
+
+func (a *App) GetStatefulSetYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetStatefulSetYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetStatefulSetYaml(namespace, name)
+}
+
+func (a *App) UpdateStatefulSetYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdateStatefulSetYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateStatefulSetYaml(namespace, name, yamlContent)
+}
+
+func (a *App) RestartStatefulSet(contextName, namespace, name string) error {
+	a.LogDebug("RestartStatefulSet called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	err := a.k8sClient.RestartStatefulSet(contextName, namespace, name)
+	if err != nil {
+		a.LogDebug("RestartStatefulSet error: %v", err)
+	} else {
+		a.LogDebug("RestartStatefulSet success")
+	}
+	return err
+}
+
+func (a *App) DeleteStatefulSet(contextName, namespace, name string) error {
+	a.LogDebug("DeleteStatefulSet called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	err := a.k8sClient.DeleteStatefulSet(contextName, namespace, name)
+	if err != nil {
+		a.LogDebug("DeleteStatefulSet error: %v", err)
+	} else {
+		a.LogDebug("DeleteStatefulSet success")
+	}
+	return err
+}

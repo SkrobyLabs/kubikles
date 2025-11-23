@@ -380,3 +380,71 @@ func (c *Client) RestartDeployment(contextName, namespace, name string) error {
 	_, err = cs.AppsV1().Deployments(namespace).Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{})
 	return err
 }
+
+// StatefulSet operations
+func (c *Client) ListStatefulSets(contextName, namespace string) ([]appsv1.StatefulSet, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	statefulsets, err := cs.AppsV1().StatefulSets(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return statefulsets.Items, nil
+}
+
+func (c *Client) GetStatefulSetYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	statefulset, err := cs.AppsV1().StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	// Remove managed fields
+	statefulset.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(statefulset)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateStatefulSetYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var statefulset appsv1.StatefulSet
+	if err := yaml.Unmarshal([]byte(yamlContent), &statefulset); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.AppsV1().StatefulSets(namespace).Update(context.TODO(), &statefulset, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) RestartStatefulSet(contextName, namespace, name string) error {
+	fmt.Printf("Restarting statefulset: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+
+	// Patch the statefulset to trigger a rollout
+	patch := fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, metav1.Now().String())
+	_, err = cs.AppsV1().StatefulSets(namespace).Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{})
+	return err
+}
+
+func (c *Client) DeleteStatefulSet(contextName, namespace, name string) error {
+	fmt.Printf("Deleting statefulset: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.AppsV1().StatefulSets(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}

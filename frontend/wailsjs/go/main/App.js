@@ -10,6 +10,10 @@ export function DeletePod(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeletePod'](arg1, arg2, arg3);
 }
 
+export function DeleteStatefulSet(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DeleteStatefulSet'](arg1, arg2, arg3);
+}
+
 export function ForceDeletePod(arg1, arg2, arg3) {
   return window['go']['main']['App']['ForceDeletePod'](arg1, arg2, arg3);
 }
@@ -28,6 +32,10 @@ export function GetPodLogs(arg1, arg2) {
 
 export function GetPodYaml(arg1, arg2) {
   return window['go']['main']['App']['GetPodYaml'](arg1, arg2);
+}
+
+export function GetStatefulSetYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetStatefulSetYaml'](arg1, arg2);
 }
 
 export function Greet(arg1) {
@@ -66,6 +74,10 @@ export function ListServices(arg1) {
   return window['go']['main']['App']['ListServices'](arg1);
 }
 
+export function ListStatefulSets(arg1, arg2) {
+  return window['go']['main']['App']['ListStatefulSets'](arg1, arg2);
+}
+
 export function LogDebug(arg1, arg2) {
   return window['go']['main']['App']['LogDebug'](arg1, arg2);
 }
@@ -76,6 +88,10 @@ export function OpenTerminal(arg1, arg2, arg3, arg4) {
 
 export function RestartDeployment(arg1, arg2, arg3) {
   return window['go']['main']['App']['RestartDeployment'](arg1, arg2, arg3);
+}
+
+export function RestartStatefulSet(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RestartStatefulSet'](arg1, arg2, arg3);
 }
 
 export function StartPodWatcher(arg1) {
@@ -96,4 +112,8 @@ export function UpdateDeploymentYaml(arg1, arg2, arg3) {
 
 export function UpdatePodYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdatePodYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateStatefulSetYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateStatefulSetYaml'](arg1, arg2, arg3);
 }

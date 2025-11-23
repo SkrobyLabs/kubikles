@@ -6,6 +6,8 @@ export function DeleteDeployment(arg1:string,arg2:string,arg3:string):Promise<vo
 
 export function DeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function DeleteStatefulSet(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function ForceDeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function GetCurrentContext():Promise<string>;
@@ -15,6 +17,8 @@ export function GetDeploymentYaml(arg1:string,arg2:string):Promise<string>;
 export function GetPodLogs(arg1:string,arg2:string):Promise<string>;
 
 export function GetPodYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetStatefulSetYaml(arg1:string,arg2:string):Promise<string>;
 
 export function Greet(arg1:string):Promise<string>;
 
@@ -34,11 +38,15 @@ export function ListSecrets(arg1:string):Promise<Array<v1.Secret>>;
 
 export function ListServices(arg1:string):Promise<Array<v1.Service>>;
 
+export function ListStatefulSets(arg1:string,arg2:string):Promise<Array<v1.StatefulSet>>;
+
 export function LogDebug(arg1:string,arg2:Array<any>):Promise<void>;
 
 export function OpenTerminal(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
 
 export function RestartDeployment(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function RestartStatefulSet(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function StartPodWatcher(arg1:string):Promise<void>;
 
@@ -49,3 +57,5 @@ export function TestEmit():Promise<void>;
 export function UpdateDeploymentYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdatePodYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateStatefulSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;

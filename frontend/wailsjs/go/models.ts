@@ -2385,15 +2385,12 @@ export namespace v1 {
 	export class PersistentVolumeClaimSpec {
 	    accessModes?: string[];
 	    selector?: LabelSelector;
-	    // Go type: VolumeResourceRequirements
-	    resources?: any;
+	    resources?: VolumeResourceRequirements;
 	    volumeName?: string;
 	    storageClassName?: string;
 	    volumeMode?: string;
-	    // Go type: TypedLocalObjectReference
-	    dataSource?: any;
-	    // Go type: TypedObjectReference
-	    dataSourceRef?: any;
+	    dataSource?: TypedLocalObjectReference;
+	    dataSourceRef?: TypedObjectReference;
 	    volumeAttributesClassName?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -2404,12 +2401,12 @@ export namespace v1 {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.accessModes = source["accessModes"];
 	        this.selector = this.convertValues(source["selector"], LabelSelector);
-	        this.resources = this.convertValues(source["resources"], null);
+	        this.resources = this.convertValues(source["resources"], VolumeResourceRequirements);
 	        this.volumeName = source["volumeName"];
 	        this.storageClassName = source["storageClassName"];
 	        this.volumeMode = source["volumeMode"];
-	        this.dataSource = this.convertValues(source["dataSource"], null);
-	        this.dataSourceRef = this.convertValues(source["dataSourceRef"], null);
+	        this.dataSource = this.convertValues(source["dataSource"], TypedLocalObjectReference);
+	        this.dataSourceRef = this.convertValues(source["dataSourceRef"], TypedObjectReference);
 	        this.volumeAttributesClassName = source["volumeAttributesClassName"];
 	    }
 	
@@ -2447,8 +2444,7 @@ export namespace v1 {
 	    ownerReferences?: OwnerReference[];
 	    finalizers?: string[];
 	    managedFields?: ManagedFieldsEntry[];
-	    // Go type: PersistentVolumeClaimSpec
-	    spec: any;
+	    spec: PersistentVolumeClaimSpec;
 	
 	    static createFrom(source: any = {}) {
 	        return new PersistentVolumeClaimTemplate(source);
@@ -2471,7 +2467,7 @@ export namespace v1 {
 	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
 	        this.finalizers = source["finalizers"];
 	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
-	        this.spec = this.convertValues(source["spec"], null);
+	        this.spec = this.convertValues(source["spec"], PersistentVolumeClaimSpec);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -4074,6 +4070,20 @@ export namespace v1 {
 		}
 	}
 	
+	export class ModifyVolumeStatus {
+	    targetVolumeAttributesClassName?: string;
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ModifyVolumeStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.targetVolumeAttributesClassName = source["targetVolumeAttributesClassName"];
+	        this.status = source["status"];
+	    }
+	}
 	export class NamespaceCondition {
 	    type: string;
 	    status: string;
@@ -4710,6 +4720,159 @@ export namespace v1 {
 	
 	
 	
+	export class PersistentVolumeClaimCondition {
+	    type: string;
+	    status: string;
+	    lastProbeTime?: Time;
+	    lastTransitionTime?: Time;
+	    reason?: string;
+	    message?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PersistentVolumeClaimCondition(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.status = source["status"];
+	        this.lastProbeTime = this.convertValues(source["lastProbeTime"], Time);
+	        this.lastTransitionTime = this.convertValues(source["lastTransitionTime"], Time);
+	        this.reason = source["reason"];
+	        this.message = source["message"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PersistentVolumeClaimStatus {
+	    phase?: string;
+	    accessModes?: string[];
+	    capacity?: Record<string, resource.Quantity>;
+	    conditions?: PersistentVolumeClaimCondition[];
+	    allocatedResources?: Record<string, resource.Quantity>;
+	    allocatedResourceStatuses?: Record<string, string>;
+	    currentVolumeAttributesClassName?: string;
+	    modifyVolumeStatus?: ModifyVolumeStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new PersistentVolumeClaimStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.phase = source["phase"];
+	        this.accessModes = source["accessModes"];
+	        this.capacity = this.convertValues(source["capacity"], resource.Quantity, true);
+	        this.conditions = this.convertValues(source["conditions"], PersistentVolumeClaimCondition);
+	        this.allocatedResources = this.convertValues(source["allocatedResources"], resource.Quantity, true);
+	        this.allocatedResourceStatuses = source["allocatedResourceStatuses"];
+	        this.currentVolumeAttributesClassName = source["currentVolumeAttributesClassName"];
+	        this.modifyVolumeStatus = this.convertValues(source["modifyVolumeStatus"], ModifyVolumeStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PersistentVolumeClaim {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: PersistentVolumeClaimSpec;
+	    status?: PersistentVolumeClaimStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new PersistentVolumeClaim(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], PersistentVolumeClaimSpec);
+	        this.status = this.convertValues(source["status"], PersistentVolumeClaimStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
 	export class PodExtendedResourceClaimStatus {
 	    requestMappings: ContainerExtendedResourceRequest[];
 	    resourceClaimName: string;
@@ -4966,6 +5129,38 @@ export namespace v1 {
 	
 	
 	
+	export class RollingUpdateStatefulSetStrategy {
+	    partition?: number;
+	    maxUnavailable?: intstr.IntOrString;
+	
+	    static createFrom(source: any = {}) {
+	        return new RollingUpdateStatefulSetStrategy(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.partition = source["partition"];
+	        this.maxUnavailable = this.convertValues(source["maxUnavailable"], intstr.IntOrString);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	
 	export class Secret {
@@ -5277,6 +5472,275 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	
+	
+	
+	
+	
+	export class StatefulSetCondition {
+	    type: string;
+	    status: string;
+	    lastTransitionTime?: Time;
+	    reason?: string;
+	    message?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatefulSetCondition(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.status = source["status"];
+	        this.lastTransitionTime = this.convertValues(source["lastTransitionTime"], Time);
+	        this.reason = source["reason"];
+	        this.message = source["message"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StatefulSetStatus {
+	    observedGeneration?: number;
+	    replicas: number;
+	    readyReplicas?: number;
+	    currentReplicas?: number;
+	    updatedReplicas?: number;
+	    currentRevision?: string;
+	    updateRevision?: string;
+	    collisionCount?: number;
+	    conditions?: StatefulSetCondition[];
+	    availableReplicas: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatefulSetStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.observedGeneration = source["observedGeneration"];
+	        this.replicas = source["replicas"];
+	        this.readyReplicas = source["readyReplicas"];
+	        this.currentReplicas = source["currentReplicas"];
+	        this.updatedReplicas = source["updatedReplicas"];
+	        this.currentRevision = source["currentRevision"];
+	        this.updateRevision = source["updateRevision"];
+	        this.collisionCount = source["collisionCount"];
+	        this.conditions = this.convertValues(source["conditions"], StatefulSetCondition);
+	        this.availableReplicas = source["availableReplicas"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StatefulSetOrdinals {
+	    start: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatefulSetOrdinals(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.start = source["start"];
+	    }
+	}
+	export class StatefulSetPersistentVolumeClaimRetentionPolicy {
+	    whenDeleted?: string;
+	    whenScaled?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatefulSetPersistentVolumeClaimRetentionPolicy(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.whenDeleted = source["whenDeleted"];
+	        this.whenScaled = source["whenScaled"];
+	    }
+	}
+	export class StatefulSetUpdateStrategy {
+	    type?: string;
+	    rollingUpdate?: RollingUpdateStatefulSetStrategy;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatefulSetUpdateStrategy(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.rollingUpdate = this.convertValues(source["rollingUpdate"], RollingUpdateStatefulSetStrategy);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StatefulSetSpec {
+	    replicas?: number;
+	    selector?: LabelSelector;
+	    template: PodTemplateSpec;
+	    volumeClaimTemplates?: PersistentVolumeClaim[];
+	    serviceName: string;
+	    podManagementPolicy?: string;
+	    updateStrategy?: StatefulSetUpdateStrategy;
+	    revisionHistoryLimit?: number;
+	    minReadySeconds?: number;
+	    persistentVolumeClaimRetentionPolicy?: StatefulSetPersistentVolumeClaimRetentionPolicy;
+	    ordinals?: StatefulSetOrdinals;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatefulSetSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.replicas = source["replicas"];
+	        this.selector = this.convertValues(source["selector"], LabelSelector);
+	        this.template = this.convertValues(source["template"], PodTemplateSpec);
+	        this.volumeClaimTemplates = this.convertValues(source["volumeClaimTemplates"], PersistentVolumeClaim);
+	        this.serviceName = source["serviceName"];
+	        this.podManagementPolicy = source["podManagementPolicy"];
+	        this.updateStrategy = this.convertValues(source["updateStrategy"], StatefulSetUpdateStrategy);
+	        this.revisionHistoryLimit = source["revisionHistoryLimit"];
+	        this.minReadySeconds = source["minReadySeconds"];
+	        this.persistentVolumeClaimRetentionPolicy = this.convertValues(source["persistentVolumeClaimRetentionPolicy"], StatefulSetPersistentVolumeClaimRetentionPolicy);
+	        this.ordinals = this.convertValues(source["ordinals"], StatefulSetOrdinals);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StatefulSet {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: StatefulSetSpec;
+	    status?: StatefulSetStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatefulSet(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], StatefulSetSpec);
+	        this.status = this.convertValues(source["status"], StatefulSetStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+	
 	
 	
 	
