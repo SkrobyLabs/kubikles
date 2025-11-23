@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import DeploymentActionsMenu from './DeploymentActionsMenu';
 import { useDeployments } from '../../../hooks/useDeployments';
@@ -13,6 +13,7 @@ import { getDeploymentPods, getEffectivePodStatus, getPodStatusColor } from '../
 export default function DeploymentList({ isVisible }) {
     const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
+    // console.log("DeploymentList rendering");
     const { deployments, loading: deploymentsLoading } = useDeployments(currentContext, currentNamespace, isVisible);
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, currentNamespace, isVisible); // Fetch pods for status
     const { handleEditYaml, handleRestart, handleDelete } = useDeploymentActions();
@@ -62,7 +63,8 @@ export default function DeploymentList({ isVisible }) {
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
-            label: <EllipsisHorizontalIcon className="h-5 w-5" />,
+            label: <EllipsisVerticalIcon className="h-5 w-5" />,
+            align: 'center',
             render: (item) => (
                 <DeploymentActionsMenu
                     deployment={item}

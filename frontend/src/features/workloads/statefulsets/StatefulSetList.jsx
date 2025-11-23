@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import StatefulSetActionsMenu from './StatefulSetActionsMenu';
 import { useStatefulSets } from '../../../hooks/useStatefulSets';
@@ -13,6 +13,7 @@ import { getDeploymentPods, getEffectivePodStatus, getPodStatusColor } from '../
 export default function StatefulSetList({ isVisible }) {
     const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
+    // console.log("StatefulSetList rendering");
     const { statefulSets, loading: statefulSetsLoading } = useStatefulSets(currentContext, currentNamespace, isVisible);
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, currentNamespace, isVisible);
     const { handleEditYaml, handleRestart, handleDelete } = useStatefulSetActions();
@@ -61,7 +62,8 @@ export default function StatefulSetList({ isVisible }) {
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
-            label: <EllipsisHorizontalIcon className="h-5 w-5" />,
+            label: <EllipsisVerticalIcon className="h-5 w-5" />,
+            align: 'center',
             render: (item) => (
                 <StatefulSetActionsMenu
                     statefulSet={item}

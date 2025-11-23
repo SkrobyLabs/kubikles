@@ -4,6 +4,7 @@ import { useConfigMaps } from '../../../hooks/useConfigMaps';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
 import { formatAge } from '../../../utils/formatting';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ConfigMapActionsMenu from './ConfigMapActionsMenu';
 import { useConfigMapActions } from './useConfigMapActions';
 
@@ -19,7 +20,8 @@ export default function ConfigMapList({ isVisible }) {
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
-            label: '',
+            label: <EllipsisVerticalIcon className="h-5 w-5" />,
+            align: 'center',
             render: (item) => (
                 <ConfigMapActionsMenu
                     configMap={item}
@@ -29,7 +31,9 @@ export default function ConfigMapList({ isVisible }) {
                     onDelete={handleDelete}
                 />
             ),
-            getValue: () => ''
+            getValue: () => '',
+            isColumnSelector: true,
+            disableSort: true
         }
     ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete]);
 

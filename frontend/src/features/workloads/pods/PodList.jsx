@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import PodActionsMenu from './PodActionsMenu';
 import { usePods } from '../../../hooks/usePods';
@@ -12,6 +12,7 @@ import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusP
 export default function PodList({ isVisible }) {
     const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
+    // console.log("PodList rendering");
     const { pods, loading } = usePods(currentContext, currentNamespace, isVisible);
     const { openLogs, handleShell, handleEditYaml, handleDelete } = usePodActions();
 
@@ -47,7 +48,8 @@ export default function PodList({ isVisible }) {
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
-            label: <EllipsisHorizontalIcon className="h-5 w-5" />,
+            label: <EllipsisVerticalIcon className="h-5 w-5" />,
+            align: 'center',
             render: (item) => (
                 <PodActionsMenu
                     pod={item}

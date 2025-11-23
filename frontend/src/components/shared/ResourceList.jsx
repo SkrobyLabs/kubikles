@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MagnifyingGlassIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import SearchSelect from './SearchSelect';
 
 export default function ResourceList({
@@ -145,7 +145,7 @@ export default function ResourceList({
                                     onClick={() => !col.isColumnSelector && handleSort(col.key)}
                                 >
                                     {col.isColumnSelector ? (
-                                        <div className="relative flex justify-end" ref={columnMenuRef}>
+                                        <div className={`relative flex ${col.align === 'center' ? 'justify-center' : 'justify-end'}`} ref={columnMenuRef}>
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -153,7 +153,7 @@ export default function ResourceList({
                                                 }}
                                                 className="p-1 hover:bg-white/10 rounded-full transition-colors"
                                             >
-                                                <EllipsisHorizontalIcon className="h-5 w-5" />
+                                                <EllipsisVerticalIcon className="h-5 w-5" />
                                             </button>
                                             {showColumnMenu && (
                                                 <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-md shadow-lg z-50 py-1">
@@ -176,7 +176,7 @@ export default function ResourceList({
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-1">
+                                        <div className={`flex items-center gap-1 ${col.align === 'center' ? 'justify-center' : ''}`}>
                                             {col.label}
                                             {sortConfig.key === col.key && (
                                                 <span className="text-primary">
@@ -209,7 +209,7 @@ export default function ResourceList({
                                     className={`transition-colors ${highlightedUid === item.metadata?.uid ? 'bg-white/5' : 'hover:bg-white/5'}`}
                                 >
                                     {visibleColumns.map((col) => (
-                                        <td key={col.key} className="p-3 text-sm text-text whitespace-nowrap">
+                                        <td key={col.key} className={`p-3 text-sm text-text whitespace-nowrap ${col.align === 'center' ? 'text-center' : ''}`}>
                                             {col.render ? col.render(item) : item[col.key]}
                                         </td>
                                     ))}
