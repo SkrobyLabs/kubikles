@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Editor from '@monaco-editor/react';
 import { GetPodYaml, UpdatePodYaml, GetDeploymentYaml, UpdateDeploymentYaml, GetStatefulSetYaml, UpdateStatefulSetYaml } from '../../../wailsjs/go/main/App';
 
 export default function YamlEditor({ namespace, podName, isDeployment, isStatefulSet, onClose }) {
@@ -6,6 +7,7 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
+    const editorRef = useRef(null);
 
     useEffect(() => {
         fetchYaml();
@@ -41,17 +43,32 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
             } else {
                 await UpdatePodYaml(namespace, podName, content);
             }
-            // Optionally show success message or just close/refresh?
-            // For now, we'll just stay open to allow further edits, or maybe close?
-            // The user requirement implies a "Save" button, usually implies saving and staying or saving and closing.
-            // Given it's a tab, saving and staying seems appropriate, but maybe we should give feedback.
-            // Let's just save for now.
             alert("YAML saved successfully!");
         } catch (err) {
             alert(`Failed to save YAML: ${err}`);
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleEditorDidMount = (editor, monaco) => {
+        editorRef.current = editor;
+
+        // Configure editor
+        editor.updateOptions({
+            minimap: { enabled: true },
+            scrollBeyondLastLine: false,
+            fontSize: 13,
+            lineNumbers: 'on',
+            folding: true,
+            renderWhitespace: 'selection',
+            wordWrap: 'off',
+        });
+
+        // Add Cmd+S / Ctrl+S save shortcut
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+            handleSave();
+        });
     };
 
     if (loading) {
@@ -95,13 +112,22 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
                 </div>
             </div>
 
-            {/* Editor Area */}
+            {/* Monaco Editor */}
             <div className="flex-1 overflow-hidden">
-                <textarea
+                <Editor
+                    height="100%"
+                    defaultLanguage="yaml"
                     value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    className="w-full h-full bg-[#1e1e1e] text-gray-300 font-mono text-sm p-4 resize-none focus:outline-none"
-                    spellCheck="false"
+                    onChange={(value) => setContent(value || '')}
+                    onMount={handleEditorDidMount}
+                    theme="vs-dark"
+                    options={{
+                        automaticLayout: true,
+                        scrollbar: {
+                            vertical: 'auto',
+                            horizontal: 'auto',
+                        },
+                    }}
                 />
             </div>
         </div>
