@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GetPodYaml, UpdatePodYaml, GetDeploymentYaml, UpdateDeploymentYaml } from '../../wailsjs/go/main/App';
+import { GetPodYaml, UpdatePodYaml, GetDeploymentYaml, UpdateDeploymentYaml } from '../../../wailsjs/go/main/App';
 
 export default function YamlEditor({ namespace, podName, isDeployment, onClose }) {
     const [content, setContent] = useState('');

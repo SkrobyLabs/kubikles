@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GetPodLogs } from '../../wailsjs/go/main/App';
+import { GetPodLogs } from '../../../wailsjs/go/main/App';
 import Convert from 'ansi-to-html';
 
 const converter = new Convert({

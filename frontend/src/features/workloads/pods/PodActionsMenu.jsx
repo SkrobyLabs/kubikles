@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import { LogDebug } from '../../wailsjs/go/main/App';
+import { LogDebug } from '../../../../wailsjs/go/main/App';
 
 export default function PodActionsMenu({ pod, isOpen, onOpenChange, onLogs, onEditYaml, onDelete, onForceDelete, onShell }) {
     const [position, setPosition] = useState({ top: 0, left: 0 });
