@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { ListSecrets } from '../../wailsjs/go/main/App';
 
-export const useSecrets = (namespace, isVisible) => {
+export const useSecrets = (currentContext, namespace, isVisible) => {
     const [secrets, setSecrets] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (!namespace || !isVisible) return;
+        if (!currentContext || !namespace || !isVisible) return;
 
         const fetchSecrets = async () => {
             setLoading(true);
@@ -24,7 +24,7 @@ export const useSecrets = (namespace, isVisible) => {
         };
 
         fetchSecrets();
-    }, [namespace, isVisible]);
+    }, [currentContext, namespace, isVisible]);
 
     return { secrets, loading, error };
 };

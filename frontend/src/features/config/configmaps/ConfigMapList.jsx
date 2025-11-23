@@ -5,8 +5,8 @@ import { useK8s } from '../../../context/K8sContext';
 import { formatAge } from '../../../utils/formatting';
 
 export default function ConfigMapList({ isVisible }) {
-    const { currentNamespace, setCurrentNamespace, namespaces } = useK8s();
-    const { configMaps, loading } = useConfigMaps(currentNamespace, isVisible);
+    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { configMaps, loading } = useConfigMaps(currentContext, currentNamespace, isVisible);
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },

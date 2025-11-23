@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { ListPods, StartPodWatcher } from '../../wailsjs/go/main/App';
 
-export const usePods = (namespace, isVisible) => {
+export const usePods = (currentContext, namespace, isVisible) => {
     const [pods, setPods] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (!namespace || !isVisible) return;
+        if (!currentContext || !namespace || !isVisible) return;
 
         const fetchPods = async () => {
             setLoading(true);
@@ -53,7 +53,7 @@ export const usePods = (namespace, isVisible) => {
                 window.runtime.EventsOff("pod-event");
             }
         };
-    }, [namespace, isVisible]);
+    }, [currentContext, namespace, isVisible]);
 
     return { pods, loading, error, setPods };
 };

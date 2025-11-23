@@ -5,8 +5,8 @@ import { useK8s } from '../../../context/K8sContext';
 import { formatAge } from '../../../utils/formatting';
 
 export default function SecretList({ isVisible }) {
-    const { currentNamespace, setCurrentNamespace, namespaces } = useK8s();
-    const { secrets, loading } = useSecrets(currentNamespace, isVisible);
+    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { secrets, loading } = useSecrets(currentContext, currentNamespace, isVisible);
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },

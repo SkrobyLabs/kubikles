@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ListDeployments, StartPodWatcher } from '../../wailsjs/go/main/App';
 
-export const useDeployments = (namespace, isVisible) => {
+export const useDeployments = (currentContext, namespace, isVisible) => {
     const [deployments, setDeployments] = useState([]);
     const [allPods, setAllPods] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -9,7 +9,7 @@ export const useDeployments = (namespace, isVisible) => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (!namespace || !isVisible) return;
+        if (!currentContext || !namespace || !isVisible) return;
 
         const fetchDeployments = async () => {
             setLoading(true);
@@ -42,7 +42,7 @@ export const useDeployments = (namespace, isVisible) => {
         };
 
         fetchDeployments();
-    }, [namespace, isVisible]);
+    }, [currentContext, namespace, isVisible]);
 
     return { deployments, loading, podsLoading, error, setDeployments };
 };

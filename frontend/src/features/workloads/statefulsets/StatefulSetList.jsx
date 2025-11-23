@@ -14,7 +14,7 @@ export default function StatefulSetList({ isVisible }) {
     const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { statefulSets, loading: statefulSetsLoading } = useStatefulSets(currentContext, currentNamespace, isVisible);
-    const { pods: allPods, loading: podsLoading } = usePods(currentNamespace, isVisible);
+    const { pods: allPods, loading: podsLoading } = usePods(currentContext, currentNamespace, isVisible);
     const { handleEditYaml, handleRestart, handleDelete } = useStatefulSetActions();
 
     const columns = useMemo(() => [

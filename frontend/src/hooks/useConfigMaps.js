@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { ListConfigMaps } from '../../wailsjs/go/main/App';
 
-export const useConfigMaps = (namespace, isVisible) => {
+export const useConfigMaps = (currentContext, namespace, isVisible) => {
     const [configMaps, setConfigMaps] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (!namespace || !isVisible) return;
+        if (!currentContext || !namespace || !isVisible) return;
 
         const fetchConfigMaps = async () => {
             setLoading(true);
@@ -24,7 +24,7 @@ export const useConfigMaps = (namespace, isVisible) => {
         };
 
         fetchConfigMaps();
-    }, [namespace, isVisible]);
+    }, [currentContext, namespace, isVisible]);
 
     return { configMaps, loading, error };
 };

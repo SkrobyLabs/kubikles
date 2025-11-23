@@ -11,10 +11,10 @@ import { formatAge } from '../../../utils/formatting';
 import { getDeploymentPods, getEffectivePodStatus, getPodStatusColor } from '../../../utils/k8s-helpers';
 
 export default function DeploymentList({ isVisible }) {
-    const { currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
-    const { deployments, loading: deploymentsLoading } = useDeployments(currentNamespace, isVisible);
-    const { pods: allPods, loading: podsLoading } = usePods(currentNamespace, isVisible); // Fetch pods for status
+    const { deployments, loading: deploymentsLoading } = useDeployments(currentContext, currentNamespace, isVisible);
+    const { pods: allPods, loading: podsLoading } = usePods(currentContext, currentNamespace, isVisible); // Fetch pods for status
     const { handleEditYaml, handleRestart, handleDelete } = useDeploymentActions();
 
     const columns = useMemo(() => [

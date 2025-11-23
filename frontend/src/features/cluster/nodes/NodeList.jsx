@@ -5,7 +5,8 @@ import { useK8s } from '../../../context/K8sContext';
 import { formatAge } from '../../../utils/formatting';
 
 export default function NodeList({ isVisible }) {
-    const { nodes, loading } = useNodes(isVisible);
+    const { currentContext } = useK8s();
+    const { nodes, loading } = useNodes(currentContext, isVisible);
     // Nodes are cluster-scoped, so we don't need namespace selector, but ResourceList might expect it?
     // ResourceList has showNamespaceSelector prop.
 

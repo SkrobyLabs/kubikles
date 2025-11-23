@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { ListNodes } from '../../wailsjs/go/main/App';
 
-export const useNodes = (isVisible) => {
+export const useNodes = (currentContext, isVisible) => {
     const [nodes, setNodes] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (!isVisible) return;
+        if (!currentContext || !isVisible) return;
 
         const fetchNodes = async () => {
             setLoading(true);
@@ -24,7 +24,7 @@ export const useNodes = (isVisible) => {
         };
 
         fetchNodes();
-    }, [isVisible]);
+    }, [currentContext, isVisible]);
 
     return { nodes, loading, error };
 };

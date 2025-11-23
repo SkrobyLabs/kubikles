@@ -10,9 +10,9 @@ import { formatAge } from '../../../utils/formatting';
 import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusPriority } from '../../../utils/k8s-helpers';
 
 export default function PodList({ isVisible }) {
-    const { currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
-    const { pods, loading } = usePods(currentNamespace, isVisible);
+    const { pods, loading } = usePods(currentContext, currentNamespace, isVisible);
     const { openLogs, handleShell, handleEditYaml, handleDelete } = usePodActions();
 
     const columns = useMemo(() => [
