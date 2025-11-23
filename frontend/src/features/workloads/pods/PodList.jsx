@@ -55,7 +55,8 @@ export default function PodList({ isVisible }) {
                     onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `pod-${item.metadata.uid}` : null)}
                     onLogs={() => openLogs(item.metadata.namespace, item.metadata.name)}
                     onShell={() => handleShell(item.metadata.namespace, item.metadata.name)}
-                    onDelete={() => handleDelete(item.metadata.namespace, item.metadata.name)}
+                    onDelete={() => handleDelete(item.metadata.namespace, item.metadata.name, false)}
+                    onForceDelete={() => handleDelete(item.metadata.namespace, item.metadata.name, true)}
                     onEditYaml={() => handleEditYaml(item)}
                 />
             ),
