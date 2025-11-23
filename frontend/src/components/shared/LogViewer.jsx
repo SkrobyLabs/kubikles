@@ -11,22 +11,23 @@ const converter = new Convert({
 
 import SearchSelect from './SearchSelect';
 
-export default function LogViewer({ namespace, pod, containers = [] }) {
+export default function LogViewer({ namespace, pod, containers = [], siblingPods = [] }) {
     const [logs, setLogs] = useState('');
     const [loading, setLoading] = useState(false);
+    const [selectedPod, setSelectedPod] = useState(pod);
     const [selectedContainer, setSelectedContainer] = useState(containers[0] || '');
     const logsEndRef = useRef(null);
 
     useEffect(() => {
-        if (namespace && pod) {
+        if (namespace && selectedPod) {
             fetchLogs();
         }
-    }, [namespace, pod, selectedContainer]);
+    }, [namespace, selectedPod, selectedContainer]);
 
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const logData = await GetPodLogs(namespace, pod, selectedContainer);
+            const logData = await GetPodLogs(namespace, selectedPod, selectedContainer);
             setLogs(logData);
         } catch (err) {
             setLogs(`Error fetching logs: ${err}`);
@@ -51,8 +52,17 @@ export default function LogViewer({ namespace, pod, containers = [] }) {
             {/* Header Bar */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
-                    <div className="text-sm font-medium text-gray-400">
-                        {namespace}/{pod}
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Pod:</span>
+                        <div className="w-64">
+                            <SearchSelect
+                                options={siblingPods.length > 0 ? siblingPods : [pod]}
+                                value={selectedPod}
+                                onChange={setSelectedPod}
+                                placeholder="Select Pod..."
+                                className="text-xs"
+                            />
+                        </div>
                     </div>
                     {containers.length > 0 && (
                         <div className="flex items-center gap-2">

@@ -75,7 +75,22 @@ export default function PodList({ isVisible }) {
                             ...(item.spec?.initContainers || []).map(c => c.name),
                             ...(item.spec?.containers || []).map(c => c.name)
                         ];
-                        openLogs(item.metadata.namespace, item.metadata.name, containers);
+
+                        const controller = getPodController(item);
+                        let siblingPods = [];
+                        if (controller) {
+                            siblingPods = pods
+                                .filter(p => {
+                                    const c = getPodController(p);
+                                    return c && c.uid === controller.uid;
+                                })
+                                .map(p => p.metadata.name);
+                        } else {
+                            // If no controller, just show itself
+                            siblingPods = [item.metadata.name];
+                        }
+
+                        openLogs(item.metadata.namespace, item.metadata.name, containers, siblingPods);
                     }}
                     onShell={() => handleShell(item.metadata.namespace, item.metadata.name)}
                     onDelete={() => handleDelete(item.metadata.namespace, item.metadata.name, false)}

@@ -10,12 +10,12 @@ export const usePodActions = () => {
     const { openTab, closeTab } = useUI();
     const { currentContext } = useK8s();
 
-    const openLogs = (namespace, podName, containers = []) => {
+    const openLogs = (namespace, podName, containers = [], siblingPods = []) => {
         const tabId = `logs-${podName}`;
         openTab({
             id: tabId,
             title: `Logs: ${podName}`,
-            content: <LogViewer namespace={namespace} pod={podName} containers={containers} />
+            content: <LogViewer namespace={namespace} pod={podName} containers={containers} siblingPods={siblingPods} />
         });
     };
 
