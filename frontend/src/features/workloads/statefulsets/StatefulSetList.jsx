@@ -16,7 +16,7 @@ export default function StatefulSetList({ isVisible }) {
     // console.log("StatefulSetList rendering");
     const { statefulSets, loading: statefulSetsLoading } = useStatefulSets(currentContext, currentNamespace, isVisible);
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, currentNamespace, isVisible);
-    const { handleEditYaml, handleRestart, handleDelete } = useStatefulSetActions();
+    const { handleEditYaml, handleRestart, handleDelete, handleViewLogs } = useStatefulSetActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
@@ -72,12 +72,13 @@ export default function StatefulSetList({ isVisible }) {
                     onEditYaml={() => handleEditYaml(item)}
                     onRestart={() => handleRestart(item)}
                     onDelete={() => handleDelete(item)}
+                    onViewLogs={() => handleViewLogs(item)}
                 />
             ),
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleRestart, handleDelete, podsLoading, allPods]);
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleRestart, handleDelete, handleViewLogs, podsLoading, allPods]);
 
     return (
         <ResourceList

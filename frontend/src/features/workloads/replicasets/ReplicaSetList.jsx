@@ -12,7 +12,7 @@ export default function ReplicaSetList({ isVisible }) {
     const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { replicaSets, loading } = useReplicaSets(currentContext, currentNamespace, isVisible);
-    const { handleEditYaml, handleDelete } = useReplicaSetActions();
+    const { handleEditYaml, handleDelete, handleViewLogs } = useReplicaSetActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
@@ -45,13 +45,14 @@ export default function ReplicaSetList({ isVisible }) {
                     isOpen={activeMenuId === `rs-${item.metadata.uid}`}
                     onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `rs-${item.metadata.uid}` : null)}
                     onEditYaml={() => handleEditYaml(item)}
-                    onDelete={() => handleDelete(item.metadata.namespace, item.metadata.name)}
+                    onDelete={() => handleDelete(item)}
+                    onViewLogs={() => handleViewLogs(item)}
                 />
             ),
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete]);
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete, handleViewLogs]);
 
     return (
         <ResourceList

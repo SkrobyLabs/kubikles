@@ -12,7 +12,7 @@ export default function DaemonSetList({ isVisible }) {
     const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { daemonSets, loading } = useDaemonSets(currentContext, currentNamespace, isVisible);
-    const { handleEditYaml, handleRestart, handleDelete } = useDaemonSetActions();
+    const { handleEditYaml, handleRestart, handleDelete, handleViewLogs } = useDaemonSetActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
@@ -51,14 +51,15 @@ export default function DaemonSetList({ isVisible }) {
                     isOpen={activeMenuId === `ds-${item.metadata.uid}`}
                     onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `ds-${item.metadata.uid}` : null)}
                     onEditYaml={() => handleEditYaml(item)}
-                    onRestart={() => handleRestart(item.metadata.namespace, item.metadata.name)}
-                    onDelete={() => handleDelete(item.metadata.namespace, item.metadata.name)}
+                    onRestart={() => handleRestart(item)}
+                    onDelete={() => handleDelete(item)}
+                    onViewLogs={() => handleViewLogs(item)}
                 />
             ),
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleRestart, handleDelete]);
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleRestart, handleDelete, handleViewLogs]);
 
     return (
         <ResourceList

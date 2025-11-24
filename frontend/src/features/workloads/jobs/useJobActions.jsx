@@ -1,6 +1,7 @@
 import { useUI } from '../../../context/UIContext';
-import { DeleteJob } from '../../../../wailsjs/go/main/App';
+import { DeleteJob, ListPods } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import LogViewer from '../../../components/shared/LogViewer';
 import Logger from '../../../utils/Logger';
 
 export const useJobActions = (namespace, onRefresh) => {
@@ -41,15 +42,56 @@ export const useJobActions = (namespace, onRefresh) => {
         });
     };
 
-    const handleViewLogs = (job) => {
-        // Jobs create pods, so we'll open logs for the first pod if available
-        // This is a simplified approach - in reality, you might want to list pods by job selector
-        Logger.info("View logs for Job (opening first pod logs)", { namespace, name: job.metadata.name });
+    const handleViewLogs = async (job) => {
+        Logger.info("View logs for Job", { namespace, name: job.metadata.name });
 
-        // For now, we'll just log that this action was triggered
-        // In a full implementation, you'd query for pods with the job's selector
-        // and open logs for the first pod
-        alert("Job logs: This would open logs for the job's pods. Implementation pending.");
+        try {
+            // Query for pods created by this job
+            const allPods = await ListPods(namespace);
+
+            // Filter pods that belong to this job
+            // Jobs create pods with labels: job-name=<job-name>
+            const jobPods = allPods.filter(pod =>
+                pod.metadata?.labels?.['job-name'] === job.metadata.name
+            );
+
+            if (jobPods.length === 0) {
+                Logger.info("No pods found for Job", { namespace, name: job.metadata.name });
+                alert(`No pods found for job "${job.metadata.name}". The job may not have created any pods yet.`);
+                return;
+            }
+
+            // Get the first pod (or most recent)
+            const pod = jobPods[0];
+            const containers = [
+                ...(pod.spec?.initContainers || []).map(c => c.name),
+                ...(pod.spec?.containers || []).map(c => c.name)
+            ];
+
+            Logger.info("Opening logs for Job pod", {
+                namespace,
+                job: job.metadata.name,
+                pod: pod.metadata.name,
+                totalPods: jobPods.length
+            });
+
+            const tabId = `logs-job-${job.metadata.name}`;
+            openTab({
+                id: tabId,
+                title: `Logs: ${job.metadata.name}`,
+                content: (
+                    <LogViewer
+                        namespace={namespace}
+                        pod={pod.metadata.name}
+                        containers={containers}
+                        siblingPods={jobPods.map(p => p.metadata.name)}
+                    />
+                )
+            });
+        } catch (err) {
+            Logger.error("Failed to get pods for Job", err);
+            alert(`Failed to get pods for job: ${err.message || err}`);
+        }
     };
 
     return {

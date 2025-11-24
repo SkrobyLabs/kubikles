@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 
-export default function DaemonSetActionsMenu({ daemonSet, isOpen, onOpenChange, onEditYaml, onRestart, onDelete }) {
+export default function DaemonSetActionsMenu({ daemonSet, isOpen, onOpenChange, onEditYaml, onRestart, onDelete, onViewLogs }) {
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const buttonRef = useRef(null);
 
@@ -56,14 +56,21 @@ export default function DaemonSetActionsMenu({ daemonSet, isOpen, onOpenChange, 
             onClick={(e) => e.stopPropagation()}
         >
             <button
-                onClick={(e) => { e.stopPropagation(); handleAction(onEditYaml); }}
+                onClick={(e) => { e.stopPropagation(); handleAction(() => onViewLogs(daemonSet)); }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+            >
+                <DocumentTextIcon className="h-4 w-4" />
+                View Logs
+            </button>
+            <button
+                onClick={(e) => { e.stopPropagation(); handleAction(() => onEditYaml(daemonSet)); }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
             >
                 <PencilSquareIcon className="h-4 w-4" />
                 Edit YAML
             </button>
             <button
-                onClick={(e) => { e.stopPropagation(); handleAction(onRestart); }}
+                onClick={(e) => { e.stopPropagation(); handleAction(() => onRestart(daemonSet)); }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
             >
                 <ArrowPathIcon className="h-4 w-4" />
@@ -71,7 +78,7 @@ export default function DaemonSetActionsMenu({ daemonSet, isOpen, onOpenChange, 
             </button>
             <div className="h-px bg-[#3d3d3d] my-1" />
             <button
-                onClick={(e) => { e.stopPropagation(); handleAction(onDelete); }}
+                onClick={(e) => { e.stopPropagation(); handleAction(() => onDelete(daemonSet)); }}
                 className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-[#3d3d3d] flex items-center gap-2"
             >
                 <TrashIcon className="h-4 w-4" />

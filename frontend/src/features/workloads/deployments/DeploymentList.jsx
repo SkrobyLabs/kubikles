@@ -16,7 +16,7 @@ export default function DeploymentList({ isVisible }) {
     // console.log("DeploymentList rendering");
     const { deployments, loading: deploymentsLoading } = useDeployments(currentContext, currentNamespace, isVisible);
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, currentNamespace, isVisible); // Fetch pods for status
-    const { handleEditYaml, handleRestart, handleDelete } = useDeploymentActions();
+    const { handleEditYaml, handleRestart, handleDelete, handleViewLogs } = useDeploymentActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
@@ -68,17 +68,18 @@ export default function DeploymentList({ isVisible }) {
             render: (item) => (
                 <DeploymentActionsMenu
                     deployment={item}
-                    isOpen={activeMenuId === `deploy-${item.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `deploy-${item.metadata.uid}` : null)}
+                    isOpen={activeMenuId === `deployment-${item.metadata.uid}`}
+                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `deployment-${item.metadata.uid}` : null)}
                     onEditYaml={() => handleEditYaml(item)}
                     onRestart={() => handleRestart(item)}
                     onDelete={() => handleDelete(item)}
+                    onViewLogs={() => handleViewLogs(item)}
                 />
             ),
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleRestart, handleDelete, podsLoading, allPods]);
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleRestart, handleDelete, handleViewLogs, podsLoading, allPods]);
 
     return (
         <ResourceList
