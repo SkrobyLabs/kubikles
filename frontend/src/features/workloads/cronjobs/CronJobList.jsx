@@ -77,6 +77,12 @@ export default function CronJobList({ isVisible }) {
             initialSort: 'asc'
         },
         {
+            key: 'namespace',
+            label: 'Namespace',
+            render: (item) => item.metadata?.namespace,
+            getValue: (item) => item.metadata?.namespace
+        },
+        {
             key: 'schedule',
             label: 'Schedule',
             render: (item) => (

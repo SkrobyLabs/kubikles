@@ -18,6 +18,7 @@ export default function PodList({ isVisible }) {
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
+        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
         {
             key: 'containers',
             label: 'Containers',
@@ -101,7 +102,7 @@ export default function PodList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, openLogs, handleShell, handleDelete, handleEditYaml]);
+    ], [activeMenuId, setActiveMenuId, openLogs, handleShell, handleDelete, handleEditYaml, pods]);
 
     return (
         <ResourceList

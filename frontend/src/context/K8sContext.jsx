@@ -111,7 +111,9 @@ export const K8sProvider = ({ children }) => {
             const list = await ListNamespaces(currentContext);
             // Extract namespace names from objects
             const namespaceNames = (list || []).map(ns => ns.metadata?.name || ns).filter(Boolean);
-            setNamespaces(namespaceNames);
+            // Prepend "All Namespaces" option (empty string value)
+            const namespacesWithAll = ['', ...namespaceNames];
+            setNamespaces(namespacesWithAll);
             Logger.info("Namespaces fetched", { count: namespaceNames.length });
         } catch (err) {
             Logger.error("Failed to fetch namespaces", err);

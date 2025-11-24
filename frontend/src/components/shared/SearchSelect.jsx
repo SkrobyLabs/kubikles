@@ -7,6 +7,11 @@ export default function SearchSelect({ options, value, onChange, placeholder = "
     const wrapperRef = useRef(null);
     const inputRef = useRef(null);
 
+    // Helper to get display label for an option
+    const getDisplayLabel = (option) => {
+        return option === '' ? 'All Namespaces' : option;
+    };
+
     useEffect(() => {
         function handleClickOutside(event) {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -29,7 +34,7 @@ export default function SearchSelect({ options, value, onChange, placeholder = "
     }, [isOpen]);
 
     const filteredOptions = options.filter(option =>
-        option.toLowerCase().includes(searchTerm.toLowerCase())
+        getDisplayLabel(option).toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -38,7 +43,7 @@ export default function SearchSelect({ options, value, onChange, placeholder = "
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-full flex items-center justify-between px-3 py-2 bg-surface border border-border rounded text-sm text-text hover:border-primary focus:outline-none focus:border-primary transition-colors"
             >
-                <span className="truncate">{value || placeholder}</span>
+                <span className="truncate">{value !== undefined && value !== null ? getDisplayLabel(value) : placeholder}</span>
                 <ChevronDownIcon className="h-4 w-4 text-gray-400 ml-2 shrink-0" />
             </button>
 
@@ -65,14 +70,14 @@ export default function SearchSelect({ options, value, onChange, placeholder = "
                         {filteredOptions.length > 0 ? (
                             filteredOptions.map((option) => (
                                 <div
-                                    key={option}
+                                    key={option || '__all__'}
                                     className={`px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 ${option === value ? 'text-primary font-medium' : 'text-text'}`}
                                     onClick={() => {
                                         onChange(option);
                                         setIsOpen(false);
                                     }}
                                 >
-                                    {option}
+                                    {getDisplayLabel(option)}
                                 </div>
                             ))
                         ) : (

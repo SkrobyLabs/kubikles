@@ -7,7 +7,7 @@ export const usePods = (currentContext, namespace, isVisible) => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (!currentContext || !namespace || !isVisible) return;
+        if (!currentContext || namespace === null || namespace === undefined || !isVisible) return;
 
         const fetchPods = async () => {
             setLoading(true);

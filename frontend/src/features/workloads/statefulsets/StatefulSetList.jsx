@@ -20,6 +20,7 @@ export default function StatefulSetList({ isVisible }) {
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
+        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
         {
             key: 'pods',
             label: 'Pods',

@@ -8,7 +8,7 @@ export function useCronJobs(context, namespace, isVisible) {
     const { lastRefresh } = useK8s();
 
     useEffect(() => {
-        if (!isVisible || !context || !namespace) {
+        if (!isVisible || !context || namespace === null || namespace === undefined) {
             return;
         }
 

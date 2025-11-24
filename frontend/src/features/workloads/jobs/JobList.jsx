@@ -50,6 +50,11 @@ export default function JobList({ isVisible }) {
             render: (job) => job.metadata.name
         },
         {
+            key: 'namespace',
+            label: 'Namespace',
+            render: (job) => job.metadata?.namespace
+        },
+        {
             key: 'completions',
             label: 'Completions',
             width: '20%',
