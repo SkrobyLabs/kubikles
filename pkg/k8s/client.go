@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -659,4 +660,55 @@ func (c *Client) DeleteReplicaSet(contextName, namespace, name string) error {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	return cs.AppsV1().ReplicaSets(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// Job operations
+func (c *Client) ListJobs(contextName, namespace string) ([]batchv1.Job, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	jobs, err := cs.BatchV1().Jobs(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return jobs.Items, nil
+}
+
+func (c *Client) GetJobYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	job, err := cs.BatchV1().Jobs(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	yamlBytes, err := yaml.Marshal(job)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateJobYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var job batchv1.Job
+	if err := yaml.Unmarshal([]byte(yamlContent), &job); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.BatchV1().Jobs(namespace).Update(context.TODO(), &job, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteJob(contextName, namespace, name string) error {
+	fmt.Printf("Deleting job: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.BatchV1().Jobs(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }

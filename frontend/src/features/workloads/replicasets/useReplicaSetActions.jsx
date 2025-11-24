@@ -13,11 +13,11 @@ export function useReplicaSetActions() {
         const tabId = `edit-rs-${replicaSet.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit ${replicaSet.metadata.name}`,
+            title: `Edit: ${replicaSet.metadata.name}`,
             content: (
                 <YamlEditor
                     namespace={replicaSet.metadata.namespace}
-                    podName={replicaSet.metadata.name}
+                    resourceName={replicaSet.metadata.name}
                     isReplicaSet={true}
                     onClose={() => closeTab(tabId)}
                 />

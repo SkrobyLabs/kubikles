@@ -43,11 +43,11 @@ export const usePodActions = () => {
         const tabId = `yaml-${pod.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `YAML: ${pod.metadata.name}`,
+            title: `Edit: ${pod.metadata.name}`,
             content: (
                 <YamlEditor
                     namespace={pod.metadata.namespace}
-                    podName={pod.metadata.name}
+                    resourceName={pod.metadata.name}
                     onClose={() => closeTab(tabId)}
                 />
             )

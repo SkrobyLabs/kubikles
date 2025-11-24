@@ -14,11 +14,11 @@ export const useStatefulSetActions = () => {
         const tabId = `yaml-statefulset-${statefulSet.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `YAML: ${statefulSet.metadata.name}`,
+            title: `Edit: ${statefulSet.metadata.name}`,
             content: (
                 <YamlEditor
                     namespace={statefulSet.metadata.namespace}
-                    podName={statefulSet.metadata.name}
+                    resourceName={statefulSet.metadata.name}
                     isStatefulSet={true}
                     onClose={() => closeTab(tabId)}
                 />

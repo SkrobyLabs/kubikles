@@ -7,11 +7,12 @@ import {
     GetConfigMapYaml, UpdateConfigMapYaml,
     GetSecretYaml, UpdateSecretYaml,
     GetDaemonSetYaml, UpdateDaemonSetYaml,
-    GetReplicaSetYaml, UpdateReplicaSetYaml
+    GetReplicaSetYaml, UpdateReplicaSetYaml,
+    GetJobYaml, UpdateJobYaml
 } from '../../../wailsjs/go/main/App';
 import Logger from '../../utils/Logger';
 
-export default function YamlEditor({ namespace, podName, isDeployment, isStatefulSet, isConfigMap, isSecret, isDaemonSet, isReplicaSet, onClose }) {
+export default function YamlEditor({ namespace, resourceName, isDeployment, isStatefulSet, isConfigMap, isSecret, isDaemonSet, isReplicaSet, isJob, onClose }) {
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -20,31 +21,33 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
 
     useEffect(() => {
         fetchYaml();
-    }, [namespace, podName]);
+    }, [namespace, resourceName]);
 
     const fetchYaml = async () => {
         setLoading(true);
         setError(null);
-        Logger.debug("Fetching YAML...", { namespace, name: podName });
+        Logger.debug("Fetching YAML...", { namespace, name: resourceName });
         try {
             let yaml;
             if (isDeployment) {
-                yaml = await GetDeploymentYaml(namespace, podName);
+                yaml = await GetDeploymentYaml(namespace, resourceName);
             } else if (isStatefulSet) {
-                yaml = await GetStatefulSetYaml(namespace, podName);
+                yaml = await GetStatefulSetYaml(namespace, resourceName);
             } else if (isConfigMap) {
-                yaml = await GetConfigMapYaml(namespace, podName);
+                yaml = await GetConfigMapYaml(namespace, resourceName);
             } else if (isSecret) {
-                yaml = await GetSecretYaml(namespace, podName);
+                yaml = await GetSecretYaml(namespace, resourceName);
             } else if (isDaemonSet) {
-                yaml = await GetDaemonSetYaml(namespace, podName);
+                yaml = await GetDaemonSetYaml(namespace, resourceName);
             } else if (isReplicaSet) {
-                yaml = await GetReplicaSetYaml(namespace, podName);
+                yaml = await GetReplicaSetYaml(namespace, resourceName);
+            } else if (isJob) {
+                yaml = await GetJobYaml(namespace, resourceName);
             } else {
-                yaml = await GetPodYaml(namespace, podName);
+                yaml = await GetPodYaml(namespace, resourceName);
             }
             setContent(yaml);
-            Logger.info("YAML fetched successfully", { namespace, name: podName });
+            Logger.info("YAML fetched successfully", { namespace, name: resourceName });
         } catch (err) {
             Logger.error("Failed to load YAML", err);
             setError(`Failed to load YAML: ${err}`);
@@ -55,24 +58,26 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
 
     const handleSave = async () => {
         setSaving(true);
-        Logger.info("Saving YAML...", { namespace, name: podName });
+        Logger.info("Saving YAML...", { namespace, name: resourceName });
         try {
             if (isDeployment) {
-                await UpdateDeploymentYaml(namespace, podName, content);
+                await UpdateDeploymentYaml(namespace, resourceName, content);
             } else if (isStatefulSet) {
-                await UpdateStatefulSetYaml(namespace, podName, content);
+                await UpdateStatefulSetYaml(namespace, resourceName, content);
             } else if (isConfigMap) {
-                await UpdateConfigMapYaml(namespace, podName, content);
+                await UpdateConfigMapYaml(namespace, resourceName, content);
             } else if (isSecret) {
-                await UpdateSecretYaml(namespace, podName, content);
+                await UpdateSecretYaml(namespace, resourceName, content);
             } else if (isDaemonSet) {
-                await UpdateDaemonSetYaml(namespace, podName, content);
+                await UpdateDaemonSetYaml(namespace, resourceName, content);
             } else if (isReplicaSet) {
-                await UpdateReplicaSetYaml(namespace, podName, content);
+                await UpdateReplicaSetYaml(namespace, resourceName, content);
+            } else if (isJob) {
+                await UpdateJobYaml(namespace, resourceName, content);
             } else {
-                await UpdatePodYaml(namespace, podName, content);
+                await UpdatePodYaml(namespace, resourceName, content);
             }
-            Logger.info("YAML saved successfully", { namespace, name: podName });
+            Logger.info("YAML saved successfully", { namespace, name: resourceName });
             alert("YAML saved successfully!");
         } catch (err) {
             Logger.error("Failed to save YAML", err);
@@ -124,7 +129,7 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
             {/* Header Bar */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="text-sm font-medium text-gray-400">
-                    {namespace}/{podName}
+                    {namespace}/{resourceName}
                 </div>
                 <div className="flex items-center gap-2">
                     <button

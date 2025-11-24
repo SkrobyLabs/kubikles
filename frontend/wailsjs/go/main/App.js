@@ -14,6 +14,10 @@ export function DeleteDeployment(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeleteDeployment'](arg1, arg2, arg3);
 }
 
+export function DeleteJob(arg1, arg2) {
+  return window['go']['main']['App']['DeleteJob'](arg1, arg2);
+}
+
 export function DeletePod(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeletePod'](arg1, arg2, arg3);
 }
@@ -48,6 +52,10 @@ export function GetDaemonSetYaml(arg1, arg2) {
 
 export function GetDeploymentYaml(arg1, arg2) {
   return window['go']['main']['App']['GetDeploymentYaml'](arg1, arg2);
+}
+
+export function GetJobYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetJobYaml'](arg1, arg2);
 }
 
 export function GetPodLogs(arg1, arg2, arg3) {
@@ -88,6 +96,10 @@ export function ListDaemonSets(arg1) {
 
 export function ListDeployments(arg1) {
   return window['go']['main']['App']['ListDeployments'](arg1);
+}
+
+export function ListJobs(arg1) {
+  return window['go']['main']['App']['ListJobs'](arg1);
 }
 
 export function ListNamespaces() {
@@ -164,6 +176,10 @@ export function UpdateDaemonSetYaml(arg1, arg2, arg3) {
 
 export function UpdateDeploymentYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateDeploymentYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateJobYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateJobYaml'](arg1, arg2, arg3);
 }
 
 export function UpdatePodYaml(arg1, arg2, arg3) {

@@ -14,11 +14,11 @@ export const useConfigMapActions = () => {
         const tabId = `yaml-configmap-${configMap.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `YAML: ${configMap.metadata.name}`,
+            title: `Edit: ${configMap.metadata.name}`,
             content: (
                 <YamlEditor
                     namespace={configMap.metadata.namespace}
-                    podName={configMap.metadata.name}
+                    resourceName={configMap.metadata.name}
                     isConfigMap={true}
                     onClose={() => closeTab(tabId)}
                 />

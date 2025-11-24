@@ -12,6 +12,7 @@ import NodeList from './features/cluster/nodes/NodeList';
 import ServiceList from './features/network/services/ServiceList';
 import ConfigMapList from './features/config/configmaps/ConfigMapList';
 import SecretList from './features/config/secrets/SecretList';
+import JobList from './features/workloads/jobs/JobList';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
 
@@ -97,6 +98,7 @@ function MainLayout() {
             case 'statefulsets': return <StatefulSetList isVisible={true} />;
             case 'daemonsets': return <DaemonSetList isVisible={true} />;
             case 'replicasets': return <ReplicaSetList isVisible={true} />;
+            case 'jobs': return <JobList isVisible={true} />;
             case 'nodes': return <NodeList isVisible={true} />;
             case 'services': return <ServiceList isVisible={true} />;
             case 'configmaps': return <ConfigMapList isVisible={true} />;

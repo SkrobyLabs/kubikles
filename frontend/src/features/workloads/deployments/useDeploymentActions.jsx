@@ -14,11 +14,11 @@ export const useDeploymentActions = () => {
         const tabId = `yaml-deploy-${deployment.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `YAML: ${deployment.metadata.name}`,
+            title: `Edit: ${deployment.metadata.name}`,
             content: (
                 <YamlEditor
                     namespace={deployment.metadata.namespace}
-                    podName={deployment.metadata.name}
+                    resourceName={deployment.metadata.name}
                     isDeployment={true}
                     onClose={() => closeTab(tabId)}
                 />

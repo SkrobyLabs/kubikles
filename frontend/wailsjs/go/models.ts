@@ -4240,6 +4240,377 @@ export namespace v1 {
 	        this.ip = source["ip"];
 	    }
 	}
+	export class UncountedTerminatedPods {
+	    succeeded?: string[];
+	    failed?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new UncountedTerminatedPods(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.succeeded = source["succeeded"];
+	        this.failed = source["failed"];
+	    }
+	}
+	export class JobCondition {
+	    type: string;
+	    status: string;
+	    lastProbeTime?: Time;
+	    lastTransitionTime?: Time;
+	    reason?: string;
+	    message?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new JobCondition(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.status = source["status"];
+	        this.lastProbeTime = this.convertValues(source["lastProbeTime"], Time);
+	        this.lastTransitionTime = this.convertValues(source["lastTransitionTime"], Time);
+	        this.reason = source["reason"];
+	        this.message = source["message"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class JobStatus {
+	    conditions?: JobCondition[];
+	    startTime?: Time;
+	    completionTime?: Time;
+	    active?: number;
+	    succeeded?: number;
+	    failed?: number;
+	    terminating?: number;
+	    completedIndexes?: string;
+	    failedIndexes?: string;
+	    uncountedTerminatedPods?: UncountedTerminatedPods;
+	    ready?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new JobStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.conditions = this.convertValues(source["conditions"], JobCondition);
+	        this.startTime = this.convertValues(source["startTime"], Time);
+	        this.completionTime = this.convertValues(source["completionTime"], Time);
+	        this.active = source["active"];
+	        this.succeeded = source["succeeded"];
+	        this.failed = source["failed"];
+	        this.terminating = source["terminating"];
+	        this.completedIndexes = source["completedIndexes"];
+	        this.failedIndexes = source["failedIndexes"];
+	        this.uncountedTerminatedPods = this.convertValues(source["uncountedTerminatedPods"], UncountedTerminatedPods);
+	        this.ready = source["ready"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SuccessPolicyRule {
+	    succeededIndexes?: string;
+	    succeededCount?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SuccessPolicyRule(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.succeededIndexes = source["succeededIndexes"];
+	        this.succeededCount = source["succeededCount"];
+	    }
+	}
+	export class SuccessPolicy {
+	    rules: SuccessPolicyRule[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SuccessPolicy(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rules = this.convertValues(source["rules"], SuccessPolicyRule);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PodFailurePolicyOnPodConditionsPattern {
+	    type: string;
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PodFailurePolicyOnPodConditionsPattern(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.status = source["status"];
+	    }
+	}
+	export class PodFailurePolicyOnExitCodesRequirement {
+	    containerName?: string;
+	    operator: string;
+	    values: number[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PodFailurePolicyOnExitCodesRequirement(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.containerName = source["containerName"];
+	        this.operator = source["operator"];
+	        this.values = source["values"];
+	    }
+	}
+	export class PodFailurePolicyRule {
+	    action: string;
+	    onExitCodes?: PodFailurePolicyOnExitCodesRequirement;
+	    onPodConditions?: PodFailurePolicyOnPodConditionsPattern[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PodFailurePolicyRule(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.action = source["action"];
+	        this.onExitCodes = this.convertValues(source["onExitCodes"], PodFailurePolicyOnExitCodesRequirement);
+	        this.onPodConditions = this.convertValues(source["onPodConditions"], PodFailurePolicyOnPodConditionsPattern);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PodFailurePolicy {
+	    rules: PodFailurePolicyRule[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PodFailurePolicy(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rules = this.convertValues(source["rules"], PodFailurePolicyRule);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class JobSpec {
+	    parallelism?: number;
+	    completions?: number;
+	    activeDeadlineSeconds?: number;
+	    podFailurePolicy?: PodFailurePolicy;
+	    successPolicy?: SuccessPolicy;
+	    backoffLimit?: number;
+	    backoffLimitPerIndex?: number;
+	    maxFailedIndexes?: number;
+	    selector?: LabelSelector;
+	    manualSelector?: boolean;
+	    template: PodTemplateSpec;
+	    ttlSecondsAfterFinished?: number;
+	    completionMode?: string;
+	    suspend?: boolean;
+	    podReplacementPolicy?: string;
+	    managedBy?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new JobSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.parallelism = source["parallelism"];
+	        this.completions = source["completions"];
+	        this.activeDeadlineSeconds = source["activeDeadlineSeconds"];
+	        this.podFailurePolicy = this.convertValues(source["podFailurePolicy"], PodFailurePolicy);
+	        this.successPolicy = this.convertValues(source["successPolicy"], SuccessPolicy);
+	        this.backoffLimit = source["backoffLimit"];
+	        this.backoffLimitPerIndex = source["backoffLimitPerIndex"];
+	        this.maxFailedIndexes = source["maxFailedIndexes"];
+	        this.selector = this.convertValues(source["selector"], LabelSelector);
+	        this.manualSelector = source["manualSelector"];
+	        this.template = this.convertValues(source["template"], PodTemplateSpec);
+	        this.ttlSecondsAfterFinished = source["ttlSecondsAfterFinished"];
+	        this.completionMode = source["completionMode"];
+	        this.suspend = source["suspend"];
+	        this.podReplacementPolicy = source["podReplacementPolicy"];
+	        this.managedBy = source["managedBy"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Job {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: JobSpec;
+	    status?: JobStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new Job(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], JobSpec);
+	        this.status = this.convertValues(source["status"], JobStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
 	
 	
 	
@@ -5381,6 +5752,10 @@ export namespace v1 {
 	
 	
 	
+	
+	
+	
+	
 	export class ReplicaSetCondition {
 	    type: string;
 	    status: string;
@@ -6181,6 +6556,9 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	
+	
+	
 	
 	
 	

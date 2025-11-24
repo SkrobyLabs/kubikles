@@ -14,11 +14,11 @@ export const useSecretActions = () => {
         const tabId = `yaml-secret-${secret.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `YAML: ${secret.metadata.name}`,
+            title: `Edit: ${secret.metadata.name}`,
             content: (
                 <YamlEditor
                     namespace={secret.metadata.namespace}
-                    podName={secret.metadata.name}
+                    resourceName={secret.metadata.name}
                     isSecret={true}
                     onClose={() => closeTab(tabId)}
                 />

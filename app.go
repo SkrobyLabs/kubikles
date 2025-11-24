@@ -10,6 +10,7 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -509,4 +510,39 @@ func (a *App) SaveLogFile(content string) error {
 	}
 
 	return os.WriteFile(filePath, []byte(content), 0644)
+}
+
+// Job operations
+func (a *App) ListJobs(namespace string) ([]batchv1.Job, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ListJobs called: context=%s, ns=%s", currentContext, namespace)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListJobs(currentContext, namespace)
+}
+
+func (a *App) GetJobYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetJobYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetJobYaml(namespace, name)
+}
+
+func (a *App) UpdateJobYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdateJobYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateJobYaml(namespace, name, yamlContent)
+}
+
+func (a *App) DeleteJob(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteJob called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteJob(currentContext, namespace, name)
 }

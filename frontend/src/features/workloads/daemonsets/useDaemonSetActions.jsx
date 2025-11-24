@@ -13,11 +13,11 @@ export function useDaemonSetActions() {
         const tabId = `edit-ds-${daemonSet.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit ${daemonSet.metadata.name}`,
+            title: `Edit: ${daemonSet.metadata.name}`,
             content: (
                 <YamlEditor
                     namespace={daemonSet.metadata.namespace}
-                    podName={daemonSet.metadata.name}
+                    resourceName={daemonSet.metadata.name}
                     isDaemonSet={true}
                     onClose={() => closeTab(tabId)}
                 />
