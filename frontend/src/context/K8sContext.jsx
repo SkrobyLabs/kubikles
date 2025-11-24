@@ -17,6 +17,7 @@ export const K8sProvider = ({ children }) => {
     const [currentContext, setCurrentContext] = useState('');
     const [namespaces, setNamespaces] = useState([]);
     const [currentNamespace, setCurrentNamespace] = useState('default');
+    const [lastRefresh, setLastRefresh] = useState(Date.now());
 
     // Persistence Helpers
     const loadContextState = (ctx) => {
@@ -160,6 +161,11 @@ export const K8sProvider = ({ children }) => {
         }
     }, [currentContext, currentNamespace]);
 
+    const triggerRefresh = () => {
+        setLastRefresh(Date.now());
+        Logger.debug("Triggered resource refresh");
+    };
+
     const value = {
         contexts,
         currentContext,
@@ -168,7 +174,9 @@ export const K8sProvider = ({ children }) => {
         setCurrentNamespace,
         switchContext,
         refreshContexts: fetchContexts,
-        refreshNamespaces: fetchNamespaces
+        refreshNamespaces: fetchNamespaces,
+        lastRefresh,
+        triggerRefresh
     };
 
     return (

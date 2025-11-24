@@ -13,6 +13,7 @@ import ServiceList from './features/network/services/ServiceList';
 import ConfigMapList from './features/config/configmaps/ConfigMapList';
 import SecretList from './features/config/secrets/SecretList';
 import JobList from './features/workloads/jobs/JobList';
+import CronJobList from './features/workloads/cronjobs/CronJobList';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
 
@@ -99,6 +100,7 @@ function MainLayout() {
             case 'daemonsets': return <DaemonSetList isVisible={true} />;
             case 'replicasets': return <ReplicaSetList isVisible={true} />;
             case 'jobs': return <JobList isVisible={true} />;
+            case 'cronjobs': return <CronJobList isVisible={true} />;
             case 'nodes': return <NodeList isVisible={true} />;
             case 'services': return <ServiceList isVisible={true} />;
             case 'configmaps': return <ConfigMapList isVisible={true} />;

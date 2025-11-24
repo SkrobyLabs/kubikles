@@ -6,6 +6,10 @@ export function DeleteConfigMap(arg1, arg2) {
   return window['go']['main']['App']['DeleteConfigMap'](arg1, arg2);
 }
 
+export function DeleteCronJob(arg1, arg2) {
+  return window['go']['main']['App']['DeleteCronJob'](arg1, arg2);
+}
+
 export function DeleteDaemonSet(arg1, arg2) {
   return window['go']['main']['App']['DeleteDaemonSet'](arg1, arg2);
 }
@@ -40,6 +44,10 @@ export function ForceDeletePod(arg1, arg2, arg3) {
 
 export function GetConfigMapYaml(arg1, arg2) {
   return window['go']['main']['App']['GetConfigMapYaml'](arg1, arg2);
+}
+
+export function GetCronJobYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetCronJobYaml'](arg1, arg2);
 }
 
 export function GetCurrentContext() {
@@ -88,6 +96,10 @@ export function ListConfigMaps(arg1) {
 
 export function ListContexts() {
   return window['go']['main']['App']['ListContexts']();
+}
+
+export function ListCronJobs(arg1) {
+  return window['go']['main']['App']['ListCronJobs'](arg1);
 }
 
 export function ListDaemonSets(arg1) {
@@ -158,6 +170,10 @@ export function StartPodWatcher(arg1) {
   return window['go']['main']['App']['StartPodWatcher'](arg1);
 }
 
+export function SuspendCronJob(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SuspendCronJob'](arg1, arg2, arg3);
+}
+
 export function SwitchContext(arg1) {
   return window['go']['main']['App']['SwitchContext'](arg1);
 }
@@ -166,8 +182,16 @@ export function TestEmit() {
   return window['go']['main']['App']['TestEmit']();
 }
 
+export function TriggerCronJob(arg1, arg2) {
+  return window['go']['main']['App']['TriggerCronJob'](arg1, arg2);
+}
+
 export function UpdateConfigMapYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateConfigMapYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateCronJobYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateCronJobYaml'](arg1, arg2, arg3);
 }
 
 export function UpdateDaemonSetYaml(arg1, arg2, arg3) {

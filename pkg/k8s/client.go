@@ -712,3 +712,110 @@ func (c *Client) DeleteJob(contextName, namespace, name string) error {
 	}
 	return cs.BatchV1().Jobs(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
+
+// CronJob operations
+func (c *Client) ListCronJobs(contextName, namespace string) ([]batchv1.CronJob, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	cronJobs, err := cs.BatchV1().CronJobs(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return cronJobs.Items, nil
+}
+
+func (c *Client) GetCronJobYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	cronJob, err := cs.BatchV1().CronJobs(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	yamlBytes, err := yaml.Marshal(cronJob)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateCronJobYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var cronJob batchv1.CronJob
+	if err := yaml.Unmarshal([]byte(yamlContent), &cronJob); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.BatchV1().CronJobs(namespace).Update(context.TODO(), &cronJob, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteCronJob(contextName, namespace, name string) error {
+	fmt.Printf("Deleting cronjob: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.BatchV1().CronJobs(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+func (c *Client) TriggerCronJob(contextName, namespace, cronJobName string) error {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+
+	// Get the CronJob to use as template
+	cronJob, err := cs.BatchV1().CronJobs(namespace).Get(context.TODO(), cronJobName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get cronjob: %w", err)
+	}
+
+	// Create a Job from the CronJob spec
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: cronJobName + "-manual-",
+			Namespace:    namespace,
+			Annotations: map[string]string{
+				"cronjob.kubernetes.io/instantiate": "manual",
+			},
+		},
+		Spec: cronJob.Spec.JobTemplate.Spec,
+	}
+
+	_, err = cs.BatchV1().Jobs(namespace).Create(context.TODO(), job, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create job: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) SuspendCronJob(contextName, namespace, name string, suspend bool) error {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+
+	// Use JSON patch to update only the suspend field
+	patchData := fmt.Sprintf(`{"spec":{"suspend":%t}}`, suspend)
+
+	result, err := cs.BatchV1().CronJobs(namespace).Patch(
+		context.TODO(),
+		name,
+		types.MergePatchType,
+		[]byte(patchData),
+		metav1.PatchOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to patch cronjob: %w", err)
+	}
+
+	_ = result
+	return nil
+}

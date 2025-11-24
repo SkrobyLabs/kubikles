@@ -4,6 +4,8 @@ import {v1} from '../models';
 
 export function DeleteConfigMap(arg1:string,arg2:string):Promise<void>;
 
+export function DeleteCronJob(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteDaemonSet(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteDeployment(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -21,6 +23,8 @@ export function DeleteStatefulSet(arg1:string,arg2:string,arg3:string):Promise<v
 export function ForceDeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function GetConfigMapYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetCronJobYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetCurrentContext():Promise<string>;
 
@@ -45,6 +49,8 @@ export function Greet(arg1:string):Promise<string>;
 export function ListConfigMaps(arg1:string):Promise<Array<v1.ConfigMap>>;
 
 export function ListContexts():Promise<Array<string>>;
+
+export function ListCronJobs(arg1:string):Promise<Array<v1.CronJob>>;
 
 export function ListDaemonSets(arg1:string):Promise<Array<v1.DaemonSet>>;
 
@@ -80,11 +86,17 @@ export function SaveLogFile(arg1:string):Promise<void>;
 
 export function StartPodWatcher(arg1:string):Promise<void>;
 
+export function SuspendCronJob(arg1:string,arg2:string,arg3:boolean):Promise<void>;
+
 export function SwitchContext(arg1:string):Promise<void>;
 
 export function TestEmit():Promise<void>;
 
+export function TriggerCronJob(arg1:string,arg2:string):Promise<void>;
+
 export function UpdateConfigMapYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateCronJobYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateDaemonSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

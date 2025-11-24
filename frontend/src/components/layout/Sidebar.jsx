@@ -10,7 +10,8 @@ import {
     Square2StackIcon,
     CircleStackIcon,
     CommandLineIcon,
-    CpuChipIcon
+    CpuChipIcon,
+    ClockIcon
 } from '@heroicons/react/24/outline';
 import SearchSelect from '../shared/SearchSelect';
 import Logger from '../../utils/Logger';
@@ -39,6 +40,7 @@ export default function Sidebar({
                 { id: 'daemonsets', label: 'DaemonSets', icon: CpuChipIcon },
                 { id: 'replicasets', label: 'ReplicaSets', icon: Square2StackIcon },
                 { id: 'jobs', label: 'Jobs', icon: CommandLineIcon },
+                { id: 'cronjobs', label: 'CronJobs', icon: ClockIcon },
             ]
         },
         {

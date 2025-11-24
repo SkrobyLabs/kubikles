@@ -546,3 +546,56 @@ func (a *App) DeleteJob(namespace, name string) error {
 	}
 	return a.k8sClient.DeleteJob(currentContext, namespace, name)
 }
+
+// CronJob operations
+func (a *App) ListCronJobs(namespace string) ([]batchv1.CronJob, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ListCronJobs called: context=%s, ns=%s", currentContext, namespace)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListCronJobs(currentContext, namespace)
+}
+
+func (a *App) GetCronJobYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetCronJobYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetCronJobYaml(namespace, name)
+}
+
+func (a *App) UpdateCronJobYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdateCronJobYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateCronJobYaml(namespace, name, yamlContent)
+}
+
+func (a *App) DeleteCronJob(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteCronJob called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteCronJob(currentContext, namespace, name)
+}
+
+func (a *App) TriggerCronJob(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("TriggerCronJob called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.TriggerCronJob(currentContext, namespace, name)
+}
+
+func (a *App) SuspendCronJob(namespace, name string, suspend bool) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("SuspendCronJob called: context=%s, ns=%s, name=%s, suspend=%v", currentContext, namespace, name, suspend)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.SuspendCronJob(currentContext, namespace, name, suspend)
+}
