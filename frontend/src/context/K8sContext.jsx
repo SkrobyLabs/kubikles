@@ -16,35 +16,38 @@ export const K8sProvider = ({ children }) => {
     const [contexts, setContexts] = useState([]);
     const [currentContext, setCurrentContext] = useState('');
     const [namespaces, setNamespaces] = useState([]);
-    const [currentNamespace, setCurrentNamespace] = useState('default');
+    const [selectedNamespaces, setSelectedNamespaces] = useState(['default']);
     const [lastRefresh, setLastRefresh] = useState(Date.now());
+    const [isLoadingNamespaces, setIsLoadingNamespaces] = useState(false);
+
+    // Backward compatibility: expose currentNamespace for components not yet updated
+    const currentNamespace = selectedNamespaces.length === 1 ? selectedNamespaces[0] : '';
+    const setCurrentNamespace = (ns) => {
+        setSelectedNamespaces(Array.isArray(ns) ? ns : [ns]);
+    };
 
     // Persistence Helpers
     const loadContextState = (ctx) => {
         const saved = localStorage.getItem(`kubikles_state_${ctx}`);
         if (saved) {
             try {
-                return JSON.parse(saved);
+                const parsed = JSON.parse(saved);
+                // Backward compatibility: migrate old single namespace to array
+                if (parsed.namespace && typeof parsed.namespace === 'string') {
+                    return { namespaces: [parsed.namespace] };
+                }
+                if (parsed.namespaces && Array.isArray(parsed.namespaces)) {
+                    return { namespaces: parsed.namespaces };
+                }
             } catch (e) {
                 Logger.error("Failed to parse saved state", e);
             }
         }
-        return { namespace: 'default' };
+        return { namespaces: ['default'] };
     };
 
     const saveContextState = (ctx, ns) => {
         if (!ctx) return;
-        // We only save namespace here. View state is UI concern.
-        // We might need to coordinate this if we want to save view per context too.
-        // For now, let's save namespace.
-        // Wait, the original code saved view AND namespace.
-        // Let's allow passing extra state or handle view in UIContext but save it keyed by context?
-        // Or maybe K8sContext just exposes a "saveState" function?
-        // Let's keep it simple: K8sContext manages namespace persistence.
-        // UIContext can manage view persistence if needed, or we pass view to saveContextState.
-
-        // Actually, let's just save namespace for now. 
-        // If we want to persist view per context, we might need to expose a way to update that.
         const existing = localStorage.getItem(`kubikles_state_${ctx}`);
         let state = {};
         if (existing) {
@@ -52,7 +55,9 @@ export const K8sProvider = ({ children }) => {
                 state = JSON.parse(existing);
             } catch (e) { }
         }
-        state.namespace = ns;
+        // Save as array for multi-namespace support
+        state.namespaces = Array.isArray(ns) ? ns : [ns];
+        delete state.namespace; // Remove old single namespace format
         localStorage.setItem(`kubikles_state_${ctx}`, JSON.stringify(state));
     };
 
@@ -93,11 +98,11 @@ export const K8sProvider = ({ children }) => {
             setCurrentContext(contextToUse);
             Logger.info("Contexts fetched", { count: sortedList.length, current: contextToUse });
 
-            // Load saved namespace for this context
+            // Load saved namespaces for this context
             const savedState = loadContextState(contextToUse);
-            if (savedState.namespace) {
-                setCurrentNamespace(savedState.namespace);
-                Logger.debug("Restored namespace from saved state", { namespace: savedState.namespace });
+            if (savedState.namespaces && savedState.namespaces.length > 0) {
+                setSelectedNamespaces(savedState.namespaces);
+                Logger.debug("Restored namespaces from saved state", { namespaces: savedState.namespaces });
             }
         } catch (err) {
             Logger.error("Failed to fetch contexts", err);
@@ -123,22 +128,32 @@ export const K8sProvider = ({ children }) => {
     const switchContext = async (newContext) => {
         try {
             Logger.info("Switching context...", { from: currentContext, to: newContext });
+
+            // Set loading flag first to prevent saves during switch
+            setIsLoadingNamespaces(true);
+
             await SwitchContext(newContext);
+
+            // Clear namespaces immediately to prevent stale data
+            setNamespaces([]);
+
+            // Clear selected namespaces to prevent unnecessary fetches
+            // We'll restore saved state after namespaces are fetched
+            setSelectedNamespaces([]);
+
             setCurrentContext(newContext);
 
             // Save the context preference
             localStorage.setItem('kubikles_last_context', newContext);
             Logger.debug("Saved context to localStorage", { context: newContext });
 
-            const savedState = loadContextState(newContext);
-            const newNs = savedState.namespace || 'default';
-            setCurrentNamespace(newNs);
-            Logger.info("Context switched successfully", { context: newContext, namespace: newNs });
+            Logger.info("Context switched successfully", { context: newContext });
 
             // We need to trigger namespace fetch after switch
             // fetchNamespaces will be called by useEffect when currentContext changes
         } catch (err) {
             Logger.error("Failed to switch context", err);
+            setIsLoadingNamespaces(false);
         }
     };
 
@@ -150,18 +165,31 @@ export const K8sProvider = ({ children }) => {
     // Fetch namespaces when context changes
     useEffect(() => {
         if (currentContext) {
-            fetchNamespaces();
+            const loadNamespacesAndRestoreState = async () => {
+                setIsLoadingNamespaces(true);
+                await fetchNamespaces();
+
+                // After namespaces are loaded, restore saved state
+                const savedState = loadContextState(currentContext);
+                if (savedState.namespaces && savedState.namespaces.length > 0) {
+                    setSelectedNamespaces(savedState.namespaces);
+                    Logger.debug("Restored namespaces after context switch", { namespaces: savedState.namespaces });
+                }
+                setIsLoadingNamespaces(false);
+            };
+
+            loadNamespacesAndRestoreState();
             localStorage.setItem('kubikles_context', currentContext);
         }
     }, [currentContext]);
 
-    // Save namespace when it changes
+    // Save namespaces when they change (but not while loading)
     useEffect(() => {
-        if (currentContext) {
-            saveContextState(currentContext, currentNamespace);
-            Logger.debug("Namespace changed", { context: currentContext, namespace: currentNamespace });
+        if (currentContext && !isLoadingNamespaces) {
+            saveContextState(currentContext, selectedNamespaces);
+            Logger.debug("Namespaces changed", { context: currentContext, namespaces: selectedNamespaces });
         }
-    }, [currentContext, currentNamespace]);
+    }, [currentContext, selectedNamespaces, isLoadingNamespaces]);
 
     const triggerRefresh = () => {
         setLastRefresh(Date.now());
@@ -174,6 +202,8 @@ export const K8sProvider = ({ children }) => {
         namespaces,
         currentNamespace,
         setCurrentNamespace,
+        selectedNamespaces,
+        setSelectedNamespaces,
         switchContext,
         refreshContexts: fetchContexts,
         refreshNamespaces: fetchNamespaces,

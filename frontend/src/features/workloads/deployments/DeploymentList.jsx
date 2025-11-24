@@ -11,11 +11,11 @@ import { formatAge } from '../../../utils/formatting';
 import { getDeploymentPods, getEffectivePodStatus, getPodStatusColor } from '../../../utils/k8s-helpers';
 
 export default function DeploymentList({ isVisible }) {
-    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     // console.log("DeploymentList rendering");
-    const { deployments, loading: deploymentsLoading } = useDeployments(currentContext, currentNamespace, isVisible);
-    const { pods: allPods, loading: podsLoading } = usePods(currentContext, currentNamespace, isVisible); // Fetch pods for status
+    const { deployments, loading: deploymentsLoading } = useDeployments(currentContext, selectedNamespaces, isVisible);
+    const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible); // Fetch pods for status
     const { handleEditYaml, handleRestart, handleDelete, handleViewLogs } = useDeploymentActions();
 
     const columns = useMemo(() => [
@@ -89,9 +89,10 @@ export default function DeploymentList({ isVisible }) {
             data={deployments}
             isLoading={deploymentsLoading}
             namespaces={namespaces}
-            currentNamespace={currentNamespace}
-            onNamespaceChange={setCurrentNamespace}
+            currentNamespace={selectedNamespaces}
+            onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
+            multiSelectNamespaces={true}
             highlightedUid={activeMenuId}
         />
     );

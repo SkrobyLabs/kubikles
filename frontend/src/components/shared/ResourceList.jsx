@@ -11,6 +11,7 @@ export default function ResourceList({
     currentNamespace,
     onNamespaceChange,
     showNamespaceSelector = true,
+    multiSelectNamespaces = false,
     highlightedUid = null,
     initialSort = null
 }) {
@@ -130,6 +131,7 @@ export default function ResourceList({
                             value={currentNamespace}
                             onChange={onNamespaceChange}
                             placeholder="Select Namespace..."
+                            multiSelect={multiSelectNamespaces}
                         />
                     </div>
                 )}

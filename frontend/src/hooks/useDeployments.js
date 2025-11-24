@@ -1,48 +1,63 @@
 import { useState, useEffect } from 'react';
 import { ListDeployments, StartPodWatcher } from '../../wailsjs/go/main/App';
+import { useK8s } from '../context/K8sContext';
+import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 
-export const useDeployments = (currentContext, namespace, isVisible) => {
+export const useDeployments = (currentContext, selectedNamespaces, isVisible) => {
     const [deployments, setDeployments] = useState([]);
     const [allPods, setAllPods] = useState([]);
     const [loading, setLoading] = useState(false);
     const [podsLoading, setPodsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const { namespaces: allNamespaces } = useK8s();
 
     useEffect(() => {
-        if (!currentContext || namespace === null || namespace === undefined || !isVisible) return;
+        if (!currentContext || selectedNamespaces === null || selectedNamespaces === undefined || !isVisible) return;
 
         const fetchDeployments = async () => {
             setLoading(true);
             setPodsLoading(true);
             try {
-                const list = await ListDeployments(namespace);
-                setDeployments(list || []);
-                setError(null);
+                const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
 
-                // Start watcher for pod updates
-                StartPodWatcher(namespace);
+                if (optimized === null) {
+                    // No namespaces selected - return empty
+                    setDeployments([]);
+                } else if (optimized === '') {
+                    // Fetch from all namespaces in a single query (optimized)
+                    const list = await ListDeployments('');
+                    setDeployments(list || []);
+                    StartPodWatcher('');
+                } else {
+                    // Fetch from each namespace and merge results
+                    const allDeployments = await Promise.all(
+                        optimized.map(ns => ListDeployments(ns).catch(err => {
+                            console.error(`Failed to fetch deployments from namespace ${ns}`, err);
+                            return [];
+                        }))
+                    );
+                    // Flatten and deduplicate by UID
+                    const merged = allDeployments.flat();
+                    const unique = merged.filter((dep, index, self) =>
+                        index === self.findIndex(d => d.metadata.uid === dep.metadata.uid)
+                    );
+                    setDeployments(unique);
+
+                    // Start watchers for each namespace
+                    optimized.forEach(ns => StartPodWatcher(ns));
+                }
+                setError(null);
             } catch (err) {
                 console.error("Failed to fetch deployments", err);
                 setError(err);
             } finally {
                 setLoading(false);
-                // We don't set podsLoading to false here because we rely on the watcher/initial pod list?
-                // Actually, in the original code, we fetched pods separately.
-                // We should probably fetch pods here too if we want to show them immediately.
-                // But wait, usePods handles fetching pods.
-                // Maybe we should use usePods inside the DeploymentList component?
-                // Yes, that would be cleaner.
-                // But for now, let's replicate the existing logic where we need allPods for the deployment list.
-                // Wait, if we use usePods hook in the component, we get the pods.
-                // So useDeployments should just return deployments.
-                // And the component can use usePods to get the pods to map to deployments.
-                // That separates concerns nicely.
                 setPodsLoading(false);
             }
         };
 
         fetchDeployments();
-    }, [currentContext, namespace, isVisible]);
+    }, [currentContext, selectedNamespaces, isVisible, allNamespaces]);
 
     return { deployments, loading, podsLoading, error, setDeployments };
 };

@@ -9,9 +9,9 @@ import ConfigMapActionsMenu from './ConfigMapActionsMenu';
 import { useConfigMapActions } from './useConfigMapActions';
 
 export default function ConfigMapList({ isVisible }) {
-    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
-    const { configMaps, loading } = useConfigMaps(currentContext, currentNamespace, isVisible);
+    const { configMaps, loading } = useConfigMaps(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleDelete } = useConfigMapActions();
 
     const columns = useMemo(() => [
@@ -45,9 +45,10 @@ export default function ConfigMapList({ isVisible }) {
             data={configMaps}
             isLoading={loading}
             namespaces={namespaces}
-            currentNamespace={currentNamespace}
-            onNamespaceChange={setCurrentNamespace}
+            currentNamespace={selectedNamespaces}
+            onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
+            multiSelectNamespaces={true}
         />
     );
 }

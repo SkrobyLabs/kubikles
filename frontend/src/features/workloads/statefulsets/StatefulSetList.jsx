@@ -11,11 +11,11 @@ import { formatAge } from '../../../utils/formatting';
 import { getDeploymentPods, getEffectivePodStatus, getPodStatusColor } from '../../../utils/k8s-helpers';
 
 export default function StatefulSetList({ isVisible }) {
-    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     // console.log("StatefulSetList rendering");
-    const { statefulSets, loading: statefulSetsLoading } = useStatefulSets(currentContext, currentNamespace, isVisible);
-    const { pods: allPods, loading: podsLoading } = usePods(currentContext, currentNamespace, isVisible);
+    const { statefulSets, loading: statefulSetsLoading } = useStatefulSets(currentContext, selectedNamespaces, isVisible);
+    const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleRestart, handleDelete, handleViewLogs } = useStatefulSetActions();
 
     const columns = useMemo(() => [
@@ -88,9 +88,10 @@ export default function StatefulSetList({ isVisible }) {
             data={statefulSets}
             isLoading={statefulSetsLoading}
             namespaces={namespaces}
-            currentNamespace={currentNamespace}
-            onNamespaceChange={setCurrentNamespace}
+            currentNamespace={selectedNamespaces}
+            onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
+            multiSelectNamespaces={true}
             highlightedUid={activeMenuId}
         />
     );

@@ -9,9 +9,9 @@ import SecretActionsMenu from './SecretActionsMenu';
 import { useSecretActions } from './useSecretActions';
 
 export default function SecretList({ isVisible }) {
-    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
-    const { secrets, loading } = useSecrets(currentContext, currentNamespace, isVisible);
+    const { secrets, loading } = useSecrets(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleDelete } = useSecretActions();
 
     const columns = useMemo(() => [
@@ -45,9 +45,10 @@ export default function SecretList({ isVisible }) {
             data={secrets}
             isLoading={loading}
             namespaces={namespaces}
-            currentNamespace={currentNamespace}
-            onNamespaceChange={setCurrentNamespace}
+            currentNamespace={selectedNamespaces}
+            onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
+            multiSelectNamespaces={true}
         />
     );
 }

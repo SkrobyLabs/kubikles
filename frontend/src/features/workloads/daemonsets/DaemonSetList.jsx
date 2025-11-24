@@ -9,9 +9,9 @@ import { useUI } from '../../../context/UIContext';
 import { formatAge } from '../../../utils/formatting';
 
 export default function DaemonSetList({ isVisible }) {
-    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
-    const { daemonSets, loading } = useDaemonSets(currentContext, currentNamespace, isVisible);
+    const { daemonSets, loading } = useDaemonSets(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleRestart, handleDelete, handleViewLogs } = useDaemonSetActions();
 
     const columns = useMemo(() => [
@@ -69,9 +69,10 @@ export default function DaemonSetList({ isVisible }) {
             data={daemonSets}
             isLoading={loading}
             namespaces={namespaces}
-            currentNamespace={currentNamespace}
-            onNamespaceChange={setCurrentNamespace}
+            currentNamespace={selectedNamespaces}
+            onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
+            multiSelectNamespaces={true}
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'asc' }}
         />

@@ -10,10 +10,10 @@ import { formatAge } from '../../../utils/formatting';
 import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusPriority, getPodController } from '../../../utils/k8s-helpers';
 
 export default function PodList({ isVisible }) {
-    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     // console.log("PodList rendering");
-    const { pods, loading } = usePods(currentContext, currentNamespace, isVisible);
+    const { pods, loading } = usePods(currentContext, selectedNamespaces, isVisible);
     const { openLogs, handleShell, handleEditYaml, handleDelete } = usePodActions();
 
     const columns = useMemo(() => [
@@ -111,9 +111,10 @@ export default function PodList({ isVisible }) {
             data={pods}
             isLoading={loading}
             namespaces={namespaces}
-            currentNamespace={currentNamespace}
-            onNamespaceChange={setCurrentNamespace}
+            currentNamespace={selectedNamespaces}
+            onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
+            multiSelectNamespaces={true}
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'asc' }}
         />

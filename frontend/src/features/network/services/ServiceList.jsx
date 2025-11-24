@@ -5,8 +5,8 @@ import { useK8s } from '../../../context/K8sContext';
 import { formatAge } from '../../../utils/formatting';
 
 export default function ServiceList({ isVisible }) {
-    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
-    const { services, loading } = useServices(currentContext, currentNamespace, isVisible);
+    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
+    const { services, loading } = useServices(currentContext, selectedNamespaces, isVisible);
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
@@ -24,9 +24,10 @@ export default function ServiceList({ isVisible }) {
             data={services}
             isLoading={loading}
             namespaces={namespaces}
-            currentNamespace={currentNamespace}
-            onNamespaceChange={setCurrentNamespace}
+            currentNamespace={selectedNamespaces}
+            onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
+            multiSelectNamespaces={true}
         />
     );
 }

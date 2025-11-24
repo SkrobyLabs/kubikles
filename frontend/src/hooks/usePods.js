@@ -1,19 +1,44 @@
 import { useState, useEffect, useRef } from 'react';
 import { ListPods, StartPodWatcher } from '../../wailsjs/go/main/App';
+import { useK8s } from '../context/K8sContext';
+import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 
-export const usePods = (currentContext, namespace, isVisible) => {
+export const usePods = (currentContext, selectedNamespaces, isVisible) => {
     const [pods, setPods] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const { namespaces: allNamespaces } = useK8s();
 
     useEffect(() => {
-        if (!currentContext || namespace === null || namespace === undefined || !isVisible) return;
+        if (!currentContext || selectedNamespaces === null || selectedNamespaces === undefined || !isVisible) return;
 
         const fetchPods = async () => {
             setLoading(true);
             try {
-                const list = await ListPods(namespace);
-                setPods(list || []);
+                const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
+
+                if (optimized === null) {
+                    // No namespaces selected - return empty
+                    setPods([]);
+                } else if (optimized === '') {
+                    // Fetch from all namespaces in a single query (optimized)
+                    const list = await ListPods('');
+                    setPods(list || []);
+                } else {
+                    // Fetch from each namespace and merge results
+                    const allPods = await Promise.all(
+                        optimized.map(ns => ListPods(ns).catch(err => {
+                            console.error(`Failed to fetch pods from namespace ${ns}`, err);
+                            return [];
+                        }))
+                    );
+                    // Flatten and deduplicate by UID
+                    const merged = allPods.flat();
+                    const unique = merged.filter((pod, index, self) =>
+                        index === self.findIndex(p => p.metadata.uid === pod.metadata.uid)
+                    );
+                    setPods(unique);
+                }
                 setError(null);
             } catch (err) {
                 console.error("Failed to fetch pods", err);
@@ -24,7 +49,14 @@ export const usePods = (currentContext, namespace, isVisible) => {
         };
 
         fetchPods();
-        StartPodWatcher(namespace);
+
+        // Start watchers - optimize the same way
+        const optimizedWatch = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
+        if (optimizedWatch === '') {
+            StartPodWatcher('');
+        } else if (optimizedWatch !== null) {
+            optimizedWatch.forEach(ns => StartPodWatcher(ns));
+        }
 
         // Event Listener
         const handlePodEvent = (event) => {
@@ -53,7 +85,7 @@ export const usePods = (currentContext, namespace, isVisible) => {
                 window.runtime.EventsOff("pod-event");
             }
         };
-    }, [currentContext, namespace, isVisible]);
+    }, [currentContext, selectedNamespaces, isVisible, allNamespaces]);
 
     return { pods, loading, error, setPods };
 };

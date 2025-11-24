@@ -7,9 +7,9 @@ import JobActionsMenu from './JobActionsMenu';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 
 export default function JobList({ isVisible }) {
-    const { currentContext, currentNamespace, namespaces, setCurrentNamespace } = useK8s();
-    const { jobs, loading } = useJobs(currentContext, currentNamespace, isVisible);
-    const { handleEditYaml, handleDelete, handleViewLogs } = useJobActions(currentNamespace);
+    const { currentContext, selectedNamespaces, namespaces, setSelectedNamespaces } = useK8s();
+    const { jobs, loading } = useJobs(currentContext, selectedNamespaces, isVisible);
+    const { handleEditYaml, handleDelete, handleViewLogs } = useJobActions(selectedNamespaces);
     const [activeMenuId, setActiveMenuId] = React.useState(null);
 
     const getCompletions = (job) => {
@@ -98,8 +98,9 @@ export default function JobList({ isVisible }) {
             loading={loading}
             emptyMessage="No jobs found in this namespace"
             namespaces={namespaces}
-            currentNamespace={currentNamespace}
-            onNamespaceChange={setCurrentNamespace}
+            currentNamespace={selectedNamespaces}
+            onNamespaceChange={setSelectedNamespaces}
+            multiSelectNamespaces={true}
         />
     );
 }

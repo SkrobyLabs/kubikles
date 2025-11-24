@@ -10,9 +10,9 @@ import { useUI } from '../../../context/UIContext';
 import { formatAge } from '../../../utils/formatting';
 
 export default function CronJobList({ isVisible }) {
-    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
-    const { cronJobs, loading } = useCronJobs(currentContext, currentNamespace, isVisible);
+    const { cronJobs, loading } = useCronJobs(currentContext, selectedNamespaces, isVisible);
     const { handleViewLogs, handleEditYaml, handleRunNow, handleSuspend, handleDelete } = useCronJobActions();
 
     // Format duration for future time (reverse of formatAge)
@@ -149,9 +149,10 @@ export default function CronJobList({ isVisible }) {
             data={cronJobs}
             isLoading={loading}
             namespaces={namespaces}
-            currentNamespace={currentNamespace}
-            onNamespaceChange={setCurrentNamespace}
+            currentNamespace={selectedNamespaces}
+            onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
+            multiSelectNamespaces={true}
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'asc' }}
         />

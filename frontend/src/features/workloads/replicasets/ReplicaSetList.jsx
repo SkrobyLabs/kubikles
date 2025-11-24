@@ -9,9 +9,9 @@ import { useUI } from '../../../context/UIContext';
 import { formatAge } from '../../../utils/formatting';
 
 export default function ReplicaSetList({ isVisible }) {
-    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
-    const { replicaSets, loading } = useReplicaSets(currentContext, currentNamespace, isVisible);
+    const { replicaSets, loading } = useReplicaSets(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleDelete, handleViewLogs } = useReplicaSetActions();
 
     const columns = useMemo(() => [
@@ -62,9 +62,10 @@ export default function ReplicaSetList({ isVisible }) {
             data={replicaSets}
             isLoading={loading}
             namespaces={namespaces}
-            currentNamespace={currentNamespace}
-            onNamespaceChange={setCurrentNamespace}
+            currentNamespace={selectedNamespaces}
+            onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
+            multiSelectNamespaces={true}
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'asc' }}
         />
