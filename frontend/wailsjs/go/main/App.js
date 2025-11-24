@@ -82,6 +82,10 @@ export function GetReplicaSetYaml(arg1, arg2) {
   return window['go']['main']['App']['GetReplicaSetYaml'](arg1, arg2);
 }
 
+export function GetSecretData(arg1, arg2) {
+  return window['go']['main']['App']['GetSecretData'](arg1, arg2);
+}
+
 export function GetSecretYaml(arg1, arg2) {
   return window['go']['main']['App']['GetSecretYaml'](arg1, arg2);
 }
@@ -224,6 +228,10 @@ export function UpdatePodYaml(arg1, arg2, arg3) {
 
 export function UpdateReplicaSetYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateReplicaSetYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateSecretData(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateSecretData'](arg1, arg2, arg3);
 }
 
 export function UpdateSecretYaml(arg1, arg2, arg3) {

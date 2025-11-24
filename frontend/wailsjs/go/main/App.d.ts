@@ -43,6 +43,8 @@ export function GetPodYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetReplicaSetYaml(arg1:string,arg2:string):Promise<string>;
 
+export function GetSecretData(arg1:string,arg2:string):Promise<Record<string, string>>;
+
 export function GetSecretYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetStatefulSetYaml(arg1:string,arg2:string):Promise<string>;
@@ -114,6 +116,8 @@ export function UpdateJobYaml(arg1:string,arg2:string,arg3:string):Promise<void>
 export function UpdatePodYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateReplicaSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateSecretData(arg1:string,arg2:string,arg3:Record<string, string>):Promise<void>;
 
 export function UpdateSecretYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

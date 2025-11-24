@@ -2,7 +2,7 @@ import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeleteSecret } from '../../../../wailsjs/go/main/App';
-import YamlEditor from '../../../components/shared/YamlEditor';
+import SecretEditor from '../../../components/shared/SecretEditor';
 import Logger from '../../../utils/Logger';
 
 export const useSecretActions = () => {
@@ -10,16 +10,15 @@ export const useSecretActions = () => {
     const { currentContext } = useK8s();
 
     const handleEditYaml = (secret) => {
-        Logger.info("Opening YAML editor", { namespace: secret.metadata.namespace, secret: secret.metadata.name });
-        const tabId = `yaml-secret-${secret.metadata.uid}`;
+        Logger.info("Opening secret editor", { namespace: secret.metadata.namespace, secret: secret.metadata.name });
+        const tabId = `secret-${secret.metadata.uid}`;
         openTab({
             id: tabId,
             title: `Edit: ${secret.metadata.name}`,
             content: (
-                <YamlEditor
+                <SecretEditor
                     namespace={secret.metadata.namespace}
                     resourceName={secret.metadata.name}
-                    isSecret={true}
                     onClose={() => closeTab(tabId)}
                 />
             )

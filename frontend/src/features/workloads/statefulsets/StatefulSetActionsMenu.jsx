@@ -70,7 +70,7 @@ export default function StatefulSetActionsMenu({ statefulSet, isOpen, onOpenChan
                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
             >
                 <PencilSquareIcon className="h-4 w-4" />
-                Edit YAML
+                Edit
             </button>
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onRestart(statefulSet)); }}

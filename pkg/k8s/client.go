@@ -274,6 +274,41 @@ func (c *Client) DeleteSecret(namespace, name string) error {
 	return cs.CoreV1().Secrets(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
 
+// GetSecretData returns the secret's data as a map of key -> base64-encoded value
+func (c *Client) GetSecretData(namespace, name string) (map[string]string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	secret, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]string)
+	for k, v := range secret.Data {
+		result[k] = string(v)
+	}
+	return result, nil
+}
+
+// UpdateSecretData updates the secret's data from a map of key -> value (values are raw strings, will be stored as bytes)
+func (c *Client) UpdateSecretData(namespace, name string, data map[string]string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	secret, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	secret.Data = make(map[string][]byte)
+	for k, v := range data {
+		secret.Data[k] = []byte(v)
+	}
+	_, err = cs.CoreV1().Secrets(namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+	return err
+}
+
 func (c *Client) ListDeployments(namespace string) ([]appsv1.Deployment, error) {
 	cs, err := c.getClientset()
 	if err != nil {

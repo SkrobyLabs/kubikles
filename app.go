@@ -170,6 +170,22 @@ func (a *App) DeleteSecret(namespace, name string) error {
 	return a.k8sClient.DeleteSecret(namespace, name)
 }
 
+func (a *App) GetSecretData(namespace, name string) (map[string]string, error) {
+	a.LogDebug("GetSecretData called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetSecretData(namespace, name)
+}
+
+func (a *App) UpdateSecretData(namespace, name string, data map[string]string) error {
+	a.LogDebug("UpdateSecretData called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateSecretData(namespace, name, data)
+}
+
 func (a *App) ListDeployments(namespace string) ([]appsv1.Deployment, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
