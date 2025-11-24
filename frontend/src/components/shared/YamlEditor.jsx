@@ -5,10 +5,12 @@ import {
     GetDeploymentYaml, UpdateDeploymentYaml,
     GetStatefulSetYaml, UpdateStatefulSetYaml,
     GetConfigMapYaml, UpdateConfigMapYaml,
-    GetSecretYaml, UpdateSecretYaml
+    GetSecretYaml, UpdateSecretYaml,
+    GetDaemonSetYaml, UpdateDaemonSetYaml,
+    GetReplicaSetYaml, UpdateReplicaSetYaml
 } from '../../../wailsjs/go/main/App';
 
-export default function YamlEditor({ namespace, podName, isDeployment, isStatefulSet, isConfigMap, isSecret, onClose }) {
+export default function YamlEditor({ namespace, podName, isDeployment, isStatefulSet, isConfigMap, isSecret, isDaemonSet, isReplicaSet, onClose }) {
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -32,6 +34,10 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
                 yaml = await GetConfigMapYaml(namespace, podName);
             } else if (isSecret) {
                 yaml = await GetSecretYaml(namespace, podName);
+            } else if (isDaemonSet) {
+                yaml = await GetDaemonSetYaml(namespace, podName);
+            } else if (isReplicaSet) {
+                yaml = await GetReplicaSetYaml(namespace, podName);
             } else {
                 yaml = await GetPodYaml(namespace, podName);
             }
@@ -54,6 +60,10 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
                 await UpdateConfigMapYaml(namespace, podName, content);
             } else if (isSecret) {
                 await UpdateSecretYaml(namespace, podName, content);
+            } else if (isDaemonSet) {
+                await UpdateDaemonSetYaml(namespace, podName, content);
+            } else if (isReplicaSet) {
+                await UpdateReplicaSetYaml(namespace, podName, content);
             } else {
                 await UpdatePodYaml(namespace, podName, content);
             }

@@ -1,0 +1,77 @@
+import React, { useMemo } from 'react';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import ResourceList from '../../../components/shared/ResourceList';
+import DaemonSetActionsMenu from './DaemonSetActionsMenu';
+import { useDaemonSets } from '../../../hooks/useDaemonSets';
+import { useDaemonSetActions } from './useDaemonSetActions';
+import { useK8s } from '../../../context/K8sContext';
+import { useUI } from '../../../context/UIContext';
+import { formatAge } from '../../../utils/formatting';
+
+export default function DaemonSetList({ isVisible }) {
+    const { currentContext, currentNamespace, setCurrentNamespace, namespaces } = useK8s();
+    const { activeMenuId, setActiveMenuId } = useUI();
+    const { daemonSets, loading } = useDaemonSets(currentContext, currentNamespace, isVisible);
+    const { handleEditYaml, handleRestart, handleDelete } = useDaemonSetActions();
+
+    const columns = useMemo(() => [
+        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
+        {
+            key: 'desired',
+            label: 'Desired',
+            render: (item) => item.status?.desiredNumberScheduled || 0,
+            getValue: (item) => item.status?.desiredNumberScheduled || 0
+        },
+        {
+            key: 'current',
+            label: 'Current',
+            render: (item) => item.status?.currentNumberScheduled || 0,
+            getValue: (item) => item.status?.currentNumberScheduled || 0
+        },
+        {
+            key: 'ready',
+            label: 'Ready',
+            render: (item) => item.status?.numberReady || 0,
+            getValue: (item) => item.status?.numberReady || 0
+        },
+        {
+            key: 'available',
+            label: 'Available',
+            render: (item) => item.status?.numberAvailable || 0,
+            getValue: (item) => item.status?.numberAvailable || 0
+        },
+        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        {
+            key: 'actions',
+            label: <EllipsisVerticalIcon className="h-5 w-5" />,
+            align: 'center',
+            render: (item) => (
+                <DaemonSetActionsMenu
+                    daemonSet={item}
+                    isOpen={activeMenuId === `ds-${item.metadata.uid}`}
+                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `ds-${item.metadata.uid}` : null)}
+                    onEditYaml={() => handleEditYaml(item)}
+                    onRestart={() => handleRestart(item.metadata.namespace, item.metadata.name)}
+                    onDelete={() => handleDelete(item.metadata.namespace, item.metadata.name)}
+                />
+            ),
+            isColumnSelector: true,
+            disableSort: true
+        },
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleRestart, handleDelete]);
+
+    return (
+        <ResourceList
+            title="DaemonSets"
+            columns={columns}
+            data={daemonSets}
+            isLoading={loading}
+            namespaces={namespaces}
+            currentNamespace={currentNamespace}
+            onNamespaceChange={setCurrentNamespace}
+            showNamespaceSelector={true}
+            highlightedUid={activeMenuId}
+            initialSort={{ key: 'age', direction: 'asc' }}
+        />
+    );
+}

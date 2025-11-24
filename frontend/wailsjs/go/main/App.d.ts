@@ -4,9 +4,13 @@ import {v1} from '../models';
 
 export function DeleteConfigMap(arg1:string,arg2:string):Promise<void>;
 
+export function DeleteDaemonSet(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteDeployment(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function DeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function DeleteReplicaSet(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteSecret(arg1:string,arg2:string):Promise<void>;
 
@@ -18,11 +22,15 @@ export function GetConfigMapYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetCurrentContext():Promise<string>;
 
+export function GetDaemonSetYaml(arg1:string,arg2:string):Promise<string>;
+
 export function GetDeploymentYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetPodLogs(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function GetPodYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetReplicaSetYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetSecretYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -34,6 +42,8 @@ export function ListConfigMaps(arg1:string):Promise<Array<v1.ConfigMap>>;
 
 export function ListContexts():Promise<Array<string>>;
 
+export function ListDaemonSets(arg1:string):Promise<Array<v1.DaemonSet>>;
+
 export function ListDeployments(arg1:string):Promise<Array<v1.Deployment>>;
 
 export function ListNamespaces():Promise<Array<v1.Namespace>>;
@@ -41,6 +51,8 @@ export function ListNamespaces():Promise<Array<v1.Namespace>>;
 export function ListNodes():Promise<Array<v1.Node>>;
 
 export function ListPods(arg1:string):Promise<Array<v1.Pod>>;
+
+export function ListReplicaSets(arg1:string):Promise<Array<v1.ReplicaSet>>;
 
 export function ListSecrets(arg1:string):Promise<Array<v1.Secret>>;
 
@@ -51,6 +63,8 @@ export function ListStatefulSets(arg1:string,arg2:string):Promise<Array<v1.State
 export function LogDebug(arg1:string,arg2:Array<any>):Promise<void>;
 
 export function OpenTerminal(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
+
+export function RestartDaemonSet(arg1:string,arg2:string):Promise<void>;
 
 export function RestartDeployment(arg1:string,arg2:string,arg3:string):Promise<void>;
 
@@ -64,9 +78,13 @@ export function TestEmit():Promise<void>;
 
 export function UpdateConfigMapYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function UpdateDaemonSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function UpdateDeploymentYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdatePodYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateReplicaSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateSecretYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

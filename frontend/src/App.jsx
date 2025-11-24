@@ -6,6 +6,8 @@ import BottomPanel from './components/layout/BottomPanel';
 import PodList from './features/workloads/pods/PodList';
 import DeploymentList from './features/workloads/deployments/DeploymentList';
 import StatefulSetList from './features/workloads/statefulsets/StatefulSetList';
+import DaemonSetList from './features/workloads/daemonsets/DaemonSetList';
+import ReplicaSetList from './features/workloads/replicasets/ReplicaSetList';
 import NodeList from './features/cluster/nodes/NodeList';
 import ServiceList from './features/network/services/ServiceList';
 import ConfigMapList from './features/config/configmaps/ConfigMapList';
@@ -93,6 +95,8 @@ function MainLayout() {
             case 'pods': return <PodList isVisible={true} />;
             case 'deployments': return <DeploymentList isVisible={true} />;
             case 'statefulsets': return <StatefulSetList isVisible={true} />;
+            case 'daemonsets': return <DaemonSetList isVisible={true} />;
+            case 'replicasets': return <ReplicaSetList isVisible={true} />;
             case 'nodes': return <NodeList isVisible={true} />;
             case 'services': return <ServiceList isVisible={true} />;
             case 'configmaps': return <ConfigMapList isVisible={true} />;

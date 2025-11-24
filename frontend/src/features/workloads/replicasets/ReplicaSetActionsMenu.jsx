@@ -2,14 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 
-export default function SecretActionsMenu({ secret, isOpen, onOpenChange, onEditYaml, onDelete }) {
+export default function ReplicaSetActionsMenu({ replicaSet, isOpen, onOpenChange, onEditYaml, onDelete }) {
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const buttonRef = useRef(null);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (buttonRef.current && !buttonRef.current.contains(event.target)) {
-                const menu = document.getElementById(`secret-menu-${secret.metadata.uid}`);
+                const menu = document.getElementById(`rs-menu-${replicaSet.metadata.uid}`);
                 if (menu && !menu.contains(event.target)) {
                     onOpenChange(false);
                 }
@@ -29,7 +29,7 @@ export default function SecretActionsMenu({ secret, isOpen, onOpenChange, onEdit
             window.removeEventListener('scroll', handleScroll, true);
             window.removeEventListener('resize', handleScroll);
         };
-    }, [isOpen, secret.metadata.uid, onOpenChange]);
+    }, [isOpen, replicaSet.metadata.uid, onOpenChange]);
 
     const toggleMenu = (e) => {
         e.stopPropagation();
@@ -50,13 +50,13 @@ export default function SecretActionsMenu({ secret, isOpen, onOpenChange, onEdit
 
     const menu = (
         <div
-            id={`secret-menu-${secret.metadata.uid}`}
+            id={`rs-menu-${replicaSet.metadata.uid}`}
             className="fixed w-48 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg z-50 py-1"
             style={{ top: position.top, left: position.left }}
             onClick={(e) => e.stopPropagation()}
         >
             <button
-                onClick={(e) => { e.stopPropagation(); handleAction(() => onEditYaml(secret)); }}
+                onClick={(e) => { e.stopPropagation(); handleAction(onEditYaml); }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
             >
                 <PencilSquareIcon className="h-4 w-4" />
@@ -64,7 +64,7 @@ export default function SecretActionsMenu({ secret, isOpen, onOpenChange, onEdit
             </button>
             <div className="h-px bg-[#3d3d3d] my-1" />
             <button
-                onClick={(e) => { e.stopPropagation(); handleAction(() => onDelete(secret)); }}
+                onClick={(e) => { e.stopPropagation(); handleAction(onDelete); }}
                 className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-[#3d3d3d] flex items-center gap-2"
             >
                 <TrashIcon className="h-4 w-4" />

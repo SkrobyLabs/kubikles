@@ -5,7 +5,9 @@ import {
     GlobeAltIcon,
     DocumentTextIcon,
     LockClosedIcon,
-    RocketLaunchIcon
+    RocketLaunchIcon,
+    ServerStackIcon,
+    Square2StackIcon
 } from '@heroicons/react/24/outline';
 import SearchSelect from '../shared/SearchSelect';
 
@@ -28,8 +30,10 @@ export default function Sidebar({
             title: 'Workloads',
             items: [
                 { id: 'pods', label: 'Pods', icon: CubeIcon },
-                { id: 'deployments', label: 'Deployments', icon: RocketLaunchIcon },
-                { id: 'statefulsets', label: 'StatefulSets', icon: CubeIcon },
+                { id: 'deployments', label: 'Deployments', icon: CubeIcon },
+                { id: 'statefulsets', label: 'StatefulSets', icon: ServerStackIcon },
+                { id: 'daemonsets', label: 'DaemonSets', icon: ServerStackIcon },
+                { id: 'replicasets', label: 'ReplicaSets', icon: Square2StackIcon },
             ]
         },
         {

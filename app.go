@@ -380,6 +380,85 @@ func (a *App) UpdateStatefulSetYaml(namespace, name, yamlContent string) error {
 	return a.k8sClient.UpdateStatefulSetYaml(namespace, name, yamlContent)
 }
 
+// DaemonSet wrappers
+func (a *App) ListDaemonSets(namespace string) ([]appsv1.DaemonSet, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ListDaemonSets called: context=%s, ns=%s", currentContext, namespace)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListDaemonSets(currentContext, namespace)
+}
+
+func (a *App) GetDaemonSetYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetDaemonSetYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetDaemonSetYaml(namespace, name)
+}
+
+func (a *App) UpdateDaemonSetYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdateDaemonSetYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateDaemonSetYaml(namespace, name, yamlContent)
+}
+
+func (a *App) RestartDaemonSet(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("RestartDaemonSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.RestartDaemonSet(currentContext, namespace, name)
+}
+
+func (a *App) DeleteDaemonSet(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteDaemonSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteDaemonSet(currentContext, namespace, name)
+}
+
+// ReplicaSet wrappers
+func (a *App) ListReplicaSets(namespace string) ([]appsv1.ReplicaSet, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ListReplicaSets called: context=%s, ns=%s", currentContext, namespace)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListReplicaSets(currentContext, namespace)
+}
+
+func (a *App) GetReplicaSetYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetReplicaSetYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetReplicaSetYaml(namespace, name)
+}
+
+func (a *App) UpdateReplicaSetYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdateReplicaSetYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateReplicaSetYaml(namespace, name, yamlContent)
+}
+
+func (a *App) DeleteReplicaSet(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteReplicaSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteReplicaSet(currentContext, namespace, name)
+}
+
 func (a *App) RestartStatefulSet(contextName, namespace, name string) error {
 	a.LogDebug("RestartStatefulSet called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {

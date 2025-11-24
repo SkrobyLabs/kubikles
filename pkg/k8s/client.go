@@ -537,3 +537,126 @@ func (c *Client) DeleteStatefulSet(contextName, namespace, name string) error {
 	}
 	return cs.AppsV1().StatefulSets(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
+
+// DaemonSet operations
+func (c *Client) ListDaemonSets(contextName, namespace string) ([]appsv1.DaemonSet, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	daemonsets, err := cs.AppsV1().DaemonSets(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return daemonsets.Items, nil
+}
+
+func (c *Client) GetDaemonSetYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	daemonset, err := cs.AppsV1().DaemonSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	// Remove managed fields
+	daemonset.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(daemonset)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateDaemonSetYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var daemonset appsv1.DaemonSet
+	if err := yaml.Unmarshal([]byte(yamlContent), &daemonset); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.AppsV1().DaemonSets(namespace).Update(context.TODO(), &daemonset, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) RestartDaemonSet(contextName, namespace, name string) error {
+	fmt.Printf("Restarting daemonset: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+
+	// Patch the daemonset to trigger a rollout
+	patch := fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, metav1.Now().String())
+	_, err = cs.AppsV1().DaemonSets(namespace).Patch(context.TODO(), name, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{})
+	return err
+}
+
+func (c *Client) DeleteDaemonSet(contextName, namespace, name string) error {
+	fmt.Printf("Deleting daemonset: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.AppsV1().DaemonSets(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// ReplicaSet operations
+func (c *Client) ListReplicaSets(contextName, namespace string) ([]appsv1.ReplicaSet, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	replicasets, err := cs.AppsV1().ReplicaSets(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return replicasets.Items, nil
+}
+
+func (c *Client) GetReplicaSetYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	replicaset, err := cs.AppsV1().ReplicaSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	// Remove managed fields
+	replicaset.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(replicaset)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateReplicaSetYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var replicaset appsv1.ReplicaSet
+	if err := yaml.Unmarshal([]byte(yamlContent), &replicaset); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.AppsV1().ReplicaSets(namespace).Update(context.TODO(), &replicaset, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteReplicaSet(contextName, namespace, name string) error {
+	fmt.Printf("Deleting replicaset: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.AppsV1().ReplicaSets(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}

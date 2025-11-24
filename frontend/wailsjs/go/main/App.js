@@ -6,12 +6,20 @@ export function DeleteConfigMap(arg1, arg2) {
   return window['go']['main']['App']['DeleteConfigMap'](arg1, arg2);
 }
 
+export function DeleteDaemonSet(arg1, arg2) {
+  return window['go']['main']['App']['DeleteDaemonSet'](arg1, arg2);
+}
+
 export function DeleteDeployment(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeleteDeployment'](arg1, arg2, arg3);
 }
 
 export function DeletePod(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeletePod'](arg1, arg2, arg3);
+}
+
+export function DeleteReplicaSet(arg1, arg2) {
+  return window['go']['main']['App']['DeleteReplicaSet'](arg1, arg2);
 }
 
 export function DeleteSecret(arg1, arg2) {
@@ -34,6 +42,10 @@ export function GetCurrentContext() {
   return window['go']['main']['App']['GetCurrentContext']();
 }
 
+export function GetDaemonSetYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetDaemonSetYaml'](arg1, arg2);
+}
+
 export function GetDeploymentYaml(arg1, arg2) {
   return window['go']['main']['App']['GetDeploymentYaml'](arg1, arg2);
 }
@@ -44,6 +56,10 @@ export function GetPodLogs(arg1, arg2, arg3) {
 
 export function GetPodYaml(arg1, arg2) {
   return window['go']['main']['App']['GetPodYaml'](arg1, arg2);
+}
+
+export function GetReplicaSetYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetReplicaSetYaml'](arg1, arg2);
 }
 
 export function GetSecretYaml(arg1, arg2) {
@@ -66,6 +82,10 @@ export function ListContexts() {
   return window['go']['main']['App']['ListContexts']();
 }
 
+export function ListDaemonSets(arg1) {
+  return window['go']['main']['App']['ListDaemonSets'](arg1);
+}
+
 export function ListDeployments(arg1) {
   return window['go']['main']['App']['ListDeployments'](arg1);
 }
@@ -80,6 +100,10 @@ export function ListNodes() {
 
 export function ListPods(arg1) {
   return window['go']['main']['App']['ListPods'](arg1);
+}
+
+export function ListReplicaSets(arg1) {
+  return window['go']['main']['App']['ListReplicaSets'](arg1);
 }
 
 export function ListSecrets(arg1) {
@@ -100,6 +124,10 @@ export function LogDebug(arg1, arg2) {
 
 export function OpenTerminal(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['OpenTerminal'](arg1, arg2, arg3, arg4);
+}
+
+export function RestartDaemonSet(arg1, arg2) {
+  return window['go']['main']['App']['RestartDaemonSet'](arg1, arg2);
 }
 
 export function RestartDeployment(arg1, arg2, arg3) {
@@ -126,12 +154,20 @@ export function UpdateConfigMapYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateConfigMapYaml'](arg1, arg2, arg3);
 }
 
+export function UpdateDaemonSetYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateDaemonSetYaml'](arg1, arg2, arg3);
+}
+
 export function UpdateDeploymentYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateDeploymentYaml'](arg1, arg2, arg3);
 }
 
 export function UpdatePodYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdatePodYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateReplicaSetYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateReplicaSetYaml'](arg1, arg2, arg3);
 }
 
 export function UpdateSecretYaml(arg1, arg2, arg3) {

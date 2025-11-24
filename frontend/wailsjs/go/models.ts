@@ -1826,23 +1826,21 @@ export namespace v1 {
 	        this.Port = source["Port"];
 	    }
 	}
-	export class DeploymentCondition {
+	export class DaemonSetCondition {
 	    type: string;
 	    status: string;
-	    lastUpdateTime?: Time;
 	    lastTransitionTime?: Time;
 	    reason?: string;
 	    message?: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new DeploymentCondition(source);
+	        return new DaemonSetCondition(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.type = source["type"];
 	        this.status = source["status"];
-	        this.lastUpdateTime = this.convertValues(source["lastUpdateTime"], Time);
 	        this.lastTransitionTime = this.convertValues(source["lastTransitionTime"], Time);
 	        this.reason = source["reason"];
 	        this.message = source["message"];
@@ -1866,32 +1864,34 @@ export namespace v1 {
 		    return a;
 		}
 	}
-	export class DeploymentStatus {
+	export class DaemonSetStatus {
+	    currentNumberScheduled: number;
+	    numberMisscheduled: number;
+	    desiredNumberScheduled: number;
+	    numberReady: number;
 	    observedGeneration?: number;
-	    replicas?: number;
-	    updatedReplicas?: number;
-	    readyReplicas?: number;
-	    availableReplicas?: number;
-	    unavailableReplicas?: number;
-	    terminatingReplicas?: number;
-	    conditions?: DeploymentCondition[];
+	    updatedNumberScheduled?: number;
+	    numberAvailable?: number;
+	    numberUnavailable?: number;
 	    collisionCount?: number;
+	    conditions?: DaemonSetCondition[];
 	
 	    static createFrom(source: any = {}) {
-	        return new DeploymentStatus(source);
+	        return new DaemonSetStatus(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currentNumberScheduled = source["currentNumberScheduled"];
+	        this.numberMisscheduled = source["numberMisscheduled"];
+	        this.desiredNumberScheduled = source["desiredNumberScheduled"];
+	        this.numberReady = source["numberReady"];
 	        this.observedGeneration = source["observedGeneration"];
-	        this.replicas = source["replicas"];
-	        this.updatedReplicas = source["updatedReplicas"];
-	        this.readyReplicas = source["readyReplicas"];
-	        this.availableReplicas = source["availableReplicas"];
-	        this.unavailableReplicas = source["unavailableReplicas"];
-	        this.terminatingReplicas = source["terminatingReplicas"];
-	        this.conditions = this.convertValues(source["conditions"], DeploymentCondition);
+	        this.updatedNumberScheduled = source["updatedNumberScheduled"];
+	        this.numberAvailable = source["numberAvailable"];
+	        this.numberUnavailable = source["numberUnavailable"];
 	        this.collisionCount = source["collisionCount"];
+	        this.conditions = this.convertValues(source["conditions"], DaemonSetCondition);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1912,12 +1912,12 @@ export namespace v1 {
 		    return a;
 		}
 	}
-	export class RollingUpdateDeployment {
+	export class RollingUpdateDaemonSet {
 	    maxUnavailable?: intstr.IntOrString;
 	    maxSurge?: intstr.IntOrString;
 	
 	    static createFrom(source: any = {}) {
-	        return new RollingUpdateDeployment(source);
+	        return new RollingUpdateDaemonSet(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1944,18 +1944,18 @@ export namespace v1 {
 		    return a;
 		}
 	}
-	export class DeploymentStrategy {
+	export class DaemonSetUpdateStrategy {
 	    type?: string;
-	    rollingUpdate?: RollingUpdateDeployment;
+	    rollingUpdate?: RollingUpdateDaemonSet;
 	
 	    static createFrom(source: any = {}) {
-	        return new DeploymentStrategy(source);
+	        return new DaemonSetUpdateStrategy(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.type = source["type"];
-	        this.rollingUpdate = this.convertValues(source["rollingUpdate"], RollingUpdateDeployment);
+	        this.rollingUpdate = this.convertValues(source["rollingUpdate"], RollingUpdateDaemonSet);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -3847,6 +3847,264 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	export class DaemonSetSpec {
+	    selector?: LabelSelector;
+	    template: PodTemplateSpec;
+	    updateStrategy?: DaemonSetUpdateStrategy;
+	    minReadySeconds?: number;
+	    revisionHistoryLimit?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DaemonSetSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.selector = this.convertValues(source["selector"], LabelSelector);
+	        this.template = this.convertValues(source["template"], PodTemplateSpec);
+	        this.updateStrategy = this.convertValues(source["updateStrategy"], DaemonSetUpdateStrategy);
+	        this.minReadySeconds = source["minReadySeconds"];
+	        this.revisionHistoryLimit = source["revisionHistoryLimit"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class DaemonSet {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: DaemonSetSpec;
+	    status?: DaemonSetStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new DaemonSet(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], DaemonSetSpec);
+	        this.status = this.convertValues(source["status"], DaemonSetStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+	
+	export class DeploymentCondition {
+	    type: string;
+	    status: string;
+	    lastUpdateTime?: Time;
+	    lastTransitionTime?: Time;
+	    reason?: string;
+	    message?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeploymentCondition(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.status = source["status"];
+	        this.lastUpdateTime = this.convertValues(source["lastUpdateTime"], Time);
+	        this.lastTransitionTime = this.convertValues(source["lastTransitionTime"], Time);
+	        this.reason = source["reason"];
+	        this.message = source["message"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class DeploymentStatus {
+	    observedGeneration?: number;
+	    replicas?: number;
+	    updatedReplicas?: number;
+	    readyReplicas?: number;
+	    availableReplicas?: number;
+	    unavailableReplicas?: number;
+	    terminatingReplicas?: number;
+	    conditions?: DeploymentCondition[];
+	    collisionCount?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeploymentStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.observedGeneration = source["observedGeneration"];
+	        this.replicas = source["replicas"];
+	        this.updatedReplicas = source["updatedReplicas"];
+	        this.readyReplicas = source["readyReplicas"];
+	        this.availableReplicas = source["availableReplicas"];
+	        this.unavailableReplicas = source["unavailableReplicas"];
+	        this.terminatingReplicas = source["terminatingReplicas"];
+	        this.conditions = this.convertValues(source["conditions"], DeploymentCondition);
+	        this.collisionCount = source["collisionCount"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class RollingUpdateDeployment {
+	    maxUnavailable?: intstr.IntOrString;
+	    maxSurge?: intstr.IntOrString;
+	
+	    static createFrom(source: any = {}) {
+	        return new RollingUpdateDeployment(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.maxUnavailable = this.convertValues(source["maxUnavailable"], intstr.IntOrString);
+	        this.maxSurge = this.convertValues(source["maxSurge"], intstr.IntOrString);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class DeploymentStrategy {
+	    type?: string;
+	    rollingUpdate?: RollingUpdateDeployment;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeploymentStrategy(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.rollingUpdate = this.convertValues(source["rollingUpdate"], RollingUpdateDeployment);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class DeploymentSpec {
 	    replicas?: number;
 	    selector?: LabelSelector;
@@ -5119,6 +5377,192 @@ export namespace v1 {
 	
 	
 	
+	
+	
+	
+	
+	export class ReplicaSetCondition {
+	    type: string;
+	    status: string;
+	    lastTransitionTime?: Time;
+	    reason?: string;
+	    message?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReplicaSetCondition(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.status = source["status"];
+	        this.lastTransitionTime = this.convertValues(source["lastTransitionTime"], Time);
+	        this.reason = source["reason"];
+	        this.message = source["message"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ReplicaSetStatus {
+	    replicas: number;
+	    fullyLabeledReplicas?: number;
+	    readyReplicas?: number;
+	    availableReplicas?: number;
+	    terminatingReplicas?: number;
+	    observedGeneration?: number;
+	    conditions?: ReplicaSetCondition[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ReplicaSetStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.replicas = source["replicas"];
+	        this.fullyLabeledReplicas = source["fullyLabeledReplicas"];
+	        this.readyReplicas = source["readyReplicas"];
+	        this.availableReplicas = source["availableReplicas"];
+	        this.terminatingReplicas = source["terminatingReplicas"];
+	        this.observedGeneration = source["observedGeneration"];
+	        this.conditions = this.convertValues(source["conditions"], ReplicaSetCondition);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ReplicaSetSpec {
+	    replicas?: number;
+	    minReadySeconds?: number;
+	    selector?: LabelSelector;
+	    template?: PodTemplateSpec;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReplicaSetSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.replicas = source["replicas"];
+	        this.minReadySeconds = source["minReadySeconds"];
+	        this.selector = this.convertValues(source["selector"], LabelSelector);
+	        this.template = this.convertValues(source["template"], PodTemplateSpec);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ReplicaSet {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: ReplicaSetSpec;
+	    status?: ReplicaSetStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReplicaSet(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], ReplicaSetSpec);
+	        this.status = this.convertValues(source["status"], ReplicaSetStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	
 	
