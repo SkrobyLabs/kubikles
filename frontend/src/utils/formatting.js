@@ -17,5 +17,12 @@ export const formatAge = (timestamp) => {
 
     const days = Math.floor(hours / 24);
     const remainingHours = hours % 24;
-    return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+
+    if (days < 365) {
+        return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+    }
+
+    const years = Math.floor(days / 365);
+    const remainingDays = days % 365;
+    return remainingDays > 0 ? `${years}y ${remainingDays}d` : `${years}y`;
 };
