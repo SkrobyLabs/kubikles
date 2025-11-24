@@ -58,6 +58,15 @@ export const useCronJobActions = () => {
                 ...(pod.spec?.containers || []).map(c => c.name)
             ];
 
+            // Build container map for all pods
+            const podContainerMap = {};
+            for (const p of jobPods) {
+                podContainerMap[p.metadata.name] = [
+                    ...(p.spec?.initContainers || []).map(c => c.name),
+                    ...(p.spec?.containers || []).map(c => c.name)
+                ];
+            }
+
             Logger.info("Opening logs for CronJob pod", {
                 namespace,
                 cronJob: cronJob.metadata.name,
@@ -76,6 +85,8 @@ export const useCronJobActions = () => {
                         pod={pod.metadata.name}
                         containers={containers}
                         siblingPods={jobPods.map(p => p.metadata.name)}
+                        podContainerMap={podContainerMap}
+                        ownerName={cronJob.metadata.name}
                     />
                 )
             });

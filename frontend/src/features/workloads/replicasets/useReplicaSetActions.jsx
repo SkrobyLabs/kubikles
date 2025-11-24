@@ -77,6 +77,15 @@ export const useReplicaSetActions = () => {
                 ...(pod.spec?.containers || []).map(c => c.name)
             ];
 
+            // Build container map for all pods
+            const podContainerMap = {};
+            for (const p of replicaSetPods) {
+                podContainerMap[p.metadata.name] = [
+                    ...(p.spec?.initContainers || []).map(c => c.name),
+                    ...(p.spec?.containers || []).map(c => c.name)
+                ];
+            }
+
             Logger.info("Opening logs for ReplicaSet pod", {
                 namespace,
                 replicaSet: replicaSet.metadata.name,
@@ -94,6 +103,8 @@ export const useReplicaSetActions = () => {
                         pod={pod.metadata.name}
                         containers={containers}
                         siblingPods={replicaSetPods.map(p => p.metadata.name)}
+                        podContainerMap={podContainerMap}
+                        ownerName={replicaSet.metadata.name}
                     />
                 )
             });

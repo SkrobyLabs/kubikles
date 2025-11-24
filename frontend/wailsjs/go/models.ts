@@ -19,6 +19,27 @@ export namespace intstr {
 
 }
 
+export namespace main {
+	
+	export class PodLogEntry {
+	    podName: string;
+	    containerName: string;
+	    logs: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PodLogEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.podName = source["podName"];
+	        this.containerName = source["containerName"];
+	        this.logs = source["logs"];
+	    }
+	}
+
+}
+
 export namespace resource {
 	
 	export class Quantity {

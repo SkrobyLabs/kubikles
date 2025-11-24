@@ -42,6 +42,10 @@ export function ForceDeletePod(arg1, arg2, arg3) {
   return window['go']['main']['App']['ForceDeletePod'](arg1, arg2, arg3);
 }
 
+export function GetAllPodLogs(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GetAllPodLogs'](arg1, arg2, arg3, arg4);
+}
+
 export function GetConfigMapYaml(arg1, arg2) {
   return window['go']['main']['App']['GetConfigMapYaml'](arg1, arg2);
 }
@@ -66,8 +70,8 @@ export function GetJobYaml(arg1, arg2) {
   return window['go']['main']['App']['GetJobYaml'](arg1, arg2);
 }
 
-export function GetPodLogs(arg1, arg2, arg3) {
-  return window['go']['main']['App']['GetPodLogs'](arg1, arg2, arg3);
+export function GetPodLogs(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GetPodLogs'](arg1, arg2, arg3, arg4);
 }
 
 export function GetPodYaml(arg1, arg2) {
@@ -164,6 +168,14 @@ export function RestartStatefulSet(arg1, arg2, arg3) {
 
 export function SaveLogFile(arg1) {
   return window['go']['main']['App']['SaveLogFile'](arg1);
+}
+
+export function SaveLogsBundle(arg1, arg2) {
+  return window['go']['main']['App']['SaveLogsBundle'](arg1, arg2);
+}
+
+export function SavePodLogs(arg1, arg2) {
+  return window['go']['main']['App']['SavePodLogs'](arg1, arg2);
 }
 
 export function StartPodWatcher(arg1) {

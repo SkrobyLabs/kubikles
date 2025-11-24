@@ -286,14 +286,23 @@ func (c *Client) ListDeployments(namespace string) ([]appsv1.Deployment, error) 
 	return deployments.Items, nil
 }
 
-func (c *Client) GetPodLogs(namespace, podName, containerName string) (string, error) {
+func (c *Client) GetPodLogs(namespace, podName, containerName string, timestamps bool) (string, error) {
+	return c.getPodLogsWithOptions(namespace, podName, containerName, func(i int64) *int64 { return &i }(100), timestamps)
+}
+
+func (c *Client) GetAllPodLogs(namespace, podName, containerName string, timestamps bool) (string, error) {
+	return c.getPodLogsWithOptions(namespace, podName, containerName, nil, timestamps)
+}
+
+func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string, tailLines *int64, timestamps bool) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return "", err
 	}
 
 	opts := &v1.PodLogOptions{
-		TailLines: func(i int64) *int64 { return &i }(100), // Default to last 100 lines
+		TailLines:  tailLines,
+		Timestamps: timestamps,
 	}
 	if containerName != "" {
 		opts.Container = containerName

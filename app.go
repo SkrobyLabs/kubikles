@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"context"
 	"fmt"
 	"kubikles/pkg/k8s"
@@ -176,13 +177,22 @@ func (a *App) ListDeployments(namespace string) ([]appsv1.Deployment, error) {
 	return a.k8sClient.ListDeployments(namespace)
 }
 
-func (a *App) GetPodLogs(namespace, podName, containerName string) (string, error) {
+func (a *App) GetPodLogs(namespace, podName, containerName string, timestamps bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetPodLogs called: context=%s, ns=%s, pod=%s, container=%s", currentContext, namespace, podName, containerName)
+	a.LogDebug("GetPodLogs called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v", currentContext, namespace, podName, containerName, timestamps)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.GetPodLogs(namespace, podName, containerName)
+	return a.k8sClient.GetPodLogs(namespace, podName, containerName, timestamps)
+}
+
+func (a *App) GetAllPodLogs(namespace, podName, containerName string, timestamps bool) (string, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetAllPodLogs called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v", currentContext, namespace, podName, containerName, timestamps)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetAllPodLogs(namespace, podName, containerName, timestamps)
 }
 
 // LogDebug sends a debug message to the frontend
@@ -510,6 +520,87 @@ func (a *App) SaveLogFile(content string) error {
 	}
 
 	return os.WriteFile(filePath, []byte(content), 0644)
+}
+
+func (a *App) SavePodLogs(content string, defaultFilename string) error {
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: defaultFilename,
+		Title:           "Save Pod Logs",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Log Files (*.log)",
+				Pattern:     "*.log",
+			},
+			{
+				DisplayName: "Text Files (*.txt)",
+				Pattern:     "*.txt",
+			},
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if filePath == "" {
+		return nil // User cancelled
+	}
+
+	return os.WriteFile(filePath, []byte(content), 0644)
+}
+
+// PodLogEntry represents a single container's logs for the bundle
+type PodLogEntry struct {
+	PodName       string `json:"podName"`
+	ContainerName string `json:"containerName"`
+	Logs          string `json:"logs"`
+}
+
+// SaveLogsBundle saves multiple pod logs as a zip file
+func (a *App) SaveLogsBundle(entries []PodLogEntry, defaultFilename string) error {
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: defaultFilename,
+		Title:           "Save Logs Bundle",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Zip Files (*.zip)",
+				Pattern:     "*.zip",
+			},
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if filePath == "" {
+		return nil // User cancelled
+	}
+
+	// Create the zip file
+	zipFile, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create zip file: %w", err)
+	}
+	defer zipFile.Close()
+
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+
+	for _, entry := range entries {
+		// Create path: podName/containerName.log
+		logPath := fmt.Sprintf("%s/%s.log", entry.PodName, entry.ContainerName)
+		writer, err := zipWriter.Create(logPath)
+		if err != nil {
+			return fmt.Errorf("failed to create zip entry %s: %w", logPath, err)
+		}
+		_, err = writer.Write([]byte(entry.Logs))
+		if err != nil {
+			return fmt.Errorf("failed to write logs for %s: %w", logPath, err)
+		}
+	}
+
+	return nil
 }
 
 // Job operations

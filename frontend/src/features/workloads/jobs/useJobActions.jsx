@@ -68,6 +68,15 @@ export const useJobActions = (namespace, onRefresh) => {
                 ...(pod.spec?.containers || []).map(c => c.name)
             ];
 
+            // Build container map for all pods
+            const podContainerMap = {};
+            for (const p of jobPods) {
+                podContainerMap[p.metadata.name] = [
+                    ...(p.spec?.initContainers || []).map(c => c.name),
+                    ...(p.spec?.containers || []).map(c => c.name)
+                ];
+            }
+
             Logger.info("Opening logs for Job pod", {
                 namespace,
                 job: job.metadata.name,
@@ -85,6 +94,8 @@ export const useJobActions = (namespace, onRefresh) => {
                         pod={pod.metadata.name}
                         containers={containers}
                         siblingPods={jobPods.map(p => p.metadata.name)}
+                        podContainerMap={podContainerMap}
+                        ownerName={job.metadata.name}
                     />
                 )
             });

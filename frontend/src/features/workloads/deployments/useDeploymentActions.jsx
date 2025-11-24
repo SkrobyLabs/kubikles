@@ -88,6 +88,15 @@ export const useDeploymentActions = () => {
                 ...(pod.spec?.containers || []).map(c => c.name)
             ];
 
+            // Build container map for all pods
+            const podContainerMap = {};
+            for (const p of deploymentPods) {
+                podContainerMap[p.metadata.name] = [
+                    ...(p.spec?.initContainers || []).map(c => c.name),
+                    ...(p.spec?.containers || []).map(c => c.name)
+                ];
+            }
+
             Logger.info("Opening logs for Deployment pod", {
                 namespace,
                 deployment: deployment.metadata.name,
@@ -105,6 +114,8 @@ export const useDeploymentActions = () => {
                         pod={pod.metadata.name}
                         containers={containers}
                         siblingPods={deploymentPods.map(p => p.metadata.name)}
+                        podContainerMap={podContainerMap}
+                        ownerName={deployment.metadata.name}
                     />
                 )
             });
