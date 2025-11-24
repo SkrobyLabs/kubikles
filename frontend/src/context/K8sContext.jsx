@@ -62,12 +62,38 @@ export const K8sProvider = ({ children }) => {
             const curr = await GetCurrentContext();
             const sortedList = (list || []).sort((a, b) => a.localeCompare(b));
             setContexts(sortedList);
-            setCurrentContext(curr);
 
-            Logger.info("Contexts fetched", { count: sortedList.length, current: curr });
+            // Check if there's a saved context preference
+            const savedContext = localStorage.getItem('kubikles_last_context');
+            Logger.debug("Context restoration check", {
+                savedContext,
+                currentKubectlContext: curr,
+                availableContexts: sortedList
+            });
+
+            let contextToUse = curr;
+
+            // If we have a saved context and it exists in the list, switch to it
+            if (savedContext && sortedList.includes(savedContext) && savedContext !== curr) {
+                Logger.info("Restoring last used context", { saved: savedContext, current: curr });
+                try {
+                    await SwitchContext(savedContext);
+                    contextToUse = savedContext;
+                    Logger.info("Successfully restored context", { context: contextToUse });
+                } catch (err) {
+                    Logger.error("Failed to restore saved context, using current", err);
+                }
+            } else if (savedContext === curr) {
+                Logger.debug("Saved context matches current kubectl context, no switch needed");
+            } else if (!savedContext) {
+                Logger.debug("No saved context found, using current kubectl context");
+            }
+
+            setCurrentContext(contextToUse);
+            Logger.info("Contexts fetched", { count: sortedList.length, current: contextToUse });
 
             // Load saved namespace for this context
-            const savedState = loadContextState(curr);
+            const savedState = loadContextState(contextToUse);
             if (savedState.namespace) {
                 setCurrentNamespace(savedState.namespace);
                 Logger.debug("Restored namespace from saved state", { namespace: savedState.namespace });
@@ -96,6 +122,10 @@ export const K8sProvider = ({ children }) => {
             Logger.info("Switching context...", { from: currentContext, to: newContext });
             await SwitchContext(newContext);
             setCurrentContext(newContext);
+
+            // Save the context preference
+            localStorage.setItem('kubikles_last_context', newContext);
+            Logger.debug("Saved context to localStorage", { context: newContext });
 
             const savedState = loadContextState(newContext);
             const newNs = savedState.namespace || 'default';
