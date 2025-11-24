@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ListContexts, GetCurrentContext, SwitchContext, ListNamespaces } from '../../wailsjs/go/main/App';
+import Logger from '../utils/Logger';
 
 const K8sContext = createContext();
 
@@ -24,7 +25,7 @@ export const K8sProvider = ({ children }) => {
             try {
                 return JSON.parse(saved);
             } catch (e) {
-                console.error("Failed to parse saved state", e);
+                Logger.error("Failed to parse saved state", e);
             }
         }
         return { namespace: 'default' };
@@ -56,46 +57,55 @@ export const K8sProvider = ({ children }) => {
 
     const fetchContexts = async () => {
         try {
+            Logger.debug("Fetching contexts...");
             const list = await ListContexts();
             const curr = await GetCurrentContext();
             const sortedList = (list || []).sort((a, b) => a.localeCompare(b));
             setContexts(sortedList);
             setCurrentContext(curr);
 
+            Logger.info("Contexts fetched", { count: sortedList.length, current: curr });
+
             // Load saved namespace for this context
             const savedState = loadContextState(curr);
             if (savedState.namespace) {
                 setCurrentNamespace(savedState.namespace);
+                Logger.debug("Restored namespace from saved state", { namespace: savedState.namespace });
             }
         } catch (err) {
-            console.error("Failed to fetch contexts", err);
+            Logger.error("Failed to fetch contexts", err);
         }
     };
 
     const fetchNamespaces = async () => {
         if (!currentContext) return;
         try {
+            Logger.debug("Fetching namespaces...", { context: currentContext });
             const list = await ListNamespaces(currentContext);
             // Extract namespace names from objects
             const namespaceNames = (list || []).map(ns => ns.metadata?.name || ns).filter(Boolean);
             setNamespaces(namespaceNames);
+            Logger.info("Namespaces fetched", { count: namespaceNames.length });
         } catch (err) {
-            console.error("Failed to fetch namespaces", err);
+            Logger.error("Failed to fetch namespaces", err);
         }
     };
 
     const switchContext = async (newContext) => {
         try {
+            Logger.info("Switching context...", { from: currentContext, to: newContext });
             await SwitchContext(newContext);
             setCurrentContext(newContext);
 
             const savedState = loadContextState(newContext);
-            setCurrentNamespace(savedState.namespace || 'default');
+            const newNs = savedState.namespace || 'default';
+            setCurrentNamespace(newNs);
+            Logger.info("Context switched successfully", { context: newContext, namespace: newNs });
 
             // We need to trigger namespace fetch after switch
             // fetchNamespaces will be called by useEffect when currentContext changes
         } catch (err) {
-            console.error("Failed to switch context", err);
+            Logger.error("Failed to switch context", err);
         }
     };
 
@@ -116,6 +126,7 @@ export const K8sProvider = ({ children }) => {
     useEffect(() => {
         if (currentContext) {
             saveContextState(currentContext, currentNamespace);
+            Logger.debug("Namespace changed", { context: currentContext, namespace: currentNamespace });
         }
     }, [currentContext, currentNamespace]);
 

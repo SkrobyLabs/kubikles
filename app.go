@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/terminal"
+	"os"
 	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -485,4 +486,27 @@ func (a *App) DeleteStatefulSet(contextName, namespace, name string) error {
 		a.LogDebug("DeleteStatefulSet success")
 	}
 	return err
+}
+
+func (a *App) SaveLogFile(content string) error {
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: "kubikles-debug-logs.txt",
+		Title:           "Save Debug Logs",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Text Files (*.txt)",
+				Pattern:     "*.txt",
+			},
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if filePath == "" {
+		return nil // User cancelled
+	}
+
+	return os.WriteFile(filePath, []byte(content), 0644)
 }

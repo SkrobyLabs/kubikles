@@ -2,12 +2,14 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { GetDaemonSetYaml, UpdateDaemonSetYaml, RestartDaemonSet, DeleteDaemonSet } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import Logger from '../../../utils/Logger';
 
 export function useDaemonSetActions() {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { refresh } = useK8s();
 
     const handleEditYaml = (daemonSet) => {
+        Logger.info("Opening YAML editor", { namespace: daemonSet.metadata.namespace, daemonSet: daemonSet.metadata.name });
         const tabId = `edit-ds-${daemonSet.metadata.uid}`;
         openTab({
             id: tabId,
@@ -24,15 +26,18 @@ export function useDaemonSetActions() {
     };
 
     const handleRestart = async (namespace, name) => {
+        Logger.info("Restarting daemonset", { namespace, name });
         try {
             await RestartDaemonSet(namespace, name);
+            Logger.info("Restart triggered successfully", { name });
             refresh();
         } catch (err) {
-            console.error(`Failed to restart daemonset ${name}:`, err);
+            Logger.error("Failed to restart daemonset", err);
         }
     };
 
     const handleDelete = (namespace, name) => {
+        Logger.info("Requesting delete daemonset", { namespace, name });
         openModal({
             id: `delete-ds-${name}`,
             type: 'confirmation',
@@ -41,12 +46,14 @@ export function useDaemonSetActions() {
             confirmLabel: 'Delete',
             cancelLabel: 'Cancel',
             onConfirm: async () => {
+                Logger.info("Confirming delete daemonset", { namespace, name });
                 try {
                     await DeleteDaemonSet(namespace, name);
+                    Logger.info("DaemonSet deleted successfully", { name });
                     refresh();
                     closeModal();
                 } catch (err) {
-                    console.error(`Failed to delete daemonset ${name}:`, err);
+                    Logger.error("Failed to delete daemonset", err);
                 }
             }
         });

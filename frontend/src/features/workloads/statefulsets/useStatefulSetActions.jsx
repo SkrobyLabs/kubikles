@@ -1,14 +1,16 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
-import { DeleteStatefulSet, RestartStatefulSet, LogDebug } from '../../../../wailsjs/go/main/App';
+import { DeleteStatefulSet, RestartStatefulSet } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import Logger from '../../../utils/Logger';
 
 export const useStatefulSetActions = () => {
     const { openTab, closeTab } = useUI();
     const { currentContext } = useK8s();
 
     const handleEditYaml = (statefulSet) => {
+        Logger.info("Opening YAML editor", { namespace: statefulSet.metadata.namespace, statefulSet: statefulSet.metadata.name });
         const tabId = `yaml-statefulset-${statefulSet.metadata.uid}`;
         openTab({
             id: tabId,
@@ -25,14 +27,12 @@ export const useStatefulSetActions = () => {
     };
 
     const handleRestart = async (statefulSet) => {
-        const msg = `Restarting statefulset: ${statefulSet.metadata.name}`;
-        console.log(msg);
+        Logger.info("Restarting statefulset", { namespace: statefulSet.metadata.namespace, name: statefulSet.metadata.name });
         try {
-            await LogDebug(msg);
             await RestartStatefulSet(currentContext, statefulSet.metadata.namespace, statefulSet.metadata.name);
-            console.log("Restart triggered successfully");
+            Logger.info("Restart triggered successfully", { name: statefulSet.metadata.name });
         } catch (err) {
-            console.error("Failed to restart statefulset", err);
+            Logger.error("Failed to restart statefulset", err);
             alert(`Failed to restart statefulset: ${err}`);
         }
     };
@@ -40,14 +40,12 @@ export const useStatefulSetActions = () => {
     const handleDelete = async (statefulSet) => {
         if (!confirm(`Are you sure you want to delete statefulset ${statefulSet.metadata.name}?`)) return;
 
-        const msg = `Deleting statefulset: ${statefulSet.metadata.name}`;
-        console.log(msg);
+        Logger.info("Deleting statefulset", { namespace: statefulSet.metadata.namespace, name: statefulSet.metadata.name });
         try {
-            await LogDebug(msg);
             await DeleteStatefulSet(currentContext, statefulSet.metadata.namespace, statefulSet.metadata.name);
-            console.log("Delete triggered successfully");
+            Logger.info("Delete triggered successfully", { name: statefulSet.metadata.name });
         } catch (err) {
-            console.error("Failed to delete statefulset", err);
+            Logger.error("Failed to delete statefulset", err);
             alert(`Failed to delete statefulset: ${err}`);
         }
     };

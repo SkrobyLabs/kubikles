@@ -10,6 +10,7 @@ import {
     Square2StackIcon
 } from '@heroicons/react/24/outline';
 import SearchSelect from '../shared/SearchSelect';
+import Logger from '../../utils/Logger';
 
 export default function Sidebar({
     activeView,
@@ -56,6 +57,7 @@ export default function Sidebar({
 
     React.useEffect(() => {
         if (debugClicks >= 10) {
+            Logger.info("Toggling Debug Mode via Logo clicks");
             onToggleDebug();
             setDebugClicks(0);
         }
@@ -63,6 +65,16 @@ export default function Sidebar({
 
     const handleLogoClick = () => {
         setDebugClicks(prev => prev + 1);
+    };
+
+    const handleViewChange = (viewId) => {
+        Logger.info("Navigating to view", { view: viewId });
+        onViewChange(viewId);
+    };
+
+    const handleContextChange = (newContext) => {
+        Logger.info("Context change requested from Sidebar", { context: newContext });
+        onContextChange(newContext);
     };
 
     return (
@@ -86,7 +98,7 @@ export default function Sidebar({
                 <SearchSelect
                     options={contexts}
                     value={currentContext}
-                    onChange={onContextChange}
+                    onChange={handleContextChange}
                     placeholder="Select Context..."
                 />
             </div>
@@ -106,7 +118,7 @@ export default function Sidebar({
                                 return (
                                     <li key={item.id}>
                                         <button
-                                            onClick={() => onViewChange(item.id)}
+                                            onClick={() => handleViewChange(item.id)}
                                             className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${activeView === item.id
                                                 ? 'bg-primary/10 text-primary font-medium'
                                                 : 'text-gray-400 hover:text-text hover:bg-white/5'

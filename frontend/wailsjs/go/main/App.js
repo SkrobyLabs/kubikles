@@ -138,6 +138,10 @@ export function RestartStatefulSet(arg1, arg2, arg3) {
   return window['go']['main']['App']['RestartStatefulSet'](arg1, arg2, arg3);
 }
 
+export function SaveLogFile(arg1) {
+  return window['go']['main']['App']['SaveLogFile'](arg1);
+}
+
 export function StartPodWatcher(arg1) {
   return window['go']['main']['App']['StartPodWatcher'](arg1);
 }

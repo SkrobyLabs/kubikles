@@ -1,14 +1,16 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
-import { DeleteConfigMap, LogDebug } from '../../../../wailsjs/go/main/App';
+import { DeleteConfigMap } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import Logger from '../../../utils/Logger';
 
 export const useConfigMapActions = () => {
     const { openTab, closeTab } = useUI();
     const { currentContext } = useK8s();
 
     const handleEditYaml = (configMap) => {
+        Logger.info("Opening YAML editor", { namespace: configMap.metadata.namespace, configMap: configMap.metadata.name });
         const tabId = `yaml-configmap-${configMap.metadata.uid}`;
         openTab({
             id: tabId,
@@ -27,14 +29,12 @@ export const useConfigMapActions = () => {
     const handleDelete = async (configMap) => {
         if (!confirm(`Are you sure you want to delete configmap ${configMap.metadata.name}?`)) return;
 
-        const msg = `Deleting configmap: ${configMap.metadata.name}`;
-        console.log(msg);
+        Logger.info("Deleting configmap", { namespace: configMap.metadata.namespace, name: configMap.metadata.name });
         try {
-            await LogDebug(msg);
             await DeleteConfigMap(configMap.metadata.namespace, configMap.metadata.name);
-            console.log("Delete triggered successfully");
+            Logger.info("Delete triggered successfully", { name: configMap.metadata.name });
         } catch (err) {
-            console.error("Failed to delete configmap", err);
+            Logger.error("Failed to delete configmap", err);
             alert(`Failed to delete configmap: ${err}`);
         }
     };

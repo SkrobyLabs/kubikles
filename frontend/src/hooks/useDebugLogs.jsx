@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useUI } from '../context/UIContext';
 import DebugLogViewer from '../components/shared/DebugLogViewer';
+import { SaveLogFile } from '../../wailsjs/go/main/App';
 
 export const useDebugLogs = () => {
     const [debugLogs, setDebugLogs] = useState([]);
@@ -11,8 +12,13 @@ export const useDebugLogs = () => {
         if (window.runtime && !isListenerRegistered.current) {
             console.log("Registering debug-log listener");
             window.runtime.EventsOn("debug-log", (msg) => {
-                console.log("Backend Debug Log Received:", msg);
-                setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+                setDebugLogs(prev => {
+                    const newLogs = [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`];
+                    if (newLogs.length > 1000) {
+                        return newLogs.slice(newLogs.length - 1000);
+                    }
+                    return newLogs;
+                });
             });
             isListenerRegistered.current = true;
         }
@@ -25,6 +31,18 @@ export const useDebugLogs = () => {
         };
     }, []);
 
+    const clearLogs = () => setDebugLogs([]);
+
+    const downloadLogs = async () => {
+        try {
+            const content = debugLogs.join('\n');
+            await SaveLogFile(content);
+        } catch (err) {
+            console.error("Failed to save logs:", err);
+            alert("Failed to save logs: " + err);
+        }
+    };
+
     // Sync debug logs to the tab content whenever they change
     useEffect(() => {
         setBottomTabs(prev => prev.map(tab => {
@@ -34,13 +52,8 @@ export const useDebugLogs = () => {
                     content: (
                         <DebugLogViewer
                             logs={debugLogs}
-                            onTestEmit={(type) => {
-                                if (type === 'ui') {
-                                    setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Test Log(UI Only)`]);
-                                } else {
-                                    window.go.main.App.TestEmit();
-                                }
-                            }}
+                            onClear={clearLogs}
+                            onDownload={downloadLogs}
                         />
                     )
                 };
@@ -60,13 +73,8 @@ export const useDebugLogs = () => {
                 content: (
                     <DebugLogViewer
                         logs={debugLogs}
-                        onTestEmit={(type) => {
-                            if (type === 'ui') {
-                                setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Test Log(UI Only)`]);
-                            } else {
-                                window.go.main.App.TestEmit();
-                            }
-                        }}
+                        onClear={clearLogs}
+                        onDownload={downloadLogs}
                     />
                 )
             });

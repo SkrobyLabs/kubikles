@@ -1,14 +1,16 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
-import { DeleteSecret, LogDebug } from '../../../../wailsjs/go/main/App';
+import { DeleteSecret } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import Logger from '../../../utils/Logger';
 
 export const useSecretActions = () => {
     const { openTab, closeTab } = useUI();
     const { currentContext } = useK8s();
 
     const handleEditYaml = (secret) => {
+        Logger.info("Opening YAML editor", { namespace: secret.metadata.namespace, secret: secret.metadata.name });
         const tabId = `yaml-secret-${secret.metadata.uid}`;
         openTab({
             id: tabId,
@@ -27,14 +29,12 @@ export const useSecretActions = () => {
     const handleDelete = async (secret) => {
         if (!confirm(`Are you sure you want to delete secret ${secret.metadata.name}?`)) return;
 
-        const msg = `Deleting secret: ${secret.metadata.name}`;
-        console.log(msg);
+        Logger.info("Deleting secret", { namespace: secret.metadata.namespace, name: secret.metadata.name });
         try {
-            await LogDebug(msg);
             await DeleteSecret(secret.metadata.namespace, secret.metadata.name);
-            console.log("Delete triggered successfully");
+            Logger.info("Delete triggered successfully", { name: secret.metadata.name });
         } catch (err) {
-            console.error("Failed to delete secret", err);
+            Logger.error("Failed to delete secret", err);
             alert(`Failed to delete secret: ${err}`);
         }
     };

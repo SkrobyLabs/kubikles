@@ -9,6 +9,7 @@ import {
     GetDaemonSetYaml, UpdateDaemonSetYaml,
     GetReplicaSetYaml, UpdateReplicaSetYaml
 } from '../../../wailsjs/go/main/App';
+import Logger from '../../utils/Logger';
 
 export default function YamlEditor({ namespace, podName, isDeployment, isStatefulSet, isConfigMap, isSecret, isDaemonSet, isReplicaSet, onClose }) {
     const [content, setContent] = useState('');
@@ -24,6 +25,7 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
     const fetchYaml = async () => {
         setLoading(true);
         setError(null);
+        Logger.debug("Fetching YAML...", { namespace, name: podName });
         try {
             let yaml;
             if (isDeployment) {
@@ -42,7 +44,9 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
                 yaml = await GetPodYaml(namespace, podName);
             }
             setContent(yaml);
+            Logger.info("YAML fetched successfully", { namespace, name: podName });
         } catch (err) {
+            Logger.error("Failed to load YAML", err);
             setError(`Failed to load YAML: ${err}`);
         } finally {
             setLoading(false);
@@ -51,6 +55,7 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
 
     const handleSave = async () => {
         setSaving(true);
+        Logger.info("Saving YAML...", { namespace, name: podName });
         try {
             if (isDeployment) {
                 await UpdateDeploymentYaml(namespace, podName, content);
@@ -67,8 +72,10 @@ export default function YamlEditor({ namespace, podName, isDeployment, isStatefu
             } else {
                 await UpdatePodYaml(namespace, podName, content);
             }
+            Logger.info("YAML saved successfully", { namespace, name: podName });
             alert("YAML saved successfully!");
         } catch (err) {
+            Logger.error("Failed to save YAML", err);
             alert(`Failed to save YAML: ${err}`);
         } finally {
             setSaving(false);

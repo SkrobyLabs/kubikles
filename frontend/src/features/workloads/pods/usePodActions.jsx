@@ -1,16 +1,18 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
-import { DeletePod, ForceDeletePod, OpenTerminal, LogDebug } from '../../../../wailsjs/go/main/App';
+import { DeletePod, ForceDeletePod, OpenTerminal } from '../../../../wailsjs/go/main/App';
 import LogViewer from '../../../components/shared/LogViewer';
 import Terminal from '../../../components/shared/Terminal';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import Logger from '../../../utils/Logger';
 
 export const usePodActions = () => {
     const { openTab, closeTab } = useUI();
     const { currentContext } = useK8s();
 
     const openLogs = (namespace, podName, containers = [], siblingPods = []) => {
+        Logger.info("Opening logs", { namespace, pod: podName });
         const tabId = `logs-${podName}`;
         openTab({
             id: tabId,
@@ -20,6 +22,7 @@ export const usePodActions = () => {
     };
 
     const handleShell = async (namespace, podName) => {
+        Logger.info("Opening shell", { namespace, pod: podName });
         try {
             const url = await OpenTerminal(currentContext, namespace, podName, "");
             const tabId = `shell-${podName}`;
@@ -28,13 +31,15 @@ export const usePodActions = () => {
                 title: `Shell: ${podName}`,
                 content: <Terminal url={url} />
             });
+            Logger.info("Shell opened successfully", { namespace, pod: podName });
         } catch (err) {
-            console.error("Failed to open shell", err);
+            Logger.error("Failed to open shell", err);
             alert("Failed to open shell: " + err);
         }
     };
 
     const handleEditYaml = (pod) => {
+        Logger.info("Opening YAML editor", { namespace: pod.metadata.namespace, pod: pod.metadata.name });
         const tabId = `yaml-${pod.metadata.uid}`;
         openTab({
             id: tabId,
@@ -51,30 +56,23 @@ export const usePodActions = () => {
 
     const handleDelete = async (namespace, name, isTerminating = false) => {
         const actionType = isTerminating ? 'Force Delete' : 'Delete';
-        const msg = `handleDeletePod(${actionType}) called for: ${name}, Namespace: ${namespace}, Context: ${currentContext}`;
-        console.log(msg);
-        try {
-            await LogDebug(msg);
-        } catch (e) {
-            console.error("Failed to LogDebug", e);
+        Logger.info(`Action: ${actionType} Pod`, { namespace, name, context: currentContext });
+
+        if (!confirm(`Are you sure you want to ${actionType.toLowerCase()} pod ${name}?`)) {
+            Logger.info("Delete action cancelled by user");
+            return;
         }
 
-        console.log("Auto-confirmed delete for debugging");
-
         try {
-            console.log("Calling backend DeletePod...");
             if (isTerminating) {
                 await ForceDeletePod(currentContext, namespace, name);
             } else {
                 await DeletePod(currentContext, namespace, name);
             }
-            console.log("Backend DeletePod returned success");
+            Logger.info(`Pod ${actionType.toLowerCase()}d successfully`, { namespace, name });
         } catch (err) {
-            const action = isTerminating ? 'force delete' : 'delete';
-            const errMsg = `Failed to ${action} pod: ${err}`;
-            console.error(errMsg);
-            await LogDebug(errMsg);
-            alert(errMsg);
+            Logger.error(`Failed to ${actionType.toLowerCase()} pod`, err);
+            alert(`Failed to ${actionType.toLowerCase()} pod: ${err}`);
         }
     };
 

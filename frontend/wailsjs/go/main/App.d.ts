@@ -70,6 +70,8 @@ export function RestartDeployment(arg1:string,arg2:string,arg3:string):Promise<v
 
 export function RestartStatefulSet(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function SaveLogFile(arg1:string):Promise<void>;
+
 export function StartPodWatcher(arg1:string):Promise<void>;
 
 export function SwitchContext(arg1:string):Promise<void>;
