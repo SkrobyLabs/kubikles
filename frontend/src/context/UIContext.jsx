@@ -82,6 +82,34 @@ export const UIProvider = ({ children }) => {
         }
     };
 
+    const closeOtherTabs = (tabId) => {
+        const newTabs = bottomTabs.filter(t => t.id === tabId);
+        setBottomTabs(newTabs);
+        setActiveTabId(tabId);
+    };
+
+    const closeTabsToRight = (tabId) => {
+        const index = bottomTabs.findIndex(t => t.id === tabId);
+        if (index === -1) return;
+        const newTabs = bottomTabs.slice(0, index + 1);
+        setBottomTabs(newTabs);
+        if (!newTabs.find(t => t.id === activeTabId)) {
+            setActiveTabId(tabId);
+        }
+    };
+
+    const closeAllTabs = () => {
+        setBottomTabs([]);
+        setActiveTabId(null);
+    };
+
+    const reorderTabs = (fromIndex, toIndex) => {
+        const newTabs = [...bottomTabs];
+        const [removed] = newTabs.splice(fromIndex, 1);
+        newTabs.splice(toIndex, 0, removed);
+        setBottomTabs(newTabs);
+    };
+
     const value = {
         activeView,
         setActiveView,
@@ -91,6 +119,10 @@ export const UIProvider = ({ children }) => {
         setActiveTabId,
         openTab,
         closeTab,
+        closeOtherTabs,
+        closeTabsToRight,
+        closeAllTabs,
+        reorderTabs,
         panelHeight,
         setPanelHeight,
         activeMenuId,

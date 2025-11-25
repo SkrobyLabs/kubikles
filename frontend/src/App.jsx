@@ -27,6 +27,10 @@ function MainLayout() {
         activeTabId,
         setActiveTabId,
         closeTab,
+        closeOtherTabs,
+        closeTabsToRight,
+        closeAllTabs,
+        reorderTabs,
         panelHeight,
         setPanelHeight
     } = useUI();
@@ -45,7 +49,10 @@ function MainLayout() {
 
     // Resizing Logic
     const handleMouseDown = (e) => {
+        e.preventDefault();
         isDragging.current = true;
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'row-resize';
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
     };
@@ -62,6 +69,8 @@ function MainLayout() {
 
     const handleMouseUp = () => {
         isDragging.current = false;
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -147,6 +156,10 @@ function MainLayout() {
                                 activeTabId={activeTabId}
                                 onTabChange={setActiveTabId}
                                 onTabClose={closeTab}
+                                onCloseOthers={closeOtherTabs}
+                                onCloseToRight={closeTabsToRight}
+                                onCloseAll={closeAllTabs}
+                                onReorder={reorderTabs}
                                 height={`${panelHeight}%`}
                             />
                         </>
