@@ -17,6 +17,10 @@ export function DeleteJob(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteNamespace(arg1:string):Promise<void>;
 
+export function DeletePV(arg1:string):Promise<void>;
+
+export function DeletePVC(arg1:string,arg2:string):Promise<void>;
+
 export function DeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function DeleteReplicaSet(arg1:string,arg2:string):Promise<void>;
@@ -24,6 +28,8 @@ export function DeleteReplicaSet(arg1:string,arg2:string):Promise<void>;
 export function DeleteSecret(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteStatefulSet(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function DeleteStorageClass(arg1:string):Promise<void>;
 
 export function ForceDeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
@@ -45,6 +51,10 @@ export function GetJobYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetNamespaceYAML(arg1:string):Promise<string>;
 
+export function GetPVCYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetPVYaml(arg1:string):Promise<string>;
+
 export function GetPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
 
 export function GetPodYaml(arg1:string,arg2:string):Promise<string>;
@@ -56,6 +66,8 @@ export function GetSecretData(arg1:string,arg2:string):Promise<Record<string, st
 export function GetSecretYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetStatefulSetYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetStorageClassYaml(arg1:string):Promise<string>;
 
 export function Greet(arg1:string):Promise<string>;
 
@@ -77,6 +89,10 @@ export function ListNamespaces():Promise<Array<v1.Namespace>>;
 
 export function ListNodes():Promise<Array<v1.Node>>;
 
+export function ListPVCs(arg1:string):Promise<Array<v1.PersistentVolumeClaim>>;
+
+export function ListPVs():Promise<Array<v1.PersistentVolume>>;
+
 export function ListPods(arg1:string):Promise<Array<v1.Pod>>;
 
 export function ListReplicaSets(arg1:string):Promise<Array<v1.ReplicaSet>>;
@@ -86,6 +102,8 @@ export function ListSecrets(arg1:string):Promise<Array<v1.Secret>>;
 export function ListServices(arg1:string):Promise<Array<v1.Service>>;
 
 export function ListStatefulSets(arg1:string,arg2:string):Promise<Array<v1.StatefulSet>>;
+
+export function ListStorageClasses():Promise<Array<v1.StorageClass>>;
 
 export function LogDebug(arg1:string,arg2:Array<any>):Promise<void>;
 
@@ -127,6 +145,10 @@ export function UpdateJobYaml(arg1:string,arg2:string,arg3:string):Promise<void>
 
 export function UpdateNamespaceYAML(arg1:string,arg2:string):Promise<void>;
 
+export function UpdatePVCYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdatePVYaml(arg1:string,arg2:string):Promise<void>;
+
 export function UpdatePodYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateReplicaSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -136,3 +158,5 @@ export function UpdateSecretData(arg1:string,arg2:string,arg3:Record<string, str
 export function UpdateSecretYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateStatefulSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateStorageClassYaml(arg1:string,arg2:string):Promise<void>;

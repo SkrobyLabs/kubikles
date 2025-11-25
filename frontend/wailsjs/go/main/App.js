@@ -30,6 +30,14 @@ export function DeleteNamespace(arg1) {
   return window['go']['main']['App']['DeleteNamespace'](arg1);
 }
 
+export function DeletePV(arg1) {
+  return window['go']['main']['App']['DeletePV'](arg1);
+}
+
+export function DeletePVC(arg1, arg2) {
+  return window['go']['main']['App']['DeletePVC'](arg1, arg2);
+}
+
 export function DeletePod(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeletePod'](arg1, arg2, arg3);
 }
@@ -44,6 +52,10 @@ export function DeleteSecret(arg1, arg2) {
 
 export function DeleteStatefulSet(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeleteStatefulSet'](arg1, arg2, arg3);
+}
+
+export function DeleteStorageClass(arg1) {
+  return window['go']['main']['App']['DeleteStorageClass'](arg1);
 }
 
 export function ForceDeletePod(arg1, arg2, arg3) {
@@ -86,6 +98,14 @@ export function GetNamespaceYAML(arg1) {
   return window['go']['main']['App']['GetNamespaceYAML'](arg1);
 }
 
+export function GetPVCYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetPVCYaml'](arg1, arg2);
+}
+
+export function GetPVYaml(arg1) {
+  return window['go']['main']['App']['GetPVYaml'](arg1);
+}
+
 export function GetPodLogs(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['GetPodLogs'](arg1, arg2, arg3, arg4);
 }
@@ -108,6 +128,10 @@ export function GetSecretYaml(arg1, arg2) {
 
 export function GetStatefulSetYaml(arg1, arg2) {
   return window['go']['main']['App']['GetStatefulSetYaml'](arg1, arg2);
+}
+
+export function GetStorageClassYaml(arg1) {
+  return window['go']['main']['App']['GetStorageClassYaml'](arg1);
 }
 
 export function Greet(arg1) {
@@ -150,6 +174,14 @@ export function ListNodes() {
   return window['go']['main']['App']['ListNodes']();
 }
 
+export function ListPVCs(arg1) {
+  return window['go']['main']['App']['ListPVCs'](arg1);
+}
+
+export function ListPVs() {
+  return window['go']['main']['App']['ListPVs']();
+}
+
 export function ListPods(arg1) {
   return window['go']['main']['App']['ListPods'](arg1);
 }
@@ -168,6 +200,10 @@ export function ListServices(arg1) {
 
 export function ListStatefulSets(arg1, arg2) {
   return window['go']['main']['App']['ListStatefulSets'](arg1, arg2);
+}
+
+export function ListStorageClasses() {
+  return window['go']['main']['App']['ListStorageClasses']();
 }
 
 export function LogDebug(arg1, arg2) {
@@ -250,6 +286,14 @@ export function UpdateNamespaceYAML(arg1, arg2) {
   return window['go']['main']['App']['UpdateNamespaceYAML'](arg1, arg2);
 }
 
+export function UpdatePVCYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdatePVCYaml'](arg1, arg2, arg3);
+}
+
+export function UpdatePVYaml(arg1, arg2) {
+  return window['go']['main']['App']['UpdatePVYaml'](arg1, arg2);
+}
+
 export function UpdatePodYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdatePodYaml'](arg1, arg2, arg3);
 }
@@ -268,4 +312,8 @@ export function UpdateSecretYaml(arg1, arg2, arg3) {
 
 export function UpdateStatefulSetYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateStatefulSetYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateStorageClassYaml(arg1, arg2) {
+  return window['go']['main']['App']['UpdateStorageClassYaml'](arg1, arg2);
 }

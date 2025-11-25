@@ -61,6 +61,14 @@ export default function Sidebar({
             items: [
                 { id: 'services', label: 'Services', icon: GlobeAltIcon },
             ]
+        },
+        {
+            title: 'Storage',
+            items: [
+                { id: 'pvcs', label: 'PVCs', icon: CircleStackIcon },
+                { id: 'pvs', label: 'PVs', icon: ServerStackIcon },
+                { id: 'storageclasses', label: 'Storage Classes', icon: ServerIcon },
+            ]
         }
     ];
 

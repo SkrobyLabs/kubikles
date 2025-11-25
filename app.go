@@ -13,6 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 )
 
 // App struct
@@ -760,4 +761,109 @@ func (a *App) SuspendCronJob(namespace, name string, suspend bool) error {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.SuspendCronJob(currentContext, namespace, name, suspend)
+}
+
+// PersistentVolumeClaim operations
+func (a *App) ListPVCs(namespace string) ([]v1.PersistentVolumeClaim, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ListPVCs called: context=%s, ns=%s", currentContext, namespace)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListPVCs(currentContext, namespace)
+}
+
+func (a *App) GetPVCYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetPVCYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetPVCYaml(namespace, name)
+}
+
+func (a *App) UpdatePVCYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdatePVCYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdatePVCYaml(namespace, name, yamlContent)
+}
+
+func (a *App) DeletePVC(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeletePVC called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeletePVC(currentContext, namespace, name)
+}
+
+// PersistentVolume operations (cluster-scoped)
+func (a *App) ListPVs() ([]v1.PersistentVolume, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ListPVs called: context=%s", currentContext)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListPVs(currentContext)
+}
+
+func (a *App) GetPVYaml(name string) (string, error) {
+	a.LogDebug("GetPVYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetPVYaml(name)
+}
+
+func (a *App) UpdatePVYaml(name, yamlContent string) error {
+	a.LogDebug("UpdatePVYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdatePVYaml(name, yamlContent)
+}
+
+func (a *App) DeletePV(name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeletePV called: context=%s, name=%s", currentContext, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeletePV(currentContext, name)
+}
+
+// StorageClass operations (cluster-scoped)
+func (a *App) ListStorageClasses() ([]storagev1.StorageClass, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ListStorageClasses called: context=%s", currentContext)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListStorageClasses(currentContext)
+}
+
+func (a *App) GetStorageClassYaml(name string) (string, error) {
+	a.LogDebug("GetStorageClassYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetStorageClassYaml(name)
+}
+
+func (a *App) UpdateStorageClassYaml(name, yamlContent string) error {
+	a.LogDebug("UpdateStorageClassYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateStorageClassYaml(name, yamlContent)
+}
+
+func (a *App) DeleteStorageClass(name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteStorageClass called: context=%s, name=%s", currentContext, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteStorageClass(currentContext, name)
 }

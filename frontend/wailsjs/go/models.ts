@@ -5753,6 +5753,667 @@ export namespace v1 {
 	
 	
 	
+	export class PersistentVolumeStatus {
+	    phase?: string;
+	    message?: string;
+	    reason?: string;
+	    lastPhaseTransitionTime?: Time;
+	
+	    static createFrom(source: any = {}) {
+	        return new PersistentVolumeStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.phase = source["phase"];
+	        this.message = source["message"];
+	        this.reason = source["reason"];
+	        this.lastPhaseTransitionTime = this.convertValues(source["lastPhaseTransitionTime"], Time);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class VolumeNodeAffinity {
+	    required?: NodeSelector;
+	
+	    static createFrom(source: any = {}) {
+	        return new VolumeNodeAffinity(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.required = this.convertValues(source["required"], NodeSelector);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CSIPersistentVolumeSource {
+	    driver: string;
+	    volumeHandle: string;
+	    readOnly?: boolean;
+	    fsType?: string;
+	    volumeAttributes?: Record<string, string>;
+	    // Go type: SecretReference
+	    controllerPublishSecretRef?: any;
+	    // Go type: SecretReference
+	    nodeStageSecretRef?: any;
+	    // Go type: SecretReference
+	    nodePublishSecretRef?: any;
+	    // Go type: SecretReference
+	    controllerExpandSecretRef?: any;
+	    // Go type: SecretReference
+	    nodeExpandSecretRef?: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new CSIPersistentVolumeSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.driver = source["driver"];
+	        this.volumeHandle = source["volumeHandle"];
+	        this.readOnly = source["readOnly"];
+	        this.fsType = source["fsType"];
+	        this.volumeAttributes = source["volumeAttributes"];
+	        this.controllerPublishSecretRef = this.convertValues(source["controllerPublishSecretRef"], null);
+	        this.nodeStageSecretRef = this.convertValues(source["nodeStageSecretRef"], null);
+	        this.nodePublishSecretRef = this.convertValues(source["nodePublishSecretRef"], null);
+	        this.controllerExpandSecretRef = this.convertValues(source["controllerExpandSecretRef"], null);
+	        this.nodeExpandSecretRef = this.convertValues(source["nodeExpandSecretRef"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StorageOSPersistentVolumeSource {
+	    volumeName?: string;
+	    volumeNamespace?: string;
+	    fsType?: string;
+	    readOnly?: boolean;
+	    secretRef?: ObjectReference;
+	
+	    static createFrom(source: any = {}) {
+	        return new StorageOSPersistentVolumeSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.volumeName = source["volumeName"];
+	        this.volumeNamespace = source["volumeNamespace"];
+	        this.fsType = source["fsType"];
+	        this.readOnly = source["readOnly"];
+	        this.secretRef = this.convertValues(source["secretRef"], ObjectReference);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class LocalVolumeSource {
+	    path: string;
+	    fsType?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LocalVolumeSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.fsType = source["fsType"];
+	    }
+	}
+	export class ScaleIOPersistentVolumeSource {
+	    gateway: string;
+	    system: string;
+	    // Go type: SecretReference
+	    secretRef?: any;
+	    sslEnabled?: boolean;
+	    protectionDomain?: string;
+	    storagePool?: string;
+	    storageMode?: string;
+	    volumeName?: string;
+	    fsType?: string;
+	    readOnly?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScaleIOPersistentVolumeSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.gateway = source["gateway"];
+	        this.system = source["system"];
+	        this.secretRef = this.convertValues(source["secretRef"], null);
+	        this.sslEnabled = source["sslEnabled"];
+	        this.protectionDomain = source["protectionDomain"];
+	        this.storagePool = source["storagePool"];
+	        this.storageMode = source["storageMode"];
+	        this.volumeName = source["volumeName"];
+	        this.fsType = source["fsType"];
+	        this.readOnly = source["readOnly"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AzureFilePersistentVolumeSource {
+	    secretName: string;
+	    shareName: string;
+	    readOnly?: boolean;
+	    secretNamespace?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AzureFilePersistentVolumeSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.secretName = source["secretName"];
+	        this.shareName = source["shareName"];
+	        this.readOnly = source["readOnly"];
+	        this.secretNamespace = source["secretNamespace"];
+	    }
+	}
+	export class FlexPersistentVolumeSource {
+	    driver: string;
+	    fsType?: string;
+	    // Go type: SecretReference
+	    secretRef?: any;
+	    readOnly?: boolean;
+	    options?: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new FlexPersistentVolumeSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.driver = source["driver"];
+	        this.fsType = source["fsType"];
+	        this.secretRef = this.convertValues(source["secretRef"], null);
+	        this.readOnly = source["readOnly"];
+	        this.options = source["options"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CephFSPersistentVolumeSource {
+	    monitors: string[];
+	    path?: string;
+	    user?: string;
+	    secretFile?: string;
+	    // Go type: SecretReference
+	    secretRef?: any;
+	    readOnly?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CephFSPersistentVolumeSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.monitors = source["monitors"];
+	        this.path = source["path"];
+	        this.user = source["user"];
+	        this.secretFile = source["secretFile"];
+	        this.secretRef = this.convertValues(source["secretRef"], null);
+	        this.readOnly = source["readOnly"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CinderPersistentVolumeSource {
+	    volumeID: string;
+	    fsType?: string;
+	    readOnly?: boolean;
+	    // Go type: SecretReference
+	    secretRef?: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new CinderPersistentVolumeSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.volumeID = source["volumeID"];
+	        this.fsType = source["fsType"];
+	        this.readOnly = source["readOnly"];
+	        this.secretRef = this.convertValues(source["secretRef"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ISCSIPersistentVolumeSource {
+	    targetPortal: string;
+	    iqn: string;
+	    lun: number;
+	    iscsiInterface?: string;
+	    fsType?: string;
+	    readOnly?: boolean;
+	    portals?: string[];
+	    chapAuthDiscovery?: boolean;
+	    chapAuthSession?: boolean;
+	    // Go type: SecretReference
+	    secretRef?: any;
+	    initiatorName?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ISCSIPersistentVolumeSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.targetPortal = source["targetPortal"];
+	        this.iqn = source["iqn"];
+	        this.lun = source["lun"];
+	        this.iscsiInterface = source["iscsiInterface"];
+	        this.fsType = source["fsType"];
+	        this.readOnly = source["readOnly"];
+	        this.portals = source["portals"];
+	        this.chapAuthDiscovery = source["chapAuthDiscovery"];
+	        this.chapAuthSession = source["chapAuthSession"];
+	        this.secretRef = this.convertValues(source["secretRef"], null);
+	        this.initiatorName = source["initiatorName"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SecretReference {
+	    name?: string;
+	    namespace?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SecretReference(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.namespace = source["namespace"];
+	    }
+	}
+	export class RBDPersistentVolumeSource {
+	    monitors: string[];
+	    image: string;
+	    fsType?: string;
+	    pool?: string;
+	    user?: string;
+	    keyring?: string;
+	    // Go type: SecretReference
+	    secretRef?: any;
+	    readOnly?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new RBDPersistentVolumeSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.monitors = source["monitors"];
+	        this.image = source["image"];
+	        this.fsType = source["fsType"];
+	        this.pool = source["pool"];
+	        this.user = source["user"];
+	        this.keyring = source["keyring"];
+	        this.secretRef = this.convertValues(source["secretRef"], null);
+	        this.readOnly = source["readOnly"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class GlusterfsPersistentVolumeSource {
+	    endpoints: string;
+	    path: string;
+	    readOnly?: boolean;
+	    endpointsNamespace?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GlusterfsPersistentVolumeSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.endpoints = source["endpoints"];
+	        this.path = source["path"];
+	        this.readOnly = source["readOnly"];
+	        this.endpointsNamespace = source["endpointsNamespace"];
+	    }
+	}
+	export class PersistentVolumeSpec {
+	    capacity?: Record<string, resource.Quantity>;
+	    // Go type: GCEPersistentDiskVolumeSource
+	    gcePersistentDisk?: any;
+	    // Go type: AWSElasticBlockStoreVolumeSource
+	    awsElasticBlockStore?: any;
+	    // Go type: HostPathVolumeSource
+	    hostPath?: any;
+	    // Go type: GlusterfsPersistentVolumeSource
+	    glusterfs?: any;
+	    // Go type: NFSVolumeSource
+	    nfs?: any;
+	    // Go type: RBDPersistentVolumeSource
+	    rbd?: any;
+	    // Go type: ISCSIPersistentVolumeSource
+	    iscsi?: any;
+	    // Go type: CinderPersistentVolumeSource
+	    cinder?: any;
+	    // Go type: CephFSPersistentVolumeSource
+	    cephfs?: any;
+	    // Go type: FCVolumeSource
+	    fc?: any;
+	    // Go type: FlockerVolumeSource
+	    flocker?: any;
+	    // Go type: FlexPersistentVolumeSource
+	    flexVolume?: any;
+	    // Go type: AzureFilePersistentVolumeSource
+	    azureFile?: any;
+	    // Go type: VsphereVirtualDiskVolumeSource
+	    vsphereVolume?: any;
+	    // Go type: QuobyteVolumeSource
+	    quobyte?: any;
+	    // Go type: AzureDiskVolumeSource
+	    azureDisk?: any;
+	    // Go type: PhotonPersistentDiskVolumeSource
+	    photonPersistentDisk?: any;
+	    // Go type: PortworxVolumeSource
+	    portworxVolume?: any;
+	    // Go type: ScaleIOPersistentVolumeSource
+	    scaleIO?: any;
+	    // Go type: LocalVolumeSource
+	    local?: any;
+	    // Go type: StorageOSPersistentVolumeSource
+	    storageos?: any;
+	    // Go type: CSIPersistentVolumeSource
+	    csi?: any;
+	    accessModes?: string[];
+	    claimRef?: ObjectReference;
+	    persistentVolumeReclaimPolicy?: string;
+	    storageClassName?: string;
+	    mountOptions?: string[];
+	    volumeMode?: string;
+	    nodeAffinity?: VolumeNodeAffinity;
+	    volumeAttributesClassName?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PersistentVolumeSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.capacity = this.convertValues(source["capacity"], resource.Quantity, true);
+	        this.gcePersistentDisk = this.convertValues(source["gcePersistentDisk"], null);
+	        this.awsElasticBlockStore = this.convertValues(source["awsElasticBlockStore"], null);
+	        this.hostPath = this.convertValues(source["hostPath"], null);
+	        this.glusterfs = this.convertValues(source["glusterfs"], null);
+	        this.nfs = this.convertValues(source["nfs"], null);
+	        this.rbd = this.convertValues(source["rbd"], null);
+	        this.iscsi = this.convertValues(source["iscsi"], null);
+	        this.cinder = this.convertValues(source["cinder"], null);
+	        this.cephfs = this.convertValues(source["cephfs"], null);
+	        this.fc = this.convertValues(source["fc"], null);
+	        this.flocker = this.convertValues(source["flocker"], null);
+	        this.flexVolume = this.convertValues(source["flexVolume"], null);
+	        this.azureFile = this.convertValues(source["azureFile"], null);
+	        this.vsphereVolume = this.convertValues(source["vsphereVolume"], null);
+	        this.quobyte = this.convertValues(source["quobyte"], null);
+	        this.azureDisk = this.convertValues(source["azureDisk"], null);
+	        this.photonPersistentDisk = this.convertValues(source["photonPersistentDisk"], null);
+	        this.portworxVolume = this.convertValues(source["portworxVolume"], null);
+	        this.scaleIO = this.convertValues(source["scaleIO"], null);
+	        this.local = this.convertValues(source["local"], null);
+	        this.storageos = this.convertValues(source["storageos"], null);
+	        this.csi = this.convertValues(source["csi"], null);
+	        this.accessModes = source["accessModes"];
+	        this.claimRef = this.convertValues(source["claimRef"], ObjectReference);
+	        this.persistentVolumeReclaimPolicy = source["persistentVolumeReclaimPolicy"];
+	        this.storageClassName = source["storageClassName"];
+	        this.mountOptions = source["mountOptions"];
+	        this.volumeMode = source["volumeMode"];
+	        this.nodeAffinity = this.convertValues(source["nodeAffinity"], VolumeNodeAffinity);
+	        this.volumeAttributesClassName = source["volumeAttributesClassName"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PersistentVolume {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: PersistentVolumeSpec;
+	    status?: PersistentVolumeStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new PersistentVolume(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], PersistentVolumeSpec);
+	        this.status = this.convertValues(source["status"], PersistentVolumeStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class PersistentVolumeClaimCondition {
 	    type: string;
 	    status: string;
@@ -5903,6 +6564,8 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	
+	
 	
 	
 	
@@ -6963,6 +7626,129 @@ export namespace v1 {
 	
 	
 	
+	
+	
+	
+	export class TopologySelectorLabelRequirement {
+	    key: string;
+	    values: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TopologySelectorLabelRequirement(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.values = source["values"];
+	    }
+	}
+	export class TopologySelectorTerm {
+	    matchLabelExpressions?: TopologySelectorLabelRequirement[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TopologySelectorTerm(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.matchLabelExpressions = this.convertValues(source["matchLabelExpressions"], TopologySelectorLabelRequirement);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StorageClass {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    provisioner: string;
+	    parameters?: Record<string, string>;
+	    reclaimPolicy?: string;
+	    mountOptions?: string[];
+	    allowVolumeExpansion?: boolean;
+	    volumeBindingMode?: string;
+	    allowedTopologies?: TopologySelectorTerm[];
+	
+	    static createFrom(source: any = {}) {
+	        return new StorageClass(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.provisioner = source["provisioner"];
+	        this.parameters = source["parameters"];
+	        this.reclaimPolicy = source["reclaimPolicy"];
+	        this.mountOptions = source["mountOptions"];
+	        this.allowVolumeExpansion = source["allowVolumeExpansion"];
+	        this.volumeBindingMode = source["volumeBindingMode"];
+	        this.allowedTopologies = this.convertValues(source["allowedTopologies"], TopologySelectorTerm);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	
 	

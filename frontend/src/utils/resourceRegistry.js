@@ -17,6 +17,9 @@ import {
     GetSecretYaml, UpdateSecretYaml, DeleteSecret,
     GetNamespaceYAML, UpdateNamespaceYAML, DeleteNamespace,
     GetEventYAML, UpdateEventYAML, DeleteEvent,
+    GetPVCYaml, UpdatePVCYaml, DeletePVC,
+    GetPVYaml, UpdatePVYaml, DeletePV,
+    GetStorageClassYaml, UpdateStorageClassYaml, DeleteStorageClass,
 } from '../../wailsjs/go/main/App';
 
 const registry = {
@@ -96,6 +99,27 @@ const registry = {
         namespaced: true,
         getYaml: (namespace, name) => GetEventYAML(namespace, name),
         updateYaml: (namespace, name, content) => UpdateEventYAML(namespace, name, content),
+    },
+    pvc: {
+        kind: 'PersistentVolumeClaim',
+        plural: 'persistentvolumeclaims',
+        namespaced: true,
+        getYaml: (namespace, name) => GetPVCYaml(namespace, name),
+        updateYaml: (namespace, name, content) => UpdatePVCYaml(namespace, name, content),
+    },
+    pv: {
+        kind: 'PersistentVolume',
+        plural: 'persistentvolumes',
+        namespaced: false,
+        getYaml: (_, name) => GetPVYaml(name),
+        updateYaml: (_, name, content) => UpdatePVYaml(name, content),
+    },
+    storageclass: {
+        kind: 'StorageClass',
+        plural: 'storageclasses',
+        namespaced: false,
+        getYaml: (_, name) => GetStorageClassYaml(name),
+        updateYaml: (_, name, content) => UpdateStorageClassYaml(name, content),
     },
 };
 

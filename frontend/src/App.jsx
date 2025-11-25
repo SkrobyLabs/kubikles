@@ -16,6 +16,9 @@ import ConfigMapList from './features/config/configmaps/ConfigMapList';
 import SecretList from './features/config/secrets/SecretList';
 import JobList from './features/workloads/jobs/JobList';
 import CronJobList from './features/workloads/cronjobs/CronJobList';
+import PVCList from './features/storage/pvc/PVCList';
+import PVList from './features/storage/pv/PVList';
+import StorageClassList from './features/storage/storageclass/StorageClassList';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
 
@@ -118,6 +121,9 @@ function MainLayout() {
             case 'services': return <ServiceList isVisible={true} />;
             case 'configmaps': return <ConfigMapList isVisible={true} />;
             case 'secrets': return <SecretList isVisible={true} />;
+            case 'pvcs': return <PVCList isVisible={true} />;
+            case 'pvs': return <PVList isVisible={true} />;
+            case 'storageclasses': return <StorageClassList isVisible={true} />;
             default: return <div className="p-4">Unknown View: {activeView}</div>;
         }
     };

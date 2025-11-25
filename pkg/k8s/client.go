@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
@@ -973,4 +974,166 @@ func (c *Client) SuspendCronJob(contextName, namespace, name string, suspend boo
 
 	_ = result
 	return nil
+}
+
+// PersistentVolumeClaim operations
+func (c *Client) ListPVCs(contextName, namespace string) ([]v1.PersistentVolumeClaim, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	pvcs, err := cs.CoreV1().PersistentVolumeClaims(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pvcs.Items, nil
+}
+
+func (c *Client) GetPVCYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	pvc, err := cs.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	pvc.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(pvc)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdatePVCYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var pvc v1.PersistentVolumeClaim
+	if err := yaml.Unmarshal([]byte(yamlContent), &pvc); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.CoreV1().PersistentVolumeClaims(namespace).Update(context.TODO(), &pvc, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeletePVC(contextName, namespace, name string) error {
+	fmt.Printf("Deleting PVC: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.CoreV1().PersistentVolumeClaims(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// PersistentVolume operations (cluster-scoped)
+func (c *Client) ListPVs(contextName string) ([]v1.PersistentVolume, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	pvs, err := cs.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pvs.Items, nil
+}
+
+func (c *Client) GetPVYaml(name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	pv, err := cs.CoreV1().PersistentVolumes().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	pv.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(pv)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdatePVYaml(name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var pv v1.PersistentVolume
+	if err := yaml.Unmarshal([]byte(yamlContent), &pv); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.CoreV1().PersistentVolumes().Update(context.TODO(), &pv, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeletePV(contextName, name string) error {
+	fmt.Printf("Deleting PV: context=%s, name=%s\n", contextName, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.CoreV1().PersistentVolumes().Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// StorageClass operations (cluster-scoped)
+func (c *Client) ListStorageClasses(contextName string) ([]storagev1.StorageClass, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	scs, err := cs.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return scs.Items, nil
+}
+
+func (c *Client) GetStorageClassYaml(name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	sc, err := cs.StorageV1().StorageClasses().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	sc.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(sc)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateStorageClassYaml(name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var sc storagev1.StorageClass
+	if err := yaml.Unmarshal([]byte(yamlContent), &sc); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.StorageV1().StorageClasses().Update(context.TODO(), &sc, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteStorageClass(contextName, name string) error {
+	fmt.Printf("Deleting StorageClass: context=%s, name=%s\n", contextName, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.StorageV1().StorageClasses().Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
