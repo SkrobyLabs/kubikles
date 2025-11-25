@@ -27,7 +27,7 @@ export default function PVList({ isVisible }) {
     const { currentContext } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { pvs, loading } = usePVs(currentContext, isVisible);
-    const { handleEditYaml, handleDelete } = usePVActions();
+    const { handleEditYaml, handleShowDependencies, handleDelete } = usePVActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
@@ -67,6 +67,7 @@ export default function PVList({ isVisible }) {
                     isOpen={activeMenuId === `pv-${item.metadata.uid}`}
                     onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `pv-${item.metadata.uid}` : null)}
                     onEditYaml={handleEditYaml}
+                    onShowDependencies={handleShowDependencies}
                     onDelete={handleDelete}
                 />
             ),
@@ -74,7 +75,7 @@ export default function PVList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete]);
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies, handleDelete]);
 
     return (
         <ResourceList

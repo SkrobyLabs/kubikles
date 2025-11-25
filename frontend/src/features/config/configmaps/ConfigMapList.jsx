@@ -12,7 +12,7 @@ export default function ConfigMapList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { configMaps, loading } = useConfigMaps(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleDelete } = useConfigMapActions();
+    const { handleEditYaml, handleShowDependencies, handleDelete } = useConfigMapActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
@@ -29,6 +29,7 @@ export default function ConfigMapList({ isVisible }) {
                     isOpen={activeMenuId === `configmap-${item.metadata.uid}`}
                     onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `configmap-${item.metadata.uid}` : null)}
                     onEditYaml={handleEditYaml}
+                    onShowDependencies={handleShowDependencies}
                     onDelete={handleDelete}
                 />
             ),
@@ -36,7 +37,7 @@ export default function ConfigMapList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete]);
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies, handleDelete]);
 
     return (
         <ResourceList

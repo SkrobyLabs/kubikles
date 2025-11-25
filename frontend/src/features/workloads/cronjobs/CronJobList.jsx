@@ -13,7 +13,7 @@ export default function CronJobList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { cronJobs, loading } = useCronJobs(currentContext, selectedNamespaces, isVisible);
-    const { handleViewLogs, handleEditYaml, handleRunNow, handleSuspend, handleDelete } = useCronJobActions();
+    const { handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend, handleDelete } = useCronJobActions();
 
     // Format duration for future time (reverse of formatAge)
     const formatDuration = (milliseconds) => {
@@ -132,6 +132,7 @@ export default function CronJobList({ isVisible }) {
                     onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `cronjob-${item.metadata.uid}` : null)}
                     onViewLogs={() => handleViewLogs(item)}
                     onEditYaml={() => handleEditYaml(item)}
+                    onShowDependencies={() => handleShowDependencies(item)}
                     onRunNow={() => handleRunNow(item)}
                     onSuspend={() => handleSuspend(item)}
                     onDelete={() => handleDelete(item)}
@@ -140,7 +141,7 @@ export default function CronJobList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleViewLogs, handleEditYaml, handleRunNow, handleSuspend, handleDelete]);
+    ], [activeMenuId, setActiveMenuId, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend, handleDelete]);
 
     return (
         <ResourceList

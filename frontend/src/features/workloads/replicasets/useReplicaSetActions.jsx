@@ -3,6 +3,7 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeleteReplicaSet, ListPods } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import DependencyGraph from '../../../components/shared/DependencyGraph';
 import LogViewer from '../../../components/shared/LogViewer';
 import Logger from '../../../utils/Logger';
 
@@ -18,6 +19,23 @@ export const useReplicaSetActions = () => {
             title: `Edit: ${replicaSet.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="replicaset"
+                    namespace={replicaSet.metadata.namespace}
+                    resourceName={replicaSet.metadata.name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
+
+    const handleShowDependencies = (replicaSet) => {
+        Logger.info("Opening dependency graph", { namespace: replicaSet.metadata.namespace, replicaSet: replicaSet.metadata.name });
+        const tabId = `deps-replicaset-${replicaSet.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `Deps: ${replicaSet.metadata.name}`,
+            content: (
+                <DependencyGraph
                     resourceType="replicaset"
                     namespace={replicaSet.metadata.namespace}
                     resourceName={replicaSet.metadata.name}
@@ -116,6 +134,7 @@ export const useReplicaSetActions = () => {
 
     return {
         handleEditYaml,
+        handleShowDependencies,
         handleDelete,
         handleViewLogs
     };

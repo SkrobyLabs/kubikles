@@ -3,6 +3,7 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeleteCronJob, TriggerCronJob, SuspendCronJob, ListJobs } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import DependencyGraph from '../../../components/shared/DependencyGraph';
 import LogViewer from '../../../components/shared/LogViewer';
 import Logger from '../../../utils/Logger';
 
@@ -113,6 +114,23 @@ export const useCronJobActions = () => {
         });
     };
 
+    const handleShowDependencies = (cronJob) => {
+        Logger.info("Opening dependency graph", { namespace: cronJob.metadata.namespace, cronJob: cronJob.metadata.name });
+        const tabId = `deps-cronjob-${cronJob.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `Deps: ${cronJob.metadata.name}`,
+            content: (
+                <DependencyGraph
+                    resourceType="cronjob"
+                    namespace={cronJob.metadata.namespace}
+                    resourceName={cronJob.metadata.name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
+
     const handleRunNow = async (cronJob) => {
         try {
             const name = cronJob.metadata.name;
@@ -181,6 +199,7 @@ export const useCronJobActions = () => {
     return {
         handleViewLogs,
         handleEditYaml,
+        handleShowDependencies,
         handleRunNow,
         handleSuspend,
         handleDelete

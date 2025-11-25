@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
 
-export default function JobActionsMenu({ job, isOpen, onOpenChange, onEditYaml, onDelete, onViewLogs }) {
+export default function JobActionsMenu({ job, isOpen, onOpenChange, onEditYaml, onShowDependencies, onDelete, onViewLogs }) {
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const buttonRef = useRef(null);
 
@@ -71,6 +71,13 @@ export default function JobActionsMenu({ job, isOpen, onOpenChange, onEditYaml, 
             >
                 <PencilSquareIcon className="h-4 w-4" />
                 Edit
+            </button>
+            <button
+                onClick={(e) => { e.stopPropagation(); handleAction(() => onShowDependencies(job)); }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+            >
+                <ShareIcon className="h-4 w-4" />
+                Dependencies
             </button>
             <div className="h-px bg-[#3d3d3d] my-1" />
             <button

@@ -2,6 +2,7 @@ import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { DeletePV } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import DependencyGraph from '../../../components/shared/DependencyGraph';
 import Logger from '../../../utils/Logger';
 
 export const usePVActions = () => {
@@ -15,6 +16,22 @@ export const usePVActions = () => {
             title: `Edit: ${pv.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="pv"
+                    resourceName={pv.metadata.name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
+
+    const handleShowDependencies = (pv) => {
+        Logger.info("Opening PV dependency graph", { name: pv.metadata.name });
+        const tabId = `deps-pv-${pv.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `Deps: ${pv.metadata.name}`,
+            content: (
+                <DependencyGraph
                     resourceType="pv"
                     resourceName={pv.metadata.name}
                     onClose={() => closeTab(tabId)}
@@ -47,6 +64,7 @@ export const usePVActions = () => {
 
     return {
         handleEditYaml,
+        handleShowDependencies,
         handleDelete
     };
 };

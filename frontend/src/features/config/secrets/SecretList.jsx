@@ -12,7 +12,7 @@ export default function SecretList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { secrets, loading } = useSecrets(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleDelete } = useSecretActions();
+    const { handleEditYaml, handleShowDependencies, handleDelete } = useSecretActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
@@ -29,6 +29,7 @@ export default function SecretList({ isVisible }) {
                     isOpen={activeMenuId === `secret-${item.metadata.uid}`}
                     onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `secret-${item.metadata.uid}` : null)}
                     onEditYaml={handleEditYaml}
+                    onShowDependencies={handleShowDependencies}
                     onDelete={handleDelete}
                 />
             ),
@@ -36,7 +37,7 @@ export default function SecretList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete]);
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies, handleDelete]);
 
     return (
         <ResourceList

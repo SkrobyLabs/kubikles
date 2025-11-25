@@ -19,7 +19,7 @@ export default function JobList({ isVisible }) {
     const { currentContext, selectedNamespaces, namespaces, setSelectedNamespaces } = useK8s();
     const { activeMenuId, setActiveMenuId, navigateWithSearch } = useUI();
     const { jobs, loading } = useJobs(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleDelete, handleViewLogs } = useJobActions(selectedNamespaces);
+    const { handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs } = useJobActions(selectedNamespaces);
 
     const getCompletions = (job) => {
         const succeeded = job.status?.succeeded || 0;
@@ -111,6 +111,7 @@ export default function JobList({ isVisible }) {
                     isOpen={activeMenuId === `job-${job.metadata.uid}`}
                     onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `job-${job.metadata.uid}` : null)}
                     onEditYaml={handleEditYaml}
+                    onShowDependencies={handleShowDependencies}
                     onDelete={handleDelete}
                     onViewLogs={handleViewLogs}
                 />
@@ -118,7 +119,7 @@ export default function JobList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete, handleViewLogs, navigateWithSearch]);
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs, navigateWithSearch]);
 
     return (
         <ResourceList

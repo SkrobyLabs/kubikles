@@ -3,6 +3,7 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeleteSecret } from '../../../../wailsjs/go/main/App';
 import SecretEditor from '../../../components/shared/SecretEditor';
+import DependencyGraph from '../../../components/shared/DependencyGraph';
 import Logger from '../../../utils/Logger';
 
 export const useSecretActions = () => {
@@ -17,6 +18,23 @@ export const useSecretActions = () => {
             title: `Edit: ${secret.metadata.name}`,
             content: (
                 <SecretEditor
+                    namespace={secret.metadata.namespace}
+                    resourceName={secret.metadata.name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
+
+    const handleShowDependencies = (secret) => {
+        Logger.info("Opening dependency graph", { namespace: secret.metadata.namespace, secret: secret.metadata.name });
+        const tabId = `deps-secret-${secret.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `Deps: ${secret.metadata.name}`,
+            content: (
+                <DependencyGraph
+                    resourceType="secret"
                     namespace={secret.metadata.namespace}
                     resourceName={secret.metadata.name}
                     onClose={() => closeTab(tabId)}
@@ -50,6 +68,7 @@ export const useSecretActions = () => {
 
     return {
         handleEditYaml,
+        handleShowDependencies,
         handleDelete
     };
 };

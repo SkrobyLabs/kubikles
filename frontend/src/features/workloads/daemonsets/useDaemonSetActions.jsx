@@ -3,6 +3,7 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeleteDaemonSet, RestartDaemonSet, ListPods } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import DependencyGraph from '../../../components/shared/DependencyGraph';
 import LogViewer from '../../../components/shared/LogViewer';
 import Logger from '../../../utils/Logger';
 
@@ -18,6 +19,23 @@ export const useDaemonSetActions = () => {
             title: `Edit: ${daemonSet.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="daemonset"
+                    namespace={daemonSet.metadata.namespace}
+                    resourceName={daemonSet.metadata.name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
+
+    const handleShowDependencies = (daemonSet) => {
+        Logger.info("Opening dependency graph", { namespace: daemonSet.metadata.namespace, daemonSet: daemonSet.metadata.name });
+        const tabId = `deps-daemonset-${daemonSet.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `Deps: ${daemonSet.metadata.name}`,
+            content: (
+                <DependencyGraph
                     resourceType="daemonset"
                     namespace={daemonSet.metadata.namespace}
                     resourceName={daemonSet.metadata.name}
@@ -127,6 +145,7 @@ export const useDaemonSetActions = () => {
 
     return {
         handleEditYaml,
+        handleShowDependencies,
         handleRestart,
         handleDelete,
         handleViewLogs

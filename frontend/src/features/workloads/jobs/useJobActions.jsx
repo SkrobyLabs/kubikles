@@ -1,6 +1,7 @@
 import { useUI } from '../../../context/UIContext';
 import { DeleteJob, ListPods } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import DependencyGraph from '../../../components/shared/DependencyGraph';
 import LogViewer from '../../../components/shared/LogViewer';
 import Logger from '../../../utils/Logger';
 
@@ -16,6 +17,21 @@ export const useJobActions = (namespace, onRefresh) => {
                 <YamlEditor
                     resourceType="job"
                     namespace={namespace}
+                    resourceName={job.metadata.name}
+                />
+            )
+        });
+    };
+
+    const handleShowDependencies = (job) => {
+        Logger.info("Opening dependency graph", { namespace: job.metadata.namespace, job: job.metadata.name });
+        openTab({
+            id: `deps-job-${job.metadata.uid}`,
+            title: `Deps: ${job.metadata.name}`,
+            content: (
+                <DependencyGraph
+                    resourceType="job"
+                    namespace={job.metadata.namespace}
                     resourceName={job.metadata.name}
                 />
             )
@@ -107,6 +123,7 @@ export const useJobActions = (namespace, onRefresh) => {
 
     return {
         handleEditYaml,
+        handleShowDependencies,
         handleDelete,
         handleViewLogs
     };

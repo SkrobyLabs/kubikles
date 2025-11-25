@@ -30,6 +30,13 @@ import {
     ServerIcon,
 } from '@heroicons/react/24/outline';
 
+// Resource kinds that support dependency graph queries
+const DEPENDENCY_SUPPORTED_KINDS = new Set([
+    'Pod', 'Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet',
+    'Job', 'CronJob', 'ConfigMap', 'Secret', 'Service',
+    'PersistentVolumeClaim', 'PersistentVolume'
+]);
+
 // Map resource kinds to icons and colors
 const resourceStyles = {
     Pod: { icon: CubeIcon, color: '#3b82f6', bgColor: '#3b82f620' },
@@ -365,12 +372,14 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                     >
                         Edit YAML
                     </button>
-                    <button
-                        onClick={() => handleShowDependencies(contextMenu.node)}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d]"
-                    >
-                        Show Dependencies
-                    </button>
+                    {DEPENDENCY_SUPPORTED_KINDS.has(contextMenu.node.kind) && (
+                        <button
+                            onClick={() => handleShowDependencies(contextMenu.node)}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d]"
+                        >
+                            Show Dependencies
+                        </button>
+                    )}
                 </div>
             )}
         </div>
