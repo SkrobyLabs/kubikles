@@ -3,6 +3,7 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeleteStatefulSet, RestartStatefulSet, ListPods } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import DependencyGraph from '../../../components/shared/DependencyGraph';
 import LogViewer from '../../../components/shared/LogViewer';
 import Logger from '../../../utils/Logger';
 
@@ -18,6 +19,23 @@ export const useStatefulSetActions = () => {
             title: `Edit: ${statefulSet.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="statefulset"
+                    namespace={statefulSet.metadata.namespace}
+                    resourceName={statefulSet.metadata.name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
+
+    const handleShowDependencies = (statefulSet) => {
+        Logger.info("Opening dependency graph", { namespace: statefulSet.metadata.namespace, statefulSet: statefulSet.metadata.name });
+        const tabId = `deps-statefulset-${statefulSet.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `Deps: ${statefulSet.metadata.name}`,
+            content: (
+                <DependencyGraph
                     resourceType="statefulset"
                     namespace={statefulSet.metadata.namespace}
                     resourceName={statefulSet.metadata.name}
@@ -127,6 +145,7 @@ export const useStatefulSetActions = () => {
 
     return {
         handleEditYaml,
+        handleShowDependencies,
         handleRestart,
         handleDelete,
         handleViewLogs

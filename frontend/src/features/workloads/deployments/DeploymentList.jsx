@@ -16,7 +16,7 @@ export default function DeploymentList({ isVisible }) {
     // console.log("DeploymentList rendering");
     const { deployments, loading: deploymentsLoading } = useDeployments(currentContext, selectedNamespaces, isVisible);
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible); // Fetch pods for status
-    const { handleEditYaml, handleRestart, handleDelete, handleViewLogs } = useDeploymentActions();
+    const { handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs } = useDeploymentActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
@@ -72,6 +72,7 @@ export default function DeploymentList({ isVisible }) {
                     isOpen={activeMenuId === `deployment-${item.metadata.uid}`}
                     onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `deployment-${item.metadata.uid}` : null)}
                     onEditYaml={() => handleEditYaml(item)}
+                    onShowDependencies={() => handleShowDependencies(item)}
                     onRestart={() => handleRestart(item)}
                     onDelete={() => handleDelete(item)}
                     onViewLogs={() => handleViewLogs(item)}
@@ -80,7 +81,7 @@ export default function DeploymentList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleRestart, handleDelete, handleViewLogs, podsLoading, allPods]);
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs, podsLoading, allPods]);
 
     return (
         <ResourceList

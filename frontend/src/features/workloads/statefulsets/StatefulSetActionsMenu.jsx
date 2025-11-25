@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
 
-export default function StatefulSetActionsMenu({ statefulSet, isOpen, onOpenChange, onEditYaml, onRestart, onDelete, onViewLogs }) {
+export default function StatefulSetActionsMenu({ statefulSet, isOpen, onOpenChange, onEditYaml, onShowDependencies, onRestart, onDelete, onViewLogs }) {
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const buttonRef = useRef(null);
 
@@ -71,6 +71,13 @@ export default function StatefulSetActionsMenu({ statefulSet, isOpen, onOpenChan
             >
                 <PencilSquareIcon className="h-4 w-4" />
                 Edit
+            </button>
+            <button
+                onClick={(e) => { e.stopPropagation(); handleAction(() => onShowDependencies(statefulSet)); }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+            >
+                <ShareIcon className="h-4 w-4" />
+                Dependencies
             </button>
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onRestart(statefulSet)); }}

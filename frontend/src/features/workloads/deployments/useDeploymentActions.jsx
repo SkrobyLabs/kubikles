@@ -3,6 +3,7 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeleteDeployment, RestartDeployment, ListPods } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import DependencyGraph from '../../../components/shared/DependencyGraph';
 import LogViewer from '../../../components/shared/LogViewer';
 import Logger from '../../../utils/Logger';
 
@@ -18,6 +19,23 @@ export const useDeploymentActions = () => {
             title: `Edit: ${deployment.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="deployment"
+                    namespace={deployment.metadata.namespace}
+                    resourceName={deployment.metadata.name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
+
+    const handleShowDependencies = (deployment) => {
+        Logger.info("Opening dependency graph", { namespace: deployment.metadata.namespace, deployment: deployment.metadata.name });
+        const tabId = `deps-deploy-${deployment.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `Deps: ${deployment.metadata.name}`,
+            content: (
+                <DependencyGraph
                     resourceType="deployment"
                     namespace={deployment.metadata.namespace}
                     resourceName={deployment.metadata.name}
@@ -127,6 +145,7 @@ export const useDeploymentActions = () => {
 
     return {
         handleEditYaml,
+        handleShowDependencies,
         handleRestart,
         handleDelete,
         handleViewLogs

@@ -5,6 +5,7 @@ import { DeletePod, ForceDeletePod, OpenTerminal } from '../../../../wailsjs/go/
 import LogViewer from '../../../components/shared/LogViewer';
 import Terminal from '../../../components/shared/Terminal';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import DependencyGraph from '../../../components/shared/DependencyGraph';
 import Logger from '../../../utils/Logger';
 
 export const usePodActions = () => {
@@ -55,6 +56,23 @@ export const usePodActions = () => {
         });
     };
 
+    const handleShowDependencies = (pod) => {
+        Logger.info("Opening dependency graph", { namespace: pod.metadata.namespace, pod: pod.metadata.name });
+        const tabId = `deps-${pod.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `Deps: ${pod.metadata.name}`,
+            content: (
+                <DependencyGraph
+                    resourceType="pod"
+                    namespace={pod.metadata.namespace}
+                    resourceName={pod.metadata.name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
+
     const handleDelete = async (namespace, name, isTerminating = false) => {
         const actionType = isTerminating ? 'Force Delete' : 'Delete';
         Logger.info(`Action: ${actionType} Pod`, { namespace, name, context: currentContext });
@@ -81,6 +99,7 @@ export const usePodActions = () => {
         openLogs,
         handleShell,
         handleEditYaml,
+        handleShowDependencies,
         handleDelete
     };
 };

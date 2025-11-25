@@ -118,6 +118,10 @@ export function GetReplicaSetYaml(arg1, arg2) {
   return window['go']['main']['App']['GetReplicaSetYaml'](arg1, arg2);
 }
 
+export function GetResourceDependencies(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetResourceDependencies'](arg1, arg2, arg3);
+}
+
 export function GetSecretData(arg1, arg2) {
   return window['go']['main']['App']['GetSecretData'](arg1, arg2);
 }

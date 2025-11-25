@@ -25,7 +25,7 @@ export default function PVCList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { pvcs, loading } = usePVCs(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleDelete } = usePVCActions();
+    const { handleEditYaml, handleShowDependencies, handleDelete } = usePVCActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
@@ -60,6 +60,7 @@ export default function PVCList({ isVisible }) {
                     isOpen={activeMenuId === `pvc-${item.metadata.uid}`}
                     onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `pvc-${item.metadata.uid}` : null)}
                     onEditYaml={handleEditYaml}
+                    onShowDependencies={handleShowDependencies}
                     onDelete={handleDelete}
                 />
             ),
@@ -67,7 +68,7 @@ export default function PVCList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete]);
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies, handleDelete]);
 
     return (
         <ResourceList

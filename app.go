@@ -867,3 +867,13 @@ func (a *App) DeleteStorageClass(name string) error {
 	}
 	return a.k8sClient.DeleteStorageClass(currentContext, name)
 }
+
+// GetResourceDependencies returns the dependency graph for a given resource
+func (a *App) GetResourceDependencies(resourceType, namespace, name string) (*k8s.DependencyGraph, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetResourceDependencies called: context=%s, type=%s, ns=%s, name=%s", currentContext, resourceType, namespace, name)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetResourceDependencies(currentContext, resourceType, namespace, name)
+}
