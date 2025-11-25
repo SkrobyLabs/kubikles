@@ -46,6 +46,7 @@ export const usePodActions = () => {
             title: `Edit: ${pod.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="pod"
                     namespace={pod.metadata.namespace}
                     resourceName={pod.metadata.name}
                     onClose={() => closeTab(tabId)}

@@ -14,9 +14,9 @@ export const useJobActions = (namespace, onRefresh) => {
             title: `Edit: ${job.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="job"
                     namespace={namespace}
                     resourceName={job.metadata.name}
-                    isJob={true}
                 />
             )
         });

@@ -18,9 +18,9 @@ export const useDaemonSetActions = () => {
             title: `Edit: ${daemonSet.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="daemonset"
                     namespace={daemonSet.metadata.namespace}
                     resourceName={daemonSet.metadata.name}
-                    isDaemonSet={true}
                     onClose={() => closeTab(tabId)}
                 />
             )

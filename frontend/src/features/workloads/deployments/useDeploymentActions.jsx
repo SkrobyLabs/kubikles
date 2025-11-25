@@ -18,9 +18,9 @@ export const useDeploymentActions = () => {
             title: `Edit: ${deployment.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="deployment"
                     namespace={deployment.metadata.namespace}
                     resourceName={deployment.metadata.name}
-                    isDeployment={true}
                     onClose={() => closeTab(tabId)}
                 />
             )

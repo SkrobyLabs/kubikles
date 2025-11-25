@@ -17,9 +17,9 @@ export const useConfigMapActions = () => {
             title: `Edit: ${configMap.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="configmap"
                     namespace={configMap.metadata.namespace}
                     resourceName={configMap.metadata.name}
-                    isConfigMap={true}
                     onClose={() => closeTab(tabId)}
                 />
             )

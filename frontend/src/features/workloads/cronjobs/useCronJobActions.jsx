@@ -104,9 +104,9 @@ export const useCronJobActions = () => {
             title: `Edit: ${cronJob.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="cronjob"
                     namespace={cronJob.metadata.namespace}
                     resourceName={cronJob.metadata.name}
-                    isCronJob={true}
                     onClose={() => closeTab(tabId)}
                 />
             )

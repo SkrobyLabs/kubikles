@@ -15,9 +15,9 @@ export const useEventActions = () => {
             title: `Edit: ${event.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="event"
                     namespace={event.metadata.namespace}
                     resourceName={event.metadata.name}
-                    isEvent={true}
                     onClose={() => closeTab(tabId)}
                 />
             )

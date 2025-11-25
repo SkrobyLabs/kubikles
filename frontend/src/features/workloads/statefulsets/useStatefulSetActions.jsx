@@ -18,9 +18,9 @@ export const useStatefulSetActions = () => {
             title: `Edit: ${statefulSet.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="statefulset"
                     namespace={statefulSet.metadata.namespace}
                     resourceName={statefulSet.metadata.name}
-                    isStatefulSet={true}
                     onClose={() => closeTab(tabId)}
                 />
             )

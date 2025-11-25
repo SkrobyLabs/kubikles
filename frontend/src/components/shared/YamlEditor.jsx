@@ -1,18 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
-import {
-    GetPodYaml, UpdatePodYaml,
-    GetDeploymentYaml, UpdateDeploymentYaml,
-    GetStatefulSetYaml, UpdateStatefulSetYaml,
-    GetConfigMapYaml, UpdateConfigMapYaml,
-    GetSecretYaml, UpdateSecretYaml,
-    GetDaemonSetYaml, UpdateDaemonSetYaml,
-    GetReplicaSetYaml, UpdateReplicaSetYaml,
-    GetJobYaml, UpdateJobYaml,
-    GetCronJobYaml, UpdateCronJobYaml,
-    GetNamespaceYAML, UpdateNamespaceYAML,
-    GetEventYAML, UpdateEventYAML
-} from '../../../wailsjs/go/main/App';
+import { getResource, getResourceByKind } from '../../utils/resourceRegistry';
 import Logger from '../../utils/Logger';
 import { useUI } from '../../context/UIContext';
 import { ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
@@ -49,24 +37,7 @@ function extractControllerOwner(yamlContent) {
     return null;
 }
 
-// Map kind to resource type flags
-function getResourceTypeFlags(kind) {
-    const kindLower = kind.toLowerCase();
-    return {
-        isDeployment: kindLower === 'deployment',
-        isStatefulSet: kindLower === 'statefulset',
-        isDaemonSet: kindLower === 'daemonset',
-        isReplicaSet: kindLower === 'replicaset',
-        isJob: kindLower === 'job',
-        isCronJob: kindLower === 'cronjob',
-        isConfigMap: kindLower === 'configmap',
-        isSecret: kindLower === 'secret',
-        isNamespace: kindLower === 'namespace',
-        isEvent: kindLower === 'event'
-    };
-}
-
-export default function YamlEditor({ namespace, resourceName, isDeployment, isStatefulSet, isConfigMap, isSecret, isDaemonSet, isReplicaSet, isJob, isCronJob, isNamespace, isEvent, onClose }) {
+export default function YamlEditor({ resourceType, namespace, resourceName, onClose }) {
     const { openTab, closeTab } = useUI();
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
@@ -75,6 +46,9 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
     const [hasConflict, setHasConflict] = useState(false);
     const editorRef = useRef(null);
 
+    // Get resource definition from registry
+    const resource = useMemo(() => getResource(resourceType), [resourceType]);
+
     // Extract controller owner from content
     const controllerOwner = useMemo(() => extractControllerOwner(content), [content]);
 
@@ -82,17 +56,23 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
     const handleEditOwner = () => {
         if (!controllerOwner) return;
 
-        const flags = getResourceTypeFlags(controllerOwner.kind);
-        const tabId = `yaml-${controllerOwner.kind.toLowerCase()}-${namespace}-${controllerOwner.name}`;
+        const ownerResource = getResourceByKind(controllerOwner.kind);
+        if (!ownerResource) {
+            Logger.warn("Unknown controller kind", { kind: controllerOwner.kind });
+            return;
+        }
+
+        const ownerType = controllerOwner.kind.toLowerCase();
+        const tabId = `yaml-${ownerType}-${namespace}-${controllerOwner.name}`;
 
         openTab({
             id: tabId,
             title: `Edit: ${controllerOwner.name}`,
             content: (
                 <YamlEditor
+                    resourceType={ownerType}
                     namespace={namespace}
                     resourceName={controllerOwner.name}
-                    {...flags}
                     onClose={() => closeTab(tabId)}
                 />
             )
@@ -126,34 +106,27 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
         editor.focus();
     };
 
-    // Helper: Get YAML for current resource type
+    // Fetch YAML using registry
     const getYaml = async () => {
-        if (isDeployment) return GetDeploymentYaml(namespace, resourceName);
-        if (isStatefulSet) return GetStatefulSetYaml(namespace, resourceName);
-        if (isConfigMap) return GetConfigMapYaml(namespace, resourceName);
-        if (isSecret) return GetSecretYaml(namespace, resourceName);
-        if (isDaemonSet) return GetDaemonSetYaml(namespace, resourceName);
-        if (isReplicaSet) return GetReplicaSetYaml(namespace, resourceName);
-        if (isJob) return GetJobYaml(namespace, resourceName);
-        if (isCronJob) return GetCronJobYaml(namespace, resourceName);
-        if (isNamespace) return GetNamespaceYAML(resourceName);
-        if (isEvent) return GetEventYAML(namespace, resourceName);
-        return GetPodYaml(namespace, resourceName);
+        if (!resource) {
+            throw new Error(`Unknown resource type: ${resourceType}`);
+        }
+        return resource.getYaml(namespace, resourceName);
     };
 
     useEffect(() => {
         fetchYaml();
-    }, [namespace, resourceName]);
+    }, [namespace, resourceName, resourceType]);
 
     const fetchYaml = async () => {
         setLoading(true);
         setError(null);
         setHasConflict(false);
-        Logger.debug("Fetching YAML...", { namespace, name: resourceName });
+        Logger.debug("Fetching YAML...", { resourceType, namespace, name: resourceName });
         try {
             const yaml = await getYaml();
             setContent(yaml);
-            Logger.info("YAML fetched successfully", { namespace, name: resourceName });
+            Logger.info("YAML fetched successfully", { resourceType, namespace, name: resourceName });
         } catch (err) {
             Logger.error("Failed to load YAML", err);
             setError(`Failed to load YAML: ${err}`);
@@ -168,7 +141,7 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
             const yaml = await getYaml();
             setContent(yaml);
             setHasConflict(false);
-            Logger.info("YAML reloaded", { namespace, name: resourceName });
+            Logger.info("YAML reloaded", { resourceType, namespace, name: resourceName });
         } catch (err) {
             Logger.error("Failed to reload YAML", err);
             alert(`Failed to reload YAML: ${err}`);
@@ -176,38 +149,21 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
     };
 
     const handleSave = async () => {
+        if (!resource) {
+            alert(`Unknown resource type: ${resourceType}`);
+            return;
+        }
+
         setSaving(true);
-        Logger.info("Saving YAML...", { namespace, name: resourceName });
+        Logger.info("Saving YAML...", { resourceType, namespace, name: resourceName });
 
         // Save editor state for cursor restoration
         const savedState = getEditorState();
 
         try {
-            if (isDeployment) {
-                await UpdateDeploymentYaml(namespace, resourceName, content);
-            } else if (isStatefulSet) {
-                await UpdateStatefulSetYaml(namespace, resourceName, content);
-            } else if (isConfigMap) {
-                await UpdateConfigMapYaml(namespace, resourceName, content);
-            } else if (isSecret) {
-                await UpdateSecretYaml(namespace, resourceName, content);
-            } else if (isDaemonSet) {
-                await UpdateDaemonSetYaml(namespace, resourceName, content);
-            } else if (isReplicaSet) {
-                await UpdateReplicaSetYaml(namespace, resourceName, content);
-            } else if (isJob) {
-                await UpdateJobYaml(namespace, resourceName, content);
-            } else if (isCronJob) {
-                await UpdateCronJobYaml(namespace, resourceName, content);
-            } else if (isNamespace) {
-                await UpdateNamespaceYAML(resourceName, content);
-            } else if (isEvent) {
-                await UpdateEventYAML(namespace, resourceName, content);
-            } else {
-                await UpdatePodYaml(namespace, resourceName, content);
-            }
+            await resource.updateYaml(namespace, resourceName, content);
 
-            Logger.info("YAML saved successfully", { namespace, name: resourceName });
+            Logger.info("YAML saved successfully", { resourceType, namespace, name: resourceName });
 
             // Refresh YAML to get updated resourceVersion
             try {
@@ -229,7 +185,7 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
             const errStr = err.toString().toLowerCase();
             if (errStr.includes('409') || errStr.includes('conflict') || errStr.includes('modified')) {
                 setHasConflict(true);
-                Logger.warn("Conflict detected - resource was modified externally", { namespace, name: resourceName });
+                Logger.warn("Conflict detected - resource was modified externally", { resourceType, namespace, name: resourceName });
             } else {
                 alert(`Failed to save YAML: ${err}`);
             }
@@ -276,6 +232,8 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
             </div>
         );
     }
+
+    const isNamespaced = resource?.namespaced !== false;
 
     return (
         <div className="flex flex-col h-full bg-[#1e1e1e]">
@@ -327,7 +285,7 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
             {/* Header Bar */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="text-sm font-medium text-gray-400">
-                    {isNamespace ? resourceName : `${namespace}/${resourceName}`}
+                    {isNamespaced ? `${namespace}/${resourceName}` : resourceName}
                 </div>
                 <div className="flex items-center gap-2">
                     <button

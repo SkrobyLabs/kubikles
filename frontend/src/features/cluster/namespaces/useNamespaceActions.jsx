@@ -15,8 +15,8 @@ export const useNamespaceActions = () => {
             title: `Edit: ${namespace.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="namespace"
                     resourceName={namespace.metadata.name}
-                    isNamespace={true}
                     onClose={() => closeTab(tabId)}
                 />
             )

@@ -18,9 +18,9 @@ export const useReplicaSetActions = () => {
             title: `Edit: ${replicaSet.metadata.name}`,
             content: (
                 <YamlEditor
+                    resourceType="replicaset"
                     namespace={replicaSet.metadata.namespace}
                     resourceName={replicaSet.metadata.name}
-                    isReplicaSet={true}
                     onClose={() => closeTab(tabId)}
                 />
             )
