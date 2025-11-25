@@ -155,6 +155,7 @@ export default function CronJobList({ isVisible }) {
             multiSelectNamespaces={true}
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'asc' }}
+            resourceType="cronjobs"
         />
     );
 }

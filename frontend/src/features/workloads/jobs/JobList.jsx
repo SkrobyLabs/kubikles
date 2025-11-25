@@ -95,12 +95,14 @@ export default function JobList({ isVisible }) {
             title="Jobs"
             columns={columns}
             data={jobs}
-            loading={loading}
-            emptyMessage="No jobs found in this namespace"
+            isLoading={loading}
             namespaces={namespaces}
             currentNamespace={selectedNamespaces}
             onNamespaceChange={setSelectedNamespaces}
+            showNamespaceSelector={true}
             multiSelectNamespaces={true}
+            initialSort={{ key: 'age', direction: 'asc' }}
+            resourceType="jobs"
         />
     );
 }

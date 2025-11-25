@@ -94,6 +94,8 @@ export default function DeploymentList({ isVisible }) {
             showNamespaceSelector={true}
             multiSelectNamespaces={true}
             highlightedUid={activeMenuId}
+            initialSort={{ key: 'age', direction: 'asc' }}
+            resourceType="deployments"
         />
     );
 }

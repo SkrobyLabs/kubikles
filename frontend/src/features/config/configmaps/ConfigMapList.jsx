@@ -49,6 +49,8 @@ export default function ConfigMapList({ isVisible }) {
             onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
             multiSelectNamespaces={true}
+            initialSort={{ key: 'age', direction: 'asc' }}
+            resourceType="configmaps"
         />
     );
 }

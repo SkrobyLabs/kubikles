@@ -49,6 +49,8 @@ export default function SecretList({ isVisible }) {
             onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
             multiSelectNamespaces={true}
+            initialSort={{ key: 'age', direction: 'asc' }}
+            resourceType="secrets"
         />
     );
 }

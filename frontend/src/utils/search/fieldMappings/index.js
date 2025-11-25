@@ -6,14 +6,30 @@
  */
 
 import { podFields } from './pods';
+import { deploymentFields } from './deployments';
+import { statefulSetFields } from './statefulsets';
+import { daemonSetFields } from './daemonsets';
+import { replicaSetFields } from './replicasets';
+import { jobFields } from './jobs';
+import { cronJobFields } from './cronjobs';
+import { nodeFields } from './nodes';
+import { serviceFields } from './services';
+import { secretFields } from './secrets';
+import { configMapFields } from './configmaps';
 import { commonFields } from './common';
 
 const registry = {
     pods: podFields,
-    // Future: add more resource types here
-    // deployments: deploymentFields,
-    // services: serviceFields,
-    // nodes: nodeFields,
+    deployments: deploymentFields,
+    statefulsets: statefulSetFields,
+    daemonsets: daemonSetFields,
+    replicasets: replicaSetFields,
+    jobs: jobFields,
+    cronjobs: cronJobFields,
+    nodes: nodeFields,
+    services: serviceFields,
+    secrets: secretFields,
+    configmaps: configMapFields,
 };
 
 /**

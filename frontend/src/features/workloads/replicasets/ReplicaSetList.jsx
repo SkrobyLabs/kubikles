@@ -68,6 +68,7 @@ export default function ReplicaSetList({ isVisible }) {
             multiSelectNamespaces={true}
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'asc' }}
+            resourceType="replicasets"
         />
     );
 }

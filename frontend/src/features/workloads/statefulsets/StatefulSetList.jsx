@@ -93,6 +93,8 @@ export default function StatefulSetList({ isVisible }) {
             showNamespaceSelector={true}
             multiSelectNamespaces={true}
             highlightedUid={activeMenuId}
+            initialSort={{ key: 'age', direction: 'asc' }}
+            resourceType="statefulsets"
         />
     );
 }

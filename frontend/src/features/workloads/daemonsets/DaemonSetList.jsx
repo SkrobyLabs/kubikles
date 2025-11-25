@@ -75,6 +75,7 @@ export default function DaemonSetList({ isVisible }) {
             multiSelectNamespaces={true}
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'asc' }}
+            resourceType="daemonsets"
         />
     );
 }

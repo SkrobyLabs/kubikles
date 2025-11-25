@@ -24,6 +24,8 @@ export default function NodeList({ isVisible }) {
             data={nodes}
             isLoading={loading}
             showNamespaceSelector={false}
+            initialSort={{ key: 'name', direction: 'asc' }}
+            resourceType="nodes"
         />
     );
 }

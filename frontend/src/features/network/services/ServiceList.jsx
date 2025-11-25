@@ -28,6 +28,8 @@ export default function ServiceList({ isVisible }) {
             onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
             multiSelectNamespaces={true}
+            initialSort={{ key: 'age', direction: 'asc' }}
+            resourceType="services"
         />
     );
 }
