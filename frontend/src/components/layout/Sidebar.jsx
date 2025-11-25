@@ -11,7 +11,8 @@ import {
     CircleStackIcon,
     CommandLineIcon,
     CpuChipIcon,
-    ClockIcon
+    ClockIcon,
+    FolderIcon
 } from '@heroicons/react/24/outline';
 import SearchSelect from '../shared/SearchSelect';
 import Logger from '../../utils/Logger';
@@ -29,6 +30,7 @@ export default function Sidebar({
             title: 'Cluster',
             items: [
                 { id: 'nodes', label: 'Nodes', icon: ServerIcon },
+                { id: 'namespaces', label: 'Namespaces', icon: FolderIcon },
             ]
         },
         {

@@ -13,6 +13,8 @@ export function DeleteDeployment(arg1:string,arg2:string,arg3:string):Promise<vo
 
 export function DeleteJob(arg1:string,arg2:string):Promise<void>;
 
+export function DeleteNamespace(arg1:string):Promise<void>;
+
 export function DeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function DeleteReplicaSet(arg1:string,arg2:string):Promise<void>;
@@ -36,6 +38,8 @@ export function GetDaemonSetYaml(arg1:string,arg2:string):Promise<string>;
 export function GetDeploymentYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetJobYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetNamespaceYAML(arg1:string):Promise<string>;
 
 export function GetPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
 
@@ -112,6 +116,8 @@ export function UpdateDaemonSetYaml(arg1:string,arg2:string,arg3:string):Promise
 export function UpdateDeploymentYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateJobYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateNamespaceYAML(arg1:string,arg2:string):Promise<void>;
 
 export function UpdatePodYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

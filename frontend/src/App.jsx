@@ -9,6 +9,7 @@ import StatefulSetList from './features/workloads/statefulsets/StatefulSetList';
 import DaemonSetList from './features/workloads/daemonsets/DaemonSetList';
 import ReplicaSetList from './features/workloads/replicasets/ReplicaSetList';
 import NodeList from './features/cluster/nodes/NodeList';
+import NamespaceList from './features/cluster/namespaces/NamespaceList';
 import ServiceList from './features/network/services/ServiceList';
 import ConfigMapList from './features/config/configmaps/ConfigMapList';
 import SecretList from './features/config/secrets/SecretList';
@@ -102,6 +103,7 @@ function MainLayout() {
             case 'jobs': return <JobList isVisible={true} />;
             case 'cronjobs': return <CronJobList isVisible={true} />;
             case 'nodes': return <NodeList isVisible={true} />;
+            case 'namespaces': return <NamespaceList isVisible={true} />;
             case 'services': return <ServiceList isVisible={true} />;
             case 'configmaps': return <ConfigMapList isVisible={true} />;
             case 'secrets': return <SecretList isVisible={true} />;

@@ -9,11 +9,12 @@ import {
     GetDaemonSetYaml, UpdateDaemonSetYaml,
     GetReplicaSetYaml, UpdateReplicaSetYaml,
     GetJobYaml, UpdateJobYaml,
-    GetCronJobYaml, UpdateCronJobYaml
+    GetCronJobYaml, UpdateCronJobYaml,
+    GetNamespaceYAML, UpdateNamespaceYAML
 } from '../../../wailsjs/go/main/App';
 import Logger from '../../utils/Logger';
 
-export default function YamlEditor({ namespace, resourceName, isDeployment, isStatefulSet, isConfigMap, isSecret, isDaemonSet, isReplicaSet, isJob, isCronJob, onClose }) {
+export default function YamlEditor({ namespace, resourceName, isDeployment, isStatefulSet, isConfigMap, isSecret, isDaemonSet, isReplicaSet, isJob, isCronJob, isNamespace, onClose }) {
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -46,6 +47,8 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
                 yaml = await GetJobYaml(namespace, resourceName);
             } else if (isCronJob) {
                 yaml = await GetCronJobYaml(namespace, resourceName);
+            } else if (isNamespace) {
+                yaml = await GetNamespaceYAML(resourceName);
             } else {
                 yaml = await GetPodYaml(namespace, resourceName);
             }
@@ -79,6 +82,8 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
                 await UpdateJobYaml(namespace, resourceName, content);
             } else if (isCronJob) {
                 await UpdateCronJobYaml(namespace, resourceName, content);
+            } else if (isNamespace) {
+                await UpdateNamespaceYAML(resourceName, content);
             } else {
                 await UpdatePodYaml(namespace, resourceName, content);
             }
@@ -134,7 +139,7 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
             {/* Header Bar */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="text-sm font-medium text-gray-400">
-                    {namespace}/{resourceName}
+                    {isNamespace ? resourceName : `${namespace}/${resourceName}`}
                 </div>
                 <div className="flex items-center gap-2">
                     <button

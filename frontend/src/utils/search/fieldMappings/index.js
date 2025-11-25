@@ -16,6 +16,7 @@ import { nodeFields } from './nodes';
 import { serviceFields } from './services';
 import { secretFields } from './secrets';
 import { configMapFields } from './configmaps';
+import { namespaceFields } from './namespaces';
 import { commonFields } from './common';
 
 const registry = {
@@ -30,6 +31,7 @@ const registry = {
     services: serviceFields,
     secrets: secretFields,
     configmaps: configMapFields,
+    namespaces: namespaceFields,
 };
 
 /**

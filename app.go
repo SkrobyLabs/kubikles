@@ -99,6 +99,30 @@ func (a *App) ListNamespaces() ([]v1.Namespace, error) {
 	return a.k8sClient.ListNamespaces()
 }
 
+func (a *App) DeleteNamespace(name string) error {
+	a.LogDebug("DeleteNamespace called: name=%s", name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteNamespace(name)
+}
+
+func (a *App) GetNamespaceYAML(name string) (string, error) {
+	a.LogDebug("GetNamespaceYAML called: name=%s", name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetNamespaceYAML(name)
+}
+
+func (a *App) UpdateNamespaceYAML(name string, yamlContent string) error {
+	a.LogDebug("UpdateNamespaceYAML called: name=%s", name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateNamespaceYAML(name, yamlContent)
+}
+
 func (a *App) ListServices(namespace string) ([]v1.Service, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")

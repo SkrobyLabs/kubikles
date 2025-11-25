@@ -153,6 +153,57 @@ func (c *Client) ListNamespaces() ([]v1.Namespace, error) {
 	return namespaces.Items, nil
 }
 
+func (c *Client) DeleteNamespace(name string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	return cs.CoreV1().Namespaces().Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+func (c *Client) GetNamespaceYAML(name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+
+	ns, err := cs.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	// Clean up fields that shouldn't be in the YAML
+	ns.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(ns)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal namespace to YAML: %w", err)
+	}
+
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateNamespaceYAML(name string, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+
+	// Parse the YAML to a Namespace object
+	var ns v1.Namespace
+	if err := yaml.Unmarshal([]byte(yamlContent), &ns); err != nil {
+		return fmt.Errorf("failed to parse yaml: %w", err)
+	}
+
+	// Ensure the name matches
+	if ns.Name != name {
+		return fmt.Errorf("namespace name in YAML (%s) does not match expected name (%s)", ns.Name, name)
+	}
+
+	_, err = cs.CoreV1().Namespaces().Update(context.TODO(), &ns, metav1.UpdateOptions{})
+	return err
+}
+
 func (c *Client) ListServices(namespace string) ([]v1.Service, error) {
 	cs, err := c.getClientset()
 	if err != nil {

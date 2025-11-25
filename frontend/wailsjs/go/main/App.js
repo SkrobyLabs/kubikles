@@ -22,6 +22,10 @@ export function DeleteJob(arg1, arg2) {
   return window['go']['main']['App']['DeleteJob'](arg1, arg2);
 }
 
+export function DeleteNamespace(arg1) {
+  return window['go']['main']['App']['DeleteNamespace'](arg1);
+}
+
 export function DeletePod(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeletePod'](arg1, arg2, arg3);
 }
@@ -68,6 +72,10 @@ export function GetDeploymentYaml(arg1, arg2) {
 
 export function GetJobYaml(arg1, arg2) {
   return window['go']['main']['App']['GetJobYaml'](arg1, arg2);
+}
+
+export function GetNamespaceYAML(arg1) {
+  return window['go']['main']['App']['GetNamespaceYAML'](arg1);
 }
 
 export function GetPodLogs(arg1, arg2, arg3, arg4) {
@@ -220,6 +228,10 @@ export function UpdateDeploymentYaml(arg1, arg2, arg3) {
 
 export function UpdateJobYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateJobYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateNamespaceYAML(arg1, arg2) {
+  return window['go']['main']['App']['UpdateNamespaceYAML'](arg1, arg2);
 }
 
 export function UpdatePodYaml(arg1, arg2, arg3) {
