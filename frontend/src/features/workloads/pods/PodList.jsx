@@ -117,6 +117,7 @@ export default function PodList({ isVisible }) {
             multiSelectNamespaces={true}
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'asc' }}
+            resourceType="pods"
         />
     );
 }
