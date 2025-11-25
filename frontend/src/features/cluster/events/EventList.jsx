@@ -146,8 +146,9 @@ export default function EventList({ isVisible }) {
             isLoading={loading}
             showNamespaceSelector={true}
             namespaces={namespaces}
-            selectedNamespaces={selectedNamespaces}
+            currentNamespace={selectedNamespaces}
             onNamespaceChange={setSelectedNamespaces}
+            multiSelectNamespaces={true}
             initialSort={{ key: 'last', direction: 'desc' }}
             resourceType="events"
         />
