@@ -10,11 +10,12 @@ import {
     GetReplicaSetYaml, UpdateReplicaSetYaml,
     GetJobYaml, UpdateJobYaml,
     GetCronJobYaml, UpdateCronJobYaml,
-    GetNamespaceYAML, UpdateNamespaceYAML
+    GetNamespaceYAML, UpdateNamespaceYAML,
+    GetEventYAML, UpdateEventYAML
 } from '../../../wailsjs/go/main/App';
 import Logger from '../../utils/Logger';
 
-export default function YamlEditor({ namespace, resourceName, isDeployment, isStatefulSet, isConfigMap, isSecret, isDaemonSet, isReplicaSet, isJob, isCronJob, isNamespace, onClose }) {
+export default function YamlEditor({ namespace, resourceName, isDeployment, isStatefulSet, isConfigMap, isSecret, isDaemonSet, isReplicaSet, isJob, isCronJob, isNamespace, isEvent, onClose }) {
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -49,6 +50,8 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
                 yaml = await GetCronJobYaml(namespace, resourceName);
             } else if (isNamespace) {
                 yaml = await GetNamespaceYAML(resourceName);
+            } else if (isEvent) {
+                yaml = await GetEventYAML(namespace, resourceName);
             } else {
                 yaml = await GetPodYaml(namespace, resourceName);
             }
@@ -84,6 +87,8 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
                 await UpdateCronJobYaml(namespace, resourceName, content);
             } else if (isNamespace) {
                 await UpdateNamespaceYAML(resourceName, content);
+            } else if (isEvent) {
+                await UpdateEventYAML(namespace, resourceName, content);
             } else {
                 await UpdatePodYaml(namespace, resourceName, content);
             }

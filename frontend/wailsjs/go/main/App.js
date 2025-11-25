@@ -18,6 +18,10 @@ export function DeleteDeployment(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeleteDeployment'](arg1, arg2, arg3);
 }
 
+export function DeleteEvent(arg1, arg2) {
+  return window['go']['main']['App']['DeleteEvent'](arg1, arg2);
+}
+
 export function DeleteJob(arg1, arg2) {
   return window['go']['main']['App']['DeleteJob'](arg1, arg2);
 }
@@ -68,6 +72,10 @@ export function GetDaemonSetYaml(arg1, arg2) {
 
 export function GetDeploymentYaml(arg1, arg2) {
   return window['go']['main']['App']['GetDeploymentYaml'](arg1, arg2);
+}
+
+export function GetEventYAML(arg1, arg2) {
+  return window['go']['main']['App']['GetEventYAML'](arg1, arg2);
 }
 
 export function GetJobYaml(arg1, arg2) {
@@ -124,6 +132,10 @@ export function ListDaemonSets(arg1) {
 
 export function ListDeployments(arg1) {
   return window['go']['main']['App']['ListDeployments'](arg1);
+}
+
+export function ListEvents(arg1) {
+  return window['go']['main']['App']['ListEvents'](arg1);
 }
 
 export function ListJobs(arg1) {
@@ -224,6 +236,10 @@ export function UpdateDaemonSetYaml(arg1, arg2, arg3) {
 
 export function UpdateDeploymentYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateDeploymentYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateEventYAML(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateEventYAML'](arg1, arg2, arg3);
 }
 
 export function UpdateJobYaml(arg1, arg2, arg3) {

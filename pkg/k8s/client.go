@@ -204,6 +204,66 @@ func (c *Client) UpdateNamespaceYAML(name string, yamlContent string) error {
 	return err
 }
 
+func (c *Client) ListEvents(namespace string) ([]v1.Event, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	events, err := cs.CoreV1().Events(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return events.Items, nil
+}
+
+func (c *Client) GetEventYAML(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+
+	event, err := cs.CoreV1().Events(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	event.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(event)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal event to YAML: %w", err)
+	}
+
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateEventYAML(namespace, name string, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+
+	var event v1.Event
+	if err := yaml.Unmarshal([]byte(yamlContent), &event); err != nil {
+		return fmt.Errorf("failed to parse yaml: %w", err)
+	}
+
+	if event.Namespace != namespace || event.Name != name {
+		return fmt.Errorf("namespace/name mismatch in yaml")
+	}
+
+	_, err = cs.CoreV1().Events(namespace).Update(context.TODO(), &event, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteEvent(namespace, name string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	return cs.CoreV1().Events(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
 func (c *Client) ListServices(namespace string) ([]v1.Service, error) {
 	cs, err := c.getClientset()
 	if err != nil {

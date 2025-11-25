@@ -12,7 +12,8 @@ import {
     CommandLineIcon,
     CpuChipIcon,
     ClockIcon,
-    FolderIcon
+    FolderIcon,
+    BellAlertIcon
 } from '@heroicons/react/24/outline';
 import SearchSelect from '../shared/SearchSelect';
 import Logger from '../../utils/Logger';
@@ -31,6 +32,7 @@ export default function Sidebar({
             items: [
                 { id: 'nodes', label: 'Nodes', icon: ServerIcon },
                 { id: 'namespaces', label: 'Namespaces', icon: FolderIcon },
+                { id: 'events', label: 'Events', icon: BellAlertIcon },
             ]
         },
         {
