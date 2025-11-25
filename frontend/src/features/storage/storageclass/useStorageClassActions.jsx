@@ -5,7 +5,7 @@ import YamlEditor from '../../../components/shared/YamlEditor';
 import Logger from '../../../utils/Logger';
 
 export const useStorageClassActions = () => {
-    const { openTab, closeTab } = useUI();
+    const { openTab, closeTab, openModal, closeModal } = useUI();
 
     const handleEditYaml = (storageClass) => {
         Logger.info("Opening StorageClass YAML editor", { name: storageClass.metadata.name });
@@ -23,17 +23,26 @@ export const useStorageClassActions = () => {
         });
     };
 
-    const handleDelete = async (storageClass) => {
-        if (!confirm(`Are you sure you want to delete StorageClass ${storageClass.metadata.name}?`)) return;
+    const handleDelete = (storageClass) => {
+        const name = storageClass.metadata.name;
+        Logger.info("Delete StorageClass requested", { name });
 
-        Logger.info("Deleting StorageClass", { name: storageClass.metadata.name });
-        try {
-            await DeleteStorageClass(storageClass.metadata.name);
-            Logger.info("Delete triggered successfully", { name: storageClass.metadata.name });
-        } catch (err) {
-            Logger.error("Failed to delete StorageClass", err);
-            alert(`Failed to delete StorageClass: ${err}`);
-        }
+        openModal({
+            title: `Delete StorageClass ${name}?`,
+            content: `Are you sure you want to delete StorageClass "${name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            confirmStyle: 'danger',
+            onConfirm: async () => {
+                try {
+                    await DeleteStorageClass(name);
+                    Logger.info("StorageClass deleted successfully", { name });
+                    closeModal();
+                } catch (err) {
+                    Logger.error("Failed to delete StorageClass", err);
+                    alert(`Failed to delete StorageClass: ${err}`);
+                }
+            }
+        });
     };
 
     return {

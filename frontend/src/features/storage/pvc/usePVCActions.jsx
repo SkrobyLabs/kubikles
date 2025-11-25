@@ -7,7 +7,7 @@ import DependencyGraph from '../../../components/shared/DependencyGraph';
 import Logger from '../../../utils/Logger';
 
 export const usePVCActions = () => {
-    const { openTab, closeTab } = useUI();
+    const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
 
     const handleEditYaml = (pvc) => {
@@ -44,17 +44,28 @@ export const usePVCActions = () => {
         });
     };
 
-    const handleDelete = async (pvc) => {
-        if (!confirm(`Are you sure you want to delete PVC ${pvc.metadata.name}?`)) return;
+    const handleDelete = (pvc) => {
+        const name = pvc.metadata.name;
+        const namespace = pvc.metadata.namespace;
+        Logger.info("Delete PVC requested", { namespace, name });
 
-        Logger.info("Deleting PVC", { namespace: pvc.metadata.namespace, name: pvc.metadata.name });
-        try {
-            await DeletePVC(pvc.metadata.namespace, pvc.metadata.name);
-            Logger.info("Delete triggered successfully", { name: pvc.metadata.name });
-        } catch (err) {
-            Logger.error("Failed to delete PVC", err);
-            alert(`Failed to delete PVC: ${err}`);
-        }
+        openModal({
+            title: `Delete PVC ${name}?`,
+            content: `Are you sure you want to delete PVC "${name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            confirmStyle: 'danger',
+            onConfirm: async () => {
+                try {
+                    Logger.info("Deleting PVC", { namespace, name });
+                    await DeletePVC(namespace, name);
+                    Logger.info("PVC deleted successfully", { namespace, name });
+                    closeModal();
+                } catch (err) {
+                    Logger.error("Failed to delete PVC", err);
+                    alert(`Failed to delete PVC: ${err}`);
+                }
+            }
+        });
     };
 
     return {

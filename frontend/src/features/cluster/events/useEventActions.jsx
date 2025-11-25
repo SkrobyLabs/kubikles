@@ -5,7 +5,7 @@ import YamlEditor from '../../../components/shared/YamlEditor';
 import Logger from '../../../utils/Logger';
 
 export const useEventActions = () => {
-    const { openTab, closeTab } = useUI();
+    const { openTab, closeTab, openModal, closeModal } = useUI();
 
     const handleEditYaml = (event) => {
         Logger.info("Opening event YAML editor", { namespace: event.metadata.namespace, name: event.metadata.name });
@@ -24,20 +24,27 @@ export const useEventActions = () => {
         });
     };
 
-    const handleDelete = async (event) => {
+    const handleDelete = (event) => {
         const name = event.metadata.name;
         const namespace = event.metadata.namespace;
+        Logger.info("Delete Event requested", { namespace, name });
 
-        if (!confirm(`Are you sure you want to delete event "${name}"?`)) return;
-
-        Logger.info("Deleting event", { namespace, name });
-        try {
-            await DeleteEvent(namespace, name);
-            Logger.info("Delete triggered successfully", { namespace, name });
-        } catch (err) {
-            Logger.error("Failed to delete event", err);
-            alert(`Failed to delete event: ${err}`);
-        }
+        openModal({
+            title: `Delete Event ${name}?`,
+            content: `Are you sure you want to delete event "${name}"?`,
+            confirmText: 'Delete',
+            confirmStyle: 'danger',
+            onConfirm: async () => {
+                try {
+                    await DeleteEvent(namespace, name);
+                    Logger.info("Event deleted successfully", { namespace, name });
+                    closeModal();
+                } catch (err) {
+                    Logger.error("Failed to delete event", err);
+                    alert(`Failed to delete event: ${err}`);
+                }
+            }
+        });
     };
 
     return {

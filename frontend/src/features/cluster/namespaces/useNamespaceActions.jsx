@@ -5,7 +5,7 @@ import YamlEditor from '../../../components/shared/YamlEditor';
 import Logger from '../../../utils/Logger';
 
 export const useNamespaceActions = () => {
-    const { openTab, closeTab } = useUI();
+    const { openTab, closeTab, openModal, closeModal } = useUI();
 
     const handleEditYaml = (namespace) => {
         Logger.info("Opening namespace YAML editor", { namespace: namespace.metadata.name });
@@ -23,25 +23,32 @@ export const useNamespaceActions = () => {
         });
     };
 
-    const handleDelete = async (namespace) => {
+    const handleDelete = (namespace) => {
         const name = namespace.metadata.name;
+        Logger.info("Delete Namespace requested", { name });
 
         // Warn about system namespaces
         const systemNamespaces = ['default', 'kube-system', 'kube-public', 'kube-node-lease'];
-        if (systemNamespaces.includes(name)) {
-            alert(`Warning: "${name}" is a system namespace. Deleting it may cause cluster issues.`);
-        }
+        const isSystemNamespace = systemNamespaces.includes(name);
 
-        if (!confirm(`Are you sure you want to delete namespace "${name}"?\n\nThis will delete ALL resources within this namespace!`)) return;
-
-        Logger.info("Deleting namespace", { name });
-        try {
-            await DeleteNamespace(name);
-            Logger.info("Delete triggered successfully", { name });
-        } catch (err) {
-            Logger.error("Failed to delete namespace", err);
-            alert(`Failed to delete namespace: ${err}`);
-        }
+        openModal({
+            title: `Delete Namespace ${name}?`,
+            content: isSystemNamespace
+                ? `WARNING: "${name}" is a system namespace. Deleting it may cause cluster issues!\n\nThis will delete ALL resources within this namespace!`
+                : `Are you sure you want to delete namespace "${name}"?\n\nThis will delete ALL resources within this namespace!`,
+            confirmText: 'Delete',
+            confirmStyle: 'danger',
+            onConfirm: async () => {
+                try {
+                    await DeleteNamespace(name);
+                    Logger.info("Namespace deleted successfully", { name });
+                    closeModal();
+                } catch (err) {
+                    Logger.error("Failed to delete namespace", err);
+                    alert(`Failed to delete namespace: ${err}`);
+                }
+            }
+        });
     };
 
     return {

@@ -6,7 +6,7 @@ import SecretEditor from '../../../components/shared/SecretEditor';
 import Logger from '../../../utils/Logger';
 
 export const useSecretActions = () => {
-    const { openTab, closeTab } = useUI();
+    const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
 
     const handleEditYaml = (secret) => {
@@ -25,17 +25,27 @@ export const useSecretActions = () => {
         });
     };
 
-    const handleDelete = async (secret) => {
-        if (!confirm(`Are you sure you want to delete secret ${secret.metadata.name}?`)) return;
+    const handleDelete = (secret) => {
+        const name = secret.metadata.name;
+        const namespace = secret.metadata.namespace;
+        Logger.info("Delete Secret requested", { namespace, name });
 
-        Logger.info("Deleting secret", { namespace: secret.metadata.namespace, name: secret.metadata.name });
-        try {
-            await DeleteSecret(secret.metadata.namespace, secret.metadata.name);
-            Logger.info("Delete triggered successfully", { name: secret.metadata.name });
-        } catch (err) {
-            Logger.error("Failed to delete secret", err);
-            alert(`Failed to delete secret: ${err}`);
-        }
+        openModal({
+            title: `Delete Secret ${name}?`,
+            content: `Are you sure you want to delete secret "${name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            confirmStyle: 'danger',
+            onConfirm: async () => {
+                try {
+                    await DeleteSecret(namespace, name);
+                    Logger.info("Secret deleted successfully", { namespace, name });
+                    closeModal();
+                } catch (err) {
+                    Logger.error("Failed to delete secret", err);
+                    alert(`Failed to delete secret: ${err}`);
+                }
+            }
+        });
     };
 
     return {

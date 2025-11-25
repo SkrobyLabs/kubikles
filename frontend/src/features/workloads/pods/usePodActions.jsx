@@ -9,7 +9,7 @@ import DependencyGraph from '../../../components/shared/DependencyGraph';
 import Logger from '../../../utils/Logger';
 
 export const usePodActions = () => {
-    const { openTab, closeTab } = useUI();
+    const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
 
     const openLogs = (namespace, podName, containers = [], siblingPods = [], podContainerMap = {}, ownerName = '') => {
@@ -73,26 +73,32 @@ export const usePodActions = () => {
         });
     };
 
-    const handleDelete = async (namespace, name, isTerminating = false) => {
+    const handleDelete = (namespace, name, isTerminating = false) => {
         const actionType = isTerminating ? 'Force Delete' : 'Delete';
         Logger.info(`Action: ${actionType} Pod`, { namespace, name, context: currentContext });
 
-        if (!confirm(`Are you sure you want to ${actionType.toLowerCase()} pod ${name}?`)) {
-            Logger.info("Delete action cancelled by user");
-            return;
-        }
-
-        try {
-            if (isTerminating) {
-                await ForceDeletePod(currentContext, namespace, name);
-            } else {
-                await DeletePod(currentContext, namespace, name);
+        openModal({
+            title: `${actionType} Pod ${name}?`,
+            content: isTerminating
+                ? `Are you sure you want to force delete pod "${name}"? This will immediately remove the pod without waiting for graceful termination.`
+                : `Are you sure you want to delete pod "${name}"?`,
+            confirmText: actionType,
+            confirmStyle: 'danger',
+            onConfirm: async () => {
+                try {
+                    if (isTerminating) {
+                        await ForceDeletePod(currentContext, namespace, name);
+                    } else {
+                        await DeletePod(currentContext, namespace, name);
+                    }
+                    Logger.info(`Pod ${actionType.toLowerCase()}d successfully`, { namespace, name });
+                    closeModal();
+                } catch (err) {
+                    Logger.error(`Failed to ${actionType.toLowerCase()} pod`, err);
+                    alert(`Failed to ${actionType.toLowerCase()} pod: ${err}`);
+                }
             }
-            Logger.info(`Pod ${actionType.toLowerCase()}d successfully`, { namespace, name });
-        } catch (err) {
-            Logger.error(`Failed to ${actionType.toLowerCase()} pod`, err);
-            alert(`Failed to ${actionType.toLowerCase()} pod: ${err}`);
-        }
+        });
     };
 
     return {

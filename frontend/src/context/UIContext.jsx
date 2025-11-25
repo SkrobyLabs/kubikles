@@ -20,6 +20,7 @@ export const UIProvider = ({ children }) => {
     const [panelHeight, setPanelHeight] = useState(40);
     const [activeMenuId, setActiveMenuId] = useState(null);
     const [pendingSearch, setPendingSearch] = useState(null);
+    const [modal, setModal] = useState(null);
 
     // Navigate to a view with a pre-filled search term
     const navigateWithSearch = (view, searchTerm) => {
@@ -103,6 +104,14 @@ export const UIProvider = ({ children }) => {
         setActiveTabId(null);
     };
 
+    const openModal = (config) => {
+        setModal(config);
+    };
+
+    const closeModal = () => {
+        setModal(null);
+    };
+
     const reorderTabs = (fromIndex, toIndex) => {
         const newTabs = [...bottomTabs];
         const [removed] = newTabs.splice(fromIndex, 1);
@@ -129,7 +138,10 @@ export const UIProvider = ({ children }) => {
         setActiveMenuId,
         pendingSearch,
         navigateWithSearch,
-        consumePendingSearch
+        consumePendingSearch,
+        modal,
+        openModal,
+        closeModal
     };
 
     return (

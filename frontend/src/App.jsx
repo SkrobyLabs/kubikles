@@ -21,6 +21,7 @@ import PVList from './features/storage/pv/PVList';
 import StorageClassList from './features/storage/storageclass/StorageClassList';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
+import ConfirmModal from './components/shared/ConfirmModal';
 
 function MainLayout() {
     const {
@@ -129,50 +130,53 @@ function MainLayout() {
     };
 
     return (
-        <div className="flex h-screen bg-background text-text font-sans">
-            <Sidebar
-                activeView={activeView}
-                onViewChange={setActiveView}
-                contexts={contexts}
-                currentContext={currentContext}
-                onContextChange={switchContext}
-                onToggleDebug={toggleDebug}
-            />
-            <main className="flex-1 flex flex-col overflow-hidden">
-                {/* Split View Container */}
-                <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Top Pane: Resource List */}
-                    <div
-                        className="flex-1 overflow-hidden"
-                        style={{ height: bottomTabs.length > 0 ? `${100 - panelHeight}%` : '100%' }}
-                    >
-                        {renderContent()}
-                    </div>
+        <>
+            <div className="flex h-screen bg-background text-text font-sans">
+                <Sidebar
+                    activeView={activeView}
+                    onViewChange={setActiveView}
+                    contexts={contexts}
+                    currentContext={currentContext}
+                    onContextChange={switchContext}
+                    onToggleDebug={toggleDebug}
+                />
+                <main className="flex-1 flex flex-col overflow-hidden">
+                    {/* Split View Container */}
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        {/* Top Pane: Resource List */}
+                        <div
+                            className="flex-1 overflow-hidden"
+                            style={{ height: bottomTabs.length > 0 ? `${100 - panelHeight}%` : '100%' }}
+                        >
+                            {renderContent()}
+                        </div>
 
-                    {/* Bottom Pane */}
-                    {bottomTabs.length > 0 && (
-                        <>
-                            {/* Drag Handle */}
-                            <div
-                                className="h-1 bg-border hover:bg-primary cursor-row-resize transition-colors"
-                                onMouseDown={handleMouseDown}
-                            />
-                            <BottomPanel
-                                tabs={bottomTabs}
-                                activeTabId={activeTabId}
-                                onTabChange={setActiveTabId}
-                                onTabClose={closeTab}
-                                onCloseOthers={closeOtherTabs}
-                                onCloseToRight={closeTabsToRight}
-                                onCloseAll={closeAllTabs}
-                                onReorder={reorderTabs}
-                                height={`${panelHeight}%`}
-                            />
-                        </>
-                    )}
-                </div>
-            </main>
-        </div>
+                        {/* Bottom Pane */}
+                        {bottomTabs.length > 0 && (
+                            <>
+                                {/* Drag Handle */}
+                                <div
+                                    className="h-1 bg-border hover:bg-primary cursor-row-resize transition-colors"
+                                    onMouseDown={handleMouseDown}
+                                />
+                                <BottomPanel
+                                    tabs={bottomTabs}
+                                    activeTabId={activeTabId}
+                                    onTabChange={setActiveTabId}
+                                    onTabClose={closeTab}
+                                    onCloseOthers={closeOtherTabs}
+                                    onCloseToRight={closeTabsToRight}
+                                    onCloseAll={closeAllTabs}
+                                    onReorder={reorderTabs}
+                                    height={`${panelHeight}%`}
+                                />
+                            </>
+                        )}
+                    </div>
+                </main>
+            </div>
+            <ConfirmModal />
+        </>
     );
 }
 

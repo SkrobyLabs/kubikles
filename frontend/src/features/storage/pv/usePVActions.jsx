@@ -5,7 +5,7 @@ import YamlEditor from '../../../components/shared/YamlEditor';
 import Logger from '../../../utils/Logger';
 
 export const usePVActions = () => {
-    const { openTab, closeTab } = useUI();
+    const { openTab, closeTab, openModal, closeModal } = useUI();
 
     const handleEditYaml = (pv) => {
         Logger.info("Opening PV YAML editor", { name: pv.metadata.name });
@@ -23,17 +23,26 @@ export const usePVActions = () => {
         });
     };
 
-    const handleDelete = async (pv) => {
-        if (!confirm(`Are you sure you want to delete PV ${pv.metadata.name}?`)) return;
+    const handleDelete = (pv) => {
+        const name = pv.metadata.name;
+        Logger.info("Delete PV requested", { name });
 
-        Logger.info("Deleting PV", { name: pv.metadata.name });
-        try {
-            await DeletePV(pv.metadata.name);
-            Logger.info("Delete triggered successfully", { name: pv.metadata.name });
-        } catch (err) {
-            Logger.error("Failed to delete PV", err);
-            alert(`Failed to delete PV: ${err}`);
-        }
+        openModal({
+            title: `Delete PV ${name}?`,
+            content: `Are you sure you want to delete PersistentVolume "${name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            confirmStyle: 'danger',
+            onConfirm: async () => {
+                try {
+                    await DeletePV(name);
+                    Logger.info("PV deleted successfully", { name });
+                    closeModal();
+                } catch (err) {
+                    Logger.error("Failed to delete PV", err);
+                    alert(`Failed to delete PV: ${err}`);
+                }
+            }
+        });
     };
 
     return {

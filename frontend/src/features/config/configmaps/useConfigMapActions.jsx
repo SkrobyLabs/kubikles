@@ -6,7 +6,7 @@ import YamlEditor from '../../../components/shared/YamlEditor';
 import Logger from '../../../utils/Logger';
 
 export const useConfigMapActions = () => {
-    const { openTab, closeTab } = useUI();
+    const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
 
     const handleEditYaml = (configMap) => {
@@ -26,17 +26,27 @@ export const useConfigMapActions = () => {
         });
     };
 
-    const handleDelete = async (configMap) => {
-        if (!confirm(`Are you sure you want to delete configmap ${configMap.metadata.name}?`)) return;
+    const handleDelete = (configMap) => {
+        const name = configMap.metadata.name;
+        const namespace = configMap.metadata.namespace;
+        Logger.info("Delete ConfigMap requested", { namespace, name });
 
-        Logger.info("Deleting configmap", { namespace: configMap.metadata.namespace, name: configMap.metadata.name });
-        try {
-            await DeleteConfigMap(configMap.metadata.namespace, configMap.metadata.name);
-            Logger.info("Delete triggered successfully", { name: configMap.metadata.name });
-        } catch (err) {
-            Logger.error("Failed to delete configmap", err);
-            alert(`Failed to delete configmap: ${err}`);
-        }
+        openModal({
+            title: `Delete ConfigMap ${name}?`,
+            content: `Are you sure you want to delete configmap "${name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            confirmStyle: 'danger',
+            onConfirm: async () => {
+                try {
+                    await DeleteConfigMap(namespace, name);
+                    Logger.info("ConfigMap deleted successfully", { namespace, name });
+                    closeModal();
+                } catch (err) {
+                    Logger.error("Failed to delete configmap", err);
+                    alert(`Failed to delete configmap: ${err}`);
+                }
+            }
+        });
     };
 
     return {

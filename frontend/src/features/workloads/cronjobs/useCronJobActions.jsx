@@ -7,7 +7,7 @@ import LogViewer from '../../../components/shared/LogViewer';
 import Logger from '../../../utils/Logger';
 
 export const useCronJobActions = () => {
-    const { openTab, closeTab } = useUI();
+    const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext, currentNamespace, triggerRefresh } = useK8s();
 
     const handleViewLogs = async (cronJob) => {
@@ -154,26 +154,28 @@ export const useCronJobActions = () => {
         }
     };
 
-    const handleDelete = async (cronJob) => {
+    const handleDelete = (cronJob) => {
         const name = cronJob.metadata.name;
         const namespace = cronJob.metadata.namespace;
+        Logger.info("Delete CronJob requested", { namespace, name });
 
-        if (!window.confirm(`Are you sure you want to delete cronjob "${name}"? This will also delete all associated jobs.`)) {
-            return;
-        }
-
-        try {
-            Logger.info("Delete CronJob requested", { namespace, name });
-            Logger.info("About to call DeleteCronJob function");
-
-            await DeleteCronJob(namespace, name);
-
-            Logger.info("DeleteCronJob returned successfully", { namespace, name });
-            triggerRefresh();
-        } catch (err) {
-            Logger.error("Failed to delete CronJob", { error: err, message: err?.message, stack: err?.stack });
-            alert(`Failed to delete cronjob: ${err.message || err}`);
-        }
+        openModal({
+            title: `Delete CronJob ${name}?`,
+            content: `Are you sure you want to delete cronjob "${name}"? This will also delete all associated jobs.`,
+            confirmText: 'Delete',
+            confirmStyle: 'danger',
+            onConfirm: async () => {
+                try {
+                    await DeleteCronJob(namespace, name);
+                    Logger.info("CronJob deleted successfully", { namespace, name });
+                    closeModal();
+                    triggerRefresh();
+                } catch (err) {
+                    Logger.error("Failed to delete CronJob", { error: err, message: err?.message, stack: err?.stack });
+                    alert(`Failed to delete cronjob: ${err.message || err}`);
+                }
+            }
+        });
     };
 
     return {
