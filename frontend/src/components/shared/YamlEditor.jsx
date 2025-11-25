@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import {
     GetPodYaml, UpdatePodYaml,
@@ -14,15 +14,90 @@ import {
     GetEventYAML, UpdateEventYAML
 } from '../../../wailsjs/go/main/App';
 import Logger from '../../utils/Logger';
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { useUI } from '../../context/UIContext';
+import { ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+
+// Extract controller owner from YAML content
+function extractControllerOwner(yamlContent) {
+    if (!yamlContent) return null;
+
+    // Find ownerReferences section
+    const ownerRefsMatch = yamlContent.match(/ownerReferences:\s*\n((?:\s+-[\s\S]*?(?=\n\S|\n\s*$))+)/);
+    if (!ownerRefsMatch) return null;
+
+    const ownerRefsBlock = ownerRefsMatch[1];
+
+    // Find the controller owner (controller: true)
+    const entries = ownerRefsBlock.split(/\n\s+-\s+/).filter(Boolean);
+
+    for (const entry of entries) {
+        if (entry.includes('controller: true') || entry.includes('controller:true')) {
+            const kindMatch = entry.match(/kind:\s*(\S+)/);
+            const nameMatch = entry.match(/name:\s*(\S+)/);
+            const uidMatch = entry.match(/uid:\s*(\S+)/);
+
+            if (kindMatch && nameMatch) {
+                return {
+                    kind: kindMatch[1],
+                    name: nameMatch[1],
+                    uid: uidMatch ? uidMatch[1] : null
+                };
+            }
+        }
+    }
+
+    return null;
+}
+
+// Map kind to resource type flags
+function getResourceTypeFlags(kind) {
+    const kindLower = kind.toLowerCase();
+    return {
+        isDeployment: kindLower === 'deployment',
+        isStatefulSet: kindLower === 'statefulset',
+        isDaemonSet: kindLower === 'daemonset',
+        isReplicaSet: kindLower === 'replicaset',
+        isJob: kindLower === 'job',
+        isCronJob: kindLower === 'cronjob',
+        isConfigMap: kindLower === 'configmap',
+        isSecret: kindLower === 'secret',
+        isNamespace: kindLower === 'namespace',
+        isEvent: kindLower === 'event'
+    };
+}
 
 export default function YamlEditor({ namespace, resourceName, isDeployment, isStatefulSet, isConfigMap, isSecret, isDaemonSet, isReplicaSet, isJob, isCronJob, isNamespace, isEvent, onClose }) {
+    const { openTab, closeTab } = useUI();
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
     const [hasConflict, setHasConflict] = useState(false);
     const editorRef = useRef(null);
+
+    // Extract controller owner from content
+    const controllerOwner = useMemo(() => extractControllerOwner(content), [content]);
+
+    // Handle opening the controlling resource's edit dialog
+    const handleEditOwner = () => {
+        if (!controllerOwner) return;
+
+        const flags = getResourceTypeFlags(controllerOwner.kind);
+        const tabId = `yaml-${controllerOwner.kind.toLowerCase()}-${namespace}-${controllerOwner.name}`;
+
+        openTab({
+            id: tabId,
+            title: `Edit: ${controllerOwner.name}`,
+            content: (
+                <YamlEditor
+                    namespace={namespace}
+                    resourceName={controllerOwner.name}
+                    {...flags}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
 
     // Helper: Get editor state for cursor restoration
     const getEditorState = () => {
@@ -228,6 +303,24 @@ export default function YamlEditor({ namespace, resourceName, isDeployment, isSt
                             {saving ? 'Saving...' : 'Force Save'}
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/* Controller Owner Info Banner */}
+            {controllerOwner && (
+                <div className="flex items-center justify-between px-4 py-2 bg-blue-500/20 border-b border-blue-500/50 text-blue-400 shrink-0">
+                    <div className="flex items-center gap-2">
+                        <InformationCircleIcon className="h-5 w-5" />
+                        <span className="text-sm">
+                            This resource is controlled by <span className="font-medium">{controllerOwner.kind}/{controllerOwner.name}</span>. Changes may be overwritten.
+                        </span>
+                    </div>
+                    <button
+                        onClick={handleEditOwner}
+                        className="px-3 py-1 text-xs font-medium bg-blue-500/30 hover:bg-blue-500/40 rounded transition-colors"
+                    >
+                        Edit {controllerOwner.kind}
+                    </button>
                 </div>
             )}
 
