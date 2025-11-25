@@ -206,7 +206,7 @@ export default function ResourceList({
                             {visibleColumns.map((col) => (
                                 <th
                                     key={col.key}
-                                    className={`p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none ${col.isColumnSelector ? '' : 'cursor-pointer hover:text-text'}`}
+                                    className={`p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none ${col.isColumnSelector ? 'sticky right-0 bg-surface z-20' : 'cursor-pointer hover:text-text'}`}
                                     onClick={() => !col.isColumnSelector && handleSort(col.key)}
                                 >
                                     {col.isColumnSelector ? (
@@ -279,7 +279,7 @@ export default function ResourceList({
                                         const namespaceValue = item.metadata?.namespace;
 
                                         return (
-                                            <td key={col.key} className={`p-3 text-sm text-text whitespace-nowrap ${col.align === 'center' ? 'text-center' : ''}`}>
+                                            <td key={col.key} className={`p-3 text-sm text-text whitespace-nowrap ${col.align === 'center' ? 'text-center' : ''} ${col.isColumnSelector ? 'sticky right-0 bg-background' : ''}`}>
                                                 {isNamespaceColumn && namespaceValue ? (
                                                     <button
                                                         onClick={(e) => {
