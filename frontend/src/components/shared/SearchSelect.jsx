@@ -80,6 +80,13 @@ export default function SearchSelect({ options, value, onChange, placeholder = "
         const currentValue = Array.isArray(value) ? value : [];
         const isSelected = currentValue.includes(option);
 
+        // If "All Namespaces" (*) is selected and user clicks an individual namespace,
+        // replace the selection with just that namespace
+        if (currentValue.includes('*') && option !== '*') {
+            onChange([option]);
+            return;
+        }
+
         if (isSelected) {
             onChange(currentValue.filter(v => v !== option));
         } else {
