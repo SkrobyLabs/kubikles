@@ -261,11 +261,28 @@ export default function ResourceList({
                                     key={item.metadata?.uid || index}
                                     className={`transition-colors ${highlightedUid === item.metadata?.uid ? 'bg-white/5' : 'hover:bg-white/5'}`}
                                 >
-                                    {visibleColumns.map((col) => (
-                                        <td key={col.key} className={`p-3 text-sm text-text whitespace-nowrap ${col.align === 'center' ? 'text-center' : ''}`}>
-                                            {col.render ? col.render(item) : item[col.key]}
-                                        </td>
-                                    ))}
+                                    {visibleColumns.map((col) => {
+                                        const content = col.render ? col.render(item) : item[col.key];
+                                        const isNamespaceColumn = col.key === 'namespace' && onNamespaceChange;
+                                        const namespaceValue = item.metadata?.namespace;
+
+                                        return (
+                                            <td key={col.key} className={`p-3 text-sm text-text whitespace-nowrap ${col.align === 'center' ? 'text-center' : ''}`}>
+                                                {isNamespaceColumn && namespaceValue ? (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onNamespaceChange([namespaceValue]);
+                                                        }}
+                                                        className="text-primary hover:text-primary/80 hover:underline transition-colors"
+                                                        title={`Filter to namespace: ${namespaceValue}`}
+                                                    >
+                                                        {content}
+                                                    </button>
+                                                ) : content}
+                                            </td>
+                                        );
+                                    })}
                                 </tr>
                             ))
                         )}
