@@ -1,16 +1,25 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
 import { useJobs } from '../../../hooks/useJobs';
 import { useJobActions } from './useJobActions';
 import { useK8s } from '../../../context/K8sContext';
+import { useUI } from '../../../context/UIContext';
 import JobActionsMenu from './JobActionsMenu';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { formatAge } from '../../../utils/formatting';
+
+// Get controller from owner references
+function getController(item) {
+    const owners = item.metadata?.ownerReferences || [];
+    const controller = owners.find(owner => owner.controller);
+    return controller ? { kind: controller.kind, name: controller.name, uid: controller.uid } : null;
+}
 
 export default function JobList({ isVisible }) {
     const { currentContext, selectedNamespaces, namespaces, setSelectedNamespaces } = useK8s();
+    const { activeMenuId, setActiveMenuId, navigateWithSearch } = useUI();
     const { jobs, loading } = useJobs(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleDelete, handleViewLogs } = useJobActions(selectedNamespaces);
-    const [activeMenuId, setActiveMenuId] = React.useState(null);
 
     const getCompletions = (job) => {
         const succeeded = job.status?.succeeded || 0;
@@ -21,28 +30,11 @@ export default function JobList({ isVisible }) {
     const getCondition = (job) => {
         const conditions = job.status?.conditions || [];
         if (conditions.length === 0) return '-';
-
-        // Get the last condition
         const lastCondition = conditions[conditions.length - 1];
         return lastCondition.type || '-';
     };
 
-    const getAge = (creationTimestamp) => {
-        if (!creationTimestamp) return '-';
-        const created = new Date(creationTimestamp);
-        const now = new Date();
-        const diffMs = now - created;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffDays > 0) return `${diffDays}d`;
-        if (diffHours > 0) return `${diffHours}h`;
-        if (diffMins > 0) return `${diffMins}m`;
-        return '<1m';
-    };
-
-    const columns = [
+    const columns = useMemo(() => [
         {
             key: 'name',
             label: 'Name',
@@ -69,14 +61,50 @@ export default function JobList({ isVisible }) {
         {
             key: 'age',
             label: 'Age',
-            width: '20%',
-            render: (job) => getAge(job.metadata.creationTimestamp)
+            render: (job) => formatAge(job.metadata?.creationTimestamp),
+            getValue: (job) => job.metadata?.creationTimestamp
+        },
+        {
+            key: 'controlledBy',
+            label: 'Controlled By',
+            render: (item) => {
+                const controller = getController(item);
+                if (!controller) {
+                    return <span className="text-gray-600">-</span>;
+                }
+
+                const kindToView = {
+                    'CronJob': 'cronjobs',
+                };
+                const viewName = kindToView[controller.kind];
+
+                if (viewName) {
+                    return (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigateWithSearch(viewName, `uid:"${controller.uid}"`);
+                            }}
+                            className="text-primary hover:text-primary/80 hover:underline transition-colors"
+                            title={`Go to ${controller.kind}: ${controller.name}`}
+                        >
+                            {controller.kind}
+                        </button>
+                    );
+                }
+
+                return (
+                    <span className="text-gray-400" title={controller.name}>
+                        {controller.kind}
+                    </span>
+                );
+            },
+            getValue: (item) => getController(item)?.kind || ''
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            width: '15%',
             render: (job) => (
                 <JobActionsMenu
                     job={job}
@@ -86,9 +114,11 @@ export default function JobList({ isVisible }) {
                     onDelete={handleDelete}
                     onViewLogs={handleViewLogs}
                 />
-            )
+            ),
+            isColumnSelector: true,
+            disableSort: true
         },
-    ];
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete, handleViewLogs, navigateWithSearch]);
 
     return (
         <ResourceList

@@ -8,9 +8,16 @@ import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
 import { formatAge } from '../../../utils/formatting';
 
+// Get controller from owner references
+function getController(item) {
+    const owners = item.metadata?.ownerReferences || [];
+    const controller = owners.find(owner => owner.controller);
+    return controller ? { kind: controller.kind, name: controller.name, uid: controller.uid } : null;
+}
+
 export default function ReplicaSetList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId, navigateWithSearch } = useUI();
     const { replicaSets, loading } = useReplicaSets(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleDelete, handleViewLogs } = useReplicaSetActions();
 
@@ -37,6 +44,43 @@ export default function ReplicaSetList({ isVisible }) {
         },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
         {
+            key: 'controlledBy',
+            label: 'Controlled By',
+            render: (item) => {
+                const controller = getController(item);
+                if (!controller) {
+                    return <span className="text-gray-600">-</span>;
+                }
+
+                const kindToView = {
+                    'Deployment': 'deployments',
+                };
+                const viewName = kindToView[controller.kind];
+
+                if (viewName) {
+                    return (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigateWithSearch(viewName, `uid:"${controller.uid}"`);
+                            }}
+                            className="text-primary hover:text-primary/80 hover:underline transition-colors"
+                            title={`Go to ${controller.kind}: ${controller.name}`}
+                        >
+                            {controller.kind}
+                        </button>
+                    );
+                }
+
+                return (
+                    <span className="text-gray-400" title={controller.name}>
+                        {controller.kind}
+                    </span>
+                );
+            },
+            getValue: (item) => getController(item)?.kind || ''
+        },
+        {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
@@ -53,7 +97,7 @@ export default function ReplicaSetList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete, handleViewLogs]);
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete, handleViewLogs, navigateWithSearch]);
 
     return (
         <ResourceList

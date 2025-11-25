@@ -11,7 +11,7 @@ import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusP
 
 export default function PodList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId, navigateWithSearch } = useUI();
     // console.log("PodList rendering");
     const { pods, loading } = usePods(currentContext, selectedNamespaces, isVisible);
     const { openLogs, handleShell, handleEditYaml, handleDelete } = usePodActions();
@@ -52,12 +52,40 @@ export default function PodList({ isVisible }) {
             label: 'Controlled By',
             render: (item) => {
                 const controller = getPodController(item);
-                return controller ? (
+                if (!controller) {
+                    return <span className="text-gray-600">-</span>;
+                }
+
+                // Map controller kind to view name
+                const kindToView = {
+                    'ReplicaSet': 'replicasets',
+                    'Deployment': 'deployments',
+                    'StatefulSet': 'statefulsets',
+                    'DaemonSet': 'daemonsets',
+                    'Job': 'jobs',
+                    'CronJob': 'cronjobs',
+                };
+                const viewName = kindToView[controller.kind];
+
+                if (viewName) {
+                    return (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigateWithSearch(viewName, `uid:"${controller.uid}"`);
+                            }}
+                            className="text-primary hover:text-primary/80 hover:underline transition-colors"
+                            title={`Go to ${controller.kind}: ${controller.name}`}
+                        >
+                            {controller.kind}
+                        </button>
+                    );
+                }
+
+                return (
                     <span className="text-gray-400" title={controller.name}>
                         {controller.kind}
                     </span>
-                ) : (
-                    <span className="text-gray-600">-</span>
                 );
             },
             getValue: (item) => getPodController(item)?.kind || ''
@@ -102,7 +130,7 @@ export default function PodList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, openLogs, handleShell, handleDelete, handleEditYaml, pods]);
+    ], [activeMenuId, setActiveMenuId, openLogs, handleShell, handleDelete, handleEditYaml, pods, navigateWithSearch]);
 
     return (
         <ResourceList

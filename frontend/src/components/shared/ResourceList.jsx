@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MagnifyingGlassIcon, EllipsisVerticalIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import SearchSelect from './SearchSelect';
 import { createFilter, getFieldsMetadata } from '../../utils/search';
+import { useUI } from '../../context/UIContext';
 
 export default function ResourceList({
     title,
@@ -17,6 +18,7 @@ export default function ResourceList({
     initialSort = null,
     resourceType = null
 }) {
+    const { pendingSearch, consumePendingSearch } = useUI();
     const [sortConfig, setSortConfig] = useState(initialSort || { key: null, direction: 'asc' });
     const [searchTerm, setSearchTerm] = useState('');
     const [hiddenColumns, setHiddenColumns] = useState(new Set());
@@ -24,6 +26,16 @@ export default function ResourceList({
     const [showSearchHelp, setShowSearchHelp] = useState(false);
     const columnMenuRef = useRef(null);
     const searchHelpRef = useRef(null);
+
+    // Consume pending search when navigating to this view
+    useEffect(() => {
+        if (pendingSearch) {
+            const search = consumePendingSearch();
+            if (search) {
+                setSearchTerm(search);
+            }
+        }
+    }, [pendingSearch, consumePendingSearch]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {

@@ -19,6 +19,20 @@ export const UIProvider = ({ children }) => {
     const [activeTabId, setActiveTabId] = useState(null);
     const [panelHeight, setPanelHeight] = useState(40);
     const [activeMenuId, setActiveMenuId] = useState(null);
+    const [pendingSearch, setPendingSearch] = useState(null);
+
+    // Navigate to a view with a pre-filled search term
+    const navigateWithSearch = (view, searchTerm) => {
+        setPendingSearch(searchTerm);
+        setActiveView(view);
+    };
+
+    // Consume pending search (called by ResourceList when it mounts/updates)
+    const consumePendingSearch = () => {
+        const search = pendingSearch;
+        setPendingSearch(null);
+        return search;
+    };
 
     // Persistence for activeView
     // We want to save activeView per context, similar to namespace
@@ -80,7 +94,10 @@ export const UIProvider = ({ children }) => {
         panelHeight,
         setPanelHeight,
         activeMenuId,
-        setActiveMenuId
+        setActiveMenuId,
+        pendingSearch,
+        navigateWithSearch,
+        consumePendingSearch
     };
 
     return (
