@@ -22,6 +22,7 @@ import {
     GetPVCYaml, UpdatePVCYaml, DeletePVC,
     GetPVYaml, UpdatePVYaml, DeletePV,
     GetStorageClassYaml, UpdateStorageClassYaml, DeleteStorageClass,
+    GetCRDYaml, UpdateCRDYaml, DeleteCRD,
 } from '../../wailsjs/go/main/App';
 
 const registry = {
@@ -136,6 +137,13 @@ const registry = {
         namespaced: false,
         getYaml: (_, name) => GetNodeYaml(name),
         updateYaml: (_, name, content) => UpdateNodeYaml(name, content),
+    },
+    crd: {
+        kind: 'CustomResourceDefinition',
+        plural: 'customresourcedefinitions',
+        namespaced: false,
+        getYaml: (_, name) => GetCRDYaml(name),
+        updateYaml: (_, name, content) => UpdateCRDYaml(name, content),
     },
 };
 

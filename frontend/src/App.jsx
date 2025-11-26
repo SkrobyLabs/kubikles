@@ -19,6 +19,7 @@ import CronJobList from './features/workloads/cronjobs/CronJobList';
 import PVCList from './features/storage/pvc/PVCList';
 import PVList from './features/storage/pv/PVList';
 import StorageClassList from './features/storage/storageclass/StorageClassList';
+import CRDList from './features/customresources/definitions/CRDList';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
 import ConfirmModal from './components/shared/ConfirmModal';
@@ -125,6 +126,7 @@ function MainLayout() {
             case 'pvcs': return <PVCList isVisible={true} />;
             case 'pvs': return <PVList isVisible={true} />;
             case 'storageclasses': return <StorageClassList isVisible={true} />;
+            case 'crds': return <CRDList isVisible={true} />;
             default: return <div className="p-4">Unknown View: {activeView}</div>;
         }
     };

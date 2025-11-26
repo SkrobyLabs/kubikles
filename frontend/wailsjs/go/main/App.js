@@ -6,6 +6,10 @@ export function CreateNodeDebugPod(arg1) {
   return window['go']['main']['App']['CreateNodeDebugPod'](arg1);
 }
 
+export function DeleteCRD(arg1) {
+  return window['go']['main']['App']['DeleteCRD'](arg1);
+}
+
 export function DeleteConfigMap(arg1, arg2) {
   return window['go']['main']['App']['DeleteConfigMap'](arg1, arg2);
 }
@@ -76,6 +80,10 @@ export function ForceDeletePod(arg1, arg2, arg3) {
 
 export function GetAllPodLogs(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['GetAllPodLogs'](arg1, arg2, arg3, arg4);
+}
+
+export function GetCRDYaml(arg1) {
+  return window['go']['main']['App']['GetCRDYaml'](arg1);
 }
 
 export function GetConfigMapYaml(arg1, arg2) {
@@ -160,6 +168,10 @@ export function GetStorageClassYaml(arg1) {
 
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
+}
+
+export function ListCRDs() {
+  return window['go']['main']['App']['ListCRDs']();
 }
 
 export function ListConfigMaps(arg1) {
@@ -288,6 +300,10 @@ export function TestEmit() {
 
 export function TriggerCronJob(arg1, arg2) {
   return window['go']['main']['App']['TriggerCronJob'](arg1, arg2);
+}
+
+export function UpdateCRDYaml(arg1, arg2) {
+  return window['go']['main']['App']['UpdateCRDYaml'](arg1, arg2);
 }
 
 export function UpdateConfigMapYaml(arg1, arg2, arg3) {

@@ -1,0 +1,52 @@
+import React from 'react';
+import { useUI } from '../../../context/UIContext';
+import { DeleteCRD } from '../../../../wailsjs/go/main/App';
+import YamlEditor from '../../../components/shared/YamlEditor';
+import Logger from '../../../utils/Logger';
+
+export const useCRDActions = () => {
+    const { openTab, closeTab, openModal, closeModal } = useUI();
+
+    const handleEditYaml = (crd) => {
+        Logger.info("Opening CRD YAML editor", { name: crd.metadata.name });
+        const tabId = `crd-${crd.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `Edit: ${crd.metadata.name}`,
+            content: (
+                <YamlEditor
+                    resourceType="crd"
+                    resourceName={crd.metadata.name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
+
+    const handleDelete = (crd) => {
+        const name = crd.metadata.name;
+        Logger.info("Delete CRD requested", { name });
+
+        openModal({
+            title: `Delete CRD ${name}?`,
+            content: `Are you sure you want to delete CustomResourceDefinition "${name}"? This will remove the CRD and all custom resources of this type from the cluster. This action cannot be undone.`,
+            confirmText: 'Delete',
+            confirmStyle: 'danger',
+            onConfirm: async () => {
+                try {
+                    await DeleteCRD(name);
+                    Logger.info("CRD deleted successfully", { name });
+                    closeModal();
+                } catch (err) {
+                    Logger.error("Failed to delete CRD", err);
+                    alert(`Failed to delete CRD: ${err}`);
+                }
+            }
+        });
+    };
+
+    return {
+        handleEditYaml,
+        handleDelete
+    };
+};

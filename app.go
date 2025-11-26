@@ -15,6 +15,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
 // App struct
@@ -970,4 +971,41 @@ func (a *App) GetResourceDependencies(resourceType, namespace, name string) (*k8
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.GetResourceDependencies(currentContext, resourceType, namespace, name)
+}
+
+// CustomResourceDefinition operations (cluster-scoped)
+func (a *App) ListCRDs() ([]apiextensionsv1.CustomResourceDefinition, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ListCRDs called: context=%s", currentContext)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListCRDs(currentContext)
+}
+
+func (a *App) GetCRDYaml(name string) (string, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetCRDYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetCRDYaml(currentContext, name)
+}
+
+func (a *App) UpdateCRDYaml(name, yamlContent string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("UpdateCRDYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateCRDYaml(currentContext, name, yamlContent)
+}
+
+func (a *App) DeleteCRD(name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteCRD called: context=%s, name=%s", currentContext, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteCRD(currentContext, name)
 }

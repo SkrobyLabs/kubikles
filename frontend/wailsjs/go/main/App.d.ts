@@ -6,6 +6,8 @@ import {v1} from '../models';
 
 export function CreateNodeDebugPod(arg1:string):Promise<main.NodeDebugPodResult>;
 
+export function DeleteCRD(arg1:string):Promise<void>;
+
 export function DeleteConfigMap(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteCronJob(arg1:string,arg2:string):Promise<void>;
@@ -41,6 +43,8 @@ export function DeleteStorageClass(arg1:string):Promise<void>;
 export function ForceDeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function GetAllPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
+
+export function GetCRDYaml(arg1:string):Promise<string>;
 
 export function GetConfigMapYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -83,6 +87,8 @@ export function GetStatefulSetYaml(arg1:string,arg2:string):Promise<string>;
 export function GetStorageClassYaml(arg1:string):Promise<string>;
 
 export function Greet(arg1:string):Promise<string>;
+
+export function ListCRDs():Promise<Array<v1.CustomResourceDefinition>>;
 
 export function ListConfigMaps(arg1:string):Promise<Array<v1.ConfigMap>>;
 
@@ -147,6 +153,8 @@ export function SwitchContext(arg1:string):Promise<void>;
 export function TestEmit():Promise<void>;
 
 export function TriggerCronJob(arg1:string,arg2:string):Promise<void>;
+
+export function UpdateCRDYaml(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateConfigMapYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

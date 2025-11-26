@@ -4221,6 +4221,761 @@ export namespace v1 {
 	}
 	
 	
+	export class CustomResourceColumnDefinition {
+	    name: string;
+	    type: string;
+	    format?: string;
+	    description?: string;
+	    priority?: number;
+	    jsonPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomResourceColumnDefinition(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.type = source["type"];
+	        this.format = source["format"];
+	        this.description = source["description"];
+	        this.priority = source["priority"];
+	        this.jsonPath = source["jsonPath"];
+	    }
+	}
+	export class ServiceReference {
+	    namespace: string;
+	    name: string;
+	    path?: string;
+	    port?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ServiceReference(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.namespace = source["namespace"];
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.port = source["port"];
+	    }
+	}
+	export class WebhookClientConfig {
+	    url?: string;
+	    service?: ServiceReference;
+	    caBundle?: number[];
+	
+	    static createFrom(source: any = {}) {
+	        return new WebhookClientConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.service = this.convertValues(source["service"], ServiceReference);
+	        this.caBundle = source["caBundle"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class WebhookConversion {
+	    clientConfig?: WebhookClientConfig;
+	    conversionReviewVersions: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new WebhookConversion(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.clientConfig = this.convertValues(source["clientConfig"], WebhookClientConfig);
+	        this.conversionReviewVersions = source["conversionReviewVersions"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CustomResourceConversion {
+	    strategy: string;
+	    webhook?: WebhookConversion;
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomResourceConversion(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.strategy = source["strategy"];
+	        this.webhook = this.convertValues(source["webhook"], WebhookConversion);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CustomResourceDefinitionCondition {
+	    type: string;
+	    status: string;
+	    lastTransitionTime?: Time;
+	    reason?: string;
+	    message?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomResourceDefinitionCondition(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.status = source["status"];
+	        this.lastTransitionTime = this.convertValues(source["lastTransitionTime"], Time);
+	        this.reason = source["reason"];
+	        this.message = source["message"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CustomResourceDefinitionStatus {
+	    conditions: CustomResourceDefinitionCondition[];
+	    acceptedNames: CustomResourceDefinitionNames;
+	    storedVersions: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomResourceDefinitionStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.conditions = this.convertValues(source["conditions"], CustomResourceDefinitionCondition);
+	        this.acceptedNames = this.convertValues(source["acceptedNames"], CustomResourceDefinitionNames);
+	        this.storedVersions = source["storedVersions"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SelectableField {
+	    jsonPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SelectableField(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.jsonPath = source["jsonPath"];
+	    }
+	}
+	export class CustomResourceSubresourceScale {
+	    specReplicasPath: string;
+	    statusReplicasPath: string;
+	    labelSelectorPath?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomResourceSubresourceScale(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.specReplicasPath = source["specReplicasPath"];
+	        this.statusReplicasPath = source["statusReplicasPath"];
+	        this.labelSelectorPath = source["labelSelectorPath"];
+	    }
+	}
+	export class CustomResourceSubresourceStatus {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomResourceSubresourceStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class CustomResourceSubresources {
+	    // Go type: CustomResourceSubresourceStatus
+	    status?: any;
+	    scale?: CustomResourceSubresourceScale;
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomResourceSubresources(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = this.convertValues(source["status"], null);
+	        this.scale = this.convertValues(source["scale"], CustomResourceSubresourceScale);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ValidationRule {
+	    rule: string;
+	    message?: string;
+	    messageExpression?: string;
+	    reason?: string;
+	    fieldPath?: string;
+	    optionalOldSelf?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ValidationRule(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rule = source["rule"];
+	        this.message = source["message"];
+	        this.messageExpression = source["messageExpression"];
+	        this.reason = source["reason"];
+	        this.fieldPath = source["fieldPath"];
+	        this.optionalOldSelf = source["optionalOldSelf"];
+	    }
+	}
+	export class ExternalDocumentation {
+	    description?: string;
+	    url?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExternalDocumentation(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.description = source["description"];
+	        this.url = source["url"];
+	    }
+	}
+	export class JSONSchemaPropsOrStringArray {
+	    Schema?: JSONSchemaProps;
+	    Property: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new JSONSchemaPropsOrStringArray(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Schema = this.convertValues(source["Schema"], JSONSchemaProps);
+	        this.Property = source["Property"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class JSONSchemaPropsOrBool {
+	    Allows: boolean;
+	    Schema?: JSONSchemaProps;
+	
+	    static createFrom(source: any = {}) {
+	        return new JSONSchemaPropsOrBool(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Allows = source["Allows"];
+	        this.Schema = this.convertValues(source["Schema"], JSONSchemaProps);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class JSONSchemaPropsOrArray {
+	    Schema?: JSONSchemaProps;
+	    JSONSchemas: JSONSchemaProps[];
+	
+	    static createFrom(source: any = {}) {
+	        return new JSONSchemaPropsOrArray(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Schema = this.convertValues(source["Schema"], JSONSchemaProps);
+	        this.JSONSchemas = this.convertValues(source["JSONSchemas"], JSONSchemaProps);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class JSON {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new JSON(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class JSONSchemaProps {
+	    id?: string;
+	    $schema?: string;
+	    $ref?: string;
+	    description?: string;
+	    type?: string;
+	    format?: string;
+	    title?: string;
+	    default?: JSON;
+	    maximum?: number;
+	    exclusiveMaximum?: boolean;
+	    minimum?: number;
+	    exclusiveMinimum?: boolean;
+	    maxLength?: number;
+	    minLength?: number;
+	    pattern?: string;
+	    maxItems?: number;
+	    minItems?: number;
+	    uniqueItems?: boolean;
+	    multipleOf?: number;
+	    enum?: JSON[];
+	    maxProperties?: number;
+	    minProperties?: number;
+	    required?: string[];
+	    items?: JSONSchemaPropsOrArray;
+	    allOf?: JSONSchemaProps[];
+	    oneOf?: JSONSchemaProps[];
+	    anyOf?: JSONSchemaProps[];
+	    not?: JSONSchemaProps;
+	    properties?: Record<string, JSONSchemaProps>;
+	    additionalProperties?: JSONSchemaPropsOrBool;
+	    patternProperties?: Record<string, JSONSchemaProps>;
+	    dependencies?: Record<string, JSONSchemaPropsOrStringArray>;
+	    additionalItems?: JSONSchemaPropsOrBool;
+	    definitions?: Record<string, JSONSchemaProps>;
+	    externalDocs?: ExternalDocumentation;
+	    example?: JSON;
+	    nullable?: boolean;
+	    "x-kubernetes-preserve-unknown-fields"?: boolean;
+	    "x-kubernetes-embedded-resource"?: boolean;
+	    "x-kubernetes-int-or-string"?: boolean;
+	    "x-kubernetes-list-map-keys"?: string[];
+	    "x-kubernetes-list-type"?: string;
+	    "x-kubernetes-map-type"?: string;
+	    "x-kubernetes-validations"?: ValidationRule[];
+	
+	    static createFrom(source: any = {}) {
+	        return new JSONSchemaProps(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.$schema = source["$schema"];
+	        this.$ref = source["$ref"];
+	        this.description = source["description"];
+	        this.type = source["type"];
+	        this.format = source["format"];
+	        this.title = source["title"];
+	        this.default = this.convertValues(source["default"], JSON);
+	        this.maximum = source["maximum"];
+	        this.exclusiveMaximum = source["exclusiveMaximum"];
+	        this.minimum = source["minimum"];
+	        this.exclusiveMinimum = source["exclusiveMinimum"];
+	        this.maxLength = source["maxLength"];
+	        this.minLength = source["minLength"];
+	        this.pattern = source["pattern"];
+	        this.maxItems = source["maxItems"];
+	        this.minItems = source["minItems"];
+	        this.uniqueItems = source["uniqueItems"];
+	        this.multipleOf = source["multipleOf"];
+	        this.enum = this.convertValues(source["enum"], JSON);
+	        this.maxProperties = source["maxProperties"];
+	        this.minProperties = source["minProperties"];
+	        this.required = source["required"];
+	        this.items = this.convertValues(source["items"], JSONSchemaPropsOrArray);
+	        this.allOf = this.convertValues(source["allOf"], JSONSchemaProps);
+	        this.oneOf = this.convertValues(source["oneOf"], JSONSchemaProps);
+	        this.anyOf = this.convertValues(source["anyOf"], JSONSchemaProps);
+	        this.not = this.convertValues(source["not"], JSONSchemaProps);
+	        this.properties = this.convertValues(source["properties"], JSONSchemaProps, true);
+	        this.additionalProperties = this.convertValues(source["additionalProperties"], JSONSchemaPropsOrBool);
+	        this.patternProperties = this.convertValues(source["patternProperties"], JSONSchemaProps, true);
+	        this.dependencies = this.convertValues(source["dependencies"], JSONSchemaPropsOrStringArray, true);
+	        this.additionalItems = this.convertValues(source["additionalItems"], JSONSchemaPropsOrBool);
+	        this.definitions = this.convertValues(source["definitions"], JSONSchemaProps, true);
+	        this.externalDocs = this.convertValues(source["externalDocs"], ExternalDocumentation);
+	        this.example = this.convertValues(source["example"], JSON);
+	        this.nullable = source["nullable"];
+	        this["x-kubernetes-preserve-unknown-fields"] = source["x-kubernetes-preserve-unknown-fields"];
+	        this["x-kubernetes-embedded-resource"] = source["x-kubernetes-embedded-resource"];
+	        this["x-kubernetes-int-or-string"] = source["x-kubernetes-int-or-string"];
+	        this["x-kubernetes-list-map-keys"] = source["x-kubernetes-list-map-keys"];
+	        this["x-kubernetes-list-type"] = source["x-kubernetes-list-type"];
+	        this["x-kubernetes-map-type"] = source["x-kubernetes-map-type"];
+	        this["x-kubernetes-validations"] = this.convertValues(source["x-kubernetes-validations"], ValidationRule);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CustomResourceValidation {
+	    openAPIV3Schema?: JSONSchemaProps;
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomResourceValidation(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.openAPIV3Schema = this.convertValues(source["openAPIV3Schema"], JSONSchemaProps);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CustomResourceDefinitionVersion {
+	    name: string;
+	    served: boolean;
+	    storage: boolean;
+	    deprecated?: boolean;
+	    deprecationWarning?: string;
+	    schema?: CustomResourceValidation;
+	    subresources?: CustomResourceSubresources;
+	    additionalPrinterColumns?: CustomResourceColumnDefinition[];
+	    selectableFields?: SelectableField[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomResourceDefinitionVersion(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.served = source["served"];
+	        this.storage = source["storage"];
+	        this.deprecated = source["deprecated"];
+	        this.deprecationWarning = source["deprecationWarning"];
+	        this.schema = this.convertValues(source["schema"], CustomResourceValidation);
+	        this.subresources = this.convertValues(source["subresources"], CustomResourceSubresources);
+	        this.additionalPrinterColumns = this.convertValues(source["additionalPrinterColumns"], CustomResourceColumnDefinition);
+	        this.selectableFields = this.convertValues(source["selectableFields"], SelectableField);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CustomResourceDefinitionNames {
+	    plural: string;
+	    singular?: string;
+	    shortNames?: string[];
+	    kind: string;
+	    listKind?: string;
+	    categories?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomResourceDefinitionNames(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.plural = source["plural"];
+	        this.singular = source["singular"];
+	        this.shortNames = source["shortNames"];
+	        this.kind = source["kind"];
+	        this.listKind = source["listKind"];
+	        this.categories = source["categories"];
+	    }
+	}
+	export class CustomResourceDefinitionSpec {
+	    group: string;
+	    names: CustomResourceDefinitionNames;
+	    scope: string;
+	    versions: CustomResourceDefinitionVersion[];
+	    conversion?: CustomResourceConversion;
+	    preserveUnknownFields?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomResourceDefinitionSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.group = source["group"];
+	        this.names = this.convertValues(source["names"], CustomResourceDefinitionNames);
+	        this.scope = source["scope"];
+	        this.versions = this.convertValues(source["versions"], CustomResourceDefinitionVersion);
+	        this.conversion = this.convertValues(source["conversion"], CustomResourceConversion);
+	        this.preserveUnknownFields = source["preserveUnknownFields"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CustomResourceDefinition {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec: CustomResourceDefinitionSpec;
+	    status?: CustomResourceDefinitionStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomResourceDefinition(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], CustomResourceDefinitionSpec);
+	        this.status = this.convertValues(source["status"], CustomResourceDefinitionStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+	
+	
+	
+	
+	
 	export class DaemonEndpoint {
 	    Port: number;
 	
@@ -4914,6 +5669,7 @@ export namespace v1 {
 	
 	
 	
+	
 	export class HostIP {
 	    ip: string;
 	
@@ -4926,6 +5682,11 @@ export namespace v1 {
 	        this.ip = source["ip"];
 	    }
 	}
+	
+	
+	
+	
+	
 	export class UncountedTerminatedPods {
 	    succeeded?: string[];
 	    failed?: string[];
@@ -7209,6 +7970,7 @@ export namespace v1 {
 	
 	
 	
+	
 	export class ServiceStatus {
 	    loadBalancer?: LoadBalancerStatus;
 	    conditions?: Condition[];
@@ -7445,6 +8207,7 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	
 	
 	
 	
@@ -7836,6 +8599,9 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	
+	
+	
 	
 	
 	

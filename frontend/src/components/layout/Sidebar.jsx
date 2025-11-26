@@ -15,7 +15,8 @@ import {
     FolderIcon,
     BellAlertIcon,
     ChevronDownIcon,
-    ChevronRightIcon
+    ChevronRightIcon,
+    PuzzlePieceIcon
 } from '@heroicons/react/24/outline';
 import SearchSelect from '../shared/SearchSelect';
 import Logger from '../../utils/Logger';
@@ -68,6 +69,12 @@ export default function Sidebar({
                 { id: 'pvcs', label: 'PVCs', icon: CircleStackIcon },
                 { id: 'pvs', label: 'PVs', icon: ServerStackIcon },
                 { id: 'storageclasses', label: 'Storage Classes', icon: ServerIcon },
+            ]
+        },
+        {
+            title: 'Custom Resources',
+            items: [
+                { id: 'crds', label: 'Definitions', icon: PuzzlePieceIcon },
             ]
         }
     ];

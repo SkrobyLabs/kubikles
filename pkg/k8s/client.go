@@ -12,6 +12,8 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
@@ -1283,4 +1285,78 @@ func (c *Client) DeleteStorageClass(contextName, name string) error {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	return cs.StorageV1().StorageClasses().Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// getApiExtensionsClientForContext returns an apiextensions clientset for a given context
+func (c *Client) getApiExtensionsClientForContext(contextName string) (*apiextensionsclientset.Clientset, error) {
+	home := homedir.HomeDir()
+	kubeconfigPath := filepath.Join(home, ".kube", "config")
+	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
+
+	configOverrides := &clientcmd.ConfigOverrides{}
+	if contextName != "" {
+		configOverrides.CurrentContext = contextName
+	}
+
+	configLoader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+	config, err := configLoader.ClientConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load client config for context %s: %w", contextName, err)
+	}
+
+	return apiextensionsclientset.NewForConfig(config)
+}
+
+// CustomResourceDefinition operations (cluster-scoped)
+func (c *Client) ListCRDs(contextName string) ([]apiextensionsv1.CustomResourceDefinition, error) {
+	cs, err := c.getApiExtensionsClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get apiextensions client for context %s: %w", contextName, err)
+	}
+	crds, err := cs.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return crds.Items, nil
+}
+
+func (c *Client) GetCRDYaml(contextName, name string) (string, error) {
+	cs, err := c.getApiExtensionsClientForContext(contextName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get apiextensions client: %w", err)
+	}
+	crd, err := cs.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	crd.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(crd)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateCRDYaml(contextName, name, yamlContent string) error {
+	cs, err := c.getApiExtensionsClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get apiextensions client: %w", err)
+	}
+	var crd apiextensionsv1.CustomResourceDefinition
+	if err := yaml.Unmarshal([]byte(yamlContent), &crd); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.ApiextensionsV1().CustomResourceDefinitions().Update(context.TODO(), &crd, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteCRD(contextName, name string) error {
+	fmt.Printf("Deleting CRD: context=%s, name=%s\n", contextName, name)
+	cs, err := c.getApiExtensionsClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get apiextensions client for context %s: %w", contextName, err)
+	}
+	return cs.ApiextensionsV1().CustomResourceDefinitions().Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
