@@ -242,11 +242,11 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         const isInitialLoad = !prevLogsRef.current && logs;
         const isNewFetch = prevLogsRef.current !== logs && !prevLogsRef.current.length;
 
-        if (viewMode === 'start' && logsStartRef.current) {
-            logsStartRef.current.scrollIntoView({ behavior: "smooth" });
+        if (viewMode === 'start' && logsContainerRef.current) {
+            logsContainerRef.current.scrollTop = 0;
             isAtBottomRef.current = false;
-        } else if (logsEndRef.current && (isAtBottomRef.current || isInitialLoad || isNewFetch)) {
-            logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+        } else if (logsContainerRef.current && (isAtBottomRef.current || isInitialLoad || isNewFetch)) {
+            logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
             isAtBottomRef.current = true;
         }
 
@@ -263,16 +263,21 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         setSinceTime(''); // Clear time filter when jumping to start
     };
 
+    // Force scroll to bottom
+    const scrollToBottom = () => {
+        isAtBottomRef.current = true;
+        if (logsContainerRef.current) {
+            logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
+        }
+    };
+
     const jumpToEnd = () => {
         // If already in end mode, toggle auto-follow
         if (viewMode === 'end' && !sinceTime && !showPrevious) {
             setAutoFollow(prev => !prev);
             if (!autoFollow) {
                 // Re-enabling auto-follow, scroll to bottom
-                isAtBottomRef.current = true;
-                if (logsEndRef.current) {
-                    logsEndRef.current.scrollIntoView({ behavior: "smooth" });
-                }
+                scrollToBottom();
             }
             return;
         }
@@ -281,13 +286,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         setViewMode('end');
         setSinceTime(''); // Clear time filter to show latest logs
         setAutoFollow(true); // Enable auto-follow
-        isAtBottomRef.current = true;
-        // Scroll to bottom immediately
-        setTimeout(() => {
-            if (logsEndRef.current) {
-                logsEndRef.current.scrollIntoView({ behavior: "smooth" });
-            }
-        }, 0);
+        scrollToBottom();
     };
 
     const downloadLogs = async () => {
