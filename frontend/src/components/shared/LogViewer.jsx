@@ -13,7 +13,8 @@ import {
     ChevronDoubleUpIcon,
     ChevronDoubleDownIcon,
     CalendarIcon,
-    ExclamationTriangleIcon
+    ExclamationTriangleIcon,
+    ArrowPathIcon
 } from '@heroicons/react/24/outline';
 
 const converter = new Convert({
@@ -94,6 +95,8 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const [sinceTime, setSinceTime] = useState('');
     const [viewMode, setViewMode] = useState('end'); // 'start' or 'end'
     const [autoFollow, setAutoFollow] = useState(true); // User can toggle this
+    const [streamDisconnected, setStreamDisconnected] = useState(false); // Track if stream was disconnected
+    const [disconnectReason, setDisconnectReason] = useState(''); // Reason for disconnection
     const logsStartRef = useRef(null);
     const logsEndRef = useRef(null);
     const streamIdRef = useRef(null);
@@ -148,6 +151,10 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             StopLogStream(streamIdRef.current);
             streamIdRef.current = null;
         }
+
+        // Clear disconnected state when refreshing
+        setStreamDisconnected(false);
+        setDisconnectReason('');
 
         setLoading(true);
         try {
@@ -204,11 +211,16 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             if (event.done) {
                 // Stream ended (pod terminated, etc.)
                 streamIdRef.current = null;
+                setStreamDisconnected(true);
+                setDisconnectReason('Pod terminated or container restarted');
                 return;
             }
 
             if (event.error) {
                 console.error('Log stream error:', event.error);
+                streamIdRef.current = null;
+                setStreamDisconnected(true);
+                setDisconnectReason(event.error);
                 return;
             }
 
@@ -425,6 +437,26 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                     <span className="text-sm">
                         Read-only: These logs are from context <span className="font-medium">{tabContext}</span>. Switch back to view live logs.
                     </span>
+                </div>
+            )}
+
+            {/* Stream Disconnected Banner */}
+            {streamDisconnected && !isStale && (
+                <div className="flex items-center justify-between px-4 py-2 bg-amber-900/30 border-b border-amber-500/50 text-amber-400 shrink-0">
+                    <div className="flex items-center gap-2">
+                        <ExclamationTriangleIcon className="h-5 w-5" />
+                        <span className="text-sm">
+                            {disconnectReason || 'Stream disconnected'}
+                        </span>
+                    </div>
+                    <button
+                        onClick={fetchLogs}
+                        disabled={loading}
+                        className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-500 transition-colors disabled:opacity-50"
+                    >
+                        <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </button>
                 </div>
             )}
 
