@@ -81,7 +81,7 @@ export default function PVCList({ isVisible }) {
             onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
             multiSelectNamespaces={true}
-            initialSort={{ key: 'age', direction: 'asc' }}
+            initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="pvcs"
         />
     );

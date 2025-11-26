@@ -80,7 +80,7 @@ export default function NamespaceList({ isVisible }) {
             data={namespaces}
             isLoading={loading}
             showNamespaceSelector={false}
-            initialSort={{ key: 'name', direction: 'asc' }}
+            initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="namespaces"
         />
     );

@@ -68,7 +68,7 @@ export default function StorageClassList({ isVisible }) {
             data={storageClasses}
             isLoading={loading}
             showNamespaceSelector={false}
-            initialSort={{ key: 'name', direction: 'asc' }}
+            initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="storageclasses"
         />
     );

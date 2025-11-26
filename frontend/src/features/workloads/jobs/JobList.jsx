@@ -132,7 +132,7 @@ export default function JobList({ isVisible }) {
             onNamespaceChange={setSelectedNamespaces}
             showNamespaceSelector={true}
             multiSelectNamespaces={true}
-            initialSort={{ key: 'age', direction: 'asc' }}
+            initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="jobs"
         />
     );

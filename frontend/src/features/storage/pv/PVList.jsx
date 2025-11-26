@@ -84,7 +84,7 @@ export default function PVList({ isVisible }) {
             data={pvs}
             isLoading={loading}
             showNamespaceSelector={false}
-            initialSort={{ key: 'age', direction: 'asc' }}
+            initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="pvs"
         />
     );
