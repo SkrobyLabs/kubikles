@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	appsv1 "k8s.io/api/apps/v1"
@@ -25,6 +26,9 @@ type App struct {
 	terminalService  *terminal.Service
 	podWatcherCancel context.CancelFunc
 	podWatcherMutex  sync.Mutex
+	// Log streaming
+	logStreams      map[string]context.CancelFunc
+	logStreamsMutex sync.Mutex
 }
 
 // NewApp creates a new App application struct
@@ -36,6 +40,7 @@ func NewApp() *App {
 	return &App{
 		k8sClient:       client,
 		terminalService: terminal.NewService(),
+		logStreams:      make(map[string]context.CancelFunc),
 	}
 }
 
@@ -357,6 +362,80 @@ func (a *App) GetPodLogsFromStart(namespace, podName, containerName string, time
 		return "", fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.GetPodLogsFromStart(namespace, podName, containerName, timestamps, previous, 200)
+}
+
+// LogStreamEvent is emitted for each log line during streaming
+type LogStreamEvent struct {
+	StreamID string `json:"streamId"`
+	Line     string `json:"line"`
+	Error    string `json:"error,omitempty"`
+	Done     bool   `json:"done,omitempty"`
+}
+
+// StartLogStream starts streaming logs from a pod container.
+// Returns a stream ID that can be used to stop the stream.
+// Log lines are emitted via "log-stream" events.
+func (a *App) StartLogStream(namespace, podName, containerName string, timestamps bool) (string, error) {
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+
+	// Generate a unique stream ID
+	streamID := fmt.Sprintf("%s/%s/%s-%d", namespace, podName, containerName, time.Now().UnixNano())
+	a.LogDebug("StartLogStream: streamID=%s", streamID)
+
+	// Create a cancellable context for this stream
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Store the cancel function
+	a.logStreamsMutex.Lock()
+	a.logStreams[streamID] = cancel
+	a.logStreamsMutex.Unlock()
+
+	// Start streaming in a goroutine
+	go func() {
+		defer func() {
+			// Clean up when done
+			a.logStreamsMutex.Lock()
+			delete(a.logStreams, streamID)
+			a.logStreamsMutex.Unlock()
+
+			// Emit done event
+			runtime.EventsEmit(a.ctx, "log-stream", LogStreamEvent{
+				StreamID: streamID,
+				Done:     true,
+			})
+		}()
+
+		err := a.k8sClient.StreamPodLogs(ctx, namespace, podName, containerName, timestamps, 200, func(line string) {
+			runtime.EventsEmit(a.ctx, "log-stream", LogStreamEvent{
+				StreamID: streamID,
+				Line:     line,
+			})
+		})
+
+		if err != nil && err != context.Canceled {
+			a.LogDebug("Log stream error: %v", err)
+			runtime.EventsEmit(a.ctx, "log-stream", LogStreamEvent{
+				StreamID: streamID,
+				Error:    err.Error(),
+			})
+		}
+	}()
+
+	return streamID, nil
+}
+
+// StopLogStream stops an active log stream
+func (a *App) StopLogStream(streamID string) {
+	a.LogDebug("StopLogStream: streamID=%s", streamID)
+	a.logStreamsMutex.Lock()
+	defer a.logStreamsMutex.Unlock()
+
+	if cancel, ok := a.logStreams[streamID]; ok {
+		cancel()
+		delete(a.logStreams, streamID)
+	}
 }
 
 // LogDebug sends a debug message to the frontend

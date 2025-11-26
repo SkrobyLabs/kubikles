@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -660,6 +661,52 @@ func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string,
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+// StreamPodLogs streams logs from a pod container and calls the callback for each line.
+// It continues until the context is cancelled or an error occurs.
+// The callback receives each log line as it arrives.
+func (c *Client) StreamPodLogs(ctx context.Context, namespace, podName, containerName string, timestamps bool, tailLines int64, onLine func(line string)) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+
+	opts := &v1.PodLogOptions{
+		Follow:     true,
+		Timestamps: timestamps,
+	}
+	if tailLines > 0 {
+		opts.TailLines = &tailLines
+	}
+	if containerName != "" {
+		opts.Container = containerName
+	}
+
+	req := cs.CoreV1().Pods(namespace).GetLogs(podName, opts)
+	stream, err := req.Stream(ctx)
+	if err != nil {
+		return err
+	}
+	defer stream.Close()
+
+	scanner := bufio.NewScanner(stream)
+	// Increase buffer size for long log lines
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+	for scanner.Scan() {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			onLine(scanner.Text())
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Client) getClientForContext(contextName string) (*kubernetes.Clientset, error) {

@@ -152,7 +152,11 @@ export function SavePodLogs(arg1:string,arg2:string):Promise<void>;
 
 export function SetNodeSchedulable(arg1:string,arg2:boolean):Promise<void>;
 
+export function StartLogStream(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
+
 export function StartPodWatcher(arg1:string):Promise<void>;
+
+export function StopLogStream(arg1:string):Promise<void>;
 
 export function SuspendCronJob(arg1:string,arg2:string,arg3:boolean):Promise<void>;
 

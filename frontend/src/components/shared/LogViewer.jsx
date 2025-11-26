@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { GetPodLogs, GetAllPodLogs, GetPodLogsFromStart, SavePodLogs, SaveLogsBundle } from '../../../wailsjs/go/main/App';
+import { GetPodLogs, GetAllPodLogs, GetPodLogsFromStart, SavePodLogs, SaveLogsBundle, StartLogStream, StopLogStream } from '../../../wailsjs/go/main/App';
+import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import Convert from 'ansi-to-html';
 import {
     ArrowDownTrayIcon,
@@ -91,6 +92,20 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const [viewMode, setViewMode] = useState('end'); // 'start' or 'end'
     const logsStartRef = useRef(null);
     const logsEndRef = useRef(null);
+    const streamIdRef = useRef(null);
+    const logsContainerRef = useRef(null);
+    const isAtBottomRef = useRef(true);
+
+    // Auto-follow is active when in 'end' mode with no custom time filter
+    const isFollowing = viewMode === 'end' && !sinceTime && !showPrevious;
+
+    // Track scroll position to determine if user is at bottom
+    const handleScroll = () => {
+        if (!logsContainerRef.current) return;
+        const { scrollTop, scrollHeight, clientHeight } = logsContainerRef.current;
+        // Consider "at bottom" if within 50px of the bottom
+        isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 50;
+    };
 
     useEffect(() => {
         if (namespace && selectedPod) {
@@ -113,6 +128,12 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     }, [namespace, selectedPod, selectedContainer, showTimestamps, showPrevious, sinceTime, viewMode]);
 
     const fetchLogs = async () => {
+        // Stop any existing stream when fetching new logs
+        if (streamIdRef.current) {
+            StopLogStream(streamIdRef.current);
+            streamIdRef.current = null;
+        }
+
         setLoading(true);
         try {
             let logData;
@@ -129,12 +150,80 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         }
     };
 
+    // Log streaming for auto-follow
     useEffect(() => {
+        // Stop existing stream first
+        if (streamIdRef.current) {
+            StopLogStream(streamIdRef.current);
+            streamIdRef.current = null;
+        }
+
+        // Start streaming if following is active
+        if (isFollowing && namespace && selectedPod && !loading) {
+            const startStream = async () => {
+                try {
+                    const streamId = await StartLogStream(namespace, selectedPod, selectedContainer, showTimestamps);
+                    streamIdRef.current = streamId;
+                } catch (err) {
+                    console.error('Failed to start log stream:', err);
+                }
+            };
+            startStream();
+        }
+
+        // Cleanup on unmount or when dependencies change
+        return () => {
+            if (streamIdRef.current) {
+                StopLogStream(streamIdRef.current);
+                streamIdRef.current = null;
+            }
+        };
+    }, [isFollowing, namespace, selectedPod, selectedContainer, showTimestamps, loading]);
+
+    // Listen for log stream events
+    useEffect(() => {
+        const handleLogEvent = (event) => {
+            // Only process events for our current stream
+            if (!streamIdRef.current || event.streamId !== streamIdRef.current) return;
+
+            if (event.done) {
+                // Stream ended (pod terminated, etc.)
+                streamIdRef.current = null;
+                return;
+            }
+
+            if (event.error) {
+                console.error('Log stream error:', event.error);
+                return;
+            }
+
+            if (event.line) {
+                setLogs(prev => prev ? prev + '\n' + event.line : event.line);
+            }
+        };
+
+        EventsOn('log-stream', handleLogEvent);
+
+        return () => {
+            EventsOff('log-stream');
+        };
+    }, []);
+
+    // Auto-scroll to bottom only when user was already at bottom, or on initial load/mode change
+    const prevLogsRef = useRef('');
+    useEffect(() => {
+        const isInitialLoad = !prevLogsRef.current && logs;
+        const isNewFetch = prevLogsRef.current !== logs && !prevLogsRef.current.length;
+
         if (viewMode === 'start' && logsStartRef.current) {
             logsStartRef.current.scrollIntoView({ behavior: "smooth" });
-        } else if (logsEndRef.current) {
+            isAtBottomRef.current = false;
+        } else if (logsEndRef.current && (isAtBottomRef.current || isInitialLoad || isNewFetch)) {
             logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+            isAtBottomRef.current = true;
         }
+
+        prevLogsRef.current = logs;
     }, [logs, viewMode]);
 
     const getHtmlLogs = () => {
@@ -150,6 +239,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const jumpToEnd = () => {
         setViewMode('end');
         setSinceTime(''); // Clear time filter to show latest logs
+        isAtBottomRef.current = true; // Resume auto-scrolling
     };
 
     const downloadLogs = async () => {
@@ -378,14 +468,14 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                         <CalendarIcon className="w-4 h-4" />
                     </button>
 
-                    {/* Jump to End */}
+                    {/* Jump to End / Follow */}
                     <button
                         onClick={jumpToEnd}
                         disabled={loading}
-                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${viewMode === 'end' && !sinceTime ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title="Jump to end"
+                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${isFollowing ? 'bg-green-500/20 text-green-400' : viewMode === 'end' && !sinceTime ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title={isFollowing ? "Following logs (live)" : "Jump to end & follow"}
                     >
-                        <ChevronDoubleDownIcon className="w-4 h-4" />
+                        <ChevronDoubleDownIcon className={`w-4 h-4 ${isFollowing ? 'animate-pulse' : ''}`} />
                     </button>
 
                     <div className="w-px h-4 bg-border mx-1" />
@@ -415,7 +505,11 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             </div>
 
             {/* Logs Content */}
-            <div className="flex-1 overflow-auto p-4 text-gray-300 font-mono text-xs">
+            <div
+                ref={logsContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-auto p-4 text-gray-300 font-mono text-xs"
+            >
                 {loading ? (
                     <div className="flex items-center justify-center h-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

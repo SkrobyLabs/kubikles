@@ -298,8 +298,16 @@ export function SetNodeSchedulable(arg1, arg2) {
   return window['go']['main']['App']['SetNodeSchedulable'](arg1, arg2);
 }
 
+export function StartLogStream(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['StartLogStream'](arg1, arg2, arg3, arg4);
+}
+
 export function StartPodWatcher(arg1) {
   return window['go']['main']['App']['StartPodWatcher'](arg1);
+}
+
+export function StopLogStream(arg1) {
+  return window['go']['main']['App']['StopLogStream'](arg1);
 }
 
 export function SuspendCronJob(arg1, arg2, arg3) {
