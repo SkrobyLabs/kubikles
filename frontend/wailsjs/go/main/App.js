@@ -82,8 +82,8 @@ export function ForceDeletePod(arg1, arg2, arg3) {
   return window['go']['main']['App']['ForceDeletePod'](arg1, arg2, arg3);
 }
 
-export function GetAllPodLogs(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['GetAllPodLogs'](arg1, arg2, arg3, arg4);
+export function GetAllPodLogs(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetAllPodLogs'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function GetCRDYaml(arg1) {
@@ -138,8 +138,12 @@ export function GetPVYaml(arg1) {
   return window['go']['main']['App']['GetPVYaml'](arg1);
 }
 
-export function GetPodLogs(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['GetPodLogs'](arg1, arg2, arg3, arg4);
+export function GetPodLogs(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['GetPodLogs'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function GetPodLogsFromStart(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetPodLogsFromStart'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function GetPodYaml(arg1, arg2) {

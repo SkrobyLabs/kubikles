@@ -12,13 +12,13 @@ export const usePodActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
 
-    const openLogs = (namespace, podName, containers = [], siblingPods = [], podContainerMap = {}, ownerName = '') => {
+    const openLogs = (namespace, podName, containers = [], siblingPods = [], podContainerMap = {}, ownerName = '', podCreationTime = '') => {
         Logger.info("Opening logs", { namespace, pod: podName });
         const tabId = `logs-${podName}`;
         openTab({
             id: tabId,
             title: `Logs: ${podName}`,
-            content: <LogViewer namespace={namespace} pod={podName} containers={containers} siblingPods={siblingPods} podContainerMap={podContainerMap} ownerName={ownerName} />
+            content: <LogViewer namespace={namespace} pod={podName} containers={containers} siblingPods={siblingPods} podContainerMap={podContainerMap} ownerName={ownerName} podCreationTime={podCreationTime} />
         });
     };
 

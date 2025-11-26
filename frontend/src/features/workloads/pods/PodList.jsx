@@ -119,7 +119,7 @@ export default function PodList({ isVisible }) {
                             siblingPods = [item.metadata.name];
                         }
 
-                        openLogs(item.metadata.namespace, item.metadata.name, containers, siblingPods);
+                        openLogs(item.metadata.namespace, item.metadata.name, containers, siblingPods, {}, '', item.metadata.creationTimestamp);
                     }}
                     onShell={() => handleShell(item.metadata.namespace, item.metadata.name)}
                     onDelete={() => handleDelete(item.metadata.namespace, item.metadata.name, false)}

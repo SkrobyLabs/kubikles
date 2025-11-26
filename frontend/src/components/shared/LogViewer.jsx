@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GetPodLogs, GetAllPodLogs, SavePodLogs, SaveLogsBundle } from '../../../wailsjs/go/main/App';
+import { createPortal } from 'react-dom';
+import { GetPodLogs, GetAllPodLogs, GetPodLogsFromStart, SavePodLogs, SaveLogsBundle } from '../../../wailsjs/go/main/App';
 import Convert from 'ansi-to-html';
+import {
+    ArrowDownTrayIcon,
+    ArchiveBoxArrowDownIcon,
+    ClockIcon,
+    Bars3BottomLeftIcon,
+    BackwardIcon,
+    ChevronDoubleUpIcon,
+    ChevronDoubleDownIcon,
+    CalendarIcon
+} from '@heroicons/react/24/outline';
 
 const converter = new Convert({
     fg: '#FFF',
@@ -17,7 +28,55 @@ const normalizeAnsiCodes = (text) => {
 
 import SearchSelect from './SearchSelect';
 
-export default function LogViewer({ namespace, pod, containers = [], siblingPods = [], podContainerMap = {}, ownerName = '' }) {
+// Spinner component for loading states
+const Spinner = () => (
+    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    </svg>
+);
+
+// Validate RFC3339 datetime format (e.g., 2024-11-26T14:30:00Z)
+const isValidDateTime = (str) => {
+    if (!str) return false;
+    // Accept formats like: 2024-11-26T14:30:00Z, 2024-11-26T14:30:00, 2024-11-26 14:30:00
+    const patterns = [
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z?$/,
+        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/,
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/,
+        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/
+    ];
+    if (!patterns.some(p => p.test(str))) return false;
+    const date = new Date(str.replace(' ', 'T'));
+    return !isNaN(date.getTime());
+};
+
+// Convert input to RFC3339 format
+const toRFC3339 = (str) => {
+    if (!str) return '';
+    let normalized = str.replace(' ', 'T');
+    if (!normalized.includes(':00Z') && !normalized.endsWith('Z')) {
+        if (normalized.length === 16) { // 2024-11-26T14:30
+            normalized += ':00Z';
+        } else if (normalized.length === 19) { // 2024-11-26T14:30:00
+            normalized += 'Z';
+        }
+    }
+    return normalized;
+};
+
+// Extract first timestamp from logs (Kubernetes format: 2024-11-26T14:30:00.123456789Z)
+const extractFirstTimestamp = (logText) => {
+    if (!logText) return '';
+    const match = logText.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/m);
+    if (match) {
+        // Return in user-friendly format: YYYY-MM-DD HH:MM:SS
+        return match[1].replace('T', ' ');
+    }
+    return '';
+};
+
+export default function LogViewer({ namespace, pod, containers = [], siblingPods = [], podContainerMap = {}, ownerName = '', podCreationTime = '' }) {
     const [logs, setLogs] = useState('');
     const [loading, setLoading] = useState(false);
     const [downloading, setDownloading] = useState(false);
@@ -26,20 +85,23 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const [selectedContainer, setSelectedContainer] = useState(containers[0] || '');
     const [wrapLines, setWrapLines] = useState(true);
     const [showTimestamps, setShowTimestamps] = useState(false);
+    const [showPrevious, setShowPrevious] = useState(false);
+    const [showTimeModal, setShowTimeModal] = useState(false);
+    const [sinceTime, setSinceTime] = useState('');
+    const [viewMode, setViewMode] = useState('end'); // 'start' or 'end'
+    const logsStartRef = useRef(null);
     const logsEndRef = useRef(null);
 
     useEffect(() => {
         if (namespace && selectedPod) {
             fetchLogs();
         }
-    }, [namespace, selectedPod, selectedContainer, showTimestamps]);
+    }, [namespace, selectedPod, selectedContainer, showTimestamps, showPrevious, sinceTime, viewMode]);
 
     // Listen for Cmd+R / Ctrl+R to refresh logs
     useEffect(() => {
         const handleKeyDown = (e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
-                // Don't prevent default - let App.jsx handle it for global refresh
-                // Just refresh logs when the event fires
                 if (namespace && selectedPod) {
                     fetchLogs();
                 }
@@ -48,12 +110,17 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [namespace, selectedPod, selectedContainer, showTimestamps]);
+    }, [namespace, selectedPod, selectedContainer, showTimestamps, showPrevious, sinceTime, viewMode]);
 
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const logData = await GetPodLogs(namespace, selectedPod, selectedContainer, showTimestamps);
+            let logData;
+            if (viewMode === 'start') {
+                logData = await GetPodLogsFromStart(namespace, selectedPod, selectedContainer, showTimestamps, showPrevious);
+            } else {
+                logData = await GetPodLogs(namespace, selectedPod, selectedContainer, showTimestamps, showPrevious, sinceTime);
+            }
             setLogs(logData);
         } catch (err) {
             setLogs(`Error fetching logs: ${err}`);
@@ -63,14 +130,26 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     };
 
     useEffect(() => {
-        if (logsEndRef.current) {
+        if (viewMode === 'start' && logsStartRef.current) {
+            logsStartRef.current.scrollIntoView({ behavior: "smooth" });
+        } else if (logsEndRef.current) {
             logsEndRef.current.scrollIntoView({ behavior: "smooth" });
         }
-    }, [logs]);
+    }, [logs, viewMode]);
 
     const getHtmlLogs = () => {
-        if (!logs) return { __html: "No logs available." };
+        if (!logs) return { __html: "" };
         return { __html: converter.toHtml(normalizeAnsiCodes(logs)) };
+    };
+
+    const jumpToStart = () => {
+        setViewMode('start');
+        setSinceTime(''); // Clear time filter when jumping to start
+    };
+
+    const jumpToEnd = () => {
+        setViewMode('end');
+        setSinceTime(''); // Clear time filter to show latest logs
     };
 
     const downloadLogs = async () => {
@@ -78,7 +157,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const filename = `${selectedPod}-${timestamp}.log`;
         try {
-            const allLogs = await GetAllPodLogs(namespace, selectedPod, selectedContainer, showTimestamps);
+            const allLogs = await GetAllPodLogs(namespace, selectedPod, selectedContainer, showTimestamps, showPrevious);
             await SavePodLogs(allLogs, filename);
         } catch (err) {
             console.error('Failed to save logs:', err);
@@ -98,12 +177,11 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             const podsToDownload = siblingPods.length > 0 ? siblingPods : [pod];
 
             for (const podName of podsToDownload) {
-                // Get containers for this pod from the map, or use current containers as fallback
                 const podContainers = podContainerMap[podName] || containers;
 
                 for (const containerName of podContainers) {
                     try {
-                        const logs = await GetAllPodLogs(namespace, podName, containerName, showTimestamps);
+                        const logs = await GetAllPodLogs(namespace, podName, containerName, showTimestamps, showPrevious);
                         entries.push({
                             podName,
                             containerName,
@@ -126,6 +204,97 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         } finally {
             setDownloadingBundle(false);
         }
+    };
+
+    // Time Picker Modal Component
+    const TimePickerModal = () => {
+        const [inputTime, setInputTime] = useState('');
+        const [error, setError] = useState('');
+
+        // Pre-fill when modal opens: current filter, first visible timestamp from logs, or pod creation time
+        useEffect(() => {
+            if (showTimeModal) {
+                setError('');
+                if (sinceTime) {
+                    setInputTime(sinceTime.replace('T', ' ').replace('Z', ''));
+                } else {
+                    const extracted = extractFirstTimestamp(logs);
+                    if (extracted) {
+                        setInputTime(extracted);
+                    } else if (podCreationTime) {
+                        // Fallback to pod creation time (format: 2024-11-26T14:30:00Z)
+                        setInputTime(podCreationTime.replace('T', ' ').replace('Z', '').slice(0, 19));
+                    } else {
+                        setInputTime('');
+                    }
+                }
+            }
+        }, [showTimeModal, logs, sinceTime, podCreationTime]);
+
+        const handleApply = () => {
+            if (!inputTime) {
+                setError('Please enter a date/time');
+                return;
+            }
+            if (!isValidDateTime(inputTime)) {
+                setError('Invalid format. Use: YYYY-MM-DD HH:MM:SS');
+                return;
+            }
+            setSinceTime(toRFC3339(inputTime));
+            setViewMode('end'); // Switch to end mode when filtering by time
+            setShowTimeModal(false);
+        };
+
+        const handleClear = () => {
+            setSinceTime('');
+            setShowTimeModal(false);
+        };
+
+        if (!showTimeModal) return null;
+
+        return createPortal(
+            <div className="fixed inset-0 z-[100] flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/50" onClick={() => setShowTimeModal(false)} />
+                <div className="relative bg-[#2d2d2d] border border-[#3d3d3d] rounded-lg shadow-xl max-w-sm w-full mx-4 p-4">
+                    <h3 className="text-sm font-medium text-white mb-2">Jump to Time</h3>
+                    <p className="text-xs text-gray-400 mb-3">Show logs starting from this time (server time).</p>
+                    <input
+                        type="text"
+                        value={inputTime}
+                        onChange={(e) => {
+                            setInputTime(e.target.value);
+                            setError('');
+                        }}
+                        placeholder="YYYY-MM-DD HH:MM:SS"
+                        className="w-full px-3 py-2 text-sm bg-[#1e1e1e] border border-[#3d3d3d] rounded text-white mb-1 font-mono"
+                        autoFocus
+                    />
+                    {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
+                    <p className="text-xs text-gray-500 mb-3">Example: 2024-11-26 14:30:00</p>
+                    <div className="flex justify-end gap-2">
+                        <button
+                            onClick={handleClear}
+                            className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                        >
+                            Clear
+                        </button>
+                        <button
+                            onClick={() => setShowTimeModal(false)}
+                            className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleApply}
+                            className="px-3 py-1.5 text-xs bg-primary text-white rounded hover:bg-primary/80 transition-colors"
+                        >
+                            Apply
+                        </button>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        );
     };
 
     return (
@@ -160,62 +329,86 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                         </div>
                     )}
                 </div>
-                <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer select-none">
-                        <input
-                            type="checkbox"
-                            checked={wrapLines}
-                            onChange={(e) => setWrapLines(e.target.checked)}
-                            className="w-3.5 h-3.5 rounded border-border bg-surface accent-primary cursor-pointer"
-                        />
-                        Wrap lines
-                    </label>
-                    <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer select-none">
-                        <input
-                            type="checkbox"
-                            checked={showTimestamps}
-                            onChange={(e) => setShowTimestamps(e.target.checked)}
-                            className="w-3.5 h-3.5 rounded border-border bg-surface accent-primary cursor-pointer"
-                        />
-                        Timestamps
-                    </label>
-                    <div className="w-px h-4 bg-border" />
+                <div className="flex items-center gap-1">
+                    {/* Wrap Lines Toggle */}
+                    <button
+                        onClick={() => setWrapLines(!wrapLines)}
+                        className={`p-1.5 rounded transition-colors ${wrapLines ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title={wrapLines ? 'Disable line wrap' : 'Enable line wrap'}
+                    >
+                        <Bars3BottomLeftIcon className="w-4 h-4" />
+                    </button>
+
+                    {/* Timestamps Toggle */}
+                    <button
+                        onClick={() => setShowTimestamps(!showTimestamps)}
+                        className={`p-1.5 rounded transition-colors ${showTimestamps ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}
+                    >
+                        <ClockIcon className="w-4 h-4" />
+                    </button>
+
+                    {/* Previous Container Logs Toggle */}
+                    <button
+                        onClick={() => setShowPrevious(!showPrevious)}
+                        className={`p-1.5 rounded transition-colors ${showPrevious ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title={showPrevious ? 'Showing previous container logs' : 'Show previous container logs'}
+                    >
+                        <BackwardIcon className="w-4 h-4" />
+                    </button>
+
+                    <div className="w-px h-4 bg-border mx-1" />
+
+                    {/* Jump to Start */}
+                    <button
+                        onClick={jumpToStart}
+                        disabled={loading}
+                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${viewMode === 'start' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title="Jump to start"
+                    >
+                        <ChevronDoubleUpIcon className="w-4 h-4" />
+                    </button>
+
+                    {/* Jump to Time */}
+                    <button
+                        onClick={() => setShowTimeModal(true)}
+                        className={`p-1.5 rounded transition-colors ${sinceTime ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title={sinceTime ? `Filtering from: ${sinceTime}` : 'Jump to time'}
+                    >
+                        <CalendarIcon className="w-4 h-4" />
+                    </button>
+
+                    {/* Jump to End */}
+                    <button
+                        onClick={jumpToEnd}
+                        disabled={loading}
+                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${viewMode === 'end' && !sinceTime ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title="Jump to end"
+                    >
+                        <ChevronDoubleDownIcon className="w-4 h-4" />
+                    </button>
+
+                    <div className="w-px h-4 bg-border mx-1" />
+
+                    {/* Download */}
                     <button
                         onClick={downloadLogs}
                         disabled={!logs || loading || downloading}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs bg-surface border border-border rounded hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Download current container logs"
+                        className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Download container logs"
                     >
-                        {downloading ? (
-                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                            </svg>
-                        ) : (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                        )}
-                        {downloading ? 'Downloading...' : 'Download'}
+                        {downloading ? <Spinner /> : <ArrowDownTrayIcon className="w-4 h-4" />}
                     </button>
+
+                    {/* Download All */}
                     {siblingPods.length > 1 && (
                         <button
                             onClick={downloadBundle}
                             disabled={loading || downloadingBundle}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-surface border border-border rounded hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Download all pods logs as zip"
+                            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Download all pod logs"
                         >
-                            {downloadingBundle ? (
-                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                </svg>
-                            ) : (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                                </svg>
-                            )}
-                            {downloadingBundle ? 'Bundling...' : 'Download All'}
+                            {downloadingBundle ? <Spinner /> : <ArchiveBoxArrowDownIcon className="w-4 h-4" />}
                         </button>
                     )}
                 </div>
@@ -229,11 +422,21 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                     </div>
                 ) : (
                     <div className={wrapLines ? "whitespace-pre-wrap break-all" : "whitespace-pre"}>
-                        <div dangerouslySetInnerHTML={getHtmlLogs()} />
+                        <div ref={logsStartRef} />
+                        {logs ? (
+                            <div dangerouslySetInnerHTML={getHtmlLogs()} />
+                        ) : showPrevious ? (
+                            <div className="text-amber-400">No previous container logs available.</div>
+                        ) : (
+                            <div className="text-gray-500">No logs available.</div>
+                        )}
                         <div ref={logsEndRef} />
                     </div>
                 )}
             </div>
+
+            {/* Time Picker Modal */}
+            <TimePickerModal />
         </div>
     );
 }

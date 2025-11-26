@@ -44,7 +44,7 @@ export function DeleteStorageClass(arg1:string):Promise<void>;
 
 export function ForceDeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
-export function GetAllPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
+export function GetAllPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean):Promise<string>;
 
 export function GetCRDYaml(arg1:string):Promise<string>;
 
@@ -72,7 +72,9 @@ export function GetPVCYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetPVYaml(arg1:string):Promise<string>;
 
-export function GetPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
+export function GetPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean,arg6:string):Promise<string>;
+
+export function GetPodLogsFromStart(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean):Promise<string>;
 
 export function GetPodYaml(arg1:string,arg2:string):Promise<string>;
 

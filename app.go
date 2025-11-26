@@ -332,22 +332,31 @@ func (a *App) ListDeployments(namespace string) ([]appsv1.Deployment, error) {
 	return a.k8sClient.ListDeployments(namespace)
 }
 
-func (a *App) GetPodLogs(namespace, podName, containerName string, timestamps bool) (string, error) {
+func (a *App) GetPodLogs(namespace, podName, containerName string, timestamps bool, previous bool, sinceTime string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetPodLogs called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v", currentContext, namespace, podName, containerName, timestamps)
+	a.LogDebug("GetPodLogs called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v, previous=%v, sinceTime=%s", currentContext, namespace, podName, containerName, timestamps, previous, sinceTime)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.GetPodLogs(namespace, podName, containerName, timestamps)
+	return a.k8sClient.GetPodLogs(namespace, podName, containerName, timestamps, previous, sinceTime)
 }
 
-func (a *App) GetAllPodLogs(namespace, podName, containerName string, timestamps bool) (string, error) {
+func (a *App) GetAllPodLogs(namespace, podName, containerName string, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetAllPodLogs called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v", currentContext, namespace, podName, containerName, timestamps)
+	a.LogDebug("GetAllPodLogs called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v, previous=%v", currentContext, namespace, podName, containerName, timestamps, previous)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.GetAllPodLogs(namespace, podName, containerName, timestamps)
+	return a.k8sClient.GetAllPodLogs(namespace, podName, containerName, timestamps, previous)
+}
+
+func (a *App) GetPodLogsFromStart(namespace, podName, containerName string, timestamps bool, previous bool) (string, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetPodLogsFromStart called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v, previous=%v", currentContext, namespace, podName, containerName, timestamps, previous)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetPodLogsFromStart(namespace, podName, containerName, timestamps, previous, 200)
 }
 
 // LogDebug sends a debug message to the frontend

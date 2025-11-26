@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -585,15 +586,45 @@ func (c *Client) ListDeployments(namespace string) ([]appsv1.Deployment, error) 
 	return deployments.Items, nil
 }
 
-func (c *Client) GetPodLogs(namespace, podName, containerName string, timestamps bool) (string, error) {
-	return c.getPodLogsWithOptions(namespace, podName, containerName, func(i int64) *int64 { return &i }(100), timestamps)
+func (c *Client) GetPodLogs(namespace, podName, containerName string, timestamps bool, previous bool, sinceTime string) (string, error) {
+	// When sinceTime is set, we need to get logs starting from that time (first N lines after sinceTime)
+	// Kubernetes TailLines gives last N lines, so we fetch all and truncate to first 200
+	if sinceTime != "" {
+		allLogs, err := c.getPodLogsWithOptions(namespace, podName, containerName, nil, timestamps, previous, sinceTime)
+		if err != nil {
+			return "", err
+		}
+		lines := strings.Split(allLogs, "\n")
+		if len(lines) <= 200 {
+			return allLogs, nil
+		}
+		return strings.Join(lines[:200], "\n"), nil
+	}
+	// Default: get last 200 lines
+	return c.getPodLogsWithOptions(namespace, podName, containerName, func(i int64) *int64 { return &i }(200), timestamps, previous, sinceTime)
 }
 
-func (c *Client) GetAllPodLogs(namespace, podName, containerName string, timestamps bool) (string, error) {
-	return c.getPodLogsWithOptions(namespace, podName, containerName, nil, timestamps)
+func (c *Client) GetAllPodLogs(namespace, podName, containerName string, timestamps bool, previous bool) (string, error) {
+	return c.getPodLogsWithOptions(namespace, podName, containerName, nil, timestamps, previous, "")
 }
 
-func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string, tailLines *int64, timestamps bool) (string, error) {
+// GetPodLogsFromStart fetches all logs and returns the first N lines (default 200)
+func (c *Client) GetPodLogsFromStart(namespace, podName, containerName string, timestamps bool, previous bool, lineLimit int) (string, error) {
+	allLogs, err := c.getPodLogsWithOptions(namespace, podName, containerName, nil, timestamps, previous, "")
+	if err != nil {
+		return "", err
+	}
+	if lineLimit <= 0 {
+		lineLimit = 200
+	}
+	lines := strings.Split(allLogs, "\n")
+	if len(lines) <= lineLimit {
+		return allLogs, nil
+	}
+	return strings.Join(lines[:lineLimit], "\n"), nil
+}
+
+func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string, tailLines *int64, timestamps bool, previous bool, sinceTime string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return "", err
@@ -602,9 +633,17 @@ func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string,
 	opts := &v1.PodLogOptions{
 		TailLines:  tailLines,
 		Timestamps: timestamps,
+		Previous:   previous,
 	}
 	if containerName != "" {
 		opts.Container = containerName
+	}
+	if sinceTime != "" {
+		t, err := time.Parse(time.RFC3339, sinceTime)
+		if err == nil {
+			mt := metav1.NewTime(t)
+			opts.SinceTime = &mt
+		}
 	}
 
 	req := cs.CoreV1().Pods(namespace).GetLogs(podName, opts)
