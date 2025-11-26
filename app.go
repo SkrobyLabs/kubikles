@@ -1009,3 +1009,40 @@ func (a *App) DeleteCRD(name string) error {
 	}
 	return a.k8sClient.DeleteCRD(currentContext, name)
 }
+
+// Custom Resource instance operations (dynamic)
+func (a *App) ListCustomResources(group, version, resource, namespace string) ([]map[string]interface{}, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ListCustomResources called: context=%s, gvr=%s/%s/%s, ns=%s", currentContext, group, version, resource, namespace)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListCustomResources(currentContext, group, version, resource, namespace)
+}
+
+func (a *App) GetCustomResourceYaml(group, version, resource, namespace, name string) (string, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetCustomResourceYaml called: gvr=%s/%s/%s, ns=%s, name=%s", group, version, resource, namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetCustomResourceYaml(currentContext, group, version, resource, namespace, name)
+}
+
+func (a *App) UpdateCustomResourceYaml(group, version, resource, namespace, name, yamlContent string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("UpdateCustomResourceYaml called: gvr=%s/%s/%s, ns=%s, name=%s", group, version, resource, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateCustomResourceYaml(currentContext, group, version, resource, namespace, name, yamlContent)
+}
+
+func (a *App) DeleteCustomResource(group, version, resource, namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteCustomResource called: context=%s, gvr=%s/%s/%s, ns=%s, name=%s", currentContext, group, version, resource, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteCustomResource(currentContext, group, version, resource, namespace, name)
+}

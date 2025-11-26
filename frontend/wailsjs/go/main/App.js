@@ -18,6 +18,10 @@ export function DeleteCronJob(arg1, arg2) {
   return window['go']['main']['App']['DeleteCronJob'](arg1, arg2);
 }
 
+export function DeleteCustomResource(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['DeleteCustomResource'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function DeleteDaemonSet(arg1, arg2) {
   return window['go']['main']['App']['DeleteDaemonSet'](arg1, arg2);
 }
@@ -96,6 +100,10 @@ export function GetCronJobYaml(arg1, arg2) {
 
 export function GetCurrentContext() {
   return window['go']['main']['App']['GetCurrentContext']();
+}
+
+export function GetCustomResourceYaml(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetCustomResourceYaml'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function GetDaemonSetYaml(arg1, arg2) {
@@ -184,6 +192,10 @@ export function ListContexts() {
 
 export function ListCronJobs(arg1) {
   return window['go']['main']['App']['ListCronJobs'](arg1);
+}
+
+export function ListCustomResources(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ListCustomResources'](arg1, arg2, arg3, arg4);
 }
 
 export function ListDaemonSets(arg1) {
@@ -312,6 +324,10 @@ export function UpdateConfigMapYaml(arg1, arg2, arg3) {
 
 export function UpdateCronJobYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateCronJobYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateCustomResourceYaml(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['UpdateCustomResourceYaml'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function UpdateDaemonSetYaml(arg1, arg2, arg3) {

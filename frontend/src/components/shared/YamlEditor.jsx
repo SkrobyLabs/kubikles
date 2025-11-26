@@ -37,7 +37,15 @@ function extractControllerOwner(yamlContent) {
     return null;
 }
 
-export default function YamlEditor({ resourceType, namespace, resourceName, onClose }) {
+export default function YamlEditor({
+    resourceType,
+    namespace,
+    resourceName,
+    onClose,
+    // Optional custom functions for custom resources (bypasses registry)
+    getYamlFn,
+    updateYamlFn
+}) {
     const { openTab, closeTab } = useUI();
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
@@ -46,8 +54,11 @@ export default function YamlEditor({ resourceType, namespace, resourceName, onCl
     const [hasConflict, setHasConflict] = useState(false);
     const editorRef = useRef(null);
 
-    // Get resource definition from registry
-    const resource = useMemo(() => getResource(resourceType), [resourceType]);
+    // Get resource definition from registry (only if custom functions not provided)
+    const resource = useMemo(() => {
+        if (getYamlFn && updateYamlFn) return null; // Custom functions provided, skip registry
+        return getResource(resourceType);
+    }, [resourceType, getYamlFn, updateYamlFn]);
 
     // Extract controller owner from content
     const controllerOwner = useMemo(() => extractControllerOwner(content), [content]);
@@ -106,8 +117,11 @@ export default function YamlEditor({ resourceType, namespace, resourceName, onCl
         editor.focus();
     };
 
-    // Fetch YAML using registry
+    // Fetch YAML using custom function or registry
     const getYaml = async () => {
+        if (getYamlFn) {
+            return getYamlFn();
+        }
         if (!resource) {
             throw new Error(`Unknown resource type: ${resourceType}`);
         }
@@ -149,7 +163,7 @@ export default function YamlEditor({ resourceType, namespace, resourceName, onCl
     };
 
     const handleSave = async () => {
-        if (!resource) {
+        if (!resource && !updateYamlFn) {
             alert(`Unknown resource type: ${resourceType}`);
             return;
         }
@@ -161,7 +175,11 @@ export default function YamlEditor({ resourceType, namespace, resourceName, onCl
         const savedState = getEditorState();
 
         try {
-            await resource.updateYaml(namespace, resourceName, content);
+            if (updateYamlFn) {
+                await updateYamlFn(content);
+            } else {
+                await resource.updateYaml(namespace, resourceName, content);
+            }
 
             Logger.info("YAML saved successfully", { resourceType, namespace, name: resourceName });
 
@@ -233,7 +251,8 @@ export default function YamlEditor({ resourceType, namespace, resourceName, onCl
         );
     }
 
-    const isNamespaced = resource?.namespaced !== false;
+    // For custom resources or resources from registry
+    const isNamespaced = namespace !== undefined && namespace !== '';
 
     return (
         <div className="flex flex-col h-full bg-[#1e1e1e]">

@@ -12,6 +12,8 @@ export function DeleteConfigMap(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteCronJob(arg1:string,arg2:string):Promise<void>;
 
+export function DeleteCustomResource(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
+
 export function DeleteDaemonSet(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteDeployment(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -51,6 +53,8 @@ export function GetConfigMapYaml(arg1:string,arg2:string):Promise<string>;
 export function GetCronJobYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetCurrentContext():Promise<string>;
+
+export function GetCustomResourceYaml(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
 
 export function GetDaemonSetYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -95,6 +99,8 @@ export function ListConfigMaps(arg1:string):Promise<Array<v1.ConfigMap>>;
 export function ListContexts():Promise<Array<string>>;
 
 export function ListCronJobs(arg1:string):Promise<Array<v1.CronJob>>;
+
+export function ListCustomResources(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Array<Record<string, any>>>;
 
 export function ListDaemonSets(arg1:string):Promise<Array<v1.DaemonSet>>;
 
@@ -159,6 +165,8 @@ export function UpdateCRDYaml(arg1:string,arg2:string):Promise<void>;
 export function UpdateConfigMapYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateCronJobYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateCustomResourceYaml(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string):Promise<void>;
 
 export function UpdateDaemonSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

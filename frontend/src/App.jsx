@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { K8sProvider, useK8s } from './context/K8sContext';
 import { UIProvider, useUI } from './context/UIContext';
 import Sidebar from './components/layout/Sidebar';
@@ -20,6 +20,7 @@ import PVCList from './features/storage/pvc/PVCList';
 import PVList from './features/storage/pv/PVList';
 import StorageClassList from './features/storage/storageclass/StorageClassList';
 import CRDList from './features/customresources/definitions/CRDList';
+import CustomResourceList from './features/customresources/instances/CustomResourceList';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
 import ConfirmModal from './components/shared/ConfirmModal';
@@ -108,7 +109,32 @@ function MainLayout() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [refreshContexts, refreshNamespaces]);
 
+    // Parse custom resource view ID: cr:{group}:{version}:{plural}:{kind}:{namespaced}
+    const parsedCRView = useMemo(() => {
+        if (!activeView?.startsWith('cr:')) return null;
+        const parts = activeView.split(':');
+        if (parts.length !== 6) return null;
+        return {
+            group: parts[1],
+            version: parts[2],
+            resource: parts[3], // plural name
+            kind: parts[4],
+            namespaced: parts[5] === 'true'
+        };
+    }, [activeView]);
+
     const renderContent = () => {
+        // Handle custom resource views
+        if (parsedCRView) {
+            return (
+                <CustomResourceList
+                    key={activeView} // Force remount when view changes
+                    crdInfo={parsedCRView}
+                    isVisible={true}
+                />
+            );
+        }
+
         switch (activeView) {
             case 'pods': return <PodList isVisible={true} />;
             case 'deployments': return <DeploymentList isVisible={true} />;

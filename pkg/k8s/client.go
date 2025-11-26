@@ -15,8 +15,11 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -1359,4 +1362,144 @@ func (c *Client) DeleteCRD(contextName, name string) error {
 		return fmt.Errorf("failed to get apiextensions client for context %s: %w", contextName, err)
 	}
 	return cs.ApiextensionsV1().CustomResourceDefinitions().Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// getDynamicClientForContext returns a dynamic client for a given context
+func (c *Client) getDynamicClientForContext(contextName string) (dynamic.Interface, error) {
+	home := homedir.HomeDir()
+	kubeconfigPath := filepath.Join(home, ".kube", "config")
+	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
+
+	configOverrides := &clientcmd.ConfigOverrides{}
+	if contextName != "" {
+		configOverrides.CurrentContext = contextName
+	}
+
+	configLoader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+	config, err := configLoader.ClientConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load client config for context %s: %w", contextName, err)
+	}
+
+	return dynamic.NewForConfig(config)
+}
+
+// CustomResourceInfo represents metadata about a custom resource instance
+type CustomResourceInfo struct {
+	Name              string `json:"name"`
+	Namespace         string `json:"namespace,omitempty"`
+	CreationTimestamp string `json:"creationTimestamp"`
+	UID               string `json:"uid"`
+}
+
+// ListCustomResources lists instances of a custom resource
+func (c *Client) ListCustomResources(contextName, group, version, resource, namespace string) ([]map[string]interface{}, error) {
+	dc, err := c.getDynamicClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dynamic client for context %s: %w", contextName, err)
+	}
+
+	gvr := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+
+	var list *unstructured.UnstructuredList
+	if namespace != "" {
+		list, err = dc.Resource(gvr).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
+	} else {
+		list, err = dc.Resource(gvr).List(context.TODO(), metav1.ListOptions{})
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to slice of maps for easier JSON serialization
+	result := make([]map[string]interface{}, len(list.Items))
+	for i, item := range list.Items {
+		result[i] = item.Object
+	}
+	return result, nil
+}
+
+// GetCustomResourceYaml gets a custom resource instance as YAML
+func (c *Client) GetCustomResourceYaml(contextName, group, version, resource, namespace, name string) (string, error) {
+	dc, err := c.getDynamicClientForContext(contextName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get dynamic client: %w", err)
+	}
+
+	gvr := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+
+	var obj *unstructured.Unstructured
+	if namespace != "" {
+		obj, err = dc.Resource(gvr).Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	} else {
+		obj, err = dc.Resource(gvr).Get(context.TODO(), name, metav1.GetOptions{})
+	}
+	if err != nil {
+		return "", err
+	}
+
+	// Remove managed fields
+	unstructured.RemoveNestedField(obj.Object, "metadata", "managedFields")
+
+	yamlBytes, err := yaml.Marshal(obj.Object)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+// UpdateCustomResourceYaml updates a custom resource instance from YAML
+func (c *Client) UpdateCustomResourceYaml(contextName, group, version, resource, namespace, name, yamlContent string) error {
+	dc, err := c.getDynamicClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get dynamic client: %w", err)
+	}
+
+	gvr := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+
+	var obj map[string]interface{}
+	if err := yaml.Unmarshal([]byte(yamlContent), &obj); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+
+	unstructuredObj := &unstructured.Unstructured{Object: obj}
+
+	if namespace != "" {
+		_, err = dc.Resource(gvr).Namespace(namespace).Update(context.TODO(), unstructuredObj, metav1.UpdateOptions{})
+	} else {
+		_, err = dc.Resource(gvr).Update(context.TODO(), unstructuredObj, metav1.UpdateOptions{})
+	}
+	return err
+}
+
+// DeleteCustomResource deletes a custom resource instance
+func (c *Client) DeleteCustomResource(contextName, group, version, resource, namespace, name string) error {
+	fmt.Printf("Deleting custom resource: context=%s, gvr=%s/%s/%s, ns=%s, name=%s\n", contextName, group, version, resource, namespace, name)
+	dc, err := c.getDynamicClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get dynamic client for context %s: %w", contextName, err)
+	}
+
+	gvr := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+
+	if namespace != "" {
+		return dc.Resource(gvr).Namespace(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+	}
+	return dc.Resource(gvr).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
