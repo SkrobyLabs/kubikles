@@ -324,8 +324,11 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         const [error, setError] = useState('');
 
         // Pre-fill when modal opens: current filter, first visible timestamp from logs, or pod creation time
+        // Only run when modal opens, not on every log update
+        const prevShowModal = useRef(false);
         useEffect(() => {
-            if (showTimeModal) {
+            // Only initialize when modal transitions from closed to open
+            if (showTimeModal && !prevShowModal.current) {
                 setError('');
                 if (sinceTime) {
                     setInputTime(sinceTime.replace('T', ' ').replace('Z', ''));
@@ -341,7 +344,8 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                     }
                 }
             }
-        }, [showTimeModal, logs, sinceTime, podCreationTime]);
+            prevShowModal.current = showTimeModal;
+        }, [showTimeModal]);
 
         const handleApply = () => {
             if (!inputTime) {
@@ -354,11 +358,6 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             }
             setSinceTime(toRFC3339(inputTime));
             setViewMode('end'); // Switch to end mode when filtering by time
-            setShowTimeModal(false);
-        };
-
-        const handleClear = () => {
-            setSinceTime('');
             setShowTimeModal(false);
         };
 
@@ -384,12 +383,6 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                     {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
                     <p className="text-xs text-gray-500 mb-3">Example: 2024-11-26 14:30:00</p>
                     <div className="flex justify-end gap-2">
-                        <button
-                            onClick={handleClear}
-                            className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
-                        >
-                            Clear
-                        </button>
                         <button
                             onClick={() => setShowTimeModal(false)}
                             className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
