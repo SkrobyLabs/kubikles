@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { GetSecretYaml, UpdateSecretYaml, GetSecretData, UpdateSecretData } from '../../../wailsjs/go/main/App';
+import { useK8s } from '../../context/K8sContext';
 import Logger from '../../utils/Logger';
-import { EyeIcon, EyeSlashIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, TrashIcon, PlusIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 
 const MODE_YAML = 'yaml';
 const MODE_KEYVALUE = 'keyvalue';
@@ -25,7 +26,8 @@ const entriesToObject = (entries) => {
     return result;
 };
 
-export default function SecretEditor({ namespace, resourceName, onClose }) {
+export default function SecretEditor({ namespace, resourceName, onClose, tabContext = '' }) {
+    const { currentContext } = useK8s();
     const [mode, setMode] = useState(MODE_YAML);
     const [yamlContent, setYamlContent] = useState('');
     const [secretEntries, setSecretEntries] = useState([]);
@@ -35,6 +37,9 @@ export default function SecretEditor({ namespace, resourceName, onClose }) {
     const [showBase64, setShowBase64] = useState(true);
     const editorRef = useRef(null);
     const nextIdRef = useRef(0);
+
+    // Check if this tab is stale (opened in a different context)
+    const isStale = tabContext && tabContext !== currentContext;
 
     const generateId = () => {
         nextIdRef.current += 1;
@@ -122,7 +127,9 @@ export default function SecretEditor({ namespace, resourceName, onClose }) {
             wordWrap: 'off',
         });
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-            handleSave();
+            if (!isStale) {
+                handleSave();
+            }
         });
     };
 
@@ -208,6 +215,16 @@ export default function SecretEditor({ namespace, resourceName, onClose }) {
 
     return (
         <div className="flex flex-col h-full bg-[#1e1e1e]">
+            {/* Stale Tab Banner */}
+            {isStale && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-red-900/30 border-b border-red-500/50 text-red-400 shrink-0">
+                    <LockClosedIcon className="h-5 w-5" />
+                    <span className="text-sm">
+                        Read-only: This secret is from context <span className="font-medium">{tabContext}</span>. Switch back to edit.
+                    </span>
+                </div>
+            )}
+
             {/* Header Bar */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
@@ -271,7 +288,8 @@ export default function SecretEditor({ namespace, resourceName, onClose }) {
                     </button>
                     <button
                         onClick={handleSave}
-                        disabled={saving}
+                        disabled={saving || isStale}
+                        title={isStale ? "Cannot save - tab is from a different context" : "Save changes"}
                         className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {saving ? 'Saving...' : 'Save'}
@@ -286,11 +304,12 @@ export default function SecretEditor({ namespace, resourceName, onClose }) {
                         height="100%"
                         defaultLanguage="yaml"
                         value={yamlContent}
-                        onChange={(value) => setYamlContent(value || '')}
+                        onChange={(value) => !isStale && setYamlContent(value || '')}
                         onMount={handleEditorDidMount}
                         theme="vs-dark"
                         options={{
                             automaticLayout: true,
+                            readOnly: isStale,
                             scrollbar: {
                                 vertical: 'auto',
                                 horizontal: 'auto',
@@ -305,8 +324,9 @@ export default function SecretEditor({ namespace, resourceName, onClose }) {
                                     <input
                                         type="text"
                                         value={entry.key}
-                                        onChange={(e) => handleKeyChange(entry.id, e.target.value)}
-                                        className="w-48 shrink-0 px-2 py-1.5 text-sm bg-[#1e1e1e] border border-[#3d3d3d] rounded text-gray-200 focus:outline-none focus:border-primary"
+                                        onChange={(e) => !isStale && handleKeyChange(entry.id, e.target.value)}
+                                        disabled={isStale}
+                                        className={`w-48 shrink-0 px-2 py-1.5 text-sm bg-[#1e1e1e] border border-[#3d3d3d] rounded text-gray-200 focus:outline-none focus:border-primary ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
                                         placeholder="Key"
                                         autoComplete="off"
                                         autoCorrect="off"
@@ -315,8 +335,9 @@ export default function SecretEditor({ namespace, resourceName, onClose }) {
                                     />
                                     <textarea
                                         value={getDisplayValue(entry.value)}
-                                        onChange={(e) => setValueFromDisplay(entry.id, e.target.value)}
-                                        className="flex-1 min-h-[60px] px-2 py-1.5 text-sm bg-[#1e1e1e] border border-[#3d3d3d] rounded text-gray-200 font-mono focus:outline-none focus:border-primary resize-y"
+                                        onChange={(e) => !isStale && setValueFromDisplay(entry.id, e.target.value)}
+                                        disabled={isStale}
+                                        className={`flex-1 min-h-[60px] px-2 py-1.5 text-sm bg-[#1e1e1e] border border-[#3d3d3d] rounded text-gray-200 font-mono focus:outline-none focus:border-primary resize-y ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
                                         placeholder="Value"
                                         autoComplete="off"
                                         autoCorrect="off"
@@ -324,8 +345,9 @@ export default function SecretEditor({ namespace, resourceName, onClose }) {
                                         spellCheck="false"
                                     />
                                     <button
-                                        onClick={() => handleDeleteEntry(entry.id)}
-                                        className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors"
+                                        onClick={() => !isStale && handleDeleteEntry(entry.id)}
+                                        disabled={isStale}
+                                        className={`p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors ${isStale ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         title="Delete key"
                                     >
                                         <TrashIcon className="h-4 w-4" />
@@ -338,13 +360,15 @@ export default function SecretEditor({ namespace, resourceName, onClose }) {
                                 </div>
                             )}
                         </div>
-                        <button
-                            onClick={handleAddKey}
-                            className="mt-4 flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-400 hover:text-white bg-[#2d2d2d] hover:bg-[#3d3d3d] rounded transition-colors"
-                        >
-                            <PlusIcon className="h-4 w-4" />
-                            Add Key
-                        </button>
+                        {!isStale && (
+                            <button
+                                onClick={handleAddKey}
+                                className="mt-4 flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-400 hover:text-white bg-[#2d2d2d] hover:bg-[#3d3d3d] rounded transition-colors"
+                            >
+                                <PlusIcon className="h-4 w-4" />
+                                Add Key
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

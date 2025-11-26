@@ -1,11 +1,13 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
+import { useK8s } from '../../../context/K8sContext';
 import { DeleteStorageClass } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import Logger from '../../../utils/Logger';
 
 export const useStorageClassActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
+    const { currentContext } = useK8s();
 
     const handleEditYaml = (storageClass) => {
         Logger.info("Opening StorageClass YAML editor", { name: storageClass.metadata.name });
@@ -18,6 +20,7 @@ export const useStorageClassActions = () => {
                     resourceType="storageclass"
                     resourceName={storageClass.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });

@@ -25,6 +25,7 @@ export const useNodeActions = (refetch) => {
                     namespace=""
                     resourceName={node.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });

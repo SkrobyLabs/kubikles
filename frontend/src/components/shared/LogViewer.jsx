@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { GetPodLogs, GetAllPodLogs, GetPodLogsFromStart, SavePodLogs, SaveLogsBundle, StartLogStream, StopLogStream } from '../../../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
+import { useK8s } from '../../context/K8sContext';
 import Convert from 'ansi-to-html';
 import {
     ArrowDownTrayIcon,
@@ -11,7 +12,8 @@ import {
     BackwardIcon,
     ChevronDoubleUpIcon,
     ChevronDoubleDownIcon,
-    CalendarIcon
+    CalendarIcon,
+    ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 
 const converter = new Convert({
@@ -77,7 +79,8 @@ const extractFirstTimestamp = (logText) => {
     return '';
 };
 
-export default function LogViewer({ namespace, pod, containers = [], siblingPods = [], podContainerMap = {}, ownerName = '', podCreationTime = '' }) {
+export default function LogViewer({ namespace, pod, containers = [], siblingPods = [], podContainerMap = {}, ownerName = '', podCreationTime = '', tabContext = '' }) {
+    const { currentContext } = useK8s();
     const [logs, setLogs] = useState('');
     const [loading, setLoading] = useState(false);
     const [downloading, setDownloading] = useState(false);
@@ -97,8 +100,19 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const logsContainerRef = useRef(null);
     const isAtBottomRef = useRef(true);
 
-    // Auto-follow is active when in 'end' mode with no custom time filter AND user has it enabled
-    const isFollowing = viewMode === 'end' && !sinceTime && !showPrevious && autoFollow;
+    // Check if this tab is stale (opened in a different context)
+    const isStale = tabContext && tabContext !== currentContext;
+
+    // Auto-follow is active when in 'end' mode with no custom time filter AND user has it enabled AND not stale
+    const isFollowing = viewMode === 'end' && !sinceTime && !showPrevious && autoFollow && !isStale;
+
+    // Stop log stream when tab becomes stale
+    useEffect(() => {
+        if (isStale && streamIdRef.current) {
+            StopLogStream(streamIdRef.current);
+            streamIdRef.current = null;
+        }
+    }, [isStale]);
 
     // Track scroll position to determine if user is at bottom
     const handleScroll = () => {
@@ -404,6 +418,16 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
     return (
         <div className="flex flex-col h-full bg-[#1e1e1e]">
+            {/* Stale Tab Banner */}
+            {isStale && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-red-900/30 border-b border-red-500/50 text-red-400 shrink-0">
+                    <ExclamationTriangleIcon className="h-5 w-5" />
+                    <span className="text-sm">
+                        Read-only: These logs are from context <span className="font-medium">{tabContext}</span>. Switch back to view live logs.
+                    </span>
+                </div>
+            )}
+
             {/* Header Bar */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">

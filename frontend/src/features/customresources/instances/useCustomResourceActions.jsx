@@ -1,5 +1,6 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
+import { useK8s } from '../../../context/K8sContext';
 import {
     GetCustomResourceYaml,
     UpdateCustomResourceYaml,
@@ -13,6 +14,7 @@ import YamlEditor from '../../../components/shared/YamlEditor';
  */
 export const useCustomResourceActions = (crdInfo) => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
+    const { currentContext } = useK8s();
 
     const handleEditYaml = (resource) => {
         const name = resource.metadata?.name;
@@ -30,6 +32,7 @@ export const useCustomResourceActions = (crdInfo) => {
                     onClose={() => closeTab(tabId)}
                     getYamlFn={() => GetCustomResourceYaml(crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name)}
                     updateYamlFn={(content) => UpdateCustomResourceYaml(crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name, content)}
+                    tabContext={currentContext}
                 />
             )
         });

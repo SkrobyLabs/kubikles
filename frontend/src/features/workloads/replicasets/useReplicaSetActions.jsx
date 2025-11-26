@@ -23,6 +23,7 @@ export const useReplicaSetActions = () => {
                     namespace={replicaSet.metadata.namespace}
                     resourceName={replicaSet.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });
@@ -123,6 +124,7 @@ export const useReplicaSetActions = () => {
                         siblingPods={replicaSetPods.map(p => p.metadata.name)}
                         podContainerMap={podContainerMap}
                         ownerName={replicaSet.metadata.name}
+                        tabContext={currentContext}
                     />
                 )
             });

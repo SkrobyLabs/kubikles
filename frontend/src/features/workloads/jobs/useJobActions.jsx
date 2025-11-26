@@ -1,23 +1,27 @@
 import { useUI } from '../../../context/UIContext';
+import { useK8s } from '../../../context/K8sContext';
 import { DeleteJob, ListPods } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
 import LogViewer from '../../../components/shared/LogViewer';
 import Logger from '../../../utils/Logger';
 
-export const useJobActions = (namespace, onRefresh) => {
+export const useJobActions = (onRefresh) => {
     const { openTab, openModal, closeModal } = useUI();
+    const { currentContext } = useK8s();
 
     const handleEditYaml = (job) => {
+        const namespace = job.metadata.namespace;
         Logger.info("Opening YAML editor for Job", { namespace, name: job.metadata.name });
         openTab({
-            id: `job-yaml-${job.metadata.name}`,
+            id: `job-yaml-${job.metadata.namespace}-${job.metadata.name}`,
             title: `Edit: ${job.metadata.name}`,
             content: (
                 <YamlEditor
                     resourceType="job"
                     namespace={namespace}
                     resourceName={job.metadata.name}
+                    tabContext={currentContext}
                 />
             )
         });
@@ -39,6 +43,7 @@ export const useJobActions = (namespace, onRefresh) => {
     };
 
     const handleDelete = async (job) => {
+        const namespace = job.metadata.namespace;
         Logger.info("Delete Job requested", { namespace, name: job.metadata.name });
         openModal({
             title: 'Confirm Delete',
@@ -59,6 +64,7 @@ export const useJobActions = (namespace, onRefresh) => {
     };
 
     const handleViewLogs = async (job) => {
+        const namespace = job.metadata.namespace;
         Logger.info("View logs for Job", { namespace, name: job.metadata.name });
 
         try {
@@ -112,6 +118,7 @@ export const useJobActions = (namespace, onRefresh) => {
                         siblingPods={jobPods.map(p => p.metadata.name)}
                         podContainerMap={podContainerMap}
                         ownerName={job.metadata.name}
+                        tabContext={currentContext}
                     />
                 )
             });

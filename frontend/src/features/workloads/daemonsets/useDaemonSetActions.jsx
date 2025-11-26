@@ -23,6 +23,7 @@ export const useDaemonSetActions = () => {
                     namespace={daemonSet.metadata.namespace}
                     resourceName={daemonSet.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });
@@ -134,6 +135,7 @@ export const useDaemonSetActions = () => {
                         siblingPods={daemonSetPods.map(p => p.metadata.name)}
                         podContainerMap={podContainerMap}
                         ownerName={daemonSet.metadata.name}
+                        tabContext={currentContext}
                     />
                 )
             });

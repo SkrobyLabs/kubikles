@@ -8,7 +8,9 @@ export default function BottomPanel({
     onCloseOthers,
     onCloseToRight,
     onCloseAll,
+    onCloseStaleTabs,
     onReorder,
+    isTabStale,
     height = '40%'
 }) {
     const activeTab = tabs.find(t => t.id === activeTabId);
@@ -102,6 +104,9 @@ export default function BottomPanel({
             case 'closeRight':
                 onCloseToRight?.(tabId);
                 break;
+            case 'closeStaleTabs':
+                onCloseStaleTabs?.();
+                break;
             case 'closeAll':
                 onCloseAll?.();
                 break;
@@ -113,6 +118,7 @@ export default function BottomPanel({
 
     const isLastTab = contextMenu && contextMenu.index === tabs.length - 1;
     const isOnlyTab = tabs.length === 1;
+    const hasStaleTabs = tabs.some(t => isTabStale?.(t));
 
     return (
         <div
@@ -120,34 +126,48 @@ export default function BottomPanel({
             style={{ height: height }}
         >
             <div className="flex items-center bg-background border-b border-border overflow-x-auto">
-                {tabs.map((tab, index) => (
-                    <div
-                        key={tab.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, index)}
-                        onDragEnd={handleDragEnd}
-                        onDragOver={(e) => handleDragOver(e, index)}
-                        onDragLeave={handleDragLeave}
-                        onDrop={(e) => handleDrop(e, index)}
-                        onContextMenu={(e) => handleContextMenu(e, tab.id, index)}
-                        className={`
-                            flex items-center px-4 py-2 text-xs font-medium cursor-pointer border-r border-border min-w-[150px] max-w-[250px]
-                            ${tab.id === activeTabId ? 'bg-surface text-primary border-b-2 border-b-primary' : 'text-gray-400 hover:text-text hover:bg-surface'}
-                            ${dropTarget === index ? 'border-l-2 border-l-primary' : ''}
-                            ${draggedIndex === index ? 'opacity-50' : ''}
-                            transition-colors
-                        `}
-                        onClick={() => onTabChange(tab.id)}
-                    >
-                        <span className="truncate flex-1 mr-2 select-none">{tab.title}</span>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onTabClose(tab.id); }}
-                            className="text-gray-500 hover:text-red-400"
+                {tabs.map((tab, index) => {
+                    const stale = isTabStale?.(tab);
+                    return (
+                        <div
+                            key={tab.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, index)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, index)}
+                            onContextMenu={(e) => handleContextMenu(e, tab.id, index)}
+                            className={`
+                                flex items-center px-4 py-2 text-xs font-medium cursor-pointer border-r border-border min-w-[150px] max-w-[250px]
+                                ${stale
+                                    ? 'bg-red-900/20 text-red-400/70 border-b-2 border-b-red-500/50'
+                                    : tab.id === activeTabId
+                                        ? 'bg-surface text-primary border-b-2 border-b-primary'
+                                        : 'text-gray-400 hover:text-text hover:bg-surface'
+                                }
+                                ${dropTarget === index ? 'border-l-2 border-l-primary' : ''}
+                                ${draggedIndex === index ? 'opacity-50' : ''}
+                                transition-colors
+                            `}
+                            onClick={() => onTabChange(tab.id)}
+                            title={stale ? `From context: ${tab.context} (read-only)` : undefined}
                         >
-                            ✕
-                        </button>
-                    </div>
-                ))}
+                            {stale && (
+                                <span className="mr-1.5 text-red-400" title="Stale - different context">⚠</span>
+                            )}
+                            <span className={`truncate flex-1 mr-2 select-none ${stale ? 'line-through opacity-70' : ''}`}>
+                                {tab.title}
+                            </span>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onTabClose(tab.id); }}
+                                className="text-gray-500 hover:text-red-400"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    );
+                })}
             </div>
             <div className="flex-1 overflow-hidden relative">
                 {tabs.map(tab => (
@@ -188,6 +208,17 @@ export default function BottomPanel({
                     >
                         Close Tabs to Right
                     </button>
+                    {hasStaleTabs && (
+                        <>
+                            <div className="border-t border-border my-1" />
+                            <button
+                                className="w-full px-3 py-1.5 text-left text-xs hover:bg-background text-red-400"
+                                onClick={() => menuAction('closeStaleTabs')}
+                            >
+                                Close Stale Tabs
+                            </button>
+                        </>
+                    )}
                     <div className="border-t border-border my-1" />
                     <button
                         className="w-full px-3 py-1.5 text-left text-xs hover:bg-background text-text"

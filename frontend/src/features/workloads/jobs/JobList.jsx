@@ -19,7 +19,7 @@ export default function JobList({ isVisible }) {
     const { currentContext, selectedNamespaces, namespaces, setSelectedNamespaces } = useK8s();
     const { activeMenuId, setActiveMenuId, navigateWithSearch } = useUI();
     const { jobs, loading } = useJobs(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs } = useJobActions(selectedNamespaces);
+    const { handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs } = useJobActions();
 
     const getCompletions = (job) => {
         const succeeded = job.status?.succeeded || 0;

@@ -22,6 +22,7 @@ export const usePVCActions = () => {
                     namespace={pvc.metadata.namespace}
                     resourceName={pvc.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });

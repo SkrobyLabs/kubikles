@@ -72,13 +72,17 @@ export const UIProvider = ({ children }) => {
         setBottomTabs(prev => {
             const existingIndex = prev.findIndex(t => t.id === tab.id);
             if (existingIndex >= 0) {
-                // Update existing tab
+                // Update existing tab - preserve original context
                 const newTabs = [...prev];
-                newTabs[existingIndex] = { ...prev[existingIndex], ...tab };
+                newTabs[existingIndex] = {
+                    ...prev[existingIndex],
+                    ...tab,
+                    context: prev[existingIndex].context // Keep original context
+                };
                 return newTabs;
             }
-            // Add new tab
-            return [...prev, tab];
+            // Add new tab with current context
+            return [...prev, { ...tab, context: currentContext }];
         });
         setActiveTabId(tab.id);
     };
@@ -133,6 +137,20 @@ export const UIProvider = ({ children }) => {
         setBottomTabs(newTabs);
     };
 
+    // Check if a tab is stale (belongs to a different context)
+    const isTabStale = (tab) => {
+        return tab.context && tab.context !== currentContext;
+    };
+
+    // Close all stale tabs
+    const closeAllStaleTabs = () => {
+        const freshTabs = bottomTabs.filter(t => !isTabStale(t));
+        setBottomTabs(freshTabs);
+        if (activeTabId && !freshTabs.find(t => t.id === activeTabId)) {
+            setActiveTabId(freshTabs.length > 0 ? freshTabs[freshTabs.length - 1].id : null);
+        }
+    };
+
     const value = {
         activeView,
         setActiveView,
@@ -146,7 +164,9 @@ export const UIProvider = ({ children }) => {
         closeOtherTabs,
         closeTabsToRight,
         closeAllTabs,
+        closeAllStaleTabs,
         reorderTabs,
+        isTabStale,
         panelHeight,
         setPanelHeight,
         activeMenuId,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
+import { useK8s } from '../../../context/K8sContext';
 import { DeletePV } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
@@ -7,6 +8,7 @@ import Logger from '../../../utils/Logger';
 
 export const usePVActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
+    const { currentContext } = useK8s();
 
     const handleEditYaml = (pv) => {
         Logger.info("Opening PV YAML editor", { name: pv.metadata.name });
@@ -19,6 +21,7 @@ export const usePVActions = () => {
                     resourceType="pv"
                     resourceName={pv.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });

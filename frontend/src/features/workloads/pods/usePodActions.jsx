@@ -18,7 +18,7 @@ export const usePodActions = () => {
         openTab({
             id: tabId,
             title: `Logs: ${podName}`,
-            content: <LogViewer namespace={namespace} pod={podName} containers={containers} siblingPods={siblingPods} podContainerMap={podContainerMap} ownerName={ownerName} podCreationTime={podCreationTime} />
+            content: <LogViewer namespace={namespace} pod={podName} containers={containers} siblingPods={siblingPods} podContainerMap={podContainerMap} ownerName={ownerName} podCreationTime={podCreationTime} tabContext={currentContext} />
         });
     };
 
@@ -51,6 +51,7 @@ export const usePodActions = () => {
                     namespace={pod.metadata.namespace}
                     resourceName={pod.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });

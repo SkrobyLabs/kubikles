@@ -1,11 +1,13 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
+import { useK8s } from '../../../context/K8sContext';
 import { DeleteCRD } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import Logger from '../../../utils/Logger';
 
 export const useCRDActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
+    const { currentContext } = useK8s();
 
     const handleEditYaml = (crd) => {
         Logger.info("Opening CRD YAML editor", { name: crd.metadata.name });
@@ -18,6 +20,7 @@ export const useCRDActions = () => {
                     resourceType="crd"
                     resourceName={crd.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });

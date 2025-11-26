@@ -21,6 +21,7 @@ export const useSecretActions = () => {
                     namespace={secret.metadata.namespace}
                     resourceName={secret.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });

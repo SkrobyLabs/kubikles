@@ -23,6 +23,7 @@ export const useDeploymentActions = () => {
                     namespace={deployment.metadata.namespace}
                     resourceName={deployment.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });
@@ -134,6 +135,7 @@ export const useDeploymentActions = () => {
                         siblingPods={deploymentPods.map(p => p.metadata.name)}
                         podContainerMap={podContainerMap}
                         ownerName={deployment.metadata.name}
+                        tabContext={currentContext}
                     />
                 )
             });

@@ -22,6 +22,7 @@ export const useConfigMapActions = () => {
                     namespace={configMap.metadata.namespace}
                     resourceName={configMap.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });

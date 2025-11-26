@@ -36,7 +36,9 @@ function MainLayout() {
         closeOtherTabs,
         closeTabsToRight,
         closeAllTabs,
+        closeAllStaleTabs,
         reorderTabs,
+        isTabStale,
         panelHeight,
         setPanelHeight
     } = useUI();
@@ -187,7 +189,9 @@ function MainLayout() {
                                     onCloseOthers={closeOtherTabs}
                                     onCloseToRight={closeTabsToRight}
                                     onCloseAll={closeAllTabs}
+                                    onCloseStaleTabs={closeAllStaleTabs}
                                     onReorder={reorderTabs}
+                                    isTabStale={isTabStale}
                                     height={`${panelHeight}%`}
                                 />
                             </>

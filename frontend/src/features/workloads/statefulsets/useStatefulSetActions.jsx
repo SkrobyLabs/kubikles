@@ -23,6 +23,7 @@ export const useStatefulSetActions = () => {
                     namespace={statefulSet.metadata.namespace}
                     resourceName={statefulSet.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });
@@ -134,6 +135,7 @@ export const useStatefulSetActions = () => {
                         siblingPods={statefulSetPods.map(p => p.metadata.name)}
                         podContainerMap={podContainerMap}
                         ownerName={statefulSet.metadata.name}
+                        tabContext={currentContext}
                     />
                 )
             });

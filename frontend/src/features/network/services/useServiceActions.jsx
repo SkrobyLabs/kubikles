@@ -1,11 +1,13 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
+import { useK8s } from '../../../context/K8sContext';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
 import Logger from '../../../utils/Logger';
 
 export const useServiceActions = () => {
     const { openTab, closeTab } = useUI();
+    const { currentContext } = useK8s();
 
     const handleEditYaml = (service) => {
         Logger.info("Opening YAML editor for Service", { namespace: service.metadata.namespace, name: service.metadata.name });
@@ -19,6 +21,7 @@ export const useServiceActions = () => {
                     namespace={service.metadata.namespace}
                     resourceName={service.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });

@@ -1,11 +1,13 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
+import { useK8s } from '../../../context/K8sContext';
 import { DeleteEvent } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import Logger from '../../../utils/Logger';
 
 export const useEventActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
+    const { currentContext } = useK8s();
 
     const handleEditYaml = (event) => {
         Logger.info("Opening event YAML editor", { namespace: event.metadata.namespace, name: event.metadata.name });
@@ -19,6 +21,7 @@ export const useEventActions = () => {
                     namespace={event.metadata.namespace}
                     resourceName={event.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });

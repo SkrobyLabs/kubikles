@@ -88,6 +88,7 @@ export const useCronJobActions = () => {
                         siblingPods={jobPods.map(p => p.metadata.name)}
                         podContainerMap={podContainerMap}
                         ownerName={cronJob.metadata.name}
+                        tabContext={currentContext}
                     />
                 )
             });
@@ -109,6 +110,7 @@ export const useCronJobActions = () => {
                     namespace={cronJob.metadata.namespace}
                     resourceName={cronJob.metadata.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
                 />
             )
         });

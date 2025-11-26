@@ -3,7 +3,8 @@ import Editor from '@monaco-editor/react';
 import { getResource, getResourceByKind } from '../../utils/resourceRegistry';
 import Logger from '../../utils/Logger';
 import { useUI } from '../../context/UIContext';
-import { ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { useK8s } from '../../context/K8sContext';
+import { ExclamationTriangleIcon, InformationCircleIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 
 // Extract controller owner from YAML content
 function extractControllerOwner(yamlContent) {
@@ -44,15 +45,20 @@ export default function YamlEditor({
     onClose,
     // Optional custom functions for custom resources (bypasses registry)
     getYamlFn,
-    updateYamlFn
+    updateYamlFn,
+    tabContext = ''
 }) {
     const { openTab, closeTab } = useUI();
+    const { currentContext } = useK8s();
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
     const [hasConflict, setHasConflict] = useState(false);
     const editorRef = useRef(null);
+
+    // Check if this tab is stale (opened in a different context)
+    const isStale = tabContext && tabContext !== currentContext;
 
     // Get resource definition from registry (only if custom functions not provided)
     const resource = useMemo(() => {
@@ -226,9 +232,9 @@ export default function YamlEditor({
             wordWrap: 'off',
         });
 
-        // Add Cmd+S / Ctrl+S save shortcut (disabled during conflict)
+        // Add Cmd+S / Ctrl+S save shortcut (disabled during conflict or when stale)
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-            if (!hasConflict) {
+            if (!hasConflict && !isStale) {
                 handleSave();
             }
         });
@@ -256,8 +262,18 @@ export default function YamlEditor({
 
     return (
         <div className="flex flex-col h-full bg-[#1e1e1e]">
+            {/* Stale Tab Banner */}
+            {isStale && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-red-900/30 border-b border-red-500/50 text-red-400 shrink-0">
+                    <LockClosedIcon className="h-5 w-5" />
+                    <span className="text-sm">
+                        Read-only: This YAML is from context <span className="font-medium">{tabContext}</span>. Switch back to edit.
+                    </span>
+                </div>
+            )}
+
             {/* Conflict Warning Banner */}
-            {hasConflict && (
+            {hasConflict && !isStale && (
                 <div className="flex items-center justify-between px-4 py-2 bg-yellow-500/20 border-b border-yellow-500 text-yellow-400 shrink-0">
                     <div className="flex items-center gap-2">
                         <ExclamationTriangleIcon className="h-5 w-5" />
@@ -315,8 +331,8 @@ export default function YamlEditor({
                     </button>
                     <button
                         onClick={handleSave}
-                        disabled={saving || hasConflict}
-                        title={hasConflict ? "Resolve conflict using the options above" : "Save changes"}
+                        disabled={saving || hasConflict || isStale}
+                        title={isStale ? "Cannot save - tab is from a different context" : hasConflict ? "Resolve conflict using the options above" : "Save changes"}
                         className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {saving ? 'Saving...' : 'Save'}
@@ -330,11 +346,12 @@ export default function YamlEditor({
                     height="100%"
                     defaultLanguage="yaml"
                     value={content}
-                    onChange={(value) => setContent(value || '')}
+                    onChange={(value) => !isStale && setContent(value || '')}
                     onMount={handleEditorDidMount}
                     theme="vs-dark"
                     options={{
                         automaticLayout: true,
+                        readOnly: isStale,
                         scrollbar: {
                             vertical: 'auto',
                             horizontal: 'auto',
