@@ -90,14 +90,15 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const [showTimeModal, setShowTimeModal] = useState(false);
     const [sinceTime, setSinceTime] = useState('');
     const [viewMode, setViewMode] = useState('end'); // 'start' or 'end'
+    const [autoFollow, setAutoFollow] = useState(true); // User can toggle this
     const logsStartRef = useRef(null);
     const logsEndRef = useRef(null);
     const streamIdRef = useRef(null);
     const logsContainerRef = useRef(null);
     const isAtBottomRef = useRef(true);
 
-    // Auto-follow is active when in 'end' mode with no custom time filter
-    const isFollowing = viewMode === 'end' && !sinceTime && !showPrevious;
+    // Auto-follow is active when in 'end' mode with no custom time filter AND user has it enabled
+    const isFollowing = viewMode === 'end' && !sinceTime && !showPrevious && autoFollow;
 
     // Track scroll position to determine if user is at bottom
     const handleScroll = () => {
@@ -237,9 +238,30 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     };
 
     const jumpToEnd = () => {
+        // If already in end mode, toggle auto-follow
+        if (viewMode === 'end' && !sinceTime && !showPrevious) {
+            setAutoFollow(prev => !prev);
+            if (!autoFollow) {
+                // Re-enabling auto-follow, scroll to bottom
+                isAtBottomRef.current = true;
+                if (logsEndRef.current) {
+                    logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+                }
+            }
+            return;
+        }
+
+        // Switching to end mode
         setViewMode('end');
         setSinceTime(''); // Clear time filter to show latest logs
-        isAtBottomRef.current = true; // Resume auto-scrolling
+        setAutoFollow(true); // Enable auto-follow
+        isAtBottomRef.current = true;
+        // Scroll to bottom immediately
+        setTimeout(() => {
+            if (logsEndRef.current) {
+                logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+            }
+        }, 0);
     };
 
     const downloadLogs = async () => {
@@ -473,7 +495,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                         onClick={jumpToEnd}
                         disabled={loading}
                         className={`p-1.5 rounded transition-colors disabled:opacity-50 ${isFollowing ? 'bg-green-500/20 text-green-400' : viewMode === 'end' && !sinceTime ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title={isFollowing ? "Following logs (live)" : "Jump to end & follow"}
+                        title={isFollowing ? "Following logs (click to pause)" : viewMode === 'end' && !sinceTime && !showPrevious ? "Click to resume following" : "Jump to end & follow"}
                     >
                         <ChevronDoubleDownIcon className={`w-4 h-4 ${isFollowing ? 'animate-pulse' : ''}`} />
                     </button>
