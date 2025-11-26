@@ -30,8 +30,10 @@ export default function Sidebar({
     onContextChange,
     onToggleDebug
 }) {
-    // Fetch CRDs for dynamic menu
+    // Fetch CRDs for dynamic menu (lazy loaded)
     const [crds, setCRDs] = useState([]);
+    const [crdsLoading, setCRDsLoading] = useState(false);
+    const [crdsLoaded, setCRDsLoaded] = useState(false);
     // Track which CRD groups are expanded (collapsed by default)
     const [expandedCRDGroups, setExpandedCRDGroups] = useState(() => {
         try {
@@ -42,22 +44,44 @@ export default function Sidebar({
         }
     });
 
-    // Fetch CRDs when context changes
+    // Reset and refetch CRDs when context changes (if section is open)
     useEffect(() => {
-        if (!currentContext) return;
-
-        const fetchCRDs = async () => {
-            try {
-                const list = await ListCRDs();
-                setCRDs(list || []);
-            } catch (err) {
-                console.error("Failed to fetch CRDs for sidebar:", err);
-                setCRDs([]);
-            }
-        };
-
-        fetchCRDs();
+        setCRDsLoaded(false);
+        setCRDs([]);
+        // If Custom Resources is already open, trigger fetch for new context
+        if (!collapsedGroups['Custom Resources'] && currentContext) {
+            setCRDsLoading(true);
+            ListCRDs()
+                .then(list => {
+                    setCRDs(list || []);
+                    setCRDsLoaded(true);
+                })
+                .catch(err => {
+                    console.error("Failed to fetch CRDs for sidebar:", err);
+                    setCRDs([]);
+                })
+                .finally(() => {
+                    setCRDsLoading(false);
+                });
+        }
     }, [currentContext]);
+
+    // Fetch CRDs when Custom Resources is opened (lazy load)
+    const fetchCRDs = async () => {
+        if (!currentContext || crdsLoaded || crdsLoading) return;
+
+        setCRDsLoading(true);
+        try {
+            const list = await ListCRDs();
+            setCRDs(list || []);
+            setCRDsLoaded(true);
+        } catch (err) {
+            console.error("Failed to fetch CRDs for sidebar:", err);
+            setCRDs([]);
+        } finally {
+            setCRDsLoading(false);
+        }
+    };
 
     // Save expanded CRD groups state
     useEffect(() => {
@@ -144,12 +168,21 @@ export default function Sidebar({
     ];
 
     // Collapsed categories state with localStorage persistence
+    // Custom Resources is collapsed by default
     const [collapsedGroups, setCollapsedGroups] = useState(() => {
         try {
             const saved = localStorage.getItem('kubikles_collapsed_groups');
-            return saved ? JSON.parse(saved) : {};
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Ensure Custom Resources defaults to collapsed if not set
+                if (parsed['Custom Resources'] === undefined) {
+                    parsed['Custom Resources'] = true;
+                }
+                return parsed;
+            }
+            return { 'Custom Resources': true };
         } catch {
-            return {};
+            return { 'Custom Resources': true };
         }
     });
 
@@ -158,6 +191,11 @@ export default function Sidebar({
     }, [collapsedGroups]);
 
     const toggleGroup = (groupTitle) => {
+        const isCurrentlyCollapsed = collapsedGroups[groupTitle];
+        // If opening Custom Resources, trigger lazy load
+        if (groupTitle === 'Custom Resources' && isCurrentlyCollapsed) {
+            fetchCRDs();
+        }
         setCollapsedGroups(prev => ({
             ...prev,
             [groupTitle]: !prev[groupTitle]
@@ -288,8 +326,16 @@ export default function Sidebar({
                                 Definitions
                             </button>
 
+                            {/* Loading indicator */}
+                            {crdsLoading && (
+                                <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                                    Loading...
+                                </div>
+                            )}
+
                             {/* CRD Groups */}
-                            {Object.keys(crdGroups).map((groupName) => {
+                            {!crdsLoading && Object.keys(crdGroups).map((groupName) => {
                                 const isExpanded = expandedCRDGroups[groupName];
                                 const resources = crdGroups[groupName];
                                 return (
