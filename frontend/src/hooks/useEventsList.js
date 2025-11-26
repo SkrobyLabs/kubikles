@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { ListEvents } from '../../wailsjs/go/main/App';
+import { useK8s } from '../context/K8sContext';
 
 export const useEventsList = (currentContext, currentNamespace, isVisible) => {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const { lastRefresh } = useK8s();
 
     useEffect(() => {
         if (!currentContext || !isVisible) return;
@@ -38,7 +40,7 @@ export const useEventsList = (currentContext, currentNamespace, isVisible) => {
         };
 
         fetchEvents();
-    }, [currentContext, currentNamespace, isVisible]);
+    }, [currentContext, currentNamespace, isVisible, lastRefresh]);
 
     return { events, loading, error };
 };

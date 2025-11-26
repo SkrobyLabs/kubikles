@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { ListStorageClasses } from '../../wailsjs/go/main/App';
+import { useK8s } from '../context/K8sContext';
 
 export const useStorageClasses = (currentContext, isVisible) => {
     const [storageClasses, setStorageClasses] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const { lastRefresh } = useK8s();
 
     useEffect(() => {
         if (!currentContext || !isVisible) return;
@@ -24,7 +26,7 @@ export const useStorageClasses = (currentContext, isVisible) => {
         };
 
         fetchStorageClasses();
-    }, [currentContext, isVisible]);
+    }, [currentContext, isVisible, lastRefresh]);
 
     return { storageClasses, loading, error };
 };

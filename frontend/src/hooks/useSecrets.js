@@ -7,7 +7,7 @@ export const useSecrets = (currentContext, namespaces, isVisible) => {
     const [secrets, setSecrets] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const { namespaces: allNamespaces } = useK8s();
+    const { namespaces: allNamespaces, lastRefresh } = useK8s();
 
     useEffect(() => {
         if (!currentContext || namespaces === null || namespaces === undefined || !isVisible) return;
@@ -49,7 +49,7 @@ export const useSecrets = (currentContext, namespaces, isVisible) => {
         };
 
         fetchSecrets();
-    }, [currentContext, namespaces, isVisible, allNamespaces]);
+    }, [currentContext, namespaces, isVisible, allNamespaces, lastRefresh]);
 
     return { secrets, loading, error };
 };

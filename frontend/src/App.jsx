@@ -47,6 +47,7 @@ function MainLayout() {
         switchContext,
         refreshContexts,
         refreshNamespaces,
+        triggerRefresh,
         currentNamespace
     } = useK8s();
 
@@ -92,22 +93,13 @@ function MainLayout() {
 
                 refreshContexts();
                 refreshNamespaces();
-                // Individual lists will re-fetch if their dependencies change or we can force it?
-                // The hooks depend on isVisible. If we want to force refresh, we might need a signal.
-                // For now, refreshing contexts/namespaces is a good start. 
-                // To refresh data, we might need to expose a refresh function from hooks or toggle a version.
-                // But typically React Query or similar handles this. 
-                // With our simple hooks, we might need to trigger a re-mount or state change.
-                // Let's leave it simple for now: Context/Namespace refresh.
-                // If users want data refresh, they can switch views or we can implement a global refresh signal in UIContext later.
-                // Actually, simply toggling activeView briefly or something would work but is hacky.
-                // A better way is a 'refreshTrigger' in UIContext that increments.
+                triggerRefresh(); // Signal all data hooks to re-fetch
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [refreshContexts, refreshNamespaces]);
+    }, [refreshContexts, refreshNamespaces, triggerRefresh]);
 
     // Parse custom resource view ID: cr:{group}:{version}:{plural}:{kind}:{namespaced}
     const parsedCRView = useMemo(() => {

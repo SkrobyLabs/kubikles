@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ListNodes } from '../../wailsjs/go/main/App';
+import { useK8s } from '../context/K8sContext';
 
 export const useNodes = (currentContext, isVisible) => {
     const [nodes, setNodes] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const { lastRefresh } = useK8s();
 
     const fetchNodes = useCallback(async () => {
         if (!currentContext || !isVisible) return;
@@ -20,7 +22,7 @@ export const useNodes = (currentContext, isVisible) => {
         } finally {
             setLoading(false);
         }
-    }, [currentContext, isVisible]);
+    }, [currentContext, isVisible, lastRefresh]);
 
     useEffect(() => {
         fetchNodes();

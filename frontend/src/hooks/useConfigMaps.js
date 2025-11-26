@@ -7,7 +7,7 @@ export const useConfigMaps = (currentContext, namespaces, isVisible) => {
     const [configMaps, setConfigMaps] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const { namespaces: allNamespaces } = useK8s();
+    const { namespaces: allNamespaces, lastRefresh } = useK8s();
 
     useEffect(() => {
         if (!currentContext || namespaces === null || namespaces === undefined || !isVisible) return;
@@ -49,7 +49,7 @@ export const useConfigMaps = (currentContext, namespaces, isVisible) => {
         };
 
         fetchConfigMaps();
-    }, [currentContext, namespaces, isVisible, allNamespaces]);
+    }, [currentContext, namespaces, isVisible, allNamespaces, lastRefresh]);
 
     return { configMaps, loading, error };
 };

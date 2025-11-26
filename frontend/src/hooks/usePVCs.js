@@ -7,7 +7,7 @@ export const usePVCs = (currentContext, namespaces, isVisible) => {
     const [pvcs, setPVCs] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const { namespaces: allNamespaces } = useK8s();
+    const { namespaces: allNamespaces, lastRefresh } = useK8s();
 
     useEffect(() => {
         if (!currentContext || namespaces === null || namespaces === undefined || !isVisible) return;
@@ -45,7 +45,7 @@ export const usePVCs = (currentContext, namespaces, isVisible) => {
         };
 
         fetchPVCs();
-    }, [currentContext, namespaces, isVisible, allNamespaces]);
+    }, [currentContext, namespaces, isVisible, allNamespaces, lastRefresh]);
 
     return { pvcs, loading, error };
 };

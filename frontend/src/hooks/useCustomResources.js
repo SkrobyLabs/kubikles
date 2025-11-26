@@ -17,7 +17,7 @@ export const useCustomResources = (currentContext, group, version, resource, sel
     const [resources, setResources] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const { namespaces: allNamespaces } = useK8s();
+    const { namespaces: allNamespaces, lastRefresh } = useK8s();
 
     useEffect(() => {
         if (!currentContext || !isVisible || !group || !version || !resource) return;
@@ -66,7 +66,7 @@ export const useCustomResources = (currentContext, group, version, resource, sel
         };
 
         fetchResources();
-    }, [currentContext, group, version, resource, selectedNamespaces, isVisible, isNamespaced, allNamespaces]);
+    }, [currentContext, group, version, resource, selectedNamespaces, isVisible, isNamespaced, allNamespaces, lastRefresh]);
 
     return { resources, loading, error };
 };

@@ -7,7 +7,7 @@ export const useServices = (currentContext, namespaces, isVisible) => {
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const { namespaces: allNamespaces } = useK8s();
+    const { namespaces: allNamespaces, lastRefresh } = useK8s();
 
     useEffect(() => {
         if (!currentContext || namespaces === null || namespaces === undefined || !isVisible) return;
@@ -49,7 +49,7 @@ export const useServices = (currentContext, namespaces, isVisible) => {
         };
 
         fetchServices();
-    }, [currentContext, namespaces, isVisible, allNamespaces]);
+    }, [currentContext, namespaces, isVisible, allNamespaces, lastRefresh]);
 
     return { services, loading, error };
 };

@@ -6,7 +6,7 @@ import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 export const useStatefulSets = (contextName, namespaces, isVisible) => {
     const [statefulSets, setStatefulSets] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { namespaces: allNamespaces } = useK8s();
+    const { namespaces: allNamespaces, lastRefresh } = useK8s();
 
     useEffect(() => {
         if (!isVisible || namespaces === null || namespaces === undefined || !contextName) {
@@ -50,7 +50,7 @@ export const useStatefulSets = (contextName, namespaces, isVisible) => {
         };
 
         fetchStatefulSets();
-    }, [contextName, namespaces, isVisible, allNamespaces]);
+    }, [contextName, namespaces, isVisible, allNamespaces, lastRefresh]);
 
     return { statefulSets, loading };
 };

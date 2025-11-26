@@ -7,7 +7,7 @@ export const usePods = (currentContext, selectedNamespaces, isVisible) => {
     const [pods, setPods] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const { namespaces: allNamespaces } = useK8s();
+    const { namespaces: allNamespaces, lastRefresh } = useK8s();
 
     useEffect(() => {
         if (!currentContext || selectedNamespaces === null || selectedNamespaces === undefined || !isVisible) return;
@@ -85,7 +85,7 @@ export const usePods = (currentContext, selectedNamespaces, isVisible) => {
                 window.runtime.EventsOff("pod-event");
             }
         };
-    }, [currentContext, selectedNamespaces, isVisible, allNamespaces]);
+    }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh]);
 
     return { pods, loading, error, setPods };
 };

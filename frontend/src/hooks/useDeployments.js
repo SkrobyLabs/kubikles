@@ -9,7 +9,7 @@ export const useDeployments = (currentContext, selectedNamespaces, isVisible) =>
     const [loading, setLoading] = useState(false);
     const [podsLoading, setPodsLoading] = useState(false);
     const [error, setError] = useState(null);
-    const { namespaces: allNamespaces } = useK8s();
+    const { namespaces: allNamespaces, lastRefresh } = useK8s();
 
     useEffect(() => {
         if (!currentContext || selectedNamespaces === null || selectedNamespaces === undefined || !isVisible) return;
@@ -57,7 +57,7 @@ export const useDeployments = (currentContext, selectedNamespaces, isVisible) =>
         };
 
         fetchDeployments();
-    }, [currentContext, selectedNamespaces, isVisible, allNamespaces]);
+    }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh]);
 
     return { deployments, loading, podsLoading, error, setDeployments };
 };

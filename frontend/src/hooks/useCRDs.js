@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { ListCRDs } from '../../wailsjs/go/main/App';
+import { useK8s } from '../context/K8sContext';
 
 export const useCRDs = (currentContext, isVisible) => {
     const [crds, setCRDs] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const { lastRefresh } = useK8s();
 
     useEffect(() => {
         if (!currentContext || !isVisible) return;
@@ -24,7 +26,7 @@ export const useCRDs = (currentContext, isVisible) => {
         };
 
         fetchCRDs();
-    }, [currentContext, isVisible]);
+    }, [currentContext, isVisible, lastRefresh]);
 
     return { crds, loading, error };
 };

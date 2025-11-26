@@ -34,6 +34,22 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         }
     }, [namespace, selectedPod, selectedContainer, showTimestamps]);
 
+    // Listen for Cmd+R / Ctrl+R to refresh logs
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
+                // Don't prevent default - let App.jsx handle it for global refresh
+                // Just refresh logs when the event fires
+                if (namespace && selectedPod) {
+                    fetchLogs();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [namespace, selectedPod, selectedContainer, showTimestamps]);
+
     const fetchLogs = async () => {
         setLoading(true);
         try {
