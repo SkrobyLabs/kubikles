@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/terminal"
+	"net/url"
 	"os"
 	"sync"
 
@@ -93,6 +94,62 @@ func (a *App) ListNodes() ([]v1.Node, error) {
 	return a.k8sClient.ListNodes()
 }
 
+func (a *App) GetNodeYaml(name string) (string, error) {
+	a.LogDebug("GetNodeYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetNodeYaml(name)
+}
+
+func (a *App) UpdateNodeYaml(name, yamlContent string) error {
+	a.LogDebug("UpdateNodeYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateNodeYaml(name, yamlContent)
+}
+
+func (a *App) DeleteNode(name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteNode called: context=%s, name=%s", currentContext, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteNode(currentContext, name)
+}
+
+func (a *App) SetNodeSchedulable(name string, schedulable bool) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("SetNodeSchedulable called: context=%s, name=%s, schedulable=%v", currentContext, name, schedulable)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.SetNodeSchedulable(currentContext, name, schedulable)
+}
+
+// NodeDebugPodResult contains the result of creating a debug pod for node shell access
+type NodeDebugPodResult struct {
+	PodName   string `json:"podName"`
+	Namespace string `json:"namespace"`
+}
+
+func (a *App) CreateNodeDebugPod(nodeName string) (*NodeDebugPodResult, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("CreateNodeDebugPod called: context=%s, nodeName=%s", currentContext, nodeName)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	pod, err := a.k8sClient.CreateNodeDebugPod(currentContext, nodeName)
+	if err != nil {
+		return nil, err
+	}
+	return &NodeDebugPodResult{
+		PodName:   pod.Name,
+		Namespace: pod.Namespace,
+	}, nil
+}
+
 func (a *App) ListNamespaces() ([]v1.Namespace, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
@@ -160,6 +217,31 @@ func (a *App) ListServices(namespace string) ([]v1.Service, error) {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.ListServices(namespace)
+}
+
+func (a *App) GetServiceYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetServiceYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetServiceYaml(namespace, name)
+}
+
+func (a *App) UpdateServiceYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdateServiceYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateServiceYaml(namespace, name, yamlContent)
+}
+
+func (a *App) DeleteService(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteService called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteService(currentContext, namespace, name)
 }
 
 func (a *App) ListConfigMaps(namespace string) ([]v1.ConfigMap, error) {
@@ -332,6 +414,18 @@ func (a *App) OpenTerminal(contextName, namespace, podName, containerName string
 		a.terminalService.Port, contextName, namespace, podName, containerName)
 
 	return url, nil
+}
+
+func (a *App) OpenTerminalWithCommand(contextName, namespace, podName, containerName, command string) (string, error) {
+	a.LogDebug("OpenTerminalWithCommand called: context=%s, ns=%s, pod=%s, container=%s, cmd=%s", contextName, namespace, podName, containerName, command)
+	if a.terminalService == nil {
+		return "", fmt.Errorf("terminal service not initialized")
+	}
+
+	wsURL := fmt.Sprintf("ws://localhost:%d/terminal?context=%s&namespace=%s&pod=%s&container=%s&command=%s",
+		a.terminalService.Port, contextName, namespace, podName, containerName, url.QueryEscape(command))
+
+	return wsURL, nil
 }
 
 // --- Watcher ---

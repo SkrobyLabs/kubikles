@@ -3,13 +3,26 @@ import { Terminal as XTerm } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 
-const Terminal = ({ url }) => {
+const Terminal = ({ url, onClose }) => {
     const terminalRef = useRef(null);
     const xtermRef = useRef(null);
     const wsRef = useRef(null);
     const fitAddonRef = useRef(null);
+    const onCloseRef = useRef(onClose);
+    const cleanupTimeoutRef = useRef(null);
+
+    // Keep onClose ref up to date without triggering effect re-runs
+    useEffect(() => {
+        onCloseRef.current = onClose;
+    }, [onClose]);
 
     useEffect(() => {
+        // Cancel any pending cleanup from React Strict Mode double-invocation
+        if (cleanupTimeoutRef.current) {
+            clearTimeout(cleanupTimeoutRef.current);
+            cleanupTimeoutRef.current = null;
+        }
+
         // Initialize xterm
         const term = new XTerm({
             cursorBlink: true,
@@ -94,6 +107,15 @@ const Terminal = ({ url }) => {
                 ws.close();
             }
             term.dispose();
+            // Delay onClose to handle React Strict Mode double-invocation
+            // If the effect re-runs (strict mode), this timeout will be cancelled
+            if (onCloseRef.current) {
+                cleanupTimeoutRef.current = setTimeout(() => {
+                    if (onCloseRef.current) {
+                        onCloseRef.current();
+                    }
+                }, 100);
+            }
         };
     }, [url]);
 

@@ -142,6 +142,111 @@ func (c *Client) ListNodes() ([]v1.Node, error) {
 	return nodes.Items, nil
 }
 
+func (c *Client) GetNodeYaml(name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	node, err := cs.CoreV1().Nodes().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	// Remove managed fields
+	node.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(node)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateNodeYaml(name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var node v1.Node
+	if err := yaml.Unmarshal([]byte(yamlContent), &node); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	if node.Name != name {
+		return fmt.Errorf("node name in YAML (%s) does not match expected name (%s)", node.Name, name)
+	}
+	_, err = cs.CoreV1().Nodes().Update(context.TODO(), &node, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteNode(contextName, name string) error {
+	fmt.Printf("Deleting node: context=%s, name=%s\n", contextName, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.CoreV1().Nodes().Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+func (c *Client) SetNodeSchedulable(contextName, name string, schedulable bool) error {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+
+	// Patch spec.unschedulable - true means cordoned (unschedulable), false means uncordoned
+	patchData := fmt.Sprintf(`{"spec":{"unschedulable":%t}}`, !schedulable)
+
+	_, err = cs.CoreV1().Nodes().Patch(
+		context.TODO(),
+		name,
+		types.MergePatchType,
+		[]byte(patchData),
+		metav1.PatchOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to patch node: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) CreateNodeDebugPod(contextName, nodeName string) (*v1.Pod, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+
+	privileged := true
+	debugPod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: fmt.Sprintf("node-shell-%s-", nodeName),
+			Namespace:    "default",
+		},
+		Spec: v1.PodSpec{
+			NodeName:      nodeName,
+			HostPID:       true,
+			HostNetwork:   true,
+			HostIPC:       true,
+			RestartPolicy: v1.RestartPolicyNever,
+			Containers: []v1.Container{
+				{
+					Name:  "shell",
+					Image: "alpine:latest",
+					Command: []string{
+						"sleep", "infinity",
+					},
+					Stdin: true,
+					TTY:   true,
+					SecurityContext: &v1.SecurityContext{
+						Privileged: &privileged,
+					},
+				},
+			},
+		},
+	}
+
+	return cs.CoreV1().Pods("default").Create(context.TODO(), debugPod, metav1.CreateOptions{})
+}
+
 func (c *Client) ListNamespaces() ([]v1.Namespace, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -275,6 +380,48 @@ func (c *Client) ListServices(namespace string) ([]v1.Service, error) {
 		return nil, err
 	}
 	return services.Items, nil
+}
+
+func (c *Client) GetServiceYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	service, err := cs.CoreV1().Services(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	// Remove managed fields
+	service.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(service)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateServiceYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var service v1.Service
+	if err := yaml.Unmarshal([]byte(yamlContent), &service); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.CoreV1().Services(namespace).Update(context.TODO(), &service, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteService(contextName, namespace, name string) error {
+	fmt.Printf("Deleting service: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.CoreV1().Services(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
 
 func (c *Client) ListConfigMaps(namespace string) ([]v1.ConfigMap, error) {

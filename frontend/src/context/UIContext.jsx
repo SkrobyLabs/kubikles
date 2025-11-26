@@ -69,10 +69,24 @@ export const UIProvider = ({ children }) => {
 
     // Tab Management
     const openTab = (tab) => {
-        if (!bottomTabs.find(t => t.id === tab.id)) {
-            setBottomTabs(prev => [...prev, tab]);
-        }
+        setBottomTabs(prev => {
+            const existingIndex = prev.findIndex(t => t.id === tab.id);
+            if (existingIndex >= 0) {
+                // Update existing tab
+                const newTabs = [...prev];
+                newTabs[existingIndex] = { ...prev[existingIndex], ...tab };
+                return newTabs;
+            }
+            // Add new tab
+            return [...prev, tab];
+        });
         setActiveTabId(tab.id);
+    };
+
+    const updateTab = (tabId, updates) => {
+        setBottomTabs(prev => prev.map(t =>
+            t.id === tabId ? { ...t, ...updates } : t
+        ));
     };
 
     const closeTab = (tabId) => {
@@ -127,6 +141,7 @@ export const UIProvider = ({ children }) => {
         activeTabId,
         setActiveTabId,
         openTab,
+        updateTab,
         closeTab,
         closeOtherTabs,
         closeTabsToRight,

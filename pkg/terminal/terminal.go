@@ -66,6 +66,9 @@ func (s *Service) handleTerminal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get optional custom command
+	customCommand := query.Get("command")
+
 	// Construct kubectl command
 	cmdArgs := []string{"exec", "-it"}
 	if contextName != "" {
@@ -75,7 +78,16 @@ func (s *Service) handleTerminal(w http.ResponseWriter, r *http.Request) {
 	if container != "" {
 		cmdArgs = append(cmdArgs, "-c", container)
 	}
-	cmdArgs = append(cmdArgs, "--", "/bin/sh", "-c", "if command -v bash >/dev/null 2>&1; then exec bash; else exec sh; fi")
+	if customCommand == "nsenter" {
+		// Special case for node shell - pass nsenter args directly
+		cmdArgs = append(cmdArgs, "--", "nsenter", "-t", "1", "-m", "-u", "-i", "-n", "-p", "--", "/bin/sh")
+	} else if customCommand != "" {
+		// Use custom command wrapped in shell
+		cmdArgs = append(cmdArgs, "--", "/bin/sh", "-c", customCommand)
+	} else {
+		// Default: try bash, fallback to sh
+		cmdArgs = append(cmdArgs, "--", "/bin/sh", "-c", "if command -v bash >/dev/null 2>&1; then exec bash; else exec sh; fi")
+	}
 
 	cmd := exec.Command("kubectl", cmdArgs...)
 
@@ -124,11 +136,6 @@ func (s *Service) handleTerminal(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if messageType == websocket.TextMessage {
-			// Check for resize message?
-			// Usually xterm sends binary or we define a protocol.
-			// For now, assume all input is stdin.
-			// If we want resize, we need a protocol (e.g. JSON with type).
-			// Let's stick to raw input for now, resize might be needed later.
 			_, _ = io.Copy(ptmx, reader)
 		} else if messageType == websocket.BinaryMessage {
 			_, _ = io.Copy(ptmx, reader)

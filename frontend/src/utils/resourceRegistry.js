@@ -15,6 +15,8 @@ import {
     GetCronJobYaml, UpdateCronJobYaml, DeleteCronJob,
     GetConfigMapYaml, UpdateConfigMapYaml, DeleteConfigMap,
     GetSecretYaml, UpdateSecretYaml, DeleteSecret,
+    GetServiceYaml, UpdateServiceYaml, DeleteService,
+    GetNodeYaml, UpdateNodeYaml,
     GetNamespaceYAML, UpdateNamespaceYAML, DeleteNamespace,
     GetEventYAML, UpdateEventYAML, DeleteEvent,
     GetPVCYaml, UpdatePVCYaml, DeletePVC,
@@ -86,6 +88,13 @@ const registry = {
         getYaml: (namespace, name) => GetSecretYaml(namespace, name),
         updateYaml: (namespace, name, content) => UpdateSecretYaml(namespace, name, content),
     },
+    service: {
+        kind: 'Service',
+        plural: 'services',
+        namespaced: true,
+        getYaml: (namespace, name) => GetServiceYaml(namespace, name),
+        updateYaml: (namespace, name, content) => UpdateServiceYaml(namespace, name, content),
+    },
     namespace: {
         kind: 'Namespace',
         plural: 'namespaces',
@@ -120,6 +129,13 @@ const registry = {
         namespaced: false,
         getYaml: (_, name) => GetStorageClassYaml(name),
         updateYaml: (_, name, content) => UpdateStorageClassYaml(name, content),
+    },
+    node: {
+        kind: 'Node',
+        plural: 'nodes',
+        namespaced: false,
+        getYaml: (_, name) => GetNodeYaml(name),
+        updateYaml: (_, name, content) => UpdateNodeYaml(name, content),
     },
 };
 
