@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
+import ResourceBar from '../../../components/shared/ResourceBar';
 import { useNodes } from '../../../hooks/useNodes';
+import { useNodeMetrics } from '../../../hooks/useNodeMetrics';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
 import { formatAge } from '../../../utils/formatting';
@@ -100,10 +102,45 @@ export default function NodeList({ isVisible }) {
     const { currentContext } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { nodes, loading, refetch } = useNodes(currentContext, isVisible);
+    const { metrics, available: metricsAvailable } = useNodeMetrics(isVisible);
     const { handleEditYaml, handleCordonUncordon, handleShell, handleDelete } = useNodeActions(refetch);
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
+        {
+            key: 'cpu',
+            label: 'CPU',
+            render: (item) => {
+                const m = metrics[item.metadata?.name];
+                if (!metricsAvailable) return <span className="text-gray-500 italic text-xs">N/A</span>;
+                if (!m) return <span className="text-gray-500 text-xs">--</span>;
+                return (
+                    <div className="flex flex-col gap-0.5">
+                        <ResourceBar percent={m.cpuPercent} label="" tooltipLabel="Used" color="bg-blue-500" />
+                        <ResourceBar percent={m.cpuReservedPercent} label="" tooltipLabel="Reserved" color="bg-yellow-500" fixedColor />
+                        <ResourceBar percent={m.cpuCommittedPercent} label="" tooltipLabel="Committed" color="bg-red-500" fixedColor />
+                    </div>
+                );
+            },
+            getValue: (item) => metrics[item.metadata?.name]?.cpuCommittedPercent ?? -1
+        },
+        {
+            key: 'memory',
+            label: 'Memory',
+            render: (item) => {
+                const m = metrics[item.metadata?.name];
+                if (!metricsAvailable) return <span className="text-gray-500 italic text-xs">N/A</span>;
+                if (!m) return <span className="text-gray-500 text-xs">--</span>;
+                return (
+                    <div className="flex flex-col gap-0.5">
+                        <ResourceBar percent={m.memPercent} label="" tooltipLabel="Used" color="bg-purple-500" />
+                        <ResourceBar percent={m.memReservedPercent} label="" tooltipLabel="Reserved" color="bg-yellow-500" fixedColor />
+                        <ResourceBar percent={m.memCommittedPercent} label="" tooltipLabel="Committed" color="bg-red-500" fixedColor />
+                    </div>
+                );
+            },
+            getValue: (item) => metrics[item.metadata?.name]?.memCommittedPercent ?? -1
+        },
         {
             key: 'conditions',
             label: 'Conditions',
@@ -141,7 +178,7 @@ export default function NodeList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleCordonUncordon, handleShell, handleDelete]);
+    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleCordonUncordon, handleShell, handleDelete, metrics, metricsAvailable]);
 
     return (
         <ResourceList

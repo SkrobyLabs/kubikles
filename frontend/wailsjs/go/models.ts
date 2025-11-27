@@ -89,6 +89,69 @@ export namespace k8s {
 		    return a;
 		}
 	}
+	
+	export class NodeMetrics {
+	    name: string;
+	    cpuUsage: number;
+	    memoryUsage: number;
+	    cpuCapacity: number;
+	    memCapacity: number;
+	    cpuRequested: number;
+	    memRequested: number;
+	    cpuCommitted: number;
+	    memCommitted: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NodeMetrics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.cpuUsage = source["cpuUsage"];
+	        this.memoryUsage = source["memoryUsage"];
+	        this.cpuCapacity = source["cpuCapacity"];
+	        this.memCapacity = source["memCapacity"];
+	        this.cpuRequested = source["cpuRequested"];
+	        this.memRequested = source["memRequested"];
+	        this.cpuCommitted = source["cpuCommitted"];
+	        this.memCommitted = source["memCommitted"];
+	    }
+	}
+	export class NodeMetricsResult {
+	    available: boolean;
+	    metrics: NodeMetrics[];
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new NodeMetricsResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.metrics = this.convertValues(source["metrics"], NodeMetrics);
+	        this.error = source["error"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 

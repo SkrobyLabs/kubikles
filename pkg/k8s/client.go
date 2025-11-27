@@ -25,14 +25,36 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 	"sigs.k8s.io/yaml"
 )
 
 type Client struct {
 	clientset      *kubernetes.Clientset
+	metricsClient  metricsclientset.Interface
 	configLoading  clientcmd.ClientConfig
 	currentContext string
 	mu             sync.RWMutex
+}
+
+// NodeMetrics represents CPU/Memory usage for a node
+type NodeMetrics struct {
+	Name         string `json:"name"`
+	CPUUsage     int64  `json:"cpuUsage"`     // millicores
+	MemoryUsage  int64  `json:"memoryUsage"`  // bytes
+	CPUCapacity  int64  `json:"cpuCapacity"`  // millicores
+	MemCapacity  int64  `json:"memCapacity"`  // bytes
+	CPURequested int64  `json:"cpuRequested"` // millicores (sum of pod requests)
+	MemRequested int64  `json:"memRequested"` // bytes (sum of pod requests)
+	CPUCommitted int64  `json:"cpuCommitted"` // millicores (sum of max(usage, request) per container)
+	MemCommitted int64  `json:"memCommitted"` // bytes (sum of max(usage, request) per container)
+}
+
+// NodeMetricsResult wraps the metrics response with availability status
+type NodeMetricsResult struct {
+	Available bool          `json:"available"`
+	Metrics   []NodeMetrics `json:"metrics"`
+	Error     string        `json:"error,omitempty"`
 }
 
 func NewClient() (*Client, error) {
@@ -252,6 +274,156 @@ func (c *Client) CreateNodeDebugPod(contextName, nodeName string) (*v1.Pod, erro
 	}
 
 	return cs.CoreV1().Pods("default").Create(context.TODO(), debugPod, metav1.CreateOptions{})
+}
+
+// GetNodeMetrics fetches CPU and Memory metrics for all nodes from the metrics-server
+func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
+	c.mu.Lock()
+	// Lazy init metrics client
+	if c.metricsClient == nil {
+		config, err := c.configLoading.ClientConfig()
+		if err != nil {
+			c.mu.Unlock()
+			return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
+		}
+		mc, err := metricsclientset.NewForConfig(config)
+		if err != nil {
+			c.mu.Unlock()
+			return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
+		}
+		c.metricsClient = mc
+	}
+	c.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Fetch node metrics from metrics-server
+	nodeMetricsList, err := c.metricsClient.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
+	// Fetch node capacities
+	cs, err := c.getClientset()
+	if err != nil {
+		return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
+	nodes, err := cs.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
+	// Build capacity map
+	capacityMap := make(map[string]struct{ cpu, memory int64 })
+	for _, node := range nodes.Items {
+		cpu := node.Status.Capacity.Cpu().MilliValue() // millicores
+		mem := node.Status.Capacity.Memory().Value()   // bytes
+		capacityMap[node.Name] = struct{ cpu, memory int64 }{cpu, mem}
+	}
+
+	// Fetch all pods to calculate requested resources per node
+	pods, err := cs.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
+	// Fetch pod metrics for committed calculation
+	podMetricsList, err := c.metricsClient.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		// Pod metrics might fail, but we can still return node metrics without committed
+		podMetricsList = nil
+	}
+
+	// Build container usage map: namespace/podName/containerName -> {cpu, memory}
+	containerUsageMap := make(map[string]struct{ cpu, memory int64 })
+	if podMetricsList != nil {
+		for _, pm := range podMetricsList.Items {
+			for _, cm := range pm.Containers {
+				key := pm.Namespace + "/" + pm.Name + "/" + cm.Name
+				containerUsageMap[key] = struct{ cpu, memory int64 }{
+					cpu:    cm.Usage.Cpu().MilliValue(),
+					memory: cm.Usage.Memory().Value(),
+				}
+			}
+		}
+	}
+
+	// Sum resource requests and committed per node
+	type nodeResources struct {
+		requestedCPU, requestedMem int64
+		committedCPU, committedMem int64
+	}
+	resourcesMap := make(map[string]*nodeResources)
+
+	for _, pod := range pods.Items {
+		// Skip pods not scheduled or in terminal states
+		if pod.Spec.NodeName == "" || pod.Status.Phase == v1.PodSucceeded || pod.Status.Phase == v1.PodFailed {
+			continue
+		}
+		nodeName := pod.Spec.NodeName
+		if resourcesMap[nodeName] == nil {
+			resourcesMap[nodeName] = &nodeResources{}
+		}
+		res := resourcesMap[nodeName]
+
+		for _, container := range pod.Spec.Containers {
+			var reqCPU, reqMem int64
+			if container.Resources.Requests != nil {
+				reqCPU = container.Resources.Requests.Cpu().MilliValue()
+				reqMem = container.Resources.Requests.Memory().Value()
+			}
+			res.requestedCPU += reqCPU
+			res.requestedMem += reqMem
+
+			// Calculate committed: max(usage, request)
+			key := pod.Namespace + "/" + pod.Name + "/" + container.Name
+			if usage, ok := containerUsageMap[key]; ok {
+				if usage.cpu > reqCPU {
+					res.committedCPU += usage.cpu
+				} else {
+					res.committedCPU += reqCPU
+				}
+				if usage.memory > reqMem {
+					res.committedMem += usage.memory
+				} else {
+					res.committedMem += reqMem
+				}
+			} else {
+				// No usage data, use request as committed
+				res.committedCPU += reqCPU
+				res.committedMem += reqMem
+			}
+		}
+	}
+
+	// Combine metrics with capacity, requests, and committed
+	result := make([]NodeMetrics, 0, len(nodeMetricsList.Items))
+	for _, nm := range nodeMetricsList.Items {
+		cap := capacityMap[nm.Name]
+		res := resourcesMap[nm.Name]
+		var reqCPU, reqMem, comCPU, comMem int64
+		if res != nil {
+			reqCPU = res.requestedCPU
+			reqMem = res.requestedMem
+			comCPU = res.committedCPU
+			comMem = res.committedMem
+		}
+		result = append(result, NodeMetrics{
+			Name:         nm.Name,
+			CPUUsage:     nm.Usage.Cpu().MilliValue(), // millicores
+			MemoryUsage:  nm.Usage.Memory().Value(),   // bytes
+			CPUCapacity:  cap.cpu,
+			MemCapacity:  cap.memory,
+			CPURequested: reqCPU,
+			MemRequested: reqMem,
+			CPUCommitted: comCPU,
+			MemCommitted: comMem,
+		})
+	}
+
+	return &NodeMetricsResult{Available: true, Metrics: result}, nil
 }
 
 func (c *Client) ListNamespaces() ([]v1.Namespace, error) {

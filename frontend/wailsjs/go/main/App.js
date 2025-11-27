@@ -126,6 +126,10 @@ export function GetNamespaceYAML(arg1) {
   return window['go']['main']['App']['GetNamespaceYAML'](arg1);
 }
 
+export function GetNodeMetrics() {
+  return window['go']['main']['App']['GetNodeMetrics']();
+}
+
 export function GetNodeYaml(arg1) {
   return window['go']['main']['App']['GetNodeYaml'](arg1);
 }

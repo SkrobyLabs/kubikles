@@ -66,6 +66,8 @@ export function GetJobYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetNamespaceYAML(arg1:string):Promise<string>;
 
+export function GetNodeMetrics():Promise<k8s.NodeMetricsResult>;
+
 export function GetNodeYaml(arg1:string):Promise<string>;
 
 export function GetPVCYaml(arg1:string,arg2:string):Promise<string>;

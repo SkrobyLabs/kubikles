@@ -100,6 +100,13 @@ func (a *App) ListNodes() ([]v1.Node, error) {
 	return a.k8sClient.ListNodes()
 }
 
+func (a *App) GetNodeMetrics() (*k8s.NodeMetricsResult, error) {
+	if a.k8sClient == nil {
+		return &k8s.NodeMetricsResult{Available: false}, nil
+	}
+	return a.k8sClient.GetNodeMetrics()
+}
+
 func (a *App) GetNodeYaml(name string) (string, error) {
 	a.LogDebug("GetNodeYaml called: name=%s", name)
 	if a.k8sClient == nil {
