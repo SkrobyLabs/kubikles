@@ -82,6 +82,8 @@ export function GetPodLogsBefore(arg1:string,arg2:string,arg3:string,arg4:boolea
 
 export function GetPodLogsFromStart(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean):Promise<string>;
 
+export function GetPodMetrics():Promise<k8s.PodMetricsResult>;
+
 export function GetPodYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetReplicaSetYaml(arg1:string,arg2:string):Promise<string>;

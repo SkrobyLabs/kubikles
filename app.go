@@ -107,6 +107,13 @@ func (a *App) GetNodeMetrics() (*k8s.NodeMetricsResult, error) {
 	return a.k8sClient.GetNodeMetrics()
 }
 
+func (a *App) GetPodMetrics() (*k8s.PodMetricsResult, error) {
+	if a.k8sClient == nil {
+		return &k8s.PodMetricsResult{Available: false}, nil
+	}
+	return a.k8sClient.GetPodMetrics()
+}
+
 func (a *App) GetNodeYaml(name string) (string, error) {
 	a.LogDebug("GetNodeYaml called: name=%s", name)
 	if a.k8sClient == nil {

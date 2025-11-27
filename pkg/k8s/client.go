@@ -57,6 +57,28 @@ type NodeMetricsResult struct {
 	Error     string        `json:"error,omitempty"`
 }
 
+// PodMetrics represents CPU/Memory usage for a pod relative to its node
+type PodMetrics struct {
+	Namespace       string `json:"namespace"`
+	Name            string `json:"name"`
+	NodeName        string `json:"nodeName"`
+	CPUUsage        int64  `json:"cpuUsage"`        // millicores
+	MemoryUsage     int64  `json:"memoryUsage"`     // bytes
+	CPURequested    int64  `json:"cpuRequested"`    // millicores
+	MemRequested    int64  `json:"memRequested"`    // bytes
+	CPUCommitted    int64  `json:"cpuCommitted"`    // millicores (max of usage, request)
+	MemCommitted    int64  `json:"memCommitted"`    // bytes (max of usage, request)
+	NodeCPUCapacity int64  `json:"nodeCpuCapacity"` // millicores
+	NodeMemCapacity int64  `json:"nodeMemCapacity"` // bytes
+}
+
+// PodMetricsResult wraps the pod metrics response
+type PodMetricsResult struct {
+	Available bool         `json:"available"`
+	Metrics   []PodMetrics `json:"metrics"`
+	Error     string       `json:"error,omitempty"`
+}
+
 func NewClient() (*Client, error) {
 	c := &Client{}
 	if err := c.loadConfig(""); err != nil {
@@ -424,6 +446,129 @@ func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 	}
 
 	return &NodeMetricsResult{Available: true, Metrics: result}, nil
+}
+
+// GetPodMetrics fetches CPU and Memory metrics for all pods, relative to node capacity
+func (c *Client) GetPodMetrics() (*PodMetricsResult, error) {
+	c.mu.Lock()
+	// Lazy init metrics client
+	if c.metricsClient == nil {
+		config, err := c.configLoading.ClientConfig()
+		if err != nil {
+			c.mu.Unlock()
+			return &PodMetricsResult{Available: false, Error: err.Error()}, nil
+		}
+		mc, err := metricsclientset.NewForConfig(config)
+		if err != nil {
+			c.mu.Unlock()
+			return &PodMetricsResult{Available: false, Error: err.Error()}, nil
+		}
+		c.metricsClient = mc
+	}
+	c.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Fetch pod metrics from metrics-server
+	podMetricsList, err := c.metricsClient.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
+	// Fetch all pods to get requests and node assignments
+	cs, err := c.getClientset()
+	if err != nil {
+		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
+	pods, err := cs.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
+	// Fetch node capacities
+	nodes, err := cs.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
+	// Build node capacity map
+	nodeCapacityMap := make(map[string]struct{ cpu, memory int64 })
+	for _, node := range nodes.Items {
+		nodeCapacityMap[node.Name] = struct{ cpu, memory int64 }{
+			cpu:    node.Status.Capacity.Cpu().MilliValue(),
+			memory: node.Status.Capacity.Memory().Value(),
+		}
+	}
+
+	// Build pod info map: namespace/name -> {nodeName, requests}
+	type podInfo struct {
+		nodeName   string
+		cpuReq     int64
+		memReq     int64
+	}
+	podInfoMap := make(map[string]podInfo)
+	for _, pod := range pods.Items {
+		key := pod.Namespace + "/" + pod.Name
+		var cpuReq, memReq int64
+		for _, container := range pod.Spec.Containers {
+			if container.Resources.Requests != nil {
+				cpuReq += container.Resources.Requests.Cpu().MilliValue()
+				memReq += container.Resources.Requests.Memory().Value()
+			}
+		}
+		podInfoMap[key] = podInfo{
+			nodeName: pod.Spec.NodeName,
+			cpuReq:   cpuReq,
+			memReq:   memReq,
+		}
+	}
+
+	// Build result from pod metrics
+	result := make([]PodMetrics, 0, len(podMetricsList.Items))
+	for _, pm := range podMetricsList.Items {
+		key := pm.Namespace + "/" + pm.Name
+		info, ok := podInfoMap[key]
+		if !ok || info.nodeName == "" {
+			continue // Skip pods not found or not scheduled
+		}
+
+		// Sum container usage
+		var cpuUsage, memUsage int64
+		for _, cm := range pm.Containers {
+			cpuUsage += cm.Usage.Cpu().MilliValue()
+			memUsage += cm.Usage.Memory().Value()
+		}
+
+		// Calculate committed: max(usage, request)
+		cpuCommitted := cpuUsage
+		if info.cpuReq > cpuCommitted {
+			cpuCommitted = info.cpuReq
+		}
+		memCommitted := memUsage
+		if info.memReq > memCommitted {
+			memCommitted = info.memReq
+		}
+
+		nodeCap := nodeCapacityMap[info.nodeName]
+
+		result = append(result, PodMetrics{
+			Namespace:       pm.Namespace,
+			Name:            pm.Name,
+			NodeName:        info.nodeName,
+			CPUUsage:        cpuUsage,
+			MemoryUsage:     memUsage,
+			CPURequested:    info.cpuReq,
+			MemRequested:    info.memReq,
+			CPUCommitted:    cpuCommitted,
+			MemCommitted:    memCommitted,
+			NodeCPUCapacity: nodeCap.cpu,
+			NodeMemCapacity: nodeCap.memory,
+		})
+	}
+
+	return &PodMetricsResult{Available: true, Metrics: result}, nil
 }
 
 func (c *Client) ListNamespaces() ([]v1.Namespace, error) {

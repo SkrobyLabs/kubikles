@@ -158,6 +158,10 @@ export function GetPodLogsFromStart(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['GetPodLogsFromStart'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function GetPodMetrics() {
+  return window['go']['main']['App']['GetPodMetrics']();
+}
+
 export function GetPodYaml(arg1, arg2) {
   return window['go']['main']['App']['GetPodYaml'](arg1, arg2);
 }

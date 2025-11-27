@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
+import ResourceBar from '../../../components/shared/ResourceBar';
 import PodActionsMenu from './PodActionsMenu';
 import { usePods } from '../../../hooks/usePods';
+import { usePodMetrics } from '../../../hooks/usePodMetrics';
 import { usePodActions } from './usePodActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
@@ -14,11 +16,52 @@ export default function PodList({ isVisible }) {
     const { activeMenuId, setActiveMenuId, navigateWithSearch } = useUI();
     // console.log("PodList rendering");
     const { pods, loading } = usePods(currentContext, selectedNamespaces, isVisible);
+    const { metrics, available: metricsAvailable } = usePodMetrics(isVisible);
     const { openLogs, handleShell, handleEditYaml, handleShowDependencies, handleDelete } = usePodActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
         { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
+        {
+            key: 'cpu',
+            label: 'CPU',
+            render: (item) => {
+                const key = `${item.metadata?.namespace}/${item.metadata?.name}`;
+                const m = metrics[key];
+                if (!metricsAvailable) return <span className="text-gray-500 italic text-xs">N/A</span>;
+                if (!m) return <span className="text-gray-500 text-xs">--</span>;
+                return (
+                    <div className="flex flex-col gap-0.5">
+                        <ResourceBar percent={m.cpuPercent} label="" tooltipLabel="Used" color="bg-blue-500" />
+                        <ResourceBar percent={m.cpuCommittedPercent} label="" tooltipLabel="Committed" color="bg-red-500" fixedColor />
+                    </div>
+                );
+            },
+            getValue: (item) => {
+                const key = `${item.metadata?.namespace}/${item.metadata?.name}`;
+                return metrics[key]?.cpuCommittedPercent ?? -1;
+            }
+        },
+        {
+            key: 'memory',
+            label: 'Memory',
+            render: (item) => {
+                const key = `${item.metadata?.namespace}/${item.metadata?.name}`;
+                const m = metrics[key];
+                if (!metricsAvailable) return <span className="text-gray-500 italic text-xs">N/A</span>;
+                if (!m) return <span className="text-gray-500 text-xs">--</span>;
+                return (
+                    <div className="flex flex-col gap-0.5">
+                        <ResourceBar percent={m.memPercent} label="" tooltipLabel="Used" color="bg-purple-500" />
+                        <ResourceBar percent={m.memCommittedPercent} label="" tooltipLabel="Committed" color="bg-red-500" fixedColor />
+                    </div>
+                );
+            },
+            getValue: (item) => {
+                const key = `${item.metadata?.namespace}/${item.metadata?.name}`;
+                return metrics[key]?.memCommittedPercent ?? -1;
+            }
+        },
         {
             key: 'containers',
             label: 'Containers',
@@ -131,7 +174,7 @@ export default function PodList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, openLogs, handleShell, handleDelete, handleEditYaml, handleShowDependencies, pods, navigateWithSearch]);
+    ], [activeMenuId, setActiveMenuId, openLogs, handleShell, handleDelete, handleEditYaml, handleShowDependencies, pods, navigateWithSearch, metrics, metricsAvailable]);
 
     return (
         <ResourceList

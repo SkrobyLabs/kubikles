@@ -152,6 +152,72 @@ export namespace k8s {
 		    return a;
 		}
 	}
+	export class PodMetrics {
+	    namespace: string;
+	    name: string;
+	    nodeName: string;
+	    cpuUsage: number;
+	    memoryUsage: number;
+	    cpuRequested: number;
+	    memRequested: number;
+	    cpuCommitted: number;
+	    memCommitted: number;
+	    nodeCpuCapacity: number;
+	    nodeMemCapacity: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PodMetrics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.namespace = source["namespace"];
+	        this.name = source["name"];
+	        this.nodeName = source["nodeName"];
+	        this.cpuUsage = source["cpuUsage"];
+	        this.memoryUsage = source["memoryUsage"];
+	        this.cpuRequested = source["cpuRequested"];
+	        this.memRequested = source["memRequested"];
+	        this.cpuCommitted = source["cpuCommitted"];
+	        this.memCommitted = source["memCommitted"];
+	        this.nodeCpuCapacity = source["nodeCpuCapacity"];
+	        this.nodeMemCapacity = source["nodeMemCapacity"];
+	    }
+	}
+	export class PodMetricsResult {
+	    available: boolean;
+	    metrics: PodMetrics[];
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PodMetricsResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.metrics = this.convertValues(source["metrics"], PodMetrics);
+	        this.error = source["error"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 
