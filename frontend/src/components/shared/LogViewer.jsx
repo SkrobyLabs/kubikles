@@ -164,8 +164,10 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         if (!logsContainerRef.current) return;
         const { scrollTop, scrollHeight, clientHeight } = logsContainerRef.current;
 
+        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
         // Consider "at bottom" if within 50px of the bottom
-        isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 50;
+        isAtBottomRef.current = distanceFromBottom < 50;
 
         // Load older logs when near top (within 100px) - works even when following
         // Use ref for instant check to prevent race conditions
@@ -173,8 +175,16 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             loadOlderLogs();
         }
 
+        // When user scrolls away from bottom (more than 200px), reset hasMoreAfter
+        // This allows loading more logs when they scroll back down
+        // (useful for active pods that keep generating logs)
+        if (distanceFromBottom > 200 && !hasMoreAfter && !isFollowing) {
+            setHasMoreAfter(true);
+            lastFetchedAfterTs.current = ''; // Reset to allow new fetch
+        }
+
         // Load newer logs when near bottom (within 100px) and not following
-        if (scrollHeight - scrollTop - clientHeight < 100 && hasMoreAfter && !loadingAfterRef.current && !isFollowing) {
+        if (distanceFromBottom < 100 && hasMoreAfter && !loadingAfterRef.current && !isFollowing) {
             loadNewerLogs();
         }
     };
@@ -183,7 +193,9 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         if (namespace && selectedPod) {
             fetchLogs();
         }
-    }, [namespace, selectedPod, selectedContainer, showTimestamps, showPrevious, sinceTime, viewMode]);
+        // Note: showTimestamps is NOT a dependency - we always fetch with timestamps
+        // and just show/hide them in render
+    }, [namespace, selectedPod, selectedContainer, showPrevious, sinceTime, viewMode]);
 
     // Listen for Cmd+R / Ctrl+R to refresh logs
     useEffect(() => {
@@ -197,7 +209,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [namespace, selectedPod, selectedContainer, showTimestamps, showPrevious, sinceTime, viewMode]);
+    }, [namespace, selectedPod, selectedContainer, showPrevious, sinceTime, viewMode]);
 
     const fetchLogs = async () => {
         // Stop any existing stream when fetching new logs
