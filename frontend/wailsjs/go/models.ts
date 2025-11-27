@@ -94,6 +94,20 @@ export namespace k8s {
 
 export namespace main {
 	
+	export class LogChunkResult {
+	    logs: string;
+	    hasMore: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new LogChunkResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.logs = source["logs"];
+	        this.hasMore = source["hasMore"];
+	    }
+	}
 	export class NodeDebugPodResult {
 	    podName: string;
 	    namespace: string;

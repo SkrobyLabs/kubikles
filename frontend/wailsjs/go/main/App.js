@@ -142,6 +142,14 @@ export function GetPodLogs(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['GetPodLogs'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
+export function GetPodLogsAfter(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetPodLogsAfter'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+export function GetPodLogsBefore(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetPodLogsBefore'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
 export function GetPodLogsFromStart(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['GetPodLogsFromStart'](arg1, arg2, arg3, arg4, arg5);
 }

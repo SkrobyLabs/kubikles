@@ -625,6 +625,139 @@ func (c *Client) GetPodLogsFromStart(namespace, podName, containerName string, t
 	return strings.Join(lines[:lineLimit], "\n"), nil
 }
 
+// GetPodLogsBefore fetches logs before a given timestamp.
+// Returns up to lineLimit lines that occur before the specified timestamp.
+// The beforeTime should be in RFC3339 format (e.g., 2024-11-26T14:30:00Z).
+// Returns the logs and a boolean indicating if there are more logs before these.
+func (c *Client) GetPodLogsBefore(namespace, podName, containerName string, timestamps bool, previous bool, beforeTime string, lineLimit int) (string, bool, error) {
+	allLogs, err := c.getPodLogsWithOptions(namespace, podName, containerName, nil, true, previous, "") // Always fetch with timestamps to find position
+	if err != nil {
+		return "", false, err
+	}
+	if lineLimit <= 0 {
+		lineLimit = 200
+	}
+
+	lines := strings.Split(allLogs, "\n")
+
+	// Normalize beforeTime - extract just the comparable portion (first 30 chars if available)
+	compareLen := 30
+	if len(beforeTime) < compareLen {
+		compareLen = len(beforeTime)
+	}
+	beforeTimePrefix := beforeTime[:compareLen]
+
+	// Find the line index where timestamp >= beforeTime (strict: we want lines BEFORE this)
+	cutoffIndex := -1
+	for i, line := range lines {
+		if len(line) >= 30 { // Timestamp is at least 30 chars: 2024-11-26T14:30:00.123456789Z
+			lineTime := line[:30]
+			// Use >= to find the first line at or after beforeTime
+			// We exclude this line and all after it
+			if lineTime >= beforeTimePrefix {
+				cutoffIndex = i
+				break
+			}
+		}
+	}
+
+	var resultLines []string
+	hasMoreBefore := false
+
+	if cutoffIndex == -1 {
+		// beforeTime is after all logs, return last lineLimit lines
+		if len(lines) > lineLimit {
+			resultLines = lines[len(lines)-lineLimit:]
+			hasMoreBefore = true
+		} else {
+			resultLines = lines
+		}
+	} else if cutoffIndex == 0 {
+		// beforeTime is before all logs, nothing to return
+		return "", false, nil
+	} else {
+		// Return lineLimit lines before cutoffIndex
+		startIndex := cutoffIndex - lineLimit
+		if startIndex < 0 {
+			startIndex = 0
+		} else {
+			hasMoreBefore = true
+		}
+		resultLines = lines[startIndex:cutoffIndex]
+	}
+
+	// If caller doesn't want timestamps, strip them
+	if !timestamps {
+		for i, line := range resultLines {
+			if len(line) > 31 {
+				resultLines[i] = line[31:] // Skip timestamp and space
+			}
+		}
+	}
+
+	return strings.Join(resultLines, "\n"), hasMoreBefore, nil
+}
+
+// GetPodLogsAfter fetches logs after a given timestamp.
+// Returns up to lineLimit lines that occur after the specified timestamp.
+// The afterTime should be in RFC3339 format.
+// Returns the logs and a boolean indicating if there are more logs after these.
+func (c *Client) GetPodLogsAfter(namespace, podName, containerName string, timestamps bool, previous bool, afterTime string, lineLimit int) (string, bool, error) {
+	// Always fetch with timestamps so we can properly compare
+	allLogs, err := c.getPodLogsWithOptions(namespace, podName, containerName, nil, true, previous, afterTime)
+	if err != nil {
+		return "", false, err
+	}
+	if lineLimit <= 0 {
+		lineLimit = 200
+	}
+
+	lines := strings.Split(allLogs, "\n")
+
+	// Normalize afterTime for comparison
+	compareLen := 30
+	if len(afterTime) < compareLen {
+		compareLen = len(afterTime)
+	}
+	afterTimePrefix := afterTime[:compareLen]
+
+	// Skip lines that are at or before our afterTime marker (we already have these)
+	startIdx := 0
+	for i, line := range lines {
+		if len(line) >= 30 {
+			lineTime := line[:30]
+			// Skip this line if its timestamp is <= afterTime (we already have it)
+			if lineTime <= afterTimePrefix {
+				startIdx = i + 1
+				continue
+			}
+		}
+		break
+	}
+
+	if startIdx >= len(lines) {
+		return "", false, nil
+	}
+
+	lines = lines[startIdx:]
+
+	hasMoreAfter := len(lines) > lineLimit
+	if hasMoreAfter {
+		lines = lines[:lineLimit]
+	}
+
+	// Strip timestamps if caller doesn't want them
+	if !timestamps {
+		for i, line := range lines {
+			if len(line) > 31 {
+				lines[i] = line[31:] // Skip timestamp and space
+			}
+		}
+	}
+
+	return strings.Join(lines, "\n"), hasMoreAfter, nil
+}
+
 func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string, tailLines *int64, timestamps bool, previous bool, sinceTime string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {

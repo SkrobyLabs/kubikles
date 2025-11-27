@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { GetPodLogs, GetAllPodLogs, GetPodLogsFromStart, SavePodLogs, SaveLogsBundle, StartLogStream, StopLogStream } from '../../../wailsjs/go/main/App';
+import { GetPodLogs, GetAllPodLogs, GetPodLogsFromStart, GetPodLogsBefore, GetPodLogsAfter, SavePodLogs, SaveLogsBundle, StartLogStream, StopLogStream } from '../../../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { useK8s } from '../../context/K8sContext';
+import { useDebug } from '../../context/DebugContext';
 import Convert from 'ansi-to-html';
 import {
     ArrowDownTrayIcon,
@@ -14,7 +15,9 @@ import {
     ChevronDoubleDownIcon,
     CalendarIcon,
     ExclamationTriangleIcon,
-    ArrowPathIcon
+    ArrowPathIcon,
+    BugAntIcon,
+    EyeIcon
 } from '@heroicons/react/24/outline';
 
 const converter = new Convert({
@@ -69,20 +72,28 @@ const toRFC3339 = (str) => {
     return normalized;
 };
 
-// Extract first timestamp from logs (Kubernetes format: 2024-11-26T14:30:00.123456789Z)
-const extractFirstTimestamp = (logText) => {
-    if (!logText) return '';
-    const match = logText.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/m);
-    if (match) {
-        // Return in user-friendly format: YYYY-MM-DD HH:MM:SS
-        return match[1].replace('T', ' ');
-    }
-    return '';
+// Log entry structure: { timestamp: string, content: string, source: 'initial'|'before'|'after'|'stream' }
+
+// Parse a raw log string (with timestamps) into structured log entries
+const parseLogLines = (rawLogs, source) => {
+    if (!rawLogs) return [];
+    return rawLogs.split('\n')
+        .filter(line => line.trim())
+        .map(line => {
+            // Match K8s timestamp format: 2024-11-26T14:30:00.123456789Z
+            const match = line.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s*(.*)/);
+            if (match) {
+                return { timestamp: match[1], content: match[2], source };
+            }
+            // Line without timestamp (shouldn't happen if we always fetch with timestamps)
+            return { timestamp: '', content: line, source };
+        });
 };
 
 export default function LogViewer({ namespace, pod, containers = [], siblingPods = [], podContainerMap = {}, ownerName = '', podCreationTime = '', tabContext = '' }) {
     const { currentContext } = useK8s();
-    const [logs, setLogs] = useState('');
+    const { isDebugMode } = useDebug();
+    const [logs, setLogs] = useState([]); // Array of { timestamp, content, source }
     const [loading, setLoading] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [downloadingBundle, setDownloadingBundle] = useState(false);
@@ -97,11 +108,42 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const [autoFollow, setAutoFollow] = useState(true); // User can toggle this
     const [streamDisconnected, setStreamDisconnected] = useState(false); // Track if stream was disconnected
     const [disconnectReason, setDisconnectReason] = useState(''); // Reason for disconnection
+    const [hasMoreBefore, setHasMoreBefore] = useState(false); // More logs available before current view
+    const [hasMoreAfter, setHasMoreAfter] = useState(false); // More logs available after current view
+    const [loadingBefore, setLoadingBefore] = useState(false); // Loading older logs (for UI)
+    const [loadingAfter, setLoadingAfter] = useState(false); // Loading newer logs (for UI)
     const logsStartRef = useRef(null);
     const logsEndRef = useRef(null);
     const streamIdRef = useRef(null);
     const logsContainerRef = useRef(null);
     const isAtBottomRef = useRef(true);
+    // Use refs for loading locks to prevent race conditions (React state is async)
+    const loadingBeforeRef = useRef(false);
+    const loadingAfterRef = useRef(false);
+    const isChunkLoadingRef = useRef(false); // Skip auto-scroll during chunk loads
+    // Track last fetched timestamps to avoid duplicate fetches
+    const lastFetchedBeforeTs = useRef('');
+    const lastFetchedAfterTs = useRef('');
+
+    const CHUNK_SIZE = 200; // Number of lines to load per chunk
+
+    // Extract first timestamp from current logs (for loading older logs)
+    const getFirstTimestamp = () => {
+        if (!logs.length) return '';
+        // Find first entry with a timestamp
+        const entry = logs.find(e => e.timestamp);
+        return entry?.timestamp || '';
+    };
+
+    // Extract last timestamp from current logs (for loading newer logs)
+    const getLastTimestamp = () => {
+        if (!logs.length) return '';
+        // Find last entry with a timestamp (search backwards)
+        for (let i = logs.length - 1; i >= 0; i--) {
+            if (logs[i].timestamp) return logs[i].timestamp;
+        }
+        return '';
+    };
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
@@ -117,12 +159,24 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         }
     }, [isStale]);
 
-    // Track scroll position to determine if user is at bottom
+    // Track scroll position and trigger chunk loading
     const handleScroll = () => {
         if (!logsContainerRef.current) return;
         const { scrollTop, scrollHeight, clientHeight } = logsContainerRef.current;
+
         // Consider "at bottom" if within 50px of the bottom
         isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 50;
+
+        // Load older logs when near top (within 100px) - works even when following
+        // Use ref for instant check to prevent race conditions
+        if (scrollTop < 100 && hasMoreBefore && !loadingBeforeRef.current) {
+            loadOlderLogs();
+        }
+
+        // Load newer logs when near bottom (within 100px) and not following
+        if (scrollHeight - scrollTop - clientHeight < 100 && hasMoreAfter && !loadingAfterRef.current && !isFollowing) {
+            loadNewerLogs();
+        }
     };
 
     useEffect(() => {
@@ -160,15 +214,155 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         try {
             let logData;
             if (viewMode === 'start') {
-                logData = await GetPodLogsFromStart(namespace, selectedPod, selectedContainer, showTimestamps, showPrevious);
+                logData = await GetPodLogsFromStart(namespace, selectedPod, selectedContainer, true, showPrevious);
+                // When starting from beginning, there are likely more logs after
+                setHasMoreBefore(false);
+                setHasMoreAfter(true); // Assume there's more until we know otherwise
             } else {
-                logData = await GetPodLogs(namespace, selectedPod, selectedContainer, showTimestamps, showPrevious, sinceTime);
+                logData = await GetPodLogs(namespace, selectedPod, selectedContainer, true, showPrevious, sinceTime);
+                // When loading from end/sinceTime, there are likely more logs before
+                setHasMoreBefore(true); // Assume there's more until we know otherwise
+                setHasMoreAfter(false);
             }
-            setLogs(logData);
+            setLogs(parseLogLines(logData, 'initial'));
         } catch (err) {
-            setLogs(`Error fetching logs: ${err}`);
+            setLogs([{ timestamp: '', content: `Error fetching logs: ${err}`, source: 'error' }]);
+            setHasMoreBefore(false);
+            setHasMoreAfter(false);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Load older logs (when scrolling to top)
+    const loadOlderLogs = async () => {
+        // Use ref for instant lock check to prevent race conditions
+        if (loadingBeforeRef.current || !hasMoreBefore) return;
+
+        const firstTs = getFirstTimestamp();
+        if (!firstTs) {
+            setHasMoreBefore(false);
+            return;
+        }
+
+        // Avoid duplicate fetches with the same timestamp
+        if (firstTs === lastFetchedBeforeTs.current) {
+            console.log('DEBUG: Skipping duplicate BEFORE fetch for', firstTs);
+            return;
+        }
+        lastFetchedBeforeTs.current = firstTs;
+
+        // Set locks immediately (sync) before any async operation
+        loadingBeforeRef.current = true;
+        isChunkLoadingRef.current = true; // Disable auto-scroll
+        setLoadingBefore(true); // For UI display
+
+        // Capture scroll position BEFORE the async call
+        const container = logsContainerRef.current;
+        const prevScrollHeight = container?.scrollHeight || 0;
+        const prevScrollTop = container?.scrollTop || 0;
+
+        // Stop momentum scrolling by freezing position
+        if (container) {
+            container.style.overflow = 'hidden';
+            requestAnimationFrame(() => {
+                if (container) container.style.overflow = 'auto';
+            });
+        }
+
+        try {
+            const result = await GetPodLogsBefore(
+                namespace, selectedPod, selectedContainer,
+                true, showPrevious, firstTs, CHUNK_SIZE
+            );
+
+            if (result.logs && result.logs.trim()) {
+                const newEntries = parseLogLines(result.logs, 'before');
+                setLogs(prev => [...newEntries, ...prev]);
+                setHasMoreBefore(result.hasMore);
+                // After loading older logs, enable loading newer (in case new logs appeared)
+                if (!isFollowing) {
+                    setHasMoreAfter(true);
+                }
+
+                // Restore scroll position after DOM update - stay in same place
+                // Use double requestAnimationFrame to ensure DOM has updated
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        if (container) {
+                            const newScrollHeight = container.scrollHeight;
+                            const addedHeight = newScrollHeight - prevScrollHeight;
+                            container.scrollTop = prevScrollTop + addedHeight;
+                        }
+                        isChunkLoadingRef.current = false; // Re-enable auto-scroll
+                    });
+                });
+            } else {
+                setHasMoreBefore(false);
+                isChunkLoadingRef.current = false;
+            }
+        } catch (err) {
+            console.error('Failed to load older logs:', err);
+            setHasMoreBefore(false);
+            isChunkLoadingRef.current = false;
+        } finally {
+            loadingBeforeRef.current = false;
+            setLoadingBefore(false);
+        }
+    };
+
+    // Load newer logs (when scrolling to bottom, not following)
+    const loadNewerLogs = async () => {
+        // Use ref for instant lock check to prevent race conditions
+        if (loadingAfterRef.current || !hasMoreAfter || isFollowing) return;
+
+        const lastTs = getLastTimestamp();
+        if (!lastTs) {
+            setHasMoreAfter(false);
+            return;
+        }
+
+        // Avoid duplicate fetches with the same timestamp
+        if (lastTs === lastFetchedAfterTs.current) {
+            console.log('DEBUG: Skipping duplicate AFTER fetch for', lastTs);
+            return;
+        }
+        lastFetchedAfterTs.current = lastTs;
+
+        // Set locks immediately (sync) before any async operation
+        loadingAfterRef.current = true;
+        isChunkLoadingRef.current = true; // Disable auto-scroll
+        setLoadingAfter(true); // For UI display
+
+        // Stop momentum scrolling by freezing position
+        const container = logsContainerRef.current;
+        if (container) {
+            container.style.overflow = 'hidden';
+            requestAnimationFrame(() => {
+                if (container) container.style.overflow = 'auto';
+            });
+        }
+
+        try {
+            const result = await GetPodLogsAfter(
+                namespace, selectedPod, selectedContainer,
+                true, showPrevious, lastTs, CHUNK_SIZE
+            );
+
+            if (result.logs && result.logs.trim()) {
+                const newEntries = parseLogLines(result.logs, 'after');
+                setLogs(prev => [...prev, ...newEntries]);
+                setHasMoreAfter(result.hasMore);
+            } else {
+                setHasMoreAfter(false);
+            }
+        } catch (err) {
+            console.error('Failed to load newer logs:', err);
+            setHasMoreAfter(false);
+        } finally {
+            loadingAfterRef.current = false;
+            isChunkLoadingRef.current = false;
+            setLoadingAfter(false);
         }
     };
 
@@ -184,7 +378,8 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         if (isFollowing && namespace && selectedPod && !loading) {
             const startStream = async () => {
                 try {
-                    const streamId = await StartLogStream(namespace, selectedPod, selectedContainer, showTimestamps);
+                    // Always stream with timestamps for chunk loading consistency (display strips them)
+                    const streamId = await StartLogStream(namespace, selectedPod, selectedContainer, true);
                     streamIdRef.current = streamId;
                 } catch (err) {
                     console.error('Failed to start log stream:', err);
@@ -225,7 +420,22 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             }
 
             if (event.line) {
-                setLogs(prev => prev ? prev + '\n' + event.line : event.line);
+                // Parse the streamed line and append as structured entry
+                const newEntries = parseLogLines(event.line, 'stream');
+                if (newEntries.length > 0) {
+                    setLogs(prev => {
+                        // Filter out stream lines older than what we already have
+                        // This prevents duplicates when stream starts with backlog
+                        const lastTs = prev.length > 0 ?
+                            (prev.slice().reverse().find(e => e.timestamp)?.timestamp || '') : '';
+
+                        const filteredEntries = lastTs ?
+                            newEntries.filter(e => !e.timestamp || e.timestamp > lastTs) :
+                            newEntries;
+
+                        return filteredEntries.length > 0 ? [...prev, ...filteredEntries] : prev;
+                    });
+                }
             }
         };
 
@@ -237,12 +447,20 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     }, []);
 
     // Auto-scroll to bottom only when user was already at bottom, or on initial load/mode change
-    const prevLogsRef = useRef('');
+    // Skip auto-scroll during chunk loading (we handle scroll position manually)
+    const prevLogsLengthRef = useRef(0);
     useEffect(() => {
-        const isInitialLoad = !prevLogsRef.current && logs;
-        const isNewFetch = prevLogsRef.current !== logs && !prevLogsRef.current.length;
+        // Skip auto-scroll during chunk loading
+        if (isChunkLoadingRef.current) {
+            prevLogsLengthRef.current = logs.length;
+            return;
+        }
 
-        if (viewMode === 'start' && logsContainerRef.current) {
+        const isInitialLoad = prevLogsLengthRef.current === 0 && logs.length > 0;
+        const isNewFetch = logs.length > 0 && prevLogsLengthRef.current === 0;
+
+        // Only auto-scroll on initial load or fresh fetch, not on chunk loads
+        if (viewMode === 'start' && logsContainerRef.current && (isInitialLoad || isNewFetch)) {
             logsContainerRef.current.scrollTop = 0;
             isAtBottomRef.current = false;
         } else if (logsContainerRef.current && (isAtBottomRef.current || isInitialLoad || isNewFetch)) {
@@ -250,15 +468,45 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             isAtBottomRef.current = true;
         }
 
-        prevLogsRef.current = logs;
+        prevLogsLengthRef.current = logs.length;
     }, [logs, viewMode]);
 
-    const getHtmlLogs = () => {
-        if (!logs) return { __html: "" };
-        return { __html: converter.toHtml(normalizeAnsiCodes(logs)) };
+    // Convert structured logs to HTML for display
+    const renderLogs = () => {
+        if (!logs || logs.length === 0) return null;
+
+        return logs.map((entry, index) => {
+            // Convert ANSI codes in content
+            const htmlContent = { __html: converter.toHtml(normalizeAnsiCodes(entry.content)) };
+
+            return (
+                <div key={index} className="flex">
+                    {showTimestamps && entry.timestamp && (
+                        <span className="text-gray-500 select-none mr-2 shrink-0">
+                            {entry.timestamp}
+                        </span>
+                    )}
+                    <span dangerouslySetInnerHTML={htmlContent} />
+                </div>
+            );
+        });
     };
 
     const jumpToStart = () => {
+        // Reset chunk loading state to prevent races
+        loadingBeforeRef.current = false;
+        loadingAfterRef.current = false;
+        isChunkLoadingRef.current = false;
+        lastFetchedBeforeTs.current = '';
+        lastFetchedAfterTs.current = '';
+        setLoadingBefore(false);
+        setLoadingAfter(false);
+
+        // Clear logs immediately and reset pagination state
+        setLogs([]);
+        setHasMoreBefore(false);
+        setHasMoreAfter(true);
+
         setViewMode('start');
         setSinceTime(''); // Clear time filter when jumping to start
     };
@@ -274,15 +522,33 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const jumpToEnd = () => {
         // If already in end mode, toggle auto-follow
         if (viewMode === 'end' && !sinceTime && !showPrevious) {
-            setAutoFollow(prev => !prev);
-            if (!autoFollow) {
-                // Re-enabling auto-follow, scroll to bottom
+            const newAutoFollow = !autoFollow;
+            setAutoFollow(newAutoFollow);
+            if (newAutoFollow) {
+                // Re-enabling auto-follow, scroll to bottom and stop manual loading
                 scrollToBottom();
+                setHasMoreAfter(false);
+            } else {
+                // Disabling auto-follow - enable manual loading of newer logs
+                setHasMoreAfter(true);
             }
             return;
         }
 
-        // Switching to end mode
+        // Switching to end mode - reset chunk loading state to prevent races
+        loadingBeforeRef.current = false;
+        loadingAfterRef.current = false;
+        isChunkLoadingRef.current = false;
+        lastFetchedBeforeTs.current = '';
+        lastFetchedAfterTs.current = '';
+        setLoadingBefore(false);
+        setLoadingAfter(false);
+
+        // Clear logs and reset pagination state
+        setLogs([]);
+        setHasMoreBefore(true);
+        setHasMoreAfter(false);
+
         setViewMode('end');
         setSinceTime(''); // Clear time filter to show latest logs
         setAutoFollow(true); // Enable auto-follow
@@ -343,6 +609,49 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         }
     };
 
+    // Convert structured logs to visible format (what user sees - respects showTimestamps setting)
+    const logsToVisibleString = () => {
+        return logs.map(entry => {
+            if (showTimestamps && entry.timestamp) {
+                return `${entry.timestamp} ${entry.content}`;
+            }
+            return entry.content;
+        }).join('\n');
+    };
+
+    // Convert structured logs to debug format (includes source markers)
+    const logsToDebugString = () => {
+        return logs.map(entry => {
+            const sourceMarker = `[${entry.source.toUpperCase()}]`;
+            if (entry.timestamp) {
+                return `${entry.timestamp} ${sourceMarker} ${entry.content}`;
+            }
+            return `${sourceMarker} ${entry.content}`;
+        }).join('\n');
+    };
+
+    // Download currently visible logs (what user sees)
+    const downloadVisibleLogs = async () => {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `${selectedPod}-${timestamp}.log`;
+        try {
+            await SavePodLogs(logsToVisibleString(), filename);
+        } catch (err) {
+            console.error('Failed to save visible logs:', err);
+        }
+    };
+
+    // DEBUG: Download currently loaded logs with debug markers
+    const downloadDebugLogs = async () => {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `DEBUG-${selectedPod}-${timestamp}.log`;
+        try {
+            await SavePodLogs(logsToDebugString(), filename);
+        } catch (err) {
+            console.error('Failed to save debug logs:', err);
+        }
+    };
+
     // Time Picker Modal Component
     const TimePickerModal = () => {
         const [inputTime, setInputTime] = useState('');
@@ -358,9 +667,11 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                 if (sinceTime) {
                     setInputTime(sinceTime.replace('T', ' ').replace('Z', ''));
                 } else {
-                    const extracted = extractFirstTimestamp(logs);
-                    if (extracted) {
-                        setInputTime(extracted);
+                    // Get first timestamp from structured logs
+                    const firstTs = getFirstTimestamp();
+                    if (firstTs) {
+                        // Format timestamp for input: YYYY-MM-DD HH:MM:SS
+                        setInputTime(firstTs.replace('T', ' ').replace(/\.\d+Z$/, ''));
                     } else if (podCreationTime) {
                         // Fallback to pod creation time (format: 2024-11-26T14:30:00Z)
                         setInputTime(podCreationTime.replace('T', ' ').replace('Z', '').slice(0, 19));
@@ -553,7 +864,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                     {/* Download */}
                     <button
                         onClick={downloadLogs}
-                        disabled={!logs || loading || downloading}
+                        disabled={logs.length === 0 || loading || downloading}
                         className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Download container logs"
                     >
@@ -571,6 +882,28 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                             {downloadingBundle ? <Spinner /> : <ArchiveBoxArrowDownIcon className="w-4 h-4" />}
                         </button>
                     )}
+
+                    {/* Download visible logs (what user currently sees) */}
+                    <button
+                        onClick={downloadVisibleLogs}
+                        disabled={logs.length === 0}
+                        className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Download currently visible logs"
+                    >
+                        <EyeIcon className="w-4 h-4" />
+                    </button>
+
+                    {/* DEBUG: Download logs with debug markers (only visible in debug mode) */}
+                    {isDebugMode && (
+                        <button
+                            onClick={downloadDebugLogs}
+                            disabled={logs.length === 0}
+                            className="p-1.5 rounded text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="DEBUG: Download logs with source markers"
+                        >
+                            <BugAntIcon className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -586,15 +919,35 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                     </div>
                 ) : (
                     <div className={wrapLines ? "whitespace-pre-wrap break-all" : "whitespace-pre"}>
+                        {/* Loading older logs indicator */}
+                        {loadingBefore && (
+                            <div className="flex items-center justify-center py-2 text-gray-500">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                                Loading older logs...
+                            </div>
+                        )}
+                        {/* At the top indicator */}
+                        {!hasMoreBefore && !loadingBefore && logs.length > 0 && (
+                            <div className="flex items-center justify-center py-1 text-gray-600 text-xs">
+                                — You are at the top —
+                            </div>
+                        )}
                         <div ref={logsStartRef} />
-                        {logs ? (
-                            <div dangerouslySetInnerHTML={getHtmlLogs()} />
+                        {logs.length > 0 ? (
+                            <div>{renderLogs()}</div>
                         ) : showPrevious ? (
                             <div className="text-amber-400">No previous container logs available.</div>
                         ) : (
                             <div className="text-gray-500">No logs available.</div>
                         )}
                         <div ref={logsEndRef} />
+                        {/* Loading newer logs indicator */}
+                        {loadingAfter && (
+                            <div className="flex items-center justify-center py-2 text-gray-500">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                                Loading newer logs...
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

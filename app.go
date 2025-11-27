@@ -364,6 +364,38 @@ func (a *App) GetPodLogsFromStart(namespace, podName, containerName string, time
 	return a.k8sClient.GetPodLogsFromStart(namespace, podName, containerName, timestamps, previous, 200)
 }
 
+// LogChunkResult represents the result of a chunked log fetch
+type LogChunkResult struct {
+	Logs    string `json:"logs"`
+	HasMore bool   `json:"hasMore"`
+}
+
+func (a *App) GetPodLogsBefore(namespace, podName, containerName string, timestamps bool, previous bool, beforeTime string, limit int) (*LogChunkResult, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetPodLogsBefore called: context=%s, ns=%s, pod=%s, container=%s, beforeTime=%s, limit=%d", currentContext, namespace, podName, containerName, beforeTime, limit)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	logs, hasMore, err := a.k8sClient.GetPodLogsBefore(namespace, podName, containerName, timestamps, previous, beforeTime, limit)
+	if err != nil {
+		return nil, err
+	}
+	return &LogChunkResult{Logs: logs, HasMore: hasMore}, nil
+}
+
+func (a *App) GetPodLogsAfter(namespace, podName, containerName string, timestamps bool, previous bool, afterTime string, limit int) (*LogChunkResult, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetPodLogsAfter called: context=%s, ns=%s, pod=%s, container=%s, afterTime=%s, limit=%d", currentContext, namespace, podName, containerName, afterTime, limit)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	logs, hasMore, err := a.k8sClient.GetPodLogsAfter(namespace, podName, containerName, timestamps, previous, afterTime, limit)
+	if err != nil {
+		return nil, err
+	}
+	return &LogChunkResult{Logs: logs, HasMore: hasMore}, nil
+}
+
 // LogStreamEvent is emitted for each log line during streaming
 type LogStreamEvent struct {
 	StreamID string `json:"streamId"`

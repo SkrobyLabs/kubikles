@@ -74,6 +74,10 @@ export function GetPVYaml(arg1:string):Promise<string>;
 
 export function GetPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean,arg6:string):Promise<string>;
 
+export function GetPodLogsAfter(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean,arg6:string,arg7:number):Promise<main.LogChunkResult>;
+
+export function GetPodLogsBefore(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean,arg6:string,arg7:number):Promise<main.LogChunkResult>;
+
 export function GetPodLogsFromStart(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean):Promise<string>;
 
 export function GetPodYaml(arg1:string,arg2:string):Promise<string>;

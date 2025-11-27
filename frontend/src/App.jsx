@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { K8sProvider, useK8s } from './context/K8sContext';
 import { UIProvider, useUI } from './context/UIContext';
+import { DebugProvider } from './context/DebugContext';
 import Sidebar from './components/layout/Sidebar';
 import BottomPanel from './components/layout/BottomPanel';
 import PodList from './features/workloads/pods/PodList';
@@ -206,11 +207,13 @@ function MainLayout() {
 
 function App() {
     return (
-        <K8sProvider>
-            <UIProvider>
-                <MainLayout />
-            </UIProvider>
-        </K8sProvider>
+        <DebugProvider>
+            <K8sProvider>
+                <UIProvider>
+                    <MainLayout />
+                </UIProvider>
+            </K8sProvider>
+        </DebugProvider>
     );
 }
 

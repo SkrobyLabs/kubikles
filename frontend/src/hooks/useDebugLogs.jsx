@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useUI } from '../context/UIContext';
+import { useDebug } from '../context/DebugContext';
 import DebugLogViewer from '../components/shared/DebugLogViewer';
 import { SaveLogFile } from '../../wailsjs/go/main/App';
 
@@ -7,6 +8,7 @@ export const useDebugLogs = () => {
     const [debugLogs, setDebugLogs] = useState([]);
     const isListenerRegistered = useRef(false);
     const { openTab, bottomTabs, setBottomTabs } = useUI(); // We need setBottomTabs to update content
+    const { enableDebugMode } = useDebug();
 
     useEffect(() => {
         if (window.runtime && !isListenerRegistered.current) {
@@ -65,6 +67,9 @@ export const useDebugLogs = () => {
     const toggleDebug = () => {
         const debugTabId = 'debug-logs';
         const existingTab = bottomTabs.find(t => t.id === debugTabId);
+
+        // Enable debug mode globally when opening debug logs
+        enableDebugMode();
 
         if (!existingTab) {
             openTab({
