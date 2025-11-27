@@ -75,6 +75,7 @@ export const useDebugLogs = () => {
             openTab({
                 id: debugTabId,
                 title: 'Debug Logs',
+                context: null, // Debug logs are context-independent
                 content: (
                     <DebugLogViewer
                         logs={debugLogs}

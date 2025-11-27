@@ -81,8 +81,10 @@ export const UIProvider = ({ children }) => {
                 };
                 return newTabs;
             }
-            // Add new tab with current context
-            return [...prev, { ...tab, context: currentContext }];
+            // Add new tab - use explicit context if provided, otherwise current context
+            // (context: null means context-independent, context: undefined means use current)
+            const tabContext = 'context' in tab ? tab.context : currentContext;
+            return [...prev, { ...tab, context: tabContext }];
         });
         setActiveTabId(tab.id);
     };
