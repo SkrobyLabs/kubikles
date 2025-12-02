@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { MagnifyingGlassIcon, EllipsisVerticalIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import SearchSelect from './SearchSelect';
 import { createFilter, getFieldsMetadata } from '../../utils/search';
@@ -26,6 +26,72 @@ export default function ResourceList({
     const [showSearchHelp, setShowSearchHelp] = useState(false);
     const columnMenuRef = useRef(null);
     const searchHelpRef = useRef(null);
+    const tableRef = useRef(null);
+
+    // Column resizing state
+    const [columnWidths, setColumnWidths] = useState(() => {
+        if (!resourceType) return {};
+        try {
+            const saved = localStorage.getItem(`kubikles_colwidths_${resourceType}`);
+            return saved ? JSON.parse(saved) : {};
+        } catch {
+            return {};
+        }
+    });
+    const resizingRef = useRef(null);
+
+    // Save column widths to localStorage
+    useEffect(() => {
+        if (resourceType && Object.keys(columnWidths).length > 0) {
+            localStorage.setItem(`kubikles_colwidths_${resourceType}`, JSON.stringify(columnWidths));
+        }
+    }, [columnWidths, resourceType]);
+
+    // Column resize handlers
+    const handleResizeStart = useCallback((e, columnKey) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const startX = e.clientX;
+        const th = e.target.parentElement;
+        const startWidth = th.offsetWidth;
+
+        resizingRef.current = { columnKey, startX, startWidth };
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+
+        const handleMouseMove = (moveEvent) => {
+            if (!resizingRef.current) return;
+            const diff = moveEvent.clientX - resizingRef.current.startX;
+            const newWidth = Math.max(50, resizingRef.current.startWidth + diff);
+            setColumnWidths(prev => ({
+                ...prev,
+                [resizingRef.current.columnKey]: newWidth
+            }));
+        };
+
+        const handleMouseUp = () => {
+            resizingRef.current = null;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }, []);
+
+    // Double-click to reset column width
+    const handleResizeDoubleClick = useCallback((e, columnKey) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setColumnWidths(prev => {
+            const newWidths = { ...prev };
+            delete newWidths[columnKey];
+            return newWidths;
+        });
+    }, []);
 
     // Consume pending search when navigating to this view
     useEffect(() => {
@@ -200,58 +266,76 @@ export default function ResourceList({
                 )}
             </div>
             <div className="flex-1 overflow-auto">
-                <table className="w-full text-left border-collapse">
+                <table ref={tableRef} className="text-left border-collapse min-w-full">
                     <thead className="bg-surface sticky top-0 z-10">
                         <tr>
-                            {visibleColumns.map((col) => (
-                                <th
-                                    key={col.key}
-                                    className={`p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none ${col.isColumnSelector ? 'sticky right-0 bg-surface z-20' : 'cursor-pointer hover:text-text'}`}
-                                    onClick={() => !col.isColumnSelector && handleSort(col.key)}
-                                >
-                                    {col.isColumnSelector ? (
-                                        <div className={`relative flex ${col.align === 'center' ? 'justify-center' : 'justify-end'}`} ref={columnMenuRef}>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setShowColumnMenu(!showColumnMenu);
-                                                }}
-                                                className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                            {visibleColumns.map((col, colIndex) => {
+                                const isLastDataColumn = colIndex === visibleColumns.length - 2 && visibleColumns[visibleColumns.length - 1]?.isColumnSelector;
+                                const isResizable = !col.isColumnSelector;
+                                const width = columnWidths[col.key];
+
+                                return (
+                                    <th
+                                        key={col.key}
+                                        className={`p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none relative whitespace-nowrap ${col.isColumnSelector ? 'sticky right-0 bg-surface z-20' : 'cursor-pointer hover:text-text'}`}
+                                        style={width ? { width: `${width}px`, minWidth: `${width}px` } : undefined}
+                                        onClick={() => !col.isColumnSelector && handleSort(col.key)}
+                                    >
+                                        {col.isColumnSelector ? (
+                                            <div className={`relative flex ${col.align === 'center' ? 'justify-center' : 'justify-end'}`} ref={columnMenuRef}>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setShowColumnMenu(!showColumnMenu);
+                                                    }}
+                                                    className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                                                >
+                                                    <EllipsisVerticalIcon className="h-5 w-5" />
+                                                </button>
+                                                {showColumnMenu && (
+                                                    <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-md shadow-lg z-50 py-1">
+                                                        {columns.filter(c => !c.isColumnSelector).map(c => (
+                                                            <label
+                                                                key={c.key}
+                                                                className="flex items-center px-4 py-2 text-sm text-text hover:bg-white/5 cursor-pointer"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={!hiddenColumns.has(c.key)}
+                                                                    onChange={() => toggleColumn(c.key)}
+                                                                    className="mr-2 rounded border-gray-600 bg-background text-primary focus:ring-primary"
+                                                                />
+                                                                {c.label}
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className={`flex items-center gap-1 ${col.align === 'center' ? 'justify-center' : ''}`}>
+                                                {col.label}
+                                                {sortConfig.key === col.key && (
+                                                    <span className="text-primary">
+                                                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                        {/* Resize handle */}
+                                        {isResizable && !isLastDataColumn && (
+                                            <div
+                                                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary group"
+                                                onMouseDown={(e) => handleResizeStart(e, col.key)}
+                                                onDoubleClick={(e) => handleResizeDoubleClick(e, col.key)}
+                                                onClick={(e) => e.stopPropagation()}
                                             >
-                                                <EllipsisVerticalIcon className="h-5 w-5" />
-                                            </button>
-                                            {showColumnMenu && (
-                                                <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-md shadow-lg z-50 py-1">
-                                                    {columns.filter(c => !c.isColumnSelector).map(c => (
-                                                        <label
-                                                            key={c.key}
-                                                            className="flex items-center px-4 py-2 text-sm text-text hover:bg-white/5 cursor-pointer"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={!hiddenColumns.has(c.key)}
-                                                                onChange={() => toggleColumn(c.key)}
-                                                                className="mr-2 rounded border-gray-600 bg-background text-primary focus:ring-primary"
-                                                            />
-                                                            {c.label}
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className={`flex items-center gap-1 ${col.align === 'center' ? 'justify-center' : ''}`}>
-                                            {col.label}
-                                            {sortConfig.key === col.key && (
-                                                <span className="text-primary">
-                                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
-                                </th>
-                            ))}
+                                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gray-600 group-hover:bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            </div>
+                                        )}
+                                    </th>
+                                );
+                            })}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -277,9 +361,15 @@ export default function ResourceList({
                                         const content = col.render ? col.render(item) : item[col.key];
                                         const isNamespaceColumn = col.key === 'namespace' && onNamespaceChange;
                                         const namespaceValue = item.metadata?.namespace;
+                                        const width = columnWidths[col.key];
 
                                         return (
-                                            <td key={col.key} className={`p-3 text-sm text-text whitespace-nowrap ${col.align === 'center' ? 'text-center' : ''} ${col.isColumnSelector ? 'sticky right-0 bg-background' : ''}`}>
+                                            <td
+                                                key={col.key}
+                                                className={`p-3 text-sm text-text whitespace-nowrap ${col.align === 'center' ? 'text-center' : ''} ${col.isColumnSelector ? 'sticky right-0 bg-background' : ''} ${width ? 'overflow-hidden text-ellipsis' : ''}`}
+                                                style={width ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` } : undefined}
+                                                title={width && typeof content === 'string' ? content : undefined}
+                                            >
                                                 {isNamespaceColumn && namespaceValue ? (
                                                     <button
                                                         onClick={(e) => {
