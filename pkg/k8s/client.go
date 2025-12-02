@@ -13,6 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -746,6 +747,115 @@ func (c *Client) DeleteService(contextName, namespace, name string) error {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	return cs.CoreV1().Services(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// Ingress operations
+func (c *Client) ListIngresses(namespace string) ([]networkingv1.Ingress, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	ingresses, err := cs.NetworkingV1().Ingresses(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return ingresses.Items, nil
+}
+
+func (c *Client) GetIngressYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	ingress, err := cs.NetworkingV1().Ingresses(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	// Remove managed fields
+	ingress.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(ingress)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateIngressYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var ingress networkingv1.Ingress
+	if err := yaml.Unmarshal([]byte(yamlContent), &ingress); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.NetworkingV1().Ingresses(namespace).Update(context.TODO(), &ingress, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteIngress(contextName, namespace, name string) error {
+	fmt.Printf("Deleting ingress: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.NetworkingV1().Ingresses(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// IngressClass operations (cluster-scoped)
+func (c *Client) ListIngressClasses(contextName string) ([]networkingv1.IngressClass, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ingressClasses, err := cs.NetworkingV1().IngressClasses().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return ingressClasses.Items, nil
+}
+
+func (c *Client) GetIngressClassYaml(name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	ingressClass, err := cs.NetworkingV1().IngressClasses().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	ingressClass.ManagedFields = nil
+
+	yamlBytes, err := yaml.Marshal(ingressClass)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateIngressClassYaml(name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var ingressClass networkingv1.IngressClass
+	if err := yaml.Unmarshal([]byte(yamlContent), &ingressClass); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.NetworkingV1().IngressClasses().Update(context.TODO(), &ingressClass, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteIngressClass(contextName, name string) error {
+	fmt.Printf("Deleting ingressclass: context=%s, name=%s\n", contextName, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.NetworkingV1().IngressClasses().Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
 
 func (c *Client) ListConfigMaps(namespace string) ([]v1.ConfigMap, error) {

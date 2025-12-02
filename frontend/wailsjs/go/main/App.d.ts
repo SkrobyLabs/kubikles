@@ -20,6 +20,10 @@ export function DeleteDeployment(arg1:string,arg2:string,arg3:string):Promise<vo
 
 export function DeleteEvent(arg1:string,arg2:string):Promise<void>;
 
+export function DeleteIngress(arg1:string,arg2:string):Promise<void>;
+
+export function DeleteIngressClass(arg1:string):Promise<void>;
+
 export function DeleteJob(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteNamespace(arg1:string):Promise<void>;
@@ -61,6 +65,10 @@ export function GetDaemonSetYaml(arg1:string,arg2:string):Promise<string>;
 export function GetDeploymentYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetEventYAML(arg1:string,arg2:string):Promise<string>;
+
+export function GetIngressClassYaml(arg1:string):Promise<string>;
+
+export function GetIngressYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetJobYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -117,6 +125,10 @@ export function ListDaemonSets(arg1:string):Promise<Array<v1.DaemonSet>>;
 export function ListDeployments(arg1:string):Promise<Array<v1.Deployment>>;
 
 export function ListEvents(arg1:string):Promise<Array<v1.Event>>;
+
+export function ListIngressClasses():Promise<Array<v1.IngressClass>>;
+
+export function ListIngresses(arg1:string):Promise<Array<v1.Ingress>>;
 
 export function ListJobs(arg1:string):Promise<Array<v1.Job>>;
 
@@ -187,6 +199,10 @@ export function UpdateDaemonSetYaml(arg1:string,arg2:string,arg3:string):Promise
 export function UpdateDeploymentYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateEventYAML(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateIngressClassYaml(arg1:string,arg2:string):Promise<void>;
+
+export function UpdateIngressYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateJobYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

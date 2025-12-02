@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { EllipsisVerticalIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { CronExpressionParser } from 'cron-parser';
 import ResourceList from '../../../components/shared/ResourceList';
 import CronJobActionsMenu from './CronJobActionsMenu';
@@ -92,16 +92,16 @@ export default function CronJobList({ isVisible }) {
         },
         {
             key: 'suspend',
-            label: 'Suspend',
+            label: 'Suspended',
             render: (item) => {
                 const isSuspended = item.spec?.suspend || false;
-                return (
-                    <span className={`px-2 py-1 rounded text-xs ${isSuspended ? 'bg-yellow-900/30 text-yellow-400' : 'bg-green-900/30 text-green-400'}`}>
-                        {isSuspended ? 'Yes' : 'No'}
-                    </span>
+                return isSuspended ? (
+                    <CheckCircleIcon className="h-5 w-5 text-green-400" />
+                ) : (
+                    <span className="text-gray-500">-</span>
                 );
             },
-            getValue: (item) => item.spec?.suspend || false
+            getValue: (item) => item.spec?.suspend ? 'Yes' : 'No'
         },
         {
             key: 'lastRun',

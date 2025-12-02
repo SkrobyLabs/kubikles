@@ -16,7 +16,9 @@ import {
     BellAlertIcon,
     ChevronDownIcon,
     ChevronRightIcon,
-    PuzzlePieceIcon
+    PuzzlePieceIcon,
+    ArrowsRightLeftIcon,
+    TagIcon
 } from '@heroicons/react/24/outline';
 import SearchSelect from '../shared/SearchSelect';
 import Logger from '../../utils/Logger';
@@ -155,6 +157,8 @@ export default function Sidebar({
             title: 'Network',
             items: [
                 { id: 'services', label: 'Services', icon: GlobeAltIcon },
+                { id: 'ingresses', label: 'Ingresses', icon: ArrowsRightLeftIcon },
+                { id: 'ingressclasses', label: 'Ingress Classes', icon: TagIcon },
             ]
         },
         {

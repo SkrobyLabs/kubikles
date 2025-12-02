@@ -5825,6 +5825,534 @@ export namespace v1 {
 	        this.ip = source["ip"];
 	    }
 	}
+	export class IngressPortStatus {
+	    port: number;
+	    protocol: string;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressPortStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.port = source["port"];
+	        this.protocol = source["protocol"];
+	        this.error = source["error"];
+	    }
+	}
+	export class IngressLoadBalancerIngress {
+	    ip?: string;
+	    hostname?: string;
+	    ports?: IngressPortStatus[];
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressLoadBalancerIngress(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ip = source["ip"];
+	        this.hostname = source["hostname"];
+	        this.ports = this.convertValues(source["ports"], IngressPortStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class IngressLoadBalancerStatus {
+	    ingress?: IngressLoadBalancerIngress[];
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressLoadBalancerStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ingress = this.convertValues(source["ingress"], IngressLoadBalancerIngress);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class IngressStatus {
+	    loadBalancer?: IngressLoadBalancerStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.loadBalancer = this.convertValues(source["loadBalancer"], IngressLoadBalancerStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class HTTPIngressPath {
+	    path?: string;
+	    pathType?: string;
+	    backend: IngressBackend;
+	
+	    static createFrom(source: any = {}) {
+	        return new HTTPIngressPath(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.pathType = source["pathType"];
+	        this.backend = this.convertValues(source["backend"], IngressBackend);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class HTTPIngressRuleValue {
+	    paths: HTTPIngressPath[];
+	
+	    static createFrom(source: any = {}) {
+	        return new HTTPIngressRuleValue(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.paths = this.convertValues(source["paths"], HTTPIngressPath);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class IngressRule {
+	    host?: string;
+	    // Go type: HTTPIngressRuleValue
+	    http?: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressRule(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.host = source["host"];
+	        this.http = this.convertValues(source["http"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class IngressTLS {
+	    hosts?: string[];
+	    secretName?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressTLS(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hosts = source["hosts"];
+	        this.secretName = source["secretName"];
+	    }
+	}
+	export class ServiceBackendPort {
+	    name?: string;
+	    number?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ServiceBackendPort(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.number = source["number"];
+	    }
+	}
+	export class IngressServiceBackend {
+	    name: string;
+	    port?: ServiceBackendPort;
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressServiceBackend(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.port = this.convertValues(source["port"], ServiceBackendPort);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class IngressBackend {
+	    service?: IngressServiceBackend;
+	    resource?: TypedLocalObjectReference;
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressBackend(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.service = this.convertValues(source["service"], IngressServiceBackend);
+	        this.resource = this.convertValues(source["resource"], TypedLocalObjectReference);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class IngressSpec {
+	    ingressClassName?: string;
+	    defaultBackend?: IngressBackend;
+	    tls?: IngressTLS[];
+	    rules?: IngressRule[];
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ingressClassName = source["ingressClassName"];
+	        this.defaultBackend = this.convertValues(source["defaultBackend"], IngressBackend);
+	        this.tls = this.convertValues(source["tls"], IngressTLS);
+	        this.rules = this.convertValues(source["rules"], IngressRule);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Ingress {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: IngressSpec;
+	    status?: IngressStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new Ingress(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], IngressSpec);
+	        this.status = this.convertValues(source["status"], IngressStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class IngressClassParametersReference {
+	    apiGroup?: string;
+	    kind: string;
+	    name: string;
+	    scope?: string;
+	    namespace?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressClassParametersReference(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.apiGroup = source["apiGroup"];
+	        this.kind = source["kind"];
+	        this.name = source["name"];
+	        this.scope = source["scope"];
+	        this.namespace = source["namespace"];
+	    }
+	}
+	export class IngressClassSpec {
+	    controller?: string;
+	    parameters?: IngressClassParametersReference;
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressClassSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.controller = source["controller"];
+	        this.parameters = this.convertValues(source["parameters"], IngressClassParametersReference);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class IngressClass {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: IngressClassSpec;
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressClass(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], IngressClassSpec);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	
 	
@@ -8350,6 +8878,7 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	
 	
 	
 	

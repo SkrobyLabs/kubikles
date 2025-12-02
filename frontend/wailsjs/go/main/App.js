@@ -34,6 +34,14 @@ export function DeleteEvent(arg1, arg2) {
   return window['go']['main']['App']['DeleteEvent'](arg1, arg2);
 }
 
+export function DeleteIngress(arg1, arg2) {
+  return window['go']['main']['App']['DeleteIngress'](arg1, arg2);
+}
+
+export function DeleteIngressClass(arg1) {
+  return window['go']['main']['App']['DeleteIngressClass'](arg1);
+}
+
 export function DeleteJob(arg1, arg2) {
   return window['go']['main']['App']['DeleteJob'](arg1, arg2);
 }
@@ -116,6 +124,14 @@ export function GetDeploymentYaml(arg1, arg2) {
 
 export function GetEventYAML(arg1, arg2) {
   return window['go']['main']['App']['GetEventYAML'](arg1, arg2);
+}
+
+export function GetIngressClassYaml(arg1) {
+  return window['go']['main']['App']['GetIngressClassYaml'](arg1);
+}
+
+export function GetIngressYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetIngressYaml'](arg1, arg2);
 }
 
 export function GetJobYaml(arg1, arg2) {
@@ -228,6 +244,14 @@ export function ListDeployments(arg1) {
 
 export function ListEvents(arg1) {
   return window['go']['main']['App']['ListEvents'](arg1);
+}
+
+export function ListIngressClasses() {
+  return window['go']['main']['App']['ListIngressClasses']();
+}
+
+export function ListIngresses(arg1) {
+  return window['go']['main']['App']['ListIngresses'](arg1);
 }
 
 export function ListJobs(arg1) {
@@ -368,6 +392,14 @@ export function UpdateDeploymentYaml(arg1, arg2, arg3) {
 
 export function UpdateEventYAML(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateEventYAML'](arg1, arg2, arg3);
+}
+
+export function UpdateIngressClassYaml(arg1, arg2) {
+  return window['go']['main']['App']['UpdateIngressClassYaml'](arg1, arg2);
+}
+
+export function UpdateIngressYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateIngressYaml'](arg1, arg2, arg3);
 }
 
 export function UpdateJobYaml(arg1, arg2, arg3) {

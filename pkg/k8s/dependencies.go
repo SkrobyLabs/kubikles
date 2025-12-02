@@ -70,6 +70,8 @@ func (c *Client) GetResourceDependencies(contextName, resourceType, namespace, n
 		return c.getSecretDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "service":
 		return c.getServiceDependencies(cs, contextName, namespace, name, graph, nodeMap)
+	case "ingress":
+		return c.getIngressDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
 	}
@@ -687,7 +689,58 @@ func (c *Client) getServiceDependencies(cs kubernetes.Interface, contextName, na
 		}
 	}
 
+	// Find Ingresses that route to this Service
+	c.findIngressesForService(cs, graph, nodeMap, namespace, name, svcID)
+
 	return graph, nil
+}
+
+// findIngressesForService finds all Ingresses that route to a given Service
+func (c *Client) findIngressesForService(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, namespace, serviceName, svcID string) {
+	ingresses, err := cs.NetworkingV1().Ingresses(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return
+	}
+
+	for _, ingress := range ingresses.Items {
+		routesToService := false
+
+		// Check default backend
+		if ingress.Spec.DefaultBackend != nil && ingress.Spec.DefaultBackend.Service != nil {
+			if ingress.Spec.DefaultBackend.Service.Name == serviceName {
+				routesToService = true
+			}
+		}
+
+		// Check rules
+		if !routesToService {
+			for _, rule := range ingress.Spec.Rules {
+				if rule.HTTP == nil {
+					continue
+				}
+				for _, path := range rule.HTTP.Paths {
+					if path.Backend.Service != nil && path.Backend.Service.Name == serviceName {
+						routesToService = true
+						break
+					}
+				}
+				if routesToService {
+					break
+				}
+			}
+		}
+
+		if routesToService {
+			ingressID := nodeID("Ingress", namespace, ingress.Name)
+			c.addNode(graph, nodeMap, DependencyNode{
+				ID:        ingressID,
+				Kind:      "Ingress",
+				Name:      ingress.Name,
+				Namespace: namespace,
+			})
+			c.addEdge(graph, ingressID, svcID, "routes-to")
+		}
+	}
 }
 
 // Helper functions
@@ -746,6 +799,9 @@ func (c *Client) findSelectingServices(cs kubernetes.Interface, graph *Dependenc
 					break
 				}
 			}
+
+			// Find Ingresses that route to this Service
+			c.findIngressesForService(cs, graph, nodeMap, namespace, svc.Name, svcID)
 		}
 	}
 }
@@ -869,4 +925,81 @@ func matchesSelector(labels, selector map[string]string) bool {
 		}
 	}
 	return true
+}
+
+// getIngressDependencies resolves dependencies for an Ingress
+func (c *Client) getIngressDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+	ingress, err := cs.NetworkingV1().Ingresses(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ingress: %w", err)
+	}
+
+	ingressID := nodeID("Ingress", namespace, name)
+	c.addNode(graph, nodeMap, DependencyNode{
+		ID:        ingressID,
+		Kind:      "Ingress",
+		Name:      name,
+		Namespace: namespace,
+	})
+
+	// Resolve IngressClass
+	if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName != "" {
+		icName := *ingress.Spec.IngressClassName
+		icID := nodeID("IngressClass", "", icName)
+		c.addNode(graph, nodeMap, DependencyNode{
+			ID:   icID,
+			Kind: "IngressClass",
+			Name: icName,
+		})
+		c.addEdge(graph, ingressID, icID, "uses")
+	}
+
+	// Resolve TLS secrets
+	for _, tls := range ingress.Spec.TLS {
+		if tls.SecretName != "" {
+			secretID := nodeID("Secret", namespace, tls.SecretName)
+			c.addNode(graph, nodeMap, DependencyNode{
+				ID:        secretID,
+				Kind:      "Secret",
+				Name:      tls.SecretName,
+				Namespace: namespace,
+			})
+			c.addEdge(graph, ingressID, secretID, "uses")
+		}
+	}
+
+	// Resolve default backend service
+	if ingress.Spec.DefaultBackend != nil && ingress.Spec.DefaultBackend.Service != nil {
+		svcName := ingress.Spec.DefaultBackend.Service.Name
+		svcID := nodeID("Service", namespace, svcName)
+		c.addNode(graph, nodeMap, DependencyNode{
+			ID:        svcID,
+			Kind:      "Service",
+			Name:      svcName,
+			Namespace: namespace,
+		})
+		c.addEdge(graph, ingressID, svcID, "routes-to")
+	}
+
+	// Resolve backend services from rules
+	for _, rule := range ingress.Spec.Rules {
+		if rule.HTTP == nil {
+			continue
+		}
+		for _, path := range rule.HTTP.Paths {
+			if path.Backend.Service != nil {
+				svcName := path.Backend.Service.Name
+				svcID := nodeID("Service", namespace, svcName)
+				c.addNode(graph, nodeMap, DependencyNode{
+					ID:        svcID,
+					Kind:      "Service",
+					Name:      svcName,
+					Namespace: namespace,
+				})
+				c.addEdge(graph, ingressID, svcID, "routes-to")
+			}
+		}
+	}
+
+	return graph, nil
 }

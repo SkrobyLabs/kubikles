@@ -13,6 +13,8 @@ import NodeList from './features/cluster/nodes/NodeList';
 import NamespaceList from './features/cluster/namespaces/NamespaceList';
 import EventList from './features/cluster/events/EventList';
 import ServiceList from './features/network/services/ServiceList';
+import IngressList from './features/network/ingresses/IngressList';
+import IngressClassList from './features/network/ingressclasses/IngressClassList';
 import ConfigMapList from './features/config/configmaps/ConfigMapList';
 import SecretList from './features/config/secrets/SecretList';
 import JobList from './features/workloads/jobs/JobList';
@@ -142,6 +144,8 @@ function MainLayout() {
             case 'namespaces': return <NamespaceList isVisible={true} />;
             case 'events': return <EventList isVisible={true} />;
             case 'services': return <ServiceList isVisible={true} />;
+            case 'ingresses': return <IngressList isVisible={true} />;
+            case 'ingressclasses': return <IngressClassList isVisible={true} />;
             case 'configmaps': return <ConfigMapList isVisible={true} />;
             case 'secrets': return <SecretList isVisible={true} />;
             case 'pvcs': return <PVCList isVisible={true} />;
