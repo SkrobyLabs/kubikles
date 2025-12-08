@@ -1447,7 +1447,21 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                         )}
                         <div ref={logsStartRef} />
                         {logs.length > 0 ? (
-                            <div>{renderedLogs}</div>
+                            <>
+                                {/* No matches found - offer to load all logs */}
+                                {searchTerm && matchCount === 0 && !isAllLoaded && !loadingAll && (
+                                    <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                                        <span className="mb-3">No matches found in loaded logs</span>
+                                        <button
+                                            onClick={loadAllLogs}
+                                            className="px-4 py-2 text-sm bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors"
+                                        >
+                                            Load all logs and search
+                                        </button>
+                                    </div>
+                                )}
+                                <div>{renderedLogs}</div>
+                            </>
                         ) : showPrevious ? (
                             <div className="text-amber-400">No previous container logs available.</div>
                         ) : (
