@@ -614,21 +614,23 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     }, [logs, viewMode]);
 
     // Create search regex with validation
-    const searchRegex = useMemo(() => {
+    const { searchRegex, searchRegexError } = useMemo(() => {
         if (!searchTerm) {
-            setRegexError('');
-            return null;
+            return { searchRegex: null, searchRegexError: '' };
         }
         try {
             const pattern = isRegex ? searchTerm : searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(pattern, 'gi');
-            setRegexError('');
-            return regex;
+            return { searchRegex: regex, searchRegexError: '' };
         } catch (e) {
-            setRegexError(e.message);
-            return null;
+            return { searchRegex: null, searchRegexError: e.message };
         }
     }, [searchTerm, isRegex]);
+
+    // Update error state when regex error changes
+    useEffect(() => {
+        setRegexError(searchRegexError);
+    }, [searchRegexError]);
 
     // Calculate which lines match and filtered view with context
     const { displayLogs, matchCount, matchIndices } = useMemo(() => {
@@ -793,8 +795,8 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         return result;
     };
 
-    // Convert structured logs to HTML for display
-    const renderLogs = () => {
+    // Convert structured logs to HTML for display (memoized to prevent re-renders on input typing)
+    const renderedLogs = useMemo(() => {
         if (!displayLogs || displayLogs.length === 0) return null;
 
         return displayLogs.map((entry, index) => {
@@ -829,7 +831,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                 </div>
             );
         });
-    };
+    }, [displayLogs, showTimestamps, searchTerm, searchRegex]);
 
     const jumpToStart = () => {
         // Reset chunk loading state to prevent races
@@ -1431,7 +1433,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                         )}
                         <div ref={logsStartRef} />
                         {logs.length > 0 ? (
-                            <div>{renderLogs()}</div>
+                            <div>{renderedLogs}</div>
                         ) : showPrevious ? (
                             <div className="text-amber-400">No previous container logs available.</div>
                         ) : (
