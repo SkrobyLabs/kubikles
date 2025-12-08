@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import { K8sProvider, useK8s } from './context/K8sContext';
 import { UIProvider, useUI } from './context/UIContext';
 import { DebugProvider } from './context/DebugContext';
+import { ConfigProvider, useConfig } from './context/ConfigContext';
 import Sidebar from './components/layout/Sidebar';
 import BottomPanel from './components/layout/BottomPanel';
 import PodList from './features/workloads/pods/PodList';
@@ -27,6 +28,7 @@ import CustomResourceList from './features/customresources/instances/CustomResou
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
 import ConfirmModal from './components/shared/ConfirmModal';
+import ConfigEditor from './components/shared/ConfigEditor';
 
 function MainLayout() {
     const {
@@ -56,6 +58,7 @@ function MainLayout() {
         currentNamespace
     } = useK8s();
 
+    const { showConfigEditor } = useConfig();
     const { toggleDebug } = useDebugLogs();
     const isDragging = useRef(false);
 
@@ -168,40 +171,44 @@ function MainLayout() {
                     onToggleDebug={toggleDebug}
                 />
                 <main className="flex-1 flex flex-col overflow-hidden">
-                    {/* Split View Container */}
-                    <div className="flex-1 flex flex-col overflow-hidden">
-                        {/* Top Pane: Resource List */}
-                        <div
-                            className="flex-1 overflow-hidden"
-                            style={{ height: bottomTabs.length > 0 ? `${100 - panelHeight}%` : '100%' }}
-                        >
-                            {renderContent()}
-                        </div>
+                    {showConfigEditor ? (
+                        <ConfigEditor />
+                    ) : (
+                        /* Split View Container */
+                        <div className="flex-1 flex flex-col overflow-hidden">
+                            {/* Top Pane: Resource List */}
+                            <div
+                                className="flex-1 overflow-hidden"
+                                style={{ height: bottomTabs.length > 0 ? `${100 - panelHeight}%` : '100%' }}
+                            >
+                                {renderContent()}
+                            </div>
 
-                        {/* Bottom Pane */}
-                        {bottomTabs.length > 0 && (
-                            <>
-                                {/* Drag Handle */}
-                                <div
-                                    className="h-1 bg-border hover:bg-primary cursor-row-resize transition-colors"
-                                    onMouseDown={handleMouseDown}
-                                />
-                                <BottomPanel
-                                    tabs={bottomTabs}
-                                    activeTabId={activeTabId}
-                                    onTabChange={setActiveTabId}
-                                    onTabClose={closeTab}
-                                    onCloseOthers={closeOtherTabs}
-                                    onCloseToRight={closeTabsToRight}
-                                    onCloseAll={closeAllTabs}
-                                    onCloseStaleTabs={closeAllStaleTabs}
-                                    onReorder={reorderTabs}
-                                    isTabStale={isTabStale}
-                                    height={`${panelHeight}%`}
-                                />
-                            </>
-                        )}
-                    </div>
+                            {/* Bottom Pane */}
+                            {bottomTabs.length > 0 && (
+                                <>
+                                    {/* Drag Handle */}
+                                    <div
+                                        className="h-1 bg-border hover:bg-primary cursor-row-resize transition-colors"
+                                        onMouseDown={handleMouseDown}
+                                    />
+                                    <BottomPanel
+                                        tabs={bottomTabs}
+                                        activeTabId={activeTabId}
+                                        onTabChange={setActiveTabId}
+                                        onTabClose={closeTab}
+                                        onCloseOthers={closeOtherTabs}
+                                        onCloseToRight={closeTabsToRight}
+                                        onCloseAll={closeAllTabs}
+                                        onCloseStaleTabs={closeAllStaleTabs}
+                                        onReorder={reorderTabs}
+                                        isTabStale={isTabStale}
+                                        height={`${panelHeight}%`}
+                                    />
+                                </>
+                            )}
+                        </div>
+                    )}
                 </main>
             </div>
             <ConfirmModal />
@@ -212,11 +219,13 @@ function MainLayout() {
 function App() {
     return (
         <DebugProvider>
-            <K8sProvider>
-                <UIProvider>
-                    <MainLayout />
-                </UIProvider>
-            </K8sProvider>
+            <ConfigProvider>
+                <K8sProvider>
+                    <UIProvider>
+                        <MainLayout />
+                    </UIProvider>
+                </K8sProvider>
+            </ConfigProvider>
         </DebugProvider>
     );
 }

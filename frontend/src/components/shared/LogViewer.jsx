@@ -4,6 +4,7 @@ import { GetPodLogs, GetAllPodLogs, GetPodLogsFromStart, GetPodLogsBefore, GetPo
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { useK8s } from '../../context/K8sContext';
 import { useDebug } from '../../context/DebugContext';
+import { useConfig } from '../../context/ConfigContext';
 import Convert from 'ansi-to-html';
 import {
     ArrowDownTrayIcon,
@@ -46,6 +47,7 @@ const stripAnsiCodes = (text) => {
 };
 
 import SearchSelect from './SearchSelect';
+import Tooltip from './Tooltip';
 
 // Spinner component for loading states
 const Spinner = () => (
@@ -105,6 +107,7 @@ const parseLogLines = (rawLogs, source) => {
 export default function LogViewer({ namespace, pod, containers = [], siblingPods = [], podContainerMap = {}, ownerName = '', podCreationTime = '', tabContext = '' }) {
     const { currentContext } = useK8s();
     const { isDebugMode } = useDebug();
+    const { getConfig } = useConfig();
     const [logs, setLogs] = useState([]); // Array of { timestamp, content, source }
     const [loading, setLoading] = useState(false);
     const [downloading, setDownloading] = useState(false);
@@ -277,17 +280,18 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             clearTimeout(searchDebounceRef.current);
         }
 
-        // Set new debounced search
+        // Set new debounced search (use config for delay)
+        const debounceMs = getConfig('logs.search.debounceMs') || 200;
         searchDebounceRef.current = setTimeout(() => {
             setSearchTerm(searchInput);
-        }, 200);
+        }, debounceMs);
 
         return () => {
             if (searchDebounceRef.current) {
                 clearTimeout(searchDebounceRef.current);
             }
         };
-    }, [searchInput, searchOnEnter]);
+    }, [searchInput, searchOnEnter, getConfig]);
 
     // Handle search input Enter key
     const handleSearchKeyDown = (e) => {
@@ -1159,134 +1163,146 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                 </div>
                 <div className="flex items-center gap-1">
                     {/* Search Toggle */}
-                    <button
-                        onClick={() => {
-                            setShowSearch(!showSearch);
-                            if (!showSearch) {
-                                setTimeout(() => searchInputRef.current?.focus(), 0);
-                            }
-                        }}
-                        className={`p-1.5 rounded transition-colors ${showSearch ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title={showSearch ? 'Close search' : 'Search (⌘F)'}
-                    >
-                        <MagnifyingGlassIcon className="w-4 h-4" />
-                    </button>
+                    <Tooltip content={showSearch ? 'Close search' : 'Search (⌘F)'}>
+                        <button
+                            onClick={() => {
+                                setShowSearch(!showSearch);
+                                if (!showSearch) {
+                                    setTimeout(() => searchInputRef.current?.focus(), 0);
+                                }
+                            }}
+                            className={`p-1.5 rounded transition-colors ${showSearch ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            <MagnifyingGlassIcon className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
 
                     <div className="w-px h-4 bg-border mx-1" />
 
                     {/* Wrap Lines Toggle */}
-                    <button
-                        onClick={() => setWrapLines(!wrapLines)}
-                        className={`p-1.5 rounded transition-colors ${wrapLines ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title={wrapLines ? 'Disable line wrap' : 'Enable line wrap'}
-                    >
-                        <Bars3BottomLeftIcon className="w-4 h-4" />
-                    </button>
+                    <Tooltip content={wrapLines ? 'Disable line wrap' : 'Enable line wrap'}>
+                        <button
+                            onClick={() => setWrapLines(!wrapLines)}
+                            className={`p-1.5 rounded transition-colors ${wrapLines ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            <Bars3BottomLeftIcon className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
 
                     {/* Timestamps Toggle */}
-                    <button
-                        onClick={() => setShowTimestamps(!showTimestamps)}
-                        className={`p-1.5 rounded transition-colors ${showTimestamps ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}
-                    >
-                        <ClockIcon className="w-4 h-4" />
-                    </button>
+                    <Tooltip content={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}>
+                        <button
+                            onClick={() => setShowTimestamps(!showTimestamps)}
+                            className={`p-1.5 rounded transition-colors ${showTimestamps ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            <ClockIcon className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
 
                     {/* Previous Container Logs Toggle */}
-                    <button
-                        onClick={() => setShowPrevious(!showPrevious)}
-                        className={`p-1.5 rounded transition-colors ${showPrevious ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title={showPrevious ? 'Showing previous container logs' : 'Show previous container logs'}
-                    >
-                        <BackwardIcon className="w-4 h-4" />
-                    </button>
+                    <Tooltip content={showPrevious ? 'Showing previous container logs' : 'Show previous container logs'}>
+                        <button
+                            onClick={() => setShowPrevious(!showPrevious)}
+                            className={`p-1.5 rounded transition-colors ${showPrevious ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            <BackwardIcon className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
 
                     <div className="w-px h-4 bg-border mx-1" />
 
                     {/* Jump to Start */}
-                    <button
-                        onClick={jumpToStart}
-                        disabled={loading || loadingAll}
-                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${viewMode === 'start' && !isAllLoaded ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title="Jump to start"
-                    >
-                        <ChevronDoubleUpIcon className="w-4 h-4" />
-                    </button>
+                    <Tooltip content="Jump to start">
+                        <button
+                            onClick={jumpToStart}
+                            disabled={loading || loadingAll}
+                            className={`p-1.5 rounded transition-colors disabled:opacity-50 ${viewMode === 'start' && !isAllLoaded ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            <ChevronDoubleUpIcon className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
 
                     {/* Jump to End / Follow */}
-                    <button
-                        onClick={jumpToEnd}
-                        disabled={loading || loadingAll}
-                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${isFollowing ? 'bg-green-500/20 text-green-400' : viewMode === 'end' && !sinceTime && !isAllLoaded ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title={isFollowing ? "Following logs (click to pause)" : viewMode === 'end' && !sinceTime && !showPrevious ? "Click to resume following" : "Jump to end & follow"}
-                    >
-                        <ChevronDoubleDownIcon className={`w-4 h-4 ${isFollowing ? 'animate-pulse' : ''}`} />
-                    </button>
+                    <Tooltip content={isFollowing ? "Following logs (click to pause)" : viewMode === 'end' && !sinceTime && !showPrevious ? "Click to resume following" : "Jump to end & follow"}>
+                        <button
+                            onClick={jumpToEnd}
+                            disabled={loading || loadingAll}
+                            className={`p-1.5 rounded transition-colors disabled:opacity-50 ${isFollowing ? 'bg-green-500/20 text-green-400' : viewMode === 'end' && !sinceTime && !isAllLoaded ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            <ChevronDoubleDownIcon className={`w-4 h-4 ${isFollowing ? 'animate-pulse' : ''}`} />
+                        </button>
+                    </Tooltip>
 
                     {/* Jump to Time */}
-                    <button
-                        onClick={() => setShowTimeModal(true)}
-                        disabled={loadingAll}
-                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${sinceTime ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title={sinceTime ? `Filtering from: ${sinceTime}` : 'Jump to time'}
-                    >
-                        <CalendarIcon className="w-4 h-4" />
-                    </button>
+                    <Tooltip content={sinceTime ? `Filtering from: ${sinceTime}` : 'Jump to time'}>
+                        <button
+                            onClick={() => setShowTimeModal(true)}
+                            disabled={loadingAll}
+                            className={`p-1.5 rounded transition-colors disabled:opacity-50 ${sinceTime ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            <CalendarIcon className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
 
                     {/* Load All Logs */}
-                    <button
-                        onClick={loadAllLogs}
-                        disabled={loading || loadingAll || isAllLoaded}
-                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${isAllLoaded ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title={isAllLoaded ? "All logs loaded" : "Load all logs"}
-                    >
-                        {loadingAll ? <Spinner /> : <ArrowsPointingOutIcon className="w-4 h-4" />}
-                    </button>
+                    <Tooltip content={isAllLoaded ? "All logs loaded" : "Load all logs"}>
+                        <button
+                            onClick={loadAllLogs}
+                            disabled={loading || loadingAll || isAllLoaded}
+                            className={`p-1.5 rounded transition-colors disabled:opacity-50 ${isAllLoaded ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            {loadingAll ? <Spinner /> : <ArrowsPointingOutIcon className="w-4 h-4" />}
+                        </button>
+                    </Tooltip>
 
                     <div className="w-px h-4 bg-border mx-1" />
 
                     {/* Download */}
-                    <button
-                        onClick={downloadLogs}
-                        disabled={logs.length === 0 || loading || downloading}
-                        className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Download container logs"
-                    >
-                        {downloading ? <Spinner /> : <ArrowDownTrayIcon className="w-4 h-4" />}
-                    </button>
+                    <Tooltip content="Download container logs">
+                        <button
+                            onClick={downloadLogs}
+                            disabled={logs.length === 0 || loading || downloading}
+                            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {downloading ? <Spinner /> : <ArrowDownTrayIcon className="w-4 h-4" />}
+                        </button>
+                    </Tooltip>
 
                     {/* Download All */}
                     {siblingPods.length > 1 && (
-                        <button
-                            onClick={downloadBundle}
-                            disabled={loading || downloadingBundle}
-                            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Download all pod logs"
-                        >
-                            {downloadingBundle ? <Spinner /> : <ArchiveBoxArrowDownIcon className="w-4 h-4" />}
-                        </button>
+                        <Tooltip content="Download all pod logs">
+                            <button
+                                onClick={downloadBundle}
+                                disabled={loading || downloadingBundle}
+                                className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {downloadingBundle ? <Spinner /> : <ArchiveBoxArrowDownIcon className="w-4 h-4" />}
+                            </button>
+                        </Tooltip>
                     )}
 
                     {/* Download visible logs (what user currently sees) */}
-                    <button
-                        onClick={downloadVisibleLogs}
-                        disabled={logs.length === 0}
-                        className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Download currently visible logs"
-                    >
-                        <EyeIcon className="w-4 h-4" />
-                    </button>
+                    <Tooltip content="Download currently visible logs">
+                        <button
+                            onClick={downloadVisibleLogs}
+                            disabled={logs.length === 0}
+                            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <EyeIcon className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
 
                     {/* DEBUG: Download logs with debug markers (only visible in debug mode) */}
                     {isDebugMode && (
-                        <button
-                            onClick={downloadDebugLogs}
-                            disabled={logs.length === 0}
-                            className="p-1.5 rounded text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="DEBUG: Download logs with source markers"
-                        >
-                            <BugAntIcon className="w-4 h-4" />
-                        </button>
+                        <Tooltip content="DEBUG: Download logs with source markers">
+                            <button
+                                onClick={downloadDebugLogs}
+                                disabled={logs.length === 0}
+                                className="p-1.5 rounded text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <BugAntIcon className="w-4 h-4" />
+                            </button>
+                        </Tooltip>
                     )}
                 </div>
             </div>
@@ -1325,39 +1341,44 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                         </span>
                     )}
                     {regexError && (
-                        <span className="text-xs text-red-400 truncate max-w-[150px]" title={regexError}>
-                            Invalid regex
-                        </span>
+                        <Tooltip content={regexError}>
+                            <span className="text-xs text-red-400 truncate max-w-[150px]">
+                                Invalid regex
+                            </span>
+                        </Tooltip>
                     )}
 
                     <div className="w-px h-4 bg-border" />
 
                     {/* Search on Enter Toggle */}
-                    <button
-                        onClick={() => setSearchOnEnter(!searchOnEnter)}
-                        className={`px-2 py-1 text-xs rounded transition-colors font-mono ${searchOnEnter ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title={searchOnEnter ? 'Search on Enter (click for as-you-type)' : 'Search as you type (click for Enter mode)'}
-                    >
-                        ↵
-                    </button>
+                    <Tooltip content={searchOnEnter ? 'Search on Enter (click for as-you-type)' : 'Search as you type (click for Enter mode)'}>
+                        <button
+                            onClick={() => setSearchOnEnter(!searchOnEnter)}
+                            className={`px-2 py-1 text-xs rounded transition-colors font-mono ${searchOnEnter ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            ↵
+                        </button>
+                    </Tooltip>
 
                     {/* Regex Toggle */}
-                    <button
-                        onClick={() => setIsRegex(!isRegex)}
-                        className={`px-2 py-1 text-xs rounded transition-colors ${isRegex ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title={isRegex ? 'Using regex' : 'Use regex'}
-                    >
-                        .*
-                    </button>
+                    <Tooltip content={isRegex ? 'Using regex' : 'Use regex'}>
+                        <button
+                            onClick={() => setIsRegex(!isRegex)}
+                            className={`px-2 py-1 text-xs rounded transition-colors ${isRegex ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            .*
+                        </button>
+                    </Tooltip>
 
                     {/* Filter Only Toggle */}
-                    <button
-                        onClick={() => setFilterOnly(!filterOnly)}
-                        className={`p-1.5 rounded transition-colors ${filterOnly ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title={filterOnly ? 'Showing only matching lines' : 'Show only matching lines'}
-                    >
-                        <FunnelIcon className="w-4 h-4" />
-                    </button>
+                    <Tooltip content={filterOnly ? 'Showing only matching lines' : 'Show only matching lines'}>
+                        <button
+                            onClick={() => setFilterOnly(!filterOnly)}
+                            className={`p-1.5 rounded transition-colors ${filterOnly ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            <FunnelIcon className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
 
                     {/* Context Lines (only when filter is active) */}
                     {filterOnly && (
@@ -1365,39 +1386,43 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                             <div className="w-px h-4 bg-border" />
                             <div className="flex items-center gap-1 text-xs text-gray-400">
                                 <span>±</span>
-                                <button
-                                    onClick={() => setContextLinesBefore(Math.max(0, contextLinesBefore - 1))}
-                                    className="p-0.5 rounded hover:bg-white/10 disabled:opacity-30"
-                                    disabled={contextLinesBefore === 0}
-                                    title="Decrease context lines before"
-                                >
-                                    <MinusIcon className="w-3 h-3" />
-                                </button>
+                                <Tooltip content="Decrease context lines before">
+                                    <button
+                                        onClick={() => setContextLinesBefore(Math.max(0, contextLinesBefore - 1))}
+                                        className="p-0.5 rounded hover:bg-white/10 disabled:opacity-30"
+                                        disabled={contextLinesBefore === 0}
+                                    >
+                                        <MinusIcon className="w-3 h-3" />
+                                    </button>
+                                </Tooltip>
                                 <span className="w-4 text-center">{contextLinesBefore}</span>
-                                <button
-                                    onClick={() => setContextLinesBefore(contextLinesBefore + 1)}
-                                    className="p-0.5 rounded hover:bg-white/10"
-                                    title="Increase context lines before"
-                                >
-                                    <PlusIcon className="w-3 h-3" />
-                                </button>
+                                <Tooltip content="Increase context lines before">
+                                    <button
+                                        onClick={() => setContextLinesBefore(contextLinesBefore + 1)}
+                                        className="p-0.5 rounded hover:bg-white/10"
+                                    >
+                                        <PlusIcon className="w-3 h-3" />
+                                    </button>
+                                </Tooltip>
                                 <span className="text-gray-600">/</span>
-                                <button
-                                    onClick={() => setContextLinesAfter(Math.max(0, contextLinesAfter - 1))}
-                                    className="p-0.5 rounded hover:bg-white/10 disabled:opacity-30"
-                                    disabled={contextLinesAfter === 0}
-                                    title="Decrease context lines after"
-                                >
-                                    <MinusIcon className="w-3 h-3" />
-                                </button>
+                                <Tooltip content="Decrease context lines after">
+                                    <button
+                                        onClick={() => setContextLinesAfter(Math.max(0, contextLinesAfter - 1))}
+                                        className="p-0.5 rounded hover:bg-white/10 disabled:opacity-30"
+                                        disabled={contextLinesAfter === 0}
+                                    >
+                                        <MinusIcon className="w-3 h-3" />
+                                    </button>
+                                </Tooltip>
                                 <span className="w-4 text-center">{contextLinesAfter}</span>
-                                <button
-                                    onClick={() => setContextLinesAfter(contextLinesAfter + 1)}
-                                    className="p-0.5 rounded hover:bg-white/10"
-                                    title="Increase context lines after"
-                                >
-                                    <PlusIcon className="w-3 h-3" />
-                                </button>
+                                <Tooltip content="Increase context lines after">
+                                    <button
+                                        onClick={() => setContextLinesAfter(contextLinesAfter + 1)}
+                                        className="p-0.5 rounded hover:bg-white/10"
+                                    >
+                                        <PlusIcon className="w-3 h-3" />
+                                    </button>
+                                </Tooltip>
                             </div>
                         </>
                     )}
@@ -1405,18 +1430,19 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                     <div className="w-px h-4 bg-border" />
 
                     {/* Close Search */}
-                    <button
-                        onClick={() => {
-                            setShowSearch(false);
-                            setSearchTerm('');
-                            setSearchInput('');
-                            setRegexError('');
-                        }}
-                        className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-                        title="Close search (Esc)"
-                    >
-                        <XMarkIcon className="w-4 h-4" />
-                    </button>
+                    <Tooltip content="Close search (Esc)">
+                        <button
+                            onClick={() => {
+                                setShowSearch(false);
+                                setSearchTerm('');
+                                setSearchInput('');
+                                setRegexError('');
+                            }}
+                            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                        >
+                            <XMarkIcon className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
                 </div>
             )}
 

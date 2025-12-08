@@ -18,8 +18,10 @@ import {
     ChevronRightIcon,
     PuzzlePieceIcon,
     ArrowsRightLeftIcon,
-    TagIcon
+    TagIcon,
+    Cog6ToothIcon
 } from '@heroicons/react/24/outline';
+import { useConfig } from '../../context/ConfigContext';
 import SearchSelect from '../shared/SearchSelect';
 import Logger from '../../utils/Logger';
 import { ListCRDs } from '../../../wailsjs/go/main/App';
@@ -32,6 +34,8 @@ export default function Sidebar({
     onContextChange,
     onToggleDebug
 }) {
+    const { openConfigEditor } = useConfig();
+
     // Fetch CRDs for dynamic menu (lazy loaded)
     const [crds, setCRDs] = useState([]);
     const [crdsLoading, setCRDsLoading] = useState(false);
@@ -385,8 +389,15 @@ export default function Sidebar({
 
             {/* Footer */}
             <div className="p-4 border-t border-border shrink-0">
-                <div className="text-xs text-gray-500 text-center">
-                    v0.1.0
+                <div className="flex items-center justify-center gap-2">
+                    <span className="text-xs text-gray-500">v0.1.0</span>
+                    <button
+                        onClick={() => openConfigEditor()}
+                        className="p-1 rounded text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
+                        title="Settings"
+                    >
+                        <Cog6ToothIcon className="w-4 h-4" />
+                    </button>
                 </div>
             </div>
         </div>
