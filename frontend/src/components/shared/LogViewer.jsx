@@ -708,10 +708,11 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     }, [logs, searchTerm, searchRegex, filterOnly, contextLinesBefore, contextLinesAfter]);
 
     // Highlight search matches in HTML while preserving ANSI color tags
+    // This handles cases where ANSI codes split text (e.g., ERR<code>]<code>text can match ERR]text)
     const highlightMatchesInHtml = (html, plainText) => {
         if (!searchTerm || !searchRegex) return html;
 
-        // Find all matches in plain text
+        // Find all matches in plain text (ANSI-stripped)
         searchRegex.lastIndex = 0;
         const matches = [];
         let match;
@@ -722,32 +723,40 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
         if (matches.length === 0) return html;
 
-        // Build a map from plain text index to HTML index
-        // We need to track where we are in plain text vs HTML
+        // Walk through HTML and plain text in parallel, inserting highlight marks
+        // Key insight: HTML tags don't correspond to any plain text characters,
+        // so we copy them while maintaining the highlight state (close before, reopen after)
         let result = '';
         let plainIdx = 0;
         let htmlIdx = 0;
         let matchIdx = 0;
         let inHighlight = false;
 
-        while (htmlIdx < html.length) {
+        while (htmlIdx < html.length && matchIdx <= matches.length) {
             // Check if we're at an HTML tag
             if (html[htmlIdx] === '<') {
-                // Find the end of the tag
                 const tagEnd = html.indexOf('>', htmlIdx);
                 if (tagEnd !== -1) {
-                    // Copy the tag as-is
-                    result += html.slice(htmlIdx, tagEnd + 1);
+                    const tag = html.slice(htmlIdx, tagEnd + 1);
+                    // If we're in a highlight and this is a closing/opening span tag,
+                    // we need to close the mark, emit the tag, then reopen the mark
+                    if (inHighlight) {
+                        result += '</mark>';
+                        result += tag;
+                        result += '<mark class="bg-yellow-500/50 text-inherit">';
+                    } else {
+                        result += tag;
+                    }
                     htmlIdx = tagEnd + 1;
                     continue;
                 }
             }
 
-            // Check if we're at an HTML entity (e.g., &lt;)
+            // Check if we're at an HTML entity (e.g., &lt;, &gt;, &amp;)
             if (html[htmlIdx] === '&') {
                 const entityEnd = html.indexOf(';', htmlIdx);
                 if (entityEnd !== -1 && entityEnd - htmlIdx < 10) {
-                    // Check if we need to start/end highlight
+                    // Check if we need to start highlight
                     if (!inHighlight && matchIdx < matches.length && plainIdx === matches[matchIdx].start) {
                         result += '<mark class="bg-yellow-500/50 text-inherit">';
                         inHighlight = true;
@@ -759,7 +768,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                     plainIdx++; // Entity represents one character in plain text
 
                     // Check if we need to end highlight
-                    if (inHighlight && plainIdx === matches[matchIdx].end) {
+                    if (inHighlight && matchIdx < matches.length && plainIdx === matches[matchIdx].end) {
                         result += '</mark>';
                         inHighlight = false;
                         matchIdx++;
@@ -780,11 +789,16 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             plainIdx++;
 
             // Check if we need to end highlight
-            if (inHighlight && plainIdx === matches[matchIdx].end) {
+            if (inHighlight && matchIdx < matches.length && plainIdx === matches[matchIdx].end) {
                 result += '</mark>';
                 inHighlight = false;
                 matchIdx++;
             }
+        }
+
+        // Copy any remaining HTML
+        if (htmlIdx < html.length) {
+            result += html.slice(htmlIdx);
         }
 
         // Close any unclosed highlight
