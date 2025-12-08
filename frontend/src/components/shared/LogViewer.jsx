@@ -22,7 +22,8 @@ import {
     XMarkIcon,
     FunnelIcon,
     MinusIcon,
-    PlusIcon
+    PlusIcon,
+    ArrowsPointingOutIcon
 } from '@heroicons/react/24/outline';
 
 const converter = new Convert({
@@ -117,6 +118,8 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const [hasMoreAfter, setHasMoreAfter] = useState(false); // More logs available after current view
     const [loadingBefore, setLoadingBefore] = useState(false); // Loading older logs (for UI)
     const [loadingAfter, setLoadingAfter] = useState(false); // Loading newer logs (for UI)
+    const [loadingAll, setLoadingAll] = useState(false); // Loading all logs at once
+    const [isAllLoaded, setIsAllLoaded] = useState(false); // Track if all logs are loaded
     // Search state
     const [showSearch, setShowSearch] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -162,8 +165,8 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
 
-    // Auto-follow is active when in 'end' mode with no custom time filter AND user has it enabled AND not stale
-    const isFollowing = viewMode === 'end' && !sinceTime && !showPrevious && autoFollow && !isStale;
+    // Auto-follow is active when in 'end' mode with no custom time filter AND user has it enabled AND not stale AND not all logs loaded
+    const isFollowing = viewMode === 'end' && !sinceTime && !showPrevious && autoFollow && !isStale && !isAllLoaded;
 
     // Stop log stream when tab becomes stale
     useEffect(() => {
@@ -182,6 +185,9 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
         // Consider "at bottom" if within 50px of the bottom
         isAtBottomRef.current = distanceFromBottom < 50;
+
+        // Don't do chunk loading if all logs are loaded
+        if (isAllLoaded) return;
 
         // Load older logs when near top (within 100px) - works even when following
         // Use ref for instant check to prevent race conditions
@@ -204,12 +210,15 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     };
 
     useEffect(() => {
+        // Skip fetching if all logs are already loaded (e.g., from loadAllLogs)
+        if (isAllLoaded) return;
+
         if (namespace && selectedPod) {
             fetchLogs();
         }
         // Note: showTimestamps is NOT a dependency - we always fetch with timestamps
         // and just show/hide them in render
-    }, [namespace, selectedPod, selectedContainer, showPrevious, sinceTime, viewMode]);
+    }, [namespace, selectedPod, selectedContainer, showPrevious, sinceTime, viewMode, isAllLoaded]);
 
     // Listen for Cmd+R / Ctrl+R to refresh logs
     useEffect(() => {
@@ -256,6 +265,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         // Clear disconnected state when refreshing
         setStreamDisconnected(false);
         setDisconnectReason('');
+        setIsAllLoaded(false); // Reset all-loaded state
 
         setLoading(true);
         try {
@@ -278,6 +288,50 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             setHasMoreAfter(false);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Load all logs at once
+    const loadAllLogs = async () => {
+        // Stop any existing stream
+        if (streamIdRef.current) {
+            StopLogStream(streamIdRef.current);
+            streamIdRef.current = null;
+        }
+
+        // Reset chunk loading refs immediately to prevent any in-flight chunk loads
+        loadingBeforeRef.current = false;
+        loadingAfterRef.current = false;
+        isChunkLoadingRef.current = false;
+        lastFetchedBeforeTs.current = '';
+        lastFetchedAfterTs.current = '';
+
+        setStreamDisconnected(false);
+        setDisconnectReason('');
+        setLoadingAll(true);
+
+        // Set these BEFORE fetching to prevent chunk loading during the fetch
+        setHasMoreBefore(false);
+        setHasMoreAfter(false);
+        setIsAllLoaded(true);
+
+        try {
+            const allLogs = await GetAllPodLogs(namespace, selectedPod, selectedContainer, true, showPrevious);
+            setLogs(parseLogLines(allLogs, 'initial'));
+            setViewMode('start'); // Show from start since we have all logs
+
+            // Scroll to top after logs are loaded
+            requestAnimationFrame(() => {
+                if (logsContainerRef.current) {
+                    logsContainerRef.current.scrollTop = 0;
+                    isAtBottomRef.current = false;
+                }
+            });
+        } catch (err) {
+            setLogs([{ timestamp: '', content: `Error fetching all logs: ${err}`, source: 'error' }]);
+            setIsAllLoaded(false); // Reset on error
+        } finally {
+            setLoadingAll(false);
         }
     };
 
@@ -747,6 +801,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         setLogs([]);
         setHasMoreBefore(false);
         setHasMoreAfter(true);
+        setIsAllLoaded(false); // Reset all-loaded state
 
         setViewMode('start');
         setSinceTime(''); // Clear time filter when jumping to start
@@ -761,8 +816,8 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     };
 
     const jumpToEnd = () => {
-        // If already in end mode, toggle auto-follow
-        if (viewMode === 'end' && !sinceTime && !showPrevious) {
+        // If already in end mode and not all-loaded, toggle auto-follow
+        if (viewMode === 'end' && !sinceTime && !showPrevious && !isAllLoaded) {
             const newAutoFollow = !autoFollow;
             setAutoFollow(newAutoFollow);
             if (newAutoFollow) {
@@ -789,6 +844,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         setLogs([]);
         setHasMoreBefore(true);
         setHasMoreAfter(false);
+        setIsAllLoaded(false); // Reset all-loaded state
 
         setViewMode('end');
         setSinceTime(''); // Clear time filter to show latest logs
@@ -1090,30 +1146,41 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                     {/* Jump to Start */}
                     <button
                         onClick={jumpToStart}
-                        disabled={loading}
-                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${viewMode === 'start' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        disabled={loading || loadingAll}
+                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${viewMode === 'start' && !isAllLoaded ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                         title="Jump to start"
                     >
                         <ChevronDoubleUpIcon className="w-4 h-4" />
                     </button>
 
+                    {/* Jump to End / Follow */}
+                    <button
+                        onClick={jumpToEnd}
+                        disabled={loading || loadingAll}
+                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${isFollowing ? 'bg-green-500/20 text-green-400' : viewMode === 'end' && !sinceTime && !isAllLoaded ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title={isFollowing ? "Following logs (click to pause)" : viewMode === 'end' && !sinceTime && !showPrevious ? "Click to resume following" : "Jump to end & follow"}
+                    >
+                        <ChevronDoubleDownIcon className={`w-4 h-4 ${isFollowing ? 'animate-pulse' : ''}`} />
+                    </button>
+
                     {/* Jump to Time */}
                     <button
                         onClick={() => setShowTimeModal(true)}
-                        className={`p-1.5 rounded transition-colors ${sinceTime ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        disabled={loadingAll}
+                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${sinceTime ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                         title={sinceTime ? `Filtering from: ${sinceTime}` : 'Jump to time'}
                     >
                         <CalendarIcon className="w-4 h-4" />
                     </button>
 
-                    {/* Jump to End / Follow */}
+                    {/* Load All Logs */}
                     <button
-                        onClick={jumpToEnd}
-                        disabled={loading}
-                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${isFollowing ? 'bg-green-500/20 text-green-400' : viewMode === 'end' && !sinceTime ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        title={isFollowing ? "Following logs (click to pause)" : viewMode === 'end' && !sinceTime && !showPrevious ? "Click to resume following" : "Jump to end & follow"}
+                        onClick={loadAllLogs}
+                        disabled={loading || loadingAll || isAllLoaded}
+                        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${isAllLoaded ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title={isAllLoaded ? "All logs loaded" : "Load all logs"}
                     >
-                        <ChevronDoubleDownIcon className={`w-4 h-4 ${isFollowing ? 'animate-pulse' : ''}`} />
+                        {loadingAll ? <Spinner /> : <ArrowsPointingOutIcon className="w-4 h-4" />}
                     </button>
 
                     <div className="w-px h-4 bg-border mx-1" />
