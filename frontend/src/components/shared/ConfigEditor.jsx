@@ -3,9 +3,20 @@ import Editor from '@monaco-editor/react';
 import { useConfig } from '../../context/ConfigContext';
 import { XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
+// Descriptions for config keys (used in flat mode comments)
+const configDescriptions = {
+    'logs.lineWrap': 'If true, wrap long lines in log viewer',
+    'logs.showTimestamps': 'If true, show timestamps in log viewer',
+    'logs.position': 'Initial log position: "start", "end", or "all"',
+    'logs.search.debounceMs': 'Debounce delay in milliseconds for search-as-you-type mode',
+    'logs.search.searchOnEnter': 'If true, search only triggers on Enter key. If false, search as you type.',
+    'logs.search.useRegex': 'If true, search uses regex matching by default',
+    'logs.search.filterOnly': 'If true, show only matching lines by default',
+    'logs.search.contextLinesBefore': 'Number of context lines to show before matches when filtering',
+    'logs.search.contextLinesAfter': 'Number of context lines to show after matches when filtering'
+};
 
-
-// Convert nested object to flat key=value format
+// Convert nested object to flat key=value format with comments
 const flattenConfig = (obj, prefix = '') => {
     const lines = [];
     for (const key in obj) {
@@ -14,6 +25,11 @@ const flattenConfig = (obj, prefix = '') => {
         if (value && typeof value === 'object' && !Array.isArray(value)) {
             lines.push(...flattenConfig(value, fullKey));
         } else {
+            // Add description comment if available
+            const description = configDescriptions[fullKey];
+            if (description) {
+                lines.push(`# ${description}`);
+            }
             // Format value based on type
             const formattedValue = typeof value === 'string' ? `"${value}"` : String(value);
             lines.push(`${fullKey} = ${formattedValue}`);
@@ -150,6 +166,22 @@ export default function ConfigEditor() {
                             type: 'object',
                             description: 'Log viewer settings',
                             properties: {
+                                lineWrap: {
+                                    type: 'boolean',
+                                    description: 'If true, wrap long lines in log viewer',
+                                    default: true
+                                },
+                                showTimestamps: {
+                                    type: 'boolean',
+                                    description: 'If true, show timestamps in log viewer',
+                                    default: false
+                                },
+                                position: {
+                                    type: 'string',
+                                    description: 'Initial log position',
+                                    enum: ['start', 'end', 'all'],
+                                    default: 'end'
+                                },
                                 search: {
                                     type: 'object',
                                     description: 'Search settings',
@@ -160,6 +192,33 @@ export default function ConfigEditor() {
                                             default: 200,
                                             minimum: 0,
                                             maximum: 2000
+                                        },
+                                        searchOnEnter: {
+                                            type: 'boolean',
+                                            description: 'If true, search only triggers on Enter key. If false, search as you type.',
+                                            default: true
+                                        },
+                                        useRegex: {
+                                            type: 'boolean',
+                                            description: 'If true, search uses regex matching by default',
+                                            default: false
+                                        },
+                                        filterOnly: {
+                                            type: 'boolean',
+                                            description: 'If true, show only matching lines by default',
+                                            default: false
+                                        },
+                                        contextLinesBefore: {
+                                            type: 'number',
+                                            description: 'Number of context lines to show before matches when filtering',
+                                            default: 1,
+                                            minimum: 0
+                                        },
+                                        contextLinesAfter: {
+                                            type: 'number',
+                                            description: 'Number of context lines to show after matches when filtering',
+                                            default: 5,
+                                            minimum: 0
                                         }
                                     }
                                 }

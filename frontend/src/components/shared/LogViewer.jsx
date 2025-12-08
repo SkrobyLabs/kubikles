@@ -108,18 +108,37 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const { currentContext } = useK8s();
     const { isDebugMode } = useDebug();
     const { getConfig } = useConfig();
+
+    // Helper to safely get config with validation and fallback
+    const getSafeConfig = (path, defaultValue, validator) => {
+        try {
+            const value = getConfig(path);
+            if (value === undefined || value === null) return defaultValue;
+            if (validator && !validator(value)) {
+                console.error(`Invalid config value for ${path}:`, value, '- using default:', defaultValue);
+                return defaultValue;
+            }
+            return value;
+        } catch (e) {
+            console.error(`Error reading config ${path}:`, e, '- using default:', defaultValue);
+            return defaultValue;
+        }
+    };
+
     const [logs, setLogs] = useState([]); // Array of { timestamp, content, source }
     const [loading, setLoading] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [downloadingBundle, setDownloadingBundle] = useState(false);
     const [selectedPod, setSelectedPod] = useState(pod);
     const [selectedContainer, setSelectedContainer] = useState(containers[0] || '');
-    const [wrapLines, setWrapLines] = useState(true);
-    const [showTimestamps, setShowTimestamps] = useState(false);
+    const [wrapLines, setWrapLines] = useState(() => getSafeConfig('logs.lineWrap', true, v => typeof v === 'boolean'));
+    const [showTimestamps, setShowTimestamps] = useState(() => getSafeConfig('logs.showTimestamps', false, v => typeof v === 'boolean'));
     const [showPrevious, setShowPrevious] = useState(false);
     const [showTimeModal, setShowTimeModal] = useState(false);
     const [sinceTime, setSinceTime] = useState('');
-    const [viewMode, setViewMode] = useState('end'); // 'start' or 'end'
+    const initialPosition = getSafeConfig('logs.position', 'end', v => ['start', 'end', 'all'].includes(v));
+    const [viewMode, setViewMode] = useState(initialPosition === 'all' ? 'start' : initialPosition); // 'start' or 'end'
+    const [isAllLoaded, setIsAllLoaded] = useState(() => initialPosition === 'all'); // Track if all logs are loaded
     const [autoFollow, setAutoFollow] = useState(true); // User can toggle this
     const [streamDisconnected, setStreamDisconnected] = useState(false); // Track if stream was disconnected
     const [disconnectReason, setDisconnectReason] = useState(''); // Reason for disconnection
@@ -128,16 +147,15 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const [loadingBefore, setLoadingBefore] = useState(false); // Loading older logs (for UI)
     const [loadingAfter, setLoadingAfter] = useState(false); // Loading newer logs (for UI)
     const [loadingAll, setLoadingAll] = useState(false); // Loading all logs at once
-    const [isAllLoaded, setIsAllLoaded] = useState(false); // Track if all logs are loaded
     // Search state
     const [showSearch, setShowSearch] = useState(false);
     const [searchTerm, setSearchTerm] = useState(''); // The actual search term used for filtering
     const [searchInput, setSearchInput] = useState(''); // The input field value
-    const [isRegex, setIsRegex] = useState(false);
-    const [filterOnly, setFilterOnly] = useState(false);
-    const [searchOnEnter, setSearchOnEnter] = useState(false); // Toggle: search on Enter vs as-you-type
-    const [contextLinesBefore, setContextLinesBefore] = useState(2);
-    const [contextLinesAfter, setContextLinesAfter] = useState(2);
+    const [isRegex, setIsRegex] = useState(() => getSafeConfig('logs.search.useRegex', false, v => typeof v === 'boolean'));
+    const [filterOnly, setFilterOnly] = useState(() => getSafeConfig('logs.search.filterOnly', false, v => typeof v === 'boolean'));
+    const [searchOnEnter, setSearchOnEnter] = useState(() => getSafeConfig('logs.search.searchOnEnter', true, v => typeof v === 'boolean'));
+    const [contextLinesBefore, setContextLinesBefore] = useState(() => getSafeConfig('logs.search.contextLinesBefore', 1, v => typeof v === 'number' && v >= 0));
+    const [contextLinesAfter, setContextLinesAfter] = useState(() => getSafeConfig('logs.search.contextLinesAfter', 5, v => typeof v === 'number' && v >= 0));
     const [regexError, setRegexError] = useState('');
     const searchInputRef = useRef(null);
     const searchDebounceRef = useRef(null);
@@ -281,7 +299,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         }
 
         // Set new debounced search (use config for delay)
-        const debounceMs = getConfig('logs.search.debounceMs') || 200;
+        const debounceMs = getSafeConfig('logs.search.debounceMs', 200, v => typeof v === 'number' && v >= 0 && v <= 2000);
         searchDebounceRef.current = setTimeout(() => {
             setSearchTerm(searchInput);
         }, debounceMs);

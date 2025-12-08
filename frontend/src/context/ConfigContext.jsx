@@ -5,8 +5,16 @@ const ConfigContext = createContext();
 // Default configuration
 const defaultConfig = {
     logs: {
+        lineWrap: true,
+        showTimestamps: false,
+        position: 'end',
         search: {
-            debounceMs: 200
+            debounceMs: 200,
+            searchOnEnter: true,
+            useRegex: false,
+            filterOnly: false,
+            contextLinesBefore: 1,
+            contextLinesAfter: 5
         }
     }
 };
