@@ -122,13 +122,16 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const [isAllLoaded, setIsAllLoaded] = useState(false); // Track if all logs are loaded
     // Search state
     const [showSearch, setShowSearch] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm, setSearchTerm] = useState(''); // The actual search term used for filtering
+    const [searchInput, setSearchInput] = useState(''); // The input field value
     const [isRegex, setIsRegex] = useState(false);
     const [filterOnly, setFilterOnly] = useState(false);
+    const [searchOnEnter, setSearchOnEnter] = useState(false); // Toggle: search on Enter vs as-you-type
     const [contextLinesBefore, setContextLinesBefore] = useState(2);
     const [contextLinesAfter, setContextLinesAfter] = useState(2);
     const [regexError, setRegexError] = useState('');
     const searchInputRef = useRef(null);
+    const searchDebounceRef = useRef(null);
     const logsStartRef = useRef(null);
     const logsEndRef = useRef(null);
     const streamIdRef = useRef(null);
@@ -247,6 +250,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             if (e.key === 'Escape' && showSearch) {
                 setShowSearch(false);
                 setSearchTerm('');
+                setSearchInput('');
                 setRegexError('');
             }
         };
@@ -254,6 +258,37 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [showSearch]);
+
+    // Debounced search when typing (only in as-you-type mode)
+    useEffect(() => {
+        if (searchOnEnter) {
+            // In search-on-enter mode, don't auto-search
+            return;
+        }
+
+        // Clear previous timeout
+        if (searchDebounceRef.current) {
+            clearTimeout(searchDebounceRef.current);
+        }
+
+        // Set new debounced search
+        searchDebounceRef.current = setTimeout(() => {
+            setSearchTerm(searchInput);
+        }, 200);
+
+        return () => {
+            if (searchDebounceRef.current) {
+                clearTimeout(searchDebounceRef.current);
+            }
+        };
+    }, [searchInput, searchOnEnter]);
+
+    // Handle search input Enter key
+    const handleSearchKeyDown = (e) => {
+        if (e.key === 'Enter' && searchOnEnter) {
+            setSearchTerm(searchInput);
+        }
+    };
 
     const fetchLogs = async () => {
         // Stop any existing stream when fetching new logs
@@ -1239,17 +1274,18 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                         <input
                             ref={searchInputRef}
                             type="text"
-                            placeholder={isRegex ? "Search (regex)..." : "Search..."}
+                            placeholder={isRegex ? (searchOnEnter ? "Search (regex, Enter)..." : "Search (regex)...") : (searchOnEnter ? "Search (Enter)..." : "Search...")}
                             className={`w-full bg-[#1e1e1e] border rounded-md pl-9 pr-8 py-1.5 text-sm text-white focus:outline-none transition-colors ${regexError ? 'border-red-500' : 'border-[#3d3d3d] focus:border-primary'}`}
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            onKeyDown={handleSearchKeyDown}
                             autoComplete="off"
                             autoCorrect="off"
                             spellCheck="false"
                         />
-                        {searchTerm && (
+                        {searchInput && (
                             <button
-                                onClick={() => setSearchTerm('')}
+                                onClick={() => { setSearchInput(''); setSearchTerm(''); }}
                                 className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                             >
                                 <XMarkIcon className="h-4 w-4" />
@@ -1270,6 +1306,15 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                     )}
 
                     <div className="w-px h-4 bg-border" />
+
+                    {/* Search on Enter Toggle */}
+                    <button
+                        onClick={() => setSearchOnEnter(!searchOnEnter)}
+                        className={`px-2 py-1 text-xs rounded transition-colors font-mono ${searchOnEnter ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title={searchOnEnter ? 'Search on Enter (click for as-you-type)' : 'Search as you type (click for Enter mode)'}
+                    >
+                        ↵
+                    </button>
 
                     {/* Regex Toggle */}
                     <button
@@ -1339,6 +1384,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                         onClick={() => {
                             setShowSearch(false);
                             setSearchTerm('');
+                            setSearchInput('');
                             setRegexError('');
                         }}
                         className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
