@@ -39,6 +39,12 @@ const normalizeAnsiCodes = (text) => {
                .replace(/\x1b\[48;5;0*(\d{1,3})m/g, '\x1b[48;5;$1m');
 };
 
+// Strip all ANSI escape codes from text (for search matching)
+const stripAnsiCodes = (text) => {
+    // eslint-disable-next-line no-control-regex
+    return text.replace(/\x1b\[[0-9;]*m/g, '');
+};
+
 import SearchSelect from './SearchSelect';
 
 // Spinner component for loading states
@@ -635,11 +641,12 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             return { displayLogs: logs.map((entry, i) => ({ ...entry, originalIndex: i })), matchCount: 0, matchIndices: new Set() };
         }
 
-        // Find all matching line indices
+        // Find all matching line indices (search in stripped content without ANSI codes)
         const matches = new Set();
         logs.forEach((entry, index) => {
             searchRegex.lastIndex = 0; // Reset regex state
-            if (searchRegex.test(entry.content)) {
+            const strippedContent = stripAnsiCodes(entry.content);
+            if (searchRegex.test(strippedContent)) {
                 matches.add(index);
             }
         });
@@ -806,7 +813,9 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
             // If searching and this line matches, highlight the matches while preserving ANSI colors
             if (searchTerm && searchRegex && entry.isMatch) {
-                htmlContent = highlightMatchesInHtml(htmlContent, normalizedContent);
+                // Use stripped text for matching positions (no ANSI codes)
+                const strippedContent = stripAnsiCodes(normalizedContent);
+                htmlContent = highlightMatchesInHtml(htmlContent, strippedContent);
             }
 
             return (
