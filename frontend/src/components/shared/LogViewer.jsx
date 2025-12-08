@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { GetPodLogs, GetAllPodLogs, GetPodLogsFromStart, GetPodLogsBefore, GetPodLogsAfter, SavePodLogs, SaveLogsBundle, StartLogStream, StopLogStream } from '../../../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
@@ -17,7 +17,12 @@ import {
     ExclamationTriangleIcon,
     ArrowPathIcon,
     BugAntIcon,
-    EyeIcon
+    EyeIcon,
+    MagnifyingGlassIcon,
+    XMarkIcon,
+    FunnelIcon,
+    MinusIcon,
+    PlusIcon
 } from '@heroicons/react/24/outline';
 
 const converter = new Convert({
@@ -112,6 +117,15 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const [hasMoreAfter, setHasMoreAfter] = useState(false); // More logs available after current view
     const [loadingBefore, setLoadingBefore] = useState(false); // Loading older logs (for UI)
     const [loadingAfter, setLoadingAfter] = useState(false); // Loading newer logs (for UI)
+    // Search state
+    const [showSearch, setShowSearch] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isRegex, setIsRegex] = useState(false);
+    const [filterOnly, setFilterOnly] = useState(false);
+    const [contextLinesBefore, setContextLinesBefore] = useState(2);
+    const [contextLinesAfter, setContextLinesAfter] = useState(2);
+    const [regexError, setRegexError] = useState('');
+    const searchInputRef = useRef(null);
     const logsStartRef = useRef(null);
     const logsEndRef = useRef(null);
     const streamIdRef = useRef(null);
@@ -210,6 +224,27 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [namespace, selectedPod, selectedContainer, showPrevious, sinceTime, viewMode]);
+
+    // Listen for Cmd+F / Ctrl+F to open search
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+                e.preventDefault();
+                setShowSearch(true);
+                // Focus input after state update
+                setTimeout(() => searchInputRef.current?.focus(), 0);
+            }
+            // Escape to close search
+            if (e.key === 'Escape' && showSearch) {
+                setShowSearch(false);
+                setSearchTerm('');
+                setRegexError('');
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [showSearch]);
 
     const fetchLogs = async () => {
         // Stop any existing stream when fetching new logs
@@ -483,22 +518,216 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         prevLogsLengthRef.current = logs.length;
     }, [logs, viewMode]);
 
+    // Create search regex with validation
+    const searchRegex = useMemo(() => {
+        if (!searchTerm) {
+            setRegexError('');
+            return null;
+        }
+        try {
+            const pattern = isRegex ? searchTerm : searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(pattern, 'gi');
+            setRegexError('');
+            return regex;
+        } catch (e) {
+            setRegexError(e.message);
+            return null;
+        }
+    }, [searchTerm, isRegex]);
+
+    // Calculate which lines match and filtered view with context
+    const { displayLogs, matchCount, matchIndices } = useMemo(() => {
+        if (!logs || logs.length === 0) {
+            return { displayLogs: [], matchCount: 0, matchIndices: new Set() };
+        }
+
+        // If no search term, show all logs
+        if (!searchTerm || !searchRegex) {
+            return { displayLogs: logs.map((entry, i) => ({ ...entry, originalIndex: i })), matchCount: 0, matchIndices: new Set() };
+        }
+
+        // Find all matching line indices
+        const matches = new Set();
+        logs.forEach((entry, index) => {
+            searchRegex.lastIndex = 0; // Reset regex state
+            if (searchRegex.test(entry.content)) {
+                matches.add(index);
+            }
+        });
+
+        // If not filtering, return all logs with match info
+        if (!filterOnly) {
+            return {
+                displayLogs: logs.map((entry, i) => ({ ...entry, originalIndex: i, isMatch: matches.has(i) })),
+                matchCount: matches.size,
+                matchIndices: matches
+            };
+        }
+
+        // Filter mode: include matching lines with context
+        const includedIndices = new Set();
+        matches.forEach(matchIndex => {
+            // Add context lines before
+            for (let i = Math.max(0, matchIndex - contextLinesBefore); i < matchIndex; i++) {
+                includedIndices.add(i);
+            }
+            // Add matching line
+            includedIndices.add(matchIndex);
+            // Add context lines after
+            for (let i = matchIndex + 1; i <= Math.min(logs.length - 1, matchIndex + contextLinesAfter); i++) {
+                includedIndices.add(i);
+            }
+        });
+
+        // Build display with skipped line indicators
+        const result = [];
+        const sortedIndices = Array.from(includedIndices).sort((a, b) => a - b);
+        let lastIndex = -1;
+
+        sortedIndices.forEach(index => {
+            // Check if we need to show skipped lines indicator
+            if (lastIndex !== -1 && index > lastIndex + 1) {
+                const skipped = index - lastIndex - 1;
+                result.push({
+                    isSkipIndicator: true,
+                    skippedCount: skipped,
+                    key: `skip-${lastIndex}-${index}`
+                });
+            }
+            result.push({
+                ...logs[index],
+                originalIndex: index,
+                isMatch: matches.has(index)
+            });
+            lastIndex = index;
+        });
+
+        return {
+            displayLogs: result,
+            matchCount: matches.size,
+            matchIndices: matches
+        };
+    }, [logs, searchTerm, searchRegex, filterOnly, contextLinesBefore, contextLinesAfter]);
+
+    // Highlight search matches in HTML while preserving ANSI color tags
+    const highlightMatchesInHtml = (html, plainText) => {
+        if (!searchTerm || !searchRegex) return html;
+
+        // Find all matches in plain text
+        searchRegex.lastIndex = 0;
+        const matches = [];
+        let match;
+        while ((match = searchRegex.exec(plainText)) !== null) {
+            matches.push({ start: match.index, end: match.index + match[0].length });
+            if (match[0].length === 0) break;
+        }
+
+        if (matches.length === 0) return html;
+
+        // Build a map from plain text index to HTML index
+        // We need to track where we are in plain text vs HTML
+        let result = '';
+        let plainIdx = 0;
+        let htmlIdx = 0;
+        let matchIdx = 0;
+        let inHighlight = false;
+
+        while (htmlIdx < html.length) {
+            // Check if we're at an HTML tag
+            if (html[htmlIdx] === '<') {
+                // Find the end of the tag
+                const tagEnd = html.indexOf('>', htmlIdx);
+                if (tagEnd !== -1) {
+                    // Copy the tag as-is
+                    result += html.slice(htmlIdx, tagEnd + 1);
+                    htmlIdx = tagEnd + 1;
+                    continue;
+                }
+            }
+
+            // Check if we're at an HTML entity (e.g., &lt;)
+            if (html[htmlIdx] === '&') {
+                const entityEnd = html.indexOf(';', htmlIdx);
+                if (entityEnd !== -1 && entityEnd - htmlIdx < 10) {
+                    // Check if we need to start/end highlight
+                    if (!inHighlight && matchIdx < matches.length && plainIdx === matches[matchIdx].start) {
+                        result += '<mark class="bg-yellow-500/50 text-inherit">';
+                        inHighlight = true;
+                    }
+
+                    // Copy the entity
+                    result += html.slice(htmlIdx, entityEnd + 1);
+                    htmlIdx = entityEnd + 1;
+                    plainIdx++; // Entity represents one character in plain text
+
+                    // Check if we need to end highlight
+                    if (inHighlight && plainIdx === matches[matchIdx].end) {
+                        result += '</mark>';
+                        inHighlight = false;
+                        matchIdx++;
+                    }
+                    continue;
+                }
+            }
+
+            // Regular character
+            // Check if we need to start highlight
+            if (!inHighlight && matchIdx < matches.length && plainIdx === matches[matchIdx].start) {
+                result += '<mark class="bg-yellow-500/50 text-inherit">';
+                inHighlight = true;
+            }
+
+            result += html[htmlIdx];
+            htmlIdx++;
+            plainIdx++;
+
+            // Check if we need to end highlight
+            if (inHighlight && plainIdx === matches[matchIdx].end) {
+                result += '</mark>';
+                inHighlight = false;
+                matchIdx++;
+            }
+        }
+
+        // Close any unclosed highlight
+        if (inHighlight) {
+            result += '</mark>';
+        }
+
+        return result;
+    };
+
     // Convert structured logs to HTML for display
     const renderLogs = () => {
-        if (!logs || logs.length === 0) return null;
+        if (!displayLogs || displayLogs.length === 0) return null;
 
-        return logs.map((entry, index) => {
+        return displayLogs.map((entry, index) => {
+            // Skip indicator
+            if (entry.isSkipIndicator) {
+                return (
+                    <div key={entry.key} className="flex items-center justify-center py-1 text-gray-500 text-xs italic select-none">
+                        <span className="px-2 bg-gray-800/50 rounded">... skipped {entry.skippedCount} line{entry.skippedCount !== 1 ? 's' : ''} ...</span>
+                    </div>
+                );
+            }
+
             // Convert ANSI codes in content
-            const htmlContent = { __html: converter.toHtml(normalizeAnsiCodes(entry.content)) };
+            const normalizedContent = normalizeAnsiCodes(entry.content);
+            let htmlContent = converter.toHtml(normalizedContent);
+
+            // If searching and this line matches, highlight the matches while preserving ANSI colors
+            if (searchTerm && searchRegex && entry.isMatch) {
+                htmlContent = highlightMatchesInHtml(htmlContent, normalizedContent);
+            }
 
             return (
-                <div key={index} className="flex">
+                <div key={entry.originalIndex ?? index} className={`flex ${entry.isMatch ? 'bg-yellow-500/10' : ''}`}>
                     {showTimestamps && entry.timestamp && (
                         <span className="text-gray-500 select-none mr-2 shrink-0">
                             {entry.timestamp}
                         </span>
                     )}
-                    <span dangerouslySetInnerHTML={htmlContent} />
+                    <span dangerouslySetInnerHTML={{ __html: htmlContent }} />
                 </div>
             );
         });
@@ -813,6 +1042,22 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                     )}
                 </div>
                 <div className="flex items-center gap-1">
+                    {/* Search Toggle */}
+                    <button
+                        onClick={() => {
+                            setShowSearch(!showSearch);
+                            if (!showSearch) {
+                                setTimeout(() => searchInputRef.current?.focus(), 0);
+                            }
+                        }}
+                        className={`p-1.5 rounded transition-colors ${showSearch ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title={showSearch ? 'Close search' : 'Search (⌘F)'}
+                    >
+                        <MagnifyingGlassIcon className="w-4 h-4" />
+                    </button>
+
+                    <div className="w-px h-4 bg-border mx-1" />
+
                     {/* Wrap Lines Toggle */}
                     <button
                         onClick={() => setWrapLines(!wrapLines)}
@@ -918,6 +1163,124 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                     )}
                 </div>
             </div>
+
+            {/* Search Bar */}
+            {showSearch && (
+                <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-[#252526] shrink-0">
+                    <div className="relative flex-1 max-w-md">
+                        <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                        <input
+                            ref={searchInputRef}
+                            type="text"
+                            placeholder={isRegex ? "Search (regex)..." : "Search..."}
+                            className={`w-full bg-[#1e1e1e] border rounded-md pl-9 pr-8 py-1.5 text-sm text-white focus:outline-none transition-colors ${regexError ? 'border-red-500' : 'border-[#3d3d3d] focus:border-primary'}`}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            autoComplete="off"
+                            autoCorrect="off"
+                            spellCheck="false"
+                        />
+                        {searchTerm && (
+                            <button
+                                onClick={() => setSearchTerm('')}
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                            >
+                                <XMarkIcon className="h-4 w-4" />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Match count */}
+                    {searchTerm && !regexError && (
+                        <span className="text-xs text-gray-400 min-w-[60px]">
+                            {matchCount} match{matchCount !== 1 ? 'es' : ''}
+                        </span>
+                    )}
+                    {regexError && (
+                        <span className="text-xs text-red-400 truncate max-w-[150px]" title={regexError}>
+                            Invalid regex
+                        </span>
+                    )}
+
+                    <div className="w-px h-4 bg-border" />
+
+                    {/* Regex Toggle */}
+                    <button
+                        onClick={() => setIsRegex(!isRegex)}
+                        className={`px-2 py-1 text-xs rounded transition-colors ${isRegex ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title={isRegex ? 'Using regex' : 'Use regex'}
+                    >
+                        .*
+                    </button>
+
+                    {/* Filter Only Toggle */}
+                    <button
+                        onClick={() => setFilterOnly(!filterOnly)}
+                        className={`p-1.5 rounded transition-colors ${filterOnly ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title={filterOnly ? 'Showing only matching lines' : 'Show only matching lines'}
+                    >
+                        <FunnelIcon className="w-4 h-4" />
+                    </button>
+
+                    {/* Context Lines (only when filter is active) */}
+                    {filterOnly && (
+                        <>
+                            <div className="w-px h-4 bg-border" />
+                            <div className="flex items-center gap-1 text-xs text-gray-400">
+                                <span>±</span>
+                                <button
+                                    onClick={() => setContextLinesBefore(Math.max(0, contextLinesBefore - 1))}
+                                    className="p-0.5 rounded hover:bg-white/10 disabled:opacity-30"
+                                    disabled={contextLinesBefore === 0}
+                                    title="Decrease context lines before"
+                                >
+                                    <MinusIcon className="w-3 h-3" />
+                                </button>
+                                <span className="w-4 text-center">{contextLinesBefore}</span>
+                                <button
+                                    onClick={() => setContextLinesBefore(contextLinesBefore + 1)}
+                                    className="p-0.5 rounded hover:bg-white/10"
+                                    title="Increase context lines before"
+                                >
+                                    <PlusIcon className="w-3 h-3" />
+                                </button>
+                                <span className="text-gray-600">/</span>
+                                <button
+                                    onClick={() => setContextLinesAfter(Math.max(0, contextLinesAfter - 1))}
+                                    className="p-0.5 rounded hover:bg-white/10 disabled:opacity-30"
+                                    disabled={contextLinesAfter === 0}
+                                    title="Decrease context lines after"
+                                >
+                                    <MinusIcon className="w-3 h-3" />
+                                </button>
+                                <span className="w-4 text-center">{contextLinesAfter}</span>
+                                <button
+                                    onClick={() => setContextLinesAfter(contextLinesAfter + 1)}
+                                    className="p-0.5 rounded hover:bg-white/10"
+                                    title="Increase context lines after"
+                                >
+                                    <PlusIcon className="w-3 h-3" />
+                                </button>
+                            </div>
+                        </>
+                    )}
+
+                    <div className="w-px h-4 bg-border" />
+
+                    {/* Close Search */}
+                    <button
+                        onClick={() => {
+                            setShowSearch(false);
+                            setSearchTerm('');
+                            setRegexError('');
+                        }}
+                        className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                        title="Close search (Esc)"
+                    >
+                        <XMarkIcon className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
 
             {/* Logs Content */}
             <div
