@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { Virtuoso } from 'react-virtuoso';
 import { GetPodLogs, GetAllPodLogs, GetPodLogsFromStart, GetPodLogsBefore, GetPodLogsAfter, SavePodLogs, SaveLogsBundle, StartLogStream, StopLogStream } from '../../../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { useK8s } from '../../context/K8sContext';
@@ -159,18 +160,17 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const [regexError, setRegexError] = useState('');
     const searchInputRef = useRef(null);
     const searchDebounceRef = useRef(null);
-    const logsStartRef = useRef(null);
-    const logsEndRef = useRef(null);
     const streamIdRef = useRef(null);
-    const logsContainerRef = useRef(null);
+    const virtuosoRef = useRef(null);
     const isAtBottomRef = useRef(true);
     // Use refs for loading locks to prevent race conditions (React state is async)
     const loadingBeforeRef = useRef(false);
     const loadingAfterRef = useRef(false);
-    const isChunkLoadingRef = useRef(false); // Skip auto-scroll during chunk loads
     // Track last fetched timestamps to avoid duplicate fetches
     const lastFetchedBeforeTs = useRef('');
     const lastFetchedAfterTs = useRef('');
+    // Track first item index for virtuoso prepending (maintains scroll position)
+    const [firstItemIndex, setFirstItemIndex] = useState(10000); // Start high to allow prepending
 
     const CHUNK_SIZE = 200; // Number of lines to load per chunk
 
@@ -206,38 +206,27 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         }
     }, [isStale]);
 
-    // Track scroll position and trigger chunk loading
-    const handleScroll = () => {
-        if (!logsContainerRef.current) return;
-        const { scrollTop, scrollHeight, clientHeight } = logsContainerRef.current;
+    // Virtuoso callback: when user scrolls to top, load older logs
+    const handleStartReached = useCallback(() => {
+        if (isAllLoaded || !hasMoreBefore || loadingBeforeRef.current) return;
+        loadOlderLogs();
+    }, [isAllLoaded, hasMoreBefore]);
 
-        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    // Virtuoso callback: when user scrolls to bottom, load newer logs (if not following)
+    const handleEndReached = useCallback(() => {
+        if (isAllLoaded || !hasMoreAfter || loadingAfterRef.current || isFollowing) return;
+        loadNewerLogs();
+    }, [isAllLoaded, hasMoreAfter, isFollowing]);
 
-        // Consider "at bottom" if within 50px of the bottom
-        isAtBottomRef.current = distanceFromBottom < 50;
-
-        // Don't do chunk loading if all logs are loaded
-        if (isAllLoaded) return;
-
-        // Load older logs when near top (within 100px) - works even when following
-        // Use ref for instant check to prevent race conditions
-        if (scrollTop < 100 && hasMoreBefore && !loadingBeforeRef.current) {
-            loadOlderLogs();
-        }
-
-        // When user scrolls away from bottom (more than 200px), reset hasMoreAfter
-        // This allows loading more logs when they scroll back down
-        // (useful for active pods that keep generating logs)
-        if (distanceFromBottom > 200 && !hasMoreAfter && !isFollowing) {
+    // Virtuoso callback: track if user is at bottom
+    const handleAtBottomStateChange = useCallback((atBottom) => {
+        isAtBottomRef.current = atBottom;
+        // When user scrolls away from bottom, enable loading more logs
+        if (!atBottom && !hasMoreAfter && !isFollowing && !isAllLoaded) {
             setHasMoreAfter(true);
-            lastFetchedAfterTs.current = ''; // Reset to allow new fetch
+            lastFetchedAfterTs.current = '';
         }
-
-        // Load newer logs when near bottom (within 100px) and not following
-        if (distanceFromBottom < 100 && hasMoreAfter && !loadingAfterRef.current && !isFollowing) {
-            loadNewerLogs();
-        }
-    };
+    }, [hasMoreAfter, isFollowing, isAllLoaded]);
 
     // Track if initial load has been done and previous pod/container
     const initialLoadDone = useRef(false);
@@ -258,12 +247,12 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             // Reset chunk loading state
             loadingBeforeRef.current = false;
             loadingAfterRef.current = false;
-            isChunkLoadingRef.current = false;
             lastFetchedBeforeTs.current = '';
             lastFetchedAfterTs.current = '';
             setLoadingBefore(false);
             setLoadingAfter(false);
             setLogs([]);
+            setFirstItemIndex(10000); // Reset first item index
 
             // If was in "all logs" mode, stay in that mode for the new pod/container
             if (isAllLoaded) {
@@ -394,6 +383,24 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         }
     };
 
+    // Force scroll to top using Virtuoso
+    const scrollToTop = useCallback(() => {
+        isAtBottomRef.current = false;
+        virtuosoRef.current?.scrollToIndex({
+            index: 0,
+            behavior: 'auto'
+        });
+    }, []);
+
+    // Force scroll to bottom using Virtuoso
+    const scrollToBottom = useCallback(() => {
+        isAtBottomRef.current = true;
+        virtuosoRef.current?.scrollToIndex({
+            index: 'LAST',
+            behavior: 'auto'
+        });
+    }, []);
+
     // Load all logs at once
     const loadAllLogs = async () => {
         // Stop any existing stream
@@ -405,9 +412,9 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         // Reset chunk loading refs immediately to prevent any in-flight chunk loads
         loadingBeforeRef.current = false;
         loadingAfterRef.current = false;
-        isChunkLoadingRef.current = false;
         lastFetchedBeforeTs.current = '';
         lastFetchedAfterTs.current = '';
+        setFirstItemIndex(10000); // Reset first item index
 
         setStreamDisconnected(false);
         setDisconnectReason('');
@@ -425,10 +432,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
             // Scroll to top after logs are loaded
             requestAnimationFrame(() => {
-                if (logsContainerRef.current) {
-                    logsContainerRef.current.scrollTop = 0;
-                    isAtBottomRef.current = false;
-                }
+                scrollToTop();
             });
         } catch (err) {
             setLogs([{ timestamp: '', content: `Error fetching all logs: ${err}`, source: 'error' }]);
@@ -439,6 +443,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     };
 
     // Load older logs (when scrolling to top)
+    // Virtuoso handles scroll position via firstItemIndex
     const loadOlderLogs = async () => {
         // Use ref for instant lock check to prevent race conditions
         if (loadingBeforeRef.current || !hasMoreBefore) return;
@@ -451,28 +456,13 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
         // Avoid duplicate fetches with the same timestamp
         if (firstTs === lastFetchedBeforeTs.current) {
-            console.log('DEBUG: Skipping duplicate BEFORE fetch for', firstTs);
             return;
         }
         lastFetchedBeforeTs.current = firstTs;
 
         // Set locks immediately (sync) before any async operation
         loadingBeforeRef.current = true;
-        isChunkLoadingRef.current = true; // Disable auto-scroll
         setLoadingBefore(true); // For UI display
-
-        // Capture scroll position BEFORE the async call
-        const container = logsContainerRef.current;
-        const prevScrollHeight = container?.scrollHeight || 0;
-        const prevScrollTop = container?.scrollTop || 0;
-
-        // Stop momentum scrolling by freezing position
-        if (container) {
-            container.style.overflow = 'hidden';
-            requestAnimationFrame(() => {
-                if (container) container.style.overflow = 'auto';
-            });
-        }
 
         try {
             const result = await GetPodLogsBefore(
@@ -482,33 +472,20 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
             if (result.logs && result.logs.trim()) {
                 const newEntries = parseLogLines(result.logs, 'before');
+                // Prepend logs and adjust firstItemIndex to maintain scroll position
+                setFirstItemIndex(prev => prev - newEntries.length);
                 setLogs(prev => [...newEntries, ...prev]);
                 setHasMoreBefore(result.hasMore);
                 // After loading older logs, enable loading newer (in case new logs appeared)
                 if (!isFollowing) {
                     setHasMoreAfter(true);
                 }
-
-                // Restore scroll position after DOM update - stay in same place
-                // Use double requestAnimationFrame to ensure DOM has updated
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        if (container) {
-                            const newScrollHeight = container.scrollHeight;
-                            const addedHeight = newScrollHeight - prevScrollHeight;
-                            container.scrollTop = prevScrollTop + addedHeight;
-                        }
-                        isChunkLoadingRef.current = false; // Re-enable auto-scroll
-                    });
-                });
             } else {
                 setHasMoreBefore(false);
-                isChunkLoadingRef.current = false;
             }
         } catch (err) {
             console.error('Failed to load older logs:', err);
             setHasMoreBefore(false);
-            isChunkLoadingRef.current = false;
         } finally {
             loadingBeforeRef.current = false;
             setLoadingBefore(false);
@@ -528,24 +505,13 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
         // Avoid duplicate fetches with the same timestamp
         if (lastTs === lastFetchedAfterTs.current) {
-            console.log('DEBUG: Skipping duplicate AFTER fetch for', lastTs);
             return;
         }
         lastFetchedAfterTs.current = lastTs;
 
         // Set locks immediately (sync) before any async operation
         loadingAfterRef.current = true;
-        isChunkLoadingRef.current = true; // Disable auto-scroll
         setLoadingAfter(true); // For UI display
-
-        // Stop momentum scrolling by freezing position
-        const container = logsContainerRef.current;
-        if (container) {
-            container.style.overflow = 'hidden';
-            requestAnimationFrame(() => {
-                if (container) container.style.overflow = 'auto';
-            });
-        }
 
         try {
             const result = await GetPodLogsAfter(
@@ -565,7 +531,6 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             setHasMoreAfter(false);
         } finally {
             loadingAfterRef.current = false;
-            isChunkLoadingRef.current = false;
             setLoadingAfter(false);
         }
     };
@@ -650,30 +615,15 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         };
     }, []);
 
-    // Auto-scroll to bottom only when user was already at bottom, or on initial load/mode change
-    // Skip auto-scroll during chunk loading (we handle scroll position manually)
-    const prevLogsLengthRef = useRef(0);
-    useEffect(() => {
-        // Skip auto-scroll during chunk loading
-        if (isChunkLoadingRef.current) {
-            prevLogsLengthRef.current = logs.length;
-            return;
+    // Virtuoso followOutput callback - controls auto-scroll behavior
+    // Returns 'smooth' to scroll, false to not scroll
+    const followOutput = useCallback((isAtBottom) => {
+        // Auto-scroll when following and at bottom, or on initial load
+        if (isFollowing && isAtBottom) {
+            return 'smooth';
         }
-
-        const isInitialLoad = prevLogsLengthRef.current === 0 && logs.length > 0;
-        const isNewFetch = logs.length > 0 && prevLogsLengthRef.current === 0;
-
-        // Only auto-scroll on initial load or fresh fetch, not on chunk loads
-        if (viewMode === 'start' && logsContainerRef.current && (isInitialLoad || isNewFetch)) {
-            logsContainerRef.current.scrollTop = 0;
-            isAtBottomRef.current = false;
-        } else if (logsContainerRef.current && (isAtBottomRef.current || isInitialLoad || isNewFetch)) {
-            logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
-            isAtBottomRef.current = true;
-        }
-
-        prevLogsLengthRef.current = logs.length;
-    }, [logs, viewMode]);
+        return false;
+    }, [isFollowing]);
 
     // Create search regex with validation
     const { searchRegex, searchRegexError } = useMemo(() => {
@@ -871,49 +821,47 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         return result;
     };
 
-    // Convert structured logs to HTML for display (memoized to prevent re-renders on input typing)
-    const renderedLogs = useMemo(() => {
-        if (!displayLogs || displayLogs.length === 0) return null;
+    // Render a single log line for Virtuoso
+    const renderLogItem = useCallback((index) => {
+        const entry = displayLogs[index];
+        if (!entry) return null;
 
-        return displayLogs.map((entry, index) => {
-            // Skip indicator
-            if (entry.isSkipIndicator) {
-                return (
-                    <div key={entry.key} className="flex items-center justify-center py-1 text-gray-500 text-xs italic select-none">
-                        <span className="px-2 bg-gray-800/50 rounded">... skipped {entry.skippedCount} line{entry.skippedCount !== 1 ? 's' : ''} ...</span>
-                    </div>
-                );
-            }
-
-            // Convert ANSI codes in content
-            const normalizedContent = normalizeAnsiCodes(entry.content);
-            let htmlContent = converter.toHtml(normalizedContent);
-
-            // If searching and this line matches, highlight the matches while preserving ANSI colors
-            if (searchTerm && searchRegex && entry.isMatch) {
-                // Use stripped text for matching positions (no ANSI codes)
-                const strippedContent = stripAnsiCodes(normalizedContent);
-                htmlContent = highlightMatchesInHtml(htmlContent, strippedContent);
-            }
-
+        // Skip indicator
+        if (entry.isSkipIndicator) {
             return (
-                <div key={entry.originalIndex ?? index} className={`flex ${entry.isMatch ? 'bg-yellow-500/10' : ''}`}>
-                    {showTimestamps && entry.timestamp && (
-                        <span className="text-gray-500 select-none mr-2 shrink-0">
-                            {entry.timestamp}
-                        </span>
-                    )}
-                    <span dangerouslySetInnerHTML={{ __html: htmlContent }} />
+                <div className="flex items-center justify-center py-1 text-gray-500 text-xs italic select-none">
+                    <span className="px-2 bg-gray-800/50 rounded">... skipped {entry.skippedCount} line{entry.skippedCount !== 1 ? 's' : ''} ...</span>
                 </div>
             );
-        });
-    }, [displayLogs, showTimestamps, searchTerm, searchRegex]);
+        }
+
+        // Convert ANSI codes in content
+        const normalizedContent = normalizeAnsiCodes(entry.content);
+        let htmlContent = converter.toHtml(normalizedContent);
+
+        // If searching and this line matches, highlight the matches while preserving ANSI colors
+        if (searchTerm && searchRegex && entry.isMatch) {
+            // Use stripped text for matching positions (no ANSI codes)
+            const strippedContent = stripAnsiCodes(normalizedContent);
+            htmlContent = highlightMatchesInHtml(htmlContent, strippedContent);
+        }
+
+        return (
+            <div className={`flex ${entry.isMatch ? 'bg-yellow-500/10' : ''} ${wrapLines ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'}`}>
+                {showTimestamps && entry.timestamp && (
+                    <span className="text-gray-500 select-none mr-2 shrink-0">
+                        {entry.timestamp}
+                    </span>
+                )}
+                <span dangerouslySetInnerHTML={{ __html: htmlContent }} />
+            </div>
+        );
+    }, [displayLogs, showTimestamps, searchTerm, searchRegex, wrapLines]);
 
     const jumpToStart = () => {
         // Reset chunk loading state to prevent races
         loadingBeforeRef.current = false;
         loadingAfterRef.current = false;
-        isChunkLoadingRef.current = false;
         lastFetchedBeforeTs.current = '';
         lastFetchedAfterTs.current = '';
         setLoadingBefore(false);
@@ -921,20 +869,13 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
         // Clear logs immediately and reset pagination state
         setLogs([]);
+        setFirstItemIndex(10000); // Reset first item index
         setHasMoreBefore(false);
         setHasMoreAfter(true);
         setIsAllLoaded(false); // Reset all-loaded state
 
         setViewMode('start');
         setSinceTime(''); // Clear time filter when jumping to start
-    };
-
-    // Force scroll to bottom
-    const scrollToBottom = () => {
-        isAtBottomRef.current = true;
-        if (logsContainerRef.current) {
-            logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
-        }
     };
 
     const jumpToEnd = () => {
@@ -956,7 +897,6 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         // Switching to end mode - reset chunk loading state to prevent races
         loadingBeforeRef.current = false;
         loadingAfterRef.current = false;
-        isChunkLoadingRef.current = false;
         lastFetchedBeforeTs.current = '';
         lastFetchedAfterTs.current = '';
         setLoadingBefore(false);
@@ -964,6 +904,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
         // Clear logs and reset pagination state
         setLogs([]);
+        setFirstItemIndex(10000); // Reset first item index
         setHasMoreBefore(true);
         setHasMoreAfter(false);
         setIsAllLoaded(false); // Reset all-loaded state
@@ -1505,11 +1446,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             )}
 
             {/* Logs Content */}
-            <div
-                ref={logsContainerRef}
-                onScroll={handleScroll}
-                className="flex-1 overflow-auto p-4 text-gray-300 font-mono text-xs"
-            >
+            <div className="flex-1 overflow-hidden text-gray-300 font-mono text-xs">
                 {loading || loadingAll ? (
                     <div className="flex flex-col items-center justify-center h-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -1517,52 +1454,64 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                             <span className="mt-3 text-gray-500 text-sm">Loading all logs...</span>
                         )}
                     </div>
-                ) : (
-                    <div className={wrapLines ? "whitespace-pre-wrap break-all" : "whitespace-pre"}>
-                        {/* Loading older logs indicator */}
-                        {loadingBefore && (
-                            <div className="flex items-center justify-center py-2 text-gray-500">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                                Loading older logs...
-                            </div>
-                        )}
-                        {/* At the top indicator */}
-                        {!hasMoreBefore && !loadingBefore && logs.length > 0 && (
-                            <div className="flex items-center justify-center py-1 text-gray-600 text-xs">
-                                — You are at the top —
-                            </div>
-                        )}
-                        <div ref={logsStartRef} />
-                        {logs.length > 0 ? (
-                            <>
-                                {/* No matches found - offer to load all logs */}
-                                {searchTerm && matchCount === 0 && !isAllLoaded && !loadingAll && (
-                                    <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                                        <span className="mb-3">No matches found in loaded logs</span>
-                                        <button
-                                            onClick={loadAllLogs}
-                                            className="px-4 py-2 text-sm bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors"
-                                        >
-                                            Load all logs and search
-                                        </button>
-                                    </div>
-                                )}
-                                <div>{renderedLogs}</div>
-                            </>
-                        ) : showPrevious ? (
-                            <div className="text-amber-400">No previous container logs available.</div>
+                ) : logs.length === 0 ? (
+                    <div className="flex items-center justify-center h-full">
+                        {showPrevious ? (
+                            <span className="text-amber-400">No previous container logs available.</span>
                         ) : (
-                            <div className="text-gray-500">No logs available.</div>
-                        )}
-                        <div ref={logsEndRef} />
-                        {/* Loading newer logs indicator */}
-                        {loadingAfter && (
-                            <div className="flex items-center justify-center py-2 text-gray-500">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                                Loading newer logs...
-                            </div>
+                            <span className="text-gray-500">No logs available.</span>
                         )}
                     </div>
+                ) : searchTerm && matchCount === 0 && !isAllLoaded ? (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                        <span className="mb-3">No matches found in loaded logs</span>
+                        <button
+                            onClick={loadAllLogs}
+                            className="px-4 py-2 text-sm bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors"
+                        >
+                            Load all logs and search
+                        </button>
+                    </div>
+                ) : (
+                    <Virtuoso
+                        ref={virtuosoRef}
+                        style={{ height: '100%' }}
+                        className="px-4"
+                        data={displayLogs}
+                        firstItemIndex={firstItemIndex}
+                        initialTopMostItemIndex={viewMode === 'start' ? 0 : displayLogs.length - 1}
+                        itemContent={(index) => renderLogItem(index - firstItemIndex)}
+                        followOutput={followOutput}
+                        atBottomStateChange={handleAtBottomStateChange}
+                        startReached={handleStartReached}
+                        endReached={handleEndReached}
+                        overscan={200}
+                        components={{
+                            Header: () => (
+                                <>
+                                    {loadingBefore && (
+                                        <div className="flex items-center justify-center py-2 text-gray-500">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                                            Loading older logs...
+                                        </div>
+                                    )}
+                                    {!hasMoreBefore && !loadingBefore && (
+                                        <div className="flex items-center justify-center py-1 text-gray-600 text-xs">
+                                            — You are at the top —
+                                        </div>
+                                    )}
+                                </>
+                            ),
+                            Footer: () => (
+                                loadingAfter ? (
+                                    <div className="flex items-center justify-center py-2 text-gray-500">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                                        Loading newer logs...
+                                    </div>
+                                ) : null
+                            )
+                        }}
+                    />
                 )}
             </div>
 
