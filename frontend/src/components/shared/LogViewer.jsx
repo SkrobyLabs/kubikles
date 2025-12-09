@@ -239,13 +239,53 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
         }
     };
 
+    // Track if initial load has been done and previous pod/container
+    const initialLoadDone = useRef(false);
+    const prevPodRef = useRef(selectedPod);
+    const prevContainerRef = useRef(selectedContainer);
+
     useEffect(() => {
-        // Skip fetching if all logs are already loaded (e.g., from loadAllLogs)
+        if (!namespace || !selectedPod) return;
+
+        // Check if pod or container changed
+        const podChanged = prevPodRef.current !== selectedPod;
+        const containerChanged = prevContainerRef.current !== selectedContainer;
+        prevPodRef.current = selectedPod;
+        prevContainerRef.current = selectedContainer;
+
+        // If pod/container changed, reset state and fetch fresh logs
+        if (podChanged || containerChanged) {
+            // Reset chunk loading state
+            loadingBeforeRef.current = false;
+            loadingAfterRef.current = false;
+            isChunkLoadingRef.current = false;
+            lastFetchedBeforeTs.current = '';
+            lastFetchedAfterTs.current = '';
+            setLoadingBefore(false);
+            setLoadingAfter(false);
+            setLogs([]);
+
+            // If was in "all logs" mode, stay in that mode for the new pod/container
+            if (isAllLoaded) {
+                loadAllLogs();
+            } else {
+                fetchLogs();
+            }
+            return;
+        }
+
+        // On initial mount with 'all' position, load all logs
+        if (!initialLoadDone.current && initialPosition === 'all') {
+            initialLoadDone.current = true;
+            loadAllLogs();
+            return;
+        }
+
+        // Skip fetching if all logs are loaded (user clicked "load all")
         if (isAllLoaded) return;
 
-        if (namespace && selectedPod) {
-            fetchLogs();
-        }
+        initialLoadDone.current = true;
+        fetchLogs();
         // Note: showTimestamps is NOT a dependency - we always fetch with timestamps
         // and just show/hide them in render
     }, [namespace, selectedPod, selectedContainer, showPrevious, sinceTime, viewMode, isAllLoaded]);
@@ -1470,9 +1510,12 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
                 onScroll={handleScroll}
                 className="flex-1 overflow-auto p-4 text-gray-300 font-mono text-xs"
             >
-                {loading ? (
-                    <div className="flex items-center justify-center h-full">
+                {loading || loadingAll ? (
+                    <div className="flex flex-col items-center justify-center h-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        {loadingAll && (
+                            <span className="mt-3 text-gray-500 text-sm">Loading all logs...</span>
+                        )}
                     </div>
                 ) : (
                     <div className={wrapLines ? "whitespace-pre-wrap break-all" : "whitespace-pre"}>
