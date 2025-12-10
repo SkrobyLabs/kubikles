@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
 import ResourceBar from '../../../components/shared/ResourceBar';
 import { useNodes } from '../../../hooks/useNodes';
@@ -101,6 +101,18 @@ const TaintsCell = ({ node }) => {
 export default function NodeList({ isVisible }) {
     const { currentContext } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
     const { nodes, loading, refetch } = useNodes(currentContext, isVisible);
     const { metrics, available: metricsAvailable } = useNodeMetrics(isVisible);
     const { handleEditYaml, handleCordonUncordon, handleShell, handleDelete } = useNodeActions(refetch);
@@ -167,7 +179,8 @@ export default function NodeList({ isVisible }) {
                 <NodeActionsMenu
                     node={item}
                     isOpen={activeMenuId === `node-${item.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `node-${item.metadata.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `node-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onCordonUncordon={handleCordonUncordon}
                     onShell={handleShell}
@@ -178,7 +191,7 @@ export default function NodeList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleCordonUncordon, handleShell, handleDelete, metrics, metricsAvailable]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleCordonUncordon, handleShell, handleDelete, metrics, metricsAvailable]);
 
     return (
         <ResourceList

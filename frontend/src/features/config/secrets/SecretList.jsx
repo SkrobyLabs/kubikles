@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
 import { useSecrets } from '../../../hooks/useSecrets';
 import { useK8s } from '../../../context/K8sContext';
@@ -13,6 +13,18 @@ export default function SecretList({ isVisible }) {
     const { activeMenuId, setActiveMenuId } = useUI();
     const { secrets, loading } = useSecrets(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleShowDependencies, handleDelete } = useSecretActions();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
@@ -27,7 +39,8 @@ export default function SecretList({ isVisible }) {
                 <SecretActionsMenu
                     secret={item}
                     isOpen={activeMenuId === `secret-${item.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `secret-${item.metadata.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `secret-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
                     onDelete={handleDelete}
@@ -37,7 +50,7 @@ export default function SecretList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies, handleDelete]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleDelete]);
 
     return (
         <ResourceList

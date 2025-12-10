@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import DeploymentActionsMenu from './DeploymentActionsMenu';
@@ -13,6 +13,18 @@ import { getDeploymentPods, getEffectivePodStatus, getPodStatusColor } from '../
 export default function DeploymentList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
     // console.log("DeploymentList rendering");
     const { deployments, loading: deploymentsLoading } = useDeployments(currentContext, selectedNamespaces, isVisible);
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible); // Fetch pods for status
@@ -70,7 +82,8 @@ export default function DeploymentList({ isVisible }) {
                 <DeploymentActionsMenu
                     deployment={item}
                     isOpen={activeMenuId === `deployment-${item.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `deployment-${item.metadata.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `deployment-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies(item)}
                     onRestart={() => handleRestart(item)}
@@ -81,7 +94,7 @@ export default function DeploymentList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs, podsLoading, allPods]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs, podsLoading, allPods]);
 
     return (
         <ResourceList

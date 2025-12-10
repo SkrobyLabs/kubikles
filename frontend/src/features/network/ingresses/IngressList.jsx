@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import IngressActionsMenu from './IngressActionsMenu';
@@ -13,6 +13,18 @@ export default function IngressList({ isVisible }) {
     const { activeMenuId, setActiveMenuId } = useUI();
     const { ingresses, loading } = useIngresses(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleShowDependencies, handleDelete } = useIngressActions();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
 
     const getHosts = (ingress) => {
         const rules = ingress.spec?.rules || [];
@@ -59,7 +71,8 @@ export default function IngressList({ isVisible }) {
                 <IngressActionsMenu
                     ingress={item}
                     isOpen={activeMenuId === `ingress-${item.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `ingress-${item.metadata.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `ingress-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
                     onDelete={handleDelete}
@@ -69,7 +82,7 @@ export default function IngressList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleDelete]);
 
     return (
         <ResourceList

@@ -1,49 +1,37 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
 
-export default function JobActionsMenu({ job, isOpen, onOpenChange, onEditYaml, onShowDependencies, onDelete, onViewLogs }) {
-    const [position, setPosition] = useState({ top: 0, left: 0 });
+export default function JobActionsMenu({ job, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onDelete, onViewLogs }) {
     const buttonRef = useRef(null);
+    const menuRef = useRef(null);
 
     useEffect(() => {
+        if (!isOpen) return;
+
         const handleClickOutside = (event) => {
-            if (buttonRef.current && !buttonRef.current.contains(event.target)) {
-                // Check if click is inside the menu (which is now in a portal)
-                const menu = document.getElementById(`job-menu-${job.metadata.uid}`);
-                if (menu && !menu.contains(event.target)) {
-                    onOpenChange(false);
-                }
+            if (buttonRef.current && !buttonRef.current.contains(event.target) &&
+                menuRef.current && !menuRef.current.contains(event.target)) {
+                onOpenChange(false);
             }
         };
 
         const handleScroll = () => {
-            if (isOpen) onOpenChange(false);
+            onOpenChange(false);
         };
 
         document.addEventListener('mousedown', handleClickOutside);
-        window.addEventListener('scroll', handleScroll, true); // Capture scroll events
-        window.addEventListener('resize', handleScroll);
+        window.addEventListener('scroll', handleScroll, true);
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             window.removeEventListener('scroll', handleScroll, true);
-            window.removeEventListener('resize', handleScroll);
         };
-    }, [isOpen, job.metadata.uid, onOpenChange]);
+    }, [isOpen, onOpenChange]);
 
     const toggleMenu = (e) => {
         e.stopPropagation();
-        if (!isOpen) {
-            const rect = buttonRef.current.getBoundingClientRect();
-            // Align right edge of menu with right edge of button
-            // w-48 is 12rem = 192px
-            setPosition({
-                top: rect.bottom + window.scrollY,
-                left: rect.right - 192 + window.scrollX
-            });
-        }
-        onOpenChange(!isOpen);
+        onOpenChange(!isOpen, buttonRef.current);
     };
 
     const handleAction = (action) => {
@@ -53,9 +41,9 @@ export default function JobActionsMenu({ job, isOpen, onOpenChange, onEditYaml, 
 
     const menu = (
         <div
-            id={`job-menu-${job.metadata.uid}`}
-            className="fixed w-48 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg z-50 py-1"
-            style={{ top: position.top, left: position.left }}
+            ref={menuRef}
+            className="w-48 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg py-1"
+            style={{ position: 'fixed', top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, zIndex: 99999 }}
             onClick={(e) => e.stopPropagation()}
         >
             <button

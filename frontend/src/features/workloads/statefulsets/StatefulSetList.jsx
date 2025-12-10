@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import StatefulSetActionsMenu from './StatefulSetActionsMenu';
@@ -13,6 +13,18 @@ import { getDeploymentPods, getEffectivePodStatus, getPodStatusColor } from '../
 export default function StatefulSetList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
     // console.log("StatefulSetList rendering");
     const { statefulSets, loading: statefulSetsLoading } = useStatefulSets(currentContext, selectedNamespaces, isVisible);
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible);
@@ -69,7 +81,8 @@ export default function StatefulSetList({ isVisible }) {
                 <StatefulSetActionsMenu
                     statefulSet={item}
                     isOpen={activeMenuId === `statefulset-${item.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `statefulset-${item.metadata.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `statefulset-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies(item)}
                     onRestart={() => handleRestart(item)}
@@ -80,7 +93,7 @@ export default function StatefulSetList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs, podsLoading, allPods]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs, podsLoading, allPods]);
 
     return (
         <ResourceList

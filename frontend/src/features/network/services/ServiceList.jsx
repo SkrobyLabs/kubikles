@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import ServiceActionsMenu from './ServiceActionsMenu';
@@ -13,6 +13,18 @@ export default function ServiceList({ isVisible }) {
     const { activeMenuId, setActiveMenuId } = useUI();
     const { services, loading } = useServices(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleShowDependencies } = useServiceActions();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
@@ -29,7 +41,8 @@ export default function ServiceList({ isVisible }) {
                 <ServiceActionsMenu
                     service={item}
                     isOpen={activeMenuId === `service-${item.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `service-${item.metadata.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `service-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
                 />
@@ -38,7 +51,7 @@ export default function ServiceList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies]);
 
     return (
         <ResourceList

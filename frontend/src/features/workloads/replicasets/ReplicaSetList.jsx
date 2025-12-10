@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import ReplicaSetActionsMenu from './ReplicaSetActionsMenu';
@@ -18,6 +18,18 @@ function getController(item) {
 export default function ReplicaSetList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId, navigateWithSearch } = useUI();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
     const { replicaSets, loading } = useReplicaSets(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs } = useReplicaSetActions();
 
@@ -88,7 +100,8 @@ export default function ReplicaSetList({ isVisible }) {
                 <ReplicaSetActionsMenu
                     replicaSet={item}
                     isOpen={activeMenuId === `rs-${item.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `rs-${item.metadata.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `rs-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies(item)}
                     onDelete={() => handleDelete(item)}
@@ -98,7 +111,7 @@ export default function ReplicaSetList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs, navigateWithSearch]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs, navigateWithSearch]);
 
     return (
         <ResourceList

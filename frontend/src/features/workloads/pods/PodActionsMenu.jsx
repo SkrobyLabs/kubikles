@@ -1,50 +1,37 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, DocumentTextIcon, CommandLineIcon, TrashIcon, EllipsisVerticalIcon, ShareIcon } from '@heroicons/react/24/outline';
-import { LogDebug } from '../../../../wailsjs/go/main/App';
 
-export default function PodActionsMenu({ pod, isOpen, onOpenChange, onLogs, onEditYaml, onShowDependencies, onDelete, onForceDelete, onShell }) {
-    const [position, setPosition] = useState({ top: 0, left: 0 });
+export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange, onLogs, onEditYaml, onShowDependencies, onDelete, onForceDelete, onShell }) {
     const buttonRef = useRef(null);
+    const menuRef = useRef(null);
 
     useEffect(() => {
+        if (!isOpen) return;
+
         const handleClickOutside = (event) => {
-            if (buttonRef.current && !buttonRef.current.contains(event.target)) {
-                // Check if click is inside the menu (which is now in a portal)
-                const menu = document.getElementById(`pod-menu-${pod.metadata.uid}`);
-                if (menu && !menu.contains(event.target)) {
-                    onOpenChange(false);
-                }
+            if (buttonRef.current && !buttonRef.current.contains(event.target) &&
+                menuRef.current && !menuRef.current.contains(event.target)) {
+                onOpenChange(false);
             }
         };
 
         const handleScroll = () => {
-            if (isOpen) onOpenChange(false);
+            onOpenChange(false);
         };
 
         document.addEventListener('mousedown', handleClickOutside);
-        window.addEventListener('scroll', handleScroll, true); // Capture scroll events
-        window.addEventListener('resize', handleScroll);
+        window.addEventListener('scroll', handleScroll, true);
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             window.removeEventListener('scroll', handleScroll, true);
-            window.removeEventListener('resize', handleScroll);
         };
-    }, [isOpen, pod.metadata.uid, onOpenChange]);
+    }, [isOpen, onOpenChange]);
 
     const toggleMenu = (e) => {
         e.stopPropagation();
-        if (!isOpen) {
-            const rect = buttonRef.current.getBoundingClientRect();
-            // Align right edge of menu with right edge of button
-            // w-48 is 12rem = 192px
-            setPosition({
-                top: rect.bottom + window.scrollY,
-                left: rect.right - 192 + window.scrollX
-            });
-        }
-        onOpenChange(!isOpen);
+        onOpenChange(!isOpen, buttonRef.current);
     };
 
     const handleAction = (action) => {
@@ -56,9 +43,9 @@ export default function PodActionsMenu({ pod, isOpen, onOpenChange, onLogs, onEd
 
     const menu = (
         <div
-            id={`pod-menu-${pod.metadata.uid}`}
-            className="fixed w-48 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg z-50 py-1"
-            style={{ top: position.top, left: position.left }}
+            ref={menuRef}
+            className="w-48 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg py-1"
+            style={{ position: 'fixed', top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, zIndex: 99999 }}
             onClick={(e) => e.stopPropagation()}
         >
             <button
@@ -93,15 +80,9 @@ export default function PodActionsMenu({ pod, isOpen, onOpenChange, onLogs, onEd
             <button
                 onClick={(e) => {
                     e.stopPropagation();
-                    const msg = `Delete clicked. isTerminating: ${!!isTerminating}, Pod: ${pod.metadata.name}`;
-                    console.log(msg);
-                    LogDebug(msg).catch(console.error);
-
                     if (isTerminating) {
-                        console.log("Triggering onForceDelete");
                         handleAction(() => onForceDelete(pod));
                     } else {
-                        console.log("Triggering onDelete");
                         handleAction(() => onDelete(pod));
                     }
                 }}
@@ -110,7 +91,7 @@ export default function PodActionsMenu({ pod, isOpen, onOpenChange, onLogs, onEd
                 <TrashIcon className="h-4 w-4" />
                 {isTerminating ? 'Force Delete' : 'Delete'}
             </button>
-        </div >
+        </div>
     );
 
     return (

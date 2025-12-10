@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import ResourceBar from '../../../components/shared/ResourceBar';
@@ -14,6 +14,18 @@ import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusP
 export default function PodList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId, navigateWithSearch } = useUI();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
     // console.log("PodList rendering");
     const { pods, loading } = usePods(currentContext, selectedNamespaces, isVisible);
     const { metrics, available: metricsAvailable } = usePodMetrics(isVisible);
@@ -141,7 +153,8 @@ export default function PodList({ isVisible }) {
                 <PodActionsMenu
                     pod={item}
                     isOpen={activeMenuId === `pod-${item.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `pod-${item.metadata.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `pod-${item.metadata.uid}`, buttonElement)}
                     onLogs={() => {
                         const containers = [
                             ...(item.spec?.initContainers || []).map(c => c.name),
@@ -174,7 +187,7 @@ export default function PodList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, openLogs, handleShell, handleDelete, handleEditYaml, handleShowDependencies, pods, navigateWithSearch, metrics, metricsAvailable]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, openLogs, handleShell, handleDelete, handleEditYaml, handleShowDependencies, pods, navigateWithSearch, metrics, metricsAvailable]);
 
     return (
         <ResourceList

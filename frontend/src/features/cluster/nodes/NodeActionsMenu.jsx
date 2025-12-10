@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
     PencilSquareIcon,
@@ -12,52 +12,44 @@ import {
 export default function NodeActionsMenu({
     node,
     isOpen,
+    menuPosition,
     onOpenChange,
     onEditYaml,
     onCordonUncordon,
     onShell,
     onDelete
 }) {
-    const [position, setPosition] = useState({ top: 0, left: 0 });
     const buttonRef = useRef(null);
+    const menuRef = useRef(null);
 
     const isUnschedulable = node.spec?.unschedulable === true;
 
     useEffect(() => {
+        if (!isOpen) return;
+
         const handleClickOutside = (event) => {
-            if (buttonRef.current && !buttonRef.current.contains(event.target)) {
-                const menu = document.getElementById(`node-menu-${node.metadata.uid}`);
-                if (menu && !menu.contains(event.target)) {
-                    onOpenChange(false);
-                }
+            if (buttonRef.current && !buttonRef.current.contains(event.target) &&
+                menuRef.current && !menuRef.current.contains(event.target)) {
+                onOpenChange(false);
             }
         };
 
         const handleScroll = () => {
-            if (isOpen) onOpenChange(false);
+            onOpenChange(false);
         };
 
         document.addEventListener('mousedown', handleClickOutside);
         window.addEventListener('scroll', handleScroll, true);
-        window.addEventListener('resize', handleScroll);
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             window.removeEventListener('scroll', handleScroll, true);
-            window.removeEventListener('resize', handleScroll);
         };
-    }, [isOpen, node.metadata.uid, onOpenChange]);
+    }, [isOpen, onOpenChange]);
 
     const toggleMenu = (e) => {
         e.stopPropagation();
-        if (!isOpen) {
-            const rect = buttonRef.current.getBoundingClientRect();
-            setPosition({
-                top: rect.bottom + window.scrollY,
-                left: rect.right - 192 + window.scrollX
-            });
-        }
-        onOpenChange(!isOpen);
+        onOpenChange(!isOpen, buttonRef.current);
     };
 
     const handleAction = (action) => {
@@ -67,9 +59,9 @@ export default function NodeActionsMenu({
 
     const menu = (
         <div
-            id={`node-menu-${node.metadata.uid}`}
-            className="fixed w-48 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg z-50 py-1"
-            style={{ top: position.top, left: position.left }}
+            ref={menuRef}
+            className="w-48 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg py-1"
+            style={{ position: 'fixed', top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, zIndex: 99999 }}
             onClick={(e) => e.stopPropagation()}
         >
             <button

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import NamespaceActionsMenu from './NamespaceActionsMenu';
@@ -30,6 +30,18 @@ function getStatusColor(status) {
 export default function NamespaceList({ isVisible }) {
     const { currentContext } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
     const { namespaces, loading } = useNamespacesList(currentContext, isVisible);
     const { handleEditYaml, handleDelete } = useNamespaceActions();
 
@@ -63,7 +75,8 @@ export default function NamespaceList({ isVisible }) {
                 <NamespaceActionsMenu
                     namespace={item}
                     isOpen={activeMenuId === `namespace-${item.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `namespace-${item.metadata.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `namespace-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={() => handleEditYaml(item)}
                     onDelete={() => handleDelete(item)}
                 />
@@ -71,7 +84,7 @@ export default function NamespaceList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleDelete]);
 
     return (
         <ResourceList

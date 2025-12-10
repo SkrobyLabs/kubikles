@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, EllipsisVerticalIcon, ShareIcon } from '@heroicons/react/24/outline';
 
-export default function ServiceActionsMenu({ service, isOpen, onOpenChange, onEditYaml, onShowDependencies }) {
-    const [position, setPosition] = useState({ top: 0, left: 0 });
+export default function ServiceActionsMenu({ service, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies }) {
     const buttonRef = useRef(null);
+    const menuRef = useRef(null);
 
     useEffect(() => {
+        if (!isOpen) return;
+
         const handleClickOutside = (event) => {
             if (buttonRef.current && !buttonRef.current.contains(event.target)) {
-                const menu = document.getElementById(`service-menu-${service.metadata.uid}`);
-                if (menu && !menu.contains(event.target)) {
+                if (menuRef.current && !menuRef.current.contains(event.target)) {
                     onOpenChange(false);
                 }
             }
@@ -22,25 +23,16 @@ export default function ServiceActionsMenu({ service, isOpen, onOpenChange, onEd
 
         document.addEventListener('mousedown', handleClickOutside);
         window.addEventListener('scroll', handleScroll, true);
-        window.addEventListener('resize', handleScroll);
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             window.removeEventListener('scroll', handleScroll, true);
-            window.removeEventListener('resize', handleScroll);
         };
-    }, [isOpen, service.metadata.uid, onOpenChange]);
+    }, [isOpen, onOpenChange]);
 
     const toggleMenu = (e) => {
         e.stopPropagation();
-        if (!isOpen) {
-            const rect = buttonRef.current.getBoundingClientRect();
-            setPosition({
-                top: rect.bottom + window.scrollY,
-                left: rect.right - 192 + window.scrollX
-            });
-        }
-        onOpenChange(!isOpen);
+        onOpenChange(!isOpen, buttonRef.current);
     };
 
     const handleAction = (action) => {
@@ -50,9 +42,9 @@ export default function ServiceActionsMenu({ service, isOpen, onOpenChange, onEd
 
     const menu = (
         <div
-            id={`service-menu-${service.metadata.uid}`}
-            className="fixed w-48 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg z-50 py-1"
-            style={{ top: position.top, left: position.left }}
+            ref={menuRef}
+            className="w-48 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg py-1"
+            style={{ position: 'fixed', top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, zIndex: 99999 }}
             onClick={(e) => e.stopPropagation()}
         >
             <button

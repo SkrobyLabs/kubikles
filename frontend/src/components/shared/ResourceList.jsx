@@ -1,8 +1,42 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback, forwardRef } from 'react';
+import { TableVirtuoso } from 'react-virtuoso';
 import { MagnifyingGlassIcon, EllipsisVerticalIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import SearchSelect from './SearchSelect';
 import { createFilter, getFieldsMetadata } from '../../utils/search';
 import { useUI } from '../../context/UIContext';
+
+// Default column widths for common columns
+// Note: 'name' and 'namespace' are intentionally excluded to fill remaining space
+const DEFAULT_COLUMN_WIDTHS = {
+    cpu: 100,
+    memory: 100,
+    containers: 150,
+    restarts: 100,
+    age: 100,
+    controlledBy: 150,
+    pods: 100,
+    ready: 100,
+    desired: 100,
+    current: 100,
+    available: 100,
+    condition: 150,
+    conditions: 150,
+    completions: 100,
+    lastRun: 125,
+    nextRun: 125,
+    suspend: 100,
+    schedule: 125,
+    taints: 85,
+    version: 85,
+    count: 85,
+    type: 100,
+    last: 85,
+    involvedObject: 250,
+    actions: 50
+};
+
+// Columns that should flex to fill remaining space
+const FLEX_COLUMNS = new Set(['name', 'namespace', 'message']);
 
 export default function ResourceList({
     title,
@@ -28,8 +62,8 @@ export default function ResourceList({
     const searchHelpRef = useRef(null);
     const tableRef = useRef(null);
 
-    // Column resizing state
-    const [columnWidths, setColumnWidths] = useState(() => {
+    // Column resizing state (user-saved widths)
+    const [savedColumnWidths, setSavedColumnWidths] = useState(() => {
         if (!resourceType) return {};
         try {
             const saved = localStorage.getItem(`kubikles_colwidths_${resourceType}`);
@@ -40,12 +74,18 @@ export default function ResourceList({
     });
     const resizingRef = useRef(null);
 
+    // Effective column widths: saved widths take precedence over defaults
+    const columnWidths = useMemo(() => ({
+        ...DEFAULT_COLUMN_WIDTHS,
+        ...savedColumnWidths
+    }), [savedColumnWidths]);
+
     // Save column widths to localStorage
     useEffect(() => {
-        if (resourceType && Object.keys(columnWidths).length > 0) {
-            localStorage.setItem(`kubikles_colwidths_${resourceType}`, JSON.stringify(columnWidths));
+        if (resourceType && Object.keys(savedColumnWidths).length > 0) {
+            localStorage.setItem(`kubikles_colwidths_${resourceType}`, JSON.stringify(savedColumnWidths));
         }
-    }, [columnWidths, resourceType]);
+    }, [savedColumnWidths, resourceType]);
 
     // Column resize handlers
     const handleResizeStart = useCallback((e, columnKey) => {
@@ -64,7 +104,7 @@ export default function ResourceList({
             if (!resizingRef.current) return;
             const diff = moveEvent.clientX - resizingRef.current.startX;
             const newWidth = Math.max(50, resizingRef.current.startWidth + diff);
-            setColumnWidths(prev => ({
+            setSavedColumnWidths(prev => ({
                 ...prev,
                 [resizingRef.current.columnKey]: newWidth
             }));
@@ -86,7 +126,7 @@ export default function ResourceList({
     const handleResizeDoubleClick = useCallback((e, columnKey) => {
         e.preventDefault();
         e.stopPropagation();
-        setColumnWidths(prev => {
+        setSavedColumnWidths(prev => {
             const newWidths = { ...prev };
             delete newWidths[columnKey];
             return newWidths;
@@ -188,7 +228,7 @@ export default function ResourceList({
     }, [filteredData, sortConfig, columns]);
 
     return (
-        <div className="flex flex-col h-full bg-background">
+        <div className="flex flex-col h-full bg-background relative">
             {/* Header */}
             <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0 gap-4">
                 <div className="flex items-center gap-4 flex-1">
@@ -265,131 +305,152 @@ export default function ResourceList({
                     </div>
                 )}
             </div>
-            <div className="flex-1 overflow-auto">
-                <table ref={tableRef} className="text-left border-collapse min-w-full">
-                    <thead className="bg-surface sticky top-0 z-10">
-                        <tr>
-                            {visibleColumns.map((col, colIndex) => {
-                                const isLastDataColumn = colIndex === visibleColumns.length - 2 && visibleColumns[visibleColumns.length - 1]?.isColumnSelector;
-                                const isResizable = !col.isColumnSelector;
-                                const width = columnWidths[col.key];
-
+            {/* Table Content */}
+            <div className="flex-1 overflow-hidden">
+                {isLoading ? (
+                    <div className="flex items-center justify-center h-full text-gray-500">
+                        Loading...
+                    </div>
+                ) : sortedData.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-gray-500">
+                        No resources found
+                    </div>
+                ) : (
+                    <TableVirtuoso
+                        style={{ height: '100%' }}
+                        data={sortedData}
+                        overscan={50}
+                        components={{
+                            Table: ({ style, ...props }) => (
+                                <table
+                                    {...props}
+                                    ref={tableRef}
+                                    className="text-left border-collapse min-w-full"
+                                    style={style}
+                                />
+                            ),
+                            TableHead: forwardRef((props, ref) => (
+                                <thead {...props} ref={ref} className="bg-surface sticky top-0 z-10" />
+                            )),
+                            TableBody: forwardRef((props, ref) => (
+                                <tbody {...props} ref={ref} className="divide-y divide-border" />
+                            )),
+                            TableRow: ({ item, ...props }) => {
+                                const isHighlighted = highlightedUid === item?.metadata?.uid;
                                 return (
-                                    <th
-                                        key={col.key}
-                                        className={`p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none relative whitespace-nowrap ${col.isColumnSelector ? 'sticky right-0 bg-surface z-20' : 'cursor-pointer hover:text-text'}`}
-                                        style={width ? { width: `${width}px`, minWidth: `${width}px` } : undefined}
-                                        onClick={() => !col.isColumnSelector && handleSort(col.key)}
-                                    >
-                                        {col.isColumnSelector ? (
-                                            <div className={`relative flex ${col.align === 'center' ? 'justify-center' : 'justify-end'}`} ref={columnMenuRef}>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setShowColumnMenu(!showColumnMenu);
-                                                    }}
-                                                    className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                                                >
-                                                    <EllipsisVerticalIcon className="h-5 w-5" />
-                                                </button>
-                                                {showColumnMenu && (
-                                                    <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-md shadow-lg z-50 py-1">
-                                                        {columns.filter(c => !c.isColumnSelector).map(c => (
-                                                            <label
-                                                                key={c.key}
-                                                                className="flex items-center px-4 py-2 text-sm text-text hover:bg-white/5 cursor-pointer"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={!hiddenColumns.has(c.key)}
-                                                                    onChange={() => toggleColumn(c.key)}
-                                                                    className="mr-2 rounded border-gray-600 bg-background text-primary focus:ring-primary"
-                                                                />
-                                                                {c.label}
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div className={`flex items-center gap-1 ${col.align === 'center' ? 'justify-center' : ''}`}>
-                                                {col.label}
-                                                {sortConfig.key === col.key && (
-                                                    <span className="text-primary">
-                                                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                        {/* Resize handle */}
-                                        {isResizable && !isLastDataColumn && (
-                                            <div
-                                                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary group"
-                                                onMouseDown={(e) => handleResizeStart(e, col.key)}
-                                                onDoubleClick={(e) => handleResizeDoubleClick(e, col.key)}
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
-                                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gray-600 group-hover:bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            </div>
-                                        )}
-                                    </th>
+                                    <tr
+                                        {...props}
+                                        className={`transition-colors ${isHighlighted ? 'bg-white/5' : 'hover:bg-white/5'}`}
+                                    />
                                 );
-                            })}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                        {isLoading ? (
+                            }
+                        }}
+                        fixedHeaderContent={() => (
                             <tr>
-                                <td colSpan={visibleColumns.length} className="p-4 text-center text-gray-500">
-                                    Loading...
-                                </td>
-                            </tr>
-                        ) : sortedData.length === 0 ? (
-                            <tr>
-                                <td colSpan={visibleColumns.length} className="p-4 text-center text-gray-500">
-                                    No resources found
-                                </td>
-                            </tr>
-                        ) : (
-                            sortedData.map((item, index) => (
-                                <tr
-                                    key={item.metadata?.uid || index}
-                                    className={`transition-colors ${highlightedUid === item.metadata?.uid ? 'bg-white/5' : 'hover:bg-white/5'}`}
-                                >
-                                    {visibleColumns.map((col) => {
-                                        const content = col.render ? col.render(item) : item[col.key];
-                                        const isNamespaceColumn = col.key === 'namespace' && onNamespaceChange;
-                                        const namespaceValue = item.metadata?.namespace;
-                                        const width = columnWidths[col.key];
+                                {visibleColumns.map((col, colIndex) => {
+                                    const isLastDataColumn = colIndex === visibleColumns.length - 2 && visibleColumns[visibleColumns.length - 1]?.isColumnSelector;
+                                    const isResizable = !col.isColumnSelector;
+                                    const width = columnWidths[col.key];
 
-                                        return (
-                                            <td
-                                                key={col.key}
-                                                className={`p-3 text-sm text-text whitespace-nowrap ${col.align === 'center' ? 'text-center' : ''} ${col.isColumnSelector ? 'sticky right-0 bg-background' : ''} ${width ? 'overflow-hidden text-ellipsis' : ''}`}
-                                                style={width ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` } : undefined}
-                                                title={width && typeof content === 'string' ? content : undefined}
-                                            >
-                                                {isNamespaceColumn && namespaceValue ? (
+                                    return (
+                                        <th
+                                            key={col.key}
+                                            className={`p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none relative whitespace-nowrap ${col.isColumnSelector ? 'sticky right-0 bg-surface z-20' : 'cursor-pointer hover:text-text'}`}
+                                            style={width ? { width: `${width}px`, minWidth: `${width}px` } : undefined}
+                                            onClick={() => !col.isColumnSelector && handleSort(col.key)}
+                                        >
+                                            {col.isColumnSelector ? (
+                                                <div className={`relative flex ${col.align === 'center' ? 'justify-center' : 'justify-end'}`} ref={columnMenuRef}>
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            onNamespaceChange([namespaceValue]);
+                                                            setShowColumnMenu(!showColumnMenu);
                                                         }}
-                                                        className="text-primary hover:text-primary/80 hover:underline transition-colors"
-                                                        title={`Filter to namespace: ${namespaceValue}`}
+                                                        className="p-1 hover:bg-white/10 rounded-full transition-colors"
                                                     >
-                                                        {content}
+                                                        <EllipsisVerticalIcon className="h-5 w-5" />
                                                     </button>
-                                                ) : content}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            ))
+                                                    {showColumnMenu && (
+                                                        <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-md shadow-lg z-50 py-1">
+                                                            {columns.filter(c => !c.isColumnSelector).map(c => (
+                                                                <label
+                                                                    key={c.key}
+                                                                    className="flex items-center px-4 py-2 text-sm text-text hover:bg-white/5 cursor-pointer"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={!hiddenColumns.has(c.key)}
+                                                                        onChange={() => toggleColumn(c.key)}
+                                                                        className="mr-2 rounded border-gray-600 bg-background text-primary focus:ring-primary"
+                                                                    />
+                                                                    {c.label}
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className={`flex items-center gap-1 ${col.align === 'center' ? 'justify-center' : ''}`}>
+                                                    {col.label}
+                                                    {sortConfig.key === col.key && (
+                                                        <span className="text-primary">
+                                                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {/* Resize handle */}
+                                            {isResizable && !isLastDataColumn && (
+                                                <div
+                                                    className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary group"
+                                                    onMouseDown={(e) => handleResizeStart(e, col.key)}
+                                                    onDoubleClick={(e) => handleResizeDoubleClick(e, col.key)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gray-600 group-hover:bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                </div>
+                                            )}
+                                        </th>
+                                    );
+                                })}
+                            </tr>
                         )}
-                    </tbody>
-                </table>
+                        itemContent={(index, item) => (
+                            <>
+                                {visibleColumns.map((col) => {
+                                    const content = col.render ? col.render(item) : item[col.key];
+                                    const isNamespaceColumn = col.key === 'namespace' && onNamespaceChange;
+                                    const namespaceValue = item.metadata?.namespace;
+                                    const width = columnWidths[col.key];
+                                    const isFlex = FLEX_COLUMNS.has(col.key);
+
+                                    return (
+                                        <td
+                                            key={col.key}
+                                            className={`p-3 text-sm text-text whitespace-nowrap ${col.isColumnSelector ? 'sticky right-0 bg-background overflow-visible' : 'overflow-hidden text-ellipsis'} ${col.align === 'center' ? 'text-center' : ''}`}
+                                            style={width ? { width: `${width}px`, minWidth: `${width}px` } : undefined}
+                                            title={typeof content === 'string' ? content : undefined}
+                                        >
+                                            {isNamespaceColumn && namespaceValue ? (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onNamespaceChange([namespaceValue]);
+                                                    }}
+                                                    className="text-primary hover:text-primary/80 hover:underline transition-colors"
+                                                    title={`Filter to namespace: ${namespaceValue}`}
+                                                >
+                                                    {content}
+                                                </button>
+                                            ) : content}
+                                        </td>
+                                    );
+                                })}
+                            </>
+                        )}
+                    />
+                )}
             </div>
         </div>
     );

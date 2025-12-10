@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
 import { useCustomResources } from '../../../hooks/useCustomResources';
 import { useK8s } from '../../../context/K8sContext';
@@ -18,6 +18,18 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { handleEditYaml, handleDelete } = useCustomResourceActions(crdInfo);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
 
     const { resources, loading, error } = useCustomResources(
         currentContext,
@@ -69,7 +81,8 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
                 <CustomResourceActionsMenu
                     resource={item}
                     isOpen={activeMenuId === `cr-${item.metadata?.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `cr-${item.metadata?.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `cr-${item.metadata?.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onDelete={handleDelete}
                 />
@@ -80,7 +93,7 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
         });
 
         return cols;
-    }, [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete, showNamespaceColumn]);
+    }, [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleDelete, showNamespaceColumn]);
 
     return (
         <ResourceList

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { CronExpressionParser } from 'cron-parser';
 import ResourceList from '../../../components/shared/ResourceList';
@@ -12,6 +12,18 @@ import { formatAge } from '../../../utils/formatting';
 export default function CronJobList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
     const { cronJobs, loading } = useCronJobs(currentContext, selectedNamespaces, isVisible);
     const { handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend, handleDelete } = useCronJobActions();
 
@@ -129,7 +141,8 @@ export default function CronJobList({ isVisible }) {
                 <CronJobActionsMenu
                     cronJob={item}
                     isOpen={activeMenuId === `cronjob-${item.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `cronjob-${item.metadata.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `cronjob-${item.metadata.uid}`, buttonElement)}
                     onViewLogs={() => handleViewLogs(item)}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies(item)}
@@ -141,7 +154,7 @@ export default function CronJobList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend, handleDelete]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend, handleDelete]);
 
     return (
         <ResourceList

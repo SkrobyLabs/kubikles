@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
 import { useJobs } from '../../../hooks/useJobs';
 import { useJobActions } from './useJobActions';
@@ -18,6 +18,18 @@ function getController(item) {
 export default function JobList({ isVisible }) {
     const { currentContext, selectedNamespaces, namespaces, setSelectedNamespaces } = useK8s();
     const { activeMenuId, setActiveMenuId, navigateWithSearch } = useUI();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
     const { jobs, loading } = useJobs(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs } = useJobActions();
 
@@ -109,7 +121,8 @@ export default function JobList({ isVisible }) {
                 <JobActionsMenu
                     job={job}
                     isOpen={activeMenuId === `job-${job.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `job-${job.metadata.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `job-${job.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
                     onDelete={handleDelete}
@@ -119,7 +132,7 @@ export default function JobList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs, navigateWithSearch]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs, navigateWithSearch]);
 
     return (
         <ResourceList

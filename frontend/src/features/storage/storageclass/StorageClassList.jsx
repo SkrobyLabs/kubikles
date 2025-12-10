@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
 import { useStorageClasses } from '../../../hooks/useStorageClasses';
 import { useK8s } from '../../../context/K8sContext';
@@ -13,6 +13,18 @@ export default function StorageClassList({ isVisible }) {
     const { activeMenuId, setActiveMenuId } = useUI();
     const { storageClasses, loading } = useStorageClasses(currentContext, isVisible);
     const { handleEditYaml, handleDelete } = useStorageClassActions();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
 
     const columns = useMemo(() => [
         {
@@ -50,7 +62,8 @@ export default function StorageClassList({ isVisible }) {
                 <StorageClassActionsMenu
                     storageClass={item}
                     isOpen={activeMenuId === `storageclass-${item.metadata.uid}`}
-                    onOpenChange={(isOpen) => setActiveMenuId(isOpen ? `storageclass-${item.metadata.uid}` : null)}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `storageclass-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onDelete={handleDelete}
                 />
@@ -59,7 +72,7 @@ export default function StorageClassList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, setActiveMenuId, handleEditYaml, handleDelete]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleDelete]);
 
     return (
         <ResourceList
