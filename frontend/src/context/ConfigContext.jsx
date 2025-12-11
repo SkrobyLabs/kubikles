@@ -16,6 +16,13 @@ const defaultConfig = {
             contextLinesBefore: 1,
             contextLinesAfter: 5
         }
+    },
+    portForwards: {
+        // Auto-start mode on app launch:
+        // - "all": Start all port forwards that were running when app was closed
+        // - "favorites": Only start favorites that were running when app was closed
+        // - "none": Don't auto-start any port forwards
+        autoStartMode: "favorites"
     }
 };
 

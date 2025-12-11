@@ -13,7 +13,8 @@ const configDescriptions = {
     'logs.search.useRegex': 'If true, search uses regex matching by default',
     'logs.search.filterOnly': 'If true, show only matching lines by default',
     'logs.search.contextLinesBefore': 'Number of context lines to show before matches when filtering',
-    'logs.search.contextLinesAfter': 'Number of context lines to show after matches when filtering'
+    'logs.search.contextLinesAfter': 'Number of context lines to show after matches when filtering',
+    'portForwards.autoStartMode': 'Auto-start mode: "all" (start all that were running), "favorites" (only favorites), "none" (disabled)'
 };
 
 // Convert nested object to flat key=value format with comments
@@ -221,6 +222,18 @@ export default function ConfigEditor() {
                                             minimum: 0
                                         }
                                     }
+                                }
+                            }
+                        },
+                        portForwards: {
+                            type: 'object',
+                            description: 'Port forwarding settings',
+                            properties: {
+                                autoStartMode: {
+                                    type: 'string',
+                                    description: 'Auto-start mode: "all" (start all that were running), "favorites" (only favorites), "none" (disabled)',
+                                    enum: ['all', 'favorites', 'none'],
+                                    default: 'favorites'
                                 }
                             }
                         }

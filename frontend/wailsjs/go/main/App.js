@@ -386,6 +386,10 @@ export function StartPortForward(arg1) {
   return window['go']['main']['App']['StartPortForward'](arg1);
 }
 
+export function StartPortForwardsWithMode(arg1, arg2) {
+  return window['go']['main']['App']['StartPortForwardsWithMode'](arg1, arg2);
+}
+
 export function StopAllPortForwards() {
   return window['go']['main']['App']['StopAllPortForwards']();
 }

@@ -196,6 +196,8 @@ export function StartLogStream(arg1:string,arg2:string,arg3:string,arg4:boolean)
 
 export function StartPortForward(arg1:string):Promise<void>;
 
+export function StartPortForwardsWithMode(arg1:string,arg2:string):Promise<void>;
+
 export function StopAllPortForwards():Promise<void>;
 
 export function StopAllWatchers():Promise<void>;

@@ -1,6 +1,20 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ListContexts, GetCurrentContext, SwitchContext, ListNamespaces } from '../../wailsjs/go/main/App';
+import { ListContexts, GetCurrentContext, SwitchContext, ListNamespaces, StartPortForwardsWithMode } from '../../wailsjs/go/main/App';
 import Logger from '../utils/Logger';
+
+// Helper to get port forward auto-start mode from settings
+const getPortForwardAutoStartMode = () => {
+    try {
+        const saved = localStorage.getItem('kubikles_settings');
+        if (saved) {
+            const settings = JSON.parse(saved);
+            return settings?.portForwards?.autoStartMode || 'favorites';
+        }
+    } catch (e) {
+        Logger.error('Failed to read port forward settings', e);
+    }
+    return 'favorites'; // Default
+};
 
 const K8sContext = createContext();
 
@@ -176,6 +190,15 @@ export const K8sProvider = ({ children }) => {
                     Logger.debug("Restored namespaces after context switch", { namespaces: savedState.namespaces });
                 }
                 setIsLoadingNamespaces(false);
+
+                // Start port forwards based on auto-start mode setting
+                const autoStartMode = getPortForwardAutoStartMode();
+                try {
+                    await StartPortForwardsWithMode(currentContext, autoStartMode);
+                    Logger.debug("Started port forwards", { context: currentContext, mode: autoStartMode });
+                } catch (err) {
+                    Logger.error("Failed to start port forwards", err);
+                }
             };
 
             loadNamespacesAndRestoreState();

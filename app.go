@@ -252,6 +252,23 @@ func (a *App) startup(ctx context.Context) {
 	}
 }
 
+// shutdown is called when the app is closing
+func (a *App) shutdown(ctx context.Context) {
+	a.LogDebug("App shutdown initiated")
+
+	// Save port forward running state and stop all forwards
+	if a.portForwardManager != nil {
+		a.portForwardManager.StopAllAndSaveState()
+	}
+
+	// Stop all watchers
+	if a.watcherManager != nil {
+		a.watcherManager.StopAll()
+	}
+
+	a.LogDebug("App shutdown complete")
+}
+
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
@@ -1647,6 +1664,17 @@ func (a *App) StartFavoritePortForwards(contextName string) {
 		return
 	}
 	a.portForwardManager.StartFavorites(contextName)
+}
+
+// StartPortForwardsWithMode starts port forwards based on the specified mode
+// mode can be: "all", "favorites", "none"
+// Only starts forwards that were running when the app was closed
+func (a *App) StartPortForwardsWithMode(contextName, mode string) {
+	a.LogDebug("StartPortForwardsWithMode called: context=%s, mode=%s", contextName, mode)
+	if a.portForwardManager == nil {
+		return
+	}
+	a.portForwardManager.StartWithMode(contextName, mode)
 }
 
 // GetPodPorts returns the container ports for a pod
