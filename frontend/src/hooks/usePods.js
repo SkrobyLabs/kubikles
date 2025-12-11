@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
-import { ListPods, StartPodWatcher } from '../../wailsjs/go/main/App';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { ListPods } from '../../wailsjs/go/main/App';
 import { useK8s } from '../context/K8sContext';
 import { optimizeNamespaceQuery } from './useNamespaceOptimization';
+import { useResourceWatcher } from './useResourceWatcher';
+import { createNamespacedResourceEventHandler } from './useResourceEventHandler';
 
 export const usePods = (currentContext, selectedNamespaces, isVisible) => {
     const [pods, setPods] = useState([]);
@@ -9,6 +11,15 @@ export const usePods = (currentContext, selectedNamespaces, isVisible) => {
     const [error, setError] = useState(null);
     const { namespaces: allNamespaces, lastRefresh } = useK8s();
 
+    // Calculate optimized namespaces for watching
+    const optimizedNamespaces = useMemo(() => {
+        const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
+        if (optimized === null) return [];
+        if (optimized === '') return ['']; // Watch all namespaces
+        return optimized;
+    }, [selectedNamespaces, allNamespaces]);
+
+    // Fetch initial list
     useEffect(() => {
         if (!currentContext || selectedNamespaces === null || selectedNamespaces === undefined || !isVisible) return;
 
@@ -18,21 +29,17 @@ export const usePods = (currentContext, selectedNamespaces, isVisible) => {
                 const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
 
                 if (optimized === null) {
-                    // No namespaces selected - return empty
                     setPods([]);
                 } else if (optimized === '') {
-                    // Fetch from all namespaces in a single query (optimized)
                     const list = await ListPods('');
                     setPods(list || []);
                 } else {
-                    // Fetch from each namespace and merge results
                     const allPods = await Promise.all(
                         optimized.map(ns => ListPods(ns).catch(err => {
                             console.error(`Failed to fetch pods from namespace ${ns}`, err);
                             return [];
                         }))
                     );
-                    // Flatten and deduplicate by UID
                     const merged = allPods.flat();
                     const unique = merged.filter((pod, index, self) =>
                         index === self.findIndex(p => p.metadata.uid === pod.metadata.uid)
@@ -49,43 +56,26 @@ export const usePods = (currentContext, selectedNamespaces, isVisible) => {
         };
 
         fetchPods();
-
-        // Start watchers - optimize the same way
-        const optimizedWatch = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
-        if (optimizedWatch === '') {
-            StartPodWatcher('');
-        } else if (optimizedWatch !== null) {
-            optimizedWatch.forEach(ns => StartPodWatcher(ns));
-        }
-
-        // Event Listener
-        const handlePodEvent = (event) => {
-            const { type, pod } = event;
-            // console.log(`Pod Event: ${type} - ${pod.metadata.name}`);
-
-            setPods(prevData => {
-                if (type === 'ADDED') {
-                    if (prevData.find(p => p.metadata.uid === pod.metadata.uid)) return prevData;
-                    return [...prevData, pod];
-                } else if (type === 'MODIFIED') {
-                    return prevData.map(p => p.metadata.uid === pod.metadata.uid ? pod : p);
-                } else if (type === 'DELETED') {
-                    return prevData.filter(p => p.metadata.uid !== pod.metadata.uid);
-                }
-                return prevData;
-            });
-        };
-
-        if (window.runtime) {
-            window.runtime.EventsOn("pod-event", handlePodEvent);
-        }
-
-        return () => {
-            if (window.runtime) {
-                window.runtime.EventsOff("pod-event");
-            }
-        };
     }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh]);
+
+    // Create selected namespaces array for event filtering
+    const selectedNamespacesList = useMemo(() => {
+        if (!selectedNamespaces) return [];
+        return Array.isArray(selectedNamespaces) ? selectedNamespaces : [selectedNamespaces];
+    }, [selectedNamespaces]);
+
+    // Subscribe to pod events
+    const handleEvent = useCallback(
+        createNamespacedResourceEventHandler(setPods, selectedNamespacesList),
+        [selectedNamespacesList]
+    );
+
+    useResourceWatcher(
+        "pods",
+        optimizedNamespaces,
+        handleEvent,
+        currentContext && isVisible && optimizedNamespaces.length > 0
+    );
 
     return { pods, loading, error, setPods };
 };

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ListNodes } from '../../wailsjs/go/main/App';
 import { useK8s } from '../context/K8sContext';
+import { useResourceWatcher } from './useResourceWatcher';
+import { createResourceEventHandler } from './useResourceEventHandler';
 
 export const useNodes = (currentContext, isVisible) => {
     const [nodes, setNodes] = useState([]);
@@ -31,6 +33,10 @@ export const useNodes = (currentContext, isVisible) => {
     const refetch = useCallback(() => {
         fetchNodes();
     }, [fetchNodes]);
+
+    // Subscribe to node events (cluster-scoped, so namespace = "")
+    const handleEvent = useCallback(createResourceEventHandler(setNodes), []);
+    useResourceWatcher("nodes", "", handleEvent, currentContext && isVisible);
 
     return { nodes, loading, error, refetch };
 };

@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -25,11 +26,205 @@ type App struct {
 	ctx              context.Context
 	k8sClient        *k8s.Client
 	terminalService  *terminal.Service
-	podWatcherCancel context.CancelFunc
-	podWatcherMutex  sync.Mutex
+	watcherManager   *ResourceWatcherManager
 	// Log streaming
 	logStreams      map[string]context.CancelFunc
 	logStreamsMutex sync.Mutex
+}
+
+// WatcherCleanupDelay is the time to wait before stopping a watcher with no subscribers
+const WatcherCleanupDelay = 5 * time.Second
+
+// ResourceEvent is the generic event emitted for any resource type change
+type ResourceEvent struct {
+	Type         string                 `json:"type"`         // ADDED, MODIFIED, DELETED
+	ResourceType string                 `json:"resourceType"` // pods, namespaces, deployments, etc.
+	Namespace    string                 `json:"namespace"`    // Resource's namespace (empty for cluster-scoped)
+	Resource     map[string]interface{} `json:"resource"`     // Unstructured resource data
+}
+
+// ResourceWatcher tracks a single watcher instance with reference counting
+type ResourceWatcher struct {
+	Key          string             // "resourceType:namespace" or "crd:group/version/resource:namespace"
+	ResourceType string             // Resource type identifier
+	Namespace    string             // Namespace being watched (empty for cluster-scoped)
+	Group        string             // API group (for CRDs)
+	Version      string             // API version (for CRDs)
+	Resource     string             // Resource plural name (for CRDs)
+	IsCRD        bool               // Whether this is a CRD watcher
+	RefCount     int32              // Atomic counter for subscribers
+	Cancel       context.CancelFunc // Cancel function for the watch loop
+	CleanupTimer *time.Timer        // Delayed cleanup timer
+}
+
+// ResourceWatcherManager manages all active resource watchers with reference counting
+type ResourceWatcherManager struct {
+	ctx      context.Context
+	app      *App
+	watchers map[string]*ResourceWatcher
+	mutex    sync.RWMutex
+}
+
+// NewResourceWatcherManager creates a new ResourceWatcherManager
+func NewResourceWatcherManager(ctx context.Context, app *App) *ResourceWatcherManager {
+	return &ResourceWatcherManager{
+		ctx:      ctx,
+		app:      app,
+		watchers: make(map[string]*ResourceWatcher),
+	}
+}
+
+// Subscribe subscribes to a resource watcher, returning the watcher key
+// If a watcher already exists, it increments the refCount and cancels any pending cleanup
+// If no watcher exists, it creates a new one and starts the watch loop
+func (m *ResourceWatcherManager) Subscribe(resourceType, namespace string) string {
+	key := fmt.Sprintf("%s:%s", resourceType, namespace)
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if watcher, exists := m.watchers[key]; exists {
+		// Cancel any pending cleanup
+		if watcher.CleanupTimer != nil {
+			watcher.CleanupTimer.Stop()
+			watcher.CleanupTimer = nil
+		}
+		// Increment ref count
+		atomic.AddInt32(&watcher.RefCount, 1)
+		m.app.LogDebug("ResourceWatcher: Reusing existing watcher for %s (refCount=%d)", key, atomic.LoadInt32(&watcher.RefCount))
+		return key
+	}
+
+	// Create new watcher
+	ctx, cancel := context.WithCancel(context.Background())
+	watcher := &ResourceWatcher{
+		Key:          key,
+		ResourceType: resourceType,
+		Namespace:    namespace,
+		IsCRD:        false,
+		RefCount:     1,
+		Cancel:       cancel,
+	}
+	m.watchers[key] = watcher
+
+	m.app.LogDebug("ResourceWatcher: Starting new watcher for %s", key)
+
+	// Start watch loop in goroutine
+	go m.app.watchResourceLoop(ctx, resourceType, namespace)
+
+	return key
+}
+
+// SubscribeCRD subscribes to a CRD watcher using GVR, returning the watcher key
+func (m *ResourceWatcherManager) SubscribeCRD(group, version, resource, namespace string) string {
+	key := fmt.Sprintf("crd:%s/%s/%s:%s", group, version, resource, namespace)
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if watcher, exists := m.watchers[key]; exists {
+		// Cancel any pending cleanup
+		if watcher.CleanupTimer != nil {
+			watcher.CleanupTimer.Stop()
+			watcher.CleanupTimer = nil
+		}
+		// Increment ref count
+		atomic.AddInt32(&watcher.RefCount, 1)
+		m.app.LogDebug("ResourceWatcher: Reusing existing CRD watcher for %s (refCount=%d)", key, atomic.LoadInt32(&watcher.RefCount))
+		return key
+	}
+
+	// Create new watcher
+	ctx, cancel := context.WithCancel(context.Background())
+	watcher := &ResourceWatcher{
+		Key:          key,
+		ResourceType: resource,
+		Namespace:    namespace,
+		Group:        group,
+		Version:      version,
+		Resource:     resource,
+		IsCRD:        true,
+		RefCount:     1,
+		Cancel:       cancel,
+	}
+	m.watchers[key] = watcher
+
+	m.app.LogDebug("ResourceWatcher: Starting new CRD watcher for %s", key)
+
+	// Start watch loop in goroutine
+	go m.app.watchCRDLoop(ctx, group, version, resource, namespace)
+
+	return key
+}
+
+// Unsubscribe decrements the refCount for a watcher and schedules cleanup if refCount reaches 0
+func (m *ResourceWatcherManager) Unsubscribe(watcherKey string) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	watcher, exists := m.watchers[watcherKey]
+	if !exists {
+		m.app.LogDebug("ResourceWatcher: Unsubscribe called for non-existent watcher %s", watcherKey)
+		return
+	}
+
+	newCount := atomic.AddInt32(&watcher.RefCount, -1)
+	m.app.LogDebug("ResourceWatcher: Unsubscribe from %s (refCount=%d)", watcherKey, newCount)
+
+	if newCount <= 0 {
+		// Schedule cleanup after delay
+		watcher.CleanupTimer = time.AfterFunc(WatcherCleanupDelay, func() {
+			m.cleanup(watcherKey)
+		})
+		m.app.LogDebug("ResourceWatcher: Scheduled cleanup for %s in %v", watcherKey, WatcherCleanupDelay)
+	}
+}
+
+// cleanup stops and removes a watcher (called after cleanup delay if refCount is still 0)
+func (m *ResourceWatcherManager) cleanup(watcherKey string) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	watcher, exists := m.watchers[watcherKey]
+	if !exists {
+		return
+	}
+
+	// Check if refCount is still 0 (someone might have subscribed during the delay)
+	if atomic.LoadInt32(&watcher.RefCount) > 0 {
+		m.app.LogDebug("ResourceWatcher: Cleanup cancelled for %s - new subscribers", watcherKey)
+		return
+	}
+
+	// Stop the watcher
+	if watcher.Cancel != nil {
+		watcher.Cancel()
+	}
+	delete(m.watchers, watcherKey)
+	m.app.LogDebug("ResourceWatcher: Cleaned up watcher %s", watcherKey)
+}
+
+// StopAll stops all active watchers immediately (called on context switch)
+func (m *ResourceWatcherManager) StopAll() {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	m.app.LogDebug("ResourceWatcher: Stopping all watchers (%d active)", len(m.watchers))
+
+	for key, watcher := range m.watchers {
+		// Cancel any pending cleanup timers
+		if watcher.CleanupTimer != nil {
+			watcher.CleanupTimer.Stop()
+		}
+		// Stop the watcher
+		if watcher.Cancel != nil {
+			watcher.Cancel()
+		}
+		m.app.LogDebug("ResourceWatcher: Stopped watcher %s", key)
+	}
+
+	// Clear all watchers
+	m.watchers = make(map[string]*ResourceWatcher)
 }
 
 // NewApp creates a new App application struct
@@ -49,6 +244,7 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.watcherManager = NewResourceWatcherManager(ctx, a)
 	if err := a.terminalService.Start(); err != nil {
 		fmt.Printf("Failed to start terminal service: %v\n", err)
 	}
@@ -632,36 +828,58 @@ func (a *App) OpenTerminalWithCommand(contextName, namespace, podName, container
 	return wsURL, nil
 }
 
-// --- Watcher ---
+// --- Generic Resource Watcher (exposed to frontend) ---
 
-type PodEvent struct {
-	Type string  `json:"type"`
-	Pod  *v1.Pod `json:"pod"`
-}
-
-func (a *App) StartPodWatcher(namespace string) {
-	a.LogDebug("Starting pod watcher for namespace: %s", namespace)
-
-	// Cancel existing watcher if any
-	a.podWatcherMutex.Lock()
-	if a.podWatcherCancel != nil {
-		a.podWatcherCancel()
+// SubscribeResourceWatcher subscribes to a resource watcher, returning the watcher key
+func (a *App) SubscribeResourceWatcher(resourceType, namespace string) string {
+	if a.watcherManager == nil {
+		a.LogDebug("SubscribeResourceWatcher: watcher manager not initialized")
+		return ""
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	a.podWatcherCancel = cancel
-	a.podWatcherMutex.Unlock()
-
-	go a.watchPodsLoop(ctx, namespace)
+	return a.watcherManager.Subscribe(resourceType, namespace)
 }
 
-func (a *App) watchPodsLoop(ctx context.Context, namespace string) {
+// SubscribeCRDWatcher subscribes to a CRD watcher using GVR, returning the watcher key
+func (a *App) SubscribeCRDWatcher(group, version, resource, namespace string) string {
+	if a.watcherManager == nil {
+		a.LogDebug("SubscribeCRDWatcher: watcher manager not initialized")
+		return ""
+	}
+	return a.watcherManager.SubscribeCRD(group, version, resource, namespace)
+}
+
+// UnsubscribeWatcher unsubscribes from a watcher by key
+func (a *App) UnsubscribeWatcher(watcherKey string) {
+	if a.watcherManager == nil {
+		a.LogDebug("UnsubscribeWatcher: watcher manager not initialized")
+		return
+	}
+	a.watcherManager.Unsubscribe(watcherKey)
+}
+
+// StopAllWatchers stops all active watchers (called on context switch)
+func (a *App) StopAllWatchers() {
+	if a.watcherManager == nil {
+		a.LogDebug("StopAllWatchers: watcher manager not initialized")
+		return
+	}
+	a.watcherManager.StopAll()
+}
+
+// watchResourceLoop is the generic watch loop for standard Kubernetes resources
+func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace string) {
 	defer func() {
-		a.LogDebug("Pod watcher stopped for namespace: %s", namespace)
+		a.LogDebug("Resource watcher stopped: type=%s, namespace=%s", resourceType, namespace)
 	}()
 
-	watcher, err := a.k8sClient.WatchPods(ctx, namespace)
+	if a.k8sClient == nil {
+		a.LogDebug("watchResourceLoop: k8s client not initialized")
+		return
+	}
+
+	watcher, err := a.k8sClient.WatchResource(ctx, resourceType, namespace)
 	if err != nil {
-		a.LogDebug("Failed to start pod watcher: %v", err)
+		a.LogDebug("Failed to start resource watcher: type=%s, err=%v", resourceType, err)
 		return
 	}
 	defer watcher.Stop()
@@ -672,22 +890,89 @@ func (a *App) watchPodsLoop(ctx context.Context, namespace string) {
 			return
 		case event, ok := <-watcher.ResultChan():
 			if !ok {
-				a.LogDebug("Watcher channel closed")
+				a.LogDebug("Resource watcher channel closed: type=%s", resourceType)
 				return
 			}
 
-			// Cast to Pod
-			pod, ok := event.Object.(*v1.Pod)
+			// Only emit ADDED, MODIFIED, DELETED events
+			if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
+				// Convert to unstructured map
+				resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
+				if err != nil {
+					a.LogDebug("Failed to convert resource to map: %v", err)
+					continue
+				}
+
+				// Extract namespace from resource metadata
+				resourceNs := ""
+				if metadata, ok := resourceMap["metadata"].(map[string]interface{}); ok {
+					if ns, ok := metadata["namespace"].(string); ok {
+						resourceNs = ns
+					}
+				}
+
+				runtime.EventsEmit(a.ctx, "resource-event", ResourceEvent{
+					Type:         string(event.Type),
+					ResourceType: resourceType,
+					Namespace:    resourceNs,
+					Resource:     resourceMap,
+				})
+			}
+		}
+	}
+}
+
+// watchCRDLoop is the watch loop for Custom Resource Definitions using dynamic client
+func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namespace string) {
+	defer func() {
+		a.LogDebug("CRD watcher stopped: gvr=%s/%s/%s, namespace=%s", group, version, resource, namespace)
+	}()
+
+	if a.k8sClient == nil {
+		a.LogDebug("watchCRDLoop: k8s client not initialized")
+		return
+	}
+
+	watcher, err := a.k8sClient.WatchCRD(ctx, group, version, resource, namespace)
+	if err != nil {
+		a.LogDebug("Failed to start CRD watcher: gvr=%s/%s/%s, err=%v", group, version, resource, err)
+		return
+	}
+	defer watcher.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event, ok := <-watcher.ResultChan():
 			if !ok {
-				continue
+				a.LogDebug("CRD watcher channel closed: gvr=%s/%s/%s", group, version, resource)
+				return
 			}
 
-			// Emit event to frontend
-			// We only care about ADDED, MODIFIED, DELETED
+			// Only emit ADDED, MODIFIED, DELETED events
 			if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
-				runtime.EventsEmit(a.ctx, "pod-event", PodEvent{
-					Type: string(event.Type),
-					Pod:  pod,
+				// Convert to unstructured map
+				resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
+				if err != nil {
+					a.LogDebug("Failed to convert CRD to map: %v", err)
+					continue
+				}
+
+				// Extract namespace from resource metadata
+				resourceNs := ""
+				if metadata, ok := resourceMap["metadata"].(map[string]interface{}); ok {
+					if ns, ok := metadata["namespace"].(string); ok {
+						resourceNs = ns
+					}
+				}
+
+				// Use the resource plural name as resourceType for CRDs
+				runtime.EventsEmit(a.ctx, "resource-event", ResourceEvent{
+					Type:         string(event.Type),
+					ResourceType: fmt.Sprintf("crd:%s/%s/%s", group, version, resource),
+					Namespace:    resourceNs,
+					Resource:     resourceMap,
 				})
 			}
 		}

@@ -174,9 +174,13 @@ export function SetNodeSchedulable(arg1:string,arg2:boolean):Promise<void>;
 
 export function StartLogStream(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
 
-export function StartPodWatcher(arg1:string):Promise<void>;
+export function StopAllWatchers():Promise<void>;
 
 export function StopLogStream(arg1:string):Promise<void>;
+
+export function SubscribeCRDWatcher(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
+
+export function SubscribeResourceWatcher(arg1:string,arg2:string):Promise<string>;
 
 export function SuspendCronJob(arg1:string,arg2:string,arg3:boolean):Promise<void>;
 
@@ -185,6 +189,8 @@ export function SwitchContext(arg1:string):Promise<void>;
 export function TestEmit():Promise<void>;
 
 export function TriggerCronJob(arg1:string,arg2:string):Promise<void>;
+
+export function UnsubscribeWatcher(arg1:string):Promise<void>;
 
 export function UpdateCRDYaml(arg1:string,arg2:string):Promise<void>;
 

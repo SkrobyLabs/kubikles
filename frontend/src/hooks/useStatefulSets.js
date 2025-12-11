@@ -1,13 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ListStatefulSets } from '../../wailsjs/go/main/App';
 import { useK8s } from '../context/K8sContext';
 import { optimizeNamespaceQuery } from './useNamespaceOptimization';
+import { useResourceWatcher } from './useResourceWatcher';
+import { createNamespacedResourceEventHandler } from './useResourceEventHandler';
 
 export const useStatefulSets = (contextName, namespaces, isVisible) => {
     const [statefulSets, setStatefulSets] = useState([]);
     const [loading, setLoading] = useState(true);
     const { namespaces: allNamespaces, lastRefresh } = useK8s();
 
+    // Calculate optimized namespaces for watching
+    const optimizedNamespaces = useMemo(() => {
+        const optimized = optimizeNamespaceQuery(namespaces, allNamespaces);
+        if (optimized === null) return [];
+        if (optimized === '') return ['']; // Watch all namespaces
+        return optimized;
+    }, [namespaces, allNamespaces]);
+
+    // Fetch initial list
     useEffect(() => {
         if (!isVisible || namespaces === null || namespaces === undefined || !contextName) {
             setLoading(false);
@@ -20,21 +31,17 @@ export const useStatefulSets = (contextName, namespaces, isVisible) => {
                 const optimized = optimizeNamespaceQuery(namespaces, allNamespaces);
 
                 if (optimized === null) {
-                    // No namespaces selected - return empty
                     setStatefulSets([]);
                 } else if (optimized === '') {
-                    // Fetch from all namespaces in a single query (optimized)
                     const list = await ListStatefulSets(contextName, '');
                     setStatefulSets(list || []);
                 } else {
-                    // Fetch from each namespace and merge results
                     const allStatefulSets = await Promise.all(
                         optimized.map(ns => ListStatefulSets(contextName, ns).catch(err => {
                             console.error(`Failed to fetch statefulsets from namespace ${ns}`, err);
                             return [];
                         }))
                     );
-                    // Flatten and deduplicate by UID
                     const merged = allStatefulSets.flat();
                     const unique = merged.filter((sts, index, self) =>
                         index === self.findIndex(s => s.metadata.uid === sts.metadata.uid)
@@ -51,6 +58,25 @@ export const useStatefulSets = (contextName, namespaces, isVisible) => {
 
         fetchStatefulSets();
     }, [contextName, namespaces, isVisible, allNamespaces, lastRefresh]);
+
+    // Create selected namespaces array for event filtering
+    const selectedNamespacesList = useMemo(() => {
+        if (!namespaces) return [];
+        return Array.isArray(namespaces) ? namespaces : [namespaces];
+    }, [namespaces]);
+
+    // Subscribe to statefulset events
+    const handleEvent = useCallback(
+        createNamespacedResourceEventHandler(setStatefulSets, selectedNamespacesList),
+        [selectedNamespacesList]
+    );
+
+    useResourceWatcher(
+        "statefulsets",
+        optimizedNamespaces,
+        handleEvent,
+        contextName && isVisible && optimizedNamespaces.length > 0
+    );
 
     return { statefulSets, loading };
 };

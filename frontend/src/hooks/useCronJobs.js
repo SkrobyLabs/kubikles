@@ -1,13 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ListCronJobs } from '../../wailsjs/go/main/App';
 import { useK8s } from '../context/K8sContext';
 import { optimizeNamespaceQuery } from './useNamespaceOptimization';
+import { useResourceWatcher } from './useResourceWatcher';
+import { createNamespacedResourceEventHandler } from './useResourceEventHandler';
 
 export function useCronJobs(context, namespaces, isVisible) {
     const [cronJobs, setCronJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const { lastRefresh, namespaces: allNamespaces } = useK8s();
 
+    // Calculate optimized namespaces for watching
+    const optimizedNamespaces = useMemo(() => {
+        const optimized = optimizeNamespaceQuery(namespaces, allNamespaces);
+        if (optimized === null) return [];
+        if (optimized === '') return ['']; // Watch all namespaces
+        return optimized;
+    }, [namespaces, allNamespaces]);
+
+    // Fetch initial list
     useEffect(() => {
         if (!isVisible || !context || namespaces === null || namespaces === undefined) {
             return;
@@ -21,18 +32,15 @@ export function useCronJobs(context, namespaces, isVisible) {
                 const optimized = optimizeNamespaceQuery(namespaces, allNamespaces);
 
                 if (optimized === null) {
-                    // No namespaces selected - return empty
                     if (!isCancelled) {
                         setCronJobs([]);
                     }
                 } else if (optimized === '') {
-                    // Fetch from all namespaces in a single query (optimized)
                     const data = await ListCronJobs('');
                     if (!isCancelled) {
                         setCronJobs(data || []);
                     }
                 } else {
-                    // Fetch from each namespace and merge results
                     const allCronJobs = await Promise.all(
                         optimized.map(ns => ListCronJobs(ns).catch(err => {
                             console.error(`Failed to fetch cronjobs from namespace ${ns}`, err);
@@ -40,7 +48,6 @@ export function useCronJobs(context, namespaces, isVisible) {
                         }))
                     );
                     if (!isCancelled) {
-                        // Flatten and deduplicate by UID
                         const merged = allCronJobs.flat();
                         const unique = merged.filter((cj, index, self) =>
                             index === self.findIndex(c => c.metadata.uid === cj.metadata.uid)
@@ -66,6 +73,25 @@ export function useCronJobs(context, namespaces, isVisible) {
             isCancelled = true;
         };
     }, [context, namespaces, isVisible, lastRefresh, allNamespaces]);
+
+    // Create selected namespaces array for event filtering
+    const selectedNamespacesList = useMemo(() => {
+        if (!namespaces) return [];
+        return Array.isArray(namespaces) ? namespaces : [namespaces];
+    }, [namespaces]);
+
+    // Subscribe to cronjob events
+    const handleEvent = useCallback(
+        createNamespacedResourceEventHandler(setCronJobs, selectedNamespacesList),
+        [selectedNamespacesList]
+    );
+
+    useResourceWatcher(
+        "cronjobs",
+        optimizedNamespaces,
+        handleEvent,
+        context && isVisible && optimizedNamespaces.length > 0
+    );
 
     return { cronJobs, loading };
 }

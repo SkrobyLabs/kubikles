@@ -182,6 +182,113 @@ func (c *Client) WatchPods(ctx context.Context, namespace string) (watch.Interfa
 	return cs.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{})
 }
 
+// WatchResource creates a watch for the specified resource type
+// Supported resource types: pods, namespaces, nodes, events, deployments, statefulsets,
+// daemonsets, replicasets, services, ingresses, ingressclasses, configmaps, secrets,
+// jobs, cronjobs, persistentvolumes, persistentvolumeclaims, storageclasses
+func (c *Client) WatchResource(ctx context.Context, resourceType, namespace string) (watch.Interface, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+
+	opts := metav1.ListOptions{}
+
+	switch resourceType {
+	// Core API (v1)
+	case "pods":
+		return cs.CoreV1().Pods(namespace).Watch(ctx, opts)
+	case "namespaces":
+		return cs.CoreV1().Namespaces().Watch(ctx, opts)
+	case "nodes":
+		return cs.CoreV1().Nodes().Watch(ctx, opts)
+	case "events":
+		return cs.CoreV1().Events(namespace).Watch(ctx, opts)
+	case "services":
+		return cs.CoreV1().Services(namespace).Watch(ctx, opts)
+	case "configmaps":
+		return cs.CoreV1().ConfigMaps(namespace).Watch(ctx, opts)
+	case "secrets":
+		return cs.CoreV1().Secrets(namespace).Watch(ctx, opts)
+	case "persistentvolumes":
+		return cs.CoreV1().PersistentVolumes().Watch(ctx, opts)
+	case "persistentvolumeclaims":
+		return cs.CoreV1().PersistentVolumeClaims(namespace).Watch(ctx, opts)
+
+	// Apps API (v1)
+	case "deployments":
+		return cs.AppsV1().Deployments(namespace).Watch(ctx, opts)
+	case "statefulsets":
+		return cs.AppsV1().StatefulSets(namespace).Watch(ctx, opts)
+	case "daemonsets":
+		return cs.AppsV1().DaemonSets(namespace).Watch(ctx, opts)
+	case "replicasets":
+		return cs.AppsV1().ReplicaSets(namespace).Watch(ctx, opts)
+
+	// Batch API (v1)
+	case "jobs":
+		return cs.BatchV1().Jobs(namespace).Watch(ctx, opts)
+	case "cronjobs":
+		return cs.BatchV1().CronJobs(namespace).Watch(ctx, opts)
+
+	// Networking API (v1)
+	case "ingresses":
+		return cs.NetworkingV1().Ingresses(namespace).Watch(ctx, opts)
+	case "ingressclasses":
+		return cs.NetworkingV1().IngressClasses().Watch(ctx, opts)
+
+	// Storage API (v1)
+	case "storageclasses":
+		return cs.StorageV1().StorageClasses().Watch(ctx, opts)
+
+	default:
+		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
+	}
+}
+
+// WatchCRD creates a watch for a custom resource using the dynamic client
+func (c *Client) WatchCRD(ctx context.Context, group, version, resource, namespace string) (watch.Interface, error) {
+	dc, err := c.getDynamicClientForContext("")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create dynamic client: %w", err)
+	}
+
+	gvr := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+
+	opts := metav1.ListOptions{}
+
+	if namespace != "" {
+		return dc.Resource(gvr).Namespace(namespace).Watch(ctx, opts)
+	}
+	return dc.Resource(gvr).Watch(ctx, opts)
+}
+
+// RuntimeObjectToMap converts a runtime.Object to a map[string]interface{}
+// This is used for generic resource event handling
+func RuntimeObjectToMap(obj interface{}) (map[string]interface{}, error) {
+	// If it's already an unstructured object, get the map directly
+	if u, ok := obj.(*unstructured.Unstructured); ok {
+		return u.Object, nil
+	}
+
+	// For typed objects, we need to convert to JSON then to map
+	data, err := yaml.Marshal(obj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal object: %w", err)
+	}
+
+	var result map[string]interface{}
+	if err := yaml.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal to map: %w", err)
+	}
+
+	return result, nil
+}
+
 func (c *Client) ListNodes() ([]v1.Node, error) {
 	cs, err := c.getClientset()
 	if err != nil {

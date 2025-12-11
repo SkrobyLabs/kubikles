@@ -342,12 +342,20 @@ export function StartLogStream(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['StartLogStream'](arg1, arg2, arg3, arg4);
 }
 
-export function StartPodWatcher(arg1) {
-  return window['go']['main']['App']['StartPodWatcher'](arg1);
+export function StopAllWatchers() {
+  return window['go']['main']['App']['StopAllWatchers']();
 }
 
 export function StopLogStream(arg1) {
   return window['go']['main']['App']['StopLogStream'](arg1);
+}
+
+export function SubscribeCRDWatcher(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SubscribeCRDWatcher'](arg1, arg2, arg3, arg4);
+}
+
+export function SubscribeResourceWatcher(arg1, arg2) {
+  return window['go']['main']['App']['SubscribeResourceWatcher'](arg1, arg2);
 }
 
 export function SuspendCronJob(arg1, arg2, arg3) {
@@ -364,6 +372,10 @@ export function TestEmit() {
 
 export function TriggerCronJob(arg1, arg2) {
   return window['go']['main']['App']['TriggerCronJob'](arg1, arg2);
+}
+
+export function UnsubscribeWatcher(arg1) {
+  return window['go']['main']['App']['UnsubscribeWatcher'](arg1);
 }
 
 export function UpdateCRDYaml(arg1, arg2) {
