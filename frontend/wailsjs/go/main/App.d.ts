@@ -58,6 +58,8 @@ export function GetAllPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean,a
 
 export function GetAvailablePort(arg1:number):Promise<number>;
 
+export function GetCRDPrinterColumns(arg1:string):Promise<Array<k8s.PrinterColumn>>;
+
 export function GetCRDYaml(arg1:string):Promise<string>;
 
 export function GetConfigMapYaml(arg1:string,arg2:string):Promise<string>;

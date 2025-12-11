@@ -1500,6 +1500,16 @@ func (a *App) DeleteCRD(name string) error {
 	return a.k8sClient.DeleteCRD(currentContext, name)
 }
 
+// GetCRDPrinterColumns returns the additional printer columns for a CRD
+func (a *App) GetCRDPrinterColumns(crdName string) ([]k8s.PrinterColumn, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetCRDPrinterColumns called: context=%s, crdName=%s", currentContext, crdName)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetCRDPrinterColumns(currentContext, crdName)
+}
+
 // Custom Resource instance operations (dynamic)
 func (a *App) ListCustomResources(group, version, resource, namespace string) ([]map[string]interface{}, error) {
 	currentContext := a.GetCurrentContext()

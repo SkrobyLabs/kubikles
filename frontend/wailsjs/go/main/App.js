@@ -110,6 +110,10 @@ export function GetAvailablePort(arg1) {
   return window['go']['main']['App']['GetAvailablePort'](arg1);
 }
 
+export function GetCRDPrinterColumns(arg1) {
+  return window['go']['main']['App']['GetCRDPrinterColumns'](arg1);
+}
+
 export function GetCRDYaml(arg1) {
   return window['go']['main']['App']['GetCRDYaml'](arg1);
 }

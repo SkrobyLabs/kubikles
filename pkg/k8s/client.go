@@ -2118,6 +2118,48 @@ func (c *Client) DeleteCRD(contextName, name string) error {
 	return cs.ApiextensionsV1().CustomResourceDefinitions().Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
 
+// PrinterColumn represents an additional printer column from a CRD
+type PrinterColumn struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`        // string, integer, number, boolean, date
+	JSONPath    string `json:"jsonPath"`    // JSONPath expression to extract value
+	Description string `json:"description"` // Optional description
+	Priority    int32  `json:"priority"`    // 0 = always show, higher = hide in narrow views
+}
+
+// GetCRDPrinterColumns returns the additional printer columns for a CRD
+func (c *Client) GetCRDPrinterColumns(contextName, crdName string) ([]PrinterColumn, error) {
+	cs, err := c.getApiExtensionsClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get apiextensions client: %w", err)
+	}
+
+	crd, err := cs.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), crdName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CRD %s: %w", crdName, err)
+	}
+
+	var columns []PrinterColumn
+
+	// Find the served version's printer columns
+	for _, version := range crd.Spec.Versions {
+		if version.Served {
+			for _, col := range version.AdditionalPrinterColumns {
+				columns = append(columns, PrinterColumn{
+					Name:        col.Name,
+					Type:        col.Type,
+					JSONPath:    col.JSONPath,
+					Description: col.Description,
+					Priority:    col.Priority,
+				})
+			}
+			break // Use the first served version
+		}
+	}
+
+	return columns, nil
+}
+
 // getDynamicClientForContext returns a dynamic client for a given context
 func (c *Client) getDynamicClientForContext(contextName string) (dynamic.Interface, error) {
 	home := homedir.HomeDir()

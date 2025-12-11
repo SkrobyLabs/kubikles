@@ -218,6 +218,26 @@ export namespace k8s {
 		    return a;
 		}
 	}
+	export class PrinterColumn {
+	    name: string;
+	    type: string;
+	    jsonPath: string;
+	    description: string;
+	    priority: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PrinterColumn(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.type = source["type"];
+	        this.jsonPath = source["jsonPath"];
+	        this.description = source["description"];
+	        this.priority = source["priority"];
+	    }
+	}
 
 }
 
