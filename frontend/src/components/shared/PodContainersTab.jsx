@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { ChevronDownIcon, SignalIcon, ClipboardDocumentIcon, CheckIcon, PlayIcon, StopIcon, TrashIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, SignalIcon, ClipboardDocumentIcon, CheckIcon, PlayIcon, StopIcon, TrashIcon, ArrowTopRightOnSquareIcon, CommandLineIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context/K8sContext';
 import { usePortForwards } from '../../hooks/usePortForwards';
 import { useUI } from '../../context/UIContext';
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
+import { OpenTerminal } from '../../../wailsjs/go/main/App';
 import PodPortForwardDialog from './PodPortForwardDialog';
+import Terminal from './Terminal';
 
 // Copy button component
 const CopyButton = ({ value }) => {
@@ -152,7 +154,7 @@ const DetailRow = ({ label, value, children }) => (
 export default function PodContainersTab({ pod, isStale }) {
     const { currentContext } = useK8s();
     const { configs, activeForwards, startForward, stopForward, deleteConfig } = usePortForwards(currentContext, true);
-    const { openModal, closeModal } = useUI();
+    const { openModal, closeModal, openTab } = useUI();
 
     // Find port forward config for a specific port
     const getPortForwardConfig = useCallback((containerPort) => {
@@ -248,6 +250,21 @@ export default function PodContainersTab({ pod, isStale }) {
         BrowserOpenURL(`${protocol}://localhost:${config.localPort}`);
     }, []);
 
+    // Handle shell into container
+    const handleShell = useCallback(async (containerName) => {
+        try {
+            const url = await OpenTerminal(currentContext, pod.metadata?.namespace, pod.metadata?.name, containerName);
+            const tabId = `shell-${pod.metadata?.name}-${containerName}`;
+            openTab({
+                id: tabId,
+                title: `Shell: ${pod.metadata?.name}/${containerName}`,
+                content: <Terminal url={url} />
+            });
+        } catch (err) {
+            console.error('Failed to open shell:', err);
+        }
+    }, [currentContext, pod.metadata?.namespace, pod.metadata?.name, openTab]);
+
     // Get containers from spec and match with status
     const containers = useMemo(() => {
         const specContainers = pod.spec?.containers || [];
@@ -322,36 +339,45 @@ export default function PodContainersTab({ pod, isStale }) {
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
                     Container
                 </label>
-                <div className="relative inline-block">
+                <div className="flex items-center gap-2">
+                    <div className="relative inline-block">
+                        <button
+                            onClick={() => setDropdownOpen(!dropdownOpen)}
+                            className="flex items-center gap-2 px-3 py-2 bg-surface border border-border rounded-lg text-sm hover:bg-surface-light transition-colors min-w-[200px]"
+                        >
+                            <span className="flex-1 text-left">
+                                {currentContainer?.name}
+                                {isInit && <span className="ml-2 text-xs text-yellow-400">(init)</span>}
+                            </span>
+                            <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {dropdownOpen && (
+                            <div className="absolute top-full left-0 mt-1 w-full bg-surface border border-border rounded-lg shadow-lg z-10 py-1 max-h-60 overflow-auto">
+                                {allContainers.map((c) => (
+                                    <button
+                                        key={c.name}
+                                        onClick={() => {
+                                            setSelectedContainer(c.name);
+                                            setDropdownOpen(false);
+                                        }}
+                                        className={`w-full px-3 py-2 text-sm text-left hover:bg-white/5 ${
+                                            c.name === selectedContainer ? 'bg-primary/10 text-primary' : 'text-gray-300'
+                                        }`}
+                                    >
+                                        {c.name}
+                                        {c.isInit && <span className="ml-2 text-xs text-yellow-400">(init)</span>}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     <button
-                        onClick={() => setDropdownOpen(!dropdownOpen)}
-                        className="flex items-center gap-2 px-3 py-2 bg-surface border border-border rounded-lg text-sm hover:bg-surface-light transition-colors min-w-[200px]"
+                        onClick={() => handleShell(currentContainer?.name)}
+                        className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg border border-border transition-colors"
+                        title={`Shell into ${currentContainer?.name}`}
                     >
-                        <span className="flex-1 text-left">
-                            {currentContainer?.name}
-                            {isInit && <span className="ml-2 text-xs text-yellow-400">(init)</span>}
-                        </span>
-                        <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                        <CommandLineIcon className="w-4 h-4" />
                     </button>
-                    {dropdownOpen && (
-                        <div className="absolute top-full left-0 mt-1 w-full bg-surface border border-border rounded-lg shadow-lg z-10 py-1 max-h-60 overflow-auto">
-                            {allContainers.map((c) => (
-                                <button
-                                    key={c.name}
-                                    onClick={() => {
-                                        setSelectedContainer(c.name);
-                                        setDropdownOpen(false);
-                                    }}
-                                    className={`w-full px-3 py-2 text-sm text-left hover:bg-white/5 ${
-                                        c.name === selectedContainer ? 'bg-primary/10 text-primary' : 'text-gray-300'
-                                    }`}
-                                >
-                                    {c.name}
-                                    {c.isInit && <span className="ml-2 text-xs text-yellow-400">(init)</span>}
-                                </button>
-                            ))}
-                        </div>
-                    )}
                 </div>
             </div>
 

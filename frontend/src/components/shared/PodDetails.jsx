@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { LockClosedIcon } from '@heroicons/react/24/outline';
+import { LockClosedIcon, DocumentTextIcon, PencilSquareIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context/K8sContext';
+import { usePodActions } from '../../features/workloads/pods/usePodActions';
 import PodInfoTab from './PodInfoTab';
 import PodVolumesTab from './PodVolumesTab';
 import PodContainersTab from './PodContainersTab';
@@ -13,10 +14,14 @@ const TAB_EVENTS = 'events';
 
 export default function PodDetails({ pod, tabContext = '' }) {
     const { currentContext } = useK8s();
+    const { openLogs, handleEditYaml, handleShowDependencies } = usePodActions();
     const [activeTab, setActiveTab] = useState(TAB_BASIC);
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
+
+    // Get containers for logs
+    const containers = pod.spec?.containers?.map(c => c.name) || [];
 
     const tabs = useMemo(() => [
         { id: TAB_BASIC, label: 'Basic' },
@@ -91,6 +96,30 @@ export default function PodDetails({ pod, tabContext = '' }) {
                                 {tab.label}
                             </button>
                         ))}
+                    </div>
+                    {/* Action Icons */}
+                    <div className="flex items-center gap-1 ml-2">
+                        <button
+                            onClick={() => openLogs(pod.metadata?.namespace, pod.metadata?.name, containers, [pod.metadata?.name], {}, '', pod.metadata?.creationTimestamp)}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title="View Logs"
+                        >
+                            <DocumentTextIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => handleEditYaml(pod)}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title="Edit YAML"
+                        >
+                            <PencilSquareIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => handleShowDependencies(pod)}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title="Dependencies"
+                        >
+                            <ShareIcon className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
             </div>
