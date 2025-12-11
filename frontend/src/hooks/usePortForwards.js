@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     GetPortForwardConfigs,
     GetActivePortForwards,
@@ -9,6 +9,10 @@ import {
     StopPortForward,
     GetAvailablePort
 } from '../../wailsjs/go/main/App';
+
+// Global event listener - only one instance to avoid Wails EventsOff issues
+let globalEventHandler = null;
+const subscribers = new Set();
 
 /**
  * Hook for managing port forwards.
@@ -49,39 +53,39 @@ export const usePortForwards = (contextFilter = '', isVisible = true) => {
         fetchData();
     }, [fetchData]);
 
-    // Listen for port forward events
-    useEffect(() => {
-        if (!window.runtime || !isVisible) return;
+    // Create a subscriber callback using refs to avoid stale closures
+    const subscriberRef = useRef(null);
+    const contextFilterRef = useRef(contextFilter);
+    contextFilterRef.current = contextFilter;
 
-        const handleEvent = (event) => {
-            console.log('Port forward event:', event);
-
-            switch (event.type) {
-                case 'config_added':
-                    if (event.config) {
-                        setConfigs(prev => {
-                            // Avoid duplicates
-                            if (prev.find(c => c.id === event.config.id)) return prev;
-                            // Apply context filter if set
-                            if (contextFilter && event.config.context !== contextFilter) return prev;
-                            return [...prev, event.config];
-                        });
-                    }
-                    break;
-                case 'config_updated':
-                    if (event.config) {
-                        setConfigs(prev => prev.map(c =>
-                            c.id === event.config.id ? event.config : c
-                        ));
-                    }
-                    break;
-                case 'config_removed':
-                    setConfigs(prev => prev.filter(c => c.id !== event.configId));
-                    setActiveForwards(prev => prev.filter(af => af.config?.id !== event.configId));
-                    break;
-                case 'started':
-                case 'error':
-                    // Update active forwards status
+    subscriberRef.current = useCallback((event) => {
+        switch (event.type) {
+            case 'config_added':
+                if (event.config) {
+                    setConfigs(prev => {
+                        // Avoid duplicates
+                        if (prev.find(c => c.id === event.config.id)) return prev;
+                        // Apply context filter if set
+                        if (contextFilterRef.current && event.config.context !== contextFilterRef.current) return prev;
+                        return [...prev, event.config];
+                    });
+                }
+                break;
+            case 'config_updated':
+                if (event.config) {
+                    setConfigs(prev => prev.map(c =>
+                        c.id === event.config.id ? event.config : c
+                    ));
+                }
+                break;
+            case 'config_removed':
+                setConfigs(prev => prev.filter(c => c.id !== event.configId));
+                setActiveForwards(prev => prev.filter(af => af.config?.id !== event.configId));
+                break;
+            case 'started':
+            case 'error':
+                // Update active forwards status
+                setConfigs(currentConfigs => {
                     setActiveForwards(prev => {
                         const existing = prev.find(af => af.config?.id === event.configId);
                         if (existing) {
@@ -91,8 +95,7 @@ export const usePortForwards = (contextFilter = '', isVisible = true) => {
                                     : af
                             );
                         } else {
-                            // Find config and add to active list
-                            const cfg = configs.find(c => c.id === event.configId);
+                            const cfg = currentConfigs.find(c => c.id === event.configId);
                             if (cfg) {
                                 return [...prev, {
                                     config: cfg,
@@ -104,19 +107,46 @@ export const usePortForwards = (contextFilter = '', isVisible = true) => {
                         }
                         return prev;
                     });
-                    break;
-                case 'stopped':
-                    setActiveForwards(prev => prev.filter(af => af.config?.id !== event.configId));
-                    break;
+                    return currentConfigs;
+                });
+                break;
+            case 'stopped':
+                setActiveForwards(prev => prev.filter(af => af.config?.id !== event.configId));
+                break;
+        }
+    }, []);
+
+    // Subscribe to global event system
+    useEffect(() => {
+        if (!window.runtime || !isVisible) return;
+
+        // Create wrapper that calls through ref (avoids stale closure)
+        const subscriber = (event) => {
+            if (subscriberRef.current) {
+                subscriberRef.current(event);
             }
         };
 
-        window.runtime.EventsOn('port-forward-event', handleEvent);
+        subscribers.add(subscriber);
+
+        // Set up global handler if not already done
+        if (!globalEventHandler) {
+            globalEventHandler = (event) => {
+                console.log('Port forward event:', event);
+                subscribers.forEach(sub => sub(event));
+            };
+            window.runtime.EventsOn('port-forward-event', globalEventHandler);
+        }
 
         return () => {
-            window.runtime.EventsOff('port-forward-event', handleEvent);
+            subscribers.delete(subscriber);
+            // Only remove global handler when no more subscribers
+            if (subscribers.size === 0 && globalEventHandler) {
+                window.runtime.EventsOff('port-forward-event');
+                globalEventHandler = null;
+            }
         };
-    }, [isVisible, contextFilter, configs]);
+    }, [isVisible]);
 
     // Add a new port forward config
     const addConfig = useCallback(async (config) => {

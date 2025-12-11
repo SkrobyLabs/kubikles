@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { ChevronDownIcon, SignalIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, SignalIcon, ClipboardDocumentIcon, CheckIcon, PlayIcon, StopIcon, TrashIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context/K8sContext';
 import { usePortForwards } from '../../hooks/usePortForwards';
+import { useUI } from '../../context/UIContext';
+import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
 import PodPortForwardDialog from './PodPortForwardDialog';
 
 // Copy button component
@@ -101,7 +103,8 @@ const DetailRow = ({ label, value, children }) => (
 
 export default function PodContainersTab({ pod, isStale }) {
     const { currentContext } = useK8s();
-    const { configs, getStatus } = usePortForwards(currentContext, true);
+    const { configs, activeForwards, startForward, stopForward, deleteConfig } = usePortForwards(currentContext, true);
+    const { openModal, closeModal } = useUI();
 
     // Find port forward config for a specific port
     const getPortForwardConfig = useCallback((containerPort) => {
@@ -113,6 +116,12 @@ export default function PodContainersTab({ pod, isStale }) {
         );
     }, [configs, pod.metadata?.name, pod.metadata?.namespace]);
 
+    // Get status for a config ID from activeForwards
+    const getConfigStatus = useCallback((configId) => {
+        const af = activeForwards.find(af => af.config?.id === configId);
+        return af?.status || 'stopped';
+    }, [activeForwards]);
+
     // Get styling for a port based on port forward status
     const getPortStyle = useCallback((containerPort) => {
         const config = getPortForwardConfig(containerPort);
@@ -123,7 +132,7 @@ export default function PodContainersTab({ pod, isStale }) {
                 title: 'Click to create port forward'
             };
         }
-        const status = getStatus(config.id);
+        const status = getConfigStatus(config.id);
         switch (status) {
             case 'running':
                 // Running - green
@@ -144,7 +153,52 @@ export default function PodContainersTab({ pod, isStale }) {
                     title: 'Port forward configured - click to manage'
                 };
         }
-    }, [getPortForwardConfig, getStatus]);
+    }, [getPortForwardConfig, getConfigStatus]);
+
+    // Handle start/stop toggle for a port forward
+    const handleToggleForward = useCallback(async (e, config) => {
+        e.stopPropagation();
+        const status = getConfigStatus(config.id);
+        try {
+            if (status === 'running') {
+                await stopForward(config.id);
+            } else {
+                await startForward(config.id);
+            }
+        } catch (err) {
+            console.error('Failed to toggle port forward:', err);
+        }
+    }, [getConfigStatus, startForward, stopForward]);
+
+    // Handle delete for a port forward
+    const handleDeleteForward = useCallback((e, config) => {
+        e.stopPropagation();
+        openModal({
+            title: 'Delete Port Forward',
+            content: `Are you sure you want to delete the port forward for port ${config.remotePort}?`,
+            confirmText: 'Delete',
+            confirmStyle: 'danger',
+            onConfirm: async () => {
+                try {
+                    const status = getConfigStatus(config.id);
+                    if (status === 'running') {
+                        await stopForward(config.id);
+                    }
+                    await deleteConfig(config.id);
+                    closeModal();
+                } catch (err) {
+                    console.error('Failed to delete port forward:', err);
+                }
+            }
+        });
+    }, [openModal, closeModal, getConfigStatus, stopForward, deleteConfig]);
+
+    // Handle open in browser
+    const handleOpenBrowser = useCallback((e, config) => {
+        e.stopPropagation();
+        const protocol = config.https ? 'https' : 'http';
+        BrowserOpenURL(`${protocol}://localhost:${config.localPort}`);
+    }, []);
 
     // Get containers from spec and match with status
     const containers = useMemo(() => {
@@ -291,18 +345,53 @@ export default function PodContainersTab({ pod, isStale }) {
                         <div className="flex flex-wrap gap-2">
                             {ports.map((port, idx) => {
                                 const portStyle = getPortStyle(port.containerPort);
+                                const config = getPortForwardConfig(port.containerPort);
+                                const status = config ? getConfigStatus(config.id) : null;
+                                const isRunning = status === 'running';
+
                                 return (
-                                    <button
-                                        key={idx}
-                                        onClick={() => handlePortClick(port)}
-                                        className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs border rounded transition-colors ${portStyle.className}`}
-                                        title={portStyle.title}
-                                    >
-                                        <SignalIcon className="w-3.5 h-3.5" />
-                                        {port.containerPort}
-                                        {port.protocol && port.protocol !== 'TCP' && `/${port.protocol}`}
-                                        {port.name && <span className="opacity-60">({port.name})</span>}
-                                    </button>
+                                    <div key={idx} className={`inline-flex items-center text-xs border rounded ${portStyle.className.replace(/hover:\S+/g, '')}`}>
+                                        <button
+                                            onClick={() => handlePortClick(port)}
+                                            className={`inline-flex items-center gap-1.5 px-2 py-1 hover:bg-white/10 rounded-l transition-colors`}
+                                            title={portStyle.title}
+                                        >
+                                            <SignalIcon className="w-3.5 h-3.5" />
+                                            {port.containerPort}
+                                            {port.protocol && port.protocol !== 'TCP' && `/${port.protocol}`}
+                                            {port.name && <span className="opacity-60">({port.name})</span>}
+                                        </button>
+                                        {config && (
+                                            <div className="flex items-center border-l border-inherit">
+                                                <button
+                                                    onClick={(e) => handleToggleForward(e, config)}
+                                                    className={`p-1 hover:bg-white/10 transition-colors ${isRunning ? 'text-red-400' : 'text-green-400'}`}
+                                                    title={isRunning ? 'Stop' : 'Start'}
+                                                >
+                                                    {isRunning ? (
+                                                        <StopIcon className="w-3.5 h-3.5" />
+                                                    ) : (
+                                                        <PlayIcon className="w-3.5 h-3.5" />
+                                                    )}
+                                                </button>
+                                                <button
+                                                    onClick={(e) => handleOpenBrowser(e, config)}
+                                                    className={`p-1 transition-colors ${isRunning ? 'hover:bg-white/10' : 'opacity-40 cursor-not-allowed'}`}
+                                                    title={isRunning ? `Open ${config.https ? 'https' : 'http'}://localhost:${config.localPort}` : 'Start to open in browser'}
+                                                    disabled={!isRunning}
+                                                >
+                                                    <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => handleDeleteForward(e, config)}
+                                                    className="p-1 hover:bg-white/10 text-red-400 transition-colors rounded-r"
+                                                    title="Delete port forward"
+                                                >
+                                                    <TrashIcon className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 );
                             })}
                         </div>
