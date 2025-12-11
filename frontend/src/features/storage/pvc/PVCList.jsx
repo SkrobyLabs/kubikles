@@ -21,6 +21,32 @@ const getStatusColor = (phase) => {
     }
 };
 
+const getAccessModeColor = (mode) => {
+    switch (mode) {
+        case 'ReadWriteOnce':
+            return 'text-blue-400';
+        case 'ReadOnlyMany':
+            return 'text-yellow-400';
+        case 'ReadWriteMany':
+            return 'text-green-400';
+        case 'ReadWriteOncePod':
+            return 'text-purple-400';
+        default:
+            return 'text-gray-400';
+    }
+};
+
+const renderAccessModes = (modes) => {
+    if (!modes || modes.length === 0) return '-';
+    return (
+        <span className="flex flex-wrap gap-1">
+            {modes.map((mode, idx) => (
+                <span key={idx} className={getAccessModeColor(mode)}>{mode}</span>
+            ))}
+        </span>
+    );
+};
+
 export default function PVCList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
@@ -59,7 +85,7 @@ export default function PVCList({ isVisible }) {
             render: (item) => item.status?.capacity?.storage || item.spec?.resources?.requests?.storage || '-',
             getValue: (item) => item.status?.capacity?.storage || item.spec?.resources?.requests?.storage || ''
         },
-        { key: 'accessModes', label: 'Access Modes', render: (item) => item.spec?.accessModes?.join(', ') || '-', getValue: (item) => item.spec?.accessModes?.join(', ') || '' },
+        { key: 'accessModes', label: 'Access Modes', render: (item) => renderAccessModes(item.spec?.accessModes), getValue: (item) => item.spec?.accessModes?.join(', ') || '' },
         { key: 'storageClass', label: 'Storage Class', render: (item) => item.spec?.storageClassName || '-', getValue: (item) => item.spec?.storageClassName || '' },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
         {

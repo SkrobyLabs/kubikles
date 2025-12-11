@@ -8,6 +8,32 @@ import { EllipsisVerticalIcon, CheckCircleIcon } from '@heroicons/react/24/outli
 import StorageClassActionsMenu from './StorageClassActionsMenu';
 import { useStorageClassActions } from './useStorageClassActions';
 
+// Get color for reclaim policy
+const getReclaimPolicyColor = (policy) => {
+    switch (policy) {
+        case 'Delete':
+            return 'text-red-400';
+        case 'Retain':
+            return 'text-green-400';
+        case 'Recycle':
+            return 'text-yellow-400';
+        default:
+            return 'text-gray-400';
+    }
+};
+
+// Get color for volume binding mode
+const getBindingModeColor = (mode) => {
+    switch (mode) {
+        case 'Immediate':
+            return 'text-green-400';
+        case 'WaitForFirstConsumer':
+            return 'text-orange-400';
+        default:
+            return 'text-gray-400';
+    }
+};
+
 export default function StorageClassList({ isVisible }) {
     const { currentContext } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
@@ -41,8 +67,22 @@ export default function StorageClassList({ isVisible }) {
             getValue: (item) => item.metadata?.name
         },
         { key: 'provisioner', label: 'Provisioner', render: (item) => item.provisioner || '-', getValue: (item) => item.provisioner || '' },
-        { key: 'reclaimPolicy', label: 'Reclaim Policy', render: (item) => item.reclaimPolicy || '-', getValue: (item) => item.reclaimPolicy || '' },
-        { key: 'volumeBindingMode', label: 'Volume Binding Mode', render: (item) => item.volumeBindingMode || '-', getValue: (item) => item.volumeBindingMode || '' },
+        {
+            key: 'reclaimPolicy',
+            label: 'Reclaim Policy',
+            render: (item) => item.reclaimPolicy ? (
+                <span className={getReclaimPolicyColor(item.reclaimPolicy)}>{item.reclaimPolicy}</span>
+            ) : '-',
+            getValue: (item) => item.reclaimPolicy || ''
+        },
+        {
+            key: 'volumeBindingMode',
+            label: 'Volume Binding Mode',
+            render: (item) => item.volumeBindingMode ? (
+                <span className={getBindingModeColor(item.volumeBindingMode)}>{item.volumeBindingMode}</span>
+            ) : '-',
+            getValue: (item) => item.volumeBindingMode || ''
+        },
         {
             key: 'allowVolumeExpansion',
             label: 'Allow Expansion',

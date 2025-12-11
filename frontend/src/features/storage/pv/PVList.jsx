@@ -23,6 +23,45 @@ const getStatusColor = (phase) => {
     }
 };
 
+const getReclaimPolicyColor = (policy) => {
+    switch (policy) {
+        case 'Delete':
+            return 'text-red-400';
+        case 'Retain':
+            return 'text-green-400';
+        case 'Recycle':
+            return 'text-yellow-400';
+        default:
+            return 'text-gray-400';
+    }
+};
+
+const getAccessModeColor = (mode) => {
+    switch (mode) {
+        case 'ReadWriteOnce':
+            return 'text-blue-400';
+        case 'ReadOnlyMany':
+            return 'text-yellow-400';
+        case 'ReadWriteMany':
+            return 'text-green-400';
+        case 'ReadWriteOncePod':
+            return 'text-purple-400';
+        default:
+            return 'text-gray-400';
+    }
+};
+
+const renderAccessModes = (modes) => {
+    if (!modes || modes.length === 0) return '-';
+    return (
+        <span className="flex flex-wrap gap-1">
+            {modes.map((mode, idx) => (
+                <span key={idx} className={getAccessModeColor(mode)}>{mode}</span>
+            ))}
+        </span>
+    );
+};
+
 export default function PVList({ isVisible }) {
     const { currentContext } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
@@ -49,8 +88,22 @@ export default function PVList({ isVisible }) {
             render: (item) => item.spec?.capacity?.storage || '-',
             getValue: (item) => item.spec?.capacity?.storage || ''
         },
-        { key: 'accessModes', label: 'Access Modes', render: (item) => item.spec?.accessModes?.join(', ') || '-', getValue: (item) => item.spec?.accessModes?.join(', ') || '' },
-        { key: 'reclaimPolicy', label: 'Reclaim Policy', render: (item) => item.spec?.persistentVolumeReclaimPolicy || '-', getValue: (item) => item.spec?.persistentVolumeReclaimPolicy || '' },
+        {
+            key: 'accessModes',
+            label: 'Access Modes',
+            render: (item) => renderAccessModes(item.spec?.accessModes),
+            getValue: (item) => item.spec?.accessModes?.join(', ') || ''
+        },
+        {
+            key: 'reclaimPolicy',
+            label: 'Reclaim Policy',
+            render: (item) => item.spec?.persistentVolumeReclaimPolicy ? (
+                <span className={getReclaimPolicyColor(item.spec.persistentVolumeReclaimPolicy)}>
+                    {item.spec.persistentVolumeReclaimPolicy}
+                </span>
+            ) : '-',
+            getValue: (item) => item.spec?.persistentVolumeReclaimPolicy || ''
+        },
         {
             key: 'status',
             label: 'Status',
