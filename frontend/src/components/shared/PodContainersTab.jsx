@@ -37,13 +37,61 @@ const CopyButton = ({ value }) => {
     );
 };
 
+// Volume mount label with copy functionality
+const VolumeMountLabel = ({ mount }) => {
+    const [copied, setCopied] = useState(false);
+    const copyValue = `${mount.name}: ${mount.mountPath}`;
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(copyValue);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+    };
+
+    return (
+        <button
+            onClick={handleCopy}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded border transition-colors cursor-pointer ${
+                copied
+                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                    : 'bg-gray-500/10 hover:bg-gray-500/20 text-gray-300 border-gray-500/30'
+            }`}
+            title={copied ? 'Copied!' : `Click to copy: ${copyValue}`}
+        >
+            {copied ? (
+                <>
+                    <CheckIcon className="w-3 h-3" />
+                    Copied
+                </>
+            ) : (
+                <>
+                    <span className="text-gray-400">{mount.name}:</span>
+                    <code className="font-mono">{mount.mountPath}</code>
+                    {mount.readOnly ? (
+                        <span className="text-yellow-400 text-[10px]">RO</span>
+                    ) : (
+                        <span className="text-green-400 text-[10px]">RW</span>
+                    )}
+                </>
+            )}
+        </button>
+    );
+};
+
 // Helper to extract image SHA from image ID
 const extractImageSha = (imageId, full = false) => {
     if (!imageId) return 'N/A';
     // Format: docker://sha256:abc123... or docker-pullable://image@sha256:abc123
     const sha256Match = imageId.match(/sha256:([a-f0-9]+)/);
     if (sha256Match) {
-        return full ? sha256Match[1] : sha256Match[1].substring(0, 12);
+        const hash = sha256Match[1];
+        if (full) return hash;
+        // Show first 6 and last 6 characters with ellipsis
+        return hash.length > 12 ? `${hash.substring(0, 6)}...${hash.substring(hash.length - 6)}` : hash;
     }
     return imageId.split('/').pop()?.substring(0, 40) || 'N/A';
 };
@@ -399,6 +447,16 @@ export default function PodContainersTab({ pod, isStale }) {
                         <span className="text-gray-500">No ports exposed</span>
                     )}
                 </DetailRow>
+
+                {spec?.volumeMounts && spec.volumeMounts.length > 0 && (
+                    <DetailRow label="Volumes">
+                        <div className="flex flex-wrap gap-1.5">
+                            {spec.volumeMounts.map((mount, idx) => (
+                                <VolumeMountLabel key={idx} mount={mount} />
+                            ))}
+                        </div>
+                    </DetailRow>
+                )}
 
                 {/* Additional container info */}
                 {spec?.command && (

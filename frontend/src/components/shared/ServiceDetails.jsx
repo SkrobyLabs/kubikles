@@ -86,7 +86,7 @@ const DetailRow = ({ label, value, children }) => (
     </div>
 );
 
-export default function ServiceDetails({ service, onClose, tabContext = '' }) {
+export default function ServiceDetails({ service, tabContext = '' }) {
     const { currentContext } = useK8s();
     const { configs, activeForwards, startForward, stopForward, deleteConfig } = usePortForwards(currentContext, true);
     const { openModal, closeModal } = useUI();
@@ -221,19 +221,11 @@ export default function ServiceDetails({ service, onClose, tabContext = '' }) {
             )}
 
             {/* Header Bar */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
+            <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
                     <div className="text-sm font-medium text-gray-400">
                         {service.metadata?.namespace}/{service.metadata?.name}
                     </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={onClose}
-                        className="px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-text hover:bg-white/5 rounded transition-colors"
-                    >
-                        Close
-                    </button>
                 </div>
             </div>
 

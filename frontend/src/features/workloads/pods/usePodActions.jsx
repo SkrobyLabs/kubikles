@@ -80,11 +80,10 @@ export const usePodActions = () => {
         const tabId = `details-${pod.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Details: ${pod.metadata.name}`,
+            title: `${pod.metadata.name}`,
             content: (
                 <PodDetails
                     pod={pod}
-                    onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
             )

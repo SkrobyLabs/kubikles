@@ -54,7 +54,6 @@ export const useServiceActions = () => {
             content: (
                 <ServiceDetails
                     service={service}
-                    onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
             )

@@ -1,29 +1,54 @@
 import React, { useState, useMemo } from 'react';
 import { LockClosedIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context/K8sContext';
+import PodInfoTab from './PodInfoTab';
+import PodVolumesTab from './PodVolumesTab';
 import PodContainersTab from './PodContainersTab';
+import PodEventsTab from './PodEventsTab';
 
+const TAB_BASIC = 'basic';
+const TAB_VOLUMES = 'volumes';
 const TAB_CONTAINERS = 'containers';
+const TAB_EVENTS = 'events';
 
-export default function PodDetails({ pod, onClose, tabContext = '' }) {
+export default function PodDetails({ pod, tabContext = '' }) {
     const { currentContext } = useK8s();
-    const [activeTab, setActiveTab] = useState(TAB_CONTAINERS);
+    const [activeTab, setActiveTab] = useState(TAB_BASIC);
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
 
     const tabs = useMemo(() => [
+        { id: TAB_BASIC, label: 'Basic' },
+        { id: TAB_VOLUMES, label: 'Volumes' },
         { id: TAB_CONTAINERS, label: 'Containers' },
-        // Future tabs can be added here:
-        // { id: 'events', label: 'Events' },
-        // { id: 'volumes', label: 'Volumes' },
+        { id: TAB_EVENTS, label: 'Events' },
     ], []);
 
     const renderTabContent = () => {
         switch (activeTab) {
+            case TAB_BASIC:
+                return (
+                    <PodInfoTab
+                        pod={pod}
+                    />
+                );
+            case TAB_VOLUMES:
+                return (
+                    <PodVolumesTab
+                        pod={pod}
+                    />
+                );
             case TAB_CONTAINERS:
                 return (
                     <PodContainersTab
+                        pod={pod}
+                        isStale={isStale}
+                    />
+                );
+            case TAB_EVENTS:
+                return (
+                    <PodEventsTab
                         pod={pod}
                         isStale={isStale}
                     />
@@ -46,7 +71,7 @@ export default function PodDetails({ pod, onClose, tabContext = '' }) {
             )}
 
             {/* Header Bar */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
+            <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
                     <div className="text-sm font-medium text-gray-400">
                         {pod.metadata?.namespace}/{pod.metadata?.name}
@@ -67,14 +92,6 @@ export default function PodDetails({ pod, onClose, tabContext = '' }) {
                             </button>
                         ))}
                     </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={onClose}
-                        className="px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-text hover:bg-white/5 rounded transition-colors"
-                    >
-                        Close
-                    </button>
                 </div>
             </div>
 
