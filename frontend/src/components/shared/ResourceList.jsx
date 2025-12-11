@@ -50,7 +50,8 @@ export default function ResourceList({
     multiSelectNamespaces = false,
     highlightedUid = null,
     initialSort = null,
-    resourceType = null
+    resourceType = null,
+    onRowClick = null
 }) {
     const { pendingSearch, consumePendingSearch } = useUI();
     const [sortConfig, setSortConfig] = useState(initialSort || { key: null, direction: 'asc' });
@@ -340,7 +341,8 @@ export default function ResourceList({
                                 return (
                                     <tr
                                         {...props}
-                                        className={`transition-colors ${isHighlighted ? 'bg-white/5' : 'hover:bg-white/5'}`}
+                                        className={`transition-colors ${isHighlighted ? 'bg-white/5' : 'hover:bg-white/5'} ${onRowClick ? 'cursor-pointer' : ''}`}
+                                        onClick={() => onRowClick && onRowClick(item)}
                                     />
                                 );
                             }

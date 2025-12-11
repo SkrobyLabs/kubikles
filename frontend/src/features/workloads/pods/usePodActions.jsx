@@ -6,6 +6,7 @@ import LogViewer from '../../../components/shared/LogViewer';
 import Terminal from '../../../components/shared/Terminal';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
+import PodDetails from '../../../components/shared/PodDetails';
 import Logger from '../../../utils/Logger';
 
 export const usePodActions = () => {
@@ -74,6 +75,22 @@ export const usePodActions = () => {
         });
     };
 
+    const handleShowDetails = (pod) => {
+        Logger.info("Opening pod details", { namespace: pod.metadata.namespace, pod: pod.metadata.name });
+        const tabId = `details-${pod.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `Details: ${pod.metadata.name}`,
+            content: (
+                <PodDetails
+                    pod={pod}
+                    onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
+
     const handleDelete = (namespace, name, isTerminating = false) => {
         const actionType = isTerminating ? 'Force Delete' : 'Delete';
         Logger.info(`Action: ${actionType} Pod`, { namespace, name, context: currentContext });
@@ -107,6 +124,7 @@ export const usePodActions = () => {
         handleShell,
         handleEditYaml,
         handleShowDependencies,
+        handleShowDetails,
         handleDelete
     };
 };

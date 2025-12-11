@@ -19,7 +19,8 @@ import {
     PuzzlePieceIcon,
     ArrowsRightLeftIcon,
     TagIcon,
-    Cog6ToothIcon
+    Cog6ToothIcon,
+    SignalIcon
 } from '@heroicons/react/24/outline';
 import { useConfig } from '../../context/ConfigContext';
 import SearchSelect from '../shared/SearchSelect';
@@ -163,6 +164,7 @@ export default function Sidebar({
                 { id: 'services', label: 'Services', icon: GlobeAltIcon },
                 { id: 'ingresses', label: 'Ingresses', icon: ArrowsRightLeftIcon },
                 { id: 'ingressclasses', label: 'Ingress Classes', icon: TagIcon },
+                { id: 'portforwards', label: 'Port Forwards', icon: SignalIcon },
             ]
         },
         {

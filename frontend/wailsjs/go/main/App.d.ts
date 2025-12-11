@@ -4,6 +4,8 @@ import {main} from '../models';
 import {k8s} from '../models';
 import {v1} from '../models';
 
+export function AddPortForwardConfig(arg1:main.PortForwardConfig):Promise<main.PortForwardConfig>;
+
 export function CreateNodeDebugPod(arg1:string):Promise<main.NodeDebugPodResult>;
 
 export function DeleteCRD(arg1:string):Promise<void>;
@@ -36,6 +38,8 @@ export function DeletePVC(arg1:string,arg2:string):Promise<void>;
 
 export function DeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function DeletePortForwardConfig(arg1:string):Promise<void>;
+
 export function DeleteReplicaSet(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteSecret(arg1:string,arg2:string):Promise<void>;
@@ -48,7 +52,11 @@ export function DeleteStorageClass(arg1:string):Promise<void>;
 
 export function ForceDeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function GetActivePortForwards():Promise<Array<main.ActivePortForward>>;
+
 export function GetAllPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean):Promise<string>;
+
+export function GetAvailablePort(arg1:number):Promise<number>;
 
 export function GetCRDYaml(arg1:string):Promise<string>;
 
@@ -92,7 +100,13 @@ export function GetPodLogsFromStart(arg1:string,arg2:string,arg3:string,arg4:boo
 
 export function GetPodMetrics():Promise<k8s.PodMetricsResult>;
 
+export function GetPodPorts(arg1:string,arg2:string):Promise<Array<number>>;
+
 export function GetPodYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetPortForwardConfigs(arg1:string):Promise<Array<main.PortForwardConfig>>;
+
+export function GetRandomAvailablePort():Promise<number>;
 
 export function GetReplicaSetYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -101,6 +115,8 @@ export function GetResourceDependencies(arg1:string,arg2:string,arg3:string):Pro
 export function GetSecretData(arg1:string,arg2:string):Promise<Record<string, string>>;
 
 export function GetSecretYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetServicePorts(arg1:string,arg2:string):Promise<Array<number>>;
 
 export function GetServiceYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -172,11 +188,19 @@ export function SavePodLogs(arg1:string,arg2:string):Promise<void>;
 
 export function SetNodeSchedulable(arg1:string,arg2:boolean):Promise<void>;
 
+export function StartFavoritePortForwards(arg1:string):Promise<void>;
+
 export function StartLogStream(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
+
+export function StartPortForward(arg1:string):Promise<void>;
+
+export function StopAllPortForwards():Promise<void>;
 
 export function StopAllWatchers():Promise<void>;
 
 export function StopLogStream(arg1:string):Promise<void>;
+
+export function StopPortForward(arg1:string):Promise<void>;
 
 export function SubscribeCRDWatcher(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
 
@@ -221,6 +245,8 @@ export function UpdatePVCYaml(arg1:string,arg2:string,arg3:string):Promise<void>
 export function UpdatePVYaml(arg1:string,arg2:string):Promise<void>;
 
 export function UpdatePodYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdatePortForwardConfig(arg1:main.PortForwardConfig):Promise<void>;
 
 export function UpdateReplicaSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

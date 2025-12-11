@@ -23,10 +23,11 @@ import (
 
 // App struct
 type App struct {
-	ctx              context.Context
-	k8sClient        *k8s.Client
-	terminalService  *terminal.Service
-	watcherManager   *ResourceWatcherManager
+	ctx                context.Context
+	k8sClient          *k8s.Client
+	terminalService    *terminal.Service
+	watcherManager     *ResourceWatcherManager
+	portForwardManager *PortForwardManager
 	// Log streaming
 	logStreams      map[string]context.CancelFunc
 	logStreamsMutex sync.Mutex
@@ -245,6 +246,7 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.watcherManager = NewResourceWatcherManager(ctx, a)
+	a.portForwardManager = NewPortForwardManager(a)
 	if err := a.terminalService.Start(); err != nil {
 		fmt.Printf("Failed to start terminal service: %v\n", err)
 	}
@@ -1533,4 +1535,126 @@ func (a *App) DeleteCustomResource(group, version, resource, namespace, name str
 		return fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.DeleteCustomResource(currentContext, group, version, resource, namespace, name)
+}
+
+// --- Port Forwarding APIs ---
+
+// GetPortForwardConfigs returns all port forward configurations, optionally filtered by context
+func (a *App) GetPortForwardConfigs(contextFilter string) []PortForwardConfig {
+	a.LogDebug("GetPortForwardConfigs called: contextFilter=%s", contextFilter)
+	if a.portForwardManager == nil {
+		return []PortForwardConfig{}
+	}
+	return a.portForwardManager.GetConfigs(contextFilter)
+}
+
+// GetActivePortForwards returns all active port forwards
+func (a *App) GetActivePortForwards() []ActivePortForward {
+	a.LogDebug("GetActivePortForwards called")
+	if a.portForwardManager == nil {
+		return []ActivePortForward{}
+	}
+	return a.portForwardManager.GetActiveForwards()
+}
+
+// AddPortForwardConfig adds a new port forward configuration
+func (a *App) AddPortForwardConfig(cfg PortForwardConfig) (*PortForwardConfig, error) {
+	a.LogDebug("AddPortForwardConfig called: context=%s, ns=%s, type=%s, name=%s, ports=%d:%d",
+		cfg.Context, cfg.Namespace, cfg.ResourceType, cfg.ResourceName, cfg.LocalPort, cfg.RemotePort)
+	if a.portForwardManager == nil {
+		return nil, fmt.Errorf("port forward manager not initialized")
+	}
+	return a.portForwardManager.AddConfig(cfg)
+}
+
+// UpdatePortForwardConfig updates an existing port forward configuration
+func (a *App) UpdatePortForwardConfig(cfg PortForwardConfig) error {
+	a.LogDebug("UpdatePortForwardConfig called: id=%s", cfg.ID)
+	if a.portForwardManager == nil {
+		return fmt.Errorf("port forward manager not initialized")
+	}
+	return a.portForwardManager.UpdateConfig(cfg)
+}
+
+// DeletePortForwardConfig deletes a port forward configuration
+func (a *App) DeletePortForwardConfig(configID string) error {
+	a.LogDebug("DeletePortForwardConfig called: id=%s", configID)
+	if a.portForwardManager == nil {
+		return fmt.Errorf("port forward manager not initialized")
+	}
+	return a.portForwardManager.DeleteConfig(configID)
+}
+
+// StartPortForward starts a port forward
+func (a *App) StartPortForward(configID string) error {
+	a.LogDebug("StartPortForward called: id=%s", configID)
+	if a.portForwardManager == nil {
+		return fmt.Errorf("port forward manager not initialized")
+	}
+	return a.portForwardManager.Start(configID)
+}
+
+// StopPortForward stops a port forward
+func (a *App) StopPortForward(configID string) error {
+	a.LogDebug("StopPortForward called: id=%s", configID)
+	if a.portForwardManager == nil {
+		return fmt.Errorf("port forward manager not initialized")
+	}
+	return a.portForwardManager.Stop(configID)
+}
+
+// StopAllPortForwards stops all active port forwards
+func (a *App) StopAllPortForwards() {
+	a.LogDebug("StopAllPortForwards called")
+	if a.portForwardManager == nil {
+		return
+	}
+	a.portForwardManager.StopAll()
+}
+
+// GetAvailablePort finds an available local port
+func (a *App) GetAvailablePort(preferred int) int {
+	a.LogDebug("GetAvailablePort called: preferred=%d", preferred)
+	if a.portForwardManager == nil {
+		return 0
+	}
+	return a.portForwardManager.GetAvailablePort(preferred)
+}
+
+// GetRandomAvailablePort gets a random available port avoiding well-known and configured ports
+func (a *App) GetRandomAvailablePort() int {
+	a.LogDebug("GetRandomAvailablePort called")
+	if a.portForwardManager == nil {
+		return 0
+	}
+	return a.portForwardManager.GetRandomAvailablePort()
+}
+
+// StartFavoritePortForwards starts all favorite port forwards for a context
+func (a *App) StartFavoritePortForwards(contextName string) {
+	a.LogDebug("StartFavoritePortForwards called: context=%s", contextName)
+	if a.portForwardManager == nil {
+		return
+	}
+	a.portForwardManager.StartFavorites(contextName)
+}
+
+// GetPodPorts returns the container ports for a pod
+func (a *App) GetPodPorts(namespace, podName string) ([]int32, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetPodPorts called: context=%s, ns=%s, pod=%s", currentContext, namespace, podName)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetPodContainerPorts(currentContext, namespace, podName)
+}
+
+// GetServicePorts returns the ports exposed by a service
+func (a *App) GetServicePorts(namespace, serviceName string) ([]int32, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetServicePorts called: context=%s, ns=%s, svc=%s", currentContext, namespace, serviceName)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetServicePorts(currentContext, namespace, serviceName)
 }

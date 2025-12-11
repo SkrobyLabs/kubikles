@@ -29,7 +29,7 @@ export default function PodList({ isVisible }) {
     // console.log("PodList rendering");
     const { pods, loading } = usePods(currentContext, selectedNamespaces, isVisible);
     const { metrics, available: metricsAvailable } = usePodMetrics(isVisible);
-    const { openLogs, handleShell, handleEditYaml, handleShowDependencies, handleDelete } = usePodActions();
+    const { openLogs, handleShell, handleEditYaml, handleShowDependencies, handleShowDetails, handleDelete } = usePodActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
@@ -182,12 +182,13 @@ export default function PodList({ isVisible }) {
                     onForceDelete={() => handleDelete(item.metadata.namespace, item.metadata.name, true)}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies(item)}
+                    onShowDetails={() => handleShowDetails(item)}
                 />
             ),
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, openLogs, handleShell, handleDelete, handleEditYaml, handleShowDependencies, pods, navigateWithSearch, metrics, metricsAvailable]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, openLogs, handleShell, handleDelete, handleEditYaml, handleShowDependencies, handleShowDetails, pods, navigateWithSearch, metrics, metricsAvailable]);
 
     return (
         <ResourceList
@@ -203,6 +204,7 @@ export default function PodList({ isVisible }) {
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="pods"
+            onRowClick={handleShowDetails}
         />
     );
 }

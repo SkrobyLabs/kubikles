@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PencilSquareIcon, DocumentTextIcon, CommandLineIcon, TrashIcon, EllipsisVerticalIcon, ShareIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, DocumentTextIcon, CommandLineIcon, TrashIcon, EllipsisVerticalIcon, ShareIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 
-export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange, onLogs, onEditYaml, onShowDependencies, onDelete, onForceDelete, onShell }) {
+export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange, onLogs, onEditYaml, onShowDependencies, onShowDetails, onDelete, onForceDelete, onShell }) {
     const buttonRef = useRef(null);
     const menuRef = useRef(null);
 
@@ -48,6 +48,13 @@ export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange
             style={{ position: 'fixed', top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, zIndex: 99999 }}
             onClick={(e) => e.stopPropagation()}
         >
+            <button
+                onClick={(e) => { e.stopPropagation(); handleAction(() => onShowDetails(pod)); }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+            >
+                <InformationCircleIcon className="h-4 w-4" />
+                Details
+            </button>
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onLogs(pod)); }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"

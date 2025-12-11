@@ -25,6 +25,7 @@ import PVList from './features/storage/pv/PVList';
 import StorageClassList from './features/storage/storageclass/StorageClassList';
 import CRDList from './features/customresources/definitions/CRDList';
 import CustomResourceList from './features/customresources/instances/CustomResourceList';
+import PortForwardList from './features/portforwards/PortForwardList';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
 import ConfirmModal from './components/shared/ConfirmModal';
@@ -155,6 +156,7 @@ function MainLayout() {
             case 'pvs': return <PVList isVisible={true} />;
             case 'storageclasses': return <StorageClassList isVisible={true} />;
             case 'crds': return <CRDList isVisible={true} />;
+            case 'portforwards': return <PortForwardList isVisible={true} />;
             default: return <div className="p-4">Unknown View: {activeView}</div>;
         }
     };

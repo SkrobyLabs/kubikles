@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
@@ -2255,4 +2256,106 @@ func (c *Client) DeleteCustomResource(contextName, group, version, resource, nam
 		return dc.Resource(gvr).Namespace(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 	}
 	return dc.Resource(gvr).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// --- Port Forwarding Support ---
+
+// GetRestConfigForContext returns the REST config for a specific context
+func (c *Client) GetRestConfigForContext(contextName string) (*rest.Config, error) {
+	home := homedir.HomeDir()
+	kubeconfigPath := filepath.Join(home, ".kube", "config")
+	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
+
+	configOverrides := &clientcmd.ConfigOverrides{}
+	if contextName != "" {
+		configOverrides.CurrentContext = contextName
+	}
+
+	configLoader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+	return configLoader.ClientConfig()
+}
+
+// GetServiceBackingPods finds running pods that back a service
+func (c *Client) GetServiceBackingPods(contextName, namespace, serviceName string) ([]string, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get clientset for context %s: %w", contextName, err)
+	}
+
+	// Get the service
+	svc, err := cs.CoreV1().Services(namespace).Get(context.TODO(), serviceName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get service %s: %w", serviceName, err)
+	}
+
+	// Build label selector from service selector
+	if len(svc.Spec.Selector) == 0 {
+		return nil, fmt.Errorf("service %s has no selector", serviceName)
+	}
+
+	var selectorParts []string
+	for k, v := range svc.Spec.Selector {
+		selectorParts = append(selectorParts, fmt.Sprintf("%s=%s", k, v))
+	}
+	selector := strings.Join(selectorParts, ",")
+
+	// Find pods matching selector
+	pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: selector,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pods: %w", err)
+	}
+
+	// Return names of running pods
+	var result []string
+	for _, pod := range pods.Items {
+		if pod.Status.Phase == v1.PodRunning {
+			result = append(result, pod.Name)
+		}
+	}
+
+	return result, nil
+}
+
+// GetPodContainerPorts returns the container ports for a pod
+func (c *Client) GetPodContainerPorts(contextName, namespace, podName string) ([]int32, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get clientset for context %s: %w", contextName, err)
+	}
+
+	pod, err := cs.CoreV1().Pods(namespace).Get(context.TODO(), podName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pod %s: %w", podName, err)
+	}
+
+	var ports []int32
+	for _, container := range pod.Spec.Containers {
+		for _, port := range container.Ports {
+			ports = append(ports, port.ContainerPort)
+		}
+	}
+
+	return ports, nil
+}
+
+// GetServicePorts returns the ports exposed by a service
+func (c *Client) GetServicePorts(contextName, namespace, serviceName string) ([]int32, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get clientset for context %s: %w", contextName, err)
+	}
+
+	svc, err := cs.CoreV1().Services(namespace).Get(context.TODO(), serviceName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get service %s: %w", serviceName, err)
+	}
+
+	var ports []int32
+	for _, port := range svc.Spec.Ports {
+		ports = append(ports, port.Port)
+	}
+
+	return ports, nil
 }
