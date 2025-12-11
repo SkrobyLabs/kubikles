@@ -3,6 +3,7 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
+import ServiceDetails from '../../../components/shared/ServiceDetails';
 import Logger from '../../../utils/Logger';
 
 export const useServiceActions = () => {
@@ -44,8 +45,25 @@ export const useServiceActions = () => {
         });
     };
 
+    const handleShowDetails = (service) => {
+        Logger.info("Opening service details", { namespace: service.metadata.namespace, name: service.metadata.name });
+        const tabId = `details-service-${service.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${service.metadata.name}`,
+            content: (
+                <ServiceDetails
+                    service={service}
+                    onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
+
     return {
         handleEditYaml,
-        handleShowDependencies
+        handleShowDependencies,
+        handleShowDetails
     };
 };

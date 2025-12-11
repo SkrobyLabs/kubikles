@@ -12,7 +12,7 @@ export default function ServiceList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { services, loading } = useServices(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleShowDependencies } = useServiceActions();
+    const { handleEditYaml, handleShowDependencies, handleShowDetails } = useServiceActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
     const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
@@ -67,6 +67,7 @@ export default function ServiceList({ isVisible }) {
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="services"
+            onRowClick={handleShowDetails}
         />
     );
 }
