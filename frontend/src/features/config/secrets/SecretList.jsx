@@ -12,7 +12,7 @@ export default function SecretList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { secrets, loading } = useSecrets(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleShowDependencies, handleDelete } = useSecretActions();
+    const { handleEditYaml, handleEditKeyValue, handleShowDependencies, handleDelete } = useSecretActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
     const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
@@ -65,6 +65,7 @@ export default function SecretList({ isVisible }) {
             multiSelectNamespaces={true}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="secrets"
+            onRowClick={handleEditKeyValue}
         />
     );
 }

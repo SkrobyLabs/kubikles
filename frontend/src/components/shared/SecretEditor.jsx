@@ -3,7 +3,7 @@ import Editor from '@monaco-editor/react';
 import { GetSecretYaml, UpdateSecretYaml, GetSecretData, UpdateSecretData } from '../../../wailsjs/go/main/App';
 import { useK8s } from '../../context/K8sContext';
 import Logger from '../../utils/Logger';
-import { EyeIcon, EyeSlashIcon, TrashIcon, PlusIcon, LockClosedIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, TrashIcon, PlusIcon, LockClosedIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 const MODE_YAML = 'yaml';
 const MODE_KEYVALUE = 'keyvalue';
@@ -26,15 +26,16 @@ const entriesToObject = (entries) => {
     return result;
 };
 
-export default function SecretEditor({ namespace, resourceName, onClose, tabContext = '' }) {
+export default function SecretEditor({ namespace, resourceName, onClose, tabContext = '', initialMode = MODE_YAML }) {
     const { currentContext } = useK8s();
-    const [mode, setMode] = useState(MODE_YAML);
+    const [mode, setMode] = useState(initialMode);
     const [yamlContent, setYamlContent] = useState('');
     const [secretEntries, setSecretEntries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
     const [showBase64, setShowBase64] = useState(true);
+    const [keySearchTerm, setKeySearchTerm] = useState('');
     const editorRef = useRef(null);
     const nextIdRef = useRef(0);
 
@@ -254,29 +255,45 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                             Key-Value
                         </button>
                     </div>
-                    {/* Base64 Toggle - only visible in Key-Value mode */}
+                    {/* Base64 Toggle and Search - only visible in Key-Value mode */}
                     {mode === MODE_KEYVALUE && (
-                        <button
-                            onClick={() => setShowBase64(!showBase64)}
-                            className={`flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-colors ${
-                                showBase64
-                                    ? 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/30'
-                                    : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
-                            }`}
-                            title={showBase64 ? 'Values shown as Base64' : 'Values shown decoded'}
-                        >
-                            {showBase64 ? (
-                                <>
-                                    <EyeSlashIcon className="h-3.5 w-3.5" />
-                                    Base64
-                                </>
-                            ) : (
-                                <>
-                                    <EyeIcon className="h-3.5 w-3.5" />
-                                    Decoded
-                                </>
-                            )}
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setShowBase64(!showBase64)}
+                                className={`flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                    showBase64
+                                        ? 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/30'
+                                        : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                                }`}
+                                title={showBase64 ? 'Values shown as Base64' : 'Values shown decoded'}
+                            >
+                                {showBase64 ? (
+                                    <>
+                                        <EyeSlashIcon className="h-3.5 w-3.5" />
+                                        Base64
+                                    </>
+                                ) : (
+                                    <>
+                                        <EyeIcon className="h-3.5 w-3.5" />
+                                        Decoded
+                                    </>
+                                )}
+                            </button>
+                            {/* Key Search */}
+                            <div className="relative w-48">
+                                <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-2.5 top-1/2 transform -translate-y-1/2" />
+                                <input
+                                    type="text"
+                                    value={keySearchTerm}
+                                    onChange={(e) => setKeySearchTerm(e.target.value)}
+                                    placeholder="Filter keys..."
+                                    className="w-full bg-background border border-border rounded-md pl-8 pr-3 py-1 text-xs text-text focus:outline-none focus:border-primary transition-colors"
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    spellCheck="false"
+                                />
+                            </div>
+                        </>
                     )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -319,7 +336,9 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                 ) : (
                     <div className="h-full overflow-auto p-4">
                         <div className="space-y-2">
-                            {secretEntries.map((entry) => (
+                            {secretEntries
+                                .filter(entry => !keySearchTerm || entry.key.toLowerCase().includes(keySearchTerm.toLowerCase()))
+                                .map((entry) => (
                                 <div key={entry.id} className="flex items-start gap-2 bg-[#2d2d2d] rounded-md p-3">
                                     <input
                                         type="text"
@@ -357,6 +376,11 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                             {secretEntries.length === 0 && (
                                 <div className="text-gray-500 text-sm text-center py-8">
                                     No secret data. Click "Add Key" to create one.
+                                </div>
+                            )}
+                            {secretEntries.length > 0 && keySearchTerm && secretEntries.filter(e => e.key.toLowerCase().includes(keySearchTerm.toLowerCase())).length === 0 && (
+                                <div className="text-gray-500 text-sm text-center py-8">
+                                    No keys match "{keySearchTerm}"
                                 </div>
                             )}
                         </div>

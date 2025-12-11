@@ -22,12 +22,19 @@ export const getPodStatus = (pod) => {
 
 export const getPodStatusPriority = (status) => {
     switch (status) {
-        case 'Failed': return 1;
-        case 'CrashLoopBackOff': return 2;
-        case 'ErrImagePull': return 3;
-        case 'ImagePullBackOff': return 4;
+        case 'Failed':
+        case 'Init:Error': return 1;
+        case 'CrashLoopBackOff':
+        case 'Init:CrashLoopBackOff': return 2;
+        case 'ErrImagePull':
+        case 'Init:ErrImagePull': return 3;
+        case 'ImagePullBackOff':
+        case 'Init:ImagePullBackOff': return 4;
         case 'Terminating': return 5;
-        case 'Pending': return 6;
+        case 'Pending':
+        case 'Init:Running':
+        case 'Init:Waiting':
+        case 'PodInitializing': return 6;
         case 'ContainerCreating': return 7;
         case 'Running': return 8;
         case 'Succeeded': return 9;
@@ -43,14 +50,21 @@ export const getPodStatusColor = (status) => {
             return 'text-success/70'; // Dimmed green
         case 'Pending':
         case 'ContainerCreating':
+        case 'Init:Running':
+        case 'Init:Waiting':
+        case 'PodInitializing':
             return 'text-warning'; // Orange
         case 'Terminating':
         case 'CrashLoopBackOff':
         case 'ImagePullBackOff':
         case 'ErrImagePull':
+        case 'Init:CrashLoopBackOff':
+        case 'Init:ImagePullBackOff':
+        case 'Init:ErrImagePull':
         case 'Unknown':
             return 'text-red-orange'; // Orange-red
         case 'Failed':
+        case 'Init:Error':
             return 'text-error'; // Red
         default:
             return 'text-text';

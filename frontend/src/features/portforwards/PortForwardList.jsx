@@ -7,7 +7,8 @@ import {
     ArrowTopRightOnSquareIcon,
     PlusIcon,
     EllipsisVerticalIcon,
-    PencilSquareIcon
+    PencilSquareIcon,
+    MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { usePortForwards } from '../../hooks/usePortForwards';
@@ -53,7 +54,9 @@ export default function PortForwardList({ isVisible }) {
     const [editingConfig, setEditingConfig] = useState(null);
     const [hiddenColumns, setHiddenColumns] = useState(new Set(['type']));
     const [showColumnMenu, setShowColumnMenu] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const columnMenuRef = useRef(null);
+    const searchInputRef = useRef(null);
 
     // Filter by current context unless showing all
     const contextFilter = showAllContexts ? '' : currentContext;
@@ -201,26 +204,66 @@ export default function PortForwardList({ isVisible }) {
         }
     }, [editingConfig, addConfig, updateConfig, startForward]);
 
-    // Sort configs: favorites first, then by name
-    const sortedConfigs = useMemo(() => {
-        return [...configs].sort((a, b) => {
-            // Favorites first
+    // Filter and sort configs: search filter, then favorites first, then by name
+    const filteredAndSortedConfigs = useMemo(() => {
+        let result = [...configs];
+
+        // Apply search filter
+        if (searchTerm.trim()) {
+            const term = searchTerm.toLowerCase();
+            result = result.filter(config => {
+                const label = (config.label || '').toLowerCase();
+                const resource = (config.resourceName || '').toLowerCase();
+                const namespace = (config.namespace || '').toLowerCase();
+                const context = (config.context || '').toLowerCase();
+                const localPort = String(config.localPort || '');
+                const remotePort = String(config.remotePort || '');
+                const type = (config.resourceType || '').toLowerCase();
+
+                return label.includes(term) ||
+                       resource.includes(term) ||
+                       namespace.includes(term) ||
+                       context.includes(term) ||
+                       localPort.includes(term) ||
+                       remotePort.includes(term) ||
+                       type.includes(term);
+            });
+        }
+
+        // Sort: favorites first, then by label/name
+        return result.sort((a, b) => {
             if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
-            // Then by label/name
             const nameA = a.label || a.resourceName;
             const nameB = b.label || b.resourceName;
             return nameA.localeCompare(nameB);
         });
-    }, [configs]);
+    }, [configs, searchTerm]);
 
     return (
         <div className="h-full flex flex-col">
             {/* Header */}
-            <div className="h-14 flex items-center justify-between px-6 border-b border-border shrink-0">
-                <div className="flex items-center gap-4">
-                    <h1 className="text-lg font-semibold">Port Forwards</h1>
-                    <span className="text-sm text-gray-400">
-                        {configs.length} {configs.length === 1 ? 'forward' : 'forwards'}
+            <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0 gap-4">
+                <div className="flex items-center gap-4 flex-1">
+                    <h1 className="text-lg font-semibold text-text shrink-0">Port Forwards</h1>
+
+                    {/* Search Bar */}
+                    <div className="relative max-w-md w-full">
+                        <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                        <input
+                            ref={searchInputRef}
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search port forwards..."
+                            className="w-full bg-background border border-border rounded-md pl-9 pr-4 py-1.5 text-sm text-text focus:outline-none focus:border-primary transition-colors"
+                            autoComplete="off"
+                            autoCorrect="off"
+                            spellCheck="false"
+                        />
+                    </div>
+
+                    <span className="text-sm text-gray-400 shrink-0">
+                        {searchTerm ? `${filteredAndSortedConfigs.length} of ${configs.length}` : configs.length} {configs.length === 1 ? 'forward' : 'forwards'}
                     </span>
                 </div>
                 <div className="flex items-center gap-4">
@@ -264,6 +307,11 @@ export default function PortForwardList({ isVisible }) {
                             <PlusIcon className="w-4 h-4" />
                             Add Port Forward
                         </button>
+                    </div>
+                ) : filteredAndSortedConfigs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                        <p className="text-lg mb-2">No matching port forwards</p>
+                        <p className="text-sm">Try adjusting your search term</p>
                     </div>
                 ) : (
                     <table className="w-full">
@@ -314,7 +362,7 @@ export default function PortForwardList({ isVisible }) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                            {sortedConfigs.map((config) => {
+                            {filteredAndSortedConfigs.map((config) => {
                                 const status = getStatus(config.id);
                                 const configError = getError(config.id);
                                 const running = status === 'running';
@@ -393,7 +441,7 @@ export default function PortForwardList({ isVisible }) {
                                                             <div className="flex flex-col gap-1">
                                                                 <StatusText status={status} />
                                                                 {configError && (
-                                                                    <span className="text-xs text-red-400 truncate max-w-[200px]" title={configError}>
+                                                                    <span className="text-xs text-red-400 truncate block" title={configError}>
                                                                         {configError}
                                                                     </span>
                                                                 )}

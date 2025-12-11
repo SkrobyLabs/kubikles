@@ -27,6 +27,24 @@ export const useSecretActions = () => {
         });
     };
 
+    const handleEditKeyValue = (secret) => {
+        Logger.info("Opening secret editor (key-value)", { namespace: secret.metadata.namespace, secret: secret.metadata.name });
+        const tabId = `secret-${secret.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `Edit: ${secret.metadata.name}`,
+            content: (
+                <SecretEditor
+                    namespace={secret.metadata.namespace}
+                    resourceName={secret.metadata.name}
+                    onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
+                    initialMode="keyvalue"
+                />
+            )
+        });
+    };
+
     const handleShowDependencies = (secret) => {
         Logger.info("Opening dependency graph", { namespace: secret.metadata.namespace, secret: secret.metadata.name });
         const tabId = `deps-secret-${secret.metadata.uid}`;
@@ -69,6 +87,7 @@ export const useSecretActions = () => {
 
     return {
         handleEditYaml,
+        handleEditKeyValue,
         handleShowDependencies,
         handleDelete
     };
