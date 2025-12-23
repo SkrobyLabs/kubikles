@@ -175,22 +175,22 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
     const CHUNK_SIZE = 200; // Number of lines to load per chunk
 
     // Extract first timestamp from current logs (for loading older logs)
-    const getFirstTimestamp = () => {
+    const getFirstTimestamp = useCallback(() => {
         if (!logs.length) return '';
         // Find first entry with a timestamp
         const entry = logs.find(e => e.timestamp);
         return entry?.timestamp || '';
-    };
+    }, [logs]);
 
     // Extract last timestamp from current logs (for loading newer logs)
-    const getLastTimestamp = () => {
+    const getLastTimestamp = useCallback(() => {
         if (!logs.length) return '';
         // Find last entry with a timestamp (search backwards)
         for (let i = logs.length - 1; i >= 0; i--) {
             if (logs[i].timestamp) return logs[i].timestamp;
         }
         return '';
-    };
+    }, [logs]);
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
@@ -205,18 +205,6 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             streamIdRef.current = null;
         }
     }, [isStale]);
-
-    // Virtuoso callback: when user scrolls to top, load older logs
-    const handleStartReached = useCallback(() => {
-        if (isAllLoaded || !hasMoreBefore || loadingBeforeRef.current) return;
-        loadOlderLogs();
-    }, [isAllLoaded, hasMoreBefore]);
-
-    // Virtuoso callback: when user scrolls to bottom, load newer logs (if not following)
-    const handleEndReached = useCallback(() => {
-        if (isAllLoaded || !hasMoreAfter || loadingAfterRef.current || isFollowing) return;
-        loadNewerLogs();
-    }, [isAllLoaded, hasMoreAfter, isFollowing]);
 
     // Virtuoso callback: track if user is at bottom
     const handleAtBottomStateChange = useCallback((atBottom) => {
@@ -444,7 +432,7 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
 
     // Load older logs (when scrolling to top)
     // Virtuoso handles scroll position via firstItemIndex
-    const loadOlderLogs = async () => {
+    const loadOlderLogs = useCallback(async () => {
         // Use ref for instant lock check to prevent race conditions
         if (loadingBeforeRef.current || !hasMoreBefore) return;
 
@@ -490,10 +478,10 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             loadingBeforeRef.current = false;
             setLoadingBefore(false);
         }
-    };
+    }, [hasMoreBefore, getFirstTimestamp, namespace, selectedPod, selectedContainer, showPrevious, isFollowing]);
 
     // Load newer logs (when scrolling to bottom, not following)
-    const loadNewerLogs = async () => {
+    const loadNewerLogs = useCallback(async () => {
         // Use ref for instant lock check to prevent race conditions
         if (loadingAfterRef.current || !hasMoreAfter || isFollowing) return;
 
@@ -533,7 +521,19 @@ export default function LogViewer({ namespace, pod, containers = [], siblingPods
             loadingAfterRef.current = false;
             setLoadingAfter(false);
         }
-    };
+    }, [hasMoreAfter, isFollowing, getLastTimestamp, namespace, selectedPod, selectedContainer, showPrevious]);
+
+    // Virtuoso callback: when user scrolls to top, load older logs
+    const handleStartReached = useCallback(() => {
+        if (isAllLoaded || !hasMoreBefore || loadingBeforeRef.current) return;
+        loadOlderLogs();
+    }, [isAllLoaded, hasMoreBefore, loadOlderLogs]);
+
+    // Virtuoso callback: when user scrolls to bottom, load newer logs (if not following)
+    const handleEndReached = useCallback(() => {
+        if (isAllLoaded || !hasMoreAfter || loadingAfterRef.current || isFollowing) return;
+        loadNewerLogs();
+    }, [isAllLoaded, hasMoreAfter, isFollowing, loadNewerLogs]);
 
     // Log streaming for auto-follow
     useEffect(() => {
