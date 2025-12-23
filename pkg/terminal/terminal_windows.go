@@ -13,6 +13,17 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// quoteArg quotes an argument for Windows command line if needed
+func quoteArg(arg string) string {
+	// If arg contains spaces, quotes, or special shell characters, wrap in quotes
+	if strings.ContainsAny(arg, " \t\";&|<>()") {
+		// Escape existing quotes and wrap in quotes
+		escaped := strings.ReplaceAll(arg, `"`, `\"`)
+		return `"` + escaped + `"`
+	}
+	return arg
+}
+
 func (s *Service) handleTerminal(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -35,8 +46,12 @@ func (s *Service) handleTerminal(w http.ResponseWriter, r *http.Request) {
 	customCommand := query.Get("command")
 	cmdArgs := buildKubectlArgs(namespace, pod, container, contextName, customCommand)
 
-	// Build full command string for Windows ConPTY
-	fullCommand := "kubectl " + strings.Join(cmdArgs, " ")
+	// Build full command string for Windows ConPTY, quoting args as needed
+	quotedArgs := make([]string, len(cmdArgs))
+	for i, arg := range cmdArgs {
+		quotedArgs[i] = quoteArg(arg)
+	}
+	fullCommand := "kubectl " + strings.Join(quotedArgs, " ")
 
 	// Start ConPTY with default size (80x25)
 	cpty, err := conpty.Start(fullCommand, conpty.ConPtyDimensions(80, 25))
