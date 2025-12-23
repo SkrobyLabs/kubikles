@@ -251,6 +251,10 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 
 	m.emitEvent("starting")
 
+	// Clean up any orphaned ingress configs from previous crash/force-quit
+	currentContext := m.app.k8sClient.GetCurrentContext()
+	m.app.portForwardManager.CleanupIngressConfigs(currentContext)
+
 	// Collect hostnames
 	hostnames, err := m.CollectIngressHostnames(namespaces)
 	if err != nil {

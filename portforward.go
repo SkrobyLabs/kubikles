@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -387,6 +388,26 @@ func (m *PortForwardManager) StopAll() {
 
 	for _, id := range ids {
 		m.Stop(id)
+	}
+}
+
+// CleanupIngressConfigs removes port forward configs that were created by ingress forwarding
+// This handles the case where configs persist after a crash/force-quit
+func (m *PortForwardManager) CleanupIngressConfigs(contextName string) {
+	m.mutex.Lock()
+	var toDelete []string
+	for id, cfg := range m.configs {
+		// Match ingress-managed configs by label pattern and context
+		if cfg.Context == contextName && strings.HasPrefix(cfg.Label, "Ingress ") {
+			toDelete = append(toDelete, id)
+		}
+	}
+	m.mutex.Unlock()
+
+	// Delete outside lock to avoid deadlock (DeleteConfig acquires lock)
+	for _, id := range toDelete {
+		m.app.LogDebug("PortForward: Cleaning up orphaned ingress config: %s", id)
+		m.DeleteConfig(id)
 	}
 }
 
