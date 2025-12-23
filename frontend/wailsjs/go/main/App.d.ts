@@ -5,6 +5,8 @@ import {k8s} from '../models';
 import {helm} from '../models';
 import {v1} from '../models';
 
+export function AddHelmRepository(arg1:string,arg2:string,arg3:number):Promise<void>;
+
 export function AddPortForwardConfig(arg1:main.PortForwardConfig):Promise<main.PortForwardConfig>;
 
 export function CollectIngressHostnames(arg1:Array<string>):Promise<Array<string>>;
@@ -57,6 +59,8 @@ export function DetectIngressController():Promise<main.IngressController>;
 
 export function ForceDeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function ForceHelmReleaseStatus(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function GetActivePortForwards():Promise<Array<main.ActivePortForward>>;
 
 export function GetAllPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean):Promise<string>;
@@ -80,6 +84,8 @@ export function GetDaemonSetYaml(arg1:string,arg2:string):Promise<string>;
 export function GetDeploymentYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetEventYAML(arg1:string,arg2:string):Promise<string>;
+
+export function GetHelmChartVersions(arg1:string,arg2:string):Promise<Array<helm.ChartVersion>>;
 
 export function GetHelmRelease(arg1:string,arg2:string):Promise<helm.ReleaseDetail>;
 
@@ -165,6 +171,8 @@ export function ListEvents(arg1:string):Promise<Array<v1.Event>>;
 
 export function ListHelmReleases(arg1:Array<string>):Promise<Array<helm.Release>>;
 
+export function ListHelmRepositories():Promise<Array<helm.Repository>>;
+
 export function ListIngressClasses():Promise<Array<v1.IngressClass>>;
 
 export function ListIngresses(arg1:string):Promise<Array<v1.Ingress>>;
@@ -199,6 +207,8 @@ export function OpenTerminalWithCommand(arg1:string,arg2:string,arg3:string,arg4
 
 export function RefreshIngressHostnames(arg1:Array<string>):Promise<void>;
 
+export function RemoveHelmRepository(arg1:string):Promise<void>;
+
 export function RestartDaemonSet(arg1:string,arg2:string):Promise<void>;
 
 export function RestartDeployment(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -212,6 +222,10 @@ export function SaveLogFile(arg1:string):Promise<void>;
 export function SaveLogsBundle(arg1:Array<main.PodLogEntry>,arg2:string):Promise<void>;
 
 export function SavePodLogs(arg1:string,arg2:string):Promise<void>;
+
+export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;
+
+export function SetHelmRepositoryPriority(arg1:string,arg2:number):Promise<void>;
 
 export function SetNodeSchedulable(arg1:string,arg2:boolean):Promise<void>;
 
@@ -251,6 +265,8 @@ export function UninstallHelmRelease(arg1:string,arg2:string):Promise<void>;
 
 export function UnsubscribeWatcher(arg1:string):Promise<void>;
 
+export function UpdateAllHelmRepositories():Promise<void>;
+
 export function UpdateCRDYaml(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateConfigMapYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -264,6 +280,8 @@ export function UpdateDaemonSetYaml(arg1:string,arg2:string,arg3:string):Promise
 export function UpdateDeploymentYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateEventYAML(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateHelmRepository(arg1:string):Promise<void>;
 
 export function UpdateIngressClassYaml(arg1:string,arg2:string):Promise<void>;
 
@@ -294,3 +312,5 @@ export function UpdateServiceYaml(arg1:string,arg2:string,arg3:string):Promise<v
 export function UpdateStatefulSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateStorageClassYaml(arg1:string,arg2:string):Promise<void>;
+
+export function UpgradeHelmRelease(arg1:string,arg2:string,arg3:helm.UpgradeOptions):Promise<void>;

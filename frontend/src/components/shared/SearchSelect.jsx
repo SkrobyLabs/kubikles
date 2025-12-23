@@ -1,15 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
-export default function SearchSelect({ options, value, onChange, placeholder = "Select...", className = "", multiSelect = false }) {
+export default function SearchSelect({
+    options,
+    value,
+    onChange,
+    placeholder = "Select...",
+    className = "",
+    multiSelect = false,
+    // For object options: provide these to extract value/label
+    getOptionValue = null,  // (option) => string value
+    getOptionLabel = null,  // (option) => string label for display
+    renderOption = null,    // (option, isSelected) => ReactNode for custom rendering
+    disabled = false
+}) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const wrapperRef = useRef(null);
     const inputRef = useRef(null);
 
+    // Helper to get the value from an option (for comparison)
+    const getValueFromOption = (option) => {
+        if (getOptionValue) return getOptionValue(option);
+        return option;
+    };
+
     // Helper to get display label for an option
     const getDisplayLabel = (option) => {
-        return option === '' ? 'All Namespaces' : option;
+        if (getOptionLabel) return getOptionLabel(option);
+        return option === '' ? 'All Namespaces' : String(option);
     };
 
     // Helper to get display value for multi-select
@@ -49,10 +68,11 @@ export default function SearchSelect({ options, value, onChange, placeholder = "
     }, [isOpen]);
 
     const isOptionSelected = (option) => {
+        const optionValue = getValueFromOption(option);
         if (!multiSelect) {
-            return option === value;
+            return optionValue === value;
         }
-        return Array.isArray(value) && value.includes(option);
+        return Array.isArray(value) && value.includes(optionValue);
     };
 
     const filteredOptions = options
@@ -70,38 +90,58 @@ export default function SearchSelect({ options, value, onChange, placeholder = "
         });
 
     const handleOptionClick = (option) => {
+        const optionValue = getValueFromOption(option);
+
         if (!multiSelect) {
-            onChange(option);
+            onChange(optionValue);
             setIsOpen(false);
             return;
         }
 
         // Multi-select logic
         const currentValue = Array.isArray(value) ? value : [];
-        const isSelected = currentValue.includes(option);
+        const isSelected = currentValue.includes(optionValue);
 
         // If "All Namespaces" (*) is selected and user clicks an individual namespace,
         // replace the selection with just that namespace
-        if (currentValue.includes('*') && option !== '*') {
-            onChange([option]);
+        if (currentValue.includes('*') && optionValue !== '*') {
+            onChange([optionValue]);
             return;
         }
 
         if (isSelected) {
-            onChange(currentValue.filter(v => v !== option));
+            onChange(currentValue.filter(v => v !== optionValue));
         } else {
-            onChange([...currentValue, option]);
+            onChange([...currentValue, optionValue]);
         }
+    };
+
+    // Find the selected option object for display (when using object options)
+    const getSelectedOptionDisplay = () => {
+        if (multiSelect) return getMultiSelectDisplay();
+        if (value === undefined || value === null) return placeholder;
+
+        // If using object options, find the matching option
+        if (getOptionValue) {
+            const selectedOption = options.find(opt => getValueFromOption(opt) === value);
+            return selectedOption ? getDisplayLabel(selectedOption) : placeholder;
+        }
+        return getDisplayLabel(value);
     };
 
     return (
         <div className={`relative ${className}`} ref={wrapperRef}>
             <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 bg-surface border border-border rounded text-sm text-text hover:border-primary focus:outline-none focus:border-primary transition-colors"
+                onClick={() => !disabled && setIsOpen(!isOpen)}
+                disabled={disabled}
+                className={`w-full flex items-center justify-between px-3 py-2 bg-surface border border-border rounded text-sm text-text transition-colors ${
+                    disabled
+                        ? 'opacity-50 cursor-not-allowed'
+                        : 'hover:border-primary focus:outline-none focus:border-primary'
+                }`}
             >
                 <span className="truncate">
-                    {multiSelect ? getMultiSelectDisplay() : (value !== undefined && value !== null ? getDisplayLabel(value) : placeholder)}
+                    {getSelectedOptionDisplay()}
                 </span>
                 <ChevronDownIcon className="h-4 w-4 text-gray-400 ml-2 shrink-0" />
             </button>
@@ -218,10 +258,10 @@ export default function SearchSelect({ options, value, onChange, placeholder = "
                         )}
                     </div>
                     <div className="overflow-y-auto flex-1">
-                        {filteredOptions.filter(opt => opt !== '').length > 0 ? (
-                            filteredOptions.filter(opt => opt !== '').map((option) => (
+                        {filteredOptions.filter(opt => getValueFromOption(opt) !== '').length > 0 ? (
+                            filteredOptions.filter(opt => getValueFromOption(opt) !== '').map((option) => (
                                 <div
-                                    key={option || '__all__'}
+                                    key={getValueFromOption(option) || '__all__'}
                                     className={`px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 flex items-center gap-2 ${isOptionSelected(option) ? 'text-primary font-medium' : 'text-text'}`}
                                     onClick={() => handleOptionClick(option)}
                                 >
@@ -233,7 +273,11 @@ export default function SearchSelect({ options, value, onChange, placeholder = "
                                             className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                                         />
                                     )}
-                                    <span className="flex-1">{getDisplayLabel(option)}</span>
+                                    {renderOption ? (
+                                        renderOption(option, isOptionSelected(option))
+                                    ) : (
+                                        <span className="flex-1">{getDisplayLabel(option)}</span>
+                                    )}
                                 </div>
                             ))
                         ) : (

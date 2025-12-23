@@ -21,7 +21,8 @@ import {
     TagIcon,
     Cog6ToothIcon,
     SignalIcon,
-    WrenchScrewdriverIcon
+    WrenchScrewdriverIcon,
+    ArchiveBoxIcon
 } from '@heroicons/react/24/outline';
 import { useConfig } from '../../context/ConfigContext';
 import SearchSelect from '../shared/SearchSelect';
@@ -180,6 +181,7 @@ export default function Sidebar({
             title: 'Helm',
             items: [
                 { id: 'helmreleases', label: 'Releases', icon: WrenchScrewdriverIcon },
+                { id: 'helmrepos', label: 'Repositories', icon: ArchiveBoxIcon },
             ]
         }
     ];

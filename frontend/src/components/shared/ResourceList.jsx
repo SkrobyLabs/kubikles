@@ -51,7 +51,9 @@ export default function ResourceList({
     highlightedUid = null,
     initialSort = null,
     resourceType = null,
-    onRowClick = null
+    onRowClick = null,
+    onRefresh = null,
+    customHeaderActions = null
 }) {
     const { pendingSearch, consumePendingSearch } = useUI();
     const [sortConfig, setSortConfig] = useState(initialSort || { key: null, direction: 'asc' });
@@ -305,6 +307,9 @@ export default function ResourceList({
                         />
                     </div>
                 )}
+
+                {/* Custom Header Actions */}
+                {customHeaderActions}
             </div>
             {/* Table Content */}
             <div className="flex-1 overflow-hidden">

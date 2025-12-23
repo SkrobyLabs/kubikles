@@ -3,8 +3,10 @@ import { K8sProvider, useK8s } from './context/K8sContext';
 import { UIProvider, useUI } from './context/UIContext';
 import { DebugProvider } from './context/DebugContext';
 import { ConfigProvider, useConfig } from './context/ConfigContext';
+import { NotificationProvider } from './context/NotificationContext';
 import Sidebar from './components/layout/Sidebar';
 import BottomPanel from './components/layout/BottomPanel';
+import ToastContainer from './components/shared/ToastContainer';
 import PodList from './features/workloads/pods/PodList';
 import DeploymentList from './features/workloads/deployments/DeploymentList';
 import StatefulSetList from './features/workloads/statefulsets/StatefulSetList';
@@ -27,6 +29,7 @@ import CRDList from './features/customresources/definitions/CRDList';
 import CustomResourceList from './features/customresources/instances/CustomResourceList';
 import PortForwardList from './features/portforwards/PortForwardList';
 import { HelmReleaseList } from './features/helm/releases';
+import { HelmRepoList } from './features/helm/repos';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
 import ConfirmModal from './components/shared/ConfirmModal';
@@ -159,6 +162,7 @@ function MainLayout() {
             case 'crds': return <CRDList isVisible={true} />;
             case 'portforwards': return <PortForwardList isVisible={true} />;
             case 'helmreleases': return <HelmReleaseList isVisible={true} />;
+            case 'helmrepos': return <HelmRepoList isVisible={true} />;
             default: return <div className="p-4">Unknown View: {activeView}</div>;
         }
     };
@@ -224,11 +228,14 @@ function App() {
     return (
         <DebugProvider>
             <ConfigProvider>
-                <K8sProvider>
-                    <UIProvider>
-                        <MainLayout />
-                    </UIProvider>
-                </K8sProvider>
+                <NotificationProvider>
+                    <K8sProvider>
+                        <UIProvider>
+                            <MainLayout />
+                            <ToastContainer />
+                        </UIProvider>
+                    </K8sProvider>
+                </NotificationProvider>
             </ConfigProvider>
         </DebugProvider>
     );

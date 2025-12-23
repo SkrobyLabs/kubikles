@@ -2,10 +2,13 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon, ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import HelmReleaseActionsMenu from './HelmReleaseActionsMenu';
+import HelmUpgradeDialog from './HelmUpgradeDialog';
 import { useHelmReleases } from '../../../hooks/useHelmReleases';
 import { useHelmReleaseActions } from './useHelmReleaseActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
+import { useNotification } from '../../../context/NotificationContext';
+import { ForceHelmReleaseStatus } from '../../../../wailsjs/go/main/App';
 
 const formatAge = (timestamp) => {
     if (!timestamp) return '-';
@@ -50,8 +53,10 @@ const getStatusClass = (status) => {
 
 export default function HelmReleaseList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId, openModal, closeModal } = useUI();
+    const { addNotification } = useNotification();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const [upgradeRelease, setUpgradeRelease] = useState(null);
 
     const { releases, loading, refresh } = useHelmReleases(currentContext, selectedNamespaces, isVisible);
     const {
@@ -61,6 +66,42 @@ export default function HelmReleaseList({ isVisible }) {
         handleRollback,
         handleUninstall
     } = useHelmReleaseActions();
+
+    const handleUpgrade = useCallback((release) => {
+        setUpgradeRelease(release);
+    }, []);
+
+    const handleForceStatus = useCallback((release) => {
+        openModal({
+            title: `Force Status: ${release.name}`,
+            content: `Force release "${release.name}" status to "deployed"? This will mark the release as successfully deployed without making any changes to the actual resources.`,
+            confirmText: 'Force Deployed',
+            confirmStyle: 'primary',
+            onConfirm: async () => {
+                try {
+                    await ForceHelmReleaseStatus(release.namespace, release.name, 'deployed');
+                    addNotification({
+                        type: 'success',
+                        title: 'Status updated',
+                        message: `Release "${release.name}" marked as deployed`
+                    });
+                    closeModal();
+                    refresh();
+                } catch (err) {
+                    addNotification({
+                        type: 'error',
+                        title: 'Failed to update status',
+                        message: err?.message || String(err)
+                    });
+                }
+            }
+        });
+    }, [openModal, closeModal, addNotification, refresh]);
+
+    const handleUpgradeSuccess = useCallback(() => {
+        setUpgradeRelease(null);
+        refresh();
+    }, [refresh]);
 
     const handleRowClick = useCallback((item) => {
         handleOpenDetails(item);
@@ -145,13 +186,15 @@ export default function HelmReleaseList({ isVisible }) {
                     onViewValues={() => handleViewValues(item)}
                     onViewHistory={() => handleViewHistory(item)}
                     onRollback={() => handleRollback(item)}
+                    onUpgrade={() => handleUpgrade(item)}
+                    onForceStatus={() => handleForceStatus(item)}
                     onUninstall={() => handleUninstall(item)}
                 />
             ),
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleOpenDetails, handleViewValues, handleViewHistory, handleRollback, handleUninstall]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleOpenDetails, handleViewValues, handleViewHistory, handleRollback, handleUpgrade, handleForceStatus, handleUninstall]);
 
     // Generate a unique ID for each release since Helm releases don't have UIDs
     const dataWithIds = useMemo(() => {
@@ -166,21 +209,31 @@ export default function HelmReleaseList({ isVisible }) {
     }, [releases]);
 
     return (
-        <ResourceList
-            title="Helm Releases"
-            columns={columns}
-            data={dataWithIds}
-            isLoading={loading}
-            namespaces={namespaces}
-            currentNamespace={selectedNamespaces}
-            onNamespaceChange={setSelectedNamespaces}
-            showNamespaceSelector={true}
-            multiSelectNamespaces={true}
-            highlightedUid={activeMenuId}
-            initialSort={{ key: 'updated', direction: 'desc' }}
-            resourceType="helmreleases"
-            onRefresh={refresh}
-            onRowClick={handleRowClick}
-        />
+        <>
+            <ResourceList
+                title="Helm Releases"
+                columns={columns}
+                data={dataWithIds}
+                isLoading={loading}
+                namespaces={namespaces}
+                currentNamespace={selectedNamespaces}
+                onNamespaceChange={setSelectedNamespaces}
+                showNamespaceSelector={true}
+                multiSelectNamespaces={true}
+                highlightedUid={activeMenuId}
+                initialSort={{ key: 'updated', direction: 'desc' }}
+                resourceType="helmreleases"
+                onRefresh={refresh}
+                onRowClick={handleRowClick}
+            />
+
+            {upgradeRelease && (
+                <HelmUpgradeDialog
+                    release={upgradeRelease}
+                    onClose={() => setUpgradeRelease(null)}
+                    onSuccess={handleUpgradeSuccess}
+                />
+            )}
+        </>
     );
 }

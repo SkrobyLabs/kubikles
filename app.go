@@ -1864,3 +1864,109 @@ func (a *App) GetHelmReleaseResources(namespace, name string) ([]helm.ResourceRe
 	}
 	return a.helmClient.GetReleaseResources(currentContext, namespace, name)
 }
+
+// =============================================================================
+// Helm Repository Management
+// =============================================================================
+
+// ListHelmRepositories returns all configured Helm repositories with priorities
+func (a *App) ListHelmRepositories() ([]helm.Repository, error) {
+	a.LogDebug("ListHelmRepositories called")
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.ListRepositories()
+}
+
+// AddHelmRepository adds a new Helm repository
+func (a *App) AddHelmRepository(name, url string, priority int) error {
+	a.LogDebug("AddHelmRepository called: name=%s, url=%s, priority=%d", name, url, priority)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.AddRepository(name, url, priority)
+}
+
+// RemoveHelmRepository removes a Helm repository
+func (a *App) RemoveHelmRepository(name string) error {
+	a.LogDebug("RemoveHelmRepository called: name=%s", name)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.RemoveRepository(name)
+}
+
+// UpdateHelmRepository updates the index for a repository
+func (a *App) UpdateHelmRepository(name string) error {
+	a.LogDebug("UpdateHelmRepository called: name=%s", name)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.UpdateRepository(name)
+}
+
+// UpdateAllHelmRepositories updates the index for all repositories
+func (a *App) UpdateAllHelmRepositories() error {
+	a.LogDebug("UpdateAllHelmRepositories called")
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.UpdateAllRepositories()
+}
+
+// SetHelmRepositoryPriority sets the priority for a repository
+func (a *App) SetHelmRepositoryPriority(name string, priority int) error {
+	a.LogDebug("SetHelmRepositoryPriority called: name=%s, priority=%d", name, priority)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.SetRepositoryPriority(name, priority)
+}
+
+// SearchHelmChart searches for a chart across all repositories
+func (a *App) SearchHelmChart(chartName string) ([]helm.ChartSource, error) {
+	a.LogDebug("SearchHelmChart called: chartName=%s", chartName)
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.SearchChart(chartName)
+}
+
+// GetHelmChartVersions returns available versions for a chart from a specific repo
+func (a *App) GetHelmChartVersions(repoName, chartName string) ([]helm.ChartVersion, error) {
+	a.LogDebug("GetHelmChartVersions called: repo=%s, chart=%s", repoName, chartName)
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.GetChartVersions(repoName, chartName)
+}
+
+// UpgradeHelmRelease upgrades or reinstalls a release
+func (a *App) UpgradeHelmRelease(namespace, name string, opts helm.UpgradeOptions) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("UpgradeHelmRelease called: context=%s, ns=%s, name=%s, repo=%s, chart=%s, version=%s",
+		currentContext, namespace, name, opts.RepoName, opts.ChartName, opts.Version)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.UpgradeRelease(currentContext, namespace, name, opts)
+}
+
+// ForceHelmReleaseStatus forces a release to a specific status (e.g., "deployed")
+func (a *App) ForceHelmReleaseStatus(namespace, name, status string) error {
+	currentContext := a.GetCurrentContext()
+	fmt.Printf("ForceHelmReleaseStatus called: context=%s, ns=%s, name=%s, status=%s\n",
+		currentContext, namespace, name, status)
+	a.LogDebug("ForceHelmReleaseStatus called: context=%s, ns=%s, name=%s, status=%s",
+		currentContext, namespace, name, status)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	err := a.helmClient.ForceReleaseStatus(currentContext, namespace, name, status)
+	if err != nil {
+		fmt.Printf("ForceHelmReleaseStatus error: %v\n", err)
+	} else {
+		fmt.Println("ForceHelmReleaseStatus completed successfully")
+	}
+	return err
+}

@@ -10,8 +10,12 @@ import (
 	"time"
 
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/downloader"
+	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/repo"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
@@ -428,4 +432,215 @@ func (g *contextAwareGetter) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 	}
 
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+}
+
+// UpgradeOptions contains options for upgrading a release
+type UpgradeOptions struct {
+	RepoName    string                 `json:"repoName"`    // Repository name
+	ChartName   string                 `json:"chartName"`   // Chart name
+	Version     string                 `json:"version"`     // Target version (empty = latest)
+	Values      map[string]interface{} `json:"values"`      // Override values
+	ReuseValues bool                   `json:"reuseValues"` // Reuse values from current release
+	ResetValues bool                   `json:"resetValues"` // Reset to chart defaults
+	Force       bool                   `json:"force"`       // Force resource updates
+	Wait        bool                   `json:"wait"`        // Wait for resources ready
+	Timeout     int                    `json:"timeout"`     // Timeout in seconds
+}
+
+// UpgradeRelease upgrades or reinstalls a release
+func (c *Client) UpgradeRelease(contextName, namespace, name string, opts UpgradeOptions) error {
+	actionConfig, err := c.getActionConfig(namespace, contextName)
+	if err != nil {
+		return err
+	}
+
+	// Locate and download the chart
+	chartRef := fmt.Sprintf("%s/%s", opts.RepoName, opts.ChartName)
+	chartPath, err := c.locateChart(chartRef, opts.Version)
+	if err != nil {
+		return fmt.Errorf("failed to locate chart: %w", err)
+	}
+
+	// Load the chart
+	chart, err := loader.Load(chartPath)
+	if err != nil {
+		return fmt.Errorf("failed to load chart: %w", err)
+	}
+
+	// Handle values
+	values := opts.Values
+	if values == nil {
+		values = make(map[string]interface{})
+	}
+
+	timeout := 300 * time.Second
+	if opts.Timeout > 0 {
+		timeout = time.Duration(opts.Timeout) * time.Second
+	}
+
+	// Check current release status to handle pending/failed states
+	getAction := action.NewGet(actionConfig)
+	existingRelease, err := getAction.Run(name)
+
+	// If release is in a pending or failed state, use install --replace
+	needsReplace := false
+	if err == nil && existingRelease != nil {
+		status := existingRelease.Info.Status
+		if status == release.StatusPendingInstall ||
+			status == release.StatusPendingUpgrade ||
+			status == release.StatusPendingRollback ||
+			status == release.StatusFailed {
+			needsReplace = true
+		}
+	}
+
+	if needsReplace {
+		// For stuck releases, we need to uninstall first (with no hooks to avoid stuck hooks)
+		// then install fresh
+
+		// Preserve existing values if reuseValues is set
+		if opts.ReuseValues && existingRelease != nil {
+			existingValues := existingRelease.Config
+			for k, v := range values {
+				existingValues[k] = v
+			}
+			values = existingValues
+		}
+
+		// Uninstall the stuck release (disable hooks to prevent further issues)
+		uninstallAction := action.NewUninstall(actionConfig)
+		uninstallAction.DisableHooks = true
+		uninstallAction.KeepHistory = false
+		_, _ = uninstallAction.Run(name) // Ignore errors - release might be partially deleted
+
+		// Install fresh
+		installAction := action.NewInstall(actionConfig)
+		installAction.Namespace = namespace
+		installAction.ReleaseName = name
+		installAction.Force = opts.Force
+		installAction.Wait = opts.Wait
+		installAction.Timeout = timeout
+
+		_, err = installAction.Run(chart, values)
+		if err != nil {
+			return fmt.Errorf("failed to reinstall release: %w", err)
+		}
+		return nil
+	}
+
+	// Normal upgrade path
+	upgradeAction := action.NewUpgrade(actionConfig)
+	upgradeAction.Namespace = namespace
+	upgradeAction.ReuseValues = opts.ReuseValues
+	upgradeAction.ResetValues = opts.ResetValues
+	upgradeAction.Force = opts.Force
+	upgradeAction.Wait = opts.Wait
+	upgradeAction.Timeout = timeout
+
+	_, err = upgradeAction.Run(name, chart, values)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade release: %w", err)
+	}
+
+	return nil
+}
+
+// ForceReleaseStatus forces a release to a specific status (e.g., "deployed")
+// This is useful when a release times out but actually succeeded
+func (c *Client) ForceReleaseStatus(contextName, namespace, name, status string) error {
+	fmt.Printf("helm.ForceReleaseStatus: context=%s, ns=%s, name=%s, status=%s\n", contextName, namespace, name, status)
+
+	actionConfig, err := c.getActionConfig(namespace, contextName)
+	if err != nil {
+		fmt.Printf("helm.ForceReleaseStatus: getActionConfig error: %v\n", err)
+		return err
+	}
+	fmt.Println("helm.ForceReleaseStatus: actionConfig obtained")
+
+	// Map string status to release.Status
+	var targetStatus release.Status
+	switch strings.ToLower(status) {
+	case "deployed":
+		targetStatus = release.StatusDeployed
+	case "failed":
+		targetStatus = release.StatusFailed
+	case "superseded":
+		targetStatus = release.StatusSuperseded
+	case "uninstalled":
+		targetStatus = release.StatusUninstalled
+	default:
+		return fmt.Errorf("invalid status: %s (valid: deployed, failed, superseded, uninstalled)", status)
+	}
+
+	// Get the release from storage
+	fmt.Printf("helm.ForceReleaseStatus: getting release %s from storage\n", name)
+	rel, err := actionConfig.Releases.Last(name)
+	if err != nil {
+		fmt.Printf("helm.ForceReleaseStatus: Releases.Last error: %v\n", err)
+		return fmt.Errorf("failed to get release %s: %w", name, err)
+	}
+	fmt.Printf("helm.ForceReleaseStatus: got release, current status=%s, version=%d\n", rel.Info.Status, rel.Version)
+
+	// Update the status
+	rel.Info.Status = targetStatus
+	rel.Info.Description = fmt.Sprintf("Status forced to %s", status)
+
+	// Update the release in storage
+	fmt.Println("helm.ForceReleaseStatus: calling Releases.Update")
+	if err := actionConfig.Releases.Update(rel); err != nil {
+		fmt.Printf("helm.ForceReleaseStatus: Releases.Update error: %v\n", err)
+		return fmt.Errorf("failed to update release status: %w", err)
+	}
+
+	fmt.Println("helm.ForceReleaseStatus: success!")
+	return nil
+}
+
+// locateChart finds and downloads a chart from a repository
+func (c *Client) locateChart(chartRef, version string) (string, error) {
+	// Parse repo/chart format
+	parts := strings.SplitN(chartRef, "/", 2)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid chart reference: %s (expected repo/chart)", chartRef)
+	}
+	repoName := parts[0]
+	chartName := parts[1]
+
+	// Load repository file to get the URL
+	repoFile := c.settings.RepositoryConfig
+	f, err := repo.LoadFile(repoFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to load repository file: %w", err)
+	}
+
+	var repoURL string
+	for _, r := range f.Repositories {
+		if r.Name == repoName {
+			repoURL = r.URL
+			break
+		}
+	}
+	if repoURL == "" {
+		return "", fmt.Errorf("repository %q not found", repoName)
+	}
+
+	// Create a chart downloader
+	dl := downloader.ChartDownloader{
+		Out:              os.Stdout,
+		Getters:          getter.All(c.settings),
+		RepositoryConfig: c.settings.RepositoryConfig,
+		RepositoryCache:  c.settings.RepositoryCache,
+	}
+
+	// Construct the chart URL
+	chartURL := fmt.Sprintf("%s/%s", repoName, chartName)
+
+	// Download to a temp directory
+	destDir := os.TempDir()
+	chartPath, _, err := dl.DownloadTo(chartURL, version, destDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to download chart: %w", err)
+	}
+
+	return chartPath, nil
 }

@@ -6,7 +6,9 @@ import {
     TrashIcon,
     ArrowUturnLeftIcon,
     ClockIcon,
-    InformationCircleIcon
+    InformationCircleIcon,
+    ArrowUpCircleIcon,
+    CheckBadgeIcon
 } from '@heroicons/react/24/outline';
 
 export default function HelmReleaseActionsMenu({
@@ -18,6 +20,8 @@ export default function HelmReleaseActionsMenu({
     onViewValues,
     onViewHistory,
     onRollback,
+    onUpgrade,
+    onForceStatus,
     onUninstall
 }) {
     const buttonRef = useRef(null);
@@ -84,6 +88,14 @@ export default function HelmReleaseActionsMenu({
                 <ClockIcon className="h-4 w-4" />
                 View History
             </button>
+            <div className="h-px bg-[#3d3d3d] my-1" />
+            <button
+                onClick={(e) => { e.stopPropagation(); handleAction(() => onUpgrade(release)); }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+            >
+                <ArrowUpCircleIcon className="h-4 w-4" />
+                Upgrade
+            </button>
             {release.revision > 1 && (
                 <button
                     onClick={(e) => { e.stopPropagation(); handleAction(() => onRollback(release)); }}
@@ -91,6 +103,15 @@ export default function HelmReleaseActionsMenu({
                 >
                     <ArrowUturnLeftIcon className="h-4 w-4" />
                     Rollback
+                </button>
+            )}
+            {['pending-install', 'pending-upgrade', 'pending-rollback', 'failed'].includes(release.status?.toLowerCase()) && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); handleAction(() => onForceStatus(release)); }}
+                    className="w-full text-left px-4 py-2 text-sm text-yellow-400 hover:bg-[#3d3d3d] flex items-center gap-2"
+                >
+                    <CheckBadgeIcon className="h-4 w-4" />
+                    Force Deployed
                 </button>
             )}
             <div className="h-px bg-[#3d3d3d] my-1" />

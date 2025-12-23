@@ -1,5 +1,83 @@
 export namespace helm {
 	
+	export class ChartVersion {
+	    version: string;
+	    appVersion: string;
+	    description: string;
+	    // Go type: time
+	    created: any;
+	    deprecated: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChartVersion(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.appVersion = source["appVersion"];
+	        this.description = source["description"];
+	        this.created = this.convertValues(source["created"], null);
+	        this.deprecated = source["deprecated"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ChartSource {
+	    repoName: string;
+	    repoUrl: string;
+	    priority: number;
+	    chartName: string;
+	    versions: ChartVersion[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ChartSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.repoName = source["repoName"];
+	        this.repoUrl = source["repoUrl"];
+	        this.priority = source["priority"];
+	        this.chartName = source["chartName"];
+	        this.versions = this.convertValues(source["versions"], ChartVersion);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class Release {
 	    name: string;
 	    namespace: string;
@@ -143,6 +221,22 @@ export namespace helm {
 		    return a;
 		}
 	}
+	export class Repository {
+	    name: string;
+	    url: string;
+	    priority: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Repository(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.url = source["url"];
+	        this.priority = source["priority"];
+	    }
+	}
 	export class ResourceReference {
 	    kind: string;
 	    name: string;
@@ -157,6 +251,34 @@ export namespace helm {
 	        this.kind = source["kind"];
 	        this.name = source["name"];
 	        this.namespace = source["namespace"];
+	    }
+	}
+	export class UpgradeOptions {
+	    repoName: string;
+	    chartName: string;
+	    version: string;
+	    values: Record<string, any>;
+	    reuseValues: boolean;
+	    resetValues: boolean;
+	    force: boolean;
+	    wait: boolean;
+	    timeout: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpgradeOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.repoName = source["repoName"];
+	        this.chartName = source["chartName"];
+	        this.version = source["version"];
+	        this.values = source["values"];
+	        this.reuseValues = source["reuseValues"];
+	        this.resetValues = source["resetValues"];
+	        this.force = source["force"];
+	        this.wait = source["wait"];
+	        this.timeout = source["timeout"];
 	    }
 	}
 

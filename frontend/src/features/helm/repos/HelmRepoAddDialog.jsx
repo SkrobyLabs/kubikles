@@ -1,0 +1,176 @@
+import React, { useState, useCallback } from 'react';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import { AddHelmRepository } from '../../../../wailsjs/go/main/App';
+import { useNotification } from '../../../context/NotificationContext';
+
+export default function HelmRepoAddDialog({ onClose, onSuccess }) {
+    const { addNotification } = useNotification();
+    const [name, setName] = useState('');
+    const [url, setUrl] = useState('');
+    const [priority, setPriority] = useState(100);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const handleSubmit = useCallback(async (e) => {
+        e.preventDefault();
+        setError(null);
+
+        if (!name.trim() || !url.trim()) {
+            setError('Name and URL are required');
+            return;
+        }
+
+        // Basic URL validation
+        try {
+            new URL(url);
+        } catch {
+            setError('Please enter a valid URL');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await AddHelmRepository(name.trim(), url.trim(), priority);
+            addNotification({
+                type: 'success',
+                title: 'Repository added',
+                message: `Successfully added ${name.trim()}`
+            });
+            onSuccess();
+        } catch (err) {
+            setError(err?.message || String(err));
+        } finally {
+            setLoading(false);
+        }
+    }, [name, url, priority, onSuccess, addNotification]);
+
+    const popularRepos = [
+        { name: 'bitnami', url: 'https://charts.bitnami.com/bitnami' },
+        { name: 'prometheus-community', url: 'https://prometheus-community.github.io/helm-charts' },
+        { name: 'grafana', url: 'https://grafana.github.io/helm-charts' },
+        { name: 'jetstack', url: 'https://charts.jetstack.io' },
+        { name: 'ingress-nginx', url: 'https://kubernetes.github.io/ingress-nginx' },
+    ];
+
+    const handleQuickAdd = (repo) => {
+        setName(repo.name);
+        setUrl(repo.url);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-surface border border-border rounded-lg shadow-xl w-full max-w-lg">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                    <h2 className="text-lg font-semibold">Add Helm Repository</h2>
+                    <button
+                        onClick={onClose}
+                        className="p-1 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                    >
+                        <XMarkIcon className="h-5 w-5" />
+                    </button>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    {/* Quick Add */}
+                    <div>
+                        <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+                            Quick Add
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {popularRepos.map((repo) => (
+                                <button
+                                    key={repo.name}
+                                    type="button"
+                                    onClick={() => handleQuickAdd(repo)}
+                                    className="px-2 py-1 text-xs bg-white/5 hover:bg-white/10 border border-border rounded transition-colors"
+                                >
+                                    {repo.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Name */}
+                    <div>
+                        <label htmlFor="repo-name" className="block text-sm font-medium text-gray-300 mb-1">
+                            Repository Name
+                        </label>
+                        <input
+                            id="repo-name"
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="e.g., my-repo"
+                            className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            disabled={loading}
+                        />
+                    </div>
+
+                    {/* URL */}
+                    <div>
+                        <label htmlFor="repo-url" className="block text-sm font-medium text-gray-300 mb-1">
+                            Repository URL
+                        </label>
+                        <input
+                            id="repo-url"
+                            type="text"
+                            value={url}
+                            onChange={(e) => setUrl(e.target.value)}
+                            placeholder="https://charts.example.com"
+                            className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            disabled={loading}
+                        />
+                    </div>
+
+                    {/* Priority */}
+                    <div>
+                        <label htmlFor="repo-priority" className="block text-sm font-medium text-gray-300 mb-1">
+                            Priority
+                            <span className="text-xs text-gray-500 ml-2">(Lower number = higher priority)</span>
+                        </label>
+                        <input
+                            id="repo-priority"
+                            type="number"
+                            min="0"
+                            value={priority}
+                            onChange={(e) => setPriority(parseInt(e.target.value) || 0)}
+                            className="w-24 px-3 py-2 bg-background border border-border rounded-md text-text focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            disabled={loading}
+                        />
+                    </div>
+
+                    {/* Error */}
+                    {error && (
+                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-md text-red-400 text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex justify-end gap-3 pt-4">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={loading}
+                            className="px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading || !name.trim() || !url.trim()}
+                            className="px-4 py-2 text-sm bg-primary hover:bg-primary/80 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            {loading && (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            )}
+                            Add Repository
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}

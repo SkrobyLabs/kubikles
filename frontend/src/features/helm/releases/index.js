@@ -5,4 +5,5 @@ export { default as HelmReleaseInfoTab } from './HelmReleaseInfoTab';
 export { default as HelmReleaseHistoryTab } from './HelmReleaseHistoryTab';
 export { default as HelmReleaseValuesTab } from './HelmReleaseValuesTab';
 export { default as HelmReleaseEventsTab } from './HelmReleaseEventsTab';
+export { default as HelmUpgradeDialog } from './HelmUpgradeDialog';
 export { useHelmReleaseActions } from './useHelmReleaseActions';
