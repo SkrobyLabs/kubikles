@@ -6,6 +6,8 @@ import {v1} from '../models';
 
 export function AddPortForwardConfig(arg1:main.PortForwardConfig):Promise<main.PortForwardConfig>;
 
+export function CollectIngressHostnames(arg1:Array<string>):Promise<Array<string>>;
+
 export function CreateNodeDebugPod(arg1:string):Promise<main.NodeDebugPodResult>;
 
 export function DeleteCRD(arg1:string):Promise<void>;
@@ -50,6 +52,8 @@ export function DeleteStatefulSet(arg1:string,arg2:string,arg3:string):Promise<v
 
 export function DeleteStorageClass(arg1:string):Promise<void>;
 
+export function DetectIngressController():Promise<main.IngressController>;
+
 export function ForceDeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function GetActivePortForwards():Promise<Array<main.ActivePortForward>>;
@@ -78,9 +82,13 @@ export function GetEventYAML(arg1:string,arg2:string):Promise<string>;
 
 export function GetIngressClassYaml(arg1:string):Promise<string>;
 
+export function GetIngressForwardState():Promise<main.IngressForwardState>;
+
 export function GetIngressYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetJobYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetManagedHosts():Promise<Array<string>>;
 
 export function GetNamespaceYAML(arg1:string):Promise<string>;
 
@@ -176,6 +184,8 @@ export function OpenTerminal(arg1:string,arg2:string,arg3:string,arg4:string):Pr
 
 export function OpenTerminalWithCommand(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
 
+export function RefreshIngressHostnames(arg1:Array<string>):Promise<void>;
+
 export function RestartDaemonSet(arg1:string,arg2:string):Promise<void>;
 
 export function RestartDeployment(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -192,6 +202,8 @@ export function SetNodeSchedulable(arg1:string,arg2:boolean):Promise<void>;
 
 export function StartFavoritePortForwards(arg1:string):Promise<void>;
 
+export function StartIngressForward(arg1:main.IngressController,arg2:Array<string>):Promise<void>;
+
 export function StartLogStream(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
 
 export function StartPortForward(arg1:string):Promise<void>;
@@ -201,6 +213,8 @@ export function StartPortForwardsWithMode(arg1:string,arg2:string):Promise<void>
 export function StopAllPortForwards():Promise<void>;
 
 export function StopAllWatchers():Promise<void>;
+
+export function StopIngressForward():Promise<void>;
 
 export function StopLogStream(arg1:string):Promise<void>;
 

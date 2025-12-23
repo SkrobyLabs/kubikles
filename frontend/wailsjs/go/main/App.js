@@ -6,6 +6,10 @@ export function AddPortForwardConfig(arg1) {
   return window['go']['main']['App']['AddPortForwardConfig'](arg1);
 }
 
+export function CollectIngressHostnames(arg1) {
+  return window['go']['main']['App']['CollectIngressHostnames'](arg1);
+}
+
 export function CreateNodeDebugPod(arg1) {
   return window['go']['main']['App']['CreateNodeDebugPod'](arg1);
 }
@@ -94,6 +98,10 @@ export function DeleteStorageClass(arg1) {
   return window['go']['main']['App']['DeleteStorageClass'](arg1);
 }
 
+export function DetectIngressController() {
+  return window['go']['main']['App']['DetectIngressController']();
+}
+
 export function ForceDeletePod(arg1, arg2, arg3) {
   return window['go']['main']['App']['ForceDeletePod'](arg1, arg2, arg3);
 }
@@ -150,12 +158,20 @@ export function GetIngressClassYaml(arg1) {
   return window['go']['main']['App']['GetIngressClassYaml'](arg1);
 }
 
+export function GetIngressForwardState() {
+  return window['go']['main']['App']['GetIngressForwardState']();
+}
+
 export function GetIngressYaml(arg1, arg2) {
   return window['go']['main']['App']['GetIngressYaml'](arg1, arg2);
 }
 
 export function GetJobYaml(arg1, arg2) {
   return window['go']['main']['App']['GetJobYaml'](arg1, arg2);
+}
+
+export function GetManagedHosts() {
+  return window['go']['main']['App']['GetManagedHosts']();
 }
 
 export function GetNamespaceYAML(arg1) {
@@ -346,6 +362,10 @@ export function OpenTerminalWithCommand(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['OpenTerminalWithCommand'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function RefreshIngressHostnames(arg1) {
+  return window['go']['main']['App']['RefreshIngressHostnames'](arg1);
+}
+
 export function RestartDaemonSet(arg1, arg2) {
   return window['go']['main']['App']['RestartDaemonSet'](arg1, arg2);
 }
@@ -378,6 +398,10 @@ export function StartFavoritePortForwards(arg1) {
   return window['go']['main']['App']['StartFavoritePortForwards'](arg1);
 }
 
+export function StartIngressForward(arg1, arg2) {
+  return window['go']['main']['App']['StartIngressForward'](arg1, arg2);
+}
+
 export function StartLogStream(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['StartLogStream'](arg1, arg2, arg3, arg4);
 }
@@ -396,6 +420,10 @@ export function StopAllPortForwards() {
 
 export function StopAllWatchers() {
   return window['go']['main']['App']['StopAllWatchers']();
+}
+
+export function StopIngressForward() {
+  return window['go']['main']['App']['StopIngressForward']();
 }
 
 export function StopLogStream(arg1) {

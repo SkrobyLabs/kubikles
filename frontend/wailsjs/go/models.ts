@@ -333,6 +333,72 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class IngressController {
+	    namespace: string;
+	    name: string;
+	    type: string;
+	    httpPort: number;
+	    httpsPort: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressController(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.namespace = source["namespace"];
+	        this.name = source["name"];
+	        this.type = source["type"];
+	        this.httpPort = source["httpPort"];
+	        this.httpsPort = source["httpsPort"];
+	    }
+	}
+	export class IngressForwardState {
+	    active: boolean;
+	    status: string;
+	    error?: string;
+	    controller?: IngressController;
+	    localHttpPort: number;
+	    localHttpsPort: number;
+	    hostnames: string[];
+	    portForwardIds: string[];
+	    hostsFileUpdated: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new IngressForwardState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.active = source["active"];
+	        this.status = source["status"];
+	        this.error = source["error"];
+	        this.controller = this.convertValues(source["controller"], IngressController);
+	        this.localHttpPort = source["localHttpPort"];
+	        this.localHttpsPort = source["localHttpsPort"];
+	        this.hostnames = source["hostnames"];
+	        this.portForwardIds = source["portForwardIds"];
+	        this.hostsFileUpdated = source["hostsFileUpdated"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class LogChunkResult {
 	    logs: string;
 	    hasMore: boolean;

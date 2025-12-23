@@ -23,11 +23,12 @@ import (
 
 // App struct
 type App struct {
-	ctx                context.Context
-	k8sClient          *k8s.Client
-	terminalService    *terminal.Service
-	watcherManager     *ResourceWatcherManager
-	portForwardManager *PortForwardManager
+	ctx                   context.Context
+	k8sClient             *k8s.Client
+	terminalService       *terminal.Service
+	watcherManager        *ResourceWatcherManager
+	portForwardManager    *PortForwardManager
+	ingressForwardManager *IngressForwardManager
 	// Log streaming
 	logStreams      map[string]context.CancelFunc
 	logStreamsMutex sync.Mutex
@@ -247,6 +248,7 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.watcherManager = NewResourceWatcherManager(ctx, a)
 	a.portForwardManager = NewPortForwardManager(a)
+	a.ingressForwardManager = NewIngressForwardManager(a)
 	if err := a.terminalService.Start(); err != nil {
 		fmt.Printf("Failed to start terminal service: %v\n", err)
 	}
@@ -255,6 +257,11 @@ func (a *App) startup(ctx context.Context) {
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
 	a.LogDebug("App shutdown initiated")
+
+	// Clean up ingress forwarding (removes hosts file entries)
+	if a.ingressForwardManager != nil {
+		a.ingressForwardManager.Cleanup()
+	}
 
 	// Save port forward running state and stop all forwards
 	if a.portForwardManager != nil {
@@ -1675,6 +1682,80 @@ func (a *App) StartPortForwardsWithMode(contextName, mode string) {
 		return
 	}
 	a.portForwardManager.StartWithMode(contextName, mode)
+}
+
+// --- Ingress Forwarding APIs ---
+
+// GetIngressForwardState returns the current ingress forward state
+func (a *App) GetIngressForwardState() IngressForwardState {
+	a.LogDebug("GetIngressForwardState called")
+	if a.ingressForwardManager == nil {
+		return IngressForwardState{Active: false, Status: "stopped"}
+	}
+	return a.ingressForwardManager.GetState()
+}
+
+// DetectIngressController finds the ingress controller in the cluster
+func (a *App) DetectIngressController() (*IngressController, error) {
+	a.LogDebug("DetectIngressController called")
+	if a.ingressForwardManager == nil {
+		return nil, fmt.Errorf("ingress forward manager not initialized")
+	}
+	return a.ingressForwardManager.DetectIngressController()
+}
+
+// CollectIngressHostnames collects all unique hostnames from ingresses
+func (a *App) CollectIngressHostnames(namespaces []string) ([]string, error) {
+	a.LogDebug("CollectIngressHostnames called: namespaces=%v", namespaces)
+	if a.ingressForwardManager == nil {
+		return nil, fmt.Errorf("ingress forward manager not initialized")
+	}
+	return a.ingressForwardManager.CollectIngressHostnames(namespaces)
+}
+
+// StartIngressForward starts ingress forwarding with the given controller
+func (a *App) StartIngressForward(controller IngressController, namespaces []string) error {
+	a.LogDebug("StartIngressForward called: controller=%s/%s, namespaces=%v",
+		controller.Namespace, controller.Name, namespaces)
+	if a.ingressForwardManager == nil {
+		return fmt.Errorf("ingress forward manager not initialized")
+	}
+	return a.ingressForwardManager.Start(&controller, namespaces)
+}
+
+// StopIngressForward stops ingress forwarding and cleans up hosts file
+func (a *App) StopIngressForward() error {
+	a.LogDebug("StopIngressForward called")
+	if a.ingressForwardManager == nil {
+		return fmt.Errorf("ingress forward manager not initialized")
+	}
+	return a.ingressForwardManager.Stop()
+}
+
+// RefreshIngressHostnames re-collects hostnames and updates the hosts file
+func (a *App) RefreshIngressHostnames(namespaces []string) error {
+	a.LogDebug("RefreshIngressHostnames called: namespaces=%v", namespaces)
+	if a.ingressForwardManager == nil {
+		return fmt.Errorf("ingress forward manager not initialized")
+	}
+	return a.ingressForwardManager.RefreshHostnames(namespaces)
+}
+
+// GetManagedHosts returns the currently managed hosts file entries
+func (a *App) GetManagedHosts() ([]string, error) {
+	a.LogDebug("GetManagedHosts called")
+	if a.ingressForwardManager == nil {
+		return nil, fmt.Errorf("ingress forward manager not initialized")
+	}
+	entries, err := a.ingressForwardManager.GetManagedHosts()
+	if err != nil {
+		return nil, err
+	}
+	hostnames := make([]string, len(entries))
+	for i, e := range entries {
+		hostnames[i] = e.Hostname
+	}
+	return hostnames, nil
 }
 
 // GetPodPorts returns the container ports for a pod
