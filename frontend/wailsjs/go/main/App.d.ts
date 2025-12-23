@@ -155,6 +155,8 @@ export function Greet(arg1:string):Promise<string>;
 
 export function ListCRDs():Promise<Array<v1.CustomResourceDefinition>>;
 
+export function ListChartSources():Promise<Array<helm.ChartSourceInfo>>;
+
 export function ListConfigMaps(arg1:string):Promise<Array<v1.ConfigMap>>;
 
 export function ListContexts():Promise<Array<string>>;
@@ -232,6 +234,8 @@ export function SaveLogFile(arg1:string):Promise<void>;
 export function SaveLogsBundle(arg1:Array<main.PodLogEntry>,arg2:string):Promise<void>;
 
 export function SavePodLogs(arg1:string,arg2:string):Promise<void>;
+
+export function SearchChartInSource(arg1:string,arg2:string):Promise<helm.ChartSearchResult>;
 
 export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;
 

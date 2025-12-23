@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { XMarkIcon, ArrowPathIcon, ExclamationTriangleIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
-import { SearchHelmChart, UpgradeHelmRelease, GetHelmChartVersions, GetHelmReleaseValues, GetHelmReleaseAllValues } from '../../../../wailsjs/go/main/App';
+import { XMarkIcon, ArrowPathIcon, ExclamationTriangleIcon, ChevronDownIcon, ChevronRightIcon, DocumentTextIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { SearchHelmChart, UpgradeHelmRelease, GetHelmChartVersions, GetHelmReleaseValues, GetHelmReleaseAllValues, ListChartSources, SearchChartInSource } from '../../../../wailsjs/go/main/App';
 import SearchSelect from '../../../components/shared/SearchSelect';
 import Editor from '@monaco-editor/react';
 import yaml from 'js-yaml';
@@ -9,6 +9,20 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
     const [loading, setLoading] = useState(true);
     const [upgrading, setUpgrading] = useState(false);
     const [error, setError] = useState(null);
+
+    // Search mode: 'auto' or 'manual'
+    const [searchMode, setSearchMode] = useState('auto');
+    const [searchCancelled, setSearchCancelled] = useState(false);
+    const searchCancelledRef = useRef(false);
+    const searchStartedRef = useRef(false);
+
+    // All available sources (for manual mode)
+    const [allSources, setAllSources] = useState([]);
+
+    // Search progress
+    const [searchProgress, setSearchProgress] = useState({ current: 0, total: 0, currentSource: '' });
+    const [searchLogs, setSearchLogs] = useState([]);
+    const [showLogs, setShowLogs] = useState(false);
 
     // Chart sources from search
     const [chartSources, setChartSources] = useState([]);
@@ -101,39 +115,174 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
         }
     }, [showValuesEditor, valuesContent, valuesFormat]);
 
-    // Search for chart sources on mount
-    useEffect(() => {
-        const searchCharts = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                // Use the chart name from the release
-                const chartName = release.chart;
-                const sources = await SearchHelmChart(chartName);
-                setChartSources(sources || []);
+    // Progressive search for chart sources
+    const performSearch = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        setSearchLogs([]);
+        setChartSources([]);
+        setSearchCancelled(false);
+        searchCancelledRef.current = false;
 
-                // Auto-select the first (highest priority) source if available
-                if (sources && sources.length > 0) {
-                    setSelectedSourceName(sources[0].repoName);
-                    setVersions(sources[0].versions || []);
-                    // Default to current version if available, otherwise latest
+        try {
+            // First, get all available sources
+            const sources = await ListChartSources();
+            setAllSources(sources || []);
+
+            if (!sources || sources.length === 0) {
+                setSearchLogs(prev => [...prev, { time: new Date(), message: 'No chart sources configured', type: 'warn' }]);
+                setLoading(false);
+                return;
+            }
+
+            setSearchProgress({ current: 0, total: sources.length, currentSource: '' });
+            setSearchLogs(prev => [...prev, { time: new Date(), message: `Starting search for "${release.chart}" across ${sources.length} sources...`, type: 'info' }]);
+
+            const foundSources = [];
+            const chartName = release.chart;
+
+            // Search each source progressively
+            for (let i = 0; i < sources.length; i++) {
+                if (searchCancelledRef.current) {
+                    setSearchLogs(prev => [...prev, { time: new Date(), message: 'Search cancelled by user', type: 'warn' }]);
+                    break;
+                }
+
+                const source = sources[i];
+                setSearchProgress({ current: i + 1, total: sources.length, currentSource: source.name });
+
+                try {
+                    const result = await SearchChartInSource(source.name, chartName);
+
+                    if (result.log) {
+                        setSearchLogs(prev => [...prev, {
+                            time: new Date(),
+                            message: `${result.log} (${result.duration}ms)`,
+                            type: result.found ? 'success' : 'info'
+                        }]);
+                    }
+
+                    if (result.found && result.source) {
+                        foundSources.push(result.source);
+                        // Update chart sources progressively
+                        setChartSources([...foundSources]);
+                    }
+                } catch (err) {
+                    setSearchLogs(prev => [...prev, {
+                        time: new Date(),
+                        message: `[${source.name}] Error: ${err?.message || err}`,
+                        type: 'error'
+                    }]);
+                }
+            }
+
+            // Sort found sources by priority
+            foundSources.sort((a, b) => a.priority - b.priority);
+            setChartSources(foundSources);
+
+            // Auto-select the first (highest priority) source if available
+            if (foundSources.length > 0) {
+                setSelectedSourceName(foundSources[0].repoName);
+                setVersions(foundSources[0].versions || []);
+                const currentVersion = release.chartVersion;
+                if (currentVersion && foundSources[0].versions?.some(v => v.version === currentVersion)) {
+                    setSelectedVersion(currentVersion);
+                } else if (foundSources[0].versions?.length > 0) {
+                    setSelectedVersion(foundSources[0].versions[0].version);
+                }
+            }
+
+            const msg = foundSources.length > 0
+                ? `Search complete. Found ${foundSources.length} source(s) with chart "${chartName}".`
+                : `Search complete. Chart "${chartName}" not found in any source.`;
+            setSearchLogs(prev => [...prev, { time: new Date(), message: msg, type: foundSources.length > 0 ? 'success' : 'warn' }]);
+        } catch (err) {
+            console.error('Failed to search charts:', err);
+            setError(`Failed to search: ${err?.message || err}`);
+            setSearchLogs(prev => [...prev, { time: new Date(), message: `Error: ${err?.message || err}`, type: 'error' }]);
+        } finally {
+            setLoading(false);
+            setSearchProgress({ current: 0, total: 0, currentSource: '' });
+        }
+    }, [release.chart, release.chartVersion]);
+
+    // Cancel search (switches to manual mode)
+    const handleCancelSearch = useCallback(() => {
+        searchCancelledRef.current = true;
+        setSearchCancelled(true);
+        setSearchMode('manual');
+    }, []);
+
+    // Stop search (keeps current results, stays in auto mode)
+    const handleStopSearch = useCallback(() => {
+        searchCancelledRef.current = true;
+        setSearchCancelled(true);
+    }, []);
+
+    // Switch to manual mode
+    const handleSwitchToManual = useCallback(async () => {
+        searchCancelledRef.current = true;
+        setSearchCancelled(true);
+        setSearchMode('manual');
+        setLoading(false);
+
+        // Load all sources if not already loaded
+        if (allSources.length === 0) {
+            try {
+                const sources = await ListChartSources();
+                setAllSources(sources || []);
+            } catch (err) {
+                console.error('Failed to load sources:', err);
+            }
+        }
+    }, [allSources.length]);
+
+    // Manual source selection and validation
+    const handleManualSourceSelect = useCallback(async (sourceName) => {
+        setSelectedSourceName(sourceName);
+        setLoadingVersions(true);
+        setError(null);
+        setVersions([]);
+        setSelectedVersion('');
+
+        try {
+            const result = await SearchChartInSource(sourceName, release.chart);
+            setSearchLogs(prev => [...prev, {
+                time: new Date(),
+                message: result.log || `Checked ${sourceName}`,
+                type: result.found ? 'success' : 'warn'
+            }]);
+
+            if (result.found && result.source) {
+                setChartSources([result.source]);
+                setVersions(result.source.versions || []);
+                if (result.source.versions?.length > 0) {
                     const currentVersion = release.chartVersion;
-                    if (currentVersion && sources[0].versions?.some(v => v.version === currentVersion)) {
+                    if (currentVersion && result.source.versions.some(v => v.version === currentVersion)) {
                         setSelectedVersion(currentVersion);
-                    } else if (sources[0].versions?.length > 0) {
-                        setSelectedVersion(sources[0].versions[0].version);
+                    } else {
+                        setSelectedVersion(result.source.versions[0].version);
                     }
                 }
-            } catch (err) {
-                console.error('Failed to search charts:', err);
-                setError(`Failed to find chart sources: ${err?.message || err}`);
-            } finally {
-                setLoading(false);
+            } else {
+                setChartSources([]);
+                setError(`Chart "${release.chart}" not found in ${sourceName}`);
             }
-        };
-
-        searchCharts();
+        } catch (err) {
+            console.error('Failed to validate source:', err);
+            setError(`Failed to validate: ${err?.message || err}`);
+        } finally {
+            setLoadingVersions(false);
+        }
     }, [release.chart, release.chartVersion]);
+
+    // Start search on mount (auto mode) - use ref to prevent double execution in StrictMode
+    useEffect(() => {
+        if (searchMode === 'auto' && !searchStartedRef.current) {
+            searchStartedRef.current = true;
+            performSearch();
+        }
+    }, []);
 
     // Load versions when source changes
     const handleSourceChange = useCallback(async (repoName) => {
@@ -189,6 +338,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
 
             await UpgradeHelmRelease(release.namespace, release.name, {
                 repoName: selectedSource.repoName,
+                repoUrl: selectedSource.repoUrl,
                 chartName: selectedSource.chartName,
                 version: selectedVersion,
                 values: customValues,
@@ -196,7 +346,9 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                 resetValues: resetValues,
                 force: force,
                 wait: wait,
-                timeout: 300 // 5 minutes
+                timeout: 300, // 5 minutes
+                isOci: selectedSource.isOci || false,
+                ociRepository: selectedSource.ociRepository || ''
             });
             onSuccess();
         } catch (err) {
@@ -241,55 +393,175 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                         </div>
                     </div>
 
-                    {loading ? (
-                        <div className="flex items-center justify-center py-8">
-                            <ArrowPathIcon className="h-6 w-6 animate-spin text-primary" />
-                            <span className="ml-2 text-gray-400">Searching for chart sources...</span>
-                        </div>
-                    ) : chartSources.length === 0 ? (
-                        <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-md">
-                            <div className="flex items-start gap-3">
-                                <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
-                                <div>
-                                    <div className="font-medium text-yellow-500">No chart sources found</div>
-                                    <p className="text-sm text-gray-400 mt-1">
-                                        Could not find chart "{release.chart}" in any configured repository.
-                                        Make sure the chart's repository is added in the Repositories section.
-                                    </p>
+                    {/* Search Mode Toggle & Progress */}
+                    {loading && searchMode === 'auto' && (
+                        <div className="p-4 bg-background rounded-md space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <ArrowPathIcon className="h-5 w-5 animate-spin text-primary" />
+                                    <span className="text-sm text-gray-300">
+                                        Searching: {searchProgress.currentSource || 'Initializing...'}
+                                    </span>
                                 </div>
+                                <button
+                                    onClick={handleSwitchToManual}
+                                    className="flex items-center gap-1.5 px-3 py-1 text-xs bg-surface hover:bg-white/10 border border-border rounded transition-colors"
+                                >
+                                    <Cog6ToothIcon className="h-3.5 w-3.5" />
+                                    Manual Mode
+                                </button>
                             </div>
+                            {searchProgress.total > 0 && (
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-xs text-gray-500">
+                                        <span>Checking sources...</span>
+                                        <span>{searchProgress.current} / {searchProgress.total}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-700 rounded-full h-2">
+                                        <div
+                                            className="bg-primary h-2 rounded-full transition-all duration-300"
+                                            style={{ width: `${(searchProgress.current / searchProgress.total) * 100}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                            {chartSources.length > 0 && (
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-green-400">
+                                        Found {chartSources.length} source(s) so far...
+                                    </span>
+                                    <button
+                                        onClick={handleStopSearch}
+                                        className="text-xs text-gray-400 hover:text-white px-2 py-0.5 bg-surface hover:bg-white/10 border border-border rounded transition-colors"
+                                    >
+                                        Stop
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                    ) : (
-                        <>
-                            {/* Chart Source Selection */}
+                    )}
+
+                    {/* Manual Mode UI */}
+                    {searchMode === 'manual' && !loading && (
+                        <div className="p-4 bg-background rounded-md space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-300">Manual Source Selection</span>
+                                <button
+                                    onClick={() => { setSearchMode('auto'); searchStartedRef.current = false; performSearch(); }}
+                                    className="flex items-center gap-1.5 px-3 py-1 text-xs bg-primary/20 hover:bg-primary/30 text-primary rounded transition-colors"
+                                >
+                                    <ArrowPathIcon className="h-3.5 w-3.5" />
+                                    Auto Search
+                                </button>
+                            </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Chart Source
-                                </label>
+                                <label className="block text-xs text-gray-500 mb-1.5">Select a source to check:</label>
                                 <SearchSelect
-                                    options={chartSources}
+                                    options={allSources}
                                     value={selectedSourceName}
-                                    onChange={handleSourceChange}
-                                    placeholder="Select chart source..."
-                                    disabled={upgrading}
-                                    getOptionValue={(source) => source.repoName}
-                                    getOptionLabel={(source) => `${source.repoName} (priority: ${source.priority})`}
+                                    onChange={handleManualSourceSelect}
+                                    placeholder="Select source..."
+                                    disabled={loadingVersions}
+                                    getOptionValue={(source) => source.name}
+                                    getOptionLabel={(source) => `${source.name} (priority: ${source.priority})`}
                                     renderOption={(source, isSelected) => (
                                         <div className="flex-1">
                                             <div className={isSelected ? 'text-primary' : ''}>
-                                                {source.repoName}
+                                                {source.name}
+                                                {source.isOci && (
+                                                    <span className="ml-2 text-xs bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">OCI</span>
+                                                )}
+                                                {source.isAcr && (
+                                                    <span className="ml-1 text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">ACR</span>
+                                                )}
                                                 <span className="text-gray-500 ml-2 text-xs">priority: {source.priority}</span>
                                             </div>
-                                            <div className="text-xs text-gray-500 truncate">{source.repoUrl}</div>
+                                            <div className="text-xs text-gray-500 truncate">{source.url}</div>
                                         </div>
                                     )}
                                 />
-                                {selectedSource && (
-                                    <p className="mt-1 text-xs text-gray-500 font-mono truncate" title={selectedSource.repoUrl}>
-                                        {selectedSource.repoUrl}
-                                    </p>
-                                )}
                             </div>
+                            {loadingVersions && (
+                                <div className="flex items-center gap-2 text-sm text-gray-400">
+                                    <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                                    Checking source...
+                                </div>
+                            )}
+                            {selectedSource && !loadingVersions && (
+                                <div className="text-xs text-green-400 flex items-center gap-1.5">
+                                    <span>✓ Chart found:</span>
+                                    <span className="text-gray-400 font-mono">
+                                        {selectedSource.isOci
+                                            ? `oci://${selectedSource.repoUrl.replace(/^https?:\/\//, '')}/${selectedSource.ociRepository}`
+                                            : selectedSource.repoUrl}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* No sources found (after search) */}
+                    {!loading && searchMode === 'auto' && chartSources.length === 0 && (
+                        <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-md">
+                            <div className="flex items-start gap-3">
+                                <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <div className="font-medium text-yellow-500">No chart sources found</div>
+                                    <p className="text-sm text-gray-400 mt-1">
+                                        Could not find chart "{release.chart}" in any configured chart source.
+                                    </p>
+                                    <button
+                                        onClick={handleSwitchToManual}
+                                        className="mt-2 text-xs text-primary hover:text-primary/80 underline"
+                                    >
+                                        Try manual source selection
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Chart sources found - show source dropdown only in auto mode */}
+                    {!loading && chartSources.length > 0 && (
+                        <>
+                            {/* Chart Source Selection - only show in auto mode (manual mode has its own dropdown) */}
+                            {searchMode === 'auto' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        Chart Source
+                                    </label>
+                                    <SearchSelect
+                                        options={chartSources}
+                                        value={selectedSourceName}
+                                        onChange={handleSourceChange}
+                                        placeholder="Select chart source..."
+                                        disabled={upgrading}
+                                        getOptionValue={(source) => source.repoName}
+                                        getOptionLabel={(source) => `${source.repoName} (priority: ${source.priority})`}
+                                        renderOption={(source, isSelected) => (
+                                            <div className="flex-1">
+                                                <div className={isSelected ? 'text-primary' : ''}>
+                                                    {source.repoName}
+                                                    {source.isOci && (
+                                                        <span className="ml-2 text-xs bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">OCI</span>
+                                                    )}
+                                                    <span className="text-gray-500 ml-2 text-xs">priority: {source.priority}</span>
+                                                </div>
+                                                <div className="text-xs text-gray-500 truncate">
+                                                    {source.isOci ? source.ociRepository : source.repoUrl}
+                                                </div>
+                                            </div>
+                                        )}
+                                    />
+                                    {selectedSource && (
+                                        <p className="mt-1 text-xs text-gray-500 font-mono truncate" title={selectedSource.isOci ? `oci://${selectedSource.repoUrl.replace(/^https?:\/\//, '')}/${selectedSource.ociRepository}` : selectedSource.repoUrl}>
+                                            {selectedSource.isOci
+                                                ? `oci://${selectedSource.repoUrl.replace(/^https?:\/\//, '')}/${selectedSource.ociRepository}`
+                                                : selectedSource.repoUrl}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Version Selection */}
                             <div>
@@ -522,6 +794,57 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                     {error && (
                         <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-md text-red-400 text-sm">
                             {error}
+                        </div>
+                    )}
+
+                    {/* Search Logs */}
+                    {searchLogs.length > 0 && (
+                        <div className="border border-border rounded-md overflow-hidden">
+                            <button
+                                type="button"
+                                onClick={() => setShowLogs(!showLogs)}
+                                className="w-full flex items-center justify-between px-4 py-2 bg-background hover:bg-white/5 transition-colors"
+                            >
+                                <div className="flex items-center gap-2">
+                                    {showLogs ? (
+                                        <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                                    ) : (
+                                        <ChevronRightIcon className="h-4 w-4 text-gray-400" />
+                                    )}
+                                    <DocumentTextIcon className="h-4 w-4 text-gray-400" />
+                                    <span className="text-sm text-gray-300">Search Log</span>
+                                    <span className="text-xs text-gray-500">({searchLogs.length} entries)</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const logText = searchLogs.map(l => `[${l.time.toLocaleTimeString()}] ${l.message}`).join('\n');
+                                        navigator.clipboard.writeText(logText);
+                                    }}
+                                    className="text-xs text-gray-500 hover:text-gray-300 px-2 py-0.5 bg-surface rounded"
+                                >
+                                    Copy
+                                </button>
+                            </button>
+                            {showLogs && (
+                                <div className="border-t border-border bg-[#1a1a1a] max-h-40 overflow-y-auto font-mono text-xs">
+                                    {searchLogs.map((log, i) => (
+                                        <div
+                                            key={i}
+                                            className={`px-4 py-1 border-b border-border/50 ${
+                                                log.type === 'error' ? 'text-red-400' :
+                                                log.type === 'success' ? 'text-green-400' :
+                                                log.type === 'warn' ? 'text-yellow-400' :
+                                                'text-gray-400'
+                                            }`}
+                                        >
+                                            <span className="text-gray-600">[{log.time.toLocaleTimeString()}]</span>{' '}
+                                            {log.message}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

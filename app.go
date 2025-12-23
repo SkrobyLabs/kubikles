@@ -2017,3 +2017,21 @@ func (a *App) RemoveOCIRegistry(registry string) error {
 	}
 	return a.helmClient.RemoveOCIRegistry(registry)
 }
+
+// ListChartSources returns all available chart sources (HTTP repos + OCI registries)
+func (a *App) ListChartSources() ([]helm.ChartSourceInfo, error) {
+	a.LogDebug("ListChartSources called")
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.ListChartSources()
+}
+
+// SearchChartInSource searches for a chart in a specific source
+func (a *App) SearchChartInSource(sourceName, chartName string) (*helm.ChartSearchResult, error) {
+	a.LogDebug("SearchChartInSource called: source=%s, chart=%s", sourceName, chartName)
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.SearchChartInSource(sourceName, chartName)
+}

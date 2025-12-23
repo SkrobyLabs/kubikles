@@ -302,6 +302,10 @@ export function ListCRDs() {
   return window['go']['main']['App']['ListCRDs']();
 }
 
+export function ListChartSources() {
+  return window['go']['main']['App']['ListChartSources']();
+}
+
 export function ListConfigMaps(arg1) {
   return window['go']['main']['App']['ListConfigMaps'](arg1);
 }
@@ -456,6 +460,10 @@ export function SaveLogsBundle(arg1, arg2) {
 
 export function SavePodLogs(arg1, arg2) {
   return window['go']['main']['App']['SavePodLogs'](arg1, arg2);
+}
+
+export function SearchChartInSource(arg1, arg2) {
+  return window['go']['main']['App']['SearchChartInSource'](arg1, arg2);
 }
 
 export function SearchHelmChart(arg1) {

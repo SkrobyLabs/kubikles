@@ -330,3 +330,139 @@ func (c *Client) IsOCIRegistryAuthenticated(registry string) bool {
 
 	return false
 }
+
+// OCIChartVersion represents a version of a chart from an OCI registry
+type OCIChartVersion struct {
+	Version string `json:"version"`
+}
+
+// OCIChartSource represents a chart available from an OCI registry
+type OCIChartSource struct {
+	RegistryURL string            `json:"registryUrl"`
+	Repository  string            `json:"repository"` // Path within registry (e.g., "helm/mychart")
+	ChartName   string            `json:"chartName"`
+	Priority    int               `json:"priority"`
+	IsACR       bool              `json:"isAcr"`
+	Versions    []OCIChartVersion `json:"versions"`
+}
+
+// extractACRName extracts the registry name from an ACR URL
+func extractACRNameFromURL(url string) string {
+	url = strings.TrimPrefix(url, "https://")
+	url = strings.TrimPrefix(url, "http://")
+	if strings.Contains(url, ".azurecr.io") {
+		parts := strings.Split(url, ".")
+		if len(parts) > 0 {
+			return parts[0]
+		}
+	}
+	return ""
+}
+
+// SearchOCIChart searches for a chart across all OCI registries
+func (c *Client) SearchOCIChart(chartName string) ([]OCIChartSource, error) {
+	registries, err := c.ListOCIRegistries()
+	if err != nil {
+		return nil, err
+	}
+
+	var sources []OCIChartSource
+
+	for _, reg := range registries {
+		if !reg.Authenticated {
+			continue // Skip unauthenticated registries
+		}
+
+		if reg.IsACR {
+			// Search ACR using Azure CLI
+			acrName := extractACRNameFromURL(reg.URL)
+			if acrName == "" {
+				continue
+			}
+
+			// List repositories in ACR
+			cmd := exec.Command("az", "acr", "repository", "list", "-n", acrName, "-o", "json")
+			output, err := cmd.Output()
+			if err != nil {
+				continue // Skip if we can't list repos
+			}
+
+			var repos []string
+			if err := json.Unmarshal(output, &repos); err != nil {
+				continue
+			}
+
+			// Find repos that match the chart name
+			for _, repo := range repos {
+				// Match if repo ends with the chart name or equals it
+				repoLower := strings.ToLower(repo)
+				chartLower := strings.ToLower(chartName)
+				if repoLower == chartLower || strings.HasSuffix(repoLower, "/"+chartLower) {
+					// Get tags for this repo
+					cmd := exec.Command("az", "acr", "repository", "show-tags", "-n", acrName, "--repository", repo, "-o", "json", "--orderby", "time_desc")
+					tagsOutput, err := cmd.Output()
+					if err != nil {
+						continue
+					}
+
+					var tags []string
+					if err := json.Unmarshal(tagsOutput, &tags); err != nil {
+						continue
+					}
+
+					versions := make([]OCIChartVersion, 0, len(tags))
+					for _, tag := range tags {
+						versions = append(versions, OCIChartVersion{Version: tag})
+					}
+
+					sources = append(sources, OCIChartSource{
+						RegistryURL: reg.URL,
+						Repository:  repo,
+						ChartName:   chartName,
+						Priority:    reg.Priority,
+						IsACR:       true,
+						Versions:    versions,
+					})
+				}
+			}
+		}
+		// TODO: Add support for other OCI registries using OCI Distribution API
+	}
+
+	// Sort by priority
+	sort.Slice(sources, func(i, j int) bool {
+		return sources[i].Priority < sources[j].Priority
+	})
+
+	return sources, nil
+}
+
+// GetOCIChartVersions gets versions for a specific chart from an OCI registry
+func (c *Client) GetOCIChartVersions(registryURL, repository string) ([]OCIChartVersion, error) {
+	if strings.Contains(registryURL, ".azurecr.io") {
+		acrName := extractACRNameFromURL(registryURL)
+		if acrName == "" {
+			return nil, fmt.Errorf("could not extract ACR name from URL: %s", registryURL)
+		}
+
+		cmd := exec.Command("az", "acr", "repository", "show-tags", "-n", acrName, "--repository", repository, "-o", "json", "--orderby", "time_desc")
+		output, err := cmd.Output()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get tags: %w", err)
+		}
+
+		var tags []string
+		if err := json.Unmarshal(output, &tags); err != nil {
+			return nil, fmt.Errorf("failed to parse tags: %w", err)
+		}
+
+		versions := make([]OCIChartVersion, 0, len(tags))
+		for _, tag := range tags {
+			versions = append(versions, OCIChartVersion{Version: tag})
+		}
+
+		return versions, nil
+	}
+
+	return nil, fmt.Errorf("OCI registry type not supported for version listing")
+}

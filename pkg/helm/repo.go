@@ -312,13 +312,32 @@ type ChartVersion struct {
 	Deprecated  bool      `json:"deprecated"`
 }
 
-// ChartSource represents a chart available from a repository
+// ChartSource represents a chart available from a repository or OCI registry
 type ChartSource struct {
-	RepoName   string         `json:"repoName"`
-	RepoURL    string         `json:"repoUrl"`
-	Priority   int            `json:"priority"`
-	ChartName  string         `json:"chartName"`
-	Versions   []ChartVersion `json:"versions"`
+	RepoName      string         `json:"repoName"`
+	RepoURL       string         `json:"repoUrl"`
+	Priority      int            `json:"priority"`
+	ChartName     string         `json:"chartName"`
+	Versions      []ChartVersion `json:"versions"`
+	IsOCI         bool           `json:"isOci"`         // True if this is an OCI registry source
+	OCIRepository string         `json:"ociRepository"` // For OCI: the full repository path within registry
+}
+
+// ChartSourceInfo provides basic info about a chart source for listing
+type ChartSourceInfo struct {
+	Name     string `json:"name"`     // Display name (repo name or oci://registry)
+	URL      string `json:"url"`      // URL of the source
+	IsOCI    bool   `json:"isOci"`    // True if OCI registry
+	IsACR    bool   `json:"isAcr"`    // True if Azure Container Registry
+	Priority int    `json:"priority"` // Priority (lower = higher priority)
+}
+
+// ChartSearchResult contains the result of searching a single source
+type ChartSearchResult struct {
+	Found    bool           `json:"found"`    // Whether chart was found
+	Source   *ChartSource   `json:"source"`   // The source details if found
+	Log      string         `json:"log"`      // Log message describing what happened
+	Duration int64          `json:"duration"` // Search duration in milliseconds
 }
 
 // RepoPriorities stores priority settings for repositories
@@ -685,6 +704,34 @@ func (c *Client) SearchChart(chartName string) ([]ChartSource, error) {
 		})
 	}
 
+	// Also search OCI registries
+	ociSources, err := c.SearchOCIChart(chartName)
+	if err == nil && len(ociSources) > 0 {
+		for _, oci := range ociSources {
+			// Convert OCIChartVersion to ChartVersion
+			versions := make([]ChartVersion, 0, len(oci.Versions))
+			for _, v := range oci.Versions {
+				versions = append(versions, ChartVersion{
+					Version: v.Version,
+				})
+			}
+
+			// Create a display name for the OCI source
+			registryName := strings.TrimPrefix(oci.RegistryURL, "https://")
+			registryName = strings.TrimPrefix(registryName, "http://")
+
+			sources = append(sources, ChartSource{
+				RepoName:      fmt.Sprintf("oci://%s", registryName),
+				RepoURL:       oci.RegistryURL,
+				Priority:      oci.Priority,
+				ChartName:     oci.ChartName,
+				Versions:      versions,
+				IsOCI:         true,
+				OCIRepository: oci.Repository,
+			})
+		}
+	}
+
 	// Sort sources by priority (lower first)
 	sort.Slice(sources, func(i, j int) bool {
 		return sources[i].Priority < sources[j].Priority
@@ -728,4 +775,284 @@ func (c *Client) GetChartVersions(repoName, chartName string) ([]ChartVersion, e
 // getSettings returns the Helm CLI settings (for use by repo functions)
 func (c *Client) getSettings() *cli.EnvSettings {
 	return c.settings
+}
+
+// ListChartSources returns all available chart sources (HTTP repos + OCI registries)
+func (c *Client) ListChartSources() ([]ChartSourceInfo, error) {
+	var sources []ChartSourceInfo
+
+	// Load HTTP repositories
+	repoFile := c.settings.RepositoryConfig
+	f, err := repo.LoadFile(repoFile)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("failed to load repository file: %w", err)
+	}
+
+	priorities, _ := loadRepoPriorities()
+	if priorities == nil {
+		priorities = &RepoPriorities{Priorities: make(map[string]int)}
+	}
+
+	if f != nil {
+		for _, r := range f.Repositories {
+			priority := 100
+			if p, ok := priorities.Priorities[r.Name]; ok {
+				priority = p
+			}
+			sources = append(sources, ChartSourceInfo{
+				Name:     r.Name,
+				URL:      r.URL,
+				IsOCI:    false,
+				IsACR:    false,
+				Priority: priority,
+			})
+		}
+	}
+
+	// Load OCI registries
+	ociRegistries, err := c.ListOCIRegistries()
+	if err == nil {
+		for _, reg := range ociRegistries {
+			if !reg.Authenticated {
+				continue // Skip unauthenticated registries
+			}
+			registryName := strings.TrimPrefix(reg.URL, "https://")
+			registryName = strings.TrimPrefix(registryName, "http://")
+			sources = append(sources, ChartSourceInfo{
+				Name:     fmt.Sprintf("oci://%s", registryName),
+				URL:      reg.URL,
+				IsOCI:    true,
+				IsACR:    reg.IsACR,
+				Priority: reg.Priority,
+			})
+		}
+	}
+
+	// Sort by priority
+	sort.Slice(sources, func(i, j int) bool {
+		return sources[i].Priority < sources[j].Priority
+	})
+
+	return sources, nil
+}
+
+// SearchChartInSource searches for a chart in a specific source
+func (c *Client) SearchChartInSource(sourceName, chartName string) (*ChartSearchResult, error) {
+	start := time.Now()
+
+	// Check if it's an OCI source
+	if strings.HasPrefix(sourceName, "oci://") {
+		return c.searchChartInOCISource(sourceName, chartName, start)
+	}
+
+	// HTTP repository search
+	return c.searchChartInHTTPRepo(sourceName, chartName, start)
+}
+
+// searchChartInHTTPRepo searches for a chart in an HTTP repository
+func (c *Client) searchChartInHTTPRepo(repoName, chartName string, start time.Time) (*ChartSearchResult, error) {
+	result := &ChartSearchResult{Found: false}
+
+	// Load index file
+	indexPath := filepath.Join(c.settings.RepositoryCache, fmt.Sprintf("%s-index.yaml", repoName))
+	indexFile, err := repo.LoadIndexFile(indexPath)
+	if err != nil {
+		result.Log = fmt.Sprintf("[%s] Failed to load index: %v", repoName, err)
+		result.Duration = time.Since(start).Milliseconds()
+		return result, nil
+	}
+
+	// Search for chart
+	var chartVersions repo.ChartVersions
+	var foundName string
+	if cv, ok := indexFile.Entries[chartName]; ok {
+		chartVersions = cv
+		foundName = chartName
+	} else {
+		// Try case-insensitive and suffix match
+		for name, cv := range indexFile.Entries {
+			if strings.EqualFold(name, chartName) || strings.HasSuffix(strings.ToLower(name), "/"+strings.ToLower(chartName)) {
+				chartVersions = cv
+				foundName = name
+				break
+			}
+		}
+	}
+
+	if len(chartVersions) == 0 {
+		result.Log = fmt.Sprintf("[%s] Chart '%s' not found in index (%d charts available)", repoName, chartName, len(indexFile.Entries))
+		result.Duration = time.Since(start).Milliseconds()
+		return result, nil
+	}
+
+	// Get repo info
+	repoFile := c.settings.RepositoryConfig
+	f, _ := repo.LoadFile(repoFile)
+	var repoURL string
+	if f != nil {
+		for _, r := range f.Repositories {
+			if r.Name == repoName {
+				repoURL = r.URL
+				break
+			}
+		}
+	}
+
+	priorities, _ := loadRepoPriorities()
+	priority := 100
+	if priorities != nil {
+		if p, ok := priorities.Priorities[repoName]; ok {
+			priority = p
+		}
+	}
+
+	// Build versions list
+	versions := make([]ChartVersion, 0, len(chartVersions))
+	for _, cv := range chartVersions {
+		versions = append(versions, ChartVersion{
+			Version:     cv.Version,
+			AppVersion:  cv.AppVersion,
+			Description: cv.Description,
+			Created:     cv.Created,
+			Deprecated:  cv.Deprecated,
+		})
+	}
+	sort.Slice(versions, func(i, j int) bool {
+		return versions[i].Created.After(versions[j].Created)
+	})
+
+	result.Found = true
+	result.Source = &ChartSource{
+		RepoName:  repoName,
+		RepoURL:   repoURL,
+		Priority:  priority,
+		ChartName: foundName,
+		Versions:  versions,
+		IsOCI:     false,
+	}
+	result.Log = fmt.Sprintf("[%s] Found chart '%s' with %d versions", repoName, foundName, len(versions))
+	result.Duration = time.Since(start).Milliseconds()
+
+	return result, nil
+}
+
+// searchChartInOCISource searches for a chart in an OCI registry
+func (c *Client) searchChartInOCISource(sourceName, chartName string, start time.Time) (*ChartSearchResult, error) {
+	result := &ChartSearchResult{Found: false}
+
+	// Extract registry from oci://registry format
+	registry := strings.TrimPrefix(sourceName, "oci://")
+
+	// Find the registry in our list
+	ociRegistries, err := c.ListOCIRegistries()
+	if err != nil {
+		result.Log = fmt.Sprintf("[%s] Failed to list OCI registries: %v", sourceName, err)
+		result.Duration = time.Since(start).Milliseconds()
+		return result, nil
+	}
+
+	var targetRegistry *OCIRegistry
+	for i, reg := range ociRegistries {
+		regName := strings.TrimPrefix(reg.URL, "https://")
+		regName = strings.TrimPrefix(regName, "http://")
+		if regName == registry {
+			targetRegistry = &ociRegistries[i]
+			break
+		}
+	}
+
+	if targetRegistry == nil {
+		result.Log = fmt.Sprintf("[%s] Registry not found in configured registries", sourceName)
+		result.Duration = time.Since(start).Milliseconds()
+		return result, nil
+	}
+
+	if !targetRegistry.Authenticated {
+		result.Log = fmt.Sprintf("[%s] Registry not authenticated", sourceName)
+		result.Duration = time.Since(start).Milliseconds()
+		return result, nil
+	}
+
+	if !targetRegistry.IsACR {
+		result.Log = fmt.Sprintf("[%s] Non-ACR OCI registries not yet supported for search", sourceName)
+		result.Duration = time.Since(start).Milliseconds()
+		return result, nil
+	}
+
+	// Search ACR
+	acrName := extractACRNameFromURL(targetRegistry.URL)
+	if acrName == "" {
+		result.Log = fmt.Sprintf("[%s] Could not extract ACR name from URL", sourceName)
+		result.Duration = time.Since(start).Milliseconds()
+		return result, nil
+	}
+
+	// List repositories in ACR
+	cmd := exec.Command("az", "acr", "repository", "list", "-n", acrName, "-o", "json")
+	output, err := cmd.Output()
+	if err != nil {
+		result.Log = fmt.Sprintf("[%s] Failed to list ACR repositories: %v", sourceName, err)
+		result.Duration = time.Since(start).Milliseconds()
+		return result, nil
+	}
+
+	var repos []string
+	if err := json.Unmarshal(output, &repos); err != nil {
+		result.Log = fmt.Sprintf("[%s] Failed to parse ACR repositories: %v", sourceName, err)
+		result.Duration = time.Since(start).Milliseconds()
+		return result, nil
+	}
+
+	// Find matching repository
+	var matchingRepo string
+	chartLower := strings.ToLower(chartName)
+	for _, repoPath := range repos {
+		repoLower := strings.ToLower(repoPath)
+		if repoLower == chartLower || strings.HasSuffix(repoLower, "/"+chartLower) {
+			matchingRepo = repoPath
+			break
+		}
+	}
+
+	if matchingRepo == "" {
+		result.Log = fmt.Sprintf("[%s] Chart '%s' not found in %d repositories", sourceName, chartName, len(repos))
+		result.Duration = time.Since(start).Milliseconds()
+		return result, nil
+	}
+
+	// Get tags for the matching repo
+	cmd = exec.Command("az", "acr", "repository", "show-tags", "-n", acrName, "--repository", matchingRepo, "-o", "json", "--orderby", "time_desc")
+	tagsOutput, err := cmd.Output()
+	if err != nil {
+		result.Log = fmt.Sprintf("[%s] Found chart '%s' but failed to get tags: %v", sourceName, matchingRepo, err)
+		result.Duration = time.Since(start).Milliseconds()
+		return result, nil
+	}
+
+	var tags []string
+	if err := json.Unmarshal(tagsOutput, &tags); err != nil {
+		result.Log = fmt.Sprintf("[%s] Found chart '%s' but failed to parse tags: %v", sourceName, matchingRepo, err)
+		result.Duration = time.Since(start).Milliseconds()
+		return result, nil
+	}
+
+	versions := make([]ChartVersion, 0, len(tags))
+	for _, tag := range tags {
+		versions = append(versions, ChartVersion{Version: tag})
+	}
+
+	result.Found = true
+	result.Source = &ChartSource{
+		RepoName:      sourceName,
+		RepoURL:       targetRegistry.URL,
+		Priority:      targetRegistry.Priority,
+		ChartName:     chartName,
+		Versions:      versions,
+		IsOCI:         true,
+		OCIRepository: matchingRepo,
+	}
+	result.Log = fmt.Sprintf("[%s] Found chart '%s' with %d versions", sourceName, matchingRepo, len(versions))
+	result.Duration = time.Since(start).Milliseconds()
+
+	return result, nil
 }

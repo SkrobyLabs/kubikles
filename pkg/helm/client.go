@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -436,15 +437,18 @@ func (g *contextAwareGetter) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 
 // UpgradeOptions contains options for upgrading a release
 type UpgradeOptions struct {
-	RepoName    string                 `json:"repoName"`    // Repository name
-	ChartName   string                 `json:"chartName"`   // Chart name
-	Version     string                 `json:"version"`     // Target version (empty = latest)
-	Values      map[string]interface{} `json:"values"`      // Override values
-	ReuseValues bool                   `json:"reuseValues"` // Reuse values from current release
-	ResetValues bool                   `json:"resetValues"` // Reset to chart defaults
-	Force       bool                   `json:"force"`       // Force resource updates
-	Wait        bool                   `json:"wait"`        // Wait for resources ready
-	Timeout     int                    `json:"timeout"`     // Timeout in seconds
+	RepoName      string                 `json:"repoName"`      // Repository name (or oci://registry for OCI)
+	RepoURL       string                 `json:"repoUrl"`       // Repository URL
+	ChartName     string                 `json:"chartName"`     // Chart name
+	Version       string                 `json:"version"`       // Target version (empty = latest)
+	Values        map[string]interface{} `json:"values"`        // Override values
+	ReuseValues   bool                   `json:"reuseValues"`   // Reuse values from current release
+	ResetValues   bool                   `json:"resetValues"`   // Reset to chart defaults
+	Force         bool                   `json:"force"`         // Force resource updates
+	Wait          bool                   `json:"wait"`          // Wait for resources ready
+	Timeout       int                    `json:"timeout"`       // Timeout in seconds
+	IsOCI         bool                   `json:"isOci"`         // True if this is an OCI registry source
+	OCIRepository string                 `json:"ociRepository"` // For OCI: the repository path within registry
 }
 
 // UpgradeRelease upgrades or reinstalls a release
@@ -455,8 +459,14 @@ func (c *Client) UpgradeRelease(contextName, namespace, name string, opts Upgrad
 	}
 
 	// Locate and download the chart
-	chartRef := fmt.Sprintf("%s/%s", opts.RepoName, opts.ChartName)
-	chartPath, err := c.locateChart(chartRef, opts.Version)
+	var chartPath string
+	if opts.IsOCI {
+		// OCI chart reference: oci://registry/repository:version
+		chartPath, err = c.locateOCIChart(opts.RepoURL, opts.OCIRepository, opts.Version)
+	} else {
+		chartRef := fmt.Sprintf("%s/%s", opts.RepoName, opts.ChartName)
+		chartPath, err = c.locateChart(chartRef, opts.Version)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to locate chart: %w", err)
 	}
@@ -633,4 +643,46 @@ func (c *Client) locateChart(chartRef, version string) (string, error) {
 	}
 
 	return chartPath, nil
+}
+
+// locateOCIChart pulls a chart from an OCI registry
+func (c *Client) locateOCIChart(registryURL, repository, version string) (string, error) {
+	// Clean up registry URL for OCI reference
+	registry := strings.TrimPrefix(registryURL, "https://")
+	registry = strings.TrimPrefix(registry, "http://")
+
+	// Construct OCI reference: oci://registry/repository
+	ociRef := fmt.Sprintf("oci://%s/%s", registry, repository)
+
+	// Create temp directory for the chart
+	destDir, err := os.MkdirTemp("", "helm-oci-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp directory: %w", err)
+	}
+
+	// Use helm pull command to download OCI chart
+	args := []string{"pull", ociRef, "--destination", destDir}
+	if version != "" {
+		args = append(args, "--version", version)
+	}
+
+	cmd := exec.Command("helm", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to pull OCI chart: %s", string(output))
+	}
+
+	// Find the downloaded chart (it will be a .tgz file)
+	entries, err := os.ReadDir(destDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to read temp directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".tgz") {
+			return filepath.Join(destDir, entry.Name()), nil
+		}
+	}
+
+	return "", fmt.Errorf("chart archive not found after pull")
 }
