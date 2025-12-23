@@ -78,6 +78,26 @@ export namespace helm {
 		}
 	}
 	
+	export class OCIRegistry {
+	    url: string;
+	    username: string;
+	    authenticated: boolean;
+	    isAcr: boolean;
+	    priority: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new OCIRegistry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.username = source["username"];
+	        this.authenticated = source["authenticated"];
+	        this.isAcr = source["isAcr"];
+	        this.priority = source["priority"];
+	    }
+	}
 	export class Release {
 	    name: string;
 	    namespace: string;

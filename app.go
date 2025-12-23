@@ -1907,6 +1907,7 @@ func (a *App) UpdateHelmRepository(name string) error {
 
 // UpdateAllHelmRepositories updates the index for all repositories
 func (a *App) UpdateAllHelmRepositories() error {
+	fmt.Println(">>> UpdateAllHelmRepositories called <<<")
 	a.LogDebug("UpdateAllHelmRepositories called")
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
@@ -1955,18 +1956,64 @@ func (a *App) UpgradeHelmRelease(namespace, name string, opts helm.UpgradeOption
 // ForceHelmReleaseStatus forces a release to a specific status (e.g., "deployed")
 func (a *App) ForceHelmReleaseStatus(namespace, name, status string) error {
 	currentContext := a.GetCurrentContext()
-	fmt.Printf("ForceHelmReleaseStatus called: context=%s, ns=%s, name=%s, status=%s\n",
-		currentContext, namespace, name, status)
 	a.LogDebug("ForceHelmReleaseStatus called: context=%s, ns=%s, name=%s, status=%s",
 		currentContext, namespace, name, status)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
-	err := a.helmClient.ForceReleaseStatus(currentContext, namespace, name, status)
-	if err != nil {
-		fmt.Printf("ForceHelmReleaseStatus error: %v\n", err)
-	} else {
-		fmt.Println("ForceHelmReleaseStatus completed successfully")
+	return a.helmClient.ForceReleaseStatus(currentContext, namespace, name, status)
+}
+
+// ListOCIRegistries returns a list of OCI registries with authentication status
+func (a *App) ListOCIRegistries() ([]helm.OCIRegistry, error) {
+	a.LogDebug("ListOCIRegistries called")
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
 	}
-	return err
+	return a.helmClient.ListOCIRegistries()
+}
+
+// LoginOCIRegistry authenticates to an OCI registry with username/password
+func (a *App) LoginOCIRegistry(registry, username, password string) error {
+	a.LogDebug("LoginOCIRegistry called: registry=%s, username=%s", registry, username)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.LoginOCIRegistry(registry, username, password)
+}
+
+// LoginACRWithAzureCLI logs into an Azure Container Registry using Azure CLI
+func (a *App) LoginACRWithAzureCLI(registry string) error {
+	a.LogDebug("LoginACRWithAzureCLI called: registry=%s", registry)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.LoginACRWithAzureCLI(registry)
+}
+
+// LogoutOCIRegistry logs out from an OCI registry
+func (a *App) LogoutOCIRegistry(registry string) error {
+	a.LogDebug("LogoutOCIRegistry called: registry=%s", registry)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.LogoutOCIRegistry(registry)
+}
+
+// SetOCIRegistryPriority sets the priority for an OCI registry
+func (a *App) SetOCIRegistryPriority(registryURL string, priority int) error {
+	a.LogDebug("SetOCIRegistryPriority called: registry=%s, priority=%d", registryURL, priority)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.SetOCIRegistryPriority(registryURL, priority)
+}
+
+// RemoveOCIRegistry removes an OCI registry (logout and remove priority)
+func (a *App) RemoveOCIRegistry(registry string) error {
+	a.LogDebug("RemoveOCIRegistry called: registry=%s", registry)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.RemoveOCIRegistry(registry)
 }

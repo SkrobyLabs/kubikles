@@ -358,6 +358,10 @@ export function ListNodes() {
   return window['go']['main']['App']['ListNodes']();
 }
 
+export function ListOCIRegistries() {
+  return window['go']['main']['App']['ListOCIRegistries']();
+}
+
 export function ListPVCs(arg1) {
   return window['go']['main']['App']['ListPVCs'](arg1);
 }
@@ -394,6 +398,18 @@ export function LogDebug(arg1, arg2) {
   return window['go']['main']['App']['LogDebug'](arg1, arg2);
 }
 
+export function LoginACRWithAzureCLI(arg1) {
+  return window['go']['main']['App']['LoginACRWithAzureCLI'](arg1);
+}
+
+export function LoginOCIRegistry(arg1, arg2, arg3) {
+  return window['go']['main']['App']['LoginOCIRegistry'](arg1, arg2, arg3);
+}
+
+export function LogoutOCIRegistry(arg1) {
+  return window['go']['main']['App']['LogoutOCIRegistry'](arg1);
+}
+
 export function OpenTerminal(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['OpenTerminal'](arg1, arg2, arg3, arg4);
 }
@@ -408,6 +424,10 @@ export function RefreshIngressHostnames(arg1) {
 
 export function RemoveHelmRepository(arg1) {
   return window['go']['main']['App']['RemoveHelmRepository'](arg1);
+}
+
+export function RemoveOCIRegistry(arg1) {
+  return window['go']['main']['App']['RemoveOCIRegistry'](arg1);
 }
 
 export function RestartDaemonSet(arg1, arg2) {
@@ -448,6 +468,10 @@ export function SetHelmRepositoryPriority(arg1, arg2) {
 
 export function SetNodeSchedulable(arg1, arg2) {
   return window['go']['main']['App']['SetNodeSchedulable'](arg1, arg2);
+}
+
+export function SetOCIRegistryPriority(arg1, arg2) {
+  return window['go']['main']['App']['SetOCIRegistryPriority'](arg1, arg2);
 }
 
 export function StartFavoritePortForwards(arg1) {

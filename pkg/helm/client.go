@@ -548,14 +548,10 @@ func (c *Client) UpgradeRelease(contextName, namespace, name string, opts Upgrad
 // ForceReleaseStatus forces a release to a specific status (e.g., "deployed")
 // This is useful when a release times out but actually succeeded
 func (c *Client) ForceReleaseStatus(contextName, namespace, name, status string) error {
-	fmt.Printf("helm.ForceReleaseStatus: context=%s, ns=%s, name=%s, status=%s\n", contextName, namespace, name, status)
-
 	actionConfig, err := c.getActionConfig(namespace, contextName)
 	if err != nil {
-		fmt.Printf("helm.ForceReleaseStatus: getActionConfig error: %v\n", err)
 		return err
 	}
-	fmt.Println("helm.ForceReleaseStatus: actionConfig obtained")
 
 	// Map string status to release.Status
 	var targetStatus release.Status
@@ -573,26 +569,20 @@ func (c *Client) ForceReleaseStatus(contextName, namespace, name, status string)
 	}
 
 	// Get the release from storage
-	fmt.Printf("helm.ForceReleaseStatus: getting release %s from storage\n", name)
 	rel, err := actionConfig.Releases.Last(name)
 	if err != nil {
-		fmt.Printf("helm.ForceReleaseStatus: Releases.Last error: %v\n", err)
 		return fmt.Errorf("failed to get release %s: %w", name, err)
 	}
-	fmt.Printf("helm.ForceReleaseStatus: got release, current status=%s, version=%d\n", rel.Info.Status, rel.Version)
 
 	// Update the status
 	rel.Info.Status = targetStatus
 	rel.Info.Description = fmt.Sprintf("Status forced to %s", status)
 
 	// Update the release in storage
-	fmt.Println("helm.ForceReleaseStatus: calling Releases.Update")
 	if err := actionConfig.Releases.Update(rel); err != nil {
-		fmt.Printf("helm.ForceReleaseStatus: Releases.Update error: %v\n", err)
 		return fmt.Errorf("failed to update release status: %w", err)
 	}
 
-	fmt.Println("helm.ForceReleaseStatus: success!")
 	return nil
 }
 

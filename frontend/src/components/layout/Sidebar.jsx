@@ -181,7 +181,7 @@ export default function Sidebar({
             title: 'Helm',
             items: [
                 { id: 'helmreleases', label: 'Releases', icon: WrenchScrewdriverIcon },
-                { id: 'helmrepos', label: 'Repositories', icon: ArchiveBoxIcon },
+                { id: 'helmrepos', label: 'Chart Sources', icon: ArchiveBoxIcon },
             ]
         }
     ];

@@ -183,6 +183,8 @@ export function ListNamespaces():Promise<Array<v1.Namespace>>;
 
 export function ListNodes():Promise<Array<v1.Node>>;
 
+export function ListOCIRegistries():Promise<Array<helm.OCIRegistry>>;
+
 export function ListPVCs(arg1:string):Promise<Array<v1.PersistentVolumeClaim>>;
 
 export function ListPVs():Promise<Array<v1.PersistentVolume>>;
@@ -201,6 +203,12 @@ export function ListStorageClasses():Promise<Array<v1.StorageClass>>;
 
 export function LogDebug(arg1:string,arg2:Array<any>):Promise<void>;
 
+export function LoginACRWithAzureCLI(arg1:string):Promise<void>;
+
+export function LoginOCIRegistry(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function LogoutOCIRegistry(arg1:string):Promise<void>;
+
 export function OpenTerminal(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
 
 export function OpenTerminalWithCommand(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
@@ -208,6 +216,8 @@ export function OpenTerminalWithCommand(arg1:string,arg2:string,arg3:string,arg4
 export function RefreshIngressHostnames(arg1:Array<string>):Promise<void>;
 
 export function RemoveHelmRepository(arg1:string):Promise<void>;
+
+export function RemoveOCIRegistry(arg1:string):Promise<void>;
 
 export function RestartDaemonSet(arg1:string,arg2:string):Promise<void>;
 
@@ -228,6 +238,8 @@ export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;
 export function SetHelmRepositoryPriority(arg1:string,arg2:number):Promise<void>;
 
 export function SetNodeSchedulable(arg1:string,arg2:boolean):Promise<void>;
+
+export function SetOCIRegistryPriority(arg1:string,arg2:number):Promise<void>;
 
 export function StartFavoritePortForwards(arg1:string):Promise<void>;
 

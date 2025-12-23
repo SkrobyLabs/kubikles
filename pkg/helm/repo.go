@@ -1,10 +1,13 @@
 package helm
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -13,6 +16,285 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
 )
+
+// ACR token refresh functionality
+
+// isACRURL checks if a URL is an Azure Container Registry URL
+func isACRURL(url string) bool {
+	return strings.Contains(url, ".azurecr.io")
+}
+
+// extractACRName extracts the registry name from an ACR URL
+func extractACRName(url string) string {
+	// Match patterns like https://myregistry.azurecr.io/...
+	re := regexp.MustCompile(`https?://([^.]+)\.azurecr\.io`)
+	matches := re.FindStringSubmatch(url)
+	if len(matches) >= 2 {
+		return matches[1]
+	}
+	return ""
+}
+
+// isJWTExpired checks if a JWT token is expired (with 5 minute buffer)
+func isJWTExpired(token string) bool {
+	if token == "" {
+		return true
+	}
+
+	// JWT has 3 parts separated by dots
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		// Not a valid JWT - might be a static password, treat as not expired
+		return false
+	}
+
+	// Decode the payload (second part) - JWT uses base64url encoding
+	// Add padding if needed
+	payload := parts[1]
+	switch len(payload) % 4 {
+	case 2:
+		payload += "=="
+	case 3:
+		payload += "="
+	}
+
+	decoded, err := base64.URLEncoding.DecodeString(payload)
+	if err != nil {
+		// Try standard encoding as fallback
+		decoded, err = base64.StdEncoding.DecodeString(payload)
+		if err != nil {
+			return false // Can't decode, assume not expired
+		}
+	}
+
+	var claims struct {
+		Exp int64 `json:"exp"`
+	}
+	if err := json.Unmarshal(decoded, &claims); err != nil {
+		return false // Can't parse, assume not expired
+	}
+
+	now := time.Now().Unix()
+	return now > (claims.Exp - 300)
+}
+
+// ACRCredentials holds username and password for ACR authentication
+type ACRCredentials struct {
+	Username string
+	Password string
+}
+
+// refreshACRCredentials attempts to get ACR admin credentials using Azure CLI
+func refreshACRCredentials(registryName string) (*ACRCredentials, error) {
+	// Try to get admin credentials (more reliable than refresh tokens)
+	cmd := exec.Command("az", "acr", "credential", "show", "-n", registryName,
+		"--query", "{username:username, password:passwords[0].value}", "-o", "json")
+	output, err := cmd.Output()
+	if err != nil {
+		// Admin might be disabled, try token approach as fallback
+		return refreshACRToken(registryName)
+	}
+
+	var creds struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.Unmarshal(output, &creds); err != nil {
+		return nil, fmt.Errorf("failed to parse ACR credentials: %w", err)
+	}
+
+	if creds.Username == "" || creds.Password == "" {
+		return refreshACRToken(registryName)
+	}
+
+	return &ACRCredentials{Username: creds.Username, Password: creds.Password}, nil
+}
+
+// refreshACRToken attempts to get a fresh ACR token using Azure CLI (fallback)
+func refreshACRToken(registryName string) (*ACRCredentials, error) {
+	// Try to get token using az acr login --expose-token
+	cmd := exec.Command("az", "acr", "login", "-n", registryName, "--expose-token", "--query", "accessToken", "-o", "tsv")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ACR credentials (is Azure CLI installed and logged in?): %w", err)
+	}
+
+	token := strings.TrimSpace(string(output))
+	if token == "" {
+		return nil, fmt.Errorf("empty token returned from Azure CLI")
+	}
+
+	// Token auth uses special username
+	return &ACRCredentials{
+		Username: "00000000-0000-0000-0000-000000000000",
+		Password: token,
+	}, nil
+}
+
+// RefreshACRTokenIfNeeded checks if an ACR repo needs credential refresh and does it
+func (c *Client) RefreshACRTokenIfNeeded(repoName string) error {
+	repoFile := c.settings.RepositoryConfig
+	f, err := repo.LoadFile(repoFile)
+	if err != nil {
+		return fmt.Errorf("failed to load repository file: %w", err)
+	}
+
+	var entry *repo.Entry
+	for _, r := range f.Repositories {
+		if r.Name == repoName {
+			entry = r
+			break
+		}
+	}
+
+	if entry == nil {
+		return fmt.Errorf("repository %q not found", repoName)
+	}
+
+	// Check if this is an ACR URL
+	if !isACRURL(entry.URL) {
+		return nil // Not an ACR repo, nothing to do
+	}
+
+	// Check if using JWT token that's expired, or if using admin creds (don't refresh those)
+	isJWT := strings.Contains(entry.Password, ".") && len(strings.Split(entry.Password, ".")) == 3
+	if isJWT && !isJWTExpired(entry.Password) {
+		return nil // JWT token is still valid
+	}
+
+	// If it's admin credentials (not JWT), don't refresh
+	if !isJWT && entry.Password != "" {
+		return nil // Using admin credentials, no refresh needed
+	}
+
+	// Extract registry name and refresh
+	registryName := extractACRName(entry.URL)
+	if registryName == "" {
+		return fmt.Errorf("could not extract registry name from URL: %s", entry.URL)
+	}
+
+	creds, err := refreshACRCredentials(registryName)
+	if err != nil {
+		return fmt.Errorf("failed to refresh ACR credentials for %s: %w", registryName, err)
+	}
+
+	// Update the entry with new credentials
+	entry.Username = creds.Username
+	entry.Password = creds.Password
+
+	// Save the updated repo file
+	if err := f.WriteFile(repoFile, 0644); err != nil {
+		return fmt.Errorf("failed to save updated credentials: %w", err)
+	}
+
+	return nil
+}
+
+// ForceRefreshACRCredentials forces a credential refresh for an ACR repo, ignoring expiry check
+func (c *Client) ForceRefreshACRCredentials(repoName string) error {
+	repoFile := c.settings.RepositoryConfig
+	f, err := repo.LoadFile(repoFile)
+	if err != nil {
+		return fmt.Errorf("failed to load repository file: %w", err)
+	}
+
+	var entry *repo.Entry
+	for _, r := range f.Repositories {
+		if r.Name == repoName {
+			entry = r
+			break
+		}
+	}
+
+	if entry == nil {
+		return fmt.Errorf("repository %q not found", repoName)
+	}
+
+	if !isACRURL(entry.URL) {
+		return fmt.Errorf("repository %q is not an ACR repository", repoName)
+	}
+
+	registryName := extractACRName(entry.URL)
+	if registryName == "" {
+		return fmt.Errorf("could not extract registry name from URL: %s", entry.URL)
+	}
+
+	creds, err := refreshACRCredentials(registryName)
+	if err != nil {
+		return fmt.Errorf("failed to refresh ACR credentials: %w", err)
+	}
+
+	entry.Username = creds.Username
+	entry.Password = creds.Password
+
+	if err := f.WriteFile(repoFile, 0644); err != nil {
+		return fmt.Errorf("failed to save updated credentials: %w", err)
+	}
+
+	return nil
+}
+
+// RefreshAllACRTokens refreshes credentials for all ACR repos that need it
+func (c *Client) RefreshAllACRTokens() error {
+	repoFile := c.settings.RepositoryConfig
+	f, err := repo.LoadFile(repoFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to load repository file: %w", err)
+	}
+
+	var errs []string
+	modified := false
+
+	for _, entry := range f.Repositories {
+		if !isACRURL(entry.URL) {
+			continue
+		}
+
+		// Check if using JWT token
+		isJWT := strings.Contains(entry.Password, ".") && len(strings.Split(entry.Password, ".")) == 3
+
+		// If using admin credentials (not JWT), skip refresh
+		if !isJWT && entry.Password != "" {
+			continue
+		}
+
+		// If JWT and not expired, skip
+		if isJWT && !isJWTExpired(entry.Password) {
+			continue
+		}
+
+		registryName := extractACRName(entry.URL)
+		if registryName == "" {
+			errs = append(errs, fmt.Sprintf("%s: could not extract registry name", entry.Name))
+			continue
+		}
+
+		creds, err := refreshACRCredentials(registryName)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s: %v", entry.Name, err))
+			continue
+		}
+
+		entry.Username = creds.Username
+		entry.Password = creds.Password
+		modified = true
+	}
+
+	if modified {
+		if err := f.WriteFile(repoFile, 0644); err != nil {
+			return fmt.Errorf("failed to save updated credentials: %w", err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to refresh some ACR credentials: %s", strings.Join(errs, "; "))
+	}
+
+	return nil
+}
 
 // Repository represents a Helm chart repository with priority
 type Repository struct {
@@ -227,6 +509,9 @@ func (c *Client) RemoveRepository(name string) error {
 
 // UpdateRepository updates the index for a repository
 func (c *Client) UpdateRepository(name string) error {
+	// Try to refresh ACR token if needed (ignore errors, will fail on actual update if token issue)
+	_ = c.RefreshACRTokenIfNeeded(name)
+
 	repoFile := c.settings.RepositoryConfig
 	f, err := repo.LoadFile(repoFile)
 	if err != nil {
@@ -260,6 +545,9 @@ func (c *Client) UpdateRepository(name string) error {
 
 // UpdateAllRepositories updates the index for all repositories
 func (c *Client) UpdateAllRepositories() error {
+	// First, try to refresh any expired ACR tokens
+	_ = c.RefreshAllACRTokens()
+
 	repoFile := c.settings.RepositoryConfig
 	f, err := repo.LoadFile(repoFile)
 	if err != nil {
@@ -271,6 +559,11 @@ func (c *Client) UpdateAllRepositories() error {
 
 	var errs []string
 	for _, r := range f.Repositories {
+		// For ACR repos, ensure credentials are passed
+		if isACRURL(r.URL) && !r.PassCredentialsAll {
+			r.PassCredentialsAll = true
+		}
+
 		chartRepo, err := repo.NewChartRepository(r, getter.All(c.settings))
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("%s: %v", r.Name, err))
