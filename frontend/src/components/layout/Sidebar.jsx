@@ -20,7 +20,8 @@ import {
     ArrowsRightLeftIcon,
     TagIcon,
     Cog6ToothIcon,
-    SignalIcon
+    SignalIcon,
+    WrenchScrewdriverIcon
 } from '@heroicons/react/24/outline';
 import { useConfig } from '../../context/ConfigContext';
 import SearchSelect from '../shared/SearchSelect';
@@ -173,6 +174,12 @@ export default function Sidebar({
                 { id: 'pvcs', label: 'PVCs', icon: CircleStackIcon },
                 { id: 'pvs', label: 'PVs', icon: ServerStackIcon },
                 { id: 'storageclasses', label: 'Storage Classes', icon: ServerIcon },
+            ]
+        },
+        {
+            title: 'Helm',
+            items: [
+                { id: 'helmreleases', label: 'Releases', icon: WrenchScrewdriverIcon },
             ]
         }
     ];

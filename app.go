@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"fmt"
+	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/terminal"
 	"net/url"
@@ -25,6 +26,7 @@ import (
 type App struct {
 	ctx                   context.Context
 	k8sClient             *k8s.Client
+	helmClient            *helm.Client
 	terminalService       *terminal.Service
 	watcherManager        *ResourceWatcherManager
 	portForwardManager    *PortForwardManager
@@ -237,6 +239,7 @@ func NewApp() *App {
 	}
 	return &App{
 		k8sClient:       client,
+		helmClient:      helm.NewClient(),
 		terminalService: terminal.NewService(),
 		logStreams:      make(map[string]context.CancelFunc),
 	}
@@ -1776,4 +1779,88 @@ func (a *App) GetServicePorts(namespace, serviceName string) ([]int32, error) {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.GetServicePorts(currentContext, namespace, serviceName)
+}
+
+// =============================================================================
+// Helm Release Management
+// =============================================================================
+
+// ListHelmReleases returns all Helm releases across the specified namespaces
+func (a *App) ListHelmReleases(namespaces []string) ([]helm.Release, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ListHelmReleases called: context=%s, namespaces=%v", currentContext, namespaces)
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.ListReleases(currentContext, namespaces)
+}
+
+// GetHelmRelease returns detailed information about a specific release
+func (a *App) GetHelmRelease(namespace, name string) (*helm.ReleaseDetail, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetHelmRelease called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.GetRelease(currentContext, namespace, name)
+}
+
+// GetHelmReleaseValues returns the user-supplied values for a release
+func (a *App) GetHelmReleaseValues(namespace, name string) (map[string]interface{}, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetHelmReleaseValues called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.GetReleaseValues(currentContext, namespace, name)
+}
+
+// GetHelmReleaseAllValues returns all computed values for a release
+func (a *App) GetHelmReleaseAllValues(namespace, name string) (map[string]interface{}, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetHelmReleaseAllValues called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.GetReleaseAllValues(currentContext, namespace, name)
+}
+
+// GetHelmReleaseHistory returns the revision history for a release
+func (a *App) GetHelmReleaseHistory(namespace, name string) ([]helm.ReleaseHistory, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetHelmReleaseHistory called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.GetReleaseHistory(currentContext, namespace, name)
+}
+
+// UninstallHelmRelease removes a Helm release
+func (a *App) UninstallHelmRelease(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("UninstallHelmRelease called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.Uninstall(currentContext, namespace, name)
+}
+
+// RollbackHelmRelease rolls back a release to a specific revision
+func (a *App) RollbackHelmRelease(namespace, name string, revision int) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("RollbackHelmRelease called: context=%s, ns=%s, name=%s, revision=%d", currentContext, namespace, name, revision)
+	if a.helmClient == nil {
+		return fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.Rollback(currentContext, namespace, name, revision)
+}
+
+// GetHelmReleaseResources returns the Kubernetes resources managed by a Helm release
+func (a *App) GetHelmReleaseResources(namespace, name string) ([]helm.ResourceReference, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetHelmReleaseResources called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.GetReleaseResources(currentContext, namespace, name)
 }

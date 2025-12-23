@@ -1,3 +1,167 @@
+export namespace helm {
+	
+	export class Release {
+	    name: string;
+	    namespace: string;
+	    revision: number;
+	    status: string;
+	    chart: string;
+	    chartVersion: string;
+	    appVersion: string;
+	    // Go type: time
+	    updated: any;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Release(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.namespace = source["namespace"];
+	        this.revision = source["revision"];
+	        this.status = source["status"];
+	        this.chart = source["chart"];
+	        this.chartVersion = source["chartVersion"];
+	        this.appVersion = source["appVersion"];
+	        this.updated = this.convertValues(source["updated"], null);
+	        this.description = source["description"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ReleaseDetail {
+	    name: string;
+	    namespace: string;
+	    revision: number;
+	    status: string;
+	    chart: string;
+	    chartVersion: string;
+	    appVersion: string;
+	    // Go type: time
+	    updated: any;
+	    description: string;
+	    values: Record<string, any>;
+	    computedValues: Record<string, any>;
+	    notes: string;
+	    manifest: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReleaseDetail(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.namespace = source["namespace"];
+	        this.revision = source["revision"];
+	        this.status = source["status"];
+	        this.chart = source["chart"];
+	        this.chartVersion = source["chartVersion"];
+	        this.appVersion = source["appVersion"];
+	        this.updated = this.convertValues(source["updated"], null);
+	        this.description = source["description"];
+	        this.values = source["values"];
+	        this.computedValues = source["computedValues"];
+	        this.notes = source["notes"];
+	        this.manifest = source["manifest"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ReleaseHistory {
+	    revision: number;
+	    status: string;
+	    chart: string;
+	    appVersion: string;
+	    // Go type: time
+	    updated: any;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReleaseHistory(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.revision = source["revision"];
+	        this.status = source["status"];
+	        this.chart = source["chart"];
+	        this.appVersion = source["appVersion"];
+	        this.updated = this.convertValues(source["updated"], null);
+	        this.description = source["description"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ResourceReference {
+	    kind: string;
+	    name: string;
+	    namespace: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResourceReference(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.name = source["name"];
+	        this.namespace = source["namespace"];
+	    }
+	}
+
+}
+
 export namespace intstr {
 	
 	export class IntOrString {

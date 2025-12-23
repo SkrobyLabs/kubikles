@@ -154,6 +154,26 @@ export function GetEventYAML(arg1, arg2) {
   return window['go']['main']['App']['GetEventYAML'](arg1, arg2);
 }
 
+export function GetHelmRelease(arg1, arg2) {
+  return window['go']['main']['App']['GetHelmRelease'](arg1, arg2);
+}
+
+export function GetHelmReleaseAllValues(arg1, arg2) {
+  return window['go']['main']['App']['GetHelmReleaseAllValues'](arg1, arg2);
+}
+
+export function GetHelmReleaseHistory(arg1, arg2) {
+  return window['go']['main']['App']['GetHelmReleaseHistory'](arg1, arg2);
+}
+
+export function GetHelmReleaseResources(arg1, arg2) {
+  return window['go']['main']['App']['GetHelmReleaseResources'](arg1, arg2);
+}
+
+export function GetHelmReleaseValues(arg1, arg2) {
+  return window['go']['main']['App']['GetHelmReleaseValues'](arg1, arg2);
+}
+
 export function GetIngressClassYaml(arg1) {
   return window['go']['main']['App']['GetIngressClassYaml'](arg1);
 }
@@ -298,6 +318,10 @@ export function ListEvents(arg1) {
   return window['go']['main']['App']['ListEvents'](arg1);
 }
 
+export function ListHelmReleases(arg1) {
+  return window['go']['main']['App']['ListHelmReleases'](arg1);
+}
+
 export function ListIngressClasses() {
   return window['go']['main']['App']['ListIngressClasses']();
 }
@@ -378,6 +402,10 @@ export function RestartStatefulSet(arg1, arg2, arg3) {
   return window['go']['main']['App']['RestartStatefulSet'](arg1, arg2, arg3);
 }
 
+export function RollbackHelmRelease(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RollbackHelmRelease'](arg1, arg2, arg3);
+}
+
 export function SaveLogFile(arg1) {
   return window['go']['main']['App']['SaveLogFile'](arg1);
 }
@@ -456,6 +484,10 @@ export function TestEmit() {
 
 export function TriggerCronJob(arg1, arg2) {
   return window['go']['main']['App']['TriggerCronJob'](arg1, arg2);
+}
+
+export function UninstallHelmRelease(arg1, arg2) {
+  return window['go']['main']['App']['UninstallHelmRelease'](arg1, arg2);
 }
 
 export function UnsubscribeWatcher(arg1) {
