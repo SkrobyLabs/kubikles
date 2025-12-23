@@ -1,7 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { LockClosedIcon, DocumentTextIcon, PencilSquareIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context/K8sContext';
 import { usePodActions } from '../../features/workloads/pods/usePodActions';
+import { ListPods } from '../../../wailsjs/go/main/App';
+import { getPodController } from '../../utils/k8s-helpers';
 import PodInfoTab from './PodInfoTab';
 import PodVolumesTab from './PodVolumesTab';
 import PodContainersTab from './PodContainersTab';
@@ -20,8 +22,55 @@ export default function PodDetails({ pod, tabContext = '' }) {
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
 
-    // Get containers for logs
-    const containers = pod.spec?.containers?.map(c => c.name) || [];
+    // Get containers for logs (including init containers)
+    const containers = [
+        ...(pod.spec?.initContainers || []).map(c => c.name),
+        ...(pod.spec?.containers || []).map(c => c.name)
+    ];
+
+    // Handle opening logs with sibling pod discovery
+    const handleOpenLogs = useCallback(async () => {
+        const namespace = pod.metadata?.namespace;
+        const controller = getPodController(pod);
+
+        let siblingPods = [pod.metadata?.name];
+        let podContainerMap = { [pod.metadata?.name]: containers };
+        let ownerName = '';
+
+        if (controller) {
+            try {
+                const allPods = await ListPods(namespace);
+                const siblings = allPods.filter(p => {
+                    const c = getPodController(p);
+                    return c && c.uid === controller.uid;
+                });
+
+                if (siblings.length > 0) {
+                    siblingPods = siblings.map(p => p.metadata.name);
+                    podContainerMap = {};
+                    for (const p of siblings) {
+                        podContainerMap[p.metadata.name] = [
+                            ...(p.spec?.initContainers || []).map(c => c.name),
+                            ...(p.spec?.containers || []).map(c => c.name)
+                        ];
+                    }
+                    ownerName = controller.name;
+                }
+            } catch (err) {
+                console.error('Failed to fetch sibling pods:', err);
+            }
+        }
+
+        openLogs(
+            namespace,
+            pod.metadata?.name,
+            containers,
+            siblingPods,
+            podContainerMap,
+            ownerName,
+            pod.metadata?.creationTimestamp
+        );
+    }, [pod, containers, openLogs]);
 
     const tabs = useMemo(() => [
         { id: TAB_BASIC, label: 'Basic' },
@@ -100,7 +149,7 @@ export default function PodDetails({ pod, tabContext = '' }) {
                     {/* Action Icons */}
                     <div className="flex items-center gap-1 ml-2">
                         <button
-                            onClick={() => openLogs(pod.metadata?.namespace, pod.metadata?.name, containers, [pod.metadata?.name], {}, '', pod.metadata?.creationTimestamp)}
+                            onClick={handleOpenLogs}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="View Logs"
                         >
