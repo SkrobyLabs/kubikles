@@ -22,7 +22,10 @@ import {
     Cog6ToothIcon,
     SignalIcon,
     WrenchScrewdriverIcon,
-    ArchiveBoxIcon
+    ArchiveBoxIcon,
+    UserIcon,
+    KeyIcon,
+    LinkIcon
 } from '@heroicons/react/24/outline';
 import { useConfig } from '../../context/ConfigContext';
 import SearchSelect from '../shared/SearchSelect';
@@ -182,6 +185,16 @@ export default function Sidebar({
             items: [
                 { id: 'helmreleases', label: 'Releases', icon: WrenchScrewdriverIcon },
                 { id: 'helmrepos', label: 'Chart Sources', icon: ArchiveBoxIcon },
+            ]
+        },
+        {
+            title: 'Access Control',
+            items: [
+                { id: 'serviceaccounts', label: 'Service Accounts', icon: UserIcon },
+                { id: 'roles', label: 'Roles', icon: KeyIcon },
+                { id: 'clusterroles', label: 'Cluster Roles', icon: KeyIcon },
+                { id: 'rolebindings', label: 'Role Bindings', icon: LinkIcon },
+                { id: 'clusterrolebindings', label: 'Cluster Role Bindings', icon: LinkIcon },
             ]
         }
     ];

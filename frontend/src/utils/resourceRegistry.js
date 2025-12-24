@@ -25,6 +25,11 @@ import {
     GetPVYaml, UpdatePVYaml, DeletePV,
     GetStorageClassYaml, UpdateStorageClassYaml, DeleteStorageClass,
     GetCRDYaml, UpdateCRDYaml, DeleteCRD,
+    GetServiceAccountYaml, UpdateServiceAccountYaml,
+    GetRoleYaml, UpdateRoleYaml,
+    GetClusterRoleYaml, UpdateClusterRoleYaml,
+    GetRoleBindingYaml, UpdateRoleBindingYaml,
+    GetClusterRoleBindingYaml, UpdateClusterRoleBindingYaml,
 } from '../../wailsjs/go/main/App';
 
 const registry = {
@@ -160,6 +165,41 @@ const registry = {
         namespaced: false,
         getYaml: (_, name) => GetCRDYaml(name),
         updateYaml: (_, name, content) => UpdateCRDYaml(name, content),
+    },
+    serviceaccount: {
+        kind: 'ServiceAccount',
+        plural: 'serviceaccounts',
+        namespaced: true,
+        getYaml: (namespace, name) => GetServiceAccountYaml(namespace, name),
+        updateYaml: (namespace, name, content) => UpdateServiceAccountYaml(namespace, name, content),
+    },
+    role: {
+        kind: 'Role',
+        plural: 'roles',
+        namespaced: true,
+        getYaml: (namespace, name) => GetRoleYaml(namespace, name),
+        updateYaml: (namespace, name, content) => UpdateRoleYaml(namespace, name, content),
+    },
+    clusterrole: {
+        kind: 'ClusterRole',
+        plural: 'clusterroles',
+        namespaced: false,
+        getYaml: (_, name) => GetClusterRoleYaml(name),
+        updateYaml: (_, name, content) => UpdateClusterRoleYaml(name, content),
+    },
+    rolebinding: {
+        kind: 'RoleBinding',
+        plural: 'rolebindings',
+        namespaced: true,
+        getYaml: (namespace, name) => GetRoleBindingYaml(namespace, name),
+        updateYaml: (namespace, name, content) => UpdateRoleBindingYaml(namespace, name, content),
+    },
+    clusterrolebinding: {
+        kind: 'ClusterRoleBinding',
+        plural: 'clusterrolebindings',
+        namespaced: false,
+        getYaml: (_, name) => GetClusterRoleBindingYaml(name),
+        updateYaml: (_, name, content) => UpdateClusterRoleBindingYaml(name, content),
     },
 };
 

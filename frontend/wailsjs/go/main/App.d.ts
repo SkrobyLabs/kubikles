@@ -15,6 +15,10 @@ export function CreateNodeDebugPod(arg1:string):Promise<main.NodeDebugPodResult>
 
 export function DeleteCRD(arg1:string):Promise<void>;
 
+export function DeleteClusterRole(arg1:string):Promise<void>;
+
+export function DeleteClusterRoleBinding(arg1:string):Promise<void>;
+
 export function DeleteConfigMap(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteCronJob(arg1:string,arg2:string):Promise<void>;
@@ -47,9 +51,15 @@ export function DeletePortForwardConfig(arg1:string):Promise<void>;
 
 export function DeleteReplicaSet(arg1:string,arg2:string):Promise<void>;
 
+export function DeleteRole(arg1:string,arg2:string):Promise<void>;
+
+export function DeleteRoleBinding(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteSecret(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteService(arg1:string,arg2:string):Promise<void>;
+
+export function DeleteServiceAccount(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteStatefulSet(arg1:string,arg2:string,arg3:string):Promise<void>;
 
@@ -70,6 +80,10 @@ export function GetAvailablePort(arg1:number):Promise<number>;
 export function GetCRDPrinterColumns(arg1:string):Promise<Array<k8s.PrinterColumn>>;
 
 export function GetCRDYaml(arg1:string):Promise<string>;
+
+export function GetClusterRoleBindingYaml(arg1:string):Promise<string>;
+
+export function GetClusterRoleYaml(arg1:string):Promise<string>;
 
 export function GetConfigMapYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -139,9 +153,15 @@ export function GetReplicaSetYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetResourceDependencies(arg1:string,arg2:string,arg3:string):Promise<k8s.DependencyGraph>;
 
+export function GetRoleBindingYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetRoleYaml(arg1:string,arg2:string):Promise<string>;
+
 export function GetSecretData(arg1:string,arg2:string):Promise<Record<string, string>>;
 
 export function GetSecretYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetServiceAccountYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetServicePorts(arg1:string,arg2:string):Promise<Array<number>>;
 
@@ -156,6 +176,10 @@ export function Greet(arg1:string):Promise<string>;
 export function ListCRDs():Promise<Array<v1.CustomResourceDefinition>>;
 
 export function ListChartSources():Promise<Array<helm.ChartSourceInfo>>;
+
+export function ListClusterRoleBindings():Promise<Array<v1.ClusterRoleBinding>>;
+
+export function ListClusterRoles():Promise<Array<v1.ClusterRole>>;
 
 export function ListConfigMaps(arg1:string):Promise<Array<v1.ConfigMap>>;
 
@@ -195,7 +219,13 @@ export function ListPods(arg1:string):Promise<Array<v1.Pod>>;
 
 export function ListReplicaSets(arg1:string):Promise<Array<v1.ReplicaSet>>;
 
+export function ListRoleBindings(arg1:string):Promise<Array<v1.RoleBinding>>;
+
+export function ListRoles(arg1:string):Promise<Array<v1.Role>>;
+
 export function ListSecrets(arg1:string):Promise<Array<v1.Secret>>;
+
+export function ListServiceAccounts(arg1:string):Promise<Array<v1.ServiceAccount>>;
 
 export function ListServices(arg1:string):Promise<Array<v1.Service>>;
 
@@ -285,6 +315,10 @@ export function UpdateAllHelmRepositories():Promise<void>;
 
 export function UpdateCRDYaml(arg1:string,arg2:string):Promise<void>;
 
+export function UpdateClusterRoleBindingYaml(arg1:string,arg2:string):Promise<void>;
+
+export function UpdateClusterRoleYaml(arg1:string,arg2:string):Promise<void>;
+
 export function UpdateConfigMapYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateCronJobYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -319,9 +353,15 @@ export function UpdatePortForwardConfig(arg1:main.PortForwardConfig):Promise<voi
 
 export function UpdateReplicaSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function UpdateRoleBindingYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateRoleYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function UpdateSecretData(arg1:string,arg2:string,arg3:Record<string, string>):Promise<void>;
 
 export function UpdateSecretYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateServiceAccountYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateServiceYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

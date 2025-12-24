@@ -22,6 +22,14 @@ export function DeleteCRD(arg1) {
   return window['go']['main']['App']['DeleteCRD'](arg1);
 }
 
+export function DeleteClusterRole(arg1) {
+  return window['go']['main']['App']['DeleteClusterRole'](arg1);
+}
+
+export function DeleteClusterRoleBinding(arg1) {
+  return window['go']['main']['App']['DeleteClusterRoleBinding'](arg1);
+}
+
 export function DeleteConfigMap(arg1, arg2) {
   return window['go']['main']['App']['DeleteConfigMap'](arg1, arg2);
 }
@@ -86,12 +94,24 @@ export function DeleteReplicaSet(arg1, arg2) {
   return window['go']['main']['App']['DeleteReplicaSet'](arg1, arg2);
 }
 
+export function DeleteRole(arg1, arg2) {
+  return window['go']['main']['App']['DeleteRole'](arg1, arg2);
+}
+
+export function DeleteRoleBinding(arg1, arg2) {
+  return window['go']['main']['App']['DeleteRoleBinding'](arg1, arg2);
+}
+
 export function DeleteSecret(arg1, arg2) {
   return window['go']['main']['App']['DeleteSecret'](arg1, arg2);
 }
 
 export function DeleteService(arg1, arg2) {
   return window['go']['main']['App']['DeleteService'](arg1, arg2);
+}
+
+export function DeleteServiceAccount(arg1, arg2) {
+  return window['go']['main']['App']['DeleteServiceAccount'](arg1, arg2);
 }
 
 export function DeleteStatefulSet(arg1, arg2, arg3) {
@@ -132,6 +152,14 @@ export function GetCRDPrinterColumns(arg1) {
 
 export function GetCRDYaml(arg1) {
   return window['go']['main']['App']['GetCRDYaml'](arg1);
+}
+
+export function GetClusterRoleBindingYaml(arg1) {
+  return window['go']['main']['App']['GetClusterRoleBindingYaml'](arg1);
+}
+
+export function GetClusterRoleYaml(arg1) {
+  return window['go']['main']['App']['GetClusterRoleYaml'](arg1);
 }
 
 export function GetConfigMapYaml(arg1, arg2) {
@@ -270,12 +298,24 @@ export function GetResourceDependencies(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetResourceDependencies'](arg1, arg2, arg3);
 }
 
+export function GetRoleBindingYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetRoleBindingYaml'](arg1, arg2);
+}
+
+export function GetRoleYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetRoleYaml'](arg1, arg2);
+}
+
 export function GetSecretData(arg1, arg2) {
   return window['go']['main']['App']['GetSecretData'](arg1, arg2);
 }
 
 export function GetSecretYaml(arg1, arg2) {
   return window['go']['main']['App']['GetSecretYaml'](arg1, arg2);
+}
+
+export function GetServiceAccountYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetServiceAccountYaml'](arg1, arg2);
 }
 
 export function GetServicePorts(arg1, arg2) {
@@ -304,6 +344,14 @@ export function ListCRDs() {
 
 export function ListChartSources() {
   return window['go']['main']['App']['ListChartSources']();
+}
+
+export function ListClusterRoleBindings() {
+  return window['go']['main']['App']['ListClusterRoleBindings']();
+}
+
+export function ListClusterRoles() {
+  return window['go']['main']['App']['ListClusterRoles']();
 }
 
 export function ListConfigMaps(arg1) {
@@ -382,8 +430,20 @@ export function ListReplicaSets(arg1) {
   return window['go']['main']['App']['ListReplicaSets'](arg1);
 }
 
+export function ListRoleBindings(arg1) {
+  return window['go']['main']['App']['ListRoleBindings'](arg1);
+}
+
+export function ListRoles(arg1) {
+  return window['go']['main']['App']['ListRoles'](arg1);
+}
+
 export function ListSecrets(arg1) {
   return window['go']['main']['App']['ListSecrets'](arg1);
+}
+
+export function ListServiceAccounts(arg1) {
+  return window['go']['main']['App']['ListServiceAccounts'](arg1);
 }
 
 export function ListServices(arg1) {
@@ -562,6 +622,14 @@ export function UpdateCRDYaml(arg1, arg2) {
   return window['go']['main']['App']['UpdateCRDYaml'](arg1, arg2);
 }
 
+export function UpdateClusterRoleBindingYaml(arg1, arg2) {
+  return window['go']['main']['App']['UpdateClusterRoleBindingYaml'](arg1, arg2);
+}
+
+export function UpdateClusterRoleYaml(arg1, arg2) {
+  return window['go']['main']['App']['UpdateClusterRoleYaml'](arg1, arg2);
+}
+
 export function UpdateConfigMapYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateConfigMapYaml'](arg1, arg2, arg3);
 }
@@ -630,12 +698,24 @@ export function UpdateReplicaSetYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateReplicaSetYaml'](arg1, arg2, arg3);
 }
 
+export function UpdateRoleBindingYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateRoleBindingYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateRoleYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateRoleYaml'](arg1, arg2, arg3);
+}
+
 export function UpdateSecretData(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateSecretData'](arg1, arg2, arg3);
 }
 
 export function UpdateSecretYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateSecretYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateServiceAccountYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateServiceAccountYaml'](arg1, arg2, arg3);
 }
 
 export function UpdateServiceYaml(arg1, arg2, arg3) {

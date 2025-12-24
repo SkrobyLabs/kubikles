@@ -18,7 +18,8 @@ describe('getFieldsForResource', () => {
         const resourceTypes = [
             'pods', 'deployments', 'statefulsets', 'daemonsets',
             'replicasets', 'jobs', 'cronjobs', 'nodes', 'services',
-            'secrets', 'configmaps', 'namespaces', 'events'
+            'secrets', 'configmaps', 'namespaces', 'events',
+            'serviceaccounts', 'roles', 'clusterroles', 'rolebindings', 'clusterrolebindings'
         ];
 
         for (const type of resourceTypes) {

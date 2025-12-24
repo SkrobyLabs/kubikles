@@ -1,0 +1,85 @@
+import React, { useMemo, useState, useCallback } from 'react';
+import ResourceList from '../../../components/shared/ResourceList';
+import { useClusterRoleBindings } from '../../../hooks/resources';
+import { useK8s } from '../../../context/K8sContext';
+import { useUI } from '../../../context/UIContext';
+import { formatAge } from '../../../utils/formatting';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import ClusterRoleBindingActionsMenu from './ClusterRoleBindingActionsMenu';
+import { useClusterRoleBindingActions } from './useClusterRoleBindingActions';
+
+export default function ClusterRoleBindingList({ isVisible }) {
+    const { currentContext } = useK8s();
+    const { activeMenuId, setActiveMenuId } = useUI();
+    const { clusterRoleBindings, loading } = useClusterRoleBindings(currentContext, isVisible);
+    const { handleEditYaml, handleDelete } = useClusterRoleBindingActions();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
+
+    const columns = useMemo(() => [
+        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
+        {
+            key: 'roleRef',
+            label: 'Role Ref',
+            render: (item) => {
+                const ref = item.roleRef || {};
+                return (
+                    <span>
+                        <span className="text-gray-400">{ref.kind}/</span>
+                        {ref.name}
+                    </span>
+                );
+            },
+            getValue: (item) => `${item.roleRef?.kind}/${item.roleRef?.name}`
+        },
+        {
+            key: 'subjects',
+            label: 'Subjects',
+            align: 'center',
+            render: (item) => (item.subjects || []).length,
+            getValue: (item) => (item.subjects || []).length
+        },
+        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        {
+            key: 'actions',
+            label: <EllipsisVerticalIcon className="h-5 w-5" />,
+            align: 'center',
+            render: (item) => (
+                <ClusterRoleBindingActionsMenu
+                    clusterRoleBinding={item}
+                    isOpen={activeMenuId === `clusterrolebinding-${item.metadata.uid}`}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `clusterrolebinding-${item.metadata.uid}`, buttonElement)}
+                    onEditYaml={handleEditYaml}
+                    onDelete={handleDelete}
+                />
+            ),
+            getValue: () => '',
+            isColumnSelector: true,
+            disableSort: true
+        }
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleDelete]);
+
+    return (
+        <ResourceList
+            title="Cluster Role Bindings"
+            columns={columns}
+            data={clusterRoleBindings}
+            isLoading={loading}
+            showNamespaceSelector={false}
+            initialSort={{ key: 'age', direction: 'desc' }}
+            resourceType="clusterrolebindings"
+            onRowClick={handleEditYaml}
+        />
+    );
+}

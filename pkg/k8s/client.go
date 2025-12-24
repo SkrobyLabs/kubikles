@@ -14,6 +14,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -2400,4 +2401,266 @@ func (c *Client) GetServicePorts(contextName, namespace, serviceName string) ([]
 	}
 
 	return ports, nil
+}
+
+// ==================== RBAC / Access Control ====================
+
+// ServiceAccount operations
+func (c *Client) ListServiceAccounts(namespace string) ([]v1.ServiceAccount, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.CoreV1().ServiceAccounts(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetServiceAccountYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	sa, err := cs.CoreV1().ServiceAccounts(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	sa.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(sa)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateServiceAccountYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var sa v1.ServiceAccount
+	if err := yaml.Unmarshal([]byte(yamlContent), &sa); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.CoreV1().ServiceAccounts(namespace).Update(context.TODO(), &sa, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteServiceAccount(contextName, namespace, name string) error {
+	fmt.Printf("Deleting service account: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.CoreV1().ServiceAccounts(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// Role operations (namespaced)
+func (c *Client) ListRoles(namespace string) ([]rbacv1.Role, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.RbacV1().Roles(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetRoleYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	role, err := cs.RbacV1().Roles(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	role.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(role)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateRoleYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var role rbacv1.Role
+	if err := yaml.Unmarshal([]byte(yamlContent), &role); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.RbacV1().Roles(namespace).Update(context.TODO(), &role, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteRole(contextName, namespace, name string) error {
+	fmt.Printf("Deleting role: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.RbacV1().Roles(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// ClusterRole operations (cluster-scoped)
+func (c *Client) ListClusterRoles() ([]rbacv1.ClusterRole, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.RbacV1().ClusterRoles().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetClusterRoleYaml(name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	role, err := cs.RbacV1().ClusterRoles().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	role.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(role)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateClusterRoleYaml(name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var role rbacv1.ClusterRole
+	if err := yaml.Unmarshal([]byte(yamlContent), &role); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.RbacV1().ClusterRoles().Update(context.TODO(), &role, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteClusterRole(contextName, name string) error {
+	fmt.Printf("Deleting cluster role: context=%s, name=%s\n", contextName, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.RbacV1().ClusterRoles().Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// RoleBinding operations (namespaced)
+func (c *Client) ListRoleBindings(namespace string) ([]rbacv1.RoleBinding, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.RbacV1().RoleBindings(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetRoleBindingYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	binding, err := cs.RbacV1().RoleBindings(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	binding.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(binding)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateRoleBindingYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var binding rbacv1.RoleBinding
+	if err := yaml.Unmarshal([]byte(yamlContent), &binding); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.RbacV1().RoleBindings(namespace).Update(context.TODO(), &binding, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteRoleBinding(contextName, namespace, name string) error {
+	fmt.Printf("Deleting role binding: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.RbacV1().RoleBindings(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// ClusterRoleBinding operations (cluster-scoped)
+func (c *Client) ListClusterRoleBindings() ([]rbacv1.ClusterRoleBinding, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.RbacV1().ClusterRoleBindings().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetClusterRoleBindingYaml(name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	binding, err := cs.RbacV1().ClusterRoleBindings().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	binding.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(binding)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateClusterRoleBindingYaml(name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var binding rbacv1.ClusterRoleBinding
+	if err := yaml.Unmarshal([]byte(yamlContent), &binding); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.RbacV1().ClusterRoleBindings().Update(context.TODO(), &binding, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteClusterRoleBinding(contextName, name string) error {
+	fmt.Printf("Deleting cluster role binding: context=%s, name=%s\n", contextName, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.RbacV1().ClusterRoleBindings().Delete(context.TODO(), name, metav1.DeleteOptions{})
 }

@@ -30,6 +30,11 @@ import CustomResourceList from './features/customresources/instances/CustomResou
 import PortForwardList from './features/portforwards/PortForwardList';
 import { HelmReleaseList } from './features/helm/releases';
 import { HelmRepoList } from './features/helm/repos';
+import ServiceAccountList from './features/access-control/serviceaccounts/ServiceAccountList';
+import RoleList from './features/access-control/roles/RoleList';
+import ClusterRoleList from './features/access-control/clusterroles/ClusterRoleList';
+import RoleBindingList from './features/access-control/rolebindings/RoleBindingList';
+import ClusterRoleBindingList from './features/access-control/clusterrolebindings/ClusterRoleBindingList';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
 import ConfirmModal from './components/shared/ConfirmModal';
@@ -163,6 +168,11 @@ function MainLayout() {
             case 'portforwards': return <PortForwardList isVisible={true} />;
             case 'helmreleases': return <HelmReleaseList isVisible={true} />;
             case 'helmrepos': return <HelmRepoList isVisible={true} />;
+            case 'serviceaccounts': return <ServiceAccountList isVisible={true} />;
+            case 'roles': return <RoleList isVisible={true} />;
+            case 'clusterroles': return <ClusterRoleList isVisible={true} />;
+            case 'rolebindings': return <RoleBindingList isVisible={true} />;
+            case 'clusterrolebindings': return <ClusterRoleBindingList isVisible={true} />;
             default: return <div className="p-4">Unknown View: {activeView}</div>;
         }
     };

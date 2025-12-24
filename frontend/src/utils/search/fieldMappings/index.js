@@ -18,6 +18,11 @@ import { secretFields } from './secrets';
 import { configMapFields } from './configmaps';
 import { namespaceFields } from './namespaces';
 import { eventFields } from './events';
+import { serviceAccountFields } from './serviceaccounts';
+import { roleFields } from './roles';
+import { clusterRoleFields } from './clusterroles';
+import { roleBindingFields } from './rolebindings';
+import { clusterRoleBindingFields } from './clusterrolebindings';
 import { commonFields } from './common';
 
 const registry = {
@@ -34,6 +39,11 @@ const registry = {
     configmaps: configMapFields,
     namespaces: namespaceFields,
     events: eventFields,
+    serviceaccounts: serviceAccountFields,
+    roles: roleFields,
+    clusterroles: clusterRoleFields,
+    rolebindings: roleBindingFields,
+    clusterrolebindings: clusterRoleBindingFields,
 };
 
 /**

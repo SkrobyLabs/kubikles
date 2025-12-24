@@ -36,6 +36,11 @@ import {
     ListEvents,
     ListIngressClasses,
     ListStorageClasses,
+    ListServiceAccounts,
+    ListRoles,
+    ListClusterRoles,
+    ListRoleBindings,
+    ListClusterRoleBindings,
 } from '../../../wailsjs/go/main/App';
 
 // =============================================================================
@@ -103,3 +108,22 @@ export const useIngressClasses = createClusterScopedResourceHook('ingressclasses
 
 /** Hook for Kubernetes StorageClasses */
 export const useStorageClasses = createClusterScopedResourceHook('storageclasses', ListStorageClasses, 'storageClasses');
+
+// =============================================================================
+// ACCESS CONTROL / RBAC RESOURCES
+// =============================================================================
+
+/** Hook for Kubernetes ServiceAccounts (namespaced) */
+export const useServiceAccounts = createNamespacedResourceHook('serviceaccounts', ListServiceAccounts, 'serviceAccounts');
+
+/** Hook for Kubernetes Roles (namespaced) */
+export const useRoles = createNamespacedResourceHook('roles', ListRoles, 'roles');
+
+/** Hook for Kubernetes RoleBindings (namespaced) */
+export const useRoleBindings = createNamespacedResourceHook('rolebindings', ListRoleBindings, 'roleBindings');
+
+/** Hook for Kubernetes ClusterRoles (cluster-scoped) */
+export const useClusterRoles = createClusterScopedResourceHook('clusterroles', ListClusterRoles, 'clusterRoles');
+
+/** Hook for Kubernetes ClusterRoleBindings (cluster-scoped) */
+export const useClusterRoleBindings = createClusterScopedResourceHook('clusterrolebindings', ListClusterRoleBindings, 'clusterRoleBindings');
