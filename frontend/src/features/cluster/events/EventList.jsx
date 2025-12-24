@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import EventActionsMenu from './EventActionsMenu';
-import { useEventsList } from '../../../hooks/useEventsList';
+import { useEventsList } from '../../../hooks/resources';
 import { useEventActions } from './useEventActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';

@@ -3,7 +3,7 @@ import { EllipsisVerticalIcon, CheckCircleIcon } from '@heroicons/react/24/outli
 import { CronExpressionParser } from 'cron-parser';
 import ResourceList from '../../../components/shared/ResourceList';
 import CronJobActionsMenu from './CronJobActionsMenu';
-import { useCronJobs } from '../../../hooks/useCronJobs';
+import { useCronJobs } from '../../../hooks/resources';
 import { useCronJobActions } from './useCronJobActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';

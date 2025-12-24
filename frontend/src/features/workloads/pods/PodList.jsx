@@ -3,7 +3,7 @@ import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import ResourceBar from '../../../components/shared/ResourceBar';
 import PodActionsMenu from './PodActionsMenu';
-import { usePods } from '../../../hooks/usePods';
+import { usePods } from '../../../hooks/resources';
 import { usePodMetrics } from '../../../hooks/usePodMetrics';
 import { usePodActions } from './usePodActions';
 import { useK8s } from '../../../context/K8sContext';

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
 import ResourceBar from '../../../components/shared/ResourceBar';
-import { useNodes } from '../../../hooks/useNodes';
+import { useNodes } from '../../../hooks/resources';
 import { useNodeMetrics } from '../../../hooks/useNodeMetrics';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';

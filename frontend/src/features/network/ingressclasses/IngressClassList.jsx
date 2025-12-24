@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import IngressClassActionsMenu from './IngressClassActionsMenu';
-import { useIngressClasses } from '../../../hooks/useIngressClasses';
+import { useIngressClasses } from '../../../hooks/resources';
 import { useIngressClassActions } from './useIngressClassActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';

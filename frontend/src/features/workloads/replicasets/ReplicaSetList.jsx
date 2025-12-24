@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import ReplicaSetActionsMenu from './ReplicaSetActionsMenu';
-import { useReplicaSets } from '../../../hooks/useReplicaSets';
+import { useReplicaSets } from '../../../hooks/resources';
 import { useReplicaSetActions } from './useReplicaSetActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';

@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
-import { useJobs } from '../../../hooks/useJobs';
+import { useJobs } from '../../../hooks/resources';
 import { useJobActions } from './useJobActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';

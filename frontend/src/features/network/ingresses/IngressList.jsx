@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { EllipsisVerticalIcon, PlayIcon, StopIcon, ArrowPathIcon, ExclamationTriangleIcon, CheckCircleIcon, SignalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import IngressActionsMenu from './IngressActionsMenu';
-import { useIngresses } from '../../../hooks/useIngresses';
+import { useIngresses } from '../../../hooks/resources';
 import { useIngressActions } from './useIngressActions';
 import { useIngressForward } from '../../../hooks/useIngressForward';
 import { useK8s } from '../../../context/K8sContext';

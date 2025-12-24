@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
-import { useStorageClasses } from '../../../hooks/useStorageClasses';
+import { useStorageClasses } from '../../../hooks/resources';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
 import { formatAge } from '../../../utils/formatting';
