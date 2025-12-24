@@ -4,7 +4,7 @@ import { useK8s } from '../../../context/K8sContext';
 import { DeleteReplicaSet, ListPods } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
-import LogViewer from '../../../components/shared/LogViewer';
+import LogViewer from '../../../components/shared/log-viewer';
 import Logger from '../../../utils/Logger';
 
 export const useReplicaSetActions = () => {

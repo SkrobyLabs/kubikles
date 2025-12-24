@@ -2,7 +2,7 @@ import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeletePod, ForceDeletePod, OpenTerminal } from '../../../../wailsjs/go/main/App';
-import LogViewer from '../../../components/shared/LogViewer';
+import LogViewer from '../../../components/shared/log-viewer';
 import Terminal from '../../../components/shared/Terminal';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
