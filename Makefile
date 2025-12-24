@@ -1,6 +1,6 @@
 # Makefile for Kubikles
 
-.PHONY: dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-all install-wails install-deps install-frontend clean
+.PHONY: dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-all install-wails install-deps install-frontend install-hooks clean test test-frontend test-watch
 
 # Ensure GOPATH/bin is in PATH
 GOPATH := $(shell go env GOPATH)
@@ -58,6 +58,8 @@ ifeq ($(UNAME_S),Darwin)
 	@go install github.com/wailsapp/wails/v2/cmd/wails@latest
 	@echo "Installing frontend dependencies..."
 	@cd frontend && npm install
+	@echo "Installing git hooks..."
+	@$(MAKE) install-hooks
 	@echo "Done! Run 'make dev' to start development server."
 else ifeq ($(OS),Windows_NT)
 	@echo "Installing dependencies for Windows..."
@@ -67,6 +69,8 @@ else ifeq ($(OS),Windows_NT)
 	@go install github.com/wailsapp/wails/v2/cmd/wails@latest
 	@echo "Installing frontend dependencies..."
 	@cd frontend && npm install
+	@echo "Installing git hooks..."
+	@$(MAKE) install-hooks
 	@echo "Done! Run 'make dev' to start development server."
 else
 	@echo "Installing dependencies for Linux..."
@@ -76,6 +80,8 @@ else
 	@go install github.com/wailsapp/wails/v2/cmd/wails@latest
 	@echo "Installing frontend dependencies..."
 	@cd frontend && npm install
+	@echo "Installing git hooks..."
+	@$(MAKE) install-hooks
 	@echo "Note: For cross-compiling to Windows, install mingw-w64"
 	@echo "Done! Run 'make dev' to start development server."
 endif
@@ -84,5 +90,23 @@ endif
 install-frontend:
 	cd frontend && npm install
 
+# Install git hooks from tracked .githooks directory
+install-hooks:
+	@echo "Installing git hooks..."
+	@cp .githooks/* .git/hooks/
+	@chmod +x .git/hooks/*
+	@echo "Git hooks installed successfully."
+
 clean:
 	rm -rf build/bin/*
+
+# Run all tests
+test: test-frontend
+
+# Run frontend tests
+test-frontend:
+	cd frontend && npm test
+
+# Run frontend tests in watch mode
+test-watch:
+	cd frontend && npm run test:watch

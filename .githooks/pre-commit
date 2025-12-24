@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# Pre-commit hook that runs frontend tests before allowing a commit.
+# To skip this hook, use: git commit --no-verify
+
+echo "Running frontend tests..."
+
+# Run tests from the project root
+cd "$(git rev-parse --show-toplevel)"
+
+# Run frontend tests
+cd frontend && npm test
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "Tests failed. Commit aborted."
+    echo "Fix the failing tests or use 'git commit --no-verify' to skip."
+    exit 1
+fi
+
+echo "Tests passed!"
+exit 0
