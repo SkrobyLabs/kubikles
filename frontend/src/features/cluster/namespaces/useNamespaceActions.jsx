@@ -1,52 +1,28 @@
-import React from 'react';
-import { useUI } from '../../../context/UIContext';
-import { useK8s } from '../../../context/K8sContext';
+import { useBaseResourceActions } from '../../../hooks/useBaseResourceActions';
 import { DeleteNamespace } from '../../../../wailsjs/go/main/App';
-import YamlEditor from '../../../components/shared/YamlEditor';
 import NamespaceDetails from '../../../components/shared/NamespaceDetails';
 import Logger from '../../../utils/Logger';
 
 export const useNamespaceActions = () => {
-    const { openTab, closeTab, openModal, closeModal } = useUI();
-    const { currentContext } = useK8s();
+    const {
+        handleShowDetails,
+        handleEditYaml,
+        openModal,
+        closeModal,
+    } = useBaseResourceActions({
+        resourceType: 'namespace',
+        resourceLabel: 'Namespace',
+        DetailsComponent: NamespaceDetails,
+        detailsPropName: 'namespace',
+        isNamespaced: false,
+        hasDependencies: false,
+    });
 
-    const handleShowDetails = (namespace) => {
-        Logger.info("Opening namespace details", { namespace: namespace.metadata.name });
-        const tabId = `details-namespace-${namespace.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `${namespace.metadata.name}`,
-            content: (
-                <NamespaceDetails
-                    namespace={namespace}
-                    tabContext={currentContext}
-                />
-            )
-        });
-    };
-
-    const handleEditYaml = (namespace) => {
-        Logger.info("Opening namespace YAML editor", { namespace: namespace.metadata.name });
-        const tabId = `yaml-namespace-${namespace.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `Edit: ${namespace.metadata.name}`,
-            content: (
-                <YamlEditor
-                    resourceType="namespace"
-                    resourceName={namespace.metadata.name}
-                    onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
-                />
-            )
-        });
-    };
-
+    // Custom delete handler for namespace-specific warning
     const handleDelete = (namespace) => {
         const name = namespace.metadata.name;
         Logger.info("Delete Namespace requested", { name });
 
-        // Warn about system namespaces
         const systemNamespaces = ['default', 'kube-system', 'kube-public', 'kube-node-lease'];
         const isSystemNamespace = systemNamespaces.includes(name);
 

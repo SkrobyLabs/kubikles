@@ -1,66 +1,24 @@
 import React from 'react';
-import { useUI } from '../../../context/UIContext';
-import { useK8s } from '../../../context/K8sContext';
+import { useBaseResourceActions } from '../../../hooks/useBaseResourceActions';
 import { DeleteDaemonSet, RestartDaemonSet, ListPods } from '../../../../wailsjs/go/main/App';
-import YamlEditor from '../../../components/shared/YamlEditor';
-import DependencyGraph from '../../../components/shared/DependencyGraph';
 import DaemonSetDetails from '../../../components/shared/DaemonSetDetails';
 import LogViewer from '../../../components/shared/log-viewer';
 import Logger from '../../../utils/Logger';
 
 export const useDaemonSetActions = () => {
-    const { openTab, closeTab, openModal, closeModal } = useUI();
-    const { currentContext } = useK8s();
-
-    const handleShowDetails = (daemonSet) => {
-        Logger.info("Opening DaemonSet details", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name });
-        const tabId = `details-daemonset-${daemonSet.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `${daemonSet.metadata.name}`,
-            content: (
-                <DaemonSetDetails
-                    daemonSet={daemonSet}
-                    tabContext={currentContext}
-                />
-            )
-        });
-    };
-
-    const handleEditYaml = (daemonSet) => {
-        Logger.info("Opening YAML editor for DaemonSet", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name });
-        const tabId = `edit-ds-${daemonSet.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `Edit: ${daemonSet.metadata.name}`,
-            content: (
-                <YamlEditor
-                    resourceType="daemonset"
-                    namespace={daemonSet.metadata.namespace}
-                    resourceName={daemonSet.metadata.name}
-                    onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
-                />
-            )
-        });
-    };
-
-    const handleShowDependencies = (daemonSet) => {
-        Logger.info("Opening dependency graph", { namespace: daemonSet.metadata.namespace, daemonSet: daemonSet.metadata.name });
-        const tabId = `deps-daemonset-${daemonSet.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `Deps: ${daemonSet.metadata.name}`,
-            content: (
-                <DependencyGraph
-                    resourceType="daemonset"
-                    namespace={daemonSet.metadata.namespace}
-                    resourceName={daemonSet.metadata.name}
-                    onClose={() => closeTab(tabId)}
-                />
-            )
-        });
-    };
+    const {
+        handleShowDetails,
+        handleEditYaml,
+        handleShowDependencies,
+        createDeleteHandler,
+        openTab,
+        currentContext,
+    } = useBaseResourceActions({
+        resourceType: 'daemonset',
+        resourceLabel: 'DaemonSet',
+        DetailsComponent: DaemonSetDetails,
+        detailsPropName: 'daemonSet',
+    });
 
     const handleRestart = async (daemonSet) => {
         Logger.info("Restart DaemonSet requested", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name });
@@ -73,27 +31,12 @@ export const useDaemonSetActions = () => {
         }
     };
 
-    const handleDelete = async (daemonSet) => {
-        Logger.info("Delete DaemonSet requested", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name });
-        const name = daemonSet.metadata.name;
-        const namespace = daemonSet.metadata.namespace;
-
-        openModal({
-            title: `Delete DaemonSet ${name}?`,
-            content: `Are you sure you want to delete daemonset "${name}"? This will also delete all associated pods.`,
-            onConfirm: async () => {
-                try {
-                    Logger.info("Deleting DaemonSet", { namespace, name });
-                    await DeleteDaemonSet(currentContext, namespace, name);
-                    Logger.info("DaemonSet deleted successfully", { namespace, name });
-                    closeModal();
-                } catch (err) {
-                    Logger.error("Failed to delete DaemonSet", err);
-                    alert(`Failed to delete daemonset: ${err.message || err}`);
-                }
-            }
-        });
-    };
+    const handleDelete = createDeleteHandler(
+        async (daemonSet) => {
+            await DeleteDaemonSet(currentContext, daemonSet.metadata.namespace, daemonSet.metadata.name);
+        },
+        { confirmMessage: 'Are you sure you want to delete this daemonset? This will also delete all associated pods.' }
+    );
 
     const handleViewLogs = async (daemonSet) => {
         Logger.info("View logs for DaemonSet", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name });
@@ -101,18 +44,14 @@ export const useDaemonSetActions = () => {
 
         try {
             const allPods = await ListPods(namespace);
-
-            // Filter pods that belong to this daemonset
             const daemonSetPods = allPods.filter(pod => {
                 const ownerRefs = pod.metadata?.ownerReferences || [];
                 return ownerRefs.some(ref =>
-                    ref.kind === 'DaemonSet' &&
-                    ref.name === daemonSet.metadata.name
+                    ref.kind === 'DaemonSet' && ref.name === daemonSet.metadata.name
                 );
             });
 
             if (daemonSetPods.length === 0) {
-                Logger.info("No pods found for DaemonSet", { namespace, name: daemonSet.metadata.name });
                 alert(`No pods found for daemonset "${daemonSet.metadata.name}".`);
                 return;
             }
@@ -123,7 +62,6 @@ export const useDaemonSetActions = () => {
                 ...(pod.spec?.containers || []).map(c => c.name)
             ];
 
-            // Build container map for all pods
             const podContainerMap = {};
             for (const p of daemonSetPods) {
                 podContainerMap[p.metadata.name] = [
@@ -132,16 +70,8 @@ export const useDaemonSetActions = () => {
                 ];
             }
 
-            Logger.info("Opening logs for DaemonSet pod", {
-                namespace,
-                daemonSet: daemonSet.metadata.name,
-                pod: pod.metadata.name,
-                totalPods: daemonSetPods.length
-            });
-
-            const tabId = `logs-daemonset-${daemonSet.metadata.name}`;
             openTab({
-                id: tabId,
+                id: `logs-daemonset-${daemonSet.metadata.name}`,
                 title: `Logs: ${daemonSet.metadata.name}`,
                 content: (
                     <LogViewer

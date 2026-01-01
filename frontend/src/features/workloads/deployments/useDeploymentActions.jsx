@@ -1,66 +1,24 @@
 import React from 'react';
-import { useUI } from '../../../context/UIContext';
-import { useK8s } from '../../../context/K8sContext';
+import { useBaseResourceActions } from '../../../hooks/useBaseResourceActions';
 import { DeleteDeployment, RestartDeployment, ListPods } from '../../../../wailsjs/go/main/App';
-import YamlEditor from '../../../components/shared/YamlEditor';
-import DependencyGraph from '../../../components/shared/DependencyGraph';
 import DeploymentDetails from '../../../components/shared/DeploymentDetails';
 import LogViewer from '../../../components/shared/log-viewer';
 import Logger from '../../../utils/Logger';
 
 export const useDeploymentActions = () => {
-    const { openTab, closeTab, openModal, closeModal } = useUI();
-    const { currentContext, currentNamespace } = useK8s();
-
-    const handleShowDetails = (deployment) => {
-        Logger.info("Opening deployment details", { namespace: deployment.metadata.namespace, deployment: deployment.metadata.name });
-        const tabId = `details-deploy-${deployment.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `${deployment.metadata.name}`,
-            content: (
-                <DeploymentDetails
-                    deployment={deployment}
-                    tabContext={currentContext}
-                />
-            )
-        });
-    };
-
-    const handleEditYaml = (deployment) => {
-        Logger.info("Opening YAML editor", { namespace: deployment.metadata.namespace, deployment: deployment.metadata.name });
-        const tabId = `yaml-deploy-${deployment.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `Edit: ${deployment.metadata.name}`,
-            content: (
-                <YamlEditor
-                    resourceType="deployment"
-                    namespace={deployment.metadata.namespace}
-                    resourceName={deployment.metadata.name}
-                    onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
-                />
-            )
-        });
-    };
-
-    const handleShowDependencies = (deployment) => {
-        Logger.info("Opening dependency graph", { namespace: deployment.metadata.namespace, deployment: deployment.metadata.name });
-        const tabId = `deps-deploy-${deployment.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `Deps: ${deployment.metadata.name}`,
-            content: (
-                <DependencyGraph
-                    resourceType="deployment"
-                    namespace={deployment.metadata.namespace}
-                    resourceName={deployment.metadata.name}
-                    onClose={() => closeTab(tabId)}
-                />
-            )
-        });
-    };
+    const {
+        handleShowDetails,
+        handleEditYaml,
+        handleShowDependencies,
+        createDeleteHandler,
+        openTab,
+        currentContext,
+    } = useBaseResourceActions({
+        resourceType: 'deployment',
+        resourceLabel: 'Deployment',
+        DetailsComponent: DeploymentDetails,
+        detailsPropName: 'deployment',
+    });
 
     const handleRestart = async (deployment) => {
         Logger.info("Restarting deployment", { namespace: deployment.metadata.namespace, name: deployment.metadata.name });
@@ -73,27 +31,12 @@ export const useDeploymentActions = () => {
         }
     };
 
-    const handleDelete = async (deployment) => {
-        Logger.info("Delete Deployment requested", { namespace: deployment.metadata.namespace, name: deployment.metadata.name });
-        const name = deployment.metadata.name;
-        const namespace = deployment.metadata.namespace;
-
-        openModal({
-            title: `Delete Deployment ${name}?`,
-            content: `Are you sure you want to delete deployment "${name}"? This will also delete all associated pods.`,
-            onConfirm: async () => {
-                try {
-                    Logger.info("Deleting Deployment", { namespace, name });
-                    await DeleteDeployment(currentContext, namespace, name);
-                    Logger.info("Deployment deleted successfully", { namespace, name });
-                    closeModal();
-                } catch (err) {
-                    Logger.error("Failed to delete Deployment", err);
-                    alert(`Failed to delete deployment: ${err.message || err}`);
-                }
-            }
-        });
-    };
+    const handleDelete = createDeleteHandler(
+        async (deployment) => {
+            await DeleteDeployment(currentContext, deployment.metadata.namespace, deployment.metadata.name);
+        },
+        { confirmMessage: 'Are you sure you want to delete this deployment? This will also delete all associated pods.' }
+    );
 
     const handleViewLogs = async (deployment) => {
         Logger.info("View logs for Deployment", { namespace: deployment.metadata.namespace, name: deployment.metadata.name });
@@ -101,8 +44,6 @@ export const useDeploymentActions = () => {
 
         try {
             const allPods = await ListPods(namespace);
-
-            // Filter pods that belong to this deployment
             const deploymentPods = allPods.filter(pod => {
                 const ownerRefs = pod.metadata?.ownerReferences || [];
                 return ownerRefs.some(ref =>
@@ -112,7 +53,6 @@ export const useDeploymentActions = () => {
             });
 
             if (deploymentPods.length === 0) {
-                Logger.info("No pods found for Deployment", { namespace, name: deployment.metadata.name });
                 alert(`No pods found for deployment "${deployment.metadata.name}".`);
                 return;
             }
@@ -123,7 +63,6 @@ export const useDeploymentActions = () => {
                 ...(pod.spec?.containers || []).map(c => c.name)
             ];
 
-            // Build container map for all pods
             const podContainerMap = {};
             for (const p of deploymentPods) {
                 podContainerMap[p.metadata.name] = [
@@ -132,16 +71,8 @@ export const useDeploymentActions = () => {
                 ];
             }
 
-            Logger.info("Opening logs for Deployment pod", {
-                namespace,
-                deployment: deployment.metadata.name,
-                pod: pod.metadata.name,
-                totalPods: deploymentPods.length
-            });
-
-            const tabId = `logs-deploy-${deployment.metadata.name}`;
             openTab({
-                id: tabId,
+                id: `logs-deploy-${deployment.metadata.name}`,
                 title: `Logs: ${deployment.metadata.name}`,
                 content: (
                     <LogViewer

@@ -1,31 +1,27 @@
 import React from 'react';
-import { useUI } from '../../../context/UIContext';
+import { useBaseResourceActions } from '../../../hooks/useBaseResourceActions';
+import { DeleteCronJob, TriggerCronJob, SuspendCronJob, ListJobs, ListPods } from '../../../../wailsjs/go/main/App';
 import { useK8s } from '../../../context/K8sContext';
-import { DeleteCronJob, TriggerCronJob, SuspendCronJob, ListJobs } from '../../../../wailsjs/go/main/App';
-import YamlEditor from '../../../components/shared/YamlEditor';
-import DependencyGraph from '../../../components/shared/DependencyGraph';
 import CronJobDetails from '../../../components/shared/CronJobDetails';
 import LogViewer from '../../../components/shared/log-viewer';
 import Logger from '../../../utils/Logger';
 
 export const useCronJobActions = () => {
-    const { openTab, closeTab, openModal, closeModal } = useUI();
-    const { currentContext, currentNamespace, triggerRefresh } = useK8s();
-
-    const handleShowDetails = (cronJob) => {
-        Logger.info("Opening CronJob details", { namespace: cronJob.metadata.namespace, name: cronJob.metadata.name });
-        const tabId = `details-cronjob-${cronJob.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `${cronJob.metadata.name}`,
-            content: (
-                <CronJobDetails
-                    cronJob={cronJob}
-                    tabContext={currentContext}
-                />
-            )
-        });
-    };
+    const { triggerRefresh } = useK8s();
+    const {
+        handleShowDetails,
+        handleEditYaml,
+        handleShowDependencies,
+        openTab,
+        openModal,
+        closeModal,
+        currentContext,
+    } = useBaseResourceActions({
+        resourceType: 'cronjob',
+        resourceLabel: 'CronJob',
+        DetailsComponent: CronJobDetails,
+        detailsPropName: 'cronJob',
+    });
 
     const handleViewLogs = async (cronJob) => {
         Logger.info("View logs for CronJob", { namespace: cronJob.metadata.namespace, name: cronJob.metadata.name });
@@ -33,38 +29,29 @@ export const useCronJobActions = () => {
 
         try {
             const allJobs = await ListJobs(namespace);
-
-            // Filter jobs that belong to this cronjob
             const cronJobJobs = allJobs.filter(job => {
                 const ownerRefs = job.metadata?.ownerReferences || [];
                 return ownerRefs.some(ref =>
-                    ref.kind === 'CronJob' &&
-                    ref.name === cronJob.metadata.name
+                    ref.kind === 'CronJob' && ref.name === cronJob.metadata.name
                 );
             });
 
             if (cronJobJobs.length === 0) {
-                Logger.info("No jobs found for CronJob", { namespace, name: cronJob.metadata.name });
                 alert(`No jobs found for cronjob "${cronJob.metadata.name}". The cronjob may not have run yet.`);
                 return;
             }
 
-            // Sort by creation time and get most recent job
             cronJobJobs.sort((a, b) =>
                 new Date(b.metadata.creationTimestamp) - new Date(a.metadata.creationTimestamp)
             );
             const mostRecentJob = cronJobJobs[0];
 
-            // Get pods for the most recent job
-            const { ListPods } = await import('../../../../wailsjs/go/main/App');
             const allPods = await ListPods(namespace);
-
             const jobPods = allPods.filter(pod =>
                 pod.metadata?.labels?.['job-name'] === mostRecentJob.metadata.name
             );
 
             if (jobPods.length === 0) {
-                Logger.info("No pods found for Job", { namespace, job: mostRecentJob.metadata.name });
                 alert(`No pods found for job "${mostRecentJob.metadata.name}".`);
                 return;
             }
@@ -75,7 +62,6 @@ export const useCronJobActions = () => {
                 ...(pod.spec?.containers || []).map(c => c.name)
             ];
 
-            // Build container map for all pods
             const podContainerMap = {};
             for (const p of jobPods) {
                 podContainerMap[p.metadata.name] = [
@@ -84,17 +70,8 @@ export const useCronJobActions = () => {
                 ];
             }
 
-            Logger.info("Opening logs for CronJob pod", {
-                namespace,
-                cronJob: cronJob.metadata.name,
-                job: mostRecentJob.metadata.name,
-                pod: pod.metadata.name,
-                totalJobs: cronJobJobs.length
-            });
-
-            const tabId = `logs-cronjob-${cronJob.metadata.name}`;
             openTab({
-                id: tabId,
+                id: `logs-cronjob-${cronJob.metadata.name}`,
                 title: `Logs: ${cronJob.metadata.name}`,
                 content: (
                     <LogViewer
@@ -114,55 +91,16 @@ export const useCronJobActions = () => {
         }
     };
 
-    const handleEditYaml = (cronJob) => {
-        Logger.info("Opening YAML editor for CronJob", { namespace: cronJob.metadata.namespace, name: cronJob.metadata.name });
-        const tabId = `yaml-cronjob-${cronJob.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `Edit: ${cronJob.metadata.name}`,
-            content: (
-                <YamlEditor
-                    resourceType="cronjob"
-                    namespace={cronJob.metadata.namespace}
-                    resourceName={cronJob.metadata.name}
-                    onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
-                />
-            )
-        });
-    };
-
-    const handleShowDependencies = (cronJob) => {
-        Logger.info("Opening dependency graph", { namespace: cronJob.metadata.namespace, cronJob: cronJob.metadata.name });
-        const tabId = `deps-cronjob-${cronJob.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `Deps: ${cronJob.metadata.name}`,
-            content: (
-                <DependencyGraph
-                    resourceType="cronjob"
-                    namespace={cronJob.metadata.namespace}
-                    resourceName={cronJob.metadata.name}
-                    onClose={() => closeTab(tabId)}
-                />
-            )
-        });
-    };
-
     const handleRunNow = async (cronJob) => {
         try {
             const name = cronJob.metadata.name;
             const namespace = cronJob.metadata.namespace;
-
             Logger.info("Run now requested for CronJob", { namespace, name });
-            Logger.info("About to call TriggerCronJob function");
-
             await TriggerCronJob(namespace, name);
-
             Logger.info("TriggerCronJob returned successfully", { namespace, name });
             triggerRefresh();
         } catch (err) {
-            Logger.error("Failed to trigger CronJob", { error: err, message: err?.message, stack: err?.stack });
+            Logger.error("Failed to trigger CronJob", err);
             alert(`Failed to trigger cronjob: ${err.message || err}`);
         }
     };
@@ -173,19 +111,14 @@ export const useCronJobActions = () => {
             const action = isSuspended ? "Resume" : "Suspend";
             const name = cronJob.metadata.name;
             const namespace = cronJob.metadata.namespace;
-            const newSuspendValue = !isSuspended;
 
-            Logger.info(`${action} requested for CronJob`, { namespace, name, currentSuspend: isSuspended, newSuspend: newSuspendValue });
-            Logger.info(`About to call SuspendCronJob function`);
-
-            const result = await SuspendCronJob(namespace, name, newSuspendValue);
-
-            Logger.info(`SuspendCronJob returned`, { result });
+            Logger.info(`${action} requested for CronJob`, { namespace, name });
+            await SuspendCronJob(namespace, name, !isSuspended);
             Logger.info(`CronJob ${action.toLowerCase()}d successfully`, { namespace, name });
             triggerRefresh();
         } catch (err) {
             const action = cronJob.spec?.suspend ? "resume" : "suspend";
-            Logger.error(`Failed to ${action} CronJob`, { error: err, message: err?.message, stack: err?.stack });
+            Logger.error(`Failed to ${action} CronJob`, err);
             alert(`Failed to ${action} cronjob: ${err.message || err}`);
         }
     };
@@ -207,7 +140,7 @@ export const useCronJobActions = () => {
                     closeModal();
                     triggerRefresh();
                 } catch (err) {
-                    Logger.error("Failed to delete CronJob", { error: err, message: err?.message, stack: err?.stack });
+                    Logger.error("Failed to delete CronJob", err);
                     alert(`Failed to delete cronjob: ${err.message || err}`);
                 }
             }
