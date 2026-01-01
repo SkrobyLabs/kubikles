@@ -24,9 +24,15 @@ export const createResourceEventHandler = (setState) => (event) => {
                 }
                 return [...prev, resource];
 
-            case 'MODIFIED':
-                // Replace the existing resource with the updated one
-                return prev.map(r => r.metadata?.uid === uid ? resource : r);
+            case 'MODIFIED': {
+                // Replace the existing resource, or add if not found (handles race condition)
+                const exists = prev.some(r => r.metadata?.uid === uid);
+                if (exists) {
+                    return prev.map(r => r.metadata?.uid === uid ? resource : r);
+                }
+                // MODIFIED arrived before ADDED - treat as add
+                return [...prev, resource];
+            }
 
             case 'DELETED':
                 // Remove the resource from the list
@@ -73,8 +79,15 @@ export const createNamespacedResourceEventHandler = (setState, selectedNamespace
                 }
                 return [...prev, resource];
 
-            case 'MODIFIED':
-                return prev.map(r => r.metadata?.uid === uid ? resource : r);
+            case 'MODIFIED': {
+                // Replace the existing resource, or add if not found (handles race condition)
+                const exists = prev.some(r => r.metadata?.uid === uid);
+                if (exists) {
+                    return prev.map(r => r.metadata?.uid === uid ? resource : r);
+                }
+                // MODIFIED arrived before ADDED - treat as add
+                return [...prev, resource];
+            }
 
             case 'DELETED':
                 return prev.filter(r => r.metadata?.uid !== uid);

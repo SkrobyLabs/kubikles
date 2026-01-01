@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ListContexts, GetCurrentContext, SwitchContext, ListNamespaces, StartPortForwardsWithMode } from '../../wailsjs/go/main/App';
 import Logger from '../utils/Logger';
 
@@ -33,6 +33,7 @@ export const K8sProvider = ({ children }) => {
     const [selectedNamespaces, setSelectedNamespaces] = useState(['default']);
     const [lastRefresh, setLastRefresh] = useState(Date.now());
     const [isLoadingNamespaces, setIsLoadingNamespaces] = useState(false);
+    const [watcherStatus, setWatcherStatus] = useState({}); // { resourceType: { status, error } }
 
     // Backward compatibility: expose currentNamespace for components not yet updated
     const currentNamespace = selectedNamespaces.length === 1 ? selectedNamespaces[0] : '';
@@ -214,6 +215,42 @@ export const K8sProvider = ({ children }) => {
         }
     }, [currentContext, selectedNamespaces, isLoadingNamespaces]);
 
+    // Listen for watcher error and status events
+    useEffect(() => {
+        if (!window.runtime) return;
+
+        const handleWatcherError = (event) => {
+            const { resourceType, namespace, error, recoverable } = event;
+            Logger.warn("Watcher error received", { resourceType, namespace, error, recoverable });
+            setWatcherStatus(prev => ({
+                ...prev,
+                [resourceType]: { status: 'error', error, namespace, recoverable }
+            }));
+        };
+
+        const handleWatcherStatus = (event) => {
+            const { resourceType, namespace, status } = event;
+            Logger.debug("Watcher status changed", { resourceType, namespace, status });
+            setWatcherStatus(prev => ({
+                ...prev,
+                [resourceType]: { status, namespace, error: null }
+            }));
+        };
+
+        window.runtime.EventsOn("watcher-error", handleWatcherError);
+        window.runtime.EventsOn("watcher-status", handleWatcherStatus);
+
+        return () => {
+            window.runtime.EventsOff("watcher-error", handleWatcherError);
+            window.runtime.EventsOff("watcher-status", handleWatcherStatus);
+        };
+    }, []);
+
+    // Clear watcher status on context switch
+    useEffect(() => {
+        setWatcherStatus({});
+    }, [currentContext]);
+
     const triggerRefresh = () => {
         setLastRefresh(Date.now());
         Logger.debug("Triggered resource refresh");
@@ -231,7 +268,8 @@ export const K8sProvider = ({ children }) => {
         refreshContexts: fetchContexts,
         refreshNamespaces: fetchNamespaces,
         lastRefresh,
-        triggerRefresh
+        triggerRefresh,
+        watcherStatus
     };
 
     return (

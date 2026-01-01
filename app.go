@@ -48,6 +48,21 @@ type ResourceEvent struct {
 	Resource     map[string]interface{} `json:"resource"`     // Unstructured resource data
 }
 
+// WatcherErrorEvent is emitted when a watcher encounters an error
+type WatcherErrorEvent struct {
+	ResourceType string `json:"resourceType"` // Resource type that failed
+	Namespace    string `json:"namespace"`    // Namespace being watched
+	Error        string `json:"error"`        // Error message
+	Recoverable  bool   `json:"recoverable"`  // Whether the watcher will retry
+}
+
+// WatcherStatusEvent is emitted when watcher status changes
+type WatcherStatusEvent struct {
+	ResourceType string `json:"resourceType"` // Resource type
+	Namespace    string `json:"namespace"`    // Namespace being watched
+	Status       string `json:"status"`       // "connected", "reconnecting", "stopped"
+}
+
 // ResourceWatcher tracks a single watcher instance with reference counting
 type ResourceWatcher struct {
 	Key          string             // "resourceType:namespace" or "crd:group/version/resource:namespace"
@@ -310,6 +325,14 @@ func (a *App) SwitchContext(name string) error {
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
+
+	// Stop all existing watchers before switching context
+	// This prevents stale events from the old context being processed
+	if a.watcherManager != nil {
+		a.LogDebug("SwitchContext: Stopping all watchers before context switch")
+		a.watcherManager.StopAll()
+	}
+
 	return a.k8sClient.SwitchContext(name)
 }
 
@@ -897,9 +920,15 @@ func (a *App) StopAllWatchers() {
 }
 
 // watchResourceLoop is the generic watch loop for standard Kubernetes resources
+// It includes reconnection logic with exponential backoff
 func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace string) {
 	defer func() {
 		a.LogDebug("Resource watcher stopped: type=%s, namespace=%s", resourceType, namespace)
+		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
+			ResourceType: resourceType,
+			Namespace:    namespace,
+			Status:       "stopped",
+		})
 	}()
 
 	if a.k8sClient == nil {
@@ -907,55 +936,120 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 		return
 	}
 
-	watcher, err := a.k8sClient.WatchResource(ctx, resourceType, namespace)
-	if err != nil {
-		a.LogDebug("Failed to start resource watcher: type=%s, err=%v", resourceType, err)
-		return
-	}
-	defer watcher.Stop()
+	// Reconnection parameters
+	maxRetries := 5
+	baseDelay := 1 * time.Second
+	maxDelay := 30 * time.Second
 
-	for {
+	for retryCount := 0; ; retryCount++ {
+		// Check if context is cancelled before starting/reconnecting
 		select {
 		case <-ctx.Done():
 			return
-		case event, ok := <-watcher.ResultChan():
-			if !ok {
-				a.LogDebug("Resource watcher channel closed: type=%s", resourceType)
+		default:
+		}
+
+		watcher, err := a.k8sClient.WatchResource(ctx, resourceType, namespace)
+		if err != nil {
+			a.LogDebug("Failed to start resource watcher: type=%s, err=%v, retry=%d", resourceType, err, retryCount)
+
+			// Emit error event
+			runtime.EventsEmit(a.ctx, "watcher-error", WatcherErrorEvent{
+				ResourceType: resourceType,
+				Namespace:    namespace,
+				Error:        err.Error(),
+				Recoverable:  retryCount < maxRetries,
+			})
+
+			if retryCount >= maxRetries {
+				a.LogDebug("Resource watcher max retries exceeded: type=%s", resourceType)
 				return
 			}
 
-			// Only emit ADDED, MODIFIED, DELETED events
-			if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
-				// Convert to unstructured map
-				resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
-				if err != nil {
-					a.LogDebug("Failed to convert resource to map: %v", err)
-					continue
+			// Exponential backoff
+			delay := baseDelay * time.Duration(1<<uint(retryCount))
+			if delay > maxDelay {
+				delay = maxDelay
+			}
+
+			runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
+				ResourceType: resourceType,
+				Namespace:    namespace,
+				Status:       "reconnecting",
+			})
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(delay):
+				continue
+			}
+		}
+
+		// Successfully connected
+		retryCount = 0 // Reset retry count on successful connection
+		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
+			ResourceType: resourceType,
+			Namespace:    namespace,
+			Status:       "connected",
+		})
+
+		// Process events from this watcher
+		watcherDone := false
+		for !watcherDone {
+			select {
+			case <-ctx.Done():
+				watcher.Stop()
+				return
+			case event, ok := <-watcher.ResultChan():
+				if !ok {
+					a.LogDebug("Resource watcher channel closed: type=%s, will reconnect", resourceType)
+					watcher.Stop()
+					watcherDone = true
+					break
 				}
 
-				// Extract namespace from resource metadata
-				resourceNs := ""
-				if metadata, ok := resourceMap["metadata"].(map[string]interface{}); ok {
-					if ns, ok := metadata["namespace"].(string); ok {
-						resourceNs = ns
+				// Only emit ADDED, MODIFIED, DELETED events
+				if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
+					// Convert to unstructured map
+					resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
+					if err != nil {
+						a.LogDebug("Failed to convert resource to map: %v", err)
+						continue
 					}
-				}
 
-				runtime.EventsEmit(a.ctx, "resource-event", ResourceEvent{
-					Type:         string(event.Type),
-					ResourceType: resourceType,
-					Namespace:    resourceNs,
-					Resource:     resourceMap,
-				})
+					// Extract namespace from resource metadata
+					resourceNs := ""
+					if metadata, ok := resourceMap["metadata"].(map[string]interface{}); ok {
+						if ns, ok := metadata["namespace"].(string); ok {
+							resourceNs = ns
+						}
+					}
+
+					runtime.EventsEmit(a.ctx, "resource-event", ResourceEvent{
+						Type:         string(event.Type),
+						ResourceType: resourceType,
+						Namespace:    resourceNs,
+						Resource:     resourceMap,
+					})
+				}
 			}
 		}
 	}
 }
 
 // watchCRDLoop is the watch loop for Custom Resource Definitions using dynamic client
+// It includes reconnection logic with exponential backoff
 func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namespace string) {
+	crdResourceType := fmt.Sprintf("crd:%s/%s/%s", group, version, resource)
+
 	defer func() {
 		a.LogDebug("CRD watcher stopped: gvr=%s/%s/%s, namespace=%s", group, version, resource, namespace)
+		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
+			ResourceType: crdResourceType,
+			Namespace:    namespace,
+			Status:       "stopped",
+		})
 	}()
 
 	if a.k8sClient == nil {
@@ -963,47 +1057,103 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 		return
 	}
 
-	watcher, err := a.k8sClient.WatchCRD(ctx, group, version, resource, namespace)
-	if err != nil {
-		a.LogDebug("Failed to start CRD watcher: gvr=%s/%s/%s, err=%v", group, version, resource, err)
-		return
-	}
-	defer watcher.Stop()
+	// Reconnection parameters
+	maxRetries := 5
+	baseDelay := 1 * time.Second
+	maxDelay := 30 * time.Second
 
-	for {
+	for retryCount := 0; ; retryCount++ {
+		// Check if context is cancelled before starting/reconnecting
 		select {
 		case <-ctx.Done():
 			return
-		case event, ok := <-watcher.ResultChan():
-			if !ok {
-				a.LogDebug("CRD watcher channel closed: gvr=%s/%s/%s", group, version, resource)
+		default:
+		}
+
+		watcher, err := a.k8sClient.WatchCRD(ctx, group, version, resource, namespace)
+		if err != nil {
+			a.LogDebug("Failed to start CRD watcher: gvr=%s/%s/%s, err=%v, retry=%d", group, version, resource, err, retryCount)
+
+			// Emit error event
+			runtime.EventsEmit(a.ctx, "watcher-error", WatcherErrorEvent{
+				ResourceType: crdResourceType,
+				Namespace:    namespace,
+				Error:        err.Error(),
+				Recoverable:  retryCount < maxRetries,
+			})
+
+			if retryCount >= maxRetries {
+				a.LogDebug("CRD watcher max retries exceeded: gvr=%s/%s/%s", group, version, resource)
 				return
 			}
 
-			// Only emit ADDED, MODIFIED, DELETED events
-			if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
-				// Convert to unstructured map
-				resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
-				if err != nil {
-					a.LogDebug("Failed to convert CRD to map: %v", err)
-					continue
+			// Exponential backoff
+			delay := baseDelay * time.Duration(1<<uint(retryCount))
+			if delay > maxDelay {
+				delay = maxDelay
+			}
+
+			runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
+				ResourceType: crdResourceType,
+				Namespace:    namespace,
+				Status:       "reconnecting",
+			})
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(delay):
+				continue
+			}
+		}
+
+		// Successfully connected
+		retryCount = 0 // Reset retry count on successful connection
+		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
+			ResourceType: crdResourceType,
+			Namespace:    namespace,
+			Status:       "connected",
+		})
+
+		// Process events from this watcher
+		watcherDone := false
+		for !watcherDone {
+			select {
+			case <-ctx.Done():
+				watcher.Stop()
+				return
+			case event, ok := <-watcher.ResultChan():
+				if !ok {
+					a.LogDebug("CRD watcher channel closed: gvr=%s/%s/%s, will reconnect", group, version, resource)
+					watcher.Stop()
+					watcherDone = true
+					break
 				}
 
-				// Extract namespace from resource metadata
-				resourceNs := ""
-				if metadata, ok := resourceMap["metadata"].(map[string]interface{}); ok {
-					if ns, ok := metadata["namespace"].(string); ok {
-						resourceNs = ns
+				// Only emit ADDED, MODIFIED, DELETED events
+				if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
+					// Convert to unstructured map
+					resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
+					if err != nil {
+						a.LogDebug("Failed to convert CRD to map: %v", err)
+						continue
 					}
-				}
 
-				// Use the resource plural name as resourceType for CRDs
-				runtime.EventsEmit(a.ctx, "resource-event", ResourceEvent{
-					Type:         string(event.Type),
-					ResourceType: fmt.Sprintf("crd:%s/%s/%s", group, version, resource),
-					Namespace:    resourceNs,
-					Resource:     resourceMap,
-				})
+					// Extract namespace from resource metadata
+					resourceNs := ""
+					if metadata, ok := resourceMap["metadata"].(map[string]interface{}); ok {
+						if ns, ok := metadata["namespace"].(string); ok {
+							resourceNs = ns
+						}
+					}
+
+					runtime.EventsEmit(a.ctx, "resource-event", ResourceEvent{
+						Type:         string(event.Type),
+						ResourceType: crdResourceType,
+						Namespace:    resourceNs,
+						Resource:     resourceMap,
+					})
+				}
 			}
 		}
 	}

@@ -1,5 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { SubscribeResourceWatcher, SubscribeCRDWatcher, UnsubscribeWatcher } from '../../wailsjs/go/main/App';
+
+/**
+ * Creates a stable key from namespaces array that doesn't change on array reordering.
+ * @param {string|string[]} namespaces
+ * @returns {string}
+ */
+export const createNamespaceKey = (namespaces) => {
+    if (!namespaces) return '';
+    const arr = Array.isArray(namespaces) ? namespaces : [namespaces];
+    return arr.slice().sort().join(',');
+};
 
 /**
  * Generic hook for subscribing to resource watch events with reference counting.
@@ -13,6 +24,9 @@ import { SubscribeResourceWatcher, SubscribeCRDWatcher, UnsubscribeWatcher } fro
  */
 export const useResourceWatcher = (resourceType, namespaces, onEvent, enabled = true) => {
     const onEventRef = useRef(onEvent);
+
+    // Create stable namespace key to avoid unnecessary effect re-runs on array reorder
+    const namespaceKey = useMemo(() => createNamespaceKey(namespaces), [namespaces]);
 
     // Keep callback ref updated without causing effect reruns
     useEffect(() => {
@@ -69,7 +83,7 @@ export const useResourceWatcher = (resourceType, namespaces, onEvent, enabled = 
                 });
             });
         };
-    }, [resourceType, JSON.stringify(namespaces), enabled]);
+    }, [resourceType, namespaceKey, enabled]);
 };
 
 /**
@@ -84,6 +98,9 @@ export const useResourceWatcher = (resourceType, namespaces, onEvent, enabled = 
  */
 export const useCRDWatcher = (group, version, resource, namespaces, onEvent, enabled = true) => {
     const onEventRef = useRef(onEvent);
+
+    // Create stable namespace key to avoid unnecessary effect re-runs on array reorder
+    const namespaceKey = useMemo(() => createNamespaceKey(namespaces), [namespaces]);
 
     // Keep callback ref updated
     useEffect(() => {
@@ -141,5 +158,5 @@ export const useCRDWatcher = (group, version, resource, namespaces, onEvent, ena
                 });
             });
         };
-    }, [group, version, resource, crdResourceType, JSON.stringify(namespaces), enabled]);
+    }, [group, version, resource, crdResourceType, namespaceKey, enabled]);
 };

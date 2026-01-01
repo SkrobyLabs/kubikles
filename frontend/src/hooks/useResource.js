@@ -28,9 +28,12 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
             return optimized;
         }, [selectedNamespaces, allNamespaces]);
 
-        // Fetch initial list
+        // Fetch initial list with cancellation support
         useEffect(() => {
             if (!currentContext || selectedNamespaces === null || selectedNamespaces === undefined || !isVisible) return;
+
+            // Track if this effect instance is still current
+            let isCancelled = false;
 
             const fetchData = async () => {
                 setLoading(true);
@@ -38,10 +41,10 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
                     const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
 
                     if (optimized === null) {
-                        setData([]);
+                        if (!isCancelled) setData([]);
                     } else if (optimized === '') {
                         const list = await listFn('');
-                        setData(list || []);
+                        if (!isCancelled) setData(list || []);
                     } else {
                         const allResults = await Promise.all(
                             optimized.map(ns => listFn(ns).catch(err => {
@@ -49,22 +52,32 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
                                 return [];
                             }))
                         );
+                        // Check cancellation after all async operations complete
+                        if (isCancelled) return;
+
                         const merged = allResults.flat();
                         const unique = merged.filter((item, index, self) =>
                             index === self.findIndex(i => i.metadata.uid === item.metadata.uid)
                         );
                         setData(unique);
                     }
-                    setError(null);
+                    if (!isCancelled) setError(null);
                 } catch (err) {
-                    console.error(`Failed to fetch ${resourceType}`, err);
-                    setError(err);
+                    if (!isCancelled) {
+                        console.error(`Failed to fetch ${resourceType}`, err);
+                        setError(err);
+                    }
                 } finally {
-                    setLoading(false);
+                    if (!isCancelled) setLoading(false);
                 }
             };
 
             fetchData();
+
+            // Cleanup: mark as cancelled to prevent stale state updates
+            return () => {
+                isCancelled = true;
+            };
         }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh]);
 
         // Create selected namespaces array for event filtering
