@@ -11,9 +11,11 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -187,8 +189,8 @@ func (c *Client) WatchPods(ctx context.Context, namespace string) (watch.Interfa
 
 // WatchResource creates a watch for the specified resource type
 // Supported resource types: pods, namespaces, nodes, events, deployments, statefulsets,
-// daemonsets, replicasets, services, ingresses, ingressclasses, configmaps, secrets,
-// jobs, cronjobs, persistentvolumes, persistentvolumeclaims, storageclasses
+// daemonsets, replicasets, services, ingresses, ingressclasses, networkpolicies, configmaps, secrets,
+// jobs, cronjobs, persistentvolumes, persistentvolumeclaims, storageclasses, hpas, pdbs, resourcequotas, limitranges
 func (c *Client) WatchResource(ctx context.Context, resourceType, namespace string) (watch.Interface, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -239,10 +241,26 @@ func (c *Client) WatchResource(ctx context.Context, resourceType, namespace stri
 		return cs.NetworkingV1().Ingresses(namespace).Watch(ctx, opts)
 	case "ingressclasses":
 		return cs.NetworkingV1().IngressClasses().Watch(ctx, opts)
+	case "networkpolicies":
+		return cs.NetworkingV1().NetworkPolicies(namespace).Watch(ctx, opts)
 
 	// Storage API (v1)
 	case "storageclasses":
 		return cs.StorageV1().StorageClasses().Watch(ctx, opts)
+
+	// Autoscaling API (v2)
+	case "hpas":
+		return cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).Watch(ctx, opts)
+
+	// Policy API (v1)
+	case "pdbs":
+		return cs.PolicyV1().PodDisruptionBudgets(namespace).Watch(ctx, opts)
+
+	// Core API (v1) - additional resources
+	case "resourcequotas":
+		return cs.CoreV1().ResourceQuotas(namespace).Watch(ctx, opts)
+	case "limitranges":
+		return cs.CoreV1().LimitRanges(namespace).Watch(ctx, opts)
 
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
@@ -2923,4 +2941,264 @@ func (c *Client) DeleteClusterRoleBinding(contextName, name string) error {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	return cs.RbacV1().ClusterRoleBindings().Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// NetworkPolicy operations (namespaced)
+func (c *Client) ListNetworkPolicies(namespace string) ([]networkingv1.NetworkPolicy, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.NetworkingV1().NetworkPolicies(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetNetworkPolicyYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	policy, err := cs.NetworkingV1().NetworkPolicies(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	policy.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(policy)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateNetworkPolicyYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var policy networkingv1.NetworkPolicy
+	if err := yaml.Unmarshal([]byte(yamlContent), &policy); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.NetworkingV1().NetworkPolicies(namespace).Update(context.TODO(), &policy, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteNetworkPolicy(contextName, namespace, name string) error {
+	fmt.Printf("Deleting network policy: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.NetworkingV1().NetworkPolicies(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// HorizontalPodAutoscaler operations (namespaced)
+func (c *Client) ListHPAs(namespace string) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetHPAYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	hpa, err := cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	hpa.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(hpa)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateHPAYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var hpa autoscalingv2.HorizontalPodAutoscaler
+	if err := yaml.Unmarshal([]byte(yamlContent), &hpa); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).Update(context.TODO(), &hpa, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteHPA(contextName, namespace, name string) error {
+	fmt.Printf("Deleting HPA: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// PodDisruptionBudget operations (namespaced)
+func (c *Client) ListPDBs(namespace string) ([]policyv1.PodDisruptionBudget, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.PolicyV1().PodDisruptionBudgets(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetPDBYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	pdb, err := cs.PolicyV1().PodDisruptionBudgets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	pdb.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(pdb)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdatePDBYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var pdb policyv1.PodDisruptionBudget
+	if err := yaml.Unmarshal([]byte(yamlContent), &pdb); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.PolicyV1().PodDisruptionBudgets(namespace).Update(context.TODO(), &pdb, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeletePDB(contextName, namespace, name string) error {
+	fmt.Printf("Deleting PDB: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.PolicyV1().PodDisruptionBudgets(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// ResourceQuota operations (namespaced)
+func (c *Client) ListResourceQuotas(namespace string) ([]v1.ResourceQuota, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.CoreV1().ResourceQuotas(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetResourceQuotaYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	quota, err := cs.CoreV1().ResourceQuotas(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	quota.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(quota)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateResourceQuotaYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var quota v1.ResourceQuota
+	if err := yaml.Unmarshal([]byte(yamlContent), &quota); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.CoreV1().ResourceQuotas(namespace).Update(context.TODO(), &quota, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteResourceQuota(contextName, namespace, name string) error {
+	fmt.Printf("Deleting resource quota: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.CoreV1().ResourceQuotas(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// LimitRange operations (namespaced)
+func (c *Client) ListLimitRanges(namespace string) ([]v1.LimitRange, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.CoreV1().LimitRanges(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetLimitRangeYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	lr, err := cs.CoreV1().LimitRanges(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	lr.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(lr)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateLimitRangeYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var lr v1.LimitRange
+	if err := yaml.Unmarshal([]byte(yamlContent), &lr); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.CoreV1().LimitRanges(namespace).Update(context.TODO(), &lr, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteLimitRange(contextName, namespace, name string) error {
+	fmt.Printf("Deleting limit range: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.CoreV1().LimitRanges(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }

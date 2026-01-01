@@ -30,6 +30,11 @@ import {
     GetClusterRoleYaml, UpdateClusterRoleYaml,
     GetRoleBindingYaml, UpdateRoleBindingYaml,
     GetClusterRoleBindingYaml, UpdateClusterRoleBindingYaml,
+    GetNetworkPolicyYaml, UpdateNetworkPolicyYaml,
+    GetHPAYaml, UpdateHPAYaml,
+    GetPDBYaml, UpdatePDBYaml,
+    GetResourceQuotaYaml, UpdateResourceQuotaYaml,
+    GetLimitRangeYaml, UpdateLimitRangeYaml,
 } from '../../wailsjs/go/main/App';
 
 const registry = {
@@ -200,6 +205,41 @@ const registry = {
         namespaced: false,
         getYaml: (_, name) => GetClusterRoleBindingYaml(name),
         updateYaml: (_, name, content) => UpdateClusterRoleBindingYaml(name, content),
+    },
+    networkpolicy: {
+        kind: 'NetworkPolicy',
+        plural: 'networkpolicies',
+        namespaced: true,
+        getYaml: (namespace, name) => GetNetworkPolicyYaml(namespace, name),
+        updateYaml: (namespace, name, content) => UpdateNetworkPolicyYaml(namespace, name, content),
+    },
+    hpa: {
+        kind: 'HorizontalPodAutoscaler',
+        plural: 'horizontalpodautoscalers',
+        namespaced: true,
+        getYaml: (namespace, name) => GetHPAYaml(namespace, name),
+        updateYaml: (namespace, name, content) => UpdateHPAYaml(namespace, name, content),
+    },
+    pdb: {
+        kind: 'PodDisruptionBudget',
+        plural: 'poddisruptionbudgets',
+        namespaced: true,
+        getYaml: (namespace, name) => GetPDBYaml(namespace, name),
+        updateYaml: (namespace, name, content) => UpdatePDBYaml(namespace, name, content),
+    },
+    resourcequota: {
+        kind: 'ResourceQuota',
+        plural: 'resourcequotas',
+        namespaced: true,
+        getYaml: (namespace, name) => GetResourceQuotaYaml(namespace, name),
+        updateYaml: (namespace, name, content) => UpdateResourceQuotaYaml(namespace, name, content),
+    },
+    limitrange: {
+        kind: 'LimitRange',
+        plural: 'limitranges',
+        namespaced: true,
+        getYaml: (namespace, name) => GetLimitRangeYaml(namespace, name),
+        updateYaml: (namespace, name, content) => UpdateLimitRangeYaml(namespace, name, content),
     },
 };
 

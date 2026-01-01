@@ -54,6 +54,10 @@ export function DeleteEvent(arg1, arg2) {
   return window['go']['main']['App']['DeleteEvent'](arg1, arg2);
 }
 
+export function DeleteHPA(arg1, arg2) {
+  return window['go']['main']['App']['DeleteHPA'](arg1, arg2);
+}
+
 export function DeleteIngress(arg1, arg2) {
   return window['go']['main']['App']['DeleteIngress'](arg1, arg2);
 }
@@ -66,12 +70,24 @@ export function DeleteJob(arg1, arg2) {
   return window['go']['main']['App']['DeleteJob'](arg1, arg2);
 }
 
+export function DeleteLimitRange(arg1, arg2) {
+  return window['go']['main']['App']['DeleteLimitRange'](arg1, arg2);
+}
+
 export function DeleteNamespace(arg1) {
   return window['go']['main']['App']['DeleteNamespace'](arg1);
 }
 
+export function DeleteNetworkPolicy(arg1, arg2) {
+  return window['go']['main']['App']['DeleteNetworkPolicy'](arg1, arg2);
+}
+
 export function DeleteNode(arg1) {
   return window['go']['main']['App']['DeleteNode'](arg1);
+}
+
+export function DeletePDB(arg1, arg2) {
+  return window['go']['main']['App']['DeletePDB'](arg1, arg2);
 }
 
 export function DeletePV(arg1) {
@@ -92,6 +108,10 @@ export function DeletePortForwardConfig(arg1) {
 
 export function DeleteReplicaSet(arg1, arg2) {
   return window['go']['main']['App']['DeleteReplicaSet'](arg1, arg2);
+}
+
+export function DeleteResourceQuota(arg1, arg2) {
+  return window['go']['main']['App']['DeleteResourceQuota'](arg1, arg2);
 }
 
 export function DeleteRole(arg1, arg2) {
@@ -190,6 +210,10 @@ export function GetEventYAML(arg1, arg2) {
   return window['go']['main']['App']['GetEventYAML'](arg1, arg2);
 }
 
+export function GetHPAYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetHPAYaml'](arg1, arg2);
+}
+
 export function GetHelmChartVersions(arg1, arg2) {
   return window['go']['main']['App']['GetHelmChartVersions'](arg1, arg2);
 }
@@ -230,6 +254,10 @@ export function GetJobYaml(arg1, arg2) {
   return window['go']['main']['App']['GetJobYaml'](arg1, arg2);
 }
 
+export function GetLimitRangeYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetLimitRangeYaml'](arg1, arg2);
+}
+
 export function GetManagedHosts() {
   return window['go']['main']['App']['GetManagedHosts']();
 }
@@ -242,12 +270,20 @@ export function GetNamespaceYAML(arg1) {
   return window['go']['main']['App']['GetNamespaceYAML'](arg1);
 }
 
+export function GetNetworkPolicyYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetNetworkPolicyYaml'](arg1, arg2);
+}
+
 export function GetNodeMetrics() {
   return window['go']['main']['App']['GetNodeMetrics']();
 }
 
 export function GetNodeYaml(arg1) {
   return window['go']['main']['App']['GetNodeYaml'](arg1);
+}
+
+export function GetPDBYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetPDBYaml'](arg1, arg2);
 }
 
 export function GetPVCYaml(arg1, arg2) {
@@ -300,6 +336,10 @@ export function GetReplicaSetYaml(arg1, arg2) {
 
 export function GetResourceDependencies(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetResourceDependencies'](arg1, arg2, arg3);
+}
+
+export function GetResourceQuotaYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetResourceQuotaYaml'](arg1, arg2);
 }
 
 export function GetRoleBindingYaml(arg1, arg2) {
@@ -390,6 +430,10 @@ export function ListEvents(arg1) {
   return window['go']['main']['App']['ListEvents'](arg1);
 }
 
+export function ListHPAs(arg1) {
+  return window['go']['main']['App']['ListHPAs'](arg1);
+}
+
 export function ListHelmReleases(arg1) {
   return window['go']['main']['App']['ListHelmReleases'](arg1);
 }
@@ -410,8 +454,16 @@ export function ListJobs(arg1) {
   return window['go']['main']['App']['ListJobs'](arg1);
 }
 
+export function ListLimitRanges(arg1) {
+  return window['go']['main']['App']['ListLimitRanges'](arg1);
+}
+
 export function ListNamespaces() {
   return window['go']['main']['App']['ListNamespaces']();
+}
+
+export function ListNetworkPolicies(arg1) {
+  return window['go']['main']['App']['ListNetworkPolicies'](arg1);
 }
 
 export function ListNodes() {
@@ -420,6 +472,10 @@ export function ListNodes() {
 
 export function ListOCIRegistries() {
   return window['go']['main']['App']['ListOCIRegistries']();
+}
+
+export function ListPDBs(arg1) {
+  return window['go']['main']['App']['ListPDBs'](arg1);
 }
 
 export function ListPVCs(arg1) {
@@ -436,6 +492,10 @@ export function ListPods(arg1) {
 
 export function ListReplicaSets(arg1) {
   return window['go']['main']['App']['ListReplicaSets'](arg1);
+}
+
+export function ListResourceQuotas(arg1) {
+  return window['go']['main']['App']['ListResourceQuotas'](arg1);
 }
 
 export function ListRoleBindings(arg1) {
@@ -666,6 +726,10 @@ export function UpdateEventYAML(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateEventYAML'](arg1, arg2, arg3);
 }
 
+export function UpdateHPAYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateHPAYaml'](arg1, arg2, arg3);
+}
+
 export function UpdateHelmRepository(arg1) {
   return window['go']['main']['App']['UpdateHelmRepository'](arg1);
 }
@@ -682,12 +746,24 @@ export function UpdateJobYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateJobYaml'](arg1, arg2, arg3);
 }
 
+export function UpdateLimitRangeYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateLimitRangeYaml'](arg1, arg2, arg3);
+}
+
 export function UpdateNamespaceYAML(arg1, arg2) {
   return window['go']['main']['App']['UpdateNamespaceYAML'](arg1, arg2);
 }
 
+export function UpdateNetworkPolicyYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateNetworkPolicyYaml'](arg1, arg2, arg3);
+}
+
 export function UpdateNodeYaml(arg1, arg2) {
   return window['go']['main']['App']['UpdateNodeYaml'](arg1, arg2);
+}
+
+export function UpdatePDBYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdatePDBYaml'](arg1, arg2, arg3);
 }
 
 export function UpdatePVCYaml(arg1, arg2, arg3) {
@@ -708,6 +784,10 @@ export function UpdatePortForwardConfig(arg1) {
 
 export function UpdateReplicaSetYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateReplicaSetYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateResourceQuotaYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateResourceQuotaYaml'](arg1, arg2, arg3);
 }
 
 export function UpdateRoleBindingYaml(arg1, arg2, arg3) {

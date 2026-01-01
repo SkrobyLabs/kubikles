@@ -41,6 +41,11 @@ import {
     ListClusterRoles,
     ListRoleBindings,
     ListClusterRoleBindings,
+    ListNetworkPolicies,
+    ListHPAs,
+    ListPDBs,
+    ListResourceQuotas,
+    ListLimitRanges,
 } from '../../../wailsjs/go/main/App';
 
 // =============================================================================
@@ -127,3 +132,26 @@ export const useClusterRoles = createClusterScopedResourceHook('clusterroles', L
 
 /** Hook for Kubernetes ClusterRoleBindings (cluster-scoped) */
 export const useClusterRoleBindings = createClusterScopedResourceHook('clusterrolebindings', ListClusterRoleBindings, 'clusterRoleBindings');
+
+// =============================================================================
+// NETWORK RESOURCES
+// =============================================================================
+
+/** Hook for Kubernetes NetworkPolicies (namespaced) */
+export const useNetworkPolicies = createNamespacedResourceHook('networkpolicies', ListNetworkPolicies, 'networkPolicies');
+
+// =============================================================================
+// CONFIG & POLICY RESOURCES
+// =============================================================================
+
+/** Hook for Kubernetes HorizontalPodAutoscalers (namespaced) */
+export const useHPAs = createNamespacedResourceHook('hpas', ListHPAs, 'hpas');
+
+/** Hook for Kubernetes PodDisruptionBudgets (namespaced) */
+export const usePDBs = createNamespacedResourceHook('pdbs', ListPDBs, 'pdbs');
+
+/** Hook for Kubernetes ResourceQuotas (namespaced) */
+export const useResourceQuotas = createNamespacedResourceHook('resourcequotas', ListResourceQuotas, 'resourceQuotas');
+
+/** Hook for Kubernetes LimitRanges (namespaced) */
+export const useLimitRanges = createNamespacedResourceHook('limitranges', ListLimitRanges, 'limitRanges');

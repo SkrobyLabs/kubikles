@@ -6624,6 +6624,20 @@ export namespace v1 {
 	        this.ip = source["ip"];
 	    }
 	}
+	export class IPBlock {
+	    cidr: string;
+	    except?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new IPBlock(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cidr = source["cidr"];
+	        this.except = source["except"];
+	    }
+	}
 	export class IngressPortStatus {
 	    port: number;
 	    protocol: string;
@@ -7335,6 +7349,142 @@ export namespace v1 {
 	
 	
 	
+	export class LimitRangeItem {
+	    type: string;
+	    max?: Record<string, resource.Quantity>;
+	    min?: Record<string, resource.Quantity>;
+	    default?: Record<string, resource.Quantity>;
+	    defaultRequest?: Record<string, resource.Quantity>;
+	    maxLimitRequestRatio?: Record<string, resource.Quantity>;
+	
+	    static createFrom(source: any = {}) {
+	        return new LimitRangeItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.max = this.convertValues(source["max"], resource.Quantity, true);
+	        this.min = this.convertValues(source["min"], resource.Quantity, true);
+	        this.default = this.convertValues(source["default"], resource.Quantity, true);
+	        this.defaultRequest = this.convertValues(source["defaultRequest"], resource.Quantity, true);
+	        this.maxLimitRequestRatio = this.convertValues(source["maxLimitRequestRatio"], resource.Quantity, true);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class LimitRangeSpec {
+	    limits: LimitRangeItem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new LimitRangeSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.limits = this.convertValues(source["limits"], LimitRangeItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class LimitRange {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: LimitRangeSpec;
+	
+	    static createFrom(source: any = {}) {
+	        return new LimitRange(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], LimitRangeSpec);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
 	
 	export class PortStatus {
 	    port: number;
@@ -7582,6 +7732,243 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	
+	
+	
+	export class NetworkPolicyEgressRule {
+	    ports?: NetworkPolicyPort[];
+	    to?: NetworkPolicyPeer[];
+	
+	    static createFrom(source: any = {}) {
+	        return new NetworkPolicyEgressRule(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ports = this.convertValues(source["ports"], NetworkPolicyPort);
+	        this.to = this.convertValues(source["to"], NetworkPolicyPeer);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NetworkPolicyPeer {
+	    podSelector?: LabelSelector;
+	    namespaceSelector?: LabelSelector;
+	    ipBlock?: IPBlock;
+	
+	    static createFrom(source: any = {}) {
+	        return new NetworkPolicyPeer(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.podSelector = this.convertValues(source["podSelector"], LabelSelector);
+	        this.namespaceSelector = this.convertValues(source["namespaceSelector"], LabelSelector);
+	        this.ipBlock = this.convertValues(source["ipBlock"], IPBlock);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NetworkPolicyPort {
+	    protocol?: string;
+	    port?: intstr.IntOrString;
+	    endPort?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NetworkPolicyPort(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.protocol = source["protocol"];
+	        this.port = this.convertValues(source["port"], intstr.IntOrString);
+	        this.endPort = source["endPort"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NetworkPolicyIngressRule {
+	    ports?: NetworkPolicyPort[];
+	    from?: NetworkPolicyPeer[];
+	
+	    static createFrom(source: any = {}) {
+	        return new NetworkPolicyIngressRule(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ports = this.convertValues(source["ports"], NetworkPolicyPort);
+	        this.from = this.convertValues(source["from"], NetworkPolicyPeer);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NetworkPolicySpec {
+	    podSelector: LabelSelector;
+	    ingress?: NetworkPolicyIngressRule[];
+	    egress?: NetworkPolicyEgressRule[];
+	    policyTypes?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new NetworkPolicySpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.podSelector = this.convertValues(source["podSelector"], LabelSelector);
+	        this.ingress = this.convertValues(source["ingress"], NetworkPolicyIngressRule);
+	        this.egress = this.convertValues(source["egress"], NetworkPolicyEgressRule);
+	        this.policyTypes = source["policyTypes"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NetworkPolicy {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: NetworkPolicySpec;
+	
+	    static createFrom(source: any = {}) {
+	        return new NetworkPolicy(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], NetworkPolicySpec);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
 	
 	
 	
@@ -9123,6 +9510,152 @@ export namespace v1 {
 	
 	
 	
+	export class PodDisruptionBudgetStatus {
+	    observedGeneration?: number;
+	    disruptedPods?: Record<string, Time>;
+	    disruptionsAllowed: number;
+	    currentHealthy: number;
+	    desiredHealthy: number;
+	    expectedPods: number;
+	    conditions?: Condition[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PodDisruptionBudgetStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.observedGeneration = source["observedGeneration"];
+	        this.disruptedPods = this.convertValues(source["disruptedPods"], Time, true);
+	        this.disruptionsAllowed = source["disruptionsAllowed"];
+	        this.currentHealthy = source["currentHealthy"];
+	        this.desiredHealthy = source["desiredHealthy"];
+	        this.expectedPods = source["expectedPods"];
+	        this.conditions = this.convertValues(source["conditions"], Condition);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PodDisruptionBudgetSpec {
+	    minAvailable?: intstr.IntOrString;
+	    selector?: LabelSelector;
+	    maxUnavailable?: intstr.IntOrString;
+	    unhealthyPodEvictionPolicy?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PodDisruptionBudgetSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.minAvailable = this.convertValues(source["minAvailable"], intstr.IntOrString);
+	        this.selector = this.convertValues(source["selector"], LabelSelector);
+	        this.maxUnavailable = this.convertValues(source["maxUnavailable"], intstr.IntOrString);
+	        this.unhealthyPodEvictionPolicy = source["unhealthyPodEvictionPolicy"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PodDisruptionBudget {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: PodDisruptionBudgetSpec;
+	    status?: PodDisruptionBudgetStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new PodDisruptionBudget(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], PodDisruptionBudgetSpec);
+	        this.status = this.convertValues(source["status"], PodDisruptionBudgetStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
 	
 	
 	
@@ -9330,6 +9863,186 @@ export namespace v1 {
 	
 	
 	
+	export class ResourceQuotaStatus {
+	    hard?: Record<string, resource.Quantity>;
+	    used?: Record<string, resource.Quantity>;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResourceQuotaStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hard = this.convertValues(source["hard"], resource.Quantity, true);
+	        this.used = this.convertValues(source["used"], resource.Quantity, true);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ScopedResourceSelectorRequirement {
+	    scopeName: string;
+	    operator: string;
+	    values?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ScopedResourceSelectorRequirement(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.scopeName = source["scopeName"];
+	        this.operator = source["operator"];
+	        this.values = source["values"];
+	    }
+	}
+	export class ScopeSelector {
+	    matchExpressions?: ScopedResourceSelectorRequirement[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ScopeSelector(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.matchExpressions = this.convertValues(source["matchExpressions"], ScopedResourceSelectorRequirement);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ResourceQuotaSpec {
+	    hard?: Record<string, resource.Quantity>;
+	    scopes?: string[];
+	    scopeSelector?: ScopeSelector;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResourceQuotaSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hard = this.convertValues(source["hard"], resource.Quantity, true);
+	        this.scopes = source["scopes"];
+	        this.scopeSelector = this.convertValues(source["scopeSelector"], ScopeSelector);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ResourceQuota {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: ResourceQuotaSpec;
+	    status?: ResourceQuotaStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResourceQuota(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], ResourceQuotaSpec);
+	        this.status = this.convertValues(source["status"], ResourceQuotaStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
 	
 	
 	export class Role {
@@ -9497,6 +10210,8 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	
+	
 	
 	
 	export class Secret {
@@ -10280,6 +10995,817 @@ export namespace v1 {
 	
 	
 	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+}
+
+export namespace v2 {
+	
+	export class MetricTarget {
+	    type: string;
+	    value?: resource.Quantity;
+	    averageValue?: resource.Quantity;
+	    averageUtilization?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetricTarget(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.value = this.convertValues(source["value"], resource.Quantity);
+	        this.averageValue = this.convertValues(source["averageValue"], resource.Quantity);
+	        this.averageUtilization = source["averageUtilization"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ContainerResourceMetricSource {
+	    name: string;
+	    target: MetricTarget;
+	    container: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContainerResourceMetricSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.target = this.convertValues(source["target"], MetricTarget);
+	        this.container = source["container"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MetricValueStatus {
+	    value?: resource.Quantity;
+	    averageValue?: resource.Quantity;
+	    averageUtilization?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetricValueStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.value = this.convertValues(source["value"], resource.Quantity);
+	        this.averageValue = this.convertValues(source["averageValue"], resource.Quantity);
+	        this.averageUtilization = source["averageUtilization"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ContainerResourceMetricStatus {
+	    name: string;
+	    current: MetricValueStatus;
+	    container: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContainerResourceMetricStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.current = this.convertValues(source["current"], MetricValueStatus);
+	        this.container = source["container"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CrossVersionObjectReference {
+	    kind: string;
+	    name: string;
+	    apiVersion?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CrossVersionObjectReference(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.name = source["name"];
+	        this.apiVersion = source["apiVersion"];
+	    }
+	}
+	export class MetricIdentifier {
+	    name: string;
+	    selector?: v1.LabelSelector;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetricIdentifier(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.selector = this.convertValues(source["selector"], v1.LabelSelector);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ExternalMetricSource {
+	    metric: MetricIdentifier;
+	    target: MetricTarget;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExternalMetricSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.metric = this.convertValues(source["metric"], MetricIdentifier);
+	        this.target = this.convertValues(source["target"], MetricTarget);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ExternalMetricStatus {
+	    metric: MetricIdentifier;
+	    current: MetricValueStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExternalMetricStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.metric = this.convertValues(source["metric"], MetricIdentifier);
+	        this.current = this.convertValues(source["current"], MetricValueStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class HPAScalingPolicy {
+	    type: string;
+	    value: number;
+	    periodSeconds: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new HPAScalingPolicy(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.value = source["value"];
+	        this.periodSeconds = source["periodSeconds"];
+	    }
+	}
+	export class HPAScalingRules {
+	    stabilizationWindowSeconds?: number;
+	    selectPolicy?: string;
+	    policies?: HPAScalingPolicy[];
+	    tolerance?: resource.Quantity;
+	
+	    static createFrom(source: any = {}) {
+	        return new HPAScalingRules(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.stabilizationWindowSeconds = source["stabilizationWindowSeconds"];
+	        this.selectPolicy = source["selectPolicy"];
+	        this.policies = this.convertValues(source["policies"], HPAScalingPolicy);
+	        this.tolerance = this.convertValues(source["tolerance"], resource.Quantity);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class HorizontalPodAutoscalerCondition {
+	    type: string;
+	    status: string;
+	    lastTransitionTime?: v1.Time;
+	    reason?: string;
+	    message?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HorizontalPodAutoscalerCondition(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.status = source["status"];
+	        this.lastTransitionTime = this.convertValues(source["lastTransitionTime"], v1.Time);
+	        this.reason = source["reason"];
+	        this.message = source["message"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ResourceMetricStatus {
+	    name: string;
+	    current: MetricValueStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResourceMetricStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.current = this.convertValues(source["current"], MetricValueStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PodsMetricStatus {
+	    metric: MetricIdentifier;
+	    current: MetricValueStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new PodsMetricStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.metric = this.convertValues(source["metric"], MetricIdentifier);
+	        this.current = this.convertValues(source["current"], MetricValueStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ObjectMetricStatus {
+	    metric: MetricIdentifier;
+	    current: MetricValueStatus;
+	    describedObject: CrossVersionObjectReference;
+	
+	    static createFrom(source: any = {}) {
+	        return new ObjectMetricStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.metric = this.convertValues(source["metric"], MetricIdentifier);
+	        this.current = this.convertValues(source["current"], MetricValueStatus);
+	        this.describedObject = this.convertValues(source["describedObject"], CrossVersionObjectReference);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MetricStatus {
+	    type: string;
+	    object?: ObjectMetricStatus;
+	    pods?: PodsMetricStatus;
+	    resource?: ResourceMetricStatus;
+	    containerResource?: ContainerResourceMetricStatus;
+	    external?: ExternalMetricStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetricStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.object = this.convertValues(source["object"], ObjectMetricStatus);
+	        this.pods = this.convertValues(source["pods"], PodsMetricStatus);
+	        this.resource = this.convertValues(source["resource"], ResourceMetricStatus);
+	        this.containerResource = this.convertValues(source["containerResource"], ContainerResourceMetricStatus);
+	        this.external = this.convertValues(source["external"], ExternalMetricStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class HorizontalPodAutoscalerStatus {
+	    observedGeneration?: number;
+	    lastScaleTime?: v1.Time;
+	    currentReplicas?: number;
+	    desiredReplicas: number;
+	    currentMetrics: MetricStatus[];
+	    conditions?: HorizontalPodAutoscalerCondition[];
+	
+	    static createFrom(source: any = {}) {
+	        return new HorizontalPodAutoscalerStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.observedGeneration = source["observedGeneration"];
+	        this.lastScaleTime = this.convertValues(source["lastScaleTime"], v1.Time);
+	        this.currentReplicas = source["currentReplicas"];
+	        this.desiredReplicas = source["desiredReplicas"];
+	        this.currentMetrics = this.convertValues(source["currentMetrics"], MetricStatus);
+	        this.conditions = this.convertValues(source["conditions"], HorizontalPodAutoscalerCondition);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class HorizontalPodAutoscalerBehavior {
+	    scaleUp?: HPAScalingRules;
+	    scaleDown?: HPAScalingRules;
+	
+	    static createFrom(source: any = {}) {
+	        return new HorizontalPodAutoscalerBehavior(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.scaleUp = this.convertValues(source["scaleUp"], HPAScalingRules);
+	        this.scaleDown = this.convertValues(source["scaleDown"], HPAScalingRules);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ResourceMetricSource {
+	    name: string;
+	    target: MetricTarget;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResourceMetricSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.target = this.convertValues(source["target"], MetricTarget);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PodsMetricSource {
+	    metric: MetricIdentifier;
+	    target: MetricTarget;
+	
+	    static createFrom(source: any = {}) {
+	        return new PodsMetricSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.metric = this.convertValues(source["metric"], MetricIdentifier);
+	        this.target = this.convertValues(source["target"], MetricTarget);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ObjectMetricSource {
+	    describedObject: CrossVersionObjectReference;
+	    target: MetricTarget;
+	    metric: MetricIdentifier;
+	
+	    static createFrom(source: any = {}) {
+	        return new ObjectMetricSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.describedObject = this.convertValues(source["describedObject"], CrossVersionObjectReference);
+	        this.target = this.convertValues(source["target"], MetricTarget);
+	        this.metric = this.convertValues(source["metric"], MetricIdentifier);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MetricSpec {
+	    type: string;
+	    object?: ObjectMetricSource;
+	    pods?: PodsMetricSource;
+	    resource?: ResourceMetricSource;
+	    containerResource?: ContainerResourceMetricSource;
+	    external?: ExternalMetricSource;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetricSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.object = this.convertValues(source["object"], ObjectMetricSource);
+	        this.pods = this.convertValues(source["pods"], PodsMetricSource);
+	        this.resource = this.convertValues(source["resource"], ResourceMetricSource);
+	        this.containerResource = this.convertValues(source["containerResource"], ContainerResourceMetricSource);
+	        this.external = this.convertValues(source["external"], ExternalMetricSource);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class HorizontalPodAutoscalerSpec {
+	    scaleTargetRef: CrossVersionObjectReference;
+	    minReplicas?: number;
+	    maxReplicas: number;
+	    metrics?: MetricSpec[];
+	    behavior?: HorizontalPodAutoscalerBehavior;
+	
+	    static createFrom(source: any = {}) {
+	        return new HorizontalPodAutoscalerSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.scaleTargetRef = this.convertValues(source["scaleTargetRef"], CrossVersionObjectReference);
+	        this.minReplicas = source["minReplicas"];
+	        this.maxReplicas = source["maxReplicas"];
+	        this.metrics = this.convertValues(source["metrics"], MetricSpec);
+	        this.behavior = this.convertValues(source["behavior"], HorizontalPodAutoscalerBehavior);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class HorizontalPodAutoscaler {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: v1.Time;
+	    deletionTimestamp?: v1.Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: v1.OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: v1.ManagedFieldsEntry[];
+	    spec?: HorizontalPodAutoscalerSpec;
+	    status?: HorizontalPodAutoscalerStatus;
+	
+	    static createFrom(source: any = {}) {
+	        return new HorizontalPodAutoscaler(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], v1.Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], v1.Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], v1.OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], v1.ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], HorizontalPodAutoscalerSpec);
+	        this.status = this.convertValues(source["status"], HorizontalPodAutoscalerStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	
 	

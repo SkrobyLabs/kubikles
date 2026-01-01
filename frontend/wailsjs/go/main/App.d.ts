@@ -4,6 +4,7 @@ import {main} from '../models';
 import {k8s} from '../models';
 import {helm} from '../models';
 import {v1} from '../models';
+import {v2} from '../models';
 
 export function AddHelmRepository(arg1:string,arg2:string,arg3:number):Promise<void>;
 
@@ -31,15 +32,23 @@ export function DeleteDeployment(arg1:string,arg2:string,arg3:string):Promise<vo
 
 export function DeleteEvent(arg1:string,arg2:string):Promise<void>;
 
+export function DeleteHPA(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteIngress(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteIngressClass(arg1:string):Promise<void>;
 
 export function DeleteJob(arg1:string,arg2:string):Promise<void>;
 
+export function DeleteLimitRange(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteNamespace(arg1:string):Promise<void>;
 
+export function DeleteNetworkPolicy(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteNode(arg1:string):Promise<void>;
+
+export function DeletePDB(arg1:string,arg2:string):Promise<void>;
 
 export function DeletePV(arg1:string):Promise<void>;
 
@@ -50,6 +59,8 @@ export function DeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 export function DeletePortForwardConfig(arg1:string):Promise<void>;
 
 export function DeleteReplicaSet(arg1:string,arg2:string):Promise<void>;
+
+export function DeleteResourceQuota(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteRole(arg1:string,arg2:string):Promise<void>;
 
@@ -99,6 +110,8 @@ export function GetDeploymentYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetEventYAML(arg1:string,arg2:string):Promise<string>;
 
+export function GetHPAYaml(arg1:string,arg2:string):Promise<string>;
+
 export function GetHelmChartVersions(arg1:string,arg2:string):Promise<Array<helm.ChartVersion>>;
 
 export function GetHelmRelease(arg1:string,arg2:string):Promise<helm.ReleaseDetail>;
@@ -119,15 +132,21 @@ export function GetIngressYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetJobYaml(arg1:string,arg2:string):Promise<string>;
 
+export function GetLimitRangeYaml(arg1:string,arg2:string):Promise<string>;
+
 export function GetManagedHosts():Promise<Array<string>>;
 
 export function GetNamespaceResourceCounts(arg1:string):Promise<k8s.NamespaceResourceCounts>;
 
 export function GetNamespaceYAML(arg1:string):Promise<string>;
 
+export function GetNetworkPolicyYaml(arg1:string,arg2:string):Promise<string>;
+
 export function GetNodeMetrics():Promise<k8s.NodeMetricsResult>;
 
 export function GetNodeYaml(arg1:string):Promise<string>;
+
+export function GetPDBYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetPVCYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -154,6 +173,8 @@ export function GetRandomAvailablePort():Promise<number>;
 export function GetReplicaSetYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetResourceDependencies(arg1:string,arg2:string,arg3:string):Promise<k8s.DependencyGraph>;
+
+export function GetResourceQuotaYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetRoleBindingYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -199,6 +220,8 @@ export function ListDeployments(arg1:string):Promise<Array<v1.Deployment>>;
 
 export function ListEvents(arg1:string):Promise<Array<v1.Event>>;
 
+export function ListHPAs(arg1:string):Promise<Array<v2.HorizontalPodAutoscaler>>;
+
 export function ListHelmReleases(arg1:Array<string>):Promise<Array<helm.Release>>;
 
 export function ListHelmRepositories():Promise<Array<helm.Repository>>;
@@ -209,11 +232,17 @@ export function ListIngresses(arg1:string):Promise<Array<v1.Ingress>>;
 
 export function ListJobs(arg1:string):Promise<Array<v1.Job>>;
 
+export function ListLimitRanges(arg1:string):Promise<Array<v1.LimitRange>>;
+
 export function ListNamespaces():Promise<Array<v1.Namespace>>;
+
+export function ListNetworkPolicies(arg1:string):Promise<Array<v1.NetworkPolicy>>;
 
 export function ListNodes():Promise<Array<v1.Node>>;
 
 export function ListOCIRegistries():Promise<Array<helm.OCIRegistry>>;
+
+export function ListPDBs(arg1:string):Promise<Array<v1.PodDisruptionBudget>>;
 
 export function ListPVCs(arg1:string):Promise<Array<v1.PersistentVolumeClaim>>;
 
@@ -222,6 +251,8 @@ export function ListPVs():Promise<Array<v1.PersistentVolume>>;
 export function ListPods(arg1:string):Promise<Array<v1.Pod>>;
 
 export function ListReplicaSets(arg1:string):Promise<Array<v1.ReplicaSet>>;
+
+export function ListResourceQuotas(arg1:string):Promise<Array<v1.ResourceQuota>>;
 
 export function ListRoleBindings(arg1:string):Promise<Array<v1.RoleBinding>>;
 
@@ -337,6 +368,8 @@ export function UpdateDeploymentYaml(arg1:string,arg2:string,arg3:string):Promis
 
 export function UpdateEventYAML(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function UpdateHPAYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function UpdateHelmRepository(arg1:string):Promise<void>;
 
 export function UpdateIngressClassYaml(arg1:string,arg2:string):Promise<void>;
@@ -345,9 +378,15 @@ export function UpdateIngressYaml(arg1:string,arg2:string,arg3:string):Promise<v
 
 export function UpdateJobYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function UpdateLimitRangeYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function UpdateNamespaceYAML(arg1:string,arg2:string):Promise<void>;
 
+export function UpdateNetworkPolicyYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function UpdateNodeYaml(arg1:string,arg2:string):Promise<void>;
+
+export function UpdatePDBYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdatePVCYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
@@ -358,6 +397,8 @@ export function UpdatePodYaml(arg1:string,arg2:string,arg3:string):Promise<void>
 export function UpdatePortForwardConfig(arg1:main.PortForwardConfig):Promise<void>;
 
 export function UpdateReplicaSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateResourceQuotaYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateRoleBindingYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

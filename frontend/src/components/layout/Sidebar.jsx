@@ -25,7 +25,12 @@ import {
     ArchiveBoxIcon,
     UserIcon,
     KeyIcon,
-    LinkIcon
+    LinkIcon,
+    ShieldCheckIcon,
+    ArrowsPointingOutIcon,
+    ShieldExclamationIcon,
+    ChartBarIcon,
+    AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline';
 import { useConfig } from '../../context/ConfigContext';
 import SearchSelect from '../shared/SearchSelect';
@@ -161,6 +166,10 @@ export default function Sidebar({
             items: [
                 { id: 'configmaps', label: 'ConfigMaps', icon: DocumentTextIcon },
                 { id: 'secrets', label: 'Secrets', icon: LockClosedIcon },
+                { id: 'hpas', label: 'HPAs', icon: ChartBarIcon },
+                { id: 'pdbs', label: 'PDBs', icon: ShieldExclamationIcon },
+                { id: 'resourcequotas', label: 'Resource Quotas', icon: AdjustmentsHorizontalIcon },
+                { id: 'limitranges', label: 'Limit Ranges', icon: ArrowsPointingOutIcon },
             ]
         },
         {
@@ -169,6 +178,7 @@ export default function Sidebar({
                 { id: 'services', label: 'Services', icon: GlobeAltIcon },
                 { id: 'ingresses', label: 'Ingresses', icon: ArrowsRightLeftIcon },
                 { id: 'ingressclasses', label: 'Ingress Classes', icon: TagIcon },
+                { id: 'networkpolicies', label: 'Network Policies', icon: ShieldCheckIcon },
                 { id: 'portforwards', label: 'Port Forwards', icon: SignalIcon },
             ]
         },

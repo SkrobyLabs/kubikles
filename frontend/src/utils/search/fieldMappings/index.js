@@ -23,6 +23,11 @@ import { roleFields } from './roles';
 import { clusterRoleFields } from './clusterroles';
 import { roleBindingFields } from './rolebindings';
 import { clusterRoleBindingFields } from './clusterrolebindings';
+import { networkPolicyFields } from './networkpolicies';
+import { hpaFields } from './hpas';
+import { pdbFields } from './pdbs';
+import { resourceQuotaFields } from './resourcequotas';
+import { limitRangeFields } from './limitranges';
 import { commonFields } from './common';
 
 const registry = {
@@ -44,6 +49,11 @@ const registry = {
     clusterroles: clusterRoleFields,
     rolebindings: roleBindingFields,
     clusterrolebindings: clusterRoleBindingFields,
+    networkpolicies: networkPolicyFields,
+    hpas: hpaFields,
+    pdbs: pdbFields,
+    resourcequotas: resourceQuotaFields,
+    limitranges: limitRangeFields,
 };
 
 /**
