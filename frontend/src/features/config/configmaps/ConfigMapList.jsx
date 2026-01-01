@@ -24,7 +24,7 @@ export default function ConfigMapList({ isVisible }) {
         setActiveMenuId(isOpen ? menuId : null);
     }, [setActiveMenuId]);
     const { configMaps, loading } = useConfigMaps(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleShowDependencies, handleDelete } = useConfigMapActions();
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = useConfigMapActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
@@ -65,6 +65,7 @@ export default function ConfigMapList({ isVisible }) {
             multiSelectNamespaces={true}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="configmaps"
+            onRowClick={handleShowDetails}
         />
     );
 }

@@ -38,7 +38,7 @@ export default function StorageClassList({ isVisible }) {
     const { currentContext } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { storageClasses, loading } = useStorageClasses(currentContext, isVisible);
-    const { handleEditYaml, handleDelete } = useStorageClassActions();
+    const { handleShowDetails, handleEditYaml, handleDelete } = useStorageClassActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
     const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
@@ -123,6 +123,7 @@ export default function StorageClassList({ isVisible }) {
             showNamespaceSelector={false}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="storageclasses"
+            onRowClick={handleShowDetails}
         />
     );
 }

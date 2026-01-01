@@ -43,7 +43,7 @@ export default function NamespaceList({ isVisible }) {
         setActiveMenuId(isOpen ? menuId : null);
     }, [setActiveMenuId]);
     const { namespaces, loading } = useNamespacesList(currentContext, isVisible);
-    const { handleEditYaml, handleDelete } = useNamespaceActions();
+    const { handleShowDetails, handleEditYaml, handleDelete } = useNamespaceActions();
 
     const columns = useMemo(() => [
         {
@@ -95,6 +95,7 @@ export default function NamespaceList({ isVisible }) {
             showNamespaceSelector={false}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="namespaces"
+            onRowClick={handleShowDetails}
         />
     );
 }

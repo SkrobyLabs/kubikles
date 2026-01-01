@@ -4,12 +4,28 @@ import { useK8s } from '../../../context/K8sContext';
 import { DeleteDeployment, RestartDeployment, ListPods } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
+import DeploymentDetails from '../../../components/shared/DeploymentDetails';
 import LogViewer from '../../../components/shared/log-viewer';
 import Logger from '../../../utils/Logger';
 
 export const useDeploymentActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext, currentNamespace } = useK8s();
+
+    const handleShowDetails = (deployment) => {
+        Logger.info("Opening deployment details", { namespace: deployment.metadata.namespace, deployment: deployment.metadata.name });
+        const tabId = `details-deploy-${deployment.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${deployment.metadata.name}`,
+            content: (
+                <DeploymentDetails
+                    deployment={deployment}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
 
     const handleEditYaml = (deployment) => {
         Logger.info("Opening YAML editor", { namespace: deployment.metadata.namespace, deployment: deployment.metadata.name });
@@ -146,6 +162,7 @@ export const useDeploymentActions = () => {
     };
 
     return {
+        handleShowDetails,
         handleEditYaml,
         handleShowDependencies,
         handleRestart,

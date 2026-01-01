@@ -3,11 +3,27 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeleteNamespace } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import NamespaceDetails from '../../../components/shared/NamespaceDetails';
 import Logger from '../../../utils/Logger';
 
 export const useNamespaceActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+
+    const handleShowDetails = (namespace) => {
+        Logger.info("Opening namespace details", { namespace: namespace.metadata.name });
+        const tabId = `details-namespace-${namespace.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${namespace.metadata.name}`,
+            content: (
+                <NamespaceDetails
+                    namespace={namespace}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
 
     const handleEditYaml = (namespace) => {
         Logger.info("Opening namespace YAML editor", { namespace: namespace.metadata.name });
@@ -55,6 +71,7 @@ export const useNamespaceActions = () => {
     };
 
     return {
+        handleShowDetails,
         handleEditYaml,
         handleDelete
     };

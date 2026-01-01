@@ -4,12 +4,28 @@ import { useK8s } from '../../../context/K8sContext';
 import { DeleteDaemonSet, RestartDaemonSet, ListPods } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
+import DaemonSetDetails from '../../../components/shared/DaemonSetDetails';
 import LogViewer from '../../../components/shared/log-viewer';
 import Logger from '../../../utils/Logger';
 
 export const useDaemonSetActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+
+    const handleShowDetails = (daemonSet) => {
+        Logger.info("Opening DaemonSet details", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name });
+        const tabId = `details-daemonset-${daemonSet.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${daemonSet.metadata.name}`,
+            content: (
+                <DaemonSetDetails
+                    daemonSet={daemonSet}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
 
     const handleEditYaml = (daemonSet) => {
         Logger.info("Opening YAML editor for DaemonSet", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name });
@@ -146,6 +162,7 @@ export const useDaemonSetActions = () => {
     };
 
     return {
+        handleShowDetails,
         handleEditYaml,
         handleShowDependencies,
         handleRestart,

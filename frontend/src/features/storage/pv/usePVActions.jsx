@@ -4,11 +4,27 @@ import { useK8s } from '../../../context/K8sContext';
 import { DeletePV } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
+import PVDetails from '../../../components/shared/PVDetails';
 import Logger from '../../../utils/Logger';
 
 export const usePVActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+
+    const handleShowDetails = (pv) => {
+        Logger.info("Opening PV details", { name: pv.metadata.name });
+        const tabId = `details-pv-${pv.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${pv.metadata.name}`,
+            content: (
+                <PVDetails
+                    pv={pv}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
 
     const handleEditYaml = (pv) => {
         Logger.info("Opening PV YAML editor", { name: pv.metadata.name });
@@ -66,6 +82,7 @@ export const usePVActions = () => {
     };
 
     return {
+        handleShowDetails,
         handleEditYaml,
         handleShowDependencies,
         handleDelete

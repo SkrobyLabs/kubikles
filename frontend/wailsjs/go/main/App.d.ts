@@ -121,6 +121,8 @@ export function GetJobYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetManagedHosts():Promise<Array<string>>;
 
+export function GetNamespaceResourceCounts(arg1:string):Promise<k8s.NamespaceResourceCounts>;
+
 export function GetNamespaceYAML(arg1:string):Promise<string>;
 
 export function GetNodeMetrics():Promise<k8s.NodeMetricsResult>;
@@ -168,6 +170,8 @@ export function GetServicePorts(arg1:string,arg2:string):Promise<Array<number>>;
 export function GetServiceYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetStatefulSetYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetStorageClass(arg1:string):Promise<v1.StorageClass>;
 
 export function GetStorageClassYaml(arg1:string):Promise<string>;
 
@@ -250,6 +254,8 @@ export function RefreshIngressHostnames(arg1:Array<string>):Promise<void>;
 export function RemoveHelmRepository(arg1:string):Promise<void>;
 
 export function RemoveOCIRegistry(arg1:string):Promise<void>;
+
+export function ResizePVC(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function RestartDaemonSet(arg1:string,arg2:string):Promise<void>;
 

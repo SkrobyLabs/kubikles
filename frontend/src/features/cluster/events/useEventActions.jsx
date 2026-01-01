@@ -3,11 +3,28 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeleteEvent } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import EventDetails from '../../../components/shared/EventDetails';
 import Logger from '../../../utils/Logger';
 
 export const useEventActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+
+    const handleShowDetails = (event) => {
+        const reason = event.reason || 'Event';
+        Logger.info("Opening event details", { namespace: event.metadata.namespace, name: event.metadata.name });
+        const tabId = `details-event-${event.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${reason}`,
+            content: (
+                <EventDetails
+                    event={event}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
 
     const handleEditYaml = (event) => {
         Logger.info("Opening event YAML editor", { namespace: event.metadata.namespace, name: event.metadata.name });
@@ -51,6 +68,7 @@ export const useEventActions = () => {
     };
 
     return {
+        handleShowDetails,
         handleEditYaml,
         handleDelete
     };

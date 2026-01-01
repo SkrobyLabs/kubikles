@@ -13,7 +13,7 @@ export default function IngressList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { ingresses, loading } = useIngresses(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleShowDependencies, handleDelete } = useIngressActions();
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = useIngressActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
     // Ingress forwarding state
@@ -119,13 +119,36 @@ export default function IngressList({ isVisible }) {
         return addresses.length > 0 ? addresses.join(', ') : '-';
     };
 
+    const getIngressStatus = (ingress) => {
+        const lbIngress = ingress.status?.loadBalancer?.ingress || [];
+        const rules = ingress.spec?.rules || [];
+        const defaultBackend = ingress.spec?.defaultBackend;
+
+        if (lbIngress.length > 0) {
+            const hasAddress = lbIngress.some(lb => lb.ip || lb.hostname);
+            if (hasAddress) return { status: 'Active', color: 'text-green-400' };
+        }
+        if (rules.length === 0 && !defaultBackend) {
+            return { status: 'No Rules', color: 'text-red-400' };
+        }
+        return { status: 'Pending', color: 'text-yellow-400' };
+    };
+
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
         { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (item) => {
+                const { status, color } = getIngressStatus(item);
+                return <span className={color}>{status}</span>;
+            },
+            getValue: (item) => getIngressStatus(item).status
+        },
         { key: 'class', label: 'Class', render: (item) => getIngressClass(item), getValue: (item) => getIngressClass(item) },
         { key: 'hosts', label: 'Hosts', render: (item) => getHosts(item), getValue: (item) => getHosts(item) },
         { key: 'address', label: 'Address', render: (item) => getAddress(item), getValue: (item) => getAddress(item) },
-        { key: 'paths', label: 'Paths', render: (item) => getPaths(item), getValue: (item) => getPaths(item) },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
@@ -334,6 +357,7 @@ export default function IngressList({ isVisible }) {
                     highlightedUid={activeMenuId}
                     initialSort={{ key: 'age', direction: 'desc' }}
                     resourceType="ingresses"
+                    onRowClick={handleShowDetails}
                 />
             </div>
         </div>

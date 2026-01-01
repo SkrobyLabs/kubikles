@@ -463,6 +463,40 @@ export namespace k8s {
 		}
 	}
 	
+	export class NamespaceResourceCounts {
+	    pods: number;
+	    deployments: number;
+	    statefulsets: number;
+	    daemonsets: number;
+	    replicasets: number;
+	    jobs: number;
+	    cronjobs: number;
+	    services: number;
+	    ingresses: number;
+	    configmaps: number;
+	    secrets: number;
+	    pvcs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NamespaceResourceCounts(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pods = source["pods"];
+	        this.deployments = source["deployments"];
+	        this.statefulsets = source["statefulsets"];
+	        this.daemonsets = source["daemonsets"];
+	        this.replicasets = source["replicasets"];
+	        this.jobs = source["jobs"];
+	        this.cronjobs = source["cronjobs"];
+	        this.services = source["services"];
+	        this.ingresses = source["ingresses"];
+	        this.configmaps = source["configmaps"];
+	        this.secrets = source["secrets"];
+	        this.pvcs = source["pvcs"];
+	    }
+	}
 	export class NodeMetrics {
 	    name: string;
 	    cpuUsage: number;

@@ -31,7 +31,7 @@ export default function JobList({ isVisible }) {
         setActiveMenuId(isOpen ? menuId : null);
     }, [setActiveMenuId]);
     const { jobs, loading } = useJobs(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs } = useJobActions();
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs } = useJobActions();
 
     const getCompletions = (job) => {
         const succeeded = job.status?.succeeded || 0;
@@ -147,6 +147,7 @@ export default function JobList({ isVisible }) {
             multiSelectNamespaces={true}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="jobs"
+            onRowClick={handleShowDetails}
         />
     );
 }

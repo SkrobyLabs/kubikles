@@ -3,11 +3,27 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeleteStorageClass } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import StorageClassDetails from '../../../components/shared/StorageClassDetails';
 import Logger from '../../../utils/Logger';
 
 export const useStorageClassActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+
+    const handleShowDetails = (storageClass) => {
+        Logger.info("Opening StorageClass details", { name: storageClass.metadata.name });
+        const tabId = `details-storageclass-${storageClass.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${storageClass.metadata.name}`,
+            content: (
+                <StorageClassDetails
+                    storageClass={storageClass}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
 
     const handleEditYaml = (storageClass) => {
         Logger.info("Opening StorageClass YAML editor", { name: storageClass.metadata.name });
@@ -49,6 +65,7 @@ export const useStorageClassActions = () => {
     };
 
     return {
+        handleShowDetails,
         handleEditYaml,
         handleDelete
     };

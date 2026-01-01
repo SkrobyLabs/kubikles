@@ -51,7 +51,7 @@ export default function PVCList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { pvcs, loading } = usePVCs(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleShowDependencies, handleDelete } = usePVCActions();
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = usePVCActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
     const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
@@ -122,6 +122,7 @@ export default function PVCList({ isVisible }) {
             multiSelectNamespaces={true}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="pvcs"
+            onRowClick={handleShowDetails}
         />
     );
 }

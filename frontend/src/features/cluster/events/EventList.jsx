@@ -51,7 +51,7 @@ export default function EventList({ isVisible }) {
         setActiveMenuId(isOpen ? menuId : null);
     }, [setActiveMenuId]);
     const { events, loading } = useEventsList(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleDelete } = useEventActions();
+    const { handleShowDetails, handleEditYaml, handleDelete } = useEventActions();
 
     const columns = useMemo(() => [
         {
@@ -160,6 +160,7 @@ export default function EventList({ isVisible }) {
             multiSelectNamespaces={true}
             initialSort={{ key: 'last', direction: 'desc' }}
             resourceType="events"
+            onRowClick={handleShowDetails}
         />
     );
 }

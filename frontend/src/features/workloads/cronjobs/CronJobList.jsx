@@ -25,7 +25,7 @@ export default function CronJobList({ isVisible }) {
         setActiveMenuId(isOpen ? menuId : null);
     }, [setActiveMenuId]);
     const { cronJobs, loading } = useCronJobs(currentContext, selectedNamespaces, isVisible);
-    const { handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend, handleDelete } = useCronJobActions();
+    const { handleShowDetails, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend, handleDelete } = useCronJobActions();
 
     // Format duration for future time (reverse of formatAge)
     const formatDuration = (milliseconds) => {
@@ -170,6 +170,7 @@ export default function CronJobList({ isVisible }) {
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="cronjobs"
+            onRowClick={handleShowDetails}
         />
     );
 }

@@ -6,12 +6,28 @@ import {
     SetNodeSchedulable
 } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
+import NodeDetails from '../../../components/shared/NodeDetails';
 import NodeShellTab from './NodeShellTab';
 import Logger from '../../../utils/Logger';
 
 export const useNodeActions = (refetch) => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+
+    const handleShowDetails = useCallback((node) => {
+        Logger.info("Opening node details", { name: node.metadata.name });
+        const tabId = `details-node-${node.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${node.metadata.name}`,
+            content: (
+                <NodeDetails
+                    node={node}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    }, [openTab, currentContext]);
 
     const handleEditYaml = useCallback((node) => {
         Logger.info("Opening YAML editor for Node", { name: node.metadata.name });
@@ -85,6 +101,7 @@ export const useNodeActions = (refetch) => {
     }, [openModal, closeModal]);
 
     return {
+        handleShowDetails,
         handleEditYaml,
         handleCordonUncordon,
         handleShell,

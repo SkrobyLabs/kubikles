@@ -4,12 +4,28 @@ import { useK8s } from '../../../context/K8sContext';
 import { DeleteReplicaSet, ListPods } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
+import ReplicaSetDetails from '../../../components/shared/ReplicaSetDetails';
 import LogViewer from '../../../components/shared/log-viewer';
 import Logger from '../../../utils/Logger';
 
 export const useReplicaSetActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+
+    const handleShowDetails = (replicaSet) => {
+        Logger.info("Opening ReplicaSet details", { namespace: replicaSet.metadata.namespace, name: replicaSet.metadata.name });
+        const tabId = `details-replicaset-${replicaSet.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${replicaSet.metadata.name}`,
+            content: (
+                <ReplicaSetDetails
+                    replicaSet={replicaSet}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
 
     const handleEditYaml = (replicaSet) => {
         Logger.info("Opening YAML editor for ReplicaSet", { namespace: replicaSet.metadata.namespace, name: replicaSet.metadata.name });
@@ -135,6 +151,7 @@ export const useReplicaSetActions = () => {
     };
 
     return {
+        handleShowDetails,
         handleEditYaml,
         handleShowDependencies,
         handleDelete,

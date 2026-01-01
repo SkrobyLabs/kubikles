@@ -27,7 +27,7 @@ export default function StatefulSetList({ isVisible }) {
     // console.log("StatefulSetList rendering");
     const { statefulSets, loading: statefulSetsLoading } = useStatefulSets(currentContext, selectedNamespaces, isVisible);
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs } = useStatefulSetActions();
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs } = useStatefulSetActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
@@ -108,6 +108,7 @@ export default function StatefulSetList({ isVisible }) {
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="statefulsets"
+            onRowClick={handleShowDetails}
         />
     );
 }

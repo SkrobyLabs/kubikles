@@ -4,11 +4,27 @@ import { useK8s } from '../../../context/K8sContext';
 import { DeleteIngress } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
+import IngressDetails from '../../../components/shared/IngressDetails';
 import Logger from '../../../utils/Logger';
 
 export const useIngressActions = () => {
     const { openTab, closeTab, showConfirm } = useUI();
     const { currentContext, triggerRefresh } = useK8s();
+
+    const handleShowDetails = (ingress) => {
+        Logger.info("Opening Ingress details", { namespace: ingress.metadata.namespace, name: ingress.metadata.name });
+        const tabId = `details-ingress-${ingress.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${ingress.metadata.name}`,
+            content: (
+                <IngressDetails
+                    ingress={ingress}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
 
     const handleEditYaml = (ingress) => {
         Logger.info("Opening YAML editor for Ingress", { namespace: ingress.metadata.namespace, name: ingress.metadata.name });
@@ -65,6 +81,7 @@ export const useIngressActions = () => {
     };
 
     return {
+        handleShowDetails,
         handleEditYaml,
         handleShowDependencies,
         handleDelete

@@ -24,7 +24,7 @@ export default function DaemonSetList({ isVisible }) {
         setActiveMenuId(isOpen ? menuId : null);
     }, [setActiveMenuId]);
     const { daemonSets, loading } = useDaemonSets(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs } = useDaemonSetActions();
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs } = useDaemonSetActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
@@ -90,6 +90,7 @@ export default function DaemonSetList({ isVisible }) {
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="daemonsets"
+            onRowClick={handleShowDetails}
         />
     );
 }

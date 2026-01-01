@@ -27,7 +27,7 @@ export default function DeploymentList({ isVisible }) {
     // console.log("DeploymentList rendering");
     const { deployments, loading: deploymentsLoading } = useDeployments(currentContext, selectedNamespaces, isVisible);
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible); // Fetch pods for status
-    const { handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs } = useDeploymentActions();
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs } = useDeploymentActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
@@ -109,6 +109,7 @@ export default function DeploymentList({ isVisible }) {
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="deployments"
+            onRowClick={handleShowDetails}
         />
     );
 }

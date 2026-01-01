@@ -4,11 +4,27 @@ import { useK8s } from '../../../context/K8sContext';
 import { DeleteConfigMap } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
+import ConfigMapDetails from '../../../components/shared/ConfigMapDetails';
 import Logger from '../../../utils/Logger';
 
 export const useConfigMapActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+
+    const handleShowDetails = (configMap) => {
+        Logger.info("Opening ConfigMap details", { namespace: configMap.metadata.namespace, name: configMap.metadata.name });
+        const tabId = `details-configmap-${configMap.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${configMap.metadata.name}`,
+            content: (
+                <ConfigMapDetails
+                    configMap={configMap}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
 
     const handleEditYaml = (configMap) => {
         Logger.info("Opening YAML editor", { namespace: configMap.metadata.namespace, configMap: configMap.metadata.name });
@@ -69,6 +85,7 @@ export const useConfigMapActions = () => {
     };
 
     return {
+        handleShowDetails,
         handleEditYaml,
         handleShowDependencies,
         handleDelete

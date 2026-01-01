@@ -234,6 +234,10 @@ export function GetManagedHosts() {
   return window['go']['main']['App']['GetManagedHosts']();
 }
 
+export function GetNamespaceResourceCounts(arg1) {
+  return window['go']['main']['App']['GetNamespaceResourceCounts'](arg1);
+}
+
 export function GetNamespaceYAML(arg1) {
   return window['go']['main']['App']['GetNamespaceYAML'](arg1);
 }
@@ -328,6 +332,10 @@ export function GetServiceYaml(arg1, arg2) {
 
 export function GetStatefulSetYaml(arg1, arg2) {
   return window['go']['main']['App']['GetStatefulSetYaml'](arg1, arg2);
+}
+
+export function GetStorageClass(arg1) {
+  return window['go']['main']['App']['GetStorageClass'](arg1);
 }
 
 export function GetStorageClassYaml(arg1) {
@@ -492,6 +500,10 @@ export function RemoveHelmRepository(arg1) {
 
 export function RemoveOCIRegistry(arg1) {
   return window['go']['main']['App']['RemoveOCIRegistry'](arg1);
+}
+
+export function ResizePVC(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ResizePVC'](arg1, arg2, arg3);
 }
 
 export function RestartDaemonSet(arg1, arg2) {

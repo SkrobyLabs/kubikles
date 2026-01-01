@@ -115,7 +115,7 @@ export default function NodeList({ isVisible }) {
     }, [setActiveMenuId]);
     const { nodes, loading, refetch } = useNodes(currentContext, isVisible);
     const { metrics, available: metricsAvailable } = useNodeMetrics(isVisible);
-    const { handleEditYaml, handleCordonUncordon, handleShell, handleDelete } = useNodeActions(refetch);
+    const { handleShowDetails, handleEditYaml, handleCordonUncordon, handleShell, handleDelete } = useNodeActions(refetch);
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
@@ -202,6 +202,7 @@ export default function NodeList({ isVisible }) {
             showNamespaceSelector={false}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="nodes"
+            onRowClick={handleShowDetails}
         />
     );
 }

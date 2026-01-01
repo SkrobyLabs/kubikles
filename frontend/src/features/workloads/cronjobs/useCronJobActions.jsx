@@ -4,12 +4,28 @@ import { useK8s } from '../../../context/K8sContext';
 import { DeleteCronJob, TriggerCronJob, SuspendCronJob, ListJobs } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
+import CronJobDetails from '../../../components/shared/CronJobDetails';
 import LogViewer from '../../../components/shared/log-viewer';
 import Logger from '../../../utils/Logger';
 
 export const useCronJobActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext, currentNamespace, triggerRefresh } = useK8s();
+
+    const handleShowDetails = (cronJob) => {
+        Logger.info("Opening CronJob details", { namespace: cronJob.metadata.namespace, name: cronJob.metadata.name });
+        const tabId = `details-cronjob-${cronJob.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${cronJob.metadata.name}`,
+            content: (
+                <CronJobDetails
+                    cronJob={cronJob}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
 
     const handleViewLogs = async (cronJob) => {
         Logger.info("View logs for CronJob", { namespace: cronJob.metadata.namespace, name: cronJob.metadata.name });
@@ -199,6 +215,7 @@ export const useCronJobActions = () => {
     };
 
     return {
+        handleShowDetails,
         handleViewLogs,
         handleEditYaml,
         handleShowDependencies,

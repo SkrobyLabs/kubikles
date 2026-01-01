@@ -1,14 +1,31 @@
+import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeleteJob, ListPods } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
+import JobDetails from '../../../components/shared/JobDetails';
 import LogViewer from '../../../components/shared/log-viewer';
 import Logger from '../../../utils/Logger';
 
 export const useJobActions = (onRefresh) => {
     const { openTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+
+    const handleShowDetails = (job) => {
+        Logger.info("Opening Job details", { namespace: job.metadata.namespace, name: job.metadata.name });
+        const tabId = `details-job-${job.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${job.metadata.name}`,
+            content: (
+                <JobDetails
+                    job={job}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
 
     const handleEditYaml = (job) => {
         const namespace = job.metadata.namespace;
@@ -129,6 +146,7 @@ export const useJobActions = (onRefresh) => {
     };
 
     return {
+        handleShowDetails,
         handleEditYaml,
         handleShowDependencies,
         handleDelete,

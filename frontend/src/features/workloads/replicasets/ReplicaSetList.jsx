@@ -31,7 +31,7 @@ export default function ReplicaSetList({ isVisible }) {
         setActiveMenuId(isOpen ? menuId : null);
     }, [setActiveMenuId]);
     const { replicaSets, loading } = useReplicaSets(currentContext, selectedNamespaces, isVisible);
-    const { handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs } = useReplicaSetActions();
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete, handleViewLogs } = useReplicaSetActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
@@ -127,6 +127,7 @@ export default function ReplicaSetList({ isVisible }) {
             highlightedUid={activeMenuId}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="replicasets"
+            onRowClick={handleShowDetails}
         />
     );
 }

@@ -427,6 +427,14 @@ func (a *App) ListNamespaces() ([]v1.Namespace, error) {
 	return a.k8sClient.ListNamespaces()
 }
 
+func (a *App) GetNamespaceResourceCounts(namespace string) (*k8s.NamespaceResourceCounts, error) {
+	a.LogDebug("GetNamespaceResourceCounts called: namespace=%s", namespace)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetNamespaceResourceCounts(namespace)
+}
+
 func (a *App) DeleteNamespace(name string) error {
 	a.LogDebug("DeleteNamespace called: name=%s", name)
 	if a.k8sClient == nil {
@@ -1561,6 +1569,15 @@ func (a *App) DeletePVC(namespace, name string) error {
 	return a.k8sClient.DeletePVC(currentContext, namespace, name)
 }
 
+func (a *App) ResizePVC(namespace, name, newSize string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ResizePVC called: context=%s, ns=%s, name=%s, newSize=%s", currentContext, namespace, name, newSize)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ResizePVC(currentContext, namespace, name, newSize)
+}
+
 // PersistentVolume operations (cluster-scoped)
 func (a *App) ListPVs() ([]v1.PersistentVolume, error) {
 	currentContext := a.GetCurrentContext()
@@ -1604,6 +1621,15 @@ func (a *App) ListStorageClasses() ([]storagev1.StorageClass, error) {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.ListStorageClasses(currentContext)
+}
+
+func (a *App) GetStorageClass(name string) (*storagev1.StorageClass, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetStorageClass called: context=%s, name=%s", currentContext, name)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetStorageClass(currentContext, name)
 }
 
 func (a *App) GetStorageClassYaml(name string) (string, error) {

@@ -4,11 +4,27 @@ import { useK8s } from '../../../context/K8sContext';
 import { DeletePVC } from '../../../../wailsjs/go/main/App';
 import YamlEditor from '../../../components/shared/YamlEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
+import PVCDetails from '../../../components/shared/PVCDetails';
 import Logger from '../../../utils/Logger';
 
 export const usePVCActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+
+    const handleShowDetails = (pvc) => {
+        Logger.info("Opening PVC details", { namespace: pvc.metadata.namespace, name: pvc.metadata.name });
+        const tabId = `details-pvc-${pvc.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${pvc.metadata.name}`,
+            content: (
+                <PVCDetails
+                    pvc={pvc}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
 
     const handleEditYaml = (pvc) => {
         Logger.info("Opening PVC YAML editor", { namespace: pvc.metadata.namespace, name: pvc.metadata.name });
@@ -70,6 +86,7 @@ export const usePVCActions = () => {
     };
 
     return {
+        handleShowDetails,
         handleEditYaml,
         handleShowDependencies,
         handleDelete

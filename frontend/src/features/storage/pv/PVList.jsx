@@ -66,7 +66,7 @@ export default function PVList({ isVisible }) {
     const { currentContext } = useK8s();
     const { activeMenuId, setActiveMenuId } = useUI();
     const { pvs, loading } = usePVs(currentContext, isVisible);
-    const { handleEditYaml, handleShowDependencies, handleDelete } = usePVActions();
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = usePVActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
     const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
@@ -152,6 +152,7 @@ export default function PVList({ isVisible }) {
             showNamespaceSelector={false}
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="pvs"
+            onRowClick={handleShowDetails}
         />
     );
 }
