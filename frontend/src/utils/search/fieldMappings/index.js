@@ -31,6 +31,9 @@ import { limitRangeFields } from './limitranges';
 import { endpointsFields } from './endpoints';
 import { validatingWebhookFields, mutatingWebhookFields } from './webhooks';
 import { priorityClassFields } from './priorityclasses';
+import { leaseFields } from './leases';
+import { csiDriverFields } from './csidrivers';
+import { csiNodeFields } from './csinodes';
 import { commonFields } from './common';
 
 const registry = {
@@ -61,6 +64,9 @@ const registry = {
     validatingwebhookconfigurations: validatingWebhookFields,
     mutatingwebhookconfigurations: mutatingWebhookFields,
     priorityclasses: priorityClassFields,
+    leases: leaseFields,
+    csidrivers: csiDriverFields,
+    csinodes: csiNodeFields,
 };
 
 /**

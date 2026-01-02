@@ -16,6 +16,10 @@ export function CreateNodeDebugPod(arg1:string):Promise<main.NodeDebugPodResult>
 
 export function DeleteCRD(arg1:string):Promise<void>;
 
+export function DeleteCSIDriver(arg1:string):Promise<void>;
+
+export function DeleteCSINode(arg1:string):Promise<void>;
+
 export function DeleteClusterRole(arg1:string):Promise<void>;
 
 export function DeleteClusterRoleBinding(arg1:string):Promise<void>;
@@ -41,6 +45,8 @@ export function DeleteIngress(arg1:string,arg2:string):Promise<void>;
 export function DeleteIngressClass(arg1:string):Promise<void>;
 
 export function DeleteJob(arg1:string,arg2:string):Promise<void>;
+
+export function DeleteLease(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteLimitRange(arg1:string,arg2:string):Promise<void>;
 
@@ -102,6 +108,10 @@ export function GetCRDPrinterColumns(arg1:string):Promise<Array<k8s.PrinterColum
 
 export function GetCRDYaml(arg1:string):Promise<string>;
 
+export function GetCSIDriverYaml(arg1:string):Promise<string>;
+
+export function GetCSINodeYaml(arg1:string):Promise<string>;
+
 export function GetClusterRoleBindingYaml(arg1:string):Promise<string>;
 
 export function GetClusterRoleYaml(arg1:string):Promise<string>;
@@ -143,6 +153,8 @@ export function GetIngressForwardState():Promise<main.IngressForwardState>;
 export function GetIngressYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetJobYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetLeaseYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetLimitRangeYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -218,6 +230,10 @@ export function Greet(arg1:string):Promise<string>;
 
 export function ListCRDs():Promise<Array<v1.CustomResourceDefinition>>;
 
+export function ListCSIDrivers():Promise<Array<v1.CSIDriver>>;
+
+export function ListCSINodes():Promise<Array<v1.CSINode>>;
+
 export function ListChartSources():Promise<Array<helm.ChartSourceInfo>>;
 
 export function ListClusterRoleBindings():Promise<Array<v1.ClusterRoleBinding>>;
@@ -251,6 +267,8 @@ export function ListIngressClasses():Promise<Array<v1.IngressClass>>;
 export function ListIngresses(arg1:string):Promise<Array<v1.Ingress>>;
 
 export function ListJobs(arg1:string):Promise<Array<v1.Job>>;
+
+export function ListLeases(arg1:string):Promise<Array<v1.Lease>>;
 
 export function ListLimitRanges(arg1:string):Promise<Array<v1.LimitRange>>;
 
@@ -378,6 +396,10 @@ export function UpdateAllHelmRepositories():Promise<void>;
 
 export function UpdateCRDYaml(arg1:string,arg2:string):Promise<void>;
 
+export function UpdateCSIDriverYaml(arg1:string,arg2:string):Promise<void>;
+
+export function UpdateCSINodeYaml(arg1:string,arg2:string):Promise<void>;
+
 export function UpdateClusterRoleBindingYaml(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateClusterRoleYaml(arg1:string,arg2:string):Promise<void>;
@@ -405,6 +427,8 @@ export function UpdateIngressClassYaml(arg1:string,arg2:string):Promise<void>;
 export function UpdateIngressYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateJobYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateLeaseYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateLimitRangeYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

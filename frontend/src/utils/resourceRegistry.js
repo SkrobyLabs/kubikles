@@ -39,6 +39,9 @@ import {
     GetValidatingWebhookConfigurationYaml, UpdateValidatingWebhookConfigurationYaml,
     GetMutatingWebhookConfigurationYaml, UpdateMutatingWebhookConfigurationYaml,
     GetPriorityClassYaml, UpdatePriorityClassYaml,
+    GetLeaseYaml, UpdateLeaseYaml,
+    GetCSIDriverYaml, UpdateCSIDriverYaml,
+    GetCSINodeYaml, UpdateCSINodeYaml,
 } from '../../wailsjs/go/main/App';
 
 const registry = {
@@ -272,6 +275,27 @@ const registry = {
         namespaced: false,
         getYaml: (_, name) => GetPriorityClassYaml(name),
         updateYaml: (_, name, content) => UpdatePriorityClassYaml(name, content),
+    },
+    lease: {
+        kind: 'Lease',
+        plural: 'leases',
+        namespaced: true,
+        getYaml: (namespace, name) => GetLeaseYaml(namespace, name),
+        updateYaml: (namespace, name, content) => UpdateLeaseYaml(namespace, name, content),
+    },
+    csidriver: {
+        kind: 'CSIDriver',
+        plural: 'csidrivers',
+        namespaced: false,
+        getYaml: (_, name) => GetCSIDriverYaml(name),
+        updateYaml: (_, name, content) => UpdateCSIDriverYaml(name, content),
+    },
+    csinode: {
+        kind: 'CSINode',
+        plural: 'csinodes',
+        namespaced: false,
+        getYaml: (_, name) => GetCSINodeYaml(name),
+        updateYaml: (_, name, content) => UpdateCSINodeYaml(name, content),
     },
 };
 

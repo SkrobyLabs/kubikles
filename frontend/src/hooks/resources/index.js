@@ -50,6 +50,9 @@ import {
     ListValidatingWebhookConfigurations,
     ListMutatingWebhookConfigurations,
     ListPriorityClasses,
+    ListLeases,
+    ListCSIDrivers,
+    ListCSINodes,
 } from '../../../wailsjs/go/main/App';
 
 // =============================================================================
@@ -179,3 +182,20 @@ export const useMutatingWebhookConfigurations = createClusterScopedResourceHook(
 
 /** Hook for Kubernetes PriorityClasses */
 export const usePriorityClasses = createClusterScopedResourceHook('priorityclasses', ListPriorityClasses, 'priorityClasses');
+
+// =============================================================================
+// COORDINATION RESOURCES
+// =============================================================================
+
+/** Hook for Kubernetes Leases (namespaced) - leader election debugging */
+export const useLeases = createNamespacedResourceHook('leases', ListLeases, 'leases');
+
+// =============================================================================
+// CSI / STORAGE RESOURCES (cluster-scoped)
+// =============================================================================
+
+/** Hook for Kubernetes CSIDrivers */
+export const useCSIDrivers = createClusterScopedResourceHook('csidrivers', ListCSIDrivers, 'csiDrivers');
+
+/** Hook for Kubernetes CSINodes */
+export const useCSINodes = createClusterScopedResourceHook('csinodes', ListCSINodes, 'csiNodes');

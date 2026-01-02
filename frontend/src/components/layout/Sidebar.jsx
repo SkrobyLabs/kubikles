@@ -174,6 +174,7 @@ export default function Sidebar({
                 { id: 'pdbs', label: 'PDBs', icon: ShieldExclamationIcon },
                 { id: 'resourcequotas', label: 'Resource Quotas', icon: AdjustmentsHorizontalIcon },
                 { id: 'limitranges', label: 'Limit Ranges', icon: ArrowsPointingOutIcon },
+                { id: 'leases', label: 'Leases', icon: ClockIcon },
             ]
         },
         {
@@ -193,6 +194,8 @@ export default function Sidebar({
                 { id: 'pvcs', label: 'PVCs', icon: CircleStackIcon },
                 { id: 'pvs', label: 'PVs', icon: ServerStackIcon },
                 { id: 'storageclasses', label: 'Storage Classes', icon: ServerIcon },
+                { id: 'csidrivers', label: 'CSI Drivers', icon: CpuChipIcon },
+                { id: 'csinodes', label: 'CSI Nodes', icon: ServerIcon },
             ]
         },
         {

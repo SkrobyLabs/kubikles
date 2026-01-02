@@ -44,6 +44,9 @@ import LimitRangeList from './features/config/limitranges/LimitRangeList';
 import ValidatingWebhookList from './features/cluster/webhooks/ValidatingWebhookList';
 import MutatingWebhookList from './features/cluster/webhooks/MutatingWebhookList';
 import PriorityClassList from './features/cluster/priorityclasses/PriorityClassList';
+import LeaseList from './features/config/leases/LeaseList';
+import CSIDriverList from './features/storage/csidrivers/CSIDriverList';
+import CSINodeList from './features/storage/csinodes/CSINodeList';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
 import ConfirmModal from './components/shared/ConfirmModal';
@@ -191,6 +194,9 @@ function MainLayout() {
             case 'validatingwebhooks': return <ValidatingWebhookList isVisible={true} />;
             case 'mutatingwebhooks': return <MutatingWebhookList isVisible={true} />;
             case 'priorityclasses': return <PriorityClassList isVisible={true} />;
+            case 'leases': return <LeaseList isVisible={true} />;
+            case 'csidrivers': return <CSIDriverList isVisible={true} />;
+            case 'csinodes': return <CSINodeList isVisible={true} />;
             default: return <div className="p-4">Unknown View: {activeView}</div>;
         }
     };

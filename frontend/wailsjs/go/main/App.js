@@ -22,6 +22,14 @@ export function DeleteCRD(arg1) {
   return window['go']['main']['App']['DeleteCRD'](arg1);
 }
 
+export function DeleteCSIDriver(arg1) {
+  return window['go']['main']['App']['DeleteCSIDriver'](arg1);
+}
+
+export function DeleteCSINode(arg1) {
+  return window['go']['main']['App']['DeleteCSINode'](arg1);
+}
+
 export function DeleteClusterRole(arg1) {
   return window['go']['main']['App']['DeleteClusterRole'](arg1);
 }
@@ -72,6 +80,10 @@ export function DeleteIngressClass(arg1) {
 
 export function DeleteJob(arg1, arg2) {
   return window['go']['main']['App']['DeleteJob'](arg1, arg2);
+}
+
+export function DeleteLease(arg1, arg2) {
+  return window['go']['main']['App']['DeleteLease'](arg1, arg2);
 }
 
 export function DeleteLimitRange(arg1, arg2) {
@@ -194,6 +206,14 @@ export function GetCRDYaml(arg1) {
   return window['go']['main']['App']['GetCRDYaml'](arg1);
 }
 
+export function GetCSIDriverYaml(arg1) {
+  return window['go']['main']['App']['GetCSIDriverYaml'](arg1);
+}
+
+export function GetCSINodeYaml(arg1) {
+  return window['go']['main']['App']['GetCSINodeYaml'](arg1);
+}
+
 export function GetClusterRoleBindingYaml(arg1) {
   return window['go']['main']['App']['GetClusterRoleBindingYaml'](arg1);
 }
@@ -276,6 +296,10 @@ export function GetIngressYaml(arg1, arg2) {
 
 export function GetJobYaml(arg1, arg2) {
   return window['go']['main']['App']['GetJobYaml'](arg1, arg2);
+}
+
+export function GetLeaseYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetLeaseYaml'](arg1, arg2);
 }
 
 export function GetLimitRangeYaml(arg1, arg2) {
@@ -426,6 +450,14 @@ export function ListCRDs() {
   return window['go']['main']['App']['ListCRDs']();
 }
 
+export function ListCSIDrivers() {
+  return window['go']['main']['App']['ListCSIDrivers']();
+}
+
+export function ListCSINodes() {
+  return window['go']['main']['App']['ListCSINodes']();
+}
+
 export function ListChartSources() {
   return window['go']['main']['App']['ListChartSources']();
 }
@@ -492,6 +524,10 @@ export function ListIngresses(arg1) {
 
 export function ListJobs(arg1) {
   return window['go']['main']['App']['ListJobs'](arg1);
+}
+
+export function ListLeases(arg1) {
+  return window['go']['main']['App']['ListLeases'](arg1);
 }
 
 export function ListLimitRanges(arg1) {
@@ -746,6 +782,14 @@ export function UpdateCRDYaml(arg1, arg2) {
   return window['go']['main']['App']['UpdateCRDYaml'](arg1, arg2);
 }
 
+export function UpdateCSIDriverYaml(arg1, arg2) {
+  return window['go']['main']['App']['UpdateCSIDriverYaml'](arg1, arg2);
+}
+
+export function UpdateCSINodeYaml(arg1, arg2) {
+  return window['go']['main']['App']['UpdateCSINodeYaml'](arg1, arg2);
+}
+
 export function UpdateClusterRoleBindingYaml(arg1, arg2) {
   return window['go']['main']['App']['UpdateClusterRoleBindingYaml'](arg1, arg2);
 }
@@ -800,6 +844,10 @@ export function UpdateIngressYaml(arg1, arg2, arg3) {
 
 export function UpdateJobYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateJobYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateLeaseYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateLeaseYaml'](arg1, arg2, arg3);
 }
 
 export function UpdateLimitRangeYaml(arg1, arg2, arg3) {

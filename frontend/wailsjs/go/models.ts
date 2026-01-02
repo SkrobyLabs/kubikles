@@ -1296,51 +1296,65 @@ export namespace v1 {
 	        this.devicePath = source["devicePath"];
 	    }
 	}
-	export class Capabilities {
-	    add?: string[];
-	    drop?: string[];
+	export class TokenRequest {
+	    audience: string;
+	    expirationSeconds?: number;
 	
 	    static createFrom(source: any = {}) {
-	        return new Capabilities(source);
+	        return new TokenRequest(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.add = source["add"];
-	        this.drop = source["drop"];
+	        this.audience = source["audience"];
+	        this.expirationSeconds = source["expirationSeconds"];
 	    }
 	}
-	export class ClientIPConfig {
-	    timeoutSeconds?: number;
+	export class CSIDriverSpec {
+	    attachRequired?: boolean;
+	    podInfoOnMount?: boolean;
+	    volumeLifecycleModes?: string[];
+	    storageCapacity?: boolean;
+	    fsGroupPolicy?: string;
+	    tokenRequests?: TokenRequest[];
+	    requiresRepublish?: boolean;
+	    seLinuxMount?: boolean;
+	    nodeAllocatableUpdatePeriodSeconds?: number;
 	
 	    static createFrom(source: any = {}) {
-	        return new ClientIPConfig(source);
+	        return new CSIDriverSpec(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.timeoutSeconds = source["timeoutSeconds"];
-	    }
-	}
-	export class PolicyRule {
-	    verbs: string[];
-	    apiGroups?: string[];
-	    resources?: string[];
-	    resourceNames?: string[];
-	    nonResourceURLs?: string[];
-	
-	    static createFrom(source: any = {}) {
-	        return new PolicyRule(source);
+	        this.attachRequired = source["attachRequired"];
+	        this.podInfoOnMount = source["podInfoOnMount"];
+	        this.volumeLifecycleModes = source["volumeLifecycleModes"];
+	        this.storageCapacity = source["storageCapacity"];
+	        this.fsGroupPolicy = source["fsGroupPolicy"];
+	        this.tokenRequests = this.convertValues(source["tokenRequests"], TokenRequest);
+	        this.requiresRepublish = source["requiresRepublish"];
+	        this.seLinuxMount = source["seLinuxMount"];
+	        this.nodeAllocatableUpdatePeriodSeconds = source["nodeAllocatableUpdatePeriodSeconds"];
 	    }
 	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.verbs = source["verbs"];
-	        this.apiGroups = source["apiGroups"];
-	        this.resources = source["resources"];
-	        this.resourceNames = source["resourceNames"];
-	        this.nonResourceURLs = source["nonResourceURLs"];
-	    }
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class FieldsV1 {
 	
@@ -1429,6 +1443,261 @@ export namespace v1 {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	
+	    }
+	}
+	export class CSIDriver {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec: CSIDriverSpec;
+	
+	    static createFrom(source: any = {}) {
+	        return new CSIDriver(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], CSIDriverSpec);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class VolumeNodeResources {
+	    count?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new VolumeNodeResources(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.count = source["count"];
+	    }
+	}
+	export class CSINodeDriver {
+	    name: string;
+	    nodeID: string;
+	    topologyKeys: string[];
+	    allocatable?: VolumeNodeResources;
+	
+	    static createFrom(source: any = {}) {
+	        return new CSINodeDriver(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.nodeID = source["nodeID"];
+	        this.topologyKeys = source["topologyKeys"];
+	        this.allocatable = this.convertValues(source["allocatable"], VolumeNodeResources);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CSINodeSpec {
+	    drivers: CSINodeDriver[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CSINodeSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.drivers = this.convertValues(source["drivers"], CSINodeDriver);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CSINode {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec: CSINodeSpec;
+	
+	    static createFrom(source: any = {}) {
+	        return new CSINode(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], CSINodeSpec);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	export class Capabilities {
+	    add?: string[];
+	    drop?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Capabilities(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.add = source["add"];
+	        this.drop = source["drop"];
+	    }
+	}
+	export class ClientIPConfig {
+	    timeoutSeconds?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ClientIPConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.timeoutSeconds = source["timeoutSeconds"];
+	    }
+	}
+	export class PolicyRule {
+	    verbs: string[];
+	    apiGroups?: string[];
+	    resources?: string[];
+	    resourceNames?: string[];
+	    nonResourceURLs?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PolicyRule(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.verbs = source["verbs"];
+	        this.apiGroups = source["apiGroups"];
+	        this.resources = source["resources"];
+	        this.resourceNames = source["resourceNames"];
+	        this.nonResourceURLs = source["nonResourceURLs"];
 	    }
 	}
 	export class ClusterRole {
@@ -7505,6 +7774,113 @@ export namespace v1 {
 	
 	
 	
+	export class LeaseSpec {
+	    holderIdentity?: string;
+	    leaseDurationSeconds?: number;
+	    acquireTime?: MicroTime;
+	    renewTime?: MicroTime;
+	    leaseTransitions?: number;
+	    strategy?: string;
+	    preferredHolder?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LeaseSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.holderIdentity = source["holderIdentity"];
+	        this.leaseDurationSeconds = source["leaseDurationSeconds"];
+	        this.acquireTime = this.convertValues(source["acquireTime"], MicroTime);
+	        this.renewTime = this.convertValues(source["renewTime"], MicroTime);
+	        this.leaseTransitions = source["leaseTransitions"];
+	        this.strategy = source["strategy"];
+	        this.preferredHolder = source["preferredHolder"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Lease {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    spec?: LeaseSpec;
+	
+	    static createFrom(source: any = {}) {
+	        return new Lease(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.spec = this.convertValues(source["spec"], LeaseSpec);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	
 	
 	export class LimitRangeItem {
@@ -11378,6 +11754,7 @@ export namespace v1 {
 	
 	
 	
+	
 	export class ValidatingWebhook {
 	    name: string;
 	    clientConfig: WebhookClientConfig;
@@ -11492,6 +11869,7 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	
 	
 	
 	
