@@ -1,9 +1,58 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback, forwardRef } from 'react';
 import { TableVirtuoso } from 'react-virtuoso';
-import { MagnifyingGlassIcon, EllipsisVerticalIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, EllipsisVerticalIcon, InformationCircleIcon, MinusIcon } from '@heroicons/react/24/outline';
+import { CheckIcon } from '@heroicons/react/24/solid';
 import SearchSelect from './SearchSelect';
+import BulkActionBar from './BulkActionBar';
 import { createFilter, getFieldsMetadata } from '../../utils/search';
 import { useUI } from '../../context/UIContext';
+
+// Tri-state checkbox component for header
+const TriStateCheckbox = ({ state, onChange, disabled = false }) => {
+    const handleClick = (e) => {
+        e.stopPropagation();
+        if (!disabled) onChange();
+    };
+
+    return (
+        <button
+            onClick={handleClick}
+            disabled={disabled}
+            className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                state === 'none'
+                    ? 'border-gray-500 bg-transparent hover:border-gray-400'
+                    : state === 'some'
+                    ? 'border-primary bg-primary/20 hover:bg-primary/30'
+                    : 'border-primary bg-primary hover:bg-primary/90'
+            } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        >
+            {state === 'all' && <CheckIcon className="w-3 h-3 text-white" />}
+            {state === 'some' && <MinusIcon className="w-3 h-3 text-primary" />}
+        </button>
+    );
+};
+
+// Row checkbox component
+const RowCheckbox = ({ checked, onChange, disabled = false }) => {
+    const handleClick = (e) => {
+        e.stopPropagation();
+        if (!disabled) onChange(e);
+    };
+
+    return (
+        <button
+            onClick={handleClick}
+            disabled={disabled}
+            className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                checked
+                    ? 'border-primary bg-primary hover:bg-primary/90'
+                    : 'border-gray-500 bg-transparent hover:border-gray-400'
+            } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        >
+            {checked && <CheckIcon className="w-3 h-3 text-white" />}
+        </button>
+    );
+};
 
 // Default column widths for common columns
 // Note: 'name' and 'namespace' are intentionally excluded to fill remaining space
@@ -53,7 +102,14 @@ export default function ResourceList({
     resourceType = null,
     onRowClick = null,
     onRefresh = null,
-    customHeaderActions = null
+    customHeaderActions = null,
+    // Selection props
+    selection = null,  // Selection hook result from useSelection
+    selectable = false, // Enable selection mode
+    // Bulk action callbacks
+    onBulkDelete = null,
+    onBulkRestart = null,
+    onBulkExportYaml = null,
 }) {
     const { pendingSearch, consumePendingSearch } = useUI();
     const [sortConfig, setSortConfig] = useState(initialSort || { key: null, direction: 'asc' });
@@ -172,7 +228,7 @@ export default function ResourceList({
         setHiddenColumns(newHidden);
     };
 
-    const visibleColumns = columns.filter(col => !hiddenColumns.has(col.key));
+    const baseVisibleColumns = columns.filter(col => !hiddenColumns.has(col.key));
 
     const handleSort = (key) => {
         let direction = 'asc';
@@ -229,6 +285,65 @@ export default function ResourceList({
             return 0;
         });
     }, [filteredData, sortConfig, columns]);
+
+    // Add selection checkbox column if selection is enabled
+    const visibleColumns = useMemo(() => {
+        if (!selectable || !selection) return baseVisibleColumns;
+
+        const checkboxColumn = {
+            key: '_selection',
+            label: '',
+            isSelectionColumn: true,
+            width: 40,
+        };
+
+        return [checkboxColumn, ...baseVisibleColumns];
+    }, [selectable, selection, baseVisibleColumns]);
+
+    // Compute selection state for the current filtered/sorted data
+    const selectionState = useMemo(() => {
+        if (!selectable || !selection) return 'none';
+        return selection.getSelectionState(sortedData);
+    }, [selectable, selection, sortedData]);
+
+    // Handle header checkbox click
+    const handleHeaderCheckboxClick = useCallback(() => {
+        if (!selection) return;
+        selection.toggleAll(sortedData);
+    }, [selection, sortedData]);
+
+    // Handle row checkbox click
+    const handleRowCheckboxClick = useCallback((e, item, index) => {
+        if (!selection) return;
+        const uid = item?.metadata?.uid;
+        if (uid) {
+            selection.toggleItem(uid, index, sortedData, e.shiftKey);
+        }
+    }, [selection, sortedData]);
+
+    // Bulk action handlers - pass selected items to callbacks
+    const handleBulkDelete = useCallback(() => {
+        if (!selection || !onBulkDelete) return;
+        const selectedItems = selection.getSelectedItems(sortedData);
+        onBulkDelete(selectedItems);
+    }, [selection, sortedData, onBulkDelete]);
+
+    const handleBulkRestart = useCallback(() => {
+        if (!selection || !onBulkRestart) return;
+        const selectedItems = selection.getSelectedItems(sortedData);
+        onBulkRestart(selectedItems);
+    }, [selection, sortedData, onBulkRestart]);
+
+    const handleBulkExportYaml = useCallback(() => {
+        if (!selection || !onBulkExportYaml) return;
+        const selectedItems = selection.getSelectedItems(sortedData);
+        onBulkExportYaml(selectedItems);
+    }, [selection, sortedData, onBulkExportYaml]);
+
+    const handleClearSelection = useCallback(() => {
+        if (!selection) return;
+        selection.deselectAll();
+    }, [selection]);
 
     return (
         <div className="flex flex-col h-full bg-background relative">
@@ -311,6 +426,7 @@ export default function ResourceList({
                 {/* Custom Header Actions */}
                 {customHeaderActions}
             </div>
+
             {/* Table Content */}
             <div className="flex-1 overflow-hidden">
                 {isLoading ? (
@@ -343,10 +459,17 @@ export default function ResourceList({
                             )),
                             TableRow: ({ item, ...props }) => {
                                 const isHighlighted = highlightedUid === item?.metadata?.uid;
+                                const isSelected = selectable && selection?.isSelected(item?.metadata?.uid);
                                 return (
                                     <tr
                                         {...props}
-                                        className={`transition-colors ${isHighlighted ? 'bg-white/5' : 'hover:bg-white/5'} ${onRowClick ? 'cursor-pointer' : ''}`}
+                                        className={`transition-colors ${
+                                            isSelected
+                                                ? 'bg-primary/10 hover:bg-primary/15'
+                                                : isHighlighted
+                                                    ? 'bg-white/5'
+                                                    : 'hover:bg-white/5'
+                                        } ${onRowClick ? 'cursor-pointer' : ''}`}
                                         onClick={() => onRowClick && onRowClick(item)}
                                     />
                                 );
@@ -356,8 +479,26 @@ export default function ResourceList({
                             <tr>
                                 {visibleColumns.map((col, colIndex) => {
                                     const isLastDataColumn = colIndex === visibleColumns.length - 2 && visibleColumns[visibleColumns.length - 1]?.isColumnSelector;
-                                    const isResizable = !col.isColumnSelector;
-                                    const width = columnWidths[col.key];
+                                    const isResizable = !col.isColumnSelector && !col.isSelectionColumn;
+                                    const width = col.isSelectionColumn ? col.width : columnWidths[col.key];
+
+                                    // Selection column header
+                                    if (col.isSelectionColumn) {
+                                        return (
+                                            <th
+                                                key={col.key}
+                                                className="p-3 text-xs font-medium text-gray-400 border-b border-border select-none whitespace-nowrap"
+                                                style={{ width: `${col.width}px`, minWidth: `${col.width}px` }}
+                                            >
+                                                <div className="flex items-center justify-center">
+                                                    <TriStateCheckbox
+                                                        state={selectionState}
+                                                        onChange={handleHeaderCheckboxClick}
+                                                    />
+                                                </div>
+                                            </th>
+                                        );
+                                    }
 
                                     return (
                                         <th
@@ -426,6 +567,25 @@ export default function ResourceList({
                         itemContent={(index, item) => (
                             <>
                                 {visibleColumns.map((col) => {
+                                    // Selection column cell
+                                    if (col.isSelectionColumn) {
+                                        const isSelected = selection?.isSelected(item?.metadata?.uid);
+                                        return (
+                                            <td
+                                                key={col.key}
+                                                className="p-3 text-sm whitespace-nowrap"
+                                                style={{ width: `${col.width}px`, minWidth: `${col.width}px` }}
+                                            >
+                                                <div className="flex items-center justify-center">
+                                                    <RowCheckbox
+                                                        checked={isSelected}
+                                                        onChange={(e) => handleRowCheckboxClick(e, item, index)}
+                                                    />
+                                                </div>
+                                            </td>
+                                        );
+                                    }
+
                                     const content = col.render ? col.render(item) : item[col.key];
                                     const isNamespaceColumn = col.key === 'namespace' && onNamespaceChange;
                                     const namespaceValue = item.metadata?.namespace;
@@ -459,6 +619,19 @@ export default function ResourceList({
                     />
                 )}
             </div>
+
+            {/* Bulk Action Bar - Bottom */}
+            {selectable && selection && (
+                <BulkActionBar
+                    selectedCount={selection.selectedCount}
+                    onClearSelection={handleClearSelection}
+                    onDelete={onBulkDelete ? handleBulkDelete : null}
+                    onRestart={onBulkRestart ? handleBulkRestart : null}
+                    onExportYaml={onBulkExportYaml ? handleBulkExportYaml : null}
+                    resourceType={resourceType || title.toLowerCase()}
+                    position="bottom"
+                />
+            )}
         </div>
     );
 }

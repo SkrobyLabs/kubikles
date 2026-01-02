@@ -682,6 +682,10 @@ export function SavePodLogs(arg1, arg2) {
   return window['go']['main']['App']['SavePodLogs'](arg1, arg2);
 }
 
+export function SaveYamlBackup(arg1, arg2) {
+  return window['go']['main']['App']['SaveYamlBackup'](arg1, arg2);
+}
+
 export function SearchChartInSource(arg1, arg2) {
   return window['go']['main']['App']['SearchChartInSource'](arg1, arg2);
 }

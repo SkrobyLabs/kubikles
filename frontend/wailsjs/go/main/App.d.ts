@@ -346,6 +346,8 @@ export function SaveLogsBundle(arg1:Array<main.PodLogEntry>,arg2:string):Promise
 
 export function SavePodLogs(arg1:string,arg2:string):Promise<void>;
 
+export function SaveYamlBackup(arg1:Array<main.YamlBackupEntry>,arg2:string):Promise<void>;
+
 export function SearchChartInSource(arg1:string,arg2:string):Promise<helm.ChartSearchResult>;
 
 export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;

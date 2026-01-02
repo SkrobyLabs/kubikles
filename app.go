@@ -1451,6 +1451,66 @@ func (a *App) SaveLogsBundle(entries []PodLogEntry, defaultFilename string) erro
 	return nil
 }
 
+// YamlBackupEntry represents a single resource's YAML for backup
+type YamlBackupEntry struct {
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+	Kind      string `json:"kind"`
+	Yaml      string `json:"yaml"`
+}
+
+// SaveYamlBackup saves multiple resource YAMLs as a zip file with native dialog
+func (a *App) SaveYamlBackup(entries []YamlBackupEntry, defaultFilename string) error {
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: defaultFilename,
+		Title:           "Save YAML Backup",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Zip Files (*.zip)",
+				Pattern:     "*.zip",
+			},
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if filePath == "" {
+		return nil // User cancelled
+	}
+
+	// Create the zip file
+	zipFile, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create zip file: %w", err)
+	}
+	defer zipFile.Close()
+
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+
+	for _, entry := range entries {
+		// Create path: namespace_name.yaml
+		var yamlPath string
+		if entry.Namespace != "" {
+			yamlPath = fmt.Sprintf("%s_%s.yaml", entry.Namespace, entry.Name)
+		} else {
+			yamlPath = fmt.Sprintf("%s.yaml", entry.Name)
+		}
+		writer, err := zipWriter.Create(yamlPath)
+		if err != nil {
+			return fmt.Errorf("failed to create zip entry %s: %w", yamlPath, err)
+		}
+		_, err = writer.Write([]byte(entry.Yaml))
+		if err != nil {
+			return fmt.Errorf("failed to write YAML for %s: %w", yamlPath, err)
+		}
+	}
+
+	return nil
+}
+
 // Job operations
 func (a *App) ListJobs(namespace string) ([]batchv1.Job, error) {
 	currentContext := a.GetCurrentContext()

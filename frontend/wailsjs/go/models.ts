@@ -856,6 +856,25 @@ export namespace main {
 	        this.logs = source["logs"];
 	    }
 	}
+	
+	export class YamlBackupEntry {
+	    namespace: string;
+	    name: string;
+	    kind: string;
+	    yaml: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new YamlBackupEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.namespace = source["namespace"];
+	        this.name = source["name"];
+	        this.kind = source["kind"];
+	        this.yaml = source["yaml"];
+	    }
+	}
 
 }
 
