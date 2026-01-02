@@ -1,59 +1,8 @@
-import React, { useState, useCallback } from 'react';
-import { CheckIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
+import React, { useCallback } from 'react';
 import { useUI } from '../../context/UIContext';
 import { getPodController } from '../../utils/k8s-helpers';
 import { formatAge } from '../../utils/formatting';
-
-// Copyable label component
-const CopyableLabel = ({ value, copyValue, className = '' }) => {
-    const [copied, setCopied] = useState(false);
-
-    const textToCopy = copyValue || value;
-
-    const handleCopy = async () => {
-        if (!textToCopy) return;
-        try {
-            await navigator.clipboard.writeText(textToCopy);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
-            console.error('Failed to copy:', err);
-        }
-    };
-
-    return (
-        <button
-            onClick={handleCopy}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded border transition-colors cursor-pointer ${
-                copied
-                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                    : `bg-gray-500/10 hover:bg-gray-500/20 text-gray-300 border-gray-500/30 ${className}`
-            }`}
-            title={copied ? 'Copied!' : `Click to copy: ${textToCopy}`}
-        >
-            {copied ? (
-                <>
-                    <CheckIcon className="w-3 h-3" />
-                    Copied
-                </>
-            ) : (
-                value
-            )}
-        </button>
-    );
-};
-
-// Detail row component
-const DetailRow = ({ label, value, children }) => (
-    <div className="flex py-2 border-b border-border/50">
-        <div className="w-32 text-xs font-medium text-gray-500 uppercase tracking-wider shrink-0">
-            {label}
-        </div>
-        <div className="flex-1 text-sm text-gray-200">
-            {children || value || <span className="text-gray-500">N/A</span>}
-        </div>
-    </div>
-);
+import { CopyableLabel, DetailRow } from './DetailComponents';
 
 // Map controller kind to view name
 const kindToView = {

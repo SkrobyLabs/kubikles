@@ -1,7 +1,7 @@
 import React from 'react';
 import DetailsPanel from './DetailsPanel';
 import { formatAge } from '../../utils/formatting';
-import { CopyableLabel } from './DetailComponents';
+import { CopyableLabel, LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 
 export default function LeaseDetails({ lease, tabContext }) {
     const metadata = lease?.metadata || {};
@@ -85,36 +85,16 @@ export default function LeaseDetails({ lease, tabContext }) {
                 )}
 
                 {/* Labels */}
-                {metadata.labels && Object.keys(metadata.labels).length > 0 && (
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-400 mb-3">Labels</h3>
-                        <div className="flex flex-wrap gap-2">
-                            {Object.entries(metadata.labels).map(([key, value]) => (
-                                <span
-                                    key={key}
-                                    className="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-700 text-gray-300"
-                                >
-                                    {key}: {value}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                )}
+                <div>
+                    <h3 className="text-sm font-medium text-gray-400 mb-3">Labels</h3>
+                    <LabelsDisplay labels={metadata.labels} />
+                </div>
 
                 {/* Annotations */}
-                {metadata.annotations && Object.keys(metadata.annotations).length > 0 && (
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-400 mb-3">Annotations</h3>
-                        <div className="space-y-1">
-                            {Object.entries(metadata.annotations).map(([key, value]) => (
-                                <div key={key} className="text-xs">
-                                    <span className="text-gray-500">{key}:</span>
-                                    <span className="ml-1 text-gray-300 break-all">{value}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+                <div>
+                    <h3 className="text-sm font-medium text-gray-400 mb-3">Annotations</h3>
+                    <AnnotationsDisplay annotations={metadata.annotations} />
+                </div>
             </div>
         </DetailsPanel>
     );
