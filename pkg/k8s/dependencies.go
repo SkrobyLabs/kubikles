@@ -72,6 +72,22 @@ func (c *Client) GetResourceDependencies(contextName, resourceType, namespace, n
 		return c.getServiceDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "ingress":
 		return c.getIngressDependencies(cs, contextName, namespace, name, graph, nodeMap)
+	case "endpoints":
+		return c.getEndpointsDependencies(cs, contextName, namespace, name, graph, nodeMap)
+	case "priorityclass":
+		return c.getPriorityClassDependencies(cs, contextName, name, graph, nodeMap)
+	case "networkpolicy":
+		return c.getNetworkPolicyDependencies(cs, contextName, namespace, name, graph, nodeMap)
+	case "ingressclass":
+		return c.getIngressClassDependencies(cs, contextName, name, graph, nodeMap)
+	case "storageclass":
+		return c.getStorageClassDependencies(cs, contextName, name, graph, nodeMap)
+	case "serviceaccount":
+		return c.getServiceAccountDependencies(cs, contextName, namespace, name, graph, nodeMap)
+	case "hpa":
+		return c.getHPADependencies(cs, contextName, namespace, name, graph, nodeMap)
+	case "pdb":
+		return c.getPDBDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
 	}
@@ -124,6 +140,22 @@ func (c *Client) getPodDependencies(cs kubernetes.Interface, namespace, name str
 	// Resolve container env references
 	c.resolvePodContainerRefs(graph, nodeMap, podID, namespace, pod.Spec.Containers)
 	c.resolvePodContainerRefs(graph, nodeMap, podID, namespace, pod.Spec.InitContainers)
+
+	// Find Services that select this Pod (and their Ingresses)
+	c.findServicesSelectingPod(cs, graph, nodeMap, namespace, pod.Labels, podID)
+
+	// Resolve ServiceAccount (skip "default" as it's not interesting)
+	saName := pod.Spec.ServiceAccountName
+	if saName != "" && saName != "default" {
+		saID := nodeID("ServiceAccount", namespace, saName)
+		c.addNode(graph, nodeMap, DependencyNode{
+			ID:        saID,
+			Kind:      "ServiceAccount",
+			Name:      saName,
+			Namespace: namespace,
+		})
+		c.addEdge(graph, podID, saID, "uses")
+	}
 
 	return graph, nil
 }
@@ -421,6 +453,11 @@ func (c *Client) getReplicaSetDependencies(cs kubernetes.Interface, contextName,
 	// Find owned Pods
 	c.findOwnedPods(cs, graph, nodeMap, rsID, namespace, name, "ReplicaSet")
 
+	// Find Services that select these pods (and their Ingresses)
+	if rs.Spec.Selector != nil {
+		c.findSelectingServices(cs, graph, nodeMap, namespace, rs.Spec.Selector.MatchLabels)
+	}
+
 	return graph, nil
 }
 
@@ -444,6 +481,11 @@ func (c *Client) getJobDependencies(cs kubernetes.Interface, contextName, namesp
 
 	// Find owned Pods
 	c.findOwnedPods(cs, graph, nodeMap, jobID, namespace, name, "Job")
+
+	// Find Services that select job pods (and their Ingresses)
+	if job.Spec.Selector != nil {
+		c.findSelectingServices(cs, graph, nodeMap, namespace, job.Spec.Selector.MatchLabels)
+	}
 
 	return graph, nil
 }
@@ -522,6 +564,8 @@ func (c *Client) getPVCDependencies(cs kubernetes.Interface, namespace, name str
 
 					// Add pod's owner refs
 					c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+					// Find Services selecting this pod (and their Ingresses)
+					c.findServicesSelectingPod(cs, graph, nodeMap, namespace, pod.Labels, podID)
 				}
 			}
 		}
@@ -588,6 +632,8 @@ func (c *Client) getPVDependencies(cs kubernetes.Interface, name string, graph *
 							})
 							c.addEdge(graph, podID, pvcID, "uses")
 							c.resolveOwnerRefs(cs, graph, nodeMap, podID, pvcNamespace, pod.OwnerReferences)
+							// Find Services selecting this pod (and their Ingresses)
+							c.findServicesSelectingPod(cs, graph, nodeMap, pvcNamespace, pod.Labels, podID)
 						}
 					}
 				}
@@ -739,6 +785,18 @@ func (c *Client) findIngressesForService(cs kubernetes.Interface, graph *Depende
 				Namespace: namespace,
 			})
 			c.addEdge(graph, ingressID, svcID, "routes-to")
+
+			// Also resolve IngressClass if set
+			if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName != "" {
+				icName := *ingress.Spec.IngressClassName
+				icID := nodeID("IngressClass", "", icName)
+				c.addNode(graph, nodeMap, DependencyNode{
+					ID:   icID,
+					Kind: "IngressClass",
+					Name: icName,
+				})
+				c.addEdge(graph, ingressID, icID, "uses")
+			}
 		}
 	}
 }
@@ -858,6 +916,8 @@ func (c *Client) findPodsUsingConfigMap(cs kubernetes.Interface, graph *Dependen
 			})
 			c.addEdge(graph, podID, cmID, "uses")
 			c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+			// Find Services selecting this pod (and their Ingresses)
+			c.findServicesSelectingPod(cs, graph, nodeMap, namespace, pod.Labels, podID)
 		}
 	}
 }
@@ -914,6 +974,8 @@ func (c *Client) findPodsUsingSecret(cs kubernetes.Interface, graph *DependencyG
 			})
 			c.addEdge(graph, podID, secretID, "uses")
 			c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+			// Find Services selecting this pod (and their Ingresses)
+			c.findServicesSelectingPod(cs, graph, nodeMap, namespace, pod.Labels, podID)
 		}
 	}
 }
@@ -925,6 +987,213 @@ func matchesSelector(labels, selector map[string]string) bool {
 		}
 	}
 	return true
+}
+
+// findServicesSelectingPod finds all Services that select a given Pod
+func (c *Client) findServicesSelectingPod(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, namespace string, podLabels map[string]string, podID string) {
+	if len(podLabels) == 0 {
+		return
+	}
+
+	services, err := cs.CoreV1().Services(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return
+	}
+
+	for _, svc := range services.Items {
+		if len(svc.Spec.Selector) > 0 && matchesSelector(podLabels, svc.Spec.Selector) {
+			svcID := nodeID("Service", namespace, svc.Name)
+			c.addNode(graph, nodeMap, DependencyNode{
+				ID:        svcID,
+				Kind:      "Service",
+				Name:      svc.Name,
+				Namespace: namespace,
+			})
+			c.addEdge(graph, svcID, podID, "selects")
+
+			// Find Ingresses that route to this Service
+			c.findIngressesForService(cs, graph, nodeMap, namespace, svc.Name, svcID)
+		}
+	}
+}
+
+// getEndpointsDependencies resolves dependencies for Endpoints
+func (c *Client) getEndpointsDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+	endpoints, err := cs.CoreV1().Endpoints(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get endpoints: %w", err)
+	}
+
+	endpointsID := nodeID("Endpoints", namespace, name)
+	c.addNode(graph, nodeMap, DependencyNode{
+		ID:        endpointsID,
+		Kind:      "Endpoints",
+		Name:      name,
+		Namespace: namespace,
+	})
+
+	// Endpoints typically share the same name as their Service
+	_, err = cs.CoreV1().Services(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err == nil {
+		svcID := nodeID("Service", namespace, name)
+		c.addNode(graph, nodeMap, DependencyNode{
+			ID:        svcID,
+			Kind:      "Service",
+			Name:      name,
+			Namespace: namespace,
+		})
+		c.addEdge(graph, svcID, endpointsID, "owns")
+
+		// Find Ingresses that route to this Service
+		c.findIngressesForService(cs, graph, nodeMap, namespace, name, svcID)
+	}
+
+	// Find Pods referenced by this Endpoints object
+	for _, subset := range endpoints.Subsets {
+		// Ready addresses
+		for _, addr := range subset.Addresses {
+			if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
+				podName := addr.TargetRef.Name
+				podNamespace := namespace
+				if addr.TargetRef.Namespace != "" {
+					podNamespace = addr.TargetRef.Namespace
+				}
+
+				pod, podErr := cs.CoreV1().Pods(podNamespace).Get(context.TODO(), podName, metav1.GetOptions{})
+				status := "Unknown"
+				if podErr == nil {
+					status = string(pod.Status.Phase)
+				}
+
+				podID := nodeID("Pod", podNamespace, podName)
+				c.addNode(graph, nodeMap, DependencyNode{
+					ID:        podID,
+					Kind:      "Pod",
+					Name:      podName,
+					Namespace: podNamespace,
+					Status:    status,
+				})
+				c.addEdge(graph, endpointsID, podID, "references")
+
+				// Resolve pod's owner refs
+				if podErr == nil {
+					c.resolveOwnerRefs(cs, graph, nodeMap, podID, podNamespace, pod.OwnerReferences)
+				}
+			}
+		}
+
+		// Not ready addresses
+		for _, addr := range subset.NotReadyAddresses {
+			if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
+				podName := addr.TargetRef.Name
+				podNamespace := namespace
+				if addr.TargetRef.Namespace != "" {
+					podNamespace = addr.TargetRef.Namespace
+				}
+
+				pod, podErr := cs.CoreV1().Pods(podNamespace).Get(context.TODO(), podName, metav1.GetOptions{})
+				status := "NotReady"
+				if podErr == nil {
+					status = string(pod.Status.Phase)
+				}
+
+				podID := nodeID("Pod", podNamespace, podName)
+				c.addNode(graph, nodeMap, DependencyNode{
+					ID:        podID,
+					Kind:      "Pod",
+					Name:      podName,
+					Namespace: podNamespace,
+					Status:    status,
+				})
+				c.addEdge(graph, endpointsID, podID, "references")
+
+				if podErr == nil {
+					c.resolveOwnerRefs(cs, graph, nodeMap, podID, podNamespace, pod.OwnerReferences)
+				}
+			}
+		}
+	}
+
+	return graph, nil
+}
+
+// getPriorityClassDependencies resolves dependencies for a PriorityClass
+func (c *Client) getPriorityClassDependencies(cs kubernetes.Interface, contextName, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+	_, err := cs.SchedulingV1().PriorityClasses().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get priorityclass: %w", err)
+	}
+
+	pcID := nodeID("PriorityClass", "", name)
+	c.addNode(graph, nodeMap, DependencyNode{
+		ID:   pcID,
+		Kind: "PriorityClass",
+		Name: name,
+	})
+
+	// Find all pods using this PriorityClass
+	pods, err := cs.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	if err == nil {
+		for _, pod := range pods.Items {
+			if pod.Spec.PriorityClassName == name {
+				podID := nodeID("Pod", pod.Namespace, pod.Name)
+				c.addNode(graph, nodeMap, DependencyNode{
+					ID:        podID,
+					Kind:      "Pod",
+					Name:      pod.Name,
+					Namespace: pod.Namespace,
+					Status:    string(pod.Status.Phase),
+				})
+				c.addEdge(graph, podID, pcID, "uses")
+
+				// Resolve pod's owner refs
+				c.resolveOwnerRefs(cs, graph, nodeMap, podID, pod.Namespace, pod.OwnerReferences)
+			}
+		}
+	}
+
+	return graph, nil
+}
+
+// getNetworkPolicyDependencies resolves dependencies for a NetworkPolicy
+func (c *Client) getNetworkPolicyDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+	np, err := cs.NetworkingV1().NetworkPolicies(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get networkpolicy: %w", err)
+	}
+
+	npID := nodeID("NetworkPolicy", namespace, name)
+	c.addNode(graph, nodeMap, DependencyNode{
+		ID:        npID,
+		Kind:      "NetworkPolicy",
+		Name:      name,
+		Namespace: namespace,
+	})
+
+	// Find pods that this policy applies to (via podSelector)
+	if np.Spec.PodSelector.MatchLabels != nil || np.Spec.PodSelector.MatchExpressions != nil {
+		pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+		if err == nil {
+			for _, pod := range pods.Items {
+				if matchesSelector(pod.Labels, np.Spec.PodSelector.MatchLabels) {
+					podID := nodeID("Pod", namespace, pod.Name)
+					c.addNode(graph, nodeMap, DependencyNode{
+						ID:        podID,
+						Kind:      "Pod",
+						Name:      pod.Name,
+						Namespace: namespace,
+						Status:    string(pod.Status.Phase),
+					})
+					c.addEdge(graph, npID, podID, "applies-to")
+
+					// Resolve pod's owner refs
+					c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+				}
+			}
+		}
+	}
+
+	return graph, nil
 }
 
 // getIngressDependencies resolves dependencies for an Ingress
@@ -997,6 +1266,267 @@ func (c *Client) getIngressDependencies(cs kubernetes.Interface, contextName, na
 					Namespace: namespace,
 				})
 				c.addEdge(graph, ingressID, svcID, "routes-to")
+			}
+		}
+	}
+
+	return graph, nil
+}
+
+// getIngressClassDependencies resolves dependencies for an IngressClass
+func (c *Client) getIngressClassDependencies(cs kubernetes.Interface, contextName, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+	_, err := cs.NetworkingV1().IngressClasses().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ingressclass: %w", err)
+	}
+
+	icID := nodeID("IngressClass", "", name)
+	c.addNode(graph, nodeMap, DependencyNode{
+		ID:   icID,
+		Kind: "IngressClass",
+		Name: name,
+	})
+
+	// Find all Ingresses using this IngressClass
+	ingresses, err := cs.NetworkingV1().Ingresses("").List(context.TODO(), metav1.ListOptions{})
+	if err == nil {
+		for _, ingress := range ingresses.Items {
+			if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName == name {
+				ingressID := nodeID("Ingress", ingress.Namespace, ingress.Name)
+				c.addNode(graph, nodeMap, DependencyNode{
+					ID:        ingressID,
+					Kind:      "Ingress",
+					Name:      ingress.Name,
+					Namespace: ingress.Namespace,
+				})
+				c.addEdge(graph, ingressID, icID, "uses")
+			}
+		}
+	}
+
+	return graph, nil
+}
+
+// getStorageClassDependencies resolves dependencies for a StorageClass
+func (c *Client) getStorageClassDependencies(cs kubernetes.Interface, contextName, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+	_, err := cs.StorageV1().StorageClasses().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get storageclass: %w", err)
+	}
+
+	scID := nodeID("StorageClass", "", name)
+	c.addNode(graph, nodeMap, DependencyNode{
+		ID:   scID,
+		Kind: "StorageClass",
+		Name: name,
+	})
+
+	// Find all PVs using this StorageClass
+	pvs, err := cs.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
+	if err == nil {
+		for _, pv := range pvs.Items {
+			if pv.Spec.StorageClassName == name {
+				pvID := nodeID("PersistentVolume", "", pv.Name)
+				c.addNode(graph, nodeMap, DependencyNode{
+					ID:     pvID,
+					Kind:   "PersistentVolume",
+					Name:   pv.Name,
+					Status: string(pv.Status.Phase),
+				})
+				c.addEdge(graph, pvID, scID, "uses")
+
+				// If PV is bound, show the PVC
+				if pv.Spec.ClaimRef != nil {
+					pvcID := nodeID("PersistentVolumeClaim", pv.Spec.ClaimRef.Namespace, pv.Spec.ClaimRef.Name)
+					c.addNode(graph, nodeMap, DependencyNode{
+						ID:        pvcID,
+						Kind:      "PersistentVolumeClaim",
+						Name:      pv.Spec.ClaimRef.Name,
+						Namespace: pv.Spec.ClaimRef.Namespace,
+					})
+					c.addEdge(graph, pvcID, pvID, "binds")
+				}
+			}
+		}
+	}
+
+	// Find all PVCs using this StorageClass directly
+	pvcs, err := cs.CoreV1().PersistentVolumeClaims("").List(context.TODO(), metav1.ListOptions{})
+	if err == nil {
+		for _, pvc := range pvcs.Items {
+			if pvc.Spec.StorageClassName != nil && *pvc.Spec.StorageClassName == name {
+				pvcID := nodeID("PersistentVolumeClaim", pvc.Namespace, pvc.Name)
+				if !nodeMap[pvcID] {
+					c.addNode(graph, nodeMap, DependencyNode{
+						ID:        pvcID,
+						Kind:      "PersistentVolumeClaim",
+						Name:      pvc.Name,
+						Namespace: pvc.Namespace,
+						Status:    string(pvc.Status.Phase),
+					})
+					c.addEdge(graph, pvcID, scID, "uses")
+				}
+			}
+		}
+	}
+
+	return graph, nil
+}
+
+// getServiceAccountDependencies resolves dependencies for a ServiceAccount
+func (c *Client) getServiceAccountDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+	_, err := cs.CoreV1().ServiceAccounts(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get serviceaccount: %w", err)
+	}
+
+	saID := nodeID("ServiceAccount", namespace, name)
+	c.addNode(graph, nodeMap, DependencyNode{
+		ID:        saID,
+		Kind:      "ServiceAccount",
+		Name:      name,
+		Namespace: namespace,
+	})
+
+	// Find all Pods using this ServiceAccount
+	pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err == nil {
+		for _, pod := range pods.Items {
+			podSA := pod.Spec.ServiceAccountName
+			if podSA == "" {
+				podSA = "default"
+			}
+			if podSA == name {
+				podID := nodeID("Pod", namespace, pod.Name)
+				c.addNode(graph, nodeMap, DependencyNode{
+					ID:        podID,
+					Kind:      "Pod",
+					Name:      pod.Name,
+					Namespace: namespace,
+					Status:    string(pod.Status.Phase),
+				})
+				c.addEdge(graph, podID, saID, "uses")
+
+				// Resolve pod's owner refs
+				c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+				// Find Services selecting this pod
+				c.findServicesSelectingPod(cs, graph, nodeMap, namespace, pod.Labels, podID)
+			}
+		}
+	}
+
+	return graph, nil
+}
+
+// getHPADependencies resolves dependencies for a HorizontalPodAutoscaler
+func (c *Client) getHPADependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+	hpa, err := cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get hpa: %w", err)
+	}
+
+	hpaID := nodeID("HorizontalPodAutoscaler", namespace, name)
+	c.addNode(graph, nodeMap, DependencyNode{
+		ID:        hpaID,
+		Kind:      "HorizontalPodAutoscaler",
+		Name:      name,
+		Namespace: namespace,
+	})
+
+	// Resolve the scale target (Deployment, StatefulSet, ReplicaSet, etc.)
+	targetKind := hpa.Spec.ScaleTargetRef.Kind
+	targetName := hpa.Spec.ScaleTargetRef.Name
+	targetID := nodeID(targetKind, namespace, targetName)
+
+	c.addNode(graph, nodeMap, DependencyNode{
+		ID:        targetID,
+		Kind:      targetKind,
+		Name:      targetName,
+		Namespace: namespace,
+	})
+	c.addEdge(graph, hpaID, targetID, "scales")
+
+	// Resolve the target's dependencies based on kind
+	switch targetKind {
+	case "Deployment":
+		deploy, err := cs.AppsV1().Deployments(namespace).Get(context.TODO(), targetName, metav1.GetOptions{})
+		if err == nil {
+			// Find ReplicaSets owned by this deployment
+			rsList, err := cs.AppsV1().ReplicaSets(namespace).List(context.TODO(), metav1.ListOptions{})
+			if err == nil {
+				for _, rs := range rsList.Items {
+					for _, ref := range rs.OwnerReferences {
+						if ref.Kind == "Deployment" && ref.Name == targetName {
+							rsID := nodeID("ReplicaSet", namespace, rs.Name)
+							c.addNode(graph, nodeMap, DependencyNode{
+								ID:        rsID,
+								Kind:      "ReplicaSet",
+								Name:      rs.Name,
+								Namespace: namespace,
+							})
+							c.addEdge(graph, targetID, rsID, "owns")
+							c.findOwnedPods(cs, graph, nodeMap, rsID, namespace, rs.Name, "ReplicaSet")
+						}
+					}
+				}
+			}
+			c.findSelectingServices(cs, graph, nodeMap, namespace, deploy.Spec.Selector.MatchLabels)
+		}
+	case "StatefulSet":
+		sts, err := cs.AppsV1().StatefulSets(namespace).Get(context.TODO(), targetName, metav1.GetOptions{})
+		if err == nil {
+			c.findOwnedPods(cs, graph, nodeMap, targetID, namespace, targetName, "StatefulSet")
+			c.findSelectingServices(cs, graph, nodeMap, namespace, sts.Spec.Selector.MatchLabels)
+		}
+	case "ReplicaSet":
+		rs, err := cs.AppsV1().ReplicaSets(namespace).Get(context.TODO(), targetName, metav1.GetOptions{})
+		if err == nil {
+			c.findOwnedPods(cs, graph, nodeMap, targetID, namespace, targetName, "ReplicaSet")
+			if rs.Spec.Selector != nil {
+				c.findSelectingServices(cs, graph, nodeMap, namespace, rs.Spec.Selector.MatchLabels)
+			}
+		}
+	}
+
+	return graph, nil
+}
+
+// getPDBDependencies resolves dependencies for a PodDisruptionBudget
+func (c *Client) getPDBDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+	pdb, err := cs.PolicyV1().PodDisruptionBudgets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pdb: %w", err)
+	}
+
+	pdbID := nodeID("PodDisruptionBudget", namespace, name)
+	c.addNode(graph, nodeMap, DependencyNode{
+		ID:        pdbID,
+		Kind:      "PodDisruptionBudget",
+		Name:      name,
+		Namespace: namespace,
+	})
+
+	// Find pods matching the PDB's selector
+	if pdb.Spec.Selector != nil {
+		pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+		if err == nil {
+			for _, pod := range pods.Items {
+				if matchesSelector(pod.Labels, pdb.Spec.Selector.MatchLabels) {
+					podID := nodeID("Pod", namespace, pod.Name)
+					c.addNode(graph, nodeMap, DependencyNode{
+						ID:        podID,
+						Kind:      "Pod",
+						Name:      pod.Name,
+						Namespace: namespace,
+						Status:    string(pod.Status.Phase),
+					})
+					c.addEdge(graph, pdbID, podID, "protects")
+
+					// Resolve pod's owner refs
+					c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+					// Find Services selecting this pod
+					c.findServicesSelectingPod(cs, graph, nodeMap, namespace, pod.Labels, podID)
+				}
 			}
 		}
 	}

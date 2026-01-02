@@ -28,13 +28,23 @@ import {
     GlobeAltIcon,
     ServerStackIcon,
     ServerIcon,
+    QueueListIcon,
+    BoltIcon,
+    ShieldCheckIcon,
+    ArrowsRightLeftIcon,
+    TagIcon,
+    UserCircleIcon,
+    ArrowsPointingOutIcon,
+    ShieldExclamationIcon,
 } from '@heroicons/react/24/outline';
 
 // Resource kinds that support dependency graph queries
 const DEPENDENCY_SUPPORTED_KINDS = new Set([
     'Pod', 'Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet',
     'Job', 'CronJob', 'ConfigMap', 'Secret', 'Service',
-    'PersistentVolumeClaim', 'PersistentVolume'
+    'PersistentVolumeClaim', 'PersistentVolume', 'StorageClass',
+    'Ingress', 'IngressClass', 'Endpoints', 'NetworkPolicy', 'PriorityClass',
+    'ServiceAccount', 'HorizontalPodAutoscaler', 'PodDisruptionBudget'
 ]);
 
 // Map resource kinds to icons and colors
@@ -52,6 +62,14 @@ const resourceStyles = {
     PersistentVolumeClaim: { icon: CircleStackIcon, color: '#a855f7', bgColor: '#a855f720' },
     PersistentVolume: { icon: ServerStackIcon, color: '#6366f1', bgColor: '#6366f120' },
     StorageClass: { icon: ServerIcon, color: '#78716c', bgColor: '#78716c20' },
+    Ingress: { icon: ArrowsRightLeftIcon, color: '#f472b6', bgColor: '#f472b620' },
+    IngressClass: { icon: TagIcon, color: '#94a3b8', bgColor: '#94a3b820' },
+    Endpoints: { icon: QueueListIcon, color: '#22d3ee', bgColor: '#22d3ee20' },
+    NetworkPolicy: { icon: ShieldCheckIcon, color: '#fb923c', bgColor: '#fb923c20' },
+    PriorityClass: { icon: BoltIcon, color: '#facc15', bgColor: '#facc1520' },
+    ServiceAccount: { icon: UserCircleIcon, color: '#c084fc', bgColor: '#c084fc20' },
+    HorizontalPodAutoscaler: { icon: ArrowsPointingOutIcon, color: '#2dd4bf', bgColor: '#2dd4bf20' },
+    PodDisruptionBudget: { icon: ShieldExclamationIcon, color: '#fbbf24', bgColor: '#fbbf2420' },
 };
 
 // Custom node component
@@ -142,6 +160,16 @@ const getEdgeStyle = (relation) => {
             return { stroke: '#a855f7', strokeWidth: 2 };
         case 'selects':
             return { stroke: '#14b8a6', strokeWidth: 2, strokeDasharray: '3,3' };
+        case 'routes-to':
+            return { stroke: '#f472b6', strokeWidth: 2 };
+        case 'references':
+            return { stroke: '#22d3ee', strokeWidth: 2, strokeDasharray: '5,5' };
+        case 'applies-to':
+            return { stroke: '#fb923c', strokeWidth: 2, strokeDasharray: '3,3' };
+        case 'scales':
+            return { stroke: '#2dd4bf', strokeWidth: 2 };
+        case 'protects':
+            return { stroke: '#fbbf24', strokeWidth: 2, strokeDasharray: '3,3' };
         default:
             return { stroke: '#6b7280', strokeWidth: 1 };
     }
@@ -171,6 +199,14 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             PersistentVolumeClaim: 'pvc',
             PersistentVolume: 'pv',
             StorageClass: 'storageclass',
+            Ingress: 'ingress',
+            IngressClass: 'ingressclass',
+            Endpoints: 'endpoints',
+            NetworkPolicy: 'networkpolicy',
+            PriorityClass: 'priorityclass',
+            ServiceAccount: 'serviceaccount',
+            HorizontalPodAutoscaler: 'hpa',
+            PodDisruptionBudget: 'pdb',
         };
         return mapping[kind] || kind.toLowerCase();
     };
@@ -332,7 +368,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             {/* Legend */}
             <div className="absolute bottom-4 left-4 bg-[#2d2d2d] border border-[#3d3d3d] rounded-lg p-3 text-xs">
                 <div className="text-gray-400 font-medium mb-2">Legend</div>
-                <div className="space-y-1">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-0.5 bg-green-500"></div>
                         <span className="text-gray-300">owns</span>
@@ -348,6 +384,26 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-0.5 bg-teal-500" style={{ borderTop: '2px dashed' }}></div>
                         <span className="text-gray-300">selects</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-0.5 bg-pink-400"></div>
+                        <span className="text-gray-300">routes-to</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-0.5 bg-cyan-400" style={{ borderTop: '2px dashed' }}></div>
+                        <span className="text-gray-300">references</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-0.5 bg-orange-400" style={{ borderTop: '2px dashed' }}></div>
+                        <span className="text-gray-300">applies-to</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-0.5 bg-teal-400"></div>
+                        <span className="text-gray-300">scales</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-0.5 bg-amber-400" style={{ borderTop: '2px dashed' }}></div>
+                        <span className="text-gray-300">protects</span>
                     </div>
                 </div>
             </div>
