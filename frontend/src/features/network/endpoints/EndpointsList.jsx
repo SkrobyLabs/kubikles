@@ -1,0 +1,109 @@
+import React, { useMemo, useState, useCallback } from 'react';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import ResourceList from '../../../components/shared/ResourceList';
+import EndpointsActionsMenu from './EndpointsActionsMenu';
+import { useEndpoints } from '../../../hooks/resources';
+import { useEndpointsActions } from './useEndpointsActions';
+import { useK8s } from '../../../context/K8sContext';
+import { useUI } from '../../../context/UIContext';
+import { formatAge } from '../../../utils/formatting';
+
+export default function EndpointsList({ isVisible }) {
+    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
+    const { activeMenuId, setActiveMenuId } = useUI();
+    const { endpoints, loading } = useEndpoints(currentContext, selectedNamespaces, isVisible);
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = useEndpointsActions();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
+
+    const getAddressCount = (ep) => {
+        let count = 0;
+        (ep.subsets || []).forEach(subset => {
+            count += (subset.addresses || []).length;
+            count += (subset.notReadyAddresses || []).length;
+        });
+        return count;
+    };
+
+    const getReadyCount = (ep) => {
+        let count = 0;
+        (ep.subsets || []).forEach(subset => {
+            count += (subset.addresses || []).length;
+        });
+        return count;
+    };
+
+    const getPorts = (ep) => {
+        const ports = new Set();
+        (ep.subsets || []).forEach(subset => {
+            (subset.ports || []).forEach(port => {
+                ports.add(`${port.port}/${port.protocol || 'TCP'}`);
+            });
+        });
+        return ports.size > 0 ? Array.from(ports).slice(0, 3).join(', ') + (ports.size > 3 ? ` +${ports.size - 3}` : '') : '-';
+    };
+
+    const columns = useMemo(() => [
+        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
+        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
+        {
+            key: 'endpoints',
+            label: 'Endpoints',
+            render: (item) => {
+                const ready = getReadyCount(item);
+                const total = getAddressCount(item);
+                return `${ready}/${total}`;
+            },
+            getValue: (item) => getAddressCount(item)
+        },
+        { key: 'ports', label: 'Ports', render: (item) => getPorts(item), getValue: (item) => getPorts(item) },
+        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        {
+            key: 'actions',
+            label: <EllipsisVerticalIcon className="h-5 w-5" />,
+            align: 'center',
+            render: (item) => (
+                <EndpointsActionsMenu
+                    endpoints={item}
+                    isOpen={activeMenuId === `endpoints-${item.metadata.uid}`}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `endpoints-${item.metadata.uid}`, buttonElement)}
+                    onEditYaml={handleEditYaml}
+                    onShowDependencies={handleShowDependencies}
+                    onDelete={handleDelete}
+                />
+            ),
+            getValue: () => '',
+            isColumnSelector: true,
+            disableSort: true
+        }
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleDelete]);
+
+    return (
+        <ResourceList
+            title="Endpoints"
+            columns={columns}
+            data={endpoints}
+            isLoading={loading}
+            namespaces={namespaces}
+            currentNamespace={selectedNamespaces}
+            onNamespaceChange={setSelectedNamespaces}
+            showNamespaceSelector={true}
+            multiSelectNamespaces={true}
+            highlightedUid={activeMenuId}
+            initialSort={{ key: 'age', direction: 'desc' }}
+            resourceType="endpoints"
+            onRowClick={handleShowDetails}
+        />
+    );
+}

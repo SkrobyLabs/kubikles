@@ -1,0 +1,97 @@
+import React, { useMemo, useState, useCallback } from 'react';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import ResourceList from '../../../components/shared/ResourceList';
+import PriorityClassActionsMenu from './PriorityClassActionsMenu';
+import { usePriorityClasses } from '../../../hooks/resources';
+import { usePriorityClassActions } from './usePriorityClassActions';
+import { useK8s } from '../../../context/K8sContext';
+import { useUI } from '../../../context/UIContext';
+import { formatAge } from '../../../utils/formatting';
+
+export default function PriorityClassList({ isVisible }) {
+    const { currentContext } = useK8s();
+    const { activeMenuId, setActiveMenuId } = useUI();
+    const { priorityClasses, loading } = usePriorityClasses(currentContext, isVisible);
+    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = usePriorityClassActions();
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+        if (isOpen && buttonElement) {
+            const rect = buttonElement.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                left: rect.right - 192
+            });
+        }
+        setActiveMenuId(isOpen ? menuId : null);
+    }, [setActiveMenuId]);
+
+    const formatValue = (value) => {
+        if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
+        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+        if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+        return value?.toString() || '0';
+    };
+
+    const columns = useMemo(() => [
+        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
+        {
+            key: 'value',
+            label: 'Value',
+            render: (item) => (
+                <span className="font-mono">{formatValue(item.value)}</span>
+            ),
+            getValue: (item) => item.value || 0
+        },
+        {
+            key: 'globalDefault',
+            label: 'Global Default',
+            render: (item) => (
+                <span className={item.globalDefault ? 'text-green-400' : 'text-gray-500'}>
+                    {item.globalDefault ? 'Yes' : 'No'}
+                </span>
+            ),
+            getValue: (item) => item.globalDefault ? 'Yes' : 'No'
+        },
+        {
+            key: 'preemption',
+            label: 'Preemption',
+            render: (item) => item.preemptionPolicy || 'PreemptLowerPriority',
+            getValue: (item) => item.preemptionPolicy || 'PreemptLowerPriority'
+        },
+        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        {
+            key: 'actions',
+            label: <EllipsisVerticalIcon className="h-5 w-5" />,
+            align: 'center',
+            render: (item) => (
+                <PriorityClassActionsMenu
+                    priorityClass={item}
+                    isOpen={activeMenuId === `priorityclass-${item.metadata.uid}`}
+                    menuPosition={menuPosition}
+                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `priorityclass-${item.metadata.uid}`, buttonElement)}
+                    onEditYaml={handleEditYaml}
+                    onShowDependencies={handleShowDependencies}
+                    onDelete={handleDelete}
+                />
+            ),
+            getValue: () => '',
+            isColumnSelector: true,
+            disableSort: true
+        }
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleDelete]);
+
+    return (
+        <ResourceList
+            title="Priority Classes"
+            columns={columns}
+            data={priorityClasses}
+            isLoading={loading}
+            showNamespaceSelector={false}
+            highlightedUid={activeMenuId}
+            initialSort={{ key: 'value', direction: 'desc' }}
+            resourceType="priorityclasses"
+            onRowClick={handleShowDetails}
+        />
+    );
+}

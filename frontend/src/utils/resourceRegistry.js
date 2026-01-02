@@ -35,6 +35,10 @@ import {
     GetPDBYaml, UpdatePDBYaml,
     GetResourceQuotaYaml, UpdateResourceQuotaYaml,
     GetLimitRangeYaml, UpdateLimitRangeYaml,
+    GetEndpointsYaml, UpdateEndpointsYaml,
+    GetValidatingWebhookConfigurationYaml, UpdateValidatingWebhookConfigurationYaml,
+    GetMutatingWebhookConfigurationYaml, UpdateMutatingWebhookConfigurationYaml,
+    GetPriorityClassYaml, UpdatePriorityClassYaml,
 } from '../../wailsjs/go/main/App';
 
 const registry = {
@@ -240,6 +244,34 @@ const registry = {
         namespaced: true,
         getYaml: (namespace, name) => GetLimitRangeYaml(namespace, name),
         updateYaml: (namespace, name, content) => UpdateLimitRangeYaml(namespace, name, content),
+    },
+    endpoints: {
+        kind: 'Endpoints',
+        plural: 'endpoints',
+        namespaced: true,
+        getYaml: (namespace, name) => GetEndpointsYaml(namespace, name),
+        updateYaml: (namespace, name, content) => UpdateEndpointsYaml(namespace, name, content),
+    },
+    validatingwebhookconfiguration: {
+        kind: 'ValidatingWebhookConfiguration',
+        plural: 'validatingwebhookconfigurations',
+        namespaced: false,
+        getYaml: (_, name) => GetValidatingWebhookConfigurationYaml(name),
+        updateYaml: (_, name, content) => UpdateValidatingWebhookConfigurationYaml(name, content),
+    },
+    mutatingwebhookconfiguration: {
+        kind: 'MutatingWebhookConfiguration',
+        plural: 'mutatingwebhookconfigurations',
+        namespaced: false,
+        getYaml: (_, name) => GetMutatingWebhookConfigurationYaml(name),
+        updateYaml: (_, name, content) => UpdateMutatingWebhookConfigurationYaml(name, content),
+    },
+    priorityclass: {
+        kind: 'PriorityClass',
+        plural: 'priorityclasses',
+        namespaced: false,
+        getYaml: (_, name) => GetPriorityClassYaml(name),
+        updateYaml: (_, name, content) => UpdatePriorityClassYaml(name, content),
     },
 };
 

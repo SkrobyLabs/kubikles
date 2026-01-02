@@ -21,7 +21,9 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
@@ -2545,4 +2547,136 @@ func (a *App) DeleteLimitRange(namespace, name string) error {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.DeleteLimitRange(currentContext, namespace, name)
+}
+
+// Endpoints operations (namespaced)
+func (a *App) ListEndpoints(namespace string) ([]v1.Endpoints, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListEndpoints(namespace)
+}
+
+func (a *App) GetEndpointsYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetEndpointsYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetEndpointsYaml(namespace, name)
+}
+
+func (a *App) UpdateEndpointsYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdateEndpointsYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateEndpointsYaml(namespace, name, yamlContent)
+}
+
+func (a *App) DeleteEndpoints(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteEndpoints called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteEndpoints(currentContext, namespace, name)
+}
+
+// ValidatingWebhookConfiguration operations (cluster-scoped)
+func (a *App) ListValidatingWebhookConfigurations() ([]admissionregistrationv1.ValidatingWebhookConfiguration, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListValidatingWebhookConfigurations()
+}
+
+func (a *App) GetValidatingWebhookConfigurationYaml(name string) (string, error) {
+	a.LogDebug("GetValidatingWebhookConfigurationYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetValidatingWebhookConfigurationYaml(name)
+}
+
+func (a *App) UpdateValidatingWebhookConfigurationYaml(name, yamlContent string) error {
+	a.LogDebug("UpdateValidatingWebhookConfigurationYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateValidatingWebhookConfigurationYaml(name, yamlContent)
+}
+
+func (a *App) DeleteValidatingWebhookConfiguration(name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteValidatingWebhookConfiguration called: context=%s, name=%s", currentContext, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteValidatingWebhookConfiguration(currentContext, name)
+}
+
+// MutatingWebhookConfiguration operations (cluster-scoped)
+func (a *App) ListMutatingWebhookConfigurations() ([]admissionregistrationv1.MutatingWebhookConfiguration, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListMutatingWebhookConfigurations()
+}
+
+func (a *App) GetMutatingWebhookConfigurationYaml(name string) (string, error) {
+	a.LogDebug("GetMutatingWebhookConfigurationYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetMutatingWebhookConfigurationYaml(name)
+}
+
+func (a *App) UpdateMutatingWebhookConfigurationYaml(name, yamlContent string) error {
+	a.LogDebug("UpdateMutatingWebhookConfigurationYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateMutatingWebhookConfigurationYaml(name, yamlContent)
+}
+
+func (a *App) DeleteMutatingWebhookConfiguration(name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteMutatingWebhookConfiguration called: context=%s, name=%s", currentContext, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteMutatingWebhookConfiguration(currentContext, name)
+}
+
+// PriorityClass operations (cluster-scoped)
+func (a *App) ListPriorityClasses() ([]schedulingv1.PriorityClass, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListPriorityClasses()
+}
+
+func (a *App) GetPriorityClassYaml(name string) (string, error) {
+	a.LogDebug("GetPriorityClassYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetPriorityClassYaml(name)
+}
+
+func (a *App) UpdatePriorityClassYaml(name, yamlContent string) error {
+	a.LogDebug("UpdatePriorityClassYaml called: name=%s", name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdatePriorityClassYaml(name, yamlContent)
+}
+
+func (a *App) DeletePriorityClass(name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeletePriorityClass called: context=%s, name=%s", currentContext, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeletePriorityClass(currentContext, name)
 }

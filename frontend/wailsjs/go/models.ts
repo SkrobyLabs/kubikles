@@ -6452,6 +6452,158 @@ export namespace v1 {
 	
 	
 	
+	export class EndpointAddress {
+	    ip: string;
+	    hostname?: string;
+	    nodeName?: string;
+	    targetRef?: ObjectReference;
+	
+	    static createFrom(source: any = {}) {
+	        return new EndpointAddress(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ip = source["ip"];
+	        this.hostname = source["hostname"];
+	        this.nodeName = source["nodeName"];
+	        this.targetRef = this.convertValues(source["targetRef"], ObjectReference);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class EndpointPort {
+	    name?: string;
+	    port: number;
+	    protocol?: string;
+	    appProtocol?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EndpointPort(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.port = source["port"];
+	        this.protocol = source["protocol"];
+	        this.appProtocol = source["appProtocol"];
+	    }
+	}
+	export class EndpointSubset {
+	    addresses?: EndpointAddress[];
+	    notReadyAddresses?: EndpointAddress[];
+	    ports?: EndpointPort[];
+	
+	    static createFrom(source: any = {}) {
+	        return new EndpointSubset(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.addresses = this.convertValues(source["addresses"], EndpointAddress);
+	        this.notReadyAddresses = this.convertValues(source["notReadyAddresses"], EndpointAddress);
+	        this.ports = this.convertValues(source["ports"], EndpointPort);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Endpoints {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    subsets?: EndpointSubset[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Endpoints(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.subsets = this.convertValues(source["subsets"], EndpointSubset);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	
 	
@@ -7569,6 +7721,20 @@ export namespace v1 {
 		}
 	}
 	
+	export class MatchCondition {
+	    name: string;
+	    expression: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MatchCondition(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.expression = source["expression"];
+	    }
+	}
 	
 	export class ModifyVolumeStatus {
 	    targetVolumeAttributesClassName?: string;
@@ -7583,6 +7749,142 @@ export namespace v1 {
 	        this.targetVolumeAttributesClassName = source["targetVolumeAttributesClassName"];
 	        this.status = source["status"];
 	    }
+	}
+	export class RuleWithOperations {
+	    operations?: string[];
+	    apiGroups?: string[];
+	    apiVersions?: string[];
+	    resources?: string[];
+	    scope?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RuleWithOperations(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.operations = source["operations"];
+	        this.apiGroups = source["apiGroups"];
+	        this.apiVersions = source["apiVersions"];
+	        this.resources = source["resources"];
+	        this.scope = source["scope"];
+	    }
+	}
+	export class MutatingWebhook {
+	    name: string;
+	    clientConfig: WebhookClientConfig;
+	    rules?: RuleWithOperations[];
+	    failurePolicy?: string;
+	    matchPolicy?: string;
+	    namespaceSelector?: LabelSelector;
+	    objectSelector?: LabelSelector;
+	    sideEffects?: string;
+	    timeoutSeconds?: number;
+	    admissionReviewVersions: string[];
+	    reinvocationPolicy?: string;
+	    matchConditions?: MatchCondition[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MutatingWebhook(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.clientConfig = this.convertValues(source["clientConfig"], WebhookClientConfig);
+	        this.rules = this.convertValues(source["rules"], RuleWithOperations);
+	        this.failurePolicy = source["failurePolicy"];
+	        this.matchPolicy = source["matchPolicy"];
+	        this.namespaceSelector = this.convertValues(source["namespaceSelector"], LabelSelector);
+	        this.objectSelector = this.convertValues(source["objectSelector"], LabelSelector);
+	        this.sideEffects = source["sideEffects"];
+	        this.timeoutSeconds = source["timeoutSeconds"];
+	        this.admissionReviewVersions = source["admissionReviewVersions"];
+	        this.reinvocationPolicy = source["reinvocationPolicy"];
+	        this.matchConditions = this.convertValues(source["matchConditions"], MatchCondition);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MutatingWebhookConfiguration {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    webhooks?: MutatingWebhook[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MutatingWebhookConfiguration(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.webhooks = this.convertValues(source["webhooks"], MutatingWebhook);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class NamespaceCondition {
 	    type: string;
@@ -9674,6 +9976,76 @@ export namespace v1 {
 	
 	
 	
+	export class PriorityClass {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    value: number;
+	    globalDefault?: boolean;
+	    description?: string;
+	    preemptionPolicy?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PriorityClass(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.value = source["value"];
+	        this.globalDefault = source["globalDefault"];
+	        this.description = source["description"];
+	        this.preemptionPolicy = source["preemptionPolicy"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	export class ReplicaSetCondition {
 	    type: string;
@@ -10210,6 +10582,7 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	
 	
 	
 	
@@ -10999,6 +11372,120 @@ export namespace v1 {
 	
 	
 	
+	export class ValidatingWebhook {
+	    name: string;
+	    clientConfig: WebhookClientConfig;
+	    rules?: RuleWithOperations[];
+	    failurePolicy?: string;
+	    matchPolicy?: string;
+	    namespaceSelector?: LabelSelector;
+	    objectSelector?: LabelSelector;
+	    sideEffects?: string;
+	    timeoutSeconds?: number;
+	    admissionReviewVersions: string[];
+	    matchConditions?: MatchCondition[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ValidatingWebhook(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.clientConfig = this.convertValues(source["clientConfig"], WebhookClientConfig);
+	        this.rules = this.convertValues(source["rules"], RuleWithOperations);
+	        this.failurePolicy = source["failurePolicy"];
+	        this.matchPolicy = source["matchPolicy"];
+	        this.namespaceSelector = this.convertValues(source["namespaceSelector"], LabelSelector);
+	        this.objectSelector = this.convertValues(source["objectSelector"], LabelSelector);
+	        this.sideEffects = source["sideEffects"];
+	        this.timeoutSeconds = source["timeoutSeconds"];
+	        this.admissionReviewVersions = source["admissionReviewVersions"];
+	        this.matchConditions = this.convertValues(source["matchConditions"], MatchCondition);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ValidatingWebhookConfiguration {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    webhooks?: ValidatingWebhook[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ValidatingWebhookConfiguration(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.webhooks = this.convertValues(source["webhooks"], ValidatingWebhook);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	
 	

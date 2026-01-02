@@ -36,10 +36,14 @@ import ClusterRoleList from './features/access-control/clusterroles/ClusterRoleL
 import RoleBindingList from './features/access-control/rolebindings/RoleBindingList';
 import ClusterRoleBindingList from './features/access-control/clusterrolebindings/ClusterRoleBindingList';
 import NetworkPolicyList from './features/network/networkpolicies/NetworkPolicyList';
+import EndpointsList from './features/network/endpoints/EndpointsList';
 import HPAList from './features/config/hpas/HPAList';
 import PDBList from './features/config/pdbs/PDBList';
 import ResourceQuotaList from './features/config/resourcequotas/ResourceQuotaList';
 import LimitRangeList from './features/config/limitranges/LimitRangeList';
+import ValidatingWebhookList from './features/cluster/webhooks/ValidatingWebhookList';
+import MutatingWebhookList from './features/cluster/webhooks/MutatingWebhookList';
+import PriorityClassList from './features/cluster/priorityclasses/PriorityClassList';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
 import ConfirmModal from './components/shared/ConfirmModal';
@@ -179,10 +183,14 @@ function MainLayout() {
             case 'rolebindings': return <RoleBindingList isVisible={true} />;
             case 'clusterrolebindings': return <ClusterRoleBindingList isVisible={true} />;
             case 'networkpolicies': return <NetworkPolicyList isVisible={true} />;
+            case 'endpoints': return <EndpointsList isVisible={true} />;
             case 'hpas': return <HPAList isVisible={true} />;
             case 'pdbs': return <PDBList isVisible={true} />;
             case 'resourcequotas': return <ResourceQuotaList isVisible={true} />;
             case 'limitranges': return <LimitRangeList isVisible={true} />;
+            case 'validatingwebhooks': return <ValidatingWebhookList isVisible={true} />;
+            case 'mutatingwebhooks': return <MutatingWebhookList isVisible={true} />;
+            case 'priorityclasses': return <PriorityClassList isVisible={true} />;
             default: return <div className="p-4">Unknown View: {activeView}</div>;
         }
     };

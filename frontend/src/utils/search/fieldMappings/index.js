@@ -28,6 +28,9 @@ import { hpaFields } from './hpas';
 import { pdbFields } from './pdbs';
 import { resourceQuotaFields } from './resourcequotas';
 import { limitRangeFields } from './limitranges';
+import { endpointsFields } from './endpoints';
+import { validatingWebhookFields, mutatingWebhookFields } from './webhooks';
+import { priorityClassFields } from './priorityclasses';
 import { commonFields } from './common';
 
 const registry = {
@@ -54,6 +57,10 @@ const registry = {
     pdbs: pdbFields,
     resourcequotas: resourceQuotaFields,
     limitranges: limitRangeFields,
+    endpoints: endpointsFields,
+    validatingwebhookconfigurations: validatingWebhookFields,
+    mutatingwebhookconfigurations: mutatingWebhookFields,
+    priorityclasses: priorityClassFields,
 };
 
 /**

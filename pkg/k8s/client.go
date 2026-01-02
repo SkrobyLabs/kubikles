@@ -17,7 +17,9 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -261,6 +263,30 @@ func (c *Client) WatchResource(ctx context.Context, resourceType, namespace stri
 		return cs.CoreV1().ResourceQuotas(namespace).Watch(ctx, opts)
 	case "limitranges":
 		return cs.CoreV1().LimitRanges(namespace).Watch(ctx, opts)
+	case "endpoints":
+		return cs.CoreV1().Endpoints(namespace).Watch(ctx, opts)
+
+	// RBAC API (v1) - service accounts already in core
+	case "serviceaccounts":
+		return cs.CoreV1().ServiceAccounts(namespace).Watch(ctx, opts)
+	case "roles":
+		return cs.RbacV1().Roles(namespace).Watch(ctx, opts)
+	case "clusterroles":
+		return cs.RbacV1().ClusterRoles().Watch(ctx, opts)
+	case "rolebindings":
+		return cs.RbacV1().RoleBindings(namespace).Watch(ctx, opts)
+	case "clusterrolebindings":
+		return cs.RbacV1().ClusterRoleBindings().Watch(ctx, opts)
+
+	// Admission Registration API (v1)
+	case "validatingwebhookconfigurations":
+		return cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().Watch(ctx, opts)
+	case "mutatingwebhookconfigurations":
+		return cs.AdmissionregistrationV1().MutatingWebhookConfigurations().Watch(ctx, opts)
+
+	// Scheduling API (v1)
+	case "priorityclasses":
+		return cs.SchedulingV1().PriorityClasses().Watch(ctx, opts)
 
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
@@ -3201,4 +3227,212 @@ func (c *Client) DeleteLimitRange(contextName, namespace, name string) error {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	return cs.CoreV1().LimitRanges(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// Endpoints operations (namespaced)
+func (c *Client) ListEndpoints(namespace string) ([]v1.Endpoints, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.CoreV1().Endpoints(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetEndpointsYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	ep, err := cs.CoreV1().Endpoints(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	ep.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(ep)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateEndpointsYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var ep v1.Endpoints
+	if err := yaml.Unmarshal([]byte(yamlContent), &ep); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.CoreV1().Endpoints(namespace).Update(context.TODO(), &ep, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteEndpoints(contextName, namespace, name string) error {
+	fmt.Printf("Deleting endpoints: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.CoreV1().Endpoints(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// ValidatingWebhookConfiguration operations (cluster-scoped)
+func (c *Client) ListValidatingWebhookConfigurations() ([]admissionregistrationv1.ValidatingWebhookConfiguration, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetValidatingWebhookConfigurationYaml(name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	wh, err := cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	wh.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(wh)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateValidatingWebhookConfigurationYaml(name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var wh admissionregistrationv1.ValidatingWebhookConfiguration
+	if err := yaml.Unmarshal([]byte(yamlContent), &wh); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().Update(context.TODO(), &wh, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteValidatingWebhookConfiguration(contextName, name string) error {
+	fmt.Printf("Deleting validating webhook configuration: context=%s, name=%s\n", contextName, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// MutatingWebhookConfiguration operations (cluster-scoped)
+func (c *Client) ListMutatingWebhookConfigurations() ([]admissionregistrationv1.MutatingWebhookConfiguration, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.AdmissionregistrationV1().MutatingWebhookConfigurations().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetMutatingWebhookConfigurationYaml(name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	wh, err := cs.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	wh.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(wh)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateMutatingWebhookConfigurationYaml(name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var wh admissionregistrationv1.MutatingWebhookConfiguration
+	if err := yaml.Unmarshal([]byte(yamlContent), &wh); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.AdmissionregistrationV1().MutatingWebhookConfigurations().Update(context.TODO(), &wh, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteMutatingWebhookConfiguration(contextName, name string) error {
+	fmt.Printf("Deleting mutating webhook configuration: context=%s, name=%s\n", contextName, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.AdmissionregistrationV1().MutatingWebhookConfigurations().Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// PriorityClass operations (cluster-scoped)
+func (c *Client) ListPriorityClasses() ([]schedulingv1.PriorityClass, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.SchedulingV1().PriorityClasses().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetPriorityClassYaml(name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	pc, err := cs.SchedulingV1().PriorityClasses().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	pc.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(pc)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdatePriorityClassYaml(name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var pc schedulingv1.PriorityClass
+	if err := yaml.Unmarshal([]byte(yamlContent), &pc); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.SchedulingV1().PriorityClasses().Update(context.TODO(), &pc, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeletePriorityClass(contextName, name string) error {
+	fmt.Printf("Deleting priority class: context=%s, name=%s\n", contextName, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.SchedulingV1().PriorityClasses().Delete(context.TODO(), name, metav1.DeleteOptions{})
 }

@@ -30,6 +30,8 @@ export function DeleteDaemonSet(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteDeployment(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function DeleteEndpoints(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteEvent(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteHPA(arg1:string,arg2:string):Promise<void>;
@@ -41,6 +43,8 @@ export function DeleteIngressClass(arg1:string):Promise<void>;
 export function DeleteJob(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteLimitRange(arg1:string,arg2:string):Promise<void>;
+
+export function DeleteMutatingWebhookConfiguration(arg1:string):Promise<void>;
 
 export function DeleteNamespace(arg1:string):Promise<void>;
 
@@ -57,6 +61,8 @@ export function DeletePVC(arg1:string,arg2:string):Promise<void>;
 export function DeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function DeletePortForwardConfig(arg1:string):Promise<void>;
+
+export function DeletePriorityClass(arg1:string):Promise<void>;
 
 export function DeleteReplicaSet(arg1:string,arg2:string):Promise<void>;
 
@@ -75,6 +81,8 @@ export function DeleteServiceAccount(arg1:string,arg2:string):Promise<void>;
 export function DeleteStatefulSet(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function DeleteStorageClass(arg1:string):Promise<void>;
+
+export function DeleteValidatingWebhookConfiguration(arg1:string):Promise<void>;
 
 export function DetectIngressController():Promise<main.IngressController>;
 
@@ -108,6 +116,8 @@ export function GetDaemonSetYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetDeploymentYaml(arg1:string,arg2:string):Promise<string>;
 
+export function GetEndpointsYaml(arg1:string,arg2:string):Promise<string>;
+
 export function GetEventYAML(arg1:string,arg2:string):Promise<string>;
 
 export function GetHPAYaml(arg1:string,arg2:string):Promise<string>;
@@ -135,6 +145,8 @@ export function GetJobYaml(arg1:string,arg2:string):Promise<string>;
 export function GetLimitRangeYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetManagedHosts():Promise<Array<string>>;
+
+export function GetMutatingWebhookConfigurationYaml(arg1:string):Promise<string>;
 
 export function GetNamespaceResourceCounts(arg1:string):Promise<k8s.NamespaceResourceCounts>;
 
@@ -168,6 +180,8 @@ export function GetPodYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetPortForwardConfigs(arg1:string):Promise<Array<main.PortForwardConfig>>;
 
+export function GetPriorityClassYaml(arg1:string):Promise<string>;
+
 export function GetRandomAvailablePort():Promise<number>;
 
 export function GetReplicaSetYaml(arg1:string,arg2:string):Promise<string>;
@@ -196,6 +210,8 @@ export function GetStorageClass(arg1:string):Promise<v1.StorageClass>;
 
 export function GetStorageClassYaml(arg1:string):Promise<string>;
 
+export function GetValidatingWebhookConfigurationYaml(arg1:string):Promise<string>;
+
 export function Greet(arg1:string):Promise<string>;
 
 export function ListCRDs():Promise<Array<v1.CustomResourceDefinition>>;
@@ -218,6 +234,8 @@ export function ListDaemonSets(arg1:string):Promise<Array<v1.DaemonSet>>;
 
 export function ListDeployments(arg1:string):Promise<Array<v1.Deployment>>;
 
+export function ListEndpoints(arg1:string):Promise<Array<v1.Endpoints>>;
+
 export function ListEvents(arg1:string):Promise<Array<v1.Event>>;
 
 export function ListHPAs(arg1:string):Promise<Array<v2.HorizontalPodAutoscaler>>;
@@ -234,6 +252,8 @@ export function ListJobs(arg1:string):Promise<Array<v1.Job>>;
 
 export function ListLimitRanges(arg1:string):Promise<Array<v1.LimitRange>>;
 
+export function ListMutatingWebhookConfigurations():Promise<Array<v1.MutatingWebhookConfiguration>>;
+
 export function ListNamespaces():Promise<Array<v1.Namespace>>;
 
 export function ListNetworkPolicies(arg1:string):Promise<Array<v1.NetworkPolicy>>;
@@ -249,6 +269,8 @@ export function ListPVCs(arg1:string):Promise<Array<v1.PersistentVolumeClaim>>;
 export function ListPVs():Promise<Array<v1.PersistentVolume>>;
 
 export function ListPods(arg1:string):Promise<Array<v1.Pod>>;
+
+export function ListPriorityClasses():Promise<Array<v1.PriorityClass>>;
 
 export function ListReplicaSets(arg1:string):Promise<Array<v1.ReplicaSet>>;
 
@@ -267,6 +289,8 @@ export function ListServices(arg1:string):Promise<Array<v1.Service>>;
 export function ListStatefulSets(arg1:string,arg2:string):Promise<Array<v1.StatefulSet>>;
 
 export function ListStorageClasses():Promise<Array<v1.StorageClass>>;
+
+export function ListValidatingWebhookConfigurations():Promise<Array<v1.ValidatingWebhookConfiguration>>;
 
 export function LogDebug(arg1:string,arg2:Array<any>):Promise<void>;
 
@@ -366,6 +390,8 @@ export function UpdateDaemonSetYaml(arg1:string,arg2:string,arg3:string):Promise
 
 export function UpdateDeploymentYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function UpdateEndpointsYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function UpdateEventYAML(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateHPAYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -379,6 +405,8 @@ export function UpdateIngressYaml(arg1:string,arg2:string,arg3:string):Promise<v
 export function UpdateJobYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateLimitRangeYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateMutatingWebhookConfigurationYaml(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateNamespaceYAML(arg1:string,arg2:string):Promise<void>;
 
@@ -395,6 +423,8 @@ export function UpdatePVYaml(arg1:string,arg2:string):Promise<void>;
 export function UpdatePodYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdatePortForwardConfig(arg1:main.PortForwardConfig):Promise<void>;
+
+export function UpdatePriorityClassYaml(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateReplicaSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
@@ -415,5 +445,7 @@ export function UpdateServiceYaml(arg1:string,arg2:string,arg3:string):Promise<v
 export function UpdateStatefulSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateStorageClassYaml(arg1:string,arg2:string):Promise<void>;
+
+export function UpdateValidatingWebhookConfigurationYaml(arg1:string,arg2:string):Promise<void>;
 
 export function UpgradeHelmRelease(arg1:string,arg2:string,arg3:helm.UpgradeOptions):Promise<void>;

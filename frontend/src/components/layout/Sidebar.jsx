@@ -30,7 +30,10 @@ import {
     ArrowsPointingOutIcon,
     ShieldExclamationIcon,
     ChartBarIcon,
-    AdjustmentsHorizontalIcon
+    AdjustmentsHorizontalIcon,
+    QueueListIcon,
+    FingerPrintIcon,
+    BoltIcon
 } from '@heroicons/react/24/outline';
 import { useConfig } from '../../context/ConfigContext';
 import SearchSelect from '../shared/SearchSelect';
@@ -147,6 +150,7 @@ export default function Sidebar({
                 { id: 'nodes', label: 'Nodes', icon: ServerIcon },
                 { id: 'namespaces', label: 'Namespaces', icon: FolderIcon },
                 { id: 'events', label: 'Events', icon: BellAlertIcon },
+                { id: 'priorityclasses', label: 'Priority Classes', icon: BoltIcon },
             ]
         },
         {
@@ -176,6 +180,7 @@ export default function Sidebar({
             title: 'Network',
             items: [
                 { id: 'services', label: 'Services', icon: GlobeAltIcon },
+                { id: 'endpoints', label: 'Endpoints', icon: QueueListIcon },
                 { id: 'ingresses', label: 'Ingresses', icon: ArrowsRightLeftIcon },
                 { id: 'ingressclasses', label: 'Ingress Classes', icon: TagIcon },
                 { id: 'networkpolicies', label: 'Network Policies', icon: ShieldCheckIcon },
@@ -205,6 +210,13 @@ export default function Sidebar({
                 { id: 'clusterroles', label: 'Cluster Roles', icon: KeyIcon },
                 { id: 'rolebindings', label: 'Role Bindings', icon: LinkIcon },
                 { id: 'clusterrolebindings', label: 'Cluster Role Bindings', icon: LinkIcon },
+            ]
+        },
+        {
+            title: 'Admission Control',
+            items: [
+                { id: 'validatingwebhooks', label: 'Validating Webhooks', icon: ShieldCheckIcon },
+                { id: 'mutatingwebhooks', label: 'Mutating Webhooks', icon: FingerPrintIcon },
             ]
         }
     ];

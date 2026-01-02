@@ -50,6 +50,10 @@ export function DeleteDeployment(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeleteDeployment'](arg1, arg2, arg3);
 }
 
+export function DeleteEndpoints(arg1, arg2) {
+  return window['go']['main']['App']['DeleteEndpoints'](arg1, arg2);
+}
+
 export function DeleteEvent(arg1, arg2) {
   return window['go']['main']['App']['DeleteEvent'](arg1, arg2);
 }
@@ -72,6 +76,10 @@ export function DeleteJob(arg1, arg2) {
 
 export function DeleteLimitRange(arg1, arg2) {
   return window['go']['main']['App']['DeleteLimitRange'](arg1, arg2);
+}
+
+export function DeleteMutatingWebhookConfiguration(arg1) {
+  return window['go']['main']['App']['DeleteMutatingWebhookConfiguration'](arg1);
 }
 
 export function DeleteNamespace(arg1) {
@@ -104,6 +112,10 @@ export function DeletePod(arg1, arg2, arg3) {
 
 export function DeletePortForwardConfig(arg1) {
   return window['go']['main']['App']['DeletePortForwardConfig'](arg1);
+}
+
+export function DeletePriorityClass(arg1) {
+  return window['go']['main']['App']['DeletePriorityClass'](arg1);
 }
 
 export function DeleteReplicaSet(arg1, arg2) {
@@ -140,6 +152,10 @@ export function DeleteStatefulSet(arg1, arg2, arg3) {
 
 export function DeleteStorageClass(arg1) {
   return window['go']['main']['App']['DeleteStorageClass'](arg1);
+}
+
+export function DeleteValidatingWebhookConfiguration(arg1) {
+  return window['go']['main']['App']['DeleteValidatingWebhookConfiguration'](arg1);
 }
 
 export function DetectIngressController() {
@@ -206,6 +222,10 @@ export function GetDeploymentYaml(arg1, arg2) {
   return window['go']['main']['App']['GetDeploymentYaml'](arg1, arg2);
 }
 
+export function GetEndpointsYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetEndpointsYaml'](arg1, arg2);
+}
+
 export function GetEventYAML(arg1, arg2) {
   return window['go']['main']['App']['GetEventYAML'](arg1, arg2);
 }
@@ -260,6 +280,10 @@ export function GetLimitRangeYaml(arg1, arg2) {
 
 export function GetManagedHosts() {
   return window['go']['main']['App']['GetManagedHosts']();
+}
+
+export function GetMutatingWebhookConfigurationYaml(arg1) {
+  return window['go']['main']['App']['GetMutatingWebhookConfigurationYaml'](arg1);
 }
 
 export function GetNamespaceResourceCounts(arg1) {
@@ -326,6 +350,10 @@ export function GetPortForwardConfigs(arg1) {
   return window['go']['main']['App']['GetPortForwardConfigs'](arg1);
 }
 
+export function GetPriorityClassYaml(arg1) {
+  return window['go']['main']['App']['GetPriorityClassYaml'](arg1);
+}
+
 export function GetRandomAvailablePort() {
   return window['go']['main']['App']['GetRandomAvailablePort']();
 }
@@ -382,6 +410,10 @@ export function GetStorageClassYaml(arg1) {
   return window['go']['main']['App']['GetStorageClassYaml'](arg1);
 }
 
+export function GetValidatingWebhookConfigurationYaml(arg1) {
+  return window['go']['main']['App']['GetValidatingWebhookConfigurationYaml'](arg1);
+}
+
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
@@ -426,6 +458,10 @@ export function ListDeployments(arg1) {
   return window['go']['main']['App']['ListDeployments'](arg1);
 }
 
+export function ListEndpoints(arg1) {
+  return window['go']['main']['App']['ListEndpoints'](arg1);
+}
+
 export function ListEvents(arg1) {
   return window['go']['main']['App']['ListEvents'](arg1);
 }
@@ -458,6 +494,10 @@ export function ListLimitRanges(arg1) {
   return window['go']['main']['App']['ListLimitRanges'](arg1);
 }
 
+export function ListMutatingWebhookConfigurations() {
+  return window['go']['main']['App']['ListMutatingWebhookConfigurations']();
+}
+
 export function ListNamespaces() {
   return window['go']['main']['App']['ListNamespaces']();
 }
@@ -488,6 +528,10 @@ export function ListPVs() {
 
 export function ListPods(arg1) {
   return window['go']['main']['App']['ListPods'](arg1);
+}
+
+export function ListPriorityClasses() {
+  return window['go']['main']['App']['ListPriorityClasses']();
 }
 
 export function ListReplicaSets(arg1) {
@@ -524,6 +568,10 @@ export function ListStatefulSets(arg1, arg2) {
 
 export function ListStorageClasses() {
   return window['go']['main']['App']['ListStorageClasses']();
+}
+
+export function ListValidatingWebhookConfigurations() {
+  return window['go']['main']['App']['ListValidatingWebhookConfigurations']();
 }
 
 export function LogDebug(arg1, arg2) {
@@ -722,6 +770,10 @@ export function UpdateDeploymentYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateDeploymentYaml'](arg1, arg2, arg3);
 }
 
+export function UpdateEndpointsYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateEndpointsYaml'](arg1, arg2, arg3);
+}
+
 export function UpdateEventYAML(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateEventYAML'](arg1, arg2, arg3);
 }
@@ -748,6 +800,10 @@ export function UpdateJobYaml(arg1, arg2, arg3) {
 
 export function UpdateLimitRangeYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateLimitRangeYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateMutatingWebhookConfigurationYaml(arg1, arg2) {
+  return window['go']['main']['App']['UpdateMutatingWebhookConfigurationYaml'](arg1, arg2);
 }
 
 export function UpdateNamespaceYAML(arg1, arg2) {
@@ -780,6 +836,10 @@ export function UpdatePodYaml(arg1, arg2, arg3) {
 
 export function UpdatePortForwardConfig(arg1) {
   return window['go']['main']['App']['UpdatePortForwardConfig'](arg1);
+}
+
+export function UpdatePriorityClassYaml(arg1, arg2) {
+  return window['go']['main']['App']['UpdatePriorityClassYaml'](arg1, arg2);
 }
 
 export function UpdateReplicaSetYaml(arg1, arg2, arg3) {
@@ -820,6 +880,10 @@ export function UpdateStatefulSetYaml(arg1, arg2, arg3) {
 
 export function UpdateStorageClassYaml(arg1, arg2) {
   return window['go']['main']['App']['UpdateStorageClassYaml'](arg1, arg2);
+}
+
+export function UpdateValidatingWebhookConfigurationYaml(arg1, arg2) {
+  return window['go']['main']['App']['UpdateValidatingWebhookConfigurationYaml'](arg1, arg2);
 }
 
 export function UpgradeHelmRelease(arg1, arg2, arg3) {

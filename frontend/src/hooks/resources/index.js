@@ -46,6 +46,10 @@ import {
     ListPDBs,
     ListResourceQuotas,
     ListLimitRanges,
+    ListEndpoints,
+    ListValidatingWebhookConfigurations,
+    ListMutatingWebhookConfigurations,
+    ListPriorityClasses,
 } from '../../../wailsjs/go/main/App';
 
 // =============================================================================
@@ -140,6 +144,9 @@ export const useClusterRoleBindings = createClusterScopedResourceHook('clusterro
 /** Hook for Kubernetes NetworkPolicies (namespaced) */
 export const useNetworkPolicies = createNamespacedResourceHook('networkpolicies', ListNetworkPolicies, 'networkPolicies');
 
+/** Hook for Kubernetes Endpoints (namespaced) */
+export const useEndpoints = createNamespacedResourceHook('endpoints', ListEndpoints, 'endpoints');
+
 // =============================================================================
 // CONFIG & POLICY RESOURCES
 // =============================================================================
@@ -155,3 +162,20 @@ export const useResourceQuotas = createNamespacedResourceHook('resourcequotas', 
 
 /** Hook for Kubernetes LimitRanges (namespaced) */
 export const useLimitRanges = createNamespacedResourceHook('limitranges', ListLimitRanges, 'limitRanges');
+
+// =============================================================================
+// ADMISSION CONTROL RESOURCES (cluster-scoped)
+// =============================================================================
+
+/** Hook for Kubernetes ValidatingWebhookConfigurations */
+export const useValidatingWebhookConfigurations = createClusterScopedResourceHook('validatingwebhookconfigurations', ListValidatingWebhookConfigurations, 'validatingWebhookConfigurations');
+
+/** Hook for Kubernetes MutatingWebhookConfigurations */
+export const useMutatingWebhookConfigurations = createClusterScopedResourceHook('mutatingwebhookconfigurations', ListMutatingWebhookConfigurations, 'mutatingWebhookConfigurations');
+
+// =============================================================================
+// SCHEDULING RESOURCES (cluster-scoped)
+// =============================================================================
+
+/** Hook for Kubernetes PriorityClasses */
+export const usePriorityClasses = createClusterScopedResourceHook('priorityclasses', ListPriorityClasses, 'priorityClasses');
