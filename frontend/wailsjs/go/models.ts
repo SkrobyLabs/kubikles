@@ -416,6 +416,9 @@ export namespace k8s {
 	    name: string;
 	    namespace?: string;
 	    status?: string;
+	    isSummary?: boolean;
+	    remainingCount?: number;
+	    parentId?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new DependencyNode(source);
@@ -428,6 +431,9 @@ export namespace k8s {
 	        this.name = source["name"];
 	        this.namespace = source["namespace"];
 	        this.status = source["status"];
+	        this.isSummary = source["isSummary"];
+	        this.remainingCount = source["remainingCount"];
+	        this.parentId = source["parentId"];
 	    }
 	}
 	export class DependencyGraph {

@@ -1671,6 +1671,17 @@ func (a *App) GetResourceDependencies(resourceType, namespace, name string) (*k8
 	return a.k8sClient.GetResourceDependencies(currentContext, resourceType, namespace, name)
 }
 
+// ExpandDependencyNode returns additional nodes when a summary node is expanded
+func (a *App) ExpandDependencyNode(resourceType, namespace, name, summaryNodeID string, offset int) (*k8s.DependencyGraph, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ExpandDependencyNode called: context=%s, type=%s, ns=%s, name=%s, summaryID=%s, offset=%d",
+		currentContext, resourceType, namespace, name, summaryNodeID, offset)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ExpandDependencyNode(currentContext, resourceType, namespace, name, summaryNodeID, offset)
+}
+
 // CustomResourceDefinition operations (cluster-scoped)
 func (a *App) ListCRDs() ([]apiextensionsv1.CustomResourceDefinition, error) {
 	currentContext := a.GetCurrentContext()

@@ -86,6 +86,8 @@ export function DeleteValidatingWebhookConfiguration(arg1:string):Promise<void>;
 
 export function DetectIngressController():Promise<main.IngressController>;
 
+export function ExpandDependencyNode(arg1:string,arg2:string,arg3:string,arg4:string,arg5:number):Promise<k8s.DependencyGraph>;
+
 export function ForceDeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function ForceHelmReleaseStatus(arg1:string,arg2:string,arg3:string):Promise<void>;

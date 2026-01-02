@@ -16,6 +16,10 @@ type DependencyNode struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace,omitempty"`
 	Status    string `json:"status,omitempty"`
+	// Summary node fields
+	IsSummary      bool `json:"isSummary,omitempty"`
+	RemainingCount int  `json:"remainingCount,omitempty"`
+	ParentID       string `json:"parentId,omitempty"` // For expansion context
 }
 
 // DependencyEdge represents an edge (relationship) in the dependency graph
@@ -29,6 +33,44 @@ type DependencyEdge struct {
 type DependencyGraph struct {
 	Nodes []DependencyNode `json:"nodes"`
 	Edges []DependencyEdge `json:"edges"`
+}
+
+// NodeLimiter tracks how many nodes of each type have been added per parent
+type NodeLimiter struct {
+	counts    map[string]int // key: "parentID:kind" -> count
+	limit     int
+	skipped   map[string][]DependencyNode // nodes that were skipped, for expansion
+}
+
+const DefaultNodeLimit = 5
+const ExpansionLimit = 10
+
+func newNodeLimiter(limit int) *NodeLimiter {
+	return &NodeLimiter{
+		counts:  make(map[string]int),
+		limit:   limit,
+		skipped: make(map[string][]DependencyNode),
+	}
+}
+
+func (l *NodeLimiter) canAdd(parentID, kind string) bool {
+	key := parentID + ":" + kind
+	return l.counts[key] < l.limit
+}
+
+func (l *NodeLimiter) add(parentID, kind string) {
+	key := parentID + ":" + kind
+	l.counts[key]++
+}
+
+func (l *NodeLimiter) skip(parentID, kind string, node DependencyNode) {
+	key := parentID + ":" + kind
+	l.skipped[key] = append(l.skipped[key], node)
+}
+
+func (l *NodeLimiter) getSkippedCount(parentID, kind string) int {
+	key := parentID + ":" + kind
+	return len(l.skipped[key])
 }
 
 // GetResourceDependencies resolves all dependencies for a given resource
@@ -45,52 +87,365 @@ func (c *Client) GetResourceDependencies(contextName, resourceType, namespace, n
 
 	nodeMap := make(map[string]bool) // Track added nodes by ID
 
+	var result *DependencyGraph
+
 	switch resourceType {
 	case "pod":
-		return c.getPodDependencies(cs, namespace, name, graph, nodeMap)
+		result, err = c.getPodDependencies(cs, namespace, name, graph, nodeMap)
 	case "deployment":
-		return c.getDeploymentDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getDeploymentDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "statefulset":
-		return c.getStatefulSetDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getStatefulSetDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "daemonset":
-		return c.getDaemonSetDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getDaemonSetDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "replicaset":
-		return c.getReplicaSetDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getReplicaSetDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "job":
-		return c.getJobDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getJobDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "cronjob":
-		return c.getCronJobDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getCronJobDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "pvc":
-		return c.getPVCDependencies(cs, namespace, name, graph, nodeMap)
+		result, err = c.getPVCDependencies(cs, namespace, name, graph, nodeMap)
 	case "pv":
-		return c.getPVDependencies(cs, name, graph, nodeMap)
+		result, err = c.getPVDependencies(cs, name, graph, nodeMap)
 	case "configmap":
-		return c.getConfigMapDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getConfigMapDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "secret":
-		return c.getSecretDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getSecretDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "service":
-		return c.getServiceDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getServiceDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "ingress":
-		return c.getIngressDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getIngressDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "endpoints":
-		return c.getEndpointsDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getEndpointsDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "priorityclass":
-		return c.getPriorityClassDependencies(cs, contextName, name, graph, nodeMap)
+		result, err = c.getPriorityClassDependencies(cs, contextName, name, graph, nodeMap)
 	case "networkpolicy":
-		return c.getNetworkPolicyDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getNetworkPolicyDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "ingressclass":
-		return c.getIngressClassDependencies(cs, contextName, name, graph, nodeMap)
+		result, err = c.getIngressClassDependencies(cs, contextName, name, graph, nodeMap)
 	case "storageclass":
-		return c.getStorageClassDependencies(cs, contextName, name, graph, nodeMap)
+		result, err = c.getStorageClassDependencies(cs, contextName, name, graph, nodeMap)
 	case "serviceaccount":
-		return c.getServiceAccountDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getServiceAccountDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "hpa":
-		return c.getHPADependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getHPADependencies(cs, contextName, namespace, name, graph, nodeMap)
 	case "pdb":
-		return c.getPDBDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getPDBDependencies(cs, contextName, namespace, name, graph, nodeMap)
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Determine the root node ID (the queried resource)
+	rootID := ""
+	if len(result.Nodes) > 0 {
+		rootID = result.Nodes[0].ID // First node added is always the queried resource
+	}
+
+	// Apply node limiting/aggregation
+	return aggregateGraph(result, DefaultNodeLimit, rootID), nil
+}
+
+// aggregateGraph limits nodes per type per parent and creates summary nodes for overflow
+// explicitRootID is the ID of the queried resource (should always be treated as root)
+func aggregateGraph(graph *DependencyGraph, limit int, explicitRootID string) *DependencyGraph {
+	if graph == nil {
+		return nil
+	}
+
+	// Build node lookup
+	nodeByID := make(map[string]DependencyNode)
+	for _, node := range graph.Nodes {
+		nodeByID[node.ID] = node
+	}
+
+	// Build edge relationships - track ALL incoming edges per node
+	incomingEdges := make(map[string][]DependencyEdge) // nodeID -> all edges pointing to it
+	outgoingEdges := make(map[string][]DependencyEdge) // nodeID -> all edges from it
+	for _, edge := range graph.Edges {
+		incomingEdges[edge.Target] = append(incomingEdges[edge.Target], edge)
+		outgoingEdges[edge.Source] = append(outgoingEdges[edge.Source], edge)
+	}
+
+	// Identify "connector" nodes - nodes that connect different parts of the graph
+	// A connector node has incoming edges from different node KINDS
+	// These nodes must be kept visible to maintain graph connectivity
+	connectorNodes := make(map[string]bool)
+	for nodeID, edges := range incomingEdges {
+		sourceKinds := make(map[string]bool)
+		for _, edge := range edges {
+			if sourceNode, ok := nodeByID[edge.Source]; ok {
+				sourceKinds[sourceNode.Kind] = true
+			}
+		}
+		// If this node has incoming edges from 2+ different kinds, it's a connector
+		if len(sourceKinds) >= 2 {
+			connectorNodes[nodeID] = true
+		}
+	}
+
+	// Also mark nodes that have outgoing edges to different kinds as connectors
+	for nodeID, edges := range outgoingEdges {
+		targetKinds := make(map[string]bool)
+		for _, edge := range edges {
+			if targetNode, ok := nodeByID[edge.Target]; ok {
+				targetKinds[targetNode.Kind] = true
+			}
+		}
+		if len(targetKinds) >= 2 {
+			connectorNodes[nodeID] = true
+		}
+	}
+
+	// Use explicit root if provided, otherwise find node with no incoming edges
+	rootID := explicitRootID
+	if rootID == "" {
+		for _, node := range graph.Nodes {
+			if len(incomingEdges[node.ID]) == 0 {
+				rootID = node.ID
+				break
+			}
+		}
+	}
+
+	// Determine primary parent for each node (for grouping purposes)
+	// Edge direction varies by relation type:
+	// - "owns", "selects", "routes-to", "scales", "protects", "applies-to": source is parent (parent → child edges)
+	// - "uses", "binds", "references": target is parent (child → parent edges)
+	childToParentRelations := map[string]bool{
+		"uses":       true,
+		"binds":      true,
+		"references": true,
+	}
+	parentToChildRelations := map[string]bool{
+		"owns":       true,
+		"selects":    true,
+		"routes-to":  true,
+		"scales":     true,
+		"protects":   true,
+		"applies-to": true,
+	}
+
+	primaryParent := make(map[string]string)
+	for nodeID := range nodeByID {
+		if nodeID == rootID {
+			continue
+		}
+
+		parent := ""
+
+		// First check outgoing edges for "uses/binds" type relations (child → parent)
+		for _, edge := range outgoingEdges[nodeID] {
+			if childToParentRelations[edge.Relation] {
+				parent = edge.Target
+				break
+			}
+		}
+
+		// Check incoming edges for "owns/selects/routes-to" type relations (parent → child)
+		if parent == "" {
+			for _, edge := range incomingEdges[nodeID] {
+				if parentToChildRelations[edge.Relation] {
+					parent = edge.Source
+					break
+				}
+			}
+		}
+
+		// Fallback: any incoming edge source (but NOT if we'd create a cycle)
+		if parent == "" && len(incomingEdges[nodeID]) > 0 {
+			candidate := incomingEdges[nodeID][0].Source
+			// Avoid cycles: don't set parent if candidate's parent would be this node
+			if primaryParent[candidate] != nodeID {
+				parent = candidate
+			}
+		}
+
+		primaryParent[nodeID] = parent
+	}
+
+	// Build new graph with limits applied
+	newGraph := &DependencyGraph{
+		Nodes: []DependencyNode{},
+		Edges: []DependencyEdge{},
+	}
+	keptNodes := make(map[string]bool)
+	hiddenNodes := make(map[string]bool) // Track nodes that were aggregated away
+
+	// Always keep root node
+	if rootID != "" {
+		if rootNode, ok := nodeByID[rootID]; ok {
+			newGraph.Nodes = append(newGraph.Nodes, rootNode)
+			keptNodes[rootID] = true
+		}
+	}
+
+	// Process nodes level by level, starting from root's children
+	// This ensures parents are processed before children
+	type groupKey struct {
+		parentID string
+		kind     string
+	}
+
+	processedNodes := make(map[string]bool)
+	processedNodes[rootID] = true
+
+	// Keep processing until no more nodes to process
+	for {
+		// Find nodes whose parent has been processed (either kept or hidden)
+		nodesByGroup := make(map[groupKey][]DependencyNode)
+		for _, node := range graph.Nodes {
+			if processedNodes[node.ID] {
+				continue
+			}
+			parentID := primaryParent[node.ID]
+			if parentID == "" {
+				parentID = rootID // Treat as direct child of root
+			}
+			// Only process if parent has been processed
+			if !processedNodes[parentID] && parentID != rootID {
+				continue
+			}
+			key := groupKey{parentID: parentID, kind: node.Kind}
+			nodesByGroup[key] = append(nodesByGroup[key], node)
+		}
+
+		if len(nodesByGroup) == 0 {
+			break // No more nodes to process
+		}
+
+		// Process each group
+		for key, nodes := range nodesByGroup {
+			// If parent was hidden, hide all children too (aggregate them)
+			if hiddenNodes[key.parentID] {
+				for _, node := range nodes {
+					hiddenNodes[node.ID] = true
+					processedNodes[node.ID] = true
+				}
+				// Create summary for these hidden children under the parent's summary
+				parentSummaryID := ""
+				for _, n := range newGraph.Nodes {
+					if n.IsSummary && n.ParentID != "" {
+						// Find the summary that contains the hidden parent
+						parts := splitSummaryID(n.ID)
+						if len(parts) >= 2 && parts[1] == primaryParent[key.parentID] {
+							parentSummaryID = n.ID
+							break
+						}
+					}
+				}
+				// Add these children's count to existing summary or skip
+				// (they're effectively hidden under their parent's summary)
+				_ = parentSummaryID // Children are implicitly hidden
+				continue
+			}
+
+			// Parent is visible, apply normal aggregation
+			if len(nodes) <= limit {
+				// Keep all nodes
+				for _, node := range nodes {
+					newGraph.Nodes = append(newGraph.Nodes, node)
+					keptNodes[node.ID] = true
+					processedNodes[node.ID] = true
+				}
+			} else {
+				// Separate connector nodes from regular nodes
+				var connectors, regular []DependencyNode
+				for _, node := range nodes {
+					if connectorNodes[node.ID] {
+						connectors = append(connectors, node)
+					} else {
+						regular = append(regular, node)
+					}
+				}
+
+				// Always keep all connector nodes
+				for _, node := range connectors {
+					newGraph.Nodes = append(newGraph.Nodes, node)
+					keptNodes[node.ID] = true
+					processedNodes[node.ID] = true
+				}
+
+				// Fill remaining slots with regular nodes
+				remainingSlots := limit - len(connectors)
+				if remainingSlots < 0 {
+					remainingSlots = 0
+				}
+
+				keptRegular := 0
+				for i := 0; i < remainingSlots && i < len(regular); i++ {
+					newGraph.Nodes = append(newGraph.Nodes, regular[i])
+					keptNodes[regular[i].ID] = true
+					processedNodes[regular[i].ID] = true
+					keptRegular++
+				}
+
+				// Mark remaining regular nodes as hidden
+				for i := keptRegular; i < len(regular); i++ {
+					hiddenNodes[regular[i].ID] = true
+					processedNodes[regular[i].ID] = true
+				}
+
+				// Add summary node for the hidden nodes
+				remaining := len(regular) - keptRegular
+				if remaining > 0 {
+					summaryID := fmt.Sprintf("summary:%s:%s", key.parentID, key.kind)
+					summaryNode := DependencyNode{
+						ID:             summaryID,
+						Kind:           key.kind,
+						Name:           fmt.Sprintf("+%d more %ss", remaining, key.kind),
+						IsSummary:      true,
+						RemainingCount: remaining,
+						ParentID:       key.parentID,
+					}
+					newGraph.Nodes = append(newGraph.Nodes, summaryNode)
+					keptNodes[summaryID] = true
+				}
+			}
+		}
+	}
+
+	// Rebuild edges for kept nodes
+	for _, edge := range graph.Edges {
+		sourceKept := keptNodes[edge.Source]
+		targetKept := keptNodes[edge.Target]
+
+		if sourceKept && targetKept {
+			newGraph.Edges = append(newGraph.Edges, edge)
+		} else if sourceKept && !targetKept {
+			// Check if there's a summary node for the target's group
+			if targetNode, ok := nodeByID[edge.Target]; ok {
+				parentID := primaryParent[edge.Target]
+				if parentID == "" {
+					parentID = "_root_"
+				}
+				summaryID := fmt.Sprintf("summary:%s:%s", parentID, targetNode.Kind)
+				if keptNodes[summaryID] {
+					// Add edge to summary (avoid duplicates)
+					edgeExists := false
+					for _, e := range newGraph.Edges {
+						if e.Source == edge.Source && e.Target == summaryID {
+							edgeExists = true
+							break
+						}
+					}
+					if !edgeExists {
+						newGraph.Edges = append(newGraph.Edges, DependencyEdge{
+							Source:   edge.Source,
+							Target:   summaryID,
+							Relation: edge.Relation,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	return newGraph
 }
 
 func nodeID(kind, namespace, name string) string {
@@ -1532,4 +1887,214 @@ func (c *Client) getPDBDependencies(cs kubernetes.Interface, contextName, namesp
 	}
 
 	return graph, nil
+}
+
+// ExpandDependencyNode returns additional nodes when a summary node is expanded
+// summaryNodeID format: "summary:parentID:kind"
+// Returns up to ExpansionLimit (10) nodes starting from the given offset
+func (c *Client) ExpandDependencyNode(contextName, resourceType, namespace, resourceName, summaryNodeID string, offset int) (*DependencyGraph, error) {
+	// First, get the full graph without aggregation
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+
+	graph := &DependencyGraph{
+		Nodes: []DependencyNode{},
+		Edges: []DependencyEdge{},
+	}
+	nodeMap := make(map[string]bool)
+
+	var fullGraph *DependencyGraph
+
+	switch resourceType {
+	case "pod":
+		fullGraph, err = c.getPodDependencies(cs, namespace, resourceName, graph, nodeMap)
+	case "deployment":
+		fullGraph, err = c.getDeploymentDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "statefulset":
+		fullGraph, err = c.getStatefulSetDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "daemonset":
+		fullGraph, err = c.getDaemonSetDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "replicaset":
+		fullGraph, err = c.getReplicaSetDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "job":
+		fullGraph, err = c.getJobDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "cronjob":
+		fullGraph, err = c.getCronJobDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "configmap":
+		fullGraph, err = c.getConfigMapDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "secret":
+		fullGraph, err = c.getSecretDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "service":
+		fullGraph, err = c.getServiceDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "pvc":
+		fullGraph, err = c.getPVCDependencies(cs, namespace, resourceName, graph, nodeMap)
+	case "pv":
+		fullGraph, err = c.getPVDependencies(cs, resourceName, graph, nodeMap)
+	case "storageclass":
+		fullGraph, err = c.getStorageClassDependencies(cs, contextName, resourceName, graph, nodeMap)
+	case "ingress":
+		fullGraph, err = c.getIngressDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "ingressclass":
+		fullGraph, err = c.getIngressClassDependencies(cs, contextName, resourceName, graph, nodeMap)
+	case "endpoints":
+		fullGraph, err = c.getEndpointsDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "networkpolicy":
+		fullGraph, err = c.getNetworkPolicyDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "priorityclass":
+		fullGraph, err = c.getPriorityClassDependencies(cs, contextName, resourceName, graph, nodeMap)
+	case "serviceaccount":
+		fullGraph, err = c.getServiceAccountDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "hpa":
+		fullGraph, err = c.getHPADependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	case "pdb":
+		fullGraph, err = c.getPDBDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+	default:
+		return nil, fmt.Errorf("unsupported resource type for expansion: %s", resourceType)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse summaryNodeID: "summary:parentID:kind"
+	// e.g., "summary:Deployment/default/nginx:Pod"
+	parts := splitSummaryID(summaryNodeID)
+	if len(parts) < 3 {
+		return nil, fmt.Errorf("invalid summary node ID format: %s", summaryNodeID)
+	}
+	parentID := parts[1]
+	targetKind := parts[2]
+
+	// Relations where edge direction is child → parent
+	childToParentRelations := map[string]bool{
+		"uses":       true,
+		"binds":      true,
+		"references": true,
+	}
+
+	// Build node lookup
+	nodeByID := make(map[string]DependencyNode)
+	for _, node := range fullGraph.Nodes {
+		nodeByID[node.ID] = node
+	}
+
+	// Find all children of the parent with matching kind
+	// Need to consider edge direction: some relations have parent as source, others have parent as target
+	var matchingNodes []DependencyNode
+	seenNodes := make(map[string]bool)
+
+	for _, edge := range fullGraph.Edges {
+		var childID string
+		if childToParentRelations[edge.Relation] {
+			// For "uses/binds/references": source is child, target is parent
+			if edge.Target == parentID {
+				childID = edge.Source
+			}
+		} else {
+			// For "owns/selects/routes-to": source is parent, target is child
+			if edge.Source == parentID {
+				childID = edge.Target
+			}
+		}
+
+		if childID != "" && !seenNodes[childID] {
+			if node, ok := nodeByID[childID]; ok && node.Kind == targetKind {
+				matchingNodes = append(matchingNodes, node)
+				seenNodes[childID] = true
+			}
+		}
+	}
+
+	// Apply offset and limit to get the expansion batch
+	// offset typically starts at DefaultNodeLimit (5), then increases by ExpansionLimit (10)
+	expandedGraph := &DependencyGraph{
+		Nodes: []DependencyNode{},
+		Edges: []DependencyEdge{},
+	}
+
+	endIdx := offset + ExpansionLimit
+	if endIdx > len(matchingNodes) {
+		endIdx = len(matchingNodes)
+	}
+
+	expandedNodeIDs := make(map[string]bool)
+	for i := offset; i < endIdx; i++ {
+		expandedGraph.Nodes = append(expandedGraph.Nodes, matchingNodes[i])
+		expandedNodeIDs[matchingNodes[i].ID] = true
+	}
+
+	// Also include children of the expanded nodes (e.g., PVCs under PVs)
+	// This ensures the graph remains connected
+	for _, edge := range fullGraph.Edges {
+		var childID string
+		if childToParentRelations[edge.Relation] {
+			// For "uses/binds/references": check if target is an expanded node
+			if expandedNodeIDs[edge.Target] {
+				childID = edge.Source
+			}
+		} else {
+			// For "owns/selects/routes-to": check if source is an expanded node
+			if expandedNodeIDs[edge.Source] {
+				childID = edge.Target
+			}
+		}
+
+		// Add child node if not already added
+		if childID != "" && !expandedNodeIDs[childID] {
+			if childNode, ok := nodeByID[childID]; ok {
+				expandedGraph.Nodes = append(expandedGraph.Nodes, childNode)
+				expandedNodeIDs[childID] = true
+			}
+		}
+	}
+
+	// Copy all relevant edges between expanded nodes and their relationships
+	for _, edge := range fullGraph.Edges {
+		sourceIncluded := expandedNodeIDs[edge.Source] || edge.Source == parentID
+		targetIncluded := expandedNodeIDs[edge.Target] || edge.Target == parentID
+
+		if sourceIncluded && targetIncluded {
+			expandedGraph.Edges = append(expandedGraph.Edges, edge)
+		}
+	}
+
+	// If there are more nodes after this batch, add a new summary node
+	remaining := len(matchingNodes) - endIdx
+	if remaining > 0 {
+		newSummaryID := fmt.Sprintf("summary:%s:%s", parentID, targetKind)
+		expandedGraph.Nodes = append(expandedGraph.Nodes, DependencyNode{
+			ID:             newSummaryID,
+			Kind:           targetKind,
+			Name:           fmt.Sprintf("+%d more %ss", remaining, targetKind),
+			IsSummary:      true,
+			RemainingCount: remaining,
+			ParentID:       parentID,
+		})
+	}
+
+	return expandedGraph, nil
+}
+
+// splitSummaryID splits a summary node ID into its parts
+// "summary:Deployment/default/nginx:Pod" -> ["summary", "Deployment/default/nginx", "Pod"]
+func splitSummaryID(id string) []string {
+	// Split by first colon to get "summary", then by last colon to separate parent from kind
+	if len(id) < 8 || id[:8] != "summary:" {
+		return nil
+	}
+	rest := id[8:] // After "summary:"
+	// Find the last colon (kind is always a simple word without colons)
+	lastColon := -1
+	for i := len(rest) - 1; i >= 0; i-- {
+		if rest[i] == ':' {
+			lastColon = i
+			break
+		}
+	}
+	if lastColon < 0 {
+		return nil
+	}
+	return []string{"summary", rest[:lastColon], rest[lastColon+1:]}
 }

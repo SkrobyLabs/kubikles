@@ -581,3 +581,234 @@ func TestAddNodeDeduplication(t *testing.T) {
 		t.Errorf("expected 1 node after deduplication, got %d", len(graph.Nodes))
 	}
 }
+
+func TestAggregateGraphStorageClass(t *testing.T) {
+	// Create a graph for StorageClass with many PVs
+	// The edge direction is: PV → StorageClass (uses)
+	graph := &DependencyGraph{
+		Nodes: []DependencyNode{
+			{ID: "StorageClass/standard", Kind: "StorageClass", Name: "standard"},
+			{ID: "PersistentVolume/pv-1", Kind: "PersistentVolume", Name: "pv-1"},
+			{ID: "PersistentVolume/pv-2", Kind: "PersistentVolume", Name: "pv-2"},
+			{ID: "PersistentVolume/pv-3", Kind: "PersistentVolume", Name: "pv-3"},
+			{ID: "PersistentVolume/pv-4", Kind: "PersistentVolume", Name: "pv-4"},
+			{ID: "PersistentVolume/pv-5", Kind: "PersistentVolume", Name: "pv-5"},
+			{ID: "PersistentVolume/pv-6", Kind: "PersistentVolume", Name: "pv-6"},
+			{ID: "PersistentVolume/pv-7", Kind: "PersistentVolume", Name: "pv-7"},
+			{ID: "PersistentVolumeClaim/default/pvc-1", Kind: "PersistentVolumeClaim", Name: "pvc-1", Namespace: "default"},
+			{ID: "PersistentVolumeClaim/default/pvc-2", Kind: "PersistentVolumeClaim", Name: "pvc-2", Namespace: "default"},
+		},
+		Edges: []DependencyEdge{
+			// PVs use StorageClass (child → parent direction)
+			{Source: "PersistentVolume/pv-1", Target: "StorageClass/standard", Relation: "uses"},
+			{Source: "PersistentVolume/pv-2", Target: "StorageClass/standard", Relation: "uses"},
+			{Source: "PersistentVolume/pv-3", Target: "StorageClass/standard", Relation: "uses"},
+			{Source: "PersistentVolume/pv-4", Target: "StorageClass/standard", Relation: "uses"},
+			{Source: "PersistentVolume/pv-5", Target: "StorageClass/standard", Relation: "uses"},
+			{Source: "PersistentVolume/pv-6", Target: "StorageClass/standard", Relation: "uses"},
+			{Source: "PersistentVolume/pv-7", Target: "StorageClass/standard", Relation: "uses"},
+			// PVCs bind to PVs
+			{Source: "PersistentVolumeClaim/default/pvc-1", Target: "PersistentVolume/pv-1", Relation: "binds"},
+			{Source: "PersistentVolumeClaim/default/pvc-2", Target: "PersistentVolume/pv-2", Relation: "binds"},
+		},
+	}
+
+	// Aggregate with limit of 5 PVs, StorageClass as root
+	result := aggregateGraph(graph, 5, "StorageClass/standard")
+
+	// Verify StorageClass is kept as root
+	scFound := false
+	for _, node := range result.Nodes {
+		if node.ID == "StorageClass/standard" {
+			scFound = true
+			break
+		}
+	}
+	if !scFound {
+		t.Error("StorageClass should be present as root")
+	}
+
+	// Count PVs (should be limited to 5 + summary)
+	pvCount := 0
+	summaryFound := false
+	for _, node := range result.Nodes {
+		if node.Kind == "PersistentVolume" && !node.IsSummary {
+			pvCount++
+		}
+		if node.IsSummary && node.Kind == "PersistentVolume" {
+			summaryFound = true
+			if node.RemainingCount != 2 {
+				t.Errorf("expected summary to have 2 remaining, got %d", node.RemainingCount)
+			}
+		}
+	}
+	if pvCount > 5 {
+		t.Errorf("expected at most 5 PVs, got %d", pvCount)
+	}
+	if !summaryFound {
+		t.Error("summary node should be created for excess PVs")
+	}
+
+	// Verify pv-1 and pv-2 are kept (they have PVCs bound - connectors)
+	pv1Found := false
+	pv2Found := false
+	for _, node := range result.Nodes {
+		if node.ID == "PersistentVolume/pv-1" {
+			pv1Found = true
+		}
+		if node.ID == "PersistentVolume/pv-2" {
+			pv2Found = true
+		}
+	}
+	if !pv1Found {
+		t.Error("pv-1 should be kept (has PVC bound)")
+	}
+	if !pv2Found {
+		t.Error("pv-2 should be kept (has PVC bound)")
+	}
+}
+
+func TestAggregateGraphPreservesConnectors(t *testing.T) {
+	// Create a graph where Pod2 connects to both ReplicaSet (owns) and Service (selects)
+	// This pod should NOT be aggregated away even if there are many pods
+	graph := &DependencyGraph{
+		Nodes: []DependencyNode{
+			{ID: "Deployment/default/nginx", Kind: "Deployment", Name: "nginx", Namespace: "default"},
+			{ID: "ReplicaSet/default/nginx-abc", Kind: "ReplicaSet", Name: "nginx-abc", Namespace: "default"},
+			{ID: "Pod/default/pod-1", Kind: "Pod", Name: "pod-1", Namespace: "default"},
+			{ID: "Pod/default/pod-2", Kind: "Pod", Name: "pod-2", Namespace: "default"}, // Connector - selected by Service
+			{ID: "Pod/default/pod-3", Kind: "Pod", Name: "pod-3", Namespace: "default"},
+			{ID: "Pod/default/pod-4", Kind: "Pod", Name: "pod-4", Namespace: "default"},
+			{ID: "Pod/default/pod-5", Kind: "Pod", Name: "pod-5", Namespace: "default"},
+			{ID: "Pod/default/pod-6", Kind: "Pod", Name: "pod-6", Namespace: "default"},
+			{ID: "Pod/default/pod-7", Kind: "Pod", Name: "pod-7", Namespace: "default"},
+			{ID: "Service/default/nginx-svc", Kind: "Service", Name: "nginx-svc", Namespace: "default"},
+			{ID: "Ingress/default/nginx-ing", Kind: "Ingress", Name: "nginx-ing", Namespace: "default"},
+		},
+		Edges: []DependencyEdge{
+			{Source: "Deployment/default/nginx", Target: "ReplicaSet/default/nginx-abc", Relation: "owns"},
+			{Source: "ReplicaSet/default/nginx-abc", Target: "Pod/default/pod-1", Relation: "owns"},
+			{Source: "ReplicaSet/default/nginx-abc", Target: "Pod/default/pod-2", Relation: "owns"},
+			{Source: "ReplicaSet/default/nginx-abc", Target: "Pod/default/pod-3", Relation: "owns"},
+			{Source: "ReplicaSet/default/nginx-abc", Target: "Pod/default/pod-4", Relation: "owns"},
+			{Source: "ReplicaSet/default/nginx-abc", Target: "Pod/default/pod-5", Relation: "owns"},
+			{Source: "ReplicaSet/default/nginx-abc", Target: "Pod/default/pod-6", Relation: "owns"},
+			{Source: "ReplicaSet/default/nginx-abc", Target: "Pod/default/pod-7", Relation: "owns"},
+			// Service selects pod-2 - this makes pod-2 a connector node
+			{Source: "Service/default/nginx-svc", Target: "Pod/default/pod-2", Relation: "selects"},
+			{Source: "Ingress/default/nginx-ing", Target: "Service/default/nginx-svc", Relation: "routes-to"},
+		},
+	}
+
+	// Aggregate with limit of 5 pods
+	result := aggregateGraph(graph, 5, "Deployment/default/nginx")
+
+	// Verify pod-2 is kept (it's a connector to Service)
+	pod2Found := false
+	for _, node := range result.Nodes {
+		if node.ID == "Pod/default/pod-2" {
+			pod2Found = true
+			break
+		}
+	}
+	if !pod2Found {
+		t.Error("pod-2 should be kept as it's a connector node (selected by Service)")
+	}
+
+	// Verify Service and Ingress are present and connected
+	serviceFound := false
+	ingressFound := false
+	for _, node := range result.Nodes {
+		if node.ID == "Service/default/nginx-svc" {
+			serviceFound = true
+		}
+		if node.ID == "Ingress/default/nginx-ing" {
+			ingressFound = true
+		}
+	}
+	if !serviceFound {
+		t.Error("Service should be present in aggregated graph")
+	}
+	if !ingressFound {
+		t.Error("Ingress should be present in aggregated graph")
+	}
+
+	// Verify there's an edge from Service to pod-2
+	serviceToPodfound := false
+	for _, edge := range result.Edges {
+		if edge.Source == "Service/default/nginx-svc" && edge.Target == "Pod/default/pod-2" {
+			serviceToPodfound = true
+			break
+		}
+	}
+	if !serviceToPodfound {
+		t.Error("Edge from Service to pod-2 should be preserved")
+	}
+
+	// Verify there's a summary node for excess pods
+	summaryFound := false
+	for _, node := range result.Nodes {
+		if node.IsSummary && node.Kind == "Pod" {
+			summaryFound = true
+			break
+		}
+	}
+	if !summaryFound {
+		t.Error("Summary node should be created for excess pods")
+	}
+}
+
+func TestSplitSummaryID(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:     "valid summary ID with namespace",
+			input:    "summary:Deployment/default/nginx:Pod",
+			expected: []string{"summary", "Deployment/default/nginx", "Pod"},
+		},
+		{
+			name:     "valid summary ID without namespace",
+			input:    "summary:StorageClass/standard:PersistentVolume",
+			expected: []string{"summary", "StorageClass/standard", "PersistentVolume"},
+		},
+		{
+			name:     "invalid - too short",
+			input:    "short",
+			expected: nil,
+		},
+		{
+			name:     "invalid - no prefix",
+			input:    "notasummary:Deployment/default/nginx:Pod",
+			expected: nil,
+		},
+		{
+			name:     "invalid - no kind separator",
+			input:    "summary:Deployment/default/nginx",
+			expected: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := splitSummaryID(tc.input)
+			if tc.expected == nil {
+				if result != nil {
+					t.Errorf("expected nil, got %v", result)
+				}
+				return
+			}
+			if len(result) != len(tc.expected) {
+				t.Errorf("expected %d parts, got %d: %v", len(tc.expected), len(result), result)
+				return
+			}
+			for i, exp := range tc.expected {
+				if result[i] != exp {
+					t.Errorf("part %d: expected %q, got %q", i, exp, result[i])
+				}
+			}
+		})
+	}
+}

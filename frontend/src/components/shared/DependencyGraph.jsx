@@ -11,7 +11,7 @@ import {
 } from '@xyflow/react';
 import dagre from 'dagre';
 import '@xyflow/react/dist/style.css';
-import { GetResourceDependencies } from '../../../wailsjs/go/main/App';
+import { GetResourceDependencies, ExpandDependencyNode } from '../../../wailsjs/go/main/App';
 import { useUI } from '../../context/UIContext';
 import YamlEditor from './YamlEditor';
 import Logger from '../../utils/Logger';
@@ -36,6 +36,7 @@ import {
     UserCircleIcon,
     ArrowsPointingOutIcon,
     ShieldExclamationIcon,
+    EllipsisHorizontalIcon,
 } from '@heroicons/react/24/outline';
 
 // Resource kinds that support dependency graph queries
@@ -75,7 +76,7 @@ const resourceStyles = {
 // Custom node component
 function ResourceNode({ data }) {
     const style = resourceStyles[data.kind] || { icon: CubeIcon, color: '#6b7280', bgColor: '#6b728020' };
-    const Icon = style.icon;
+    const Icon = data.isSummary ? EllipsisHorizontalIcon : style.icon;
 
     const getStatusColor = (status) => {
         if (!status) return 'text-gray-400';
@@ -85,6 +86,33 @@ function ResourceNode({ data }) {
         if (s === 'failed' || s === 'lost' || s === 'terminated') return 'text-red-400';
         return 'text-gray-400';
     };
+
+    // Summary nodes have a dashed border and different styling
+    if (data.isSummary) {
+        return (
+            <div
+                className="px-3 py-2 rounded-lg border-2 border-dashed min-w-[140px] cursor-pointer transition-all hover:scale-105"
+                style={{
+                    backgroundColor: '#374151',
+                    borderColor: style.color,
+                }}
+                onContextMenu={data.onContextMenu}
+            >
+                <Handle type="target" position={Position.Top} className="!bg-gray-500" />
+                <div className="flex items-center gap-2">
+                    <Icon className="h-5 w-5" style={{ color: style.color }} />
+                    <div className="flex flex-col">
+                        <span className="text-xs text-gray-400">{data.kind}</span>
+                        <span className="text-sm font-medium text-gray-300">
+                            {data.label}
+                        </span>
+                        <span className="text-xs text-gray-500">Right-click to expand</span>
+                    </div>
+                </div>
+                <Handle type="source" position={Position.Bottom} className="!bg-gray-500" />
+            </div>
+        );
+    }
 
     return (
         <div
@@ -182,6 +210,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [contextMenu, setContextMenu] = useState(null);
+    const [expansionOffsets, setExpansionOffsets] = useState({}); // Track offset per summary node
 
     // Map resource type to kind for context menu actions
     const getResourceTypeFromKind = (kind) => {
@@ -258,6 +287,113 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
         setContextMenu(null);
     }, [openTab, closeTab]);
 
+    // Handle expanding a summary node
+    const handleExpandNode = useCallback(async (summaryNode) => {
+        setContextMenu(null);
+
+        // Calculate the current offset (default 5 for initial expansion)
+        const summaryId = `summary:${summaryNode.parentId}:${summaryNode.kind}`;
+        const currentOffset = expansionOffsets[summaryId] || 5;
+
+        try {
+            Logger.info('Expanding summary node', { summaryId, offset: currentOffset });
+            const expandedGraph = await ExpandDependencyNode(
+                resourceType,
+                namespace || '',
+                resourceName,
+                summaryId,
+                currentOffset
+            );
+
+            if (!expandedGraph || !expandedGraph.nodes) {
+                Logger.warn('No expanded nodes returned');
+                return;
+            }
+
+            // Convert new nodes to flow nodes
+            const newFlowNodes = expandedGraph.nodes.map((node) => ({
+                id: node.id,
+                type: 'resource',
+                data: {
+                    label: node.name,
+                    kind: node.kind,
+                    namespace: node.namespace,
+                    status: node.status,
+                    isSummary: node.isSummary || false,
+                    remainingCount: node.remainingCount || 0,
+                    parentId: node.parentId || '',
+                    onContextMenu: (e) => handleNodeContextMenu(e, {
+                        label: node.name,
+                        kind: node.kind,
+                        namespace: node.namespace,
+                        isSummary: node.isSummary || false,
+                        remainingCount: node.remainingCount || 0,
+                        parentId: node.parentId || '',
+                    }),
+                },
+                position: { x: 0, y: 0 },
+            }));
+
+            // Convert new edges
+            const newFlowEdges = expandedGraph.edges.map((edge, idx) => ({
+                id: `edge-expand-${currentOffset}-${idx}`,
+                source: edge.source,
+                target: edge.target,
+                type: 'smoothstep',
+                animated: edge.relation === 'uses',
+                style: getEdgeStyle(edge.relation),
+                markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: getEdgeStyle(edge.relation).stroke,
+                },
+                label: edge.relation,
+                labelStyle: { fill: '#9ca3af', fontSize: 10 },
+                labelBgStyle: { fill: '#1f2937', fillOpacity: 0.8 },
+            }));
+
+            // Merge new nodes and edges, then re-layout the entire graph
+            setNodes((currentNodes) => {
+                // Filter out the old summary node
+                const filteredNodes = currentNodes.filter(n => n.id !== summaryId);
+                // Add new nodes (avoiding duplicates)
+                const existingIds = new Set(filteredNodes.map(n => n.id));
+                const uniqueNewNodes = newFlowNodes.filter(n => !existingIds.has(n.id));
+                const allNodes = [...filteredNodes, ...uniqueNewNodes];
+
+                // Get current edges to include in layout
+                setEdges((currentEdges) => {
+                    // Remove edges pointing to/from old summary node
+                    const filteredEdges = currentEdges.filter(e => e.target !== summaryId && e.source !== summaryId);
+                    // Add new edges (avoiding duplicates)
+                    const existingEdgeIds = new Set(filteredEdges.map(e => `${e.source}-${e.target}`));
+                    const uniqueNewEdges = newFlowEdges.filter(e => !existingEdgeIds.has(`${e.source}-${e.target}`));
+                    const allEdges = [...filteredEdges, ...uniqueNewEdges];
+
+                    // Re-layout the graph with dagre
+                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(allNodes, allEdges);
+
+                    // Update nodes with new positions (need to do this via setTimeout to avoid setState in setState)
+                    setTimeout(() => {
+                        setNodes(layoutedNodes);
+                    }, 0);
+
+                    return layoutedEdges;
+                });
+
+                return allNodes;
+            });
+
+            // Update offset for potential further expansion
+            setExpansionOffsets(prev => ({
+                ...prev,
+                [summaryId]: currentOffset + 10,
+            }));
+
+        } catch (err) {
+            Logger.error('Failed to expand summary node', err);
+        }
+    }, [resourceType, namespace, resourceName, expansionOffsets, handleNodeContextMenu]);
+
     // Close context menu when clicking elsewhere
     useEffect(() => {
         const handleClick = () => setContextMenu(null);
@@ -290,10 +426,16 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                         kind: node.kind,
                         namespace: node.namespace,
                         status: node.status,
+                        isSummary: node.isSummary || false,
+                        remainingCount: node.remainingCount || 0,
+                        parentId: node.parentId || '',
                         onContextMenu: (e) => handleNodeContextMenu(e, {
                             label: node.name,
                             kind: node.kind,
                             namespace: node.namespace,
+                            isSummary: node.isSummary || false,
+                            remainingCount: node.remainingCount || 0,
+                            parentId: node.parentId || '',
                         }),
                     },
                     position: { x: 0, y: 0 },
@@ -422,19 +564,30 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                     style={{ top: contextMenu.y, left: contextMenu.x }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <button
-                        onClick={() => handleEditYaml(contextMenu.node)}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d]"
-                    >
-                        Edit YAML
-                    </button>
-                    {DEPENDENCY_SUPPORTED_KINDS.has(contextMenu.node.kind) && (
+                    {contextMenu.node.isSummary ? (
                         <button
-                            onClick={() => handleShowDependencies(contextMenu.node)}
+                            onClick={() => handleExpandNode(contextMenu.node)}
                             className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d]"
                         >
-                            Show Dependencies
+                            Expand ({contextMenu.node.remainingCount} more)
                         </button>
+                    ) : (
+                        <>
+                            <button
+                                onClick={() => handleEditYaml(contextMenu.node)}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d]"
+                            >
+                                Edit YAML
+                            </button>
+                            {DEPENDENCY_SUPPORTED_KINDS.has(contextMenu.node.kind) && (
+                                <button
+                                    onClick={() => handleShowDependencies(contextMenu.node)}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d]"
+                                >
+                                    Show Dependencies
+                                </button>
+                            )}
+                        </>
                     )}
                 </div>
             )}
