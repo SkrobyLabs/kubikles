@@ -102,7 +102,7 @@ export default function NodeDetails({ node, tabContext = '' }) {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-auto p-4">
+            <div className="h-full overflow-auto p-4">
                 {/* Capacity */}
                 <DetailSection title="Capacity">
                     <div className="grid grid-cols-3 gap-4">

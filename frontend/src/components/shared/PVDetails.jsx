@@ -141,7 +141,7 @@ export default function PVDetails({ pv, tabContext = '' }) {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-auto p-4">
+            <div className="h-full overflow-auto p-4">
                 {/* Capacity */}
                 <DetailSection title="Capacity">
                     <div className="text-center p-4 bg-[#1a1a1a] rounded border border-border">

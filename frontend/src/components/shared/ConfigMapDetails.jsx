@@ -75,7 +75,7 @@ function ConfigMapInfoTab({ configMap }) {
     const binaryKeys = Object.keys(binaryData);
 
     return (
-        <div className="flex-1 overflow-auto p-4">
+        <div className="h-full overflow-auto p-4">
             {/* Summary */}
             <DetailSection title="Summary">
                 <div className="grid grid-cols-2 gap-4 mb-2">
@@ -133,7 +133,7 @@ function ConfigMapDataTab({ configMap }) {
     };
 
     return (
-        <div className="flex-1 overflow-auto p-4">
+        <div className="h-full overflow-auto p-4">
             {/* Data */}
             <DetailSection title={`Data (${dataKeys.length})`}>
                 {dataKeys.length > 0 ? (

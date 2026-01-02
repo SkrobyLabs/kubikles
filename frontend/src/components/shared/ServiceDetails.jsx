@@ -230,7 +230,7 @@ export default function ServiceDetails({ service, tabContext = '' }) {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-auto p-4">
+            <div className="h-full overflow-auto p-4">
                 <div className="bg-surface rounded-lg border border-border p-4">
                     {/* Type */}
                     <DetailRow label="Type">

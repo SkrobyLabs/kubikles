@@ -108,7 +108,7 @@ export default function CronJobDetails({ cronJob, tabContext = '' }) {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-auto p-4">
+            <div className="h-full overflow-auto p-4">
                 {/* Schedule */}
                 <DetailSection title="Schedule">
                     <div className="grid grid-cols-2 gap-4 mb-2">

@@ -96,7 +96,7 @@ export default function EventDetails({ event, tabContext = '' }) {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-auto p-4">
+            <div className="h-full overflow-auto p-4">
                 {/* Message - Prominent display */}
                 <DetailSection title="Message">
                     <CopyableTextBlock value={message} maxLines={15} />

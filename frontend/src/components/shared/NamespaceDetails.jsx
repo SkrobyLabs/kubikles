@@ -109,7 +109,7 @@ export default function NamespaceDetails({ namespace, tabContext = '' }) {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-auto p-4">
+            <div className="h-full overflow-auto p-4">
                 {/* Resource Counts */}
                 <DetailSection title="Resources">
                     {loadingCounts ? (

@@ -146,7 +146,7 @@ export default function JobDetails({ job, tabContext = '' }) {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-auto p-4">
+            <div className="h-full overflow-auto p-4">
                 {/* Status */}
                 <DetailSection title="Status">
                     <div className="grid grid-cols-4 gap-4 mb-2">
