@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon, ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
+import BulkActionModal from '../../../components/shared/BulkActionModal';
 import HelmReleaseActionsMenu from './HelmReleaseActionsMenu';
 import HelmUpgradeDialog from './HelmUpgradeDialog';
 import { useHelmReleases } from '../../../hooks/useHelmReleases';
@@ -8,7 +9,9 @@ import { useHelmReleaseActions } from './useHelmReleaseActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
 import { useNotification } from '../../../context/NotificationContext';
-import { ForceHelmReleaseStatus } from '../../../../wailsjs/go/main/App';
+import { useSelection } from '../../../hooks/useSelection';
+import { ForceHelmReleaseStatus, UninstallHelmRelease, GetHelmReleaseValues, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
+import Logger from '../../../utils/Logger';
 
 const formatAge = (timestamp) => {
     if (!timestamp) return '-';
@@ -57,6 +60,10 @@ export default function HelmReleaseList({ isVisible }) {
     const { addNotification } = useNotification();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [upgradeRelease, setUpgradeRelease] = useState(null);
+    const selection = useSelection();
+
+    const [bulkActionModal, setBulkActionModal] = useState({ isOpen: false, action: null, items: [] });
+    const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, status: 'idle', results: [] });
 
     const { releases, loading, refresh } = useHelmReleases(currentContext, selectedNamespaces, isVisible);
     const {
@@ -66,6 +73,50 @@ export default function HelmReleaseList({ isVisible }) {
         handleRollback,
         handleUninstall
     } = useHelmReleaseActions();
+
+    const handleBulkDeleteClick = useCallback((selectedItems) => {
+        setBulkActionModal({ isOpen: true, action: 'delete', items: selectedItems });
+        setBulkProgress({ current: 0, total: selectedItems.length, status: 'idle', results: [] });
+    }, []);
+
+    const handleBulkActionConfirm = useCallback(async (items) => {
+        Logger.info('Bulk uninstall started', { count: items.length });
+        setBulkProgress(prev => ({ ...prev, status: 'inProgress', results: [] }));
+        const results = [];
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const namespace = item.namespace;
+            const name = item.name;
+            try {
+                await UninstallHelmRelease(namespace, name);
+                results.push({ name, namespace, success: true, message: '' });
+            } catch (err) {
+                results.push({ name, namespace, success: false, message: err.toString() });
+            }
+            setBulkProgress(prev => ({ ...prev, current: i + 1, results: [...results] }));
+        }
+        setBulkProgress(prev => ({ ...prev, status: 'complete' }));
+        refresh();
+    }, [refresh]);
+
+    const handleBulkActionClose = useCallback(() => {
+        setBulkActionModal({ isOpen: false, action: null, items: [] });
+        setBulkProgress({ current: 0, total: 0, status: 'idle', results: [] });
+    }, []);
+
+    const handleExportYaml = useCallback(async (items) => {
+        const entries = [];
+        for (const item of items) {
+            try {
+                const values = await GetHelmReleaseValues(item.namespace, item.name);
+                entries.push({ namespace: item.namespace, name: item.name, kind: 'HelmRelease', yaml: `# Helm Release: ${item.name}\n# Chart: ${item.chart}-${item.chartVersion}\n# Values:\n${values}` });
+            } catch (err) {
+                entries.push({ namespace: item.namespace, name: item.name, kind: 'HelmRelease', yaml: `# Failed: ${err}` });
+            }
+        }
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        try { await SaveYamlBackup(entries, `helmreleases-backup-${timestamp}.zip`); } catch (err) { if (err?.toString()) alert('Failed: ' + err); }
+    }, []);
 
     const handleUpgrade = useCallback((release) => {
         setUpgradeRelease(release);
@@ -225,7 +276,11 @@ export default function HelmReleaseList({ isVisible }) {
                 resourceType="helmreleases"
                 onRefresh={refresh}
                 onRowClick={handleRowClick}
+                selectable={true}
+                selection={selection}
+                onBulkDelete={handleBulkDeleteClick}
             />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={handleBulkActionClose} action={bulkActionModal.action} actionLabel="Uninstall" items={bulkActionModal.items} onConfirm={handleBulkActionConfirm} onExportYaml={handleExportYaml} progress={bulkProgress} />
 
             {upgradeRelease && (
                 <HelmUpgradeDialog
