@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { K8sProvider, useK8s } from './context/K8sContext';
 import { UIProvider, useUI } from './context/UIContext';
 import { DebugProvider } from './context/DebugContext';
@@ -52,6 +52,7 @@ import { useDebugLogs } from './hooks/useDebugLogs';
 import { LogDebug } from '../wailsjs/go/main/App';
 import ConfirmModal from './components/shared/ConfirmModal';
 import ConfigEditor from './components/shared/ConfigEditor';
+import CommandPalette from './components/shared/CommandPalette';
 
 function MainLayout() {
     const {
@@ -84,6 +85,7 @@ function MainLayout() {
     const { showConfigEditor } = useConfig();
     const { toggleDebug } = useDebugLogs();
     const isDragging = useRef(false);
+    const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
     // Resizing Logic
     const handleMouseDown = (e) => {
@@ -113,9 +115,17 @@ function MainLayout() {
         document.removeEventListener('mouseup', handleMouseUp);
     };
 
-    // Global Refresh Shortcut (Cmd+R / Ctrl+R)
+    // Global Keyboard Shortcuts
     useEffect(() => {
         const handleKeyDown = (e) => {
+            // Cmd+Shift+P / Ctrl+Shift+P - Command Palette
+            if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
+                e.preventDefault();
+                setCommandPaletteOpen(true);
+                return;
+            }
+
+            // Cmd+R / Ctrl+R - Refresh
             if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
                 e.preventDefault();
                 const msg = "Refresh triggered via shortcut";
@@ -256,6 +266,10 @@ function MainLayout() {
                 </main>
             </div>
             <ConfirmModal />
+            <CommandPalette
+                isOpen={commandPaletteOpen}
+                onClose={() => setCommandPaletteOpen(false)}
+            />
         </>
     );
 }
