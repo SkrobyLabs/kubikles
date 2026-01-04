@@ -58,6 +58,10 @@ export function DeleteDeployment(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeleteDeployment'](arg1, arg2, arg3);
 }
 
+export function DeleteEndpointSlice(arg1, arg2) {
+  return window['go']['main']['App']['DeleteEndpointSlice'](arg1, arg2);
+}
+
 export function DeleteEndpoints(arg1, arg2) {
   return window['go']['main']['App']['DeleteEndpoints'](arg1, arg2);
 }
@@ -244,6 +248,10 @@ export function GetDaemonSetYaml(arg1, arg2) {
 
 export function GetDeploymentYaml(arg1, arg2) {
   return window['go']['main']['App']['GetDeploymentYaml'](arg1, arg2);
+}
+
+export function GetEndpointSliceYaml(arg1, arg2) {
+  return window['go']['main']['App']['GetEndpointSliceYaml'](arg1, arg2);
 }
 
 export function GetEndpointsYaml(arg1, arg2) {
@@ -492,6 +500,10 @@ export function ListDaemonSets(arg1) {
 
 export function ListDeployments(arg1) {
   return window['go']['main']['App']['ListDeployments'](arg1);
+}
+
+export function ListEndpointSlices(arg1) {
+  return window['go']['main']['App']['ListEndpointSlices'](arg1);
 }
 
 export function ListEndpoints(arg1) {
@@ -820,6 +832,10 @@ export function UpdateDaemonSetYaml(arg1, arg2, arg3) {
 
 export function UpdateDeploymentYaml(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateDeploymentYaml'](arg1, arg2, arg3);
+}
+
+export function UpdateEndpointSliceYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateEndpointSliceYaml'](arg1, arg2, arg3);
 }
 
 export function UpdateEndpointsYaml(arg1, arg2, arg3) {

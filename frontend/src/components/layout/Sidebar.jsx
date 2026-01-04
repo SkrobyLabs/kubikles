@@ -182,6 +182,7 @@ export default function Sidebar({
             items: [
                 { id: 'services', label: 'Services', icon: GlobeAltIcon },
                 { id: 'endpoints', label: 'Endpoints', icon: QueueListIcon },
+                { id: 'endpointslices', label: 'Endpoint Slices', icon: QueueListIcon },
                 { id: 'ingresses', label: 'Ingresses', icon: ArrowsRightLeftIcon },
                 { id: 'ingressclasses', label: 'Ingress Classes', icon: TagIcon },
                 { id: 'networkpolicies', label: 'Network Policies', icon: ShieldCheckIcon },

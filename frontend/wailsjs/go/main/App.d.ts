@@ -34,6 +34,8 @@ export function DeleteDaemonSet(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteDeployment(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function DeleteEndpointSlice(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteEndpoints(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteEvent(arg1:string,arg2:string):Promise<void>;
@@ -127,6 +129,8 @@ export function GetCustomResourceYaml(arg1:string,arg2:string,arg3:string,arg4:s
 export function GetDaemonSetYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetDeploymentYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetEndpointSliceYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetEndpointsYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -251,6 +255,8 @@ export function ListCustomResources(arg1:string,arg2:string,arg3:string,arg4:str
 export function ListDaemonSets(arg1:string):Promise<Array<v1.DaemonSet>>;
 
 export function ListDeployments(arg1:string):Promise<Array<v1.Deployment>>;
+
+export function ListEndpointSlices(arg1:string):Promise<Array<v1.EndpointSlice>>;
 
 export function ListEndpoints(arg1:string):Promise<Array<v1.Endpoints>>;
 
@@ -415,6 +421,8 @@ export function UpdateCustomResourceYaml(arg1:string,arg2:string,arg3:string,arg
 export function UpdateDaemonSetYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateDeploymentYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateEndpointSliceYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateEndpointsYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

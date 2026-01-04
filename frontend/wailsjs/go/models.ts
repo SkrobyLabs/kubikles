@@ -6746,6 +6746,122 @@ export namespace v1 {
 	
 	
 	
+	export class ForNode {
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ForNode(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	    }
+	}
+	export class ForZone {
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ForZone(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	    }
+	}
+	export class EndpointHints {
+	    forZones?: ForZone[];
+	    forNodes?: ForNode[];
+	
+	    static createFrom(source: any = {}) {
+	        return new EndpointHints(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.forZones = this.convertValues(source["forZones"], ForZone);
+	        this.forNodes = this.convertValues(source["forNodes"], ForNode);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class EndpointConditions {
+	    ready?: boolean;
+	    serving?: boolean;
+	    terminating?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new EndpointConditions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ready = source["ready"];
+	        this.serving = source["serving"];
+	        this.terminating = source["terminating"];
+	    }
+	}
+	export class Endpoint {
+	    addresses: string[];
+	    conditions?: EndpointConditions;
+	    hostname?: string;
+	    targetRef?: ObjectReference;
+	    deprecatedTopology?: Record<string, string>;
+	    nodeName?: string;
+	    zone?: string;
+	    hints?: EndpointHints;
+	
+	    static createFrom(source: any = {}) {
+	        return new Endpoint(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.addresses = source["addresses"];
+	        this.conditions = this.convertValues(source["conditions"], EndpointConditions);
+	        this.hostname = source["hostname"];
+	        this.targetRef = this.convertValues(source["targetRef"], ObjectReference);
+	        this.deprecatedTopology = source["deprecatedTopology"];
+	        this.nodeName = source["nodeName"];
+	        this.zone = source["zone"];
+	        this.hints = this.convertValues(source["hints"], EndpointHints);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class EndpointAddress {
 	    ip: string;
 	    hostname?: string;
@@ -6782,10 +6898,12 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	
+	
 	export class EndpointPort {
 	    name?: string;
-	    port: number;
 	    protocol?: string;
+	    port?: number;
 	    appProtocol?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -6795,10 +6913,78 @@ export namespace v1 {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
-	        this.port = source["port"];
 	        this.protocol = source["protocol"];
+	        this.port = source["port"];
 	        this.appProtocol = source["appProtocol"];
 	    }
+	}
+	export class EndpointSlice {
+	    kind?: string;
+	    apiVersion?: string;
+	    name?: string;
+	    generateName?: string;
+	    namespace?: string;
+	    selfLink?: string;
+	    uid?: string;
+	    resourceVersion?: string;
+	    generation?: number;
+	    creationTimestamp?: Time;
+	    deletionTimestamp?: Time;
+	    deletionGracePeriodSeconds?: number;
+	    labels?: Record<string, string>;
+	    annotations?: Record<string, string>;
+	    ownerReferences?: OwnerReference[];
+	    finalizers?: string[];
+	    managedFields?: ManagedFieldsEntry[];
+	    addressType: string;
+	    endpoints: Endpoint[];
+	    ports: EndpointPort[];
+	
+	    static createFrom(source: any = {}) {
+	        return new EndpointSlice(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.apiVersion = source["apiVersion"];
+	        this.name = source["name"];
+	        this.generateName = source["generateName"];
+	        this.namespace = source["namespace"];
+	        this.selfLink = source["selfLink"];
+	        this.uid = source["uid"];
+	        this.resourceVersion = source["resourceVersion"];
+	        this.generation = source["generation"];
+	        this.creationTimestamp = this.convertValues(source["creationTimestamp"], Time);
+	        this.deletionTimestamp = this.convertValues(source["deletionTimestamp"], Time);
+	        this.deletionGracePeriodSeconds = source["deletionGracePeriodSeconds"];
+	        this.labels = source["labels"];
+	        this.annotations = source["annotations"];
+	        this.ownerReferences = this.convertValues(source["ownerReferences"], OwnerReference);
+	        this.finalizers = source["finalizers"];
+	        this.managedFields = this.convertValues(source["managedFields"], ManagedFieldsEntry);
+	        this.addressType = source["addressType"];
+	        this.endpoints = this.convertValues(source["endpoints"], Endpoint);
+	        this.ports = this.convertValues(source["ports"], EndpointPort);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class EndpointSubset {
 	    addresses?: EndpointAddress[];
@@ -7050,6 +7236,8 @@ export namespace v1 {
 		    return a;
 		}
 	}
+	
+	
 	
 	
 	

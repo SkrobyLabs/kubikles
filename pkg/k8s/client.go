@@ -21,6 +21,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -3280,6 +3281,58 @@ func (c *Client) DeleteEndpoints(contextName, namespace, name string) error {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	return cs.CoreV1().Endpoints(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+// EndpointSlice operations (namespaced, discovery.k8s.io/v1)
+func (c *Client) ListEndpointSlices(namespace string) ([]discoveryv1.EndpointSlice, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.DiscoveryV1().EndpointSlices(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) GetEndpointSliceYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	eps, err := cs.DiscoveryV1().EndpointSlices(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	eps.ManagedFields = nil
+	yamlBytes, err := yaml.Marshal(eps)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+func (c *Client) UpdateEndpointSliceYaml(namespace, name, yamlContent string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	var eps discoveryv1.EndpointSlice
+	if err := yaml.Unmarshal([]byte(yamlContent), &eps); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	_, err = cs.DiscoveryV1().EndpointSlices(namespace).Update(context.TODO(), &eps, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) DeleteEndpointSlice(contextName, namespace, name string) error {
+	fmt.Printf("Deleting endpointslice: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	return cs.DiscoveryV1().EndpointSlices(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
 
 // ValidatingWebhookConfiguration operations (cluster-scoped)

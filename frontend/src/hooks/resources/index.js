@@ -47,6 +47,7 @@ import {
     ListResourceQuotas,
     ListLimitRanges,
     ListEndpoints,
+    ListEndpointSlices,
     ListValidatingWebhookConfigurations,
     ListMutatingWebhookConfigurations,
     ListPriorityClasses,
@@ -149,6 +150,9 @@ export const useNetworkPolicies = createNamespacedResourceHook('networkpolicies'
 
 /** Hook for Kubernetes Endpoints (namespaced) */
 export const useEndpoints = createNamespacedResourceHook('endpoints', ListEndpoints, 'endpoints');
+
+/** Hook for Kubernetes EndpointSlices (namespaced) */
+export const useEndpointSlices = createNamespacedResourceHook('endpointslices', ListEndpointSlices, 'endpointSlices');
 
 // =============================================================================
 // CONFIG & POLICY RESOURCES

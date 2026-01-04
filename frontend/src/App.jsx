@@ -37,6 +37,7 @@ import RoleBindingList from './features/access-control/rolebindings/RoleBindingL
 import ClusterRoleBindingList from './features/access-control/clusterrolebindings/ClusterRoleBindingList';
 import NetworkPolicyList from './features/network/networkpolicies/NetworkPolicyList';
 import EndpointsList from './features/network/endpoints/EndpointsList';
+import EndpointSliceList from './features/network/endpointslices/EndpointSliceList';
 import HPAList from './features/config/hpas/HPAList';
 import PDBList from './features/config/pdbs/PDBList';
 import ResourceQuotaList from './features/config/resourcequotas/ResourceQuotaList';
@@ -187,6 +188,7 @@ function MainLayout() {
             case 'clusterrolebindings': return <ClusterRoleBindingList isVisible={true} />;
             case 'networkpolicies': return <NetworkPolicyList isVisible={true} />;
             case 'endpoints': return <EndpointsList isVisible={true} />;
+            case 'endpointslices': return <EndpointSliceList isVisible={true} />;
             case 'hpas': return <HPAList isVisible={true} />;
             case 'pdbs': return <PDBList isVisible={true} />;
             case 'resourcequotas': return <ResourceQuotaList isVisible={true} />;

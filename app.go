@@ -25,6 +25,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
@@ -2652,6 +2653,39 @@ func (a *App) DeleteEndpoints(namespace, name string) error {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.DeleteEndpoints(currentContext, namespace, name)
+}
+
+// EndpointSlice operations (namespaced, discovery.k8s.io/v1)
+func (a *App) ListEndpointSlices(namespace string) ([]discoveryv1.EndpointSlice, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListEndpointSlices(namespace)
+}
+
+func (a *App) GetEndpointSliceYaml(namespace, name string) (string, error) {
+	a.LogDebug("GetEndpointSliceYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetEndpointSliceYaml(namespace, name)
+}
+
+func (a *App) UpdateEndpointSliceYaml(namespace, name, yamlContent string) error {
+	a.LogDebug("UpdateEndpointSliceYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateEndpointSliceYaml(namespace, name, yamlContent)
+}
+
+func (a *App) DeleteEndpointSlice(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DeleteEndpointSlice called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteEndpointSlice(currentContext, namespace, name)
 }
 
 // ValidatingWebhookConfiguration operations (cluster-scoped)
