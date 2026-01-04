@@ -2894,3 +2894,13 @@ func (a *App) DeleteCSINode(name string) error {
 	}
 	return a.k8sClient.DeleteCSINode(currentContext, name)
 }
+
+// ApplyYAML creates a resource from YAML content
+func (a *App) ApplyYAML(yamlContent string) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ApplyYAML called: context=%s", currentContext)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ApplyYAML(currentContext, yamlContent)
+}

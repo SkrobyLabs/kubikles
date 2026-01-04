@@ -10,6 +10,10 @@ export function AddPortForwardConfig(arg1) {
   return window['go']['main']['App']['AddPortForwardConfig'](arg1);
 }
 
+export function ApplyYAML(arg1) {
+  return window['go']['main']['App']['ApplyYAML'](arg1);
+}
+
 export function CollectIngressHostnames(arg1) {
   return window['go']['main']['App']['CollectIngressHostnames'](arg1);
 }

@@ -53,6 +53,352 @@ import { LogDebug } from '../wailsjs/go/main/App';
 import ConfirmModal from './components/shared/ConfirmModal';
 import ConfigEditor from './components/shared/ConfigEditor';
 import CommandPalette from './components/shared/CommandPalette';
+import CreateResourceModal from './components/shared/CreateResourceModal';
+
+// Resource templates by view
+const resourceTemplates = {
+    pods: (ns) => `apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: ${ns || 'default'}
+spec:
+  containers:
+    - name: main
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+`,
+    configmaps: (ns) => `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-configmap
+  namespace: ${ns || 'default'}
+data:
+  key1: value1
+  key2: value2
+`,
+    secrets: (ns) => `apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+  namespace: ${ns || 'default'}
+type: Opaque
+stringData:
+  username: admin
+  password: changeme
+`,
+    deployments: (ns) => `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+  namespace: ${ns || 'default'}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: main
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+`,
+    services: (ns) => `apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+  namespace: ${ns || 'default'}
+spec:
+  selector:
+    app: my-app
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
+`,
+    namespaces: () => `apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-namespace
+`,
+    jobs: (ns) => `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: my-job
+  namespace: ${ns || 'default'}
+spec:
+  template:
+    spec:
+      containers:
+        - name: job
+          image: busybox
+          command: ["echo", "Hello"]
+      restartPolicy: Never
+`,
+    cronjobs: (ns) => `apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: my-cronjob
+  namespace: ${ns || 'default'}
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: job
+              image: busybox
+              command: ["echo", "Hello"]
+          restartPolicy: Never
+`,
+    statefulsets: (ns) => `apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: my-statefulset
+  namespace: ${ns || 'default'}
+spec:
+  serviceName: my-statefulset
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: main
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+`,
+    daemonsets: (ns) => `apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: my-daemonset
+  namespace: ${ns || 'default'}
+spec:
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: main
+          image: nginx:latest
+`,
+    ingresses: (ns) => `apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+  namespace: ${ns || 'default'}
+spec:
+  rules:
+    - host: example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-service
+                port:
+                  number: 80
+`,
+    pvcs: (ns) => `apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc
+  namespace: ${ns || 'default'}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+`,
+    serviceaccounts: (ns) => `apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-serviceaccount
+  namespace: ${ns || 'default'}
+`,
+    roles: (ns) => `apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: my-role
+  namespace: ${ns || 'default'}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+`,
+    rolebindings: (ns) => `apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: my-rolebinding
+  namespace: ${ns || 'default'}
+subjects:
+  - kind: ServiceAccount
+    name: my-serviceaccount
+    namespace: ${ns || 'default'}
+roleRef:
+  kind: Role
+  name: my-role
+  apiGroup: rbac.authorization.k8s.io
+`,
+    clusterroles: () => `apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: my-clusterrole
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+`,
+    clusterrolebindings: () => `apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: my-clusterrolebinding
+subjects:
+  - kind: ServiceAccount
+    name: my-serviceaccount
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: my-clusterrole
+  apiGroup: rbac.authorization.k8s.io
+`,
+    networkpolicies: (ns) => `apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: my-networkpolicy
+  namespace: ${ns || 'default'}
+spec:
+  podSelector:
+    matchLabels:
+      app: my-app
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: allowed-app
+      ports:
+        - protocol: TCP
+          port: 80
+`,
+    hpas: (ns) => `apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-hpa
+  namespace: ${ns || 'default'}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-deployment
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+`,
+    pdbs: (ns) => `apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: my-pdb
+  namespace: ${ns || 'default'}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: my-app
+`,
+    resourcequotas: (ns) => `apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: my-quota
+  namespace: ${ns || 'default'}
+spec:
+  hard:
+    pods: "10"
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+`,
+    limitranges: (ns) => `apiVersion: v1
+kind: LimitRange
+metadata:
+  name: my-limitrange
+  namespace: ${ns || 'default'}
+spec:
+  limits:
+    - default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      type: Container
+`,
+};
+
+// Get template for current view
+const getResourceTemplate = (viewId, namespace) => {
+    const templateFn = resourceTemplates[viewId];
+    if (templateFn) {
+        return templateFn(namespace);
+    }
+    // No template available - return empty
+    return '';
+};
+
+// Get modal title for current view
+const getCreateModalTitle = (viewId) => {
+    const titles = {
+        pods: 'Create Pod',
+        configmaps: 'Create ConfigMap',
+        secrets: 'Create Secret',
+        deployments: 'Create Deployment',
+        services: 'Create Service',
+        namespaces: 'Create Namespace',
+        jobs: 'Create Job',
+        cronjobs: 'Create CronJob',
+        statefulsets: 'Create StatefulSet',
+        daemonsets: 'Create DaemonSet',
+        ingresses: 'Create Ingress',
+        pvcs: 'Create PersistentVolumeClaim',
+        serviceaccounts: 'Create ServiceAccount',
+        roles: 'Create Role',
+        rolebindings: 'Create RoleBinding',
+        clusterroles: 'Create ClusterRole',
+        clusterrolebindings: 'Create ClusterRoleBinding',
+        networkpolicies: 'Create NetworkPolicy',
+        hpas: 'Create HorizontalPodAutoscaler',
+        pdbs: 'Create PodDisruptionBudget',
+        resourcequotas: 'Create ResourceQuota',
+        limitranges: 'Create LimitRange',
+    };
+    return titles[viewId] || 'Create Resource';
+};
 
 function MainLayout() {
     const {
@@ -86,6 +432,7 @@ function MainLayout() {
     const { toggleDebug } = useDebugLogs();
     const isDragging = useRef(false);
     const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+    const [showGenericCreateModal, setShowGenericCreateModal] = useState(false);
 
     // Resizing Logic
     const handleMouseDown = (e) => {
@@ -269,6 +616,14 @@ function MainLayout() {
             <CommandPalette
                 isOpen={commandPaletteOpen}
                 onClose={() => setCommandPaletteOpen(false)}
+                onCreateResource={() => setShowGenericCreateModal(true)}
+            />
+            <CreateResourceModal
+                isOpen={showGenericCreateModal}
+                onClose={() => setShowGenericCreateModal(false)}
+                onSuccess={triggerRefresh}
+                title={getCreateModalTitle(activeView)}
+                template={getResourceTemplate(activeView, currentNamespace)}
             />
         </>
     );

@@ -3652,3 +3652,108 @@ func (c *Client) DeleteCSINode(contextName, name string) error {
 	}
 	return cs.StorageV1().CSINodes().Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
+
+// ============================================================================
+// Generic Resource Creation from YAML
+// ============================================================================
+
+// kindToResource maps Kubernetes kinds to their plural resource names
+var kindToResource = map[string]string{
+	"Pod":                             "pods",
+	"Deployment":                      "deployments",
+	"StatefulSet":                     "statefulsets",
+	"DaemonSet":                       "daemonsets",
+	"ReplicaSet":                      "replicasets",
+	"Job":                             "jobs",
+	"CronJob":                         "cronjobs",
+	"Service":                         "services",
+	"Ingress":                         "ingresses",
+	"ConfigMap":                       "configmaps",
+	"Secret":                          "secrets",
+	"PersistentVolumeClaim":           "persistentvolumeclaims",
+	"PersistentVolume":                "persistentvolumes",
+	"StorageClass":                    "storageclasses",
+	"ServiceAccount":                  "serviceaccounts",
+	"Role":                            "roles",
+	"ClusterRole":                     "clusterroles",
+	"RoleBinding":                     "rolebindings",
+	"ClusterRoleBinding":              "clusterrolebindings",
+	"NetworkPolicy":                   "networkpolicies",
+	"Namespace":                       "namespaces",
+	"Node":                            "nodes",
+	"Endpoints":                       "endpoints",
+	"EndpointSlice":                   "endpointslices",
+	"HorizontalPodAutoscaler":         "horizontalpodautoscalers",
+	"PodDisruptionBudget":             "poddisruptionbudgets",
+	"ResourceQuota":                   "resourcequotas",
+	"LimitRange":                      "limitranges",
+	"ValidatingWebhookConfiguration":  "validatingwebhookconfigurations",
+	"MutatingWebhookConfiguration":    "mutatingwebhookconfigurations",
+	"PriorityClass":                   "priorityclasses",
+	"Lease":                           "leases",
+	"CSIDriver":                       "csidrivers",
+	"CSINode":                         "csinodes",
+	"IngressClass":                    "ingressclasses",
+}
+
+// ApplyYAML creates a resource from YAML content using the dynamic client
+func (c *Client) ApplyYAML(contextName, yamlContent string) error {
+	dc, err := c.getDynamicClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get dynamic client: %w", err)
+	}
+
+	// Parse YAML into unstructured object
+	var obj map[string]interface{}
+	if err := yaml.Unmarshal([]byte(yamlContent), &obj); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+
+	unstructuredObj := &unstructured.Unstructured{Object: obj}
+
+	// Extract apiVersion and kind
+	apiVersion := unstructuredObj.GetAPIVersion()
+	kind := unstructuredObj.GetKind()
+	namespace := unstructuredObj.GetNamespace()
+
+	if apiVersion == "" || kind == "" {
+		return fmt.Errorf("YAML must contain apiVersion and kind")
+	}
+
+	// Parse apiVersion into group and version
+	var group, version string
+	if strings.Contains(apiVersion, "/") {
+		parts := strings.SplitN(apiVersion, "/", 2)
+		group = parts[0]
+		version = parts[1]
+	} else {
+		group = ""
+		version = apiVersion
+	}
+
+	// Get resource name (plural form)
+	resource, ok := kindToResource[kind]
+	if !ok {
+		// Fallback: lowercase the kind and add 's'
+		resource = strings.ToLower(kind) + "s"
+	}
+
+	gvr := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+
+	// Create the resource
+	if namespace != "" {
+		_, err = dc.Resource(gvr).Namespace(namespace).Create(context.TODO(), unstructuredObj, metav1.CreateOptions{})
+	} else {
+		_, err = dc.Resource(gvr).Create(context.TODO(), unstructuredObj, metav1.CreateOptions{})
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to create %s: %w", kind, err)
+	}
+
+	return nil
+}

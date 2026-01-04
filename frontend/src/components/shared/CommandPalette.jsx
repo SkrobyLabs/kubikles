@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useCommandPaletteItems } from '../../hooks/useCommandPaletteItems';
 import { useUI } from '../../context/UIContext';
 
@@ -9,10 +9,26 @@ import { useUI } from '../../context/UIContext';
  *
  * Triggered by Cmd+Shift+P (Mac) / Ctrl+Shift+P (Windows)
  * Allows searching and navigating to any resource view including CRDs
+ * Also supports actions like "Create Resource"
  */
-export default function CommandPalette({ isOpen, onClose }) {
+export default function CommandPalette({ isOpen, onClose, onCreateResource }) {
     const { setActiveView } = useUI();
-    const { items, loading } = useCommandPaletteItems();
+    const { items: navigationItems, loading } = useCommandPaletteItems();
+
+    // Add action items at the top
+    const items = useMemo(() => {
+        const actions = [];
+        if (onCreateResource) {
+            actions.push({
+                id: 'action:create-resource',
+                label: 'Create Resource',
+                path: 'Actions > Create Resource',
+                type: 'action',
+                action: 'create-resource'
+            });
+        }
+        return [...actions, ...navigationItems];
+    }, [navigationItems, onCreateResource]);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef(null);
@@ -90,9 +106,15 @@ export default function CommandPalette({ isOpen, onClose }) {
 
     // Handle selection
     const handleSelect = useCallback((item) => {
-        setActiveView(item.viewId);
+        if (item.type === 'action') {
+            if (item.action === 'create-resource') {
+                onCreateResource?.();
+            }
+        } else {
+            setActiveView(item.viewId);
+        }
         onClose();
-    }, [setActiveView, onClose]);
+    }, [setActiveView, onClose, onCreateResource]);
 
     // Handle keyboard navigation
     const handleKeyDown = useCallback((e) => {
@@ -177,12 +199,16 @@ export default function CommandPalette({ isOpen, onClose }) {
                                 key={item.id}
                                 onClick={() => handleSelect(item)}
                                 onMouseEnter={() => setSelectedIndex(index)}
-                                className={`w-full px-4 py-2.5 flex items-center text-left transition-colors ${
+                                className={`w-full px-4 py-2.5 flex items-center gap-2 text-left transition-colors ${
                                     index === selectedIndex
                                         ? 'bg-primary/20 text-text'
                                         : 'text-gray-300 hover:bg-white/5'
                                 }`}
                             >
+                                {/* Show icon for action items */}
+                                {item.type === 'action' && (
+                                    <PlusIcon className="h-4 w-4 text-primary shrink-0" />
+                                )}
                                 <span className="text-sm truncate">
                                     {/* Render path with dimmed group names */}
                                     {item.path.split(' > ').map((part, i, arr) => (

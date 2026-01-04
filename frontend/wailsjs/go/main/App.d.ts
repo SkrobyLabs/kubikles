@@ -10,6 +10,8 @@ export function AddHelmRepository(arg1:string,arg2:string,arg3:number):Promise<v
 
 export function AddPortForwardConfig(arg1:main.PortForwardConfig):Promise<main.PortForwardConfig>;
 
+export function ApplyYAML(arg1:string):Promise<void>;
+
 export function CollectIngressHostnames(arg1:Array<string>):Promise<Array<string>>;
 
 export function CreateNodeDebugPod(arg1:string):Promise<main.NodeDebugPodResult>;
