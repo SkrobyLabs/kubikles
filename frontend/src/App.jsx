@@ -15,6 +15,7 @@ import ReplicaSetList from './features/workloads/replicasets/ReplicaSetList';
 import NodeList from './features/cluster/nodes/NodeList';
 import NamespaceList from './features/cluster/namespaces/NamespaceList';
 import EventList from './features/cluster/events/EventList';
+import MetricsList from './features/cluster/metrics/MetricsList';
 import ServiceList from './features/network/services/ServiceList';
 import IngressList from './features/network/ingresses/IngressList';
 import IngressClassList from './features/network/ingressclasses/IngressClassList';
@@ -526,6 +527,7 @@ function MainLayout() {
             case 'nodes': return <NodeList isVisible={true} />;
             case 'namespaces': return <NamespaceList isVisible={true} />;
             case 'events': return <EventList isVisible={true} />;
+            case 'metrics': return <MetricsList isVisible={true} />;
             case 'services': return <ServiceList isVisible={true} />;
             case 'ingresses': return <IngressList isVisible={true} />;
             case 'ingressclasses': return <IngressClassList isVisible={true} />;

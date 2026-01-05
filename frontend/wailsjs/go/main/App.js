@@ -14,6 +14,10 @@ export function ApplyYAML(arg1) {
   return window['go']['main']['App']['ApplyYAML'](arg1);
 }
 
+export function ClearPrometheusConfig() {
+  return window['go']['main']['App']['ClearPrometheusConfig']();
+}
+
 export function CollectIngressHostnames(arg1) {
   return window['go']['main']['App']['CollectIngressHostnames'](arg1);
 }
@@ -182,6 +186,10 @@ export function DetectIngressController() {
   return window['go']['main']['App']['DetectIngressController']();
 }
 
+export function DetectPrometheus() {
+  return window['go']['main']['App']['DetectPrometheus']();
+}
+
 export function ExpandDependencyNode(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['ExpandDependencyNode'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -220,6 +228,10 @@ export function GetCSIDriverYaml(arg1) {
 
 export function GetCSINodeYaml(arg1) {
   return window['go']['main']['App']['GetCSINodeYaml'](arg1);
+}
+
+export function GetCachedPrometheusConfig() {
+  return window['go']['main']['App']['GetCachedPrometheusConfig']();
 }
 
 export function GetClusterRoleBindingYaml(arg1) {
@@ -376,6 +388,10 @@ export function GetPodLogsFromStart(arg1, arg2, arg3, arg4, arg5) {
 
 export function GetPodMetrics() {
   return window['go']['main']['App']['GetPodMetrics']();
+}
+
+export function GetPodMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetPodMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function GetPodPorts(arg1, arg2) {
@@ -590,6 +606,10 @@ export function ListPriorityClasses() {
   return window['go']['main']['App']['ListPriorityClasses']();
 }
 
+export function ListPrometheusInstalls() {
+  return window['go']['main']['App']['ListPrometheusInstalls']();
+}
+
 export function ListReplicaSets(arg1) {
   return window['go']['main']['App']['ListReplicaSets'](arg1);
 }
@@ -698,6 +718,10 @@ export function SavePodLogs(arg1, arg2) {
   return window['go']['main']['App']['SavePodLogs'](arg1, arg2);
 }
 
+export function SavePrometheusConfig(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SavePrometheusConfig'](arg1, arg2, arg3);
+}
+
 export function SaveYamlBackup(arg1, arg2) {
   return window['go']['main']['App']['SaveYamlBackup'](arg1, arg2);
 }
@@ -780,6 +804,10 @@ export function SwitchContext(arg1) {
 
 export function TestEmit() {
   return window['go']['main']['App']['TestEmit']();
+}
+
+export function TestPrometheusEndpoint(arg1, arg2, arg3) {
+  return window['go']['main']['App']['TestPrometheusEndpoint'](arg1, arg2, arg3);
 }
 
 export function TriggerCronJob(arg1, arg2) {

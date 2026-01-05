@@ -8,11 +8,13 @@ import PodInfoTab from './PodInfoTab';
 import PodVolumesTab from './PodVolumesTab';
 import PodContainersTab from './PodContainersTab';
 import PodEventsTab from './PodEventsTab';
+import PodMetricsTab from './PodMetricsTab';
 
 const TAB_BASIC = 'basic';
 const TAB_VOLUMES = 'volumes';
 const TAB_CONTAINERS = 'containers';
 const TAB_EVENTS = 'events';
+const TAB_METRICS = 'metrics';
 
 export default function PodDetails({ pod, tabContext = '' }) {
     const { currentContext } = useK8s();
@@ -77,6 +79,7 @@ export default function PodDetails({ pod, tabContext = '' }) {
         { id: TAB_VOLUMES, label: 'Volumes' },
         { id: TAB_CONTAINERS, label: 'Containers' },
         { id: TAB_EVENTS, label: 'Events' },
+        { id: TAB_METRICS, label: 'Metrics' },
     ], []);
 
     const renderTabContent = () => {
@@ -103,6 +106,13 @@ export default function PodDetails({ pod, tabContext = '' }) {
             case TAB_EVENTS:
                 return (
                     <PodEventsTab
+                        pod={pod}
+                        isStale={isStale}
+                    />
+                );
+            case TAB_METRICS:
+                return (
+                    <PodMetricsTab
                         pod={pod}
                         isStale={isStale}
                     />

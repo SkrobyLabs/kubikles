@@ -394,6 +394,54 @@ export namespace intstr {
 
 export namespace k8s {
 	
+	export class MetricsDataPoint {
+	    timestamp: number;
+	    value: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetricsDataPoint(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.timestamp = source["timestamp"];
+	        this.value = source["value"];
+	    }
+	}
+	export class ContainerMetricsHistory {
+	    container: string;
+	    cpu: MetricsDataPoint[];
+	    memory: MetricsDataPoint[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ContainerMetricsHistory(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.container = source["container"];
+	        this.cpu = this.convertValues(source["cpu"], MetricsDataPoint);
+	        this.memory = this.convertValues(source["memory"], MetricsDataPoint);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class DependencyEdge {
 	    source: string;
 	    target: string;
@@ -468,6 +516,7 @@ export namespace k8s {
 		    return a;
 		}
 	}
+	
 	
 	export class NamespaceResourceCounts {
 	    pods: number;
@@ -597,6 +646,40 @@ export namespace k8s {
 	        this.nodeMemCapacity = source["nodeMemCapacity"];
 	    }
 	}
+	export class PodMetricsHistory {
+	    namespace: string;
+	    pod: string;
+	    containers: ContainerMetricsHistory[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PodMetricsHistory(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.namespace = source["namespace"];
+	        this.pod = source["pod"];
+	        this.containers = this.convertValues(source["containers"], ContainerMetricsHistory);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class PodMetricsResult {
 	    available: boolean;
 	    metrics: PodMetrics[];
@@ -649,6 +732,50 @@ export namespace k8s {
 	        this.jsonPath = source["jsonPath"];
 	        this.description = source["description"];
 	        this.priority = source["priority"];
+	    }
+	}
+	export class PrometheusInfo {
+	    available: boolean;
+	    namespace: string;
+	    service: string;
+	    port: number;
+	    detectionMethod?: string;
+	    crdName?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PrometheusInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.namespace = source["namespace"];
+	        this.service = source["service"];
+	        this.port = source["port"];
+	        this.detectionMethod = source["detectionMethod"];
+	        this.crdName = source["crdName"];
+	    }
+	}
+	export class PrometheusInstall {
+	    namespace: string;
+	    name: string;
+	    service: string;
+	    port: number;
+	    type: string;
+	    reachable: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PrometheusInstall(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.namespace = source["namespace"];
+	        this.name = source["name"];
+	        this.service = source["service"];
+	        this.port = source["port"];
+	        this.type = source["type"];
+	        this.reachable = source["reachable"];
 	    }
 	}
 

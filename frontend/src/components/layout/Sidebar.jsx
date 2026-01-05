@@ -151,6 +151,7 @@ export default function Sidebar({
                 { id: 'namespaces', label: 'Namespaces', icon: FolderIcon },
                 { id: 'events', label: 'Events', icon: BellAlertIcon },
                 { id: 'priorityclasses', label: 'Priority Classes', icon: BoltIcon },
+                { id: 'metrics', label: 'Metrics', icon: ChartBarIcon },
             ]
         },
         {

@@ -3,12 +3,14 @@ package main
 import (
 	"archive/zip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/terminal"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -41,6 +43,10 @@ type App struct {
 	// Log streaming
 	logStreams      map[string]context.CancelFunc
 	logStreamsMutex sync.Mutex
+	// Prometheus config cache (per context)
+	prometheusConfigs     map[string]*k8s.PrometheusInfo
+	prometheusConfigPath  string
+	prometheusConfigMutex sync.RWMutex
 }
 
 // WatcherCleanupDelay is the time to wait before stopping a watcher with no subscribers
@@ -259,11 +265,19 @@ func NewApp() *App {
 	if err != nil {
 		fmt.Printf("Error initializing K8s client: %v\n", err)
 	}
+
+	// Setup prometheus config path
+	configDir, _ := os.UserConfigDir()
+	appDir := filepath.Join(configDir, "kubikles")
+	os.MkdirAll(appDir, 0755)
+
 	return &App{
-		k8sClient:       client,
-		helmClient:      helm.NewClient(),
-		terminalService: terminal.NewService(),
-		logStreams:      make(map[string]context.CancelFunc),
+		k8sClient:            client,
+		helmClient:           helm.NewClient(),
+		terminalService:      terminal.NewService(),
+		logStreams:           make(map[string]context.CancelFunc),
+		prometheusConfigs:    make(map[string]*k8s.PrometheusInfo),
+		prometheusConfigPath: filepath.Join(appDir, "prometheus_config.json"),
 	}
 }
 
@@ -274,6 +288,7 @@ func (a *App) startup(ctx context.Context) {
 	a.watcherManager = NewResourceWatcherManager(ctx, a)
 	a.portForwardManager = NewPortForwardManager(a)
 	a.ingressForwardManager = NewIngressForwardManager(a)
+	a.loadPrometheusConfigs()
 	if err := a.terminalService.Start(); err != nil {
 		fmt.Printf("Failed to start terminal service: %v\n", err)
 	}
@@ -2903,4 +2918,204 @@ func (a *App) ApplyYAML(yamlContent string) error {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	return a.k8sClient.ApplyYAML(currentContext, yamlContent)
+}
+
+// ============================================================================
+// Prometheus Integration
+// ============================================================================
+
+// loadPrometheusConfigs loads saved Prometheus configurations from disk
+func (a *App) loadPrometheusConfigs() {
+	a.prometheusConfigMutex.Lock()
+	defer a.prometheusConfigMutex.Unlock()
+
+	data, err := os.ReadFile(a.prometheusConfigPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			a.LogDebug("Prometheus: Failed to read config file: %v", err)
+		}
+		return
+	}
+
+	var configs map[string]*k8s.PrometheusInfo
+	if err := json.Unmarshal(data, &configs); err != nil {
+		a.LogDebug("Prometheus: Failed to parse config file: %v", err)
+		return
+	}
+
+	a.prometheusConfigs = configs
+	a.LogDebug("Prometheus: Loaded %d saved configurations", len(configs))
+}
+
+// savePrometheusConfigs saves Prometheus configurations to disk
+func (a *App) savePrometheusConfigs() error {
+	a.prometheusConfigMutex.RLock()
+	defer a.prometheusConfigMutex.RUnlock()
+
+	data, err := json.MarshalIndent(a.prometheusConfigs, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal prometheus configs: %w", err)
+	}
+
+	if err := os.WriteFile(a.prometheusConfigPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write prometheus config file: %w", err)
+	}
+
+	return nil
+}
+
+// GetCachedPrometheusConfig returns the cached Prometheus config for the current context
+func (a *App) GetCachedPrometheusConfig() *k8s.PrometheusInfo {
+	currentContext := a.GetCurrentContext()
+	a.prometheusConfigMutex.RLock()
+	defer a.prometheusConfigMutex.RUnlock()
+
+	if config, ok := a.prometheusConfigs[currentContext]; ok {
+		return config
+	}
+	return nil
+}
+
+// SavePrometheusConfig saves a Prometheus configuration for the current context
+func (a *App) SavePrometheusConfig(namespace, service string, port int) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("SavePrometheusConfig called: context=%s, endpoint=%s/%s:%d", currentContext, namespace, service, port)
+
+	config := &k8s.PrometheusInfo{
+		Available:       true,
+		Namespace:       namespace,
+		Service:         service,
+		Port:            port,
+		DetectionMethod: "manual",
+	}
+
+	a.prometheusConfigMutex.Lock()
+	a.prometheusConfigs[currentContext] = config
+	a.prometheusConfigMutex.Unlock()
+
+	if err := a.savePrometheusConfigs(); err != nil {
+		a.LogDebug("Prometheus: Failed to save config: %v", err)
+		return err
+	}
+
+	a.LogDebug("Prometheus: Saved config for context %s", currentContext)
+	return nil
+}
+
+// ClearPrometheusConfig clears the cached Prometheus config for the current context
+func (a *App) ClearPrometheusConfig() error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ClearPrometheusConfig called: context=%s", currentContext)
+
+	a.prometheusConfigMutex.Lock()
+	delete(a.prometheusConfigs, currentContext)
+	a.prometheusConfigMutex.Unlock()
+
+	return a.savePrometheusConfigs()
+}
+
+// DetectPrometheus auto-detects Prometheus installation in the cluster
+// First checks for cached config, then falls back to auto-detection
+func (a *App) DetectPrometheus() (*k8s.PrometheusInfo, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("DetectPrometheus called: context=%s", currentContext)
+
+	// Check cached config first
+	if cached := a.GetCachedPrometheusConfig(); cached != nil {
+		a.LogDebug("DetectPrometheus: Using cached config for context %s", currentContext)
+		// Verify it's still reachable
+		if a.k8sClient != nil {
+			err := a.k8sClient.TestPrometheusEndpoint(currentContext, k8s.PrometheusEndpoint{
+				Namespace: cached.Namespace,
+				Service:   cached.Service,
+				Port:      cached.Port,
+			})
+			if err == nil {
+				return cached, nil
+			}
+			a.LogDebug("DetectPrometheus: Cached config no longer reachable, will re-detect")
+		}
+	}
+
+	if a.k8sClient == nil {
+		return &k8s.PrometheusInfo{Available: false}, fmt.Errorf("k8s client not initialized")
+	}
+
+	// Auto-detect
+	info, err := a.k8sClient.DetectPrometheus(currentContext)
+	if err != nil {
+		return info, err
+	}
+
+	// Cache the detected config if successful
+	if info != nil && info.Available {
+		a.prometheusConfigMutex.Lock()
+		a.prometheusConfigs[currentContext] = info
+		a.prometheusConfigMutex.Unlock()
+		a.savePrometheusConfigs()
+	}
+
+	return info, nil
+}
+
+// ListPrometheusInstalls returns all Prometheus installations found in the cluster
+func (a *App) ListPrometheusInstalls() ([]k8s.PrometheusInstall, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("ListPrometheusInstalls called: context=%s", currentContext)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListPrometheusInstalls(currentContext)
+}
+
+// TestPrometheusEndpoint tests a custom Prometheus endpoint
+func (a *App) TestPrometheusEndpoint(namespace, service string, port int) error {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("TestPrometheusEndpoint called: context=%s, endpoint=%s/%s:%d", currentContext, namespace, service, port)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.TestPrometheusEndpoint(currentContext, k8s.PrometheusEndpoint{
+		Namespace: namespace,
+		Service:   service,
+		Port:      port,
+	})
+}
+
+// GetPodMetricsHistory retrieves historical metrics for a pod from Prometheus
+func (a *App) GetPodMetricsHistory(prometheusNamespace, prometheusService string, prometheusPort int, namespace, pod, container, duration string) (*k8s.PodMetricsHistory, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetPodMetricsHistory called: context=%s, pod=%s/%s, duration=%s", currentContext, namespace, pod, duration)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+
+	// Parse duration
+	var dur time.Duration
+	switch duration {
+	case "1h":
+		dur = time.Hour
+	case "6h":
+		dur = 6 * time.Hour
+	case "24h":
+		dur = 24 * time.Hour
+	case "7d":
+		dur = 7 * 24 * time.Hour
+	case "30d":
+		dur = 30 * 24 * time.Hour
+	case "all":
+		dur = 90 * 24 * time.Hour // 90 days max for "all"
+	default:
+		dur = time.Hour
+	}
+
+	info := &k8s.PrometheusInfo{
+		Available: true,
+		Namespace: prometheusNamespace,
+		Service:   prometheusService,
+		Port:      prometheusPort,
+	}
+
+	// Target ~150 data points for readable charts (chart width ~320px, line width 2px)
+	return a.k8sClient.GetPodMetricsHistoryWithResolution(currentContext, info, namespace, pod, container, dur, 150)
 }

@@ -12,6 +12,8 @@ export function AddPortForwardConfig(arg1:main.PortForwardConfig):Promise<main.P
 
 export function ApplyYAML(arg1:string):Promise<void>;
 
+export function ClearPrometheusConfig():Promise<void>;
+
 export function CollectIngressHostnames(arg1:Array<string>):Promise<Array<string>>;
 
 export function CreateNodeDebugPod(arg1:string):Promise<main.NodeDebugPodResult>;
@@ -96,6 +98,8 @@ export function DeleteValidatingWebhookConfiguration(arg1:string):Promise<void>;
 
 export function DetectIngressController():Promise<main.IngressController>;
 
+export function DetectPrometheus():Promise<k8s.PrometheusInfo>;
+
 export function ExpandDependencyNode(arg1:string,arg2:string,arg3:string,arg4:string,arg5:number):Promise<k8s.DependencyGraph>;
 
 export function ForceDeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -115,6 +119,8 @@ export function GetCRDYaml(arg1:string):Promise<string>;
 export function GetCSIDriverYaml(arg1:string):Promise<string>;
 
 export function GetCSINodeYaml(arg1:string):Promise<string>;
+
+export function GetCachedPrometheusConfig():Promise<k8s.PrometheusInfo>;
 
 export function GetClusterRoleBindingYaml(arg1:string):Promise<string>;
 
@@ -193,6 +199,8 @@ export function GetPodLogsBefore(arg1:string,arg2:string,arg3:string,arg4:boolea
 export function GetPodLogsFromStart(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean):Promise<string>;
 
 export function GetPodMetrics():Promise<k8s.PodMetricsResult>;
+
+export function GetPodMetricsHistory(arg1:string,arg2:string,arg3:number,arg4:string,arg5:string,arg6:string,arg7:string):Promise<k8s.PodMetricsHistory>;
 
 export function GetPodPorts(arg1:string,arg2:string):Promise<Array<number>>;
 
@@ -300,6 +308,8 @@ export function ListPods(arg1:string):Promise<Array<v1.Pod>>;
 
 export function ListPriorityClasses():Promise<Array<v1.PriorityClass>>;
 
+export function ListPrometheusInstalls():Promise<Array<k8s.PrometheusInstall>>;
+
 export function ListReplicaSets(arg1:string):Promise<Array<v1.ReplicaSet>>;
 
 export function ListResourceQuotas(arg1:string):Promise<Array<v1.ResourceQuota>>;
@@ -354,6 +364,8 @@ export function SaveLogsBundle(arg1:Array<main.PodLogEntry>,arg2:string):Promise
 
 export function SavePodLogs(arg1:string,arg2:string):Promise<void>;
 
+export function SavePrometheusConfig(arg1:string,arg2:string,arg3:number):Promise<void>;
+
 export function SaveYamlBackup(arg1:Array<main.YamlBackupEntry>,arg2:string):Promise<void>;
 
 export function SearchChartInSource(arg1:string,arg2:string):Promise<helm.ChartSearchResult>;
@@ -395,6 +407,8 @@ export function SuspendCronJob(arg1:string,arg2:string,arg3:boolean):Promise<voi
 export function SwitchContext(arg1:string):Promise<void>;
 
 export function TestEmit():Promise<void>;
+
+export function TestPrometheusEndpoint(arg1:string,arg2:string,arg3:number):Promise<void>;
 
 export function TriggerCronJob(arg1:string,arg2:string):Promise<void>;
 
