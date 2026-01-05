@@ -3,26 +3,58 @@ import { ChartBarIcon, ExclamationTriangleIcon, ChevronDownIcon } from '@heroico
 import { DetectPrometheus, GetPodMetricsHistory } from '../../../wailsjs/go/main/App';
 import { formatBytes } from '../../utils/formatting';
 
+// Parse Kubernetes CPU quantity (e.g., "100m", "0.5", "1") to millicores
+const parseCPU = (value) => {
+    if (!value) return null;
+    const str = String(value);
+    if (str.endsWith('m')) {
+        return parseFloat(str.slice(0, -1));
+    }
+    // Cores to millicores
+    return parseFloat(str) * 1000;
+};
+
+// Parse Kubernetes memory quantity (e.g., "128Mi", "1Gi", "1000000") to bytes
+const parseMemory = (value) => {
+    if (!value) return null;
+    const str = String(value);
+    const units = {
+        'Ki': 1024,
+        'Mi': 1024 * 1024,
+        'Gi': 1024 * 1024 * 1024,
+        'Ti': 1024 * 1024 * 1024 * 1024,
+        'K': 1000,
+        'M': 1000 * 1000,
+        'G': 1000 * 1000 * 1000,
+        'T': 1000 * 1000 * 1000 * 1000,
+    };
+    for (const [suffix, multiplier] of Object.entries(units)) {
+        if (str.endsWith(suffix)) {
+            return parseFloat(str.slice(0, -suffix.length)) * multiplier;
+        }
+    }
+    return parseFloat(str);
+};
+
 // Format time for display (timestamp is already in milliseconds from backend)
 const formatTime = (timestamp, duration) => {
     const date = new Date(timestamp);
     if (duration === '30d' || duration === 'all') {
-        // For very long durations, show just date
         return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     }
     if (duration === '7d' || duration === '24h') {
-        // For medium durations, show date and time
         return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
-    // For short durations, show just time
     return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 };
 
 // Interactive line chart component with proper axes
-const MetricsChart = ({ data, color, label, formatValue, duration }) => {
+const MetricsChart = ({ data, color, label, formatValue, duration, request, limit }) => {
     const containerRef = useRef(null);
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [showRequest, setShowRequest] = useState(true);
+    const [showLimit, setShowLimit] = useState(true);
 
     if (!data || data.length === 0) {
         return (
@@ -34,12 +66,17 @@ const MetricsChart = ({ data, color, label, formatValue, duration }) => {
 
     const values = data.map(d => d.value);
     const timestamps = data.map(d => d.timestamp);
-    const max = Math.max(...values) || 1;
-    const min = Math.min(...values);
+    let max = Math.max(...values) || 1;
+    let min = Math.min(...values);
+
+    // Extend max to include limit/request if they're higher and visible
+    if (showLimit && limit && limit > max) max = limit * 1.05;
+    if (showRequest && request && request > max) max = request * 1.05;
+
     const range = max - min || 1;
 
     // Add 10% padding to Y axis
-    const yMin = min - range * 0.05;
+    const yMin = Math.max(0, min - range * 0.05);
     const yMax = max + range * 0.05;
     const yRange = yMax - yMin || 1;
 
@@ -79,6 +116,15 @@ const MetricsChart = ({ data, color, label, formatValue, duration }) => {
 
     const currentValue = values[values.length - 1];
 
+    // Calculate Y position for request/limit lines
+    const getYPosition = (value) => {
+        if (value == null || value < yMin || value > yMax) return null;
+        return paddingTop + chartHeight - ((value - yMin) / yRange) * chartHeight;
+    };
+
+    const requestY = getYPosition(request);
+    const limitY = getYPosition(limit);
+
     // Handle mouse move on the chart
     const handleMouseMove = useCallback((e) => {
         if (!containerRef.current) return;
@@ -86,10 +132,8 @@ const MetricsChart = ({ data, color, label, formatValue, duration }) => {
         const svgX = ((e.clientX - rect.left) / rect.width) * width;
         const svgY = ((e.clientY - rect.top) / rect.height) * height;
 
-        // Check if within chart area
         if (svgX >= paddingLeft && svgX <= width - paddingRight &&
             svgY >= paddingTop && svgY <= height - paddingBottom) {
-            // Find closest data point
             const chartX = svgX - paddingLeft;
             const index = Math.round((chartX / chartWidth) * (data.length - 1));
             const clampedIndex = Math.max(0, Math.min(data.length - 1, index));
@@ -109,7 +153,32 @@ const MetricsChart = ({ data, color, label, formatValue, duration }) => {
     return (
         <div className="relative">
             <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-300">{label}</span>
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-300">{label}</span>
+                    {/* Legend - clickable to toggle */}
+                    <div className="flex items-center gap-2 text-xs">
+                        {request != null && (
+                            <button
+                                onClick={() => setShowRequest(!showRequest)}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${!showRequest ? 'opacity-40' : ''}`}
+                                title={showRequest ? 'Hide request line' : 'Show request line'}
+                            >
+                                <span className={`w-3 h-0.5 ${showRequest ? 'bg-orange-500' : 'bg-gray-500'}`}></span>
+                                <span className={showRequest ? 'text-orange-400' : 'text-gray-500'}>Request</span>
+                            </button>
+                        )}
+                        {limit != null && (
+                            <button
+                                onClick={() => setShowLimit(!showLimit)}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${!showLimit ? 'opacity-40' : ''}`}
+                                title={showLimit ? 'Hide limit line' : 'Show limit line'}
+                            >
+                                <span className={`w-3 h-0.5 ${showLimit ? 'bg-red-500' : 'bg-gray-500'}`}></span>
+                                <span className={showLimit ? 'text-red-400' : 'text-gray-500'}>Limit</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
                 <span className="text-sm text-gray-400">
                     Current: <span className={`font-medium ${color.replace('stroke-', 'text-')}`}>
                         {formatValue(currentValue)}
@@ -181,6 +250,32 @@ const MetricsChart = ({ data, color, label, formatValue, duration }) => {
                         strokeWidth="1"
                     />
 
+                    {/* Request line (orange) */}
+                    {showRequest && requestY != null && (
+                        <line
+                            x1={paddingLeft}
+                            y1={requestY}
+                            x2={width - paddingRight}
+                            y2={requestY}
+                            className="stroke-orange-500"
+                            strokeWidth="1.5"
+                            strokeDasharray="6,3"
+                        />
+                    )}
+
+                    {/* Limit line (red) */}
+                    {showLimit && limitY != null && (
+                        <line
+                            x1={paddingLeft}
+                            y1={limitY}
+                            x2={width - paddingRight}
+                            y2={limitY}
+                            className="stroke-red-500"
+                            strokeWidth="1.5"
+                            strokeDasharray="6,3"
+                        />
+                    )}
+
                     {/* Area fill */}
                     <path
                         d={areaPath}
@@ -200,7 +295,6 @@ const MetricsChart = ({ data, color, label, formatValue, duration }) => {
                     {/* Hover indicator */}
                     {hoveredPoint && (
                         <>
-                            {/* Vertical line */}
                             <line
                                 x1={hoveredPoint.x}
                                 y1={paddingTop}
@@ -210,7 +304,6 @@ const MetricsChart = ({ data, color, label, formatValue, duration }) => {
                                 strokeWidth="1"
                                 strokeDasharray="4,2"
                             />
-                            {/* Point circle */}
                             <circle
                                 cx={hoveredPoint.x}
                                 cy={hoveredPoint.y}
@@ -238,6 +331,16 @@ const MetricsChart = ({ data, color, label, formatValue, duration }) => {
                         <div className={`text-sm font-medium ${color.replace('stroke-', 'text-')}`}>
                             {formatValue(hoveredPoint.value)}
                         </div>
+                        {showRequest && request != null && (
+                            <div className="text-xs text-orange-400">
+                                Request: {formatValue(request)}
+                            </div>
+                        )}
+                        {showLimit && limit != null && (
+                            <div className="text-xs text-red-400">
+                                Limit: {formatValue(limit)}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -268,12 +371,33 @@ export default function PodMetricsTab({ pod, isStale }) {
     const namespace = pod.metadata?.namespace;
     const podName = pod.metadata?.name;
 
-    // Get container names
+    // Get container names and resources
     const containers = useMemo(() => {
-        const initContainers = (pod.spec?.initContainers || []).map(c => ({ name: c.name, isInit: true }));
-        const regularContainers = (pod.spec?.containers || []).map(c => ({ name: c.name, isInit: false }));
+        const initContainers = (pod.spec?.initContainers || []).map(c => ({
+            name: c.name,
+            isInit: true,
+            resources: c.resources || {}
+        }));
+        const regularContainers = (pod.spec?.containers || []).map(c => ({
+            name: c.name,
+            isInit: false,
+            resources: c.resources || {}
+        }));
         return [...initContainers, ...regularContainers];
     }, [pod]);
+
+    // Get resources for a specific container
+    const getContainerResources = useCallback((containerName) => {
+        const container = containers.find(c => c.name === containerName);
+        if (!container) return { cpuRequest: null, cpuLimit: null, memRequest: null, memLimit: null };
+
+        return {
+            cpuRequest: parseCPU(container.resources?.requests?.cpu),
+            cpuLimit: parseCPU(container.resources?.limits?.cpu),
+            memRequest: parseMemory(container.resources?.requests?.memory),
+            memLimit: parseMemory(container.resources?.limits?.memory),
+        };
+    }, [containers]);
 
     // Detect Prometheus on mount
     useEffect(() => {
@@ -368,7 +492,7 @@ export default function PodMetricsTab({ pod, isStale }) {
         <div className="h-full flex flex-col overflow-hidden">
             {/* Controls */}
             <div className="flex items-center gap-4 px-4 py-3 border-b border-border shrink-0">
-                {/* Container selector - styled like ContainersTab */}
+                {/* Container selector */}
                 <div className="flex items-center gap-2">
                     <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Container
@@ -461,31 +585,38 @@ export default function PodMetricsTab({ pod, isStale }) {
                 {metricsData && (
                     <div className="space-y-6">
                         {metricsData.containers && metricsData.containers.length > 0 ? (
-                            metricsData.containers.map(container => (
-                                <div key={container.container} className="space-y-4">
-                                    {selectedContainer === 'all' && (
-                                        <h3 className="text-sm font-medium text-gray-300 border-b border-border pb-2">
-                                            {container.container}
-                                        </h3>
-                                    )}
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        <MetricsChart
-                                            data={container.cpu}
-                                            color="stroke-blue-500"
-                                            label="CPU Usage"
-                                            formatValue={formatCPU}
-                                            duration={duration}
-                                        />
-                                        <MetricsChart
-                                            data={container.memory}
-                                            color="stroke-purple-500"
-                                            label="Memory Usage"
-                                            formatValue={formatBytes}
-                                            duration={duration}
-                                        />
+                            metricsData.containers.map(container => {
+                                const resources = getContainerResources(container.container);
+                                return (
+                                    <div key={container.container} className="space-y-4">
+                                        {selectedContainer === 'all' && (
+                                            <h3 className="text-sm font-medium text-gray-300 border-b border-border pb-2">
+                                                {container.container}
+                                            </h3>
+                                        )}
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                            <MetricsChart
+                                                data={container.cpu}
+                                                color="stroke-blue-500"
+                                                label="CPU Usage"
+                                                formatValue={formatCPU}
+                                                duration={duration}
+                                                request={resources.cpuRequest}
+                                                limit={resources.cpuLimit}
+                                            />
+                                            <MetricsChart
+                                                data={container.memory}
+                                                color="stroke-purple-500"
+                                                label="Memory Usage"
+                                                formatValue={formatBytes}
+                                                duration={duration}
+                                                request={resources.memRequest}
+                                                limit={resources.memLimit}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            ))
+                                );
+                            })
                         ) : (
                             <div className="flex items-center justify-center h-48 text-gray-500">
                                 No metrics data available for this time range
