@@ -246,6 +246,10 @@ export function GetConfigMapYaml(arg1, arg2) {
   return window['go']['main']['App']['GetConfigMapYaml'](arg1, arg2);
 }
 
+export function GetControllerMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetControllerMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
 export function GetCronJobYaml(arg1, arg2) {
   return window['go']['main']['App']['GetCronJobYaml'](arg1, arg2);
 }
@@ -352,6 +356,10 @@ export function GetNetworkPolicyYaml(arg1, arg2) {
 
 export function GetNodeMetrics() {
   return window['go']['main']['App']['GetNodeMetrics']();
+}
+
+export function GetNodeMetricsHistory(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetNodeMetricsHistory'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function GetNodeYaml(arg1) {

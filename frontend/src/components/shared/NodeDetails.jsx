@@ -1,10 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context/K8sContext';
 import { useUI } from '../../context/UIContext';
 import { formatAge } from '../../utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import YamlEditor from './YamlEditor';
+import NodeMetricsTab from './NodeMetricsTab';
+
+const TAB_BASIC = 'basic';
+const TAB_METRICS = 'metrics';
 
 function formatBytes(bytes) {
     if (!bytes) return 'N/A';
@@ -24,8 +28,14 @@ function formatCPU(cpu) {
 export default function NodeDetails({ node, tabContext = '' }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch } = useUI();
+    const [activeTab, setActiveTab] = useState(TAB_BASIC);
 
     const isStale = tabContext && tabContext !== currentContext;
+
+    const tabs = useMemo(() => [
+        { id: TAB_BASIC, label: 'Basic' },
+        { id: TAB_METRICS, label: 'Metrics' },
+    ], []);
 
     const name = node.metadata?.name;
     const labels = node.metadata?.labels || {};
@@ -87,6 +97,22 @@ export default function NodeDetails({ node, tabContext = '' }) {
                     {spec.unschedulable && (
                         <StatusBadge status="Cordoned" variant="warning" />
                     )}
+                    {/* Tab Toggle */}
+                    <div className="flex items-center bg-[#2d2d2d] rounded-md p-0.5">
+                        {tabs.map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                    activeTab === tab.id
+                                        ? 'bg-primary text-white'
+                                        : 'text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                     {/* Action Icons */}
                     <div className="flex items-center gap-1 ml-2">
                         <button
@@ -102,6 +128,12 @@ export default function NodeDetails({ node, tabContext = '' }) {
             </div>
 
             {/* Content Area */}
+            {activeTab === TAB_METRICS ? (
+                <NodeMetricsTab
+                    nodeName={name}
+                    isStale={isStale}
+                />
+            ) : (
             <div className="h-full overflow-auto p-4">
                 {/* Capacity */}
                 <DetailSection title="Capacity">
@@ -204,6 +236,7 @@ export default function NodeDetails({ node, tabContext = '' }) {
                     <AnnotationsDisplay annotations={annotations} />
                 </DetailSection>
             </div>
+            )}
         </div>
     );
 }

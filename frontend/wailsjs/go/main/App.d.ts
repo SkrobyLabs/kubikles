@@ -128,6 +128,8 @@ export function GetClusterRoleYaml(arg1:string):Promise<string>;
 
 export function GetConfigMapYaml(arg1:string,arg2:string):Promise<string>;
 
+export function GetControllerMetricsHistory(arg1:string,arg2:string,arg3:number,arg4:string,arg5:string,arg6:string,arg7:string):Promise<k8s.ControllerMetricsHistory>;
+
 export function GetCronJobYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetCurrentContext():Promise<string>;
@@ -181,6 +183,8 @@ export function GetNamespaceYAML(arg1:string):Promise<string>;
 export function GetNetworkPolicyYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetNodeMetrics():Promise<k8s.NodeMetricsResult>;
+
+export function GetNodeMetricsHistory(arg1:string,arg2:string,arg3:number,arg4:string,arg5:string):Promise<k8s.NodeMetricsHistory>;
 
 export function GetNodeYaml(arg1:string):Promise<string>;
 

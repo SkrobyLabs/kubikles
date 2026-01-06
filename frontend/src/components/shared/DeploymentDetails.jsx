@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { PencilSquareIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context/K8sContext';
 import { useUI } from '../../context/UIContext';
@@ -6,10 +6,15 @@ import { formatAge } from '../../utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import YamlEditor from './YamlEditor';
 import DependencyGraph from './DependencyGraph';
+import ControllerMetricsTab from './ControllerMetricsTab';
+
+const TAB_BASIC = 'basic';
+const TAB_METRICS = 'metrics';
 
 export default function DeploymentDetails({ deployment, tabContext = '' }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch } = useUI();
+    const [activeTab, setActiveTab] = useState(TAB_BASIC);
 
     const isStale = tabContext && tabContext !== currentContext;
 
@@ -83,6 +88,11 @@ export default function DeploymentDetails({ deployment, tabContext = '' }) {
         return 'warning';
     };
 
+    const tabs = useMemo(() => [
+        { id: TAB_BASIC, label: 'Basic' },
+        { id: TAB_METRICS, label: 'Metrics' },
+    ], []);
+
     return (
         <div className="flex flex-col h-full bg-[#1e1e1e]">
             {/* Header Bar */}
@@ -95,6 +105,22 @@ export default function DeploymentDetails({ deployment, tabContext = '' }) {
                         status={`${readyReplicas}/${replicas}`}
                         variant={getReplicaStatus()}
                     />
+                    {/* Tab Toggle */}
+                    <div className="flex items-center bg-[#2d2d2d] rounded-md p-0.5">
+                        {tabs.map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                    activeTab === tab.id
+                                        ? 'bg-primary text-white'
+                                        : 'text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                     {/* Action Icons */}
                     <div className="flex items-center gap-1 ml-2">
                         <button
@@ -124,6 +150,14 @@ export default function DeploymentDetails({ deployment, tabContext = '' }) {
             </div>
 
             {/* Content Area */}
+            {activeTab === TAB_METRICS ? (
+                <ControllerMetricsTab
+                    namespace={namespace}
+                    name={name}
+                    controllerType="deployment"
+                    isStale={isStale}
+                />
+            ) : (
             <div className="h-full overflow-auto p-4">
                 {/* Replica Status */}
                 <DetailSection title="Replicas">
@@ -212,6 +246,7 @@ export default function DeploymentDetails({ deployment, tabContext = '' }) {
                     <AnnotationsDisplay annotations={annotations} />
                 </DetailSection>
             </div>
+            )}
         </div>
     );
 }

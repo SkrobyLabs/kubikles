@@ -3119,3 +3119,77 @@ func (a *App) GetPodMetricsHistory(prometheusNamespace, prometheusService string
 	// Target ~150 data points for readable charts (chart width ~320px, line width 2px)
 	return a.k8sClient.GetPodMetricsHistoryWithResolution(currentContext, info, namespace, pod, container, dur, 150)
 }
+
+// GetControllerMetricsHistory retrieves historical metrics for a controller (deployment, statefulset, etc.)
+func (a *App) GetControllerMetricsHistory(prometheusNamespace, prometheusService string, prometheusPort int, namespace, name, controllerType, duration string) (*k8s.ControllerMetricsHistory, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetControllerMetricsHistory called: context=%s, controller=%s/%s, type=%s, duration=%s", currentContext, namespace, name, controllerType, duration)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+
+	// Parse duration
+	var dur time.Duration
+	switch duration {
+	case "1h":
+		dur = time.Hour
+	case "6h":
+		dur = 6 * time.Hour
+	case "24h":
+		dur = 24 * time.Hour
+	case "7d":
+		dur = 7 * 24 * time.Hour
+	case "30d":
+		dur = 30 * 24 * time.Hour
+	case "all":
+		dur = 90 * 24 * time.Hour
+	default:
+		dur = time.Hour
+	}
+
+	info := &k8s.PrometheusInfo{
+		Available: true,
+		Namespace: prometheusNamespace,
+		Service:   prometheusService,
+		Port:      prometheusPort,
+	}
+
+	return a.k8sClient.GetControllerMetricsHistory(currentContext, info, namespace, name, controllerType, dur, 150)
+}
+
+// GetNodeMetricsHistory retrieves historical metrics for a node
+func (a *App) GetNodeMetricsHistory(prometheusNamespace, prometheusService string, prometheusPort int, nodeName, duration string) (*k8s.NodeMetricsHistory, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetNodeMetricsHistory called: context=%s, node=%s, duration=%s", currentContext, nodeName, duration)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+
+	// Parse duration
+	var dur time.Duration
+	switch duration {
+	case "1h":
+		dur = time.Hour
+	case "6h":
+		dur = 6 * time.Hour
+	case "24h":
+		dur = 24 * time.Hour
+	case "7d":
+		dur = 7 * 24 * time.Hour
+	case "30d":
+		dur = 30 * 24 * time.Hour
+	case "all":
+		dur = 90 * 24 * time.Hour
+	default:
+		dur = time.Hour
+	}
+
+	info := &k8s.PrometheusInfo{
+		Available: true,
+		Namespace: prometheusNamespace,
+		Service:   prometheusService,
+		Port:      prometheusPort,
+	}
+
+	return a.k8sClient.GetNodeMetricsHistory(currentContext, info, nodeName, dur, 150)
+}

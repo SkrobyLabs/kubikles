@@ -442,6 +442,158 @@ export namespace k8s {
 		    return a;
 		}
 	}
+	export class NetworkMetrics {
+	    receiveBytes: MetricsDataPoint[];
+	    transmitBytes: MetricsDataPoint[];
+	    receiveDropped: MetricsDataPoint[];
+	    transmitDropped: MetricsDataPoint[];
+	
+	    static createFrom(source: any = {}) {
+	        return new NetworkMetrics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.receiveBytes = this.convertValues(source["receiveBytes"], MetricsDataPoint);
+	        this.transmitBytes = this.convertValues(source["transmitBytes"], MetricsDataPoint);
+	        this.receiveDropped = this.convertValues(source["receiveDropped"], MetricsDataPoint);
+	        this.transmitDropped = this.convertValues(source["transmitDropped"], MetricsDataPoint);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PodCountMetrics {
+	    running: MetricsDataPoint[];
+	    desired: MetricsDataPoint[];
+	    ready: MetricsDataPoint[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PodCountMetrics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.running = this.convertValues(source["running"], MetricsDataPoint);
+	        this.desired = this.convertValues(source["desired"], MetricsDataPoint);
+	        this.ready = this.convertValues(source["ready"], MetricsDataPoint);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ResourceMetrics {
+	    usage: MetricsDataPoint[];
+	    request: MetricsDataPoint[];
+	    limit: MetricsDataPoint[];
+	    nodeAllocatable: MetricsDataPoint[];
+	    nodeUncommitted: MetricsDataPoint[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ResourceMetrics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.usage = this.convertValues(source["usage"], MetricsDataPoint);
+	        this.request = this.convertValues(source["request"], MetricsDataPoint);
+	        this.limit = this.convertValues(source["limit"], MetricsDataPoint);
+	        this.nodeAllocatable = this.convertValues(source["nodeAllocatable"], MetricsDataPoint);
+	        this.nodeUncommitted = this.convertValues(source["nodeUncommitted"], MetricsDataPoint);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ControllerMetricsHistory {
+	    namespace: string;
+	    name: string;
+	    controllerType: string;
+	    cpu?: ResourceMetrics;
+	    memory?: ResourceMetrics;
+	    pods?: PodCountMetrics;
+	    network?: NetworkMetrics;
+	    restarts: MetricsDataPoint[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ControllerMetricsHistory(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.namespace = source["namespace"];
+	        this.name = source["name"];
+	        this.controllerType = source["controllerType"];
+	        this.cpu = this.convertValues(source["cpu"], ResourceMetrics);
+	        this.memory = this.convertValues(source["memory"], ResourceMetrics);
+	        this.pods = this.convertValues(source["pods"], PodCountMetrics);
+	        this.network = this.convertValues(source["network"], NetworkMetrics);
+	        this.restarts = this.convertValues(source["restarts"], MetricsDataPoint);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class DependencyEdge {
 	    source: string;
 	    target: string;
@@ -552,6 +704,7 @@ export namespace k8s {
 	        this.pvcs = source["pvcs"];
 	    }
 	}
+	
 	export class NodeMetrics {
 	    name: string;
 	    cpuUsage: number;
@@ -579,6 +732,112 @@ export namespace k8s {
 	        this.cpuCommitted = source["cpuCommitted"];
 	        this.memCommitted = source["memCommitted"];
 	    }
+	}
+	export class NodePodMetrics {
+	    running: MetricsDataPoint[];
+	    capacity: MetricsDataPoint[];
+	
+	    static createFrom(source: any = {}) {
+	        return new NodePodMetrics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.running = this.convertValues(source["running"], MetricsDataPoint);
+	        this.capacity = this.convertValues(source["capacity"], MetricsDataPoint);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NodeResourceMetrics {
+	    usage: MetricsDataPoint[];
+	    allocatable: MetricsDataPoint[];
+	    committed: MetricsDataPoint[];
+	    uncommitted: MetricsDataPoint[];
+	
+	    static createFrom(source: any = {}) {
+	        return new NodeResourceMetrics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.usage = this.convertValues(source["usage"], MetricsDataPoint);
+	        this.allocatable = this.convertValues(source["allocatable"], MetricsDataPoint);
+	        this.committed = this.convertValues(source["committed"], MetricsDataPoint);
+	        this.uncommitted = this.convertValues(source["uncommitted"], MetricsDataPoint);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NodeMetricsHistory {
+	    nodeName: string;
+	    cpu?: NodeResourceMetrics;
+	    memory?: NodeResourceMetrics;
+	    pods?: NodePodMetrics;
+	    network?: NetworkMetrics;
+	
+	    static createFrom(source: any = {}) {
+	        return new NodeMetricsHistory(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.nodeName = source["nodeName"];
+	        this.cpu = this.convertValues(source["cpu"], NodeResourceMetrics);
+	        this.memory = this.convertValues(source["memory"], NodeResourceMetrics);
+	        this.pods = this.convertValues(source["pods"], NodePodMetrics);
+	        this.network = this.convertValues(source["network"], NetworkMetrics);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class NodeMetricsResult {
 	    available: boolean;
@@ -614,6 +873,9 @@ export namespace k8s {
 		    return a;
 		}
 	}
+	
+	
+	
 	export class PodMetrics {
 	    namespace: string;
 	    name: string;
