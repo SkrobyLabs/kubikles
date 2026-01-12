@@ -10,7 +10,7 @@ import { useUI } from '../../../context/UIContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteDeployment, RestartDeployment, GetDeploymentYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
-import { getDeploymentPods, getEffectivePodStatus, getPodStatusColor } from '../../../utils/k8s-helpers';
+import { getEffectivePodStatus, getPodStatusColor } from '../../../utils/k8s-helpers';
 import Logger from '../../../utils/Logger';
 
 export default function DeploymentList({ isVisible }) {
@@ -133,6 +133,34 @@ export default function DeploymentList({ isVisible }) {
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible); // Fetch pods for status
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs } = useDeploymentActions();
 
+    // Pre-compute deployment -> pods mapping (O(n+m) instead of O(n*m))
+    const podsByDeployment = useMemo(() => {
+        const map = new Map();
+        if (!deployments || !allPods) return map;
+
+        for (const deployment of deployments) {
+            const selector = deployment.spec?.selector?.matchLabels;
+            if (!selector) continue;
+
+            const deploymentKey = `${deployment.metadata?.namespace}/${deployment.metadata?.name}`;
+            const matchingPods = allPods.filter(pod => {
+                if (pod.metadata.namespace !== deployment.metadata.namespace) return false;
+                for (const [key, value] of Object.entries(selector)) {
+                    if (pod.metadata.labels?.[key] !== value) return false;
+                }
+                return true;
+            });
+            map.set(deploymentKey, matchingPods);
+        }
+        return map;
+    }, [deployments, allPods]);
+
+    // Helper to get pods for a deployment from the pre-computed map
+    const getPodsForDeployment = useCallback((deployment) => {
+        const key = `${deployment.metadata?.namespace}/${deployment.metadata?.name}`;
+        return podsByDeployment.get(key) || [];
+    }, [podsByDeployment]);
+
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
         { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
@@ -159,7 +187,7 @@ export default function DeploymentList({ isVisible }) {
                 }
                 return (
                     <div className="flex gap-1">
-                        {getDeploymentPods(item, allPods).map((pod) => {
+                        {getPodsForDeployment(item).map((pod) => {
                             const status = getEffectivePodStatus(pod);
                             const colorClass = getPodStatusColor(status).replace('text-', 'bg-');
                             return (
@@ -173,7 +201,7 @@ export default function DeploymentList({ isVisible }) {
                     </div>
                 );
             },
-            getValue: (item) => getDeploymentPods(item, allPods).length
+            getValue: (item) => getPodsForDeployment(item).length
         },
         { key: 'ready', label: 'Ready', render: (item) => `${item.status?.readyReplicas || 0}/${item.status?.replicas || 0}`, getValue: (item) => item.status?.readyReplicas || 0 },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
@@ -197,7 +225,7 @@ export default function DeploymentList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs, podsLoading, allPods]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs, podsLoading, getPodsForDeployment]);
 
     return (
         <>

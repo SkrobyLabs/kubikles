@@ -170,15 +170,11 @@ export default function BottomPanel({
                 })}
             </div>
             <div className="flex-1 overflow-hidden relative">
-                {tabs.map(tab => (
-                    <div
-                        key={tab.id}
-                        className="h-full w-full"
-                        style={{ display: tab.id === activeTabId ? 'block' : 'none' }}
-                    >
-                        {tab.content}
+                {activeTab && (
+                    <div className="h-full w-full">
+                        {activeTab.content}
                     </div>
-                ))}
+                )}
             </div>
 
             {/* Context Menu */}

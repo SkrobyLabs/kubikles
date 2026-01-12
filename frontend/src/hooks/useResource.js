@@ -55,11 +55,16 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
                         // Check cancellation after all async operations complete
                         if (isCancelled) return;
 
+                        // O(n) deduplication using Map instead of O(n²) filter/findIndex
                         const merged = allResults.flat();
-                        const unique = merged.filter((item, index, self) =>
-                            index === self.findIndex(i => i.metadata.uid === item.metadata.uid)
-                        );
-                        setData(unique);
+                        const seen = new Map();
+                        for (const item of merged) {
+                            const uid = item.metadata?.uid;
+                            if (uid && !seen.has(uid)) {
+                                seen.set(uid, item);
+                            }
+                        }
+                        setData(Array.from(seen.values()));
                     }
                     if (!isCancelled) setError(null);
                 } catch (err) {

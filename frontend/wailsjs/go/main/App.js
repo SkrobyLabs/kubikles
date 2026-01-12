@@ -378,6 +378,10 @@ export function GetPVYaml(arg1) {
   return window['go']['main']['App']['GetPVYaml'](arg1);
 }
 
+export function GetPerformanceMetrics() {
+  return window['go']['main']['App']['GetPerformanceMetrics']();
+}
+
 export function GetPodLogs(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['GetPodLogs'](arg1, arg2, arg3, arg4, arg5, arg6);
 }

@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"helm.sh/helm/v3/pkg/cli"
@@ -19,6 +20,9 @@ import (
 
 // ACR token refresh functionality
 
+// Pre-compiled regex for ACR URL parsing (avoid recompiling on every call)
+var acrURLRegex = regexp.MustCompile(`https?://([^.]+)\.azurecr\.io`)
+
 // isACRURL checks if a URL is an Azure Container Registry URL
 func isACRURL(url string) bool {
 	return strings.Contains(url, ".azurecr.io")
@@ -26,9 +30,7 @@ func isACRURL(url string) bool {
 
 // extractACRName extracts the registry name from an ACR URL
 func extractACRName(url string) string {
-	// Match patterns like https://myregistry.azurecr.io/...
-	re := regexp.MustCompile(`https?://([^.]+)\.azurecr\.io`)
-	matches := re.FindStringSubmatch(url)
+	matches := acrURLRegex.FindStringSubmatch(url)
 	if len(matches) >= 2 {
 		return matches[1]
 	}
@@ -562,7 +564,7 @@ func (c *Client) UpdateRepository(name string) error {
 	return nil
 }
 
-// UpdateAllRepositories updates the index for all repositories
+// UpdateAllRepositories updates the index for all repositories in parallel
 func (c *Client) UpdateAllRepositories() error {
 	// First, try to refresh any expired ACR tokens
 	_ = c.RefreshAllACRTokens()
@@ -576,24 +578,49 @@ func (c *Client) UpdateAllRepositories() error {
 		return fmt.Errorf("failed to load repository file: %w", err)
 	}
 
-	var errs []string
-	for _, r := range f.Repositories {
-		// For ACR repos, ensure credentials are passed
-		if isACRURL(r.URL) && !r.PassCredentialsAll {
-			r.PassCredentialsAll = true
-		}
-
-		chartRepo, err := repo.NewChartRepository(r, getter.All(c.settings))
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("%s: %v", r.Name, err))
-			continue
-		}
-
-		chartRepo.CachePath = c.settings.RepositoryCache
-		if _, err := chartRepo.DownloadIndexFile(); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: %v", r.Name, err))
-		}
+	if len(f.Repositories) == 0 {
+		return nil
 	}
+
+	// Parallel update with bounded concurrency
+	const maxConcurrency = 4
+	sem := make(chan struct{}, maxConcurrency)
+
+	var mu sync.Mutex
+	var errs []string
+
+	var wg sync.WaitGroup
+	for _, r := range f.Repositories {
+		wg.Add(1)
+		go func(entry *repo.Entry) {
+			defer wg.Done()
+
+			// Acquire semaphore
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			// For ACR repos, ensure credentials are passed
+			if isACRURL(entry.URL) && !entry.PassCredentialsAll {
+				entry.PassCredentialsAll = true
+			}
+
+			chartRepo, err := repo.NewChartRepository(entry, getter.All(c.settings))
+			if err != nil {
+				mu.Lock()
+				errs = append(errs, fmt.Sprintf("%s: %v", entry.Name, err))
+				mu.Unlock()
+				return
+			}
+
+			chartRepo.CachePath = c.settings.RepositoryCache
+			if _, err := chartRepo.DownloadIndexFile(); err != nil {
+				mu.Lock()
+				errs = append(errs, fmt.Sprintf("%s: %v", entry.Name, err))
+				mu.Unlock()
+			}
+		}(r)
+	}
+	wg.Wait()
 
 	if len(errs) > 0 {
 		return fmt.Errorf("failed to update some repositories: %s", strings.Join(errs, "; "))

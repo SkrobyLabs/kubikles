@@ -56,31 +56,7 @@ const MetricsChart = ({ data, color, label, formatValue, duration, request, limi
     const [showRequest, setShowRequest] = useState(true);
     const [showLimit, setShowLimit] = useState(true);
 
-    if (!data || data.length === 0) {
-        return (
-            <div className="h-48 flex items-center justify-center text-gray-500 text-sm bg-background rounded border border-border">
-                No data available
-            </div>
-        );
-    }
-
-    const values = data.map(d => d.value);
-    const timestamps = data.map(d => d.timestamp);
-    let max = Math.max(...values) || 1;
-    let min = Math.min(...values);
-
-    // Extend max to include limit/request if they're higher and visible
-    if (showLimit && limit && limit > max) max = limit * 1.05;
-    if (showRequest && request && request > max) max = request * 1.05;
-
-    const range = max - min || 1;
-
-    // Add 10% padding to Y axis
-    const yMin = Math.max(0, min - range * 0.05);
-    const yMax = max + range * 0.05;
-    const yRange = yMax - yMin || 1;
-
-    // Chart dimensions
+    // Chart dimensions (constants)
     const width = 400;
     const height = 160;
     const paddingLeft = 60;
@@ -90,40 +66,75 @@ const MetricsChart = ({ data, color, label, formatValue, duration, request, limi
     const chartWidth = width - paddingLeft - paddingRight;
     const chartHeight = height - paddingTop - paddingBottom;
 
-    // Generate points for the line
-    const points = data.map((d, i) => {
-        const x = paddingLeft + (i / (data.length - 1)) * chartWidth;
-        const y = paddingTop + chartHeight - ((d.value - yMin) / yRange) * chartHeight;
-        return { x, y, value: d.value, timestamp: d.timestamp };
-    });
+    // Memoize all expensive chart calculations
+    const chartData = useMemo(() => {
+        if (!data || data.length === 0) return null;
 
-    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-    const areaPath = `${linePath} L ${points[points.length - 1].x} ${paddingTop + chartHeight} L ${paddingLeft} ${paddingTop + chartHeight} Z`;
+        const values = data.map(d => d.value);
+        const timestamps = data.map(d => d.timestamp);
+        let max = Math.max(...values) || 1;
+        let min = Math.min(...values);
 
-    // Y axis ticks (5 ticks)
-    const yTicks = Array.from({ length: 5 }, (_, i) => {
-        const value = yMin + (yRange * i) / 4;
-        const y = paddingTop + chartHeight - (i / 4) * chartHeight;
-        return { value, y };
-    });
+        // Extend max to include limit/request if they're higher and visible
+        if (showLimit && limit && limit > max) max = limit * 1.05;
+        if (showRequest && request && request > max) max = request * 1.05;
 
-    // X axis ticks (show first, middle, and last times)
-    const xTickIndices = [0, Math.floor(data.length / 2), data.length - 1];
-    const xTicks = xTickIndices.map(i => ({
-        timestamp: timestamps[i],
-        x: paddingLeft + (i / (data.length - 1)) * chartWidth
-    }));
+        const range = max - min || 1;
+        const yMin = Math.max(0, min - range * 0.05);
+        const yMax = max + range * 0.05;
+        const yRange = yMax - yMin || 1;
 
-    const currentValue = values[values.length - 1];
+        // Generate points for the line
+        const points = data.map((d, i) => {
+            const x = paddingLeft + (i / (data.length - 1)) * chartWidth;
+            const y = paddingTop + chartHeight - ((d.value - yMin) / yRange) * chartHeight;
+            return { x, y, value: d.value, timestamp: d.timestamp };
+        });
 
-    // Calculate Y position for request/limit lines
-    const getYPosition = (value) => {
-        if (value == null || value < yMin || value > yMax) return null;
-        return paddingTop + chartHeight - ((value - yMin) / yRange) * chartHeight;
-    };
+        const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+        const areaPath = `${linePath} L ${points[points.length - 1].x} ${paddingTop + chartHeight} L ${paddingLeft} ${paddingTop + chartHeight} Z`;
 
-    const requestY = getYPosition(request);
-    const limitY = getYPosition(limit);
+        // Y axis ticks (5 ticks)
+        const yTicks = Array.from({ length: 5 }, (_, i) => {
+            const value = yMin + (yRange * i) / 4;
+            const y = paddingTop + chartHeight - (i / 4) * chartHeight;
+            return { value, y };
+        });
+
+        // X axis ticks (show first, middle, and last times)
+        const xTickIndices = [0, Math.floor(data.length / 2), data.length - 1];
+        const xTicks = xTickIndices.map(i => ({
+            timestamp: timestamps[i],
+            x: paddingLeft + (i / (data.length - 1)) * chartWidth
+        }));
+
+        // Y positions for request/limit lines
+        const getYPos = (value) => {
+            if (value == null || value < yMin || value > yMax) return null;
+            return paddingTop + chartHeight - ((value - yMin) / yRange) * chartHeight;
+        };
+
+        return {
+            points,
+            linePath,
+            areaPath,
+            yTicks,
+            xTicks,
+            currentValue: values[values.length - 1],
+            requestY: getYPos(request),
+            limitY: getYPos(limit),
+        };
+    }, [data, showRequest, showLimit, request, limit, chartWidth, chartHeight]);
+
+    if (!chartData) {
+        return (
+            <div className="h-48 flex items-center justify-center text-gray-500 text-sm bg-background rounded border border-border">
+                No data available
+            </div>
+        );
+    }
+
+    const { points, linePath, areaPath, yTicks, xTicks, currentValue, requestY, limitY } = chartData;
 
     // Handle mouse move on the chart
     const handleMouseMove = useCallback((e) => {

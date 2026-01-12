@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -64,8 +65,9 @@ func TestGetPodDependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs)
 
-	result, err := client.getPodDependencies(cs, "default", "test-pod", graph, nodeMap)
+	result, err := client.getPodDependencies(cs, cache, "default", "test-pod", graph, nodeMap)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -125,8 +127,9 @@ func TestGetPodDependencies_DefaultServiceAccount(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs)
 
-	result, err := client.getPodDependencies(cs, "default", "test-pod", graph, nodeMap)
+	result, err := client.getPodDependencies(cs, cache, "default", "test-pod", graph, nodeMap)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -182,8 +185,9 @@ func TestGetDeploymentDependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs)
 
-	result, err := client.getDeploymentDependencies(cs, "", "default", "test-deploy", graph, nodeMap)
+	result, err := client.getDeploymentDependencies(cs, cache, "", "default", "test-deploy", graph, nodeMap)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -252,8 +256,9 @@ func TestGetServiceDependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs)
 
-	result, err := client.getServiceDependencies(cs, "", "default", "test-svc", graph, nodeMap)
+	result, err := client.getServiceDependencies(cs, cache, "", "default", "test-svc", graph, nodeMap)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -319,8 +324,9 @@ func TestGetIngressDependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs)
 
-	result, err := client.getIngressDependencies(cs, "", "default", "test-ingress", graph, nodeMap)
+	result, err := client.getIngressDependencies(cs, cache, "", "default", "test-ingress", graph, nodeMap)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -369,8 +375,9 @@ func TestGetHPADependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs)
 
-	result, err := client.getHPADependencies(cs, "", "default", "test-hpa", graph, nodeMap)
+	result, err := client.getHPADependencies(cs, cache, "", "default", "test-hpa", graph, nodeMap)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -422,8 +429,9 @@ func TestGetPDBDependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs)
 
-	result, err := client.getPDBDependencies(cs, "", "default", "test-pdb", graph, nodeMap)
+	result, err := client.getPDBDependencies(cs, cache, "", "default", "test-pdb", graph, nodeMap)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -484,8 +492,9 @@ func TestGetConfigMapDependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs)
 
-	result, err := client.getConfigMapDependencies(cs, "", "default", "test-cm", graph, nodeMap)
+	result, err := client.getConfigMapDependencies(cs, cache, "", "default", "test-cm", graph, nodeMap)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -810,5 +819,208 @@ func TestSplitSummaryID(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// ============================================================================
+// Benchmark Tests - Run these before/after performance optimizations
+// Usage: go test -bench=. -benchmem ./pkg/k8s/...
+// ============================================================================
+
+// BenchmarkGetPodDependencies measures dependency graph building for a pod
+func BenchmarkGetPodDependencies(b *testing.B) {
+	// Create a realistic scenario with multiple related resources
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "bench-pod",
+			Namespace: "default",
+			Labels:    map[string]string{"app": "bench", "tier": "web"},
+			OwnerReferences: []metav1.OwnerReference{
+				{APIVersion: "apps/v1", Kind: "ReplicaSet", Name: "bench-rs", Controller: boolPtr(true)},
+			},
+		},
+		Spec: corev1.PodSpec{
+			ServiceAccountName: "bench-sa",
+			Containers:         []corev1.Container{{Name: "main", Image: "nginx"}},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{Name: "bench-svc", Namespace: "default"},
+		Spec:       corev1.ServiceSpec{Selector: map[string]string{"app": "bench"}},
+	}
+
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{Name: "bench-sa", Namespace: "default"},
+	}
+
+	cs := fake.NewSimpleClientset(pod, svc, sa)
+	client := &Client{}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+		nodeMap := make(map[string]bool)
+		cache := newResourceCache(context.Background(), cs)
+		_, _ = client.getPodDependencies(cs, cache, "default", "bench-pod", graph, nodeMap)
+	}
+}
+
+// BenchmarkGetDeploymentDependencies measures dependency graph for deployment
+func BenchmarkGetDeploymentDependencies(b *testing.B) {
+	deploy := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "bench-deploy", Namespace: "default"},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "bench"}},
+		},
+	}
+
+	// Create multiple pods for realistic scenario
+	pods := make([]corev1.Pod, 5)
+	for i := 0; i < 5; i++ {
+		pods[i] = corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "bench-pod-" + string(rune('a'+i)),
+				Namespace: "default",
+				Labels:    map[string]string{"app": "bench"},
+				OwnerReferences: []metav1.OwnerReference{
+					{APIVersion: "apps/v1", Kind: "ReplicaSet", Name: "bench-rs", Controller: boolPtr(true)},
+				},
+			},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning},
+		}
+	}
+
+	rs := &appsv1.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "bench-rs",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{APIVersion: "apps/v1", Kind: "Deployment", Name: "bench-deploy", Controller: boolPtr(true)},
+			},
+		},
+		Spec: appsv1.ReplicaSetSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "bench"}},
+		},
+	}
+
+	objects := []interface{}{deploy, rs}
+	for i := range pods {
+		objects = append(objects, &pods[i])
+	}
+	cs := fake.NewSimpleClientset(deploy, rs, &pods[0], &pods[1], &pods[2], &pods[3], &pods[4])
+	client := &Client{}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+		nodeMap := make(map[string]bool)
+		cache := newResourceCache(context.Background(), cs)
+		_, _ = client.getDeploymentDependencies(cs, cache, "", "default", "bench-deploy", graph, nodeMap)
+	}
+}
+
+// BenchmarkAggregateGraph_ManyEdges tests edge deduplication with many edges
+// This specifically tests the O(n^2) -> O(n) optimization in aggregateGraph
+func BenchmarkAggregateGraph_ManyEdges(b *testing.B) {
+	// Create a graph with many edges (simulates large cluster)
+	graph := &DependencyGraph{
+		Nodes: []DependencyNode{
+			{ID: "Pod/default/pod-1", Kind: "Pod", Name: "pod-1", Namespace: "default"},
+			{ID: "Pod/default/pod-2", Kind: "Pod", Name: "pod-2", Namespace: "default"},
+			{ID: "Service/default/svc", Kind: "Service", Name: "svc", Namespace: "default"},
+		},
+		Edges: []DependencyEdge{},
+	}
+
+	// Add many edges to simulate real-world scenario
+	for i := 0; i < 100; i++ {
+		graph.Edges = append(graph.Edges,
+			DependencyEdge{Source: "Service/default/svc", Target: "Pod/default/pod-1", Relation: "selects"},
+			DependencyEdge{Source: "Service/default/svc", Target: "Pod/default/pod-2", Relation: "selects"},
+		)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = aggregateGraph(graph, 0, "")
+	}
+}
+
+// BenchmarkAggregateGraph_LargeGraph tests aggregation with many nodes
+func BenchmarkAggregateGraph_LargeGraph(b *testing.B) {
+	graph := &DependencyGraph{
+		Nodes: make([]DependencyNode, 0, 50),
+		Edges: make([]DependencyEdge, 0, 100),
+	}
+
+	// Create 50 pods and 10 services
+	for i := 0; i < 50; i++ {
+		graph.Nodes = append(graph.Nodes, DependencyNode{
+			ID:        "Pod/default/pod-" + string(rune('a'+i%26)) + string(rune('0'+i/26)),
+			Kind:      "Pod",
+			Name:      "pod-" + string(rune('a'+i%26)) + string(rune('0'+i/26)),
+			Namespace: "default",
+		})
+	}
+
+	for i := 0; i < 10; i++ {
+		svcID := "Service/default/svc-" + string(rune('0'+i))
+		graph.Nodes = append(graph.Nodes, DependencyNode{
+			ID:        svcID,
+			Kind:      "Service",
+			Name:      "svc-" + string(rune('0'+i)),
+			Namespace: "default",
+		})
+		// Each service selects 5 pods
+		for j := 0; j < 5; j++ {
+			podIdx := (i*5 + j) % 50
+			podID := "Pod/default/pod-" + string(rune('a'+podIdx%26)) + string(rune('0'+podIdx/26))
+			graph.Edges = append(graph.Edges, DependencyEdge{
+				Source:   svcID,
+				Target:   podID,
+				Relation: "selects",
+			})
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = aggregateGraph(graph, 0, "")
+	}
+}
+
+// TestEdgeDeduplication_Stress tests edge deduplication with many duplicate edges
+func TestEdgeDeduplication_Stress(t *testing.T) {
+	graph := &DependencyGraph{
+		Nodes: []DependencyNode{
+			{ID: "Pod/default/pod-1", Kind: "Pod", Name: "pod-1", Namespace: "default"},
+			{ID: "Service/default/svc", Kind: "Service", Name: "svc", Namespace: "default"},
+		},
+		Edges: []DependencyEdge{},
+	}
+
+	// Add 1000 duplicate edges
+	for i := 0; i < 1000; i++ {
+		graph.Edges = append(graph.Edges, DependencyEdge{
+			Source:   "Service/default/svc",
+			Target:   "Pod/default/pod-1",
+			Relation: "selects",
+		})
+	}
+
+	result := aggregateGraph(graph, 0, "")
+
+	// After aggregation, there should be exactly 1 edge (deduplicated)
+	edgeCount := 0
+	for _, e := range result.Edges {
+		if e.Source == "Service/default/svc" && e.Relation == "selects" {
+			edgeCount++
+		}
+	}
+
+	if edgeCount != 1 {
+		t.Errorf("Expected 1 deduplicated edge, got %d", edgeCount)
 	}
 }

@@ -504,14 +504,11 @@ func (m *PortForwardManager) GetRandomAvailablePort() int {
 	return 0
 }
 
-// isPortUsedByConfig checks if any port forward config (active or inactive) uses this port
+// isPortUsedByConfig checks if any port forward config (active or inactive) uses this port.
+// Uses O(1) map lookup instead of O(n) linear search.
 func (m *PortForwardManager) isPortUsedByConfig(port int) bool {
-	for _, cfg := range m.configs {
-		if cfg.LocalPort == port {
-			return true
-		}
-	}
-	return false
+	_, used := m.usedPorts[port]
+	return used
 }
 
 // isPortAvailable checks if a port is available on the system

@@ -105,15 +105,17 @@ export default function HelmReleaseList({ isVisible }) {
     }, []);
 
     const handleExportYaml = useCallback(async (items) => {
-        const entries = [];
-        for (const item of items) {
-            try {
-                const values = await GetHelmReleaseValues(item.namespace, item.name);
-                entries.push({ namespace: item.namespace, name: item.name, kind: 'HelmRelease', yaml: `# Helm Release: ${item.name}\n# Chart: ${item.chart}-${item.chartVersion}\n# Values:\n${values}` });
-            } catch (err) {
-                entries.push({ namespace: item.namespace, name: item.name, kind: 'HelmRelease', yaml: `# Failed: ${err}` });
-            }
-        }
+        // Fetch all values in parallel instead of sequentially
+        const entries = await Promise.all(
+            items.map(async (item) => {
+                try {
+                    const values = await GetHelmReleaseValues(item.namespace, item.name);
+                    return { namespace: item.namespace, name: item.name, kind: 'HelmRelease', yaml: `# Helm Release: ${item.name}\n# Chart: ${item.chart}-${item.chartVersion}\n# Values:\n${values}` };
+                } catch (err) {
+                    return { namespace: item.namespace, name: item.name, kind: 'HelmRelease', yaml: `# Failed: ${err}` };
+                }
+            })
+        );
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         try { await SaveYamlBackup(entries, `helmreleases-backup-${timestamp}.zip`); } catch (err) { if (err?.toString()) alert('Failed: ' + err); }
     }, []);

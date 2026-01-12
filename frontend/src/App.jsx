@@ -50,6 +50,7 @@ import LeaseList from './features/config/leases/LeaseList';
 import CSIDriverList from './features/storage/csidrivers/CSIDriverList';
 import CSINodeList from './features/storage/csinodes/CSINodeList';
 import { useDebugLogs } from './hooks/useDebugLogs';
+import { usePerformancePanel } from './hooks/usePerformancePanel.jsx';
 import { LogDebug } from '../wailsjs/go/main/App';
 import ConfirmModal from './components/shared/ConfirmModal';
 import ConfigEditor from './components/shared/ConfigEditor';
@@ -431,6 +432,7 @@ function MainLayout() {
 
     const { showConfigEditor } = useConfig();
     const { toggleDebug } = useDebugLogs();
+    const { openPerformancePanel } = usePerformancePanel();
     const isDragging = useRef(false);
     const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
     const [showGenericCreateModal, setShowGenericCreateModal] = useState(false);
@@ -473,6 +475,13 @@ function MainLayout() {
                 return;
             }
 
+            // Cmd+Option+P / Ctrl+Alt+P - Performance Panel
+            if ((e.metaKey || e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'p') {
+                e.preventDefault();
+                openPerformancePanel();
+                return;
+            }
+
             // Cmd+R / Ctrl+R - Refresh
             if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
                 e.preventDefault();
@@ -488,7 +497,7 @@ function MainLayout() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [refreshContexts, refreshNamespaces, triggerRefresh]);
+    }, [refreshContexts, refreshNamespaces, triggerRefresh, openPerformancePanel]);
 
     // Parse custom resource view ID: cr:{group}:{version}:{plural}:{kind}:{namespaced}
     const parsedCRView = useMemo(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 export default function SearchSelect({
@@ -67,27 +67,54 @@ export default function SearchSelect({
         }
     }, [isOpen]);
 
-    const isOptionSelected = (option) => {
+    const isOptionSelected = useCallback((option) => {
         const optionValue = getValueFromOption(option);
         if (!multiSelect) {
             return optionValue === value;
         }
         return Array.isArray(value) && value.includes(optionValue);
-    };
+    }, [getValueFromOption, multiSelect, value]);
 
-    const filteredOptions = options
-        .filter(option =>
-            getDisplayLabel(option).toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        .sort((a, b) => {
-            // Sort selected items first
-            const aSelected = isOptionSelected(a);
-            const bSelected = isOptionSelected(b);
-            if (aSelected && !bSelected) return -1;
-            if (!aSelected && bSelected) return 1;
-            // If both selected or both unselected, maintain original order (alphabetically via locale compare)
-            return getDisplayLabel(a).localeCompare(getDisplayLabel(b));
-        });
+    // Memoize filtered/sorted options (computed once per search/value change)
+    const filteredOptions = useMemo(() => {
+        const lowerSearch = searchTerm.toLowerCase();
+        return options
+            .filter(option => getDisplayLabel(option).toLowerCase().includes(lowerSearch))
+            .sort((a, b) => {
+                const aSelected = isOptionSelected(a);
+                const bSelected = isOptionSelected(b);
+                if (aSelected && !bSelected) return -1;
+                if (!aSelected && bSelected) return 1;
+                return getDisplayLabel(a).localeCompare(getDisplayLabel(b));
+            });
+    }, [options, searchTerm, isOptionSelected, getDisplayLabel]);
+
+    // Memoize "all namespaces" (non-empty options) - used in multiple places
+    const allNamespaces = useMemo(() => options.filter(opt => opt !== ''), [options]);
+
+    // Memoize non-empty filtered options - used in rendering
+    const nonEmptyFilteredOptions = useMemo(
+        () => filteredOptions.filter(opt => getValueFromOption(opt) !== ''),
+        [filteredOptions, getValueFromOption]
+    );
+
+    // Memoize selection state for "All Namespaces" checkbox
+    const allSelectionState = useMemo(() => {
+        const currentValue = Array.isArray(value) ? value : [];
+        const hasAllMarker = currentValue.includes('*');
+        const allSelected = hasAllMarker || (allNamespaces.length > 0 && allNamespaces.every(ns => currentValue.includes(ns)));
+        const someSelected = currentValue.some(v => allNamespaces.includes(v) || v === '*');
+        return { allSelected, someSelected, indeterminate: someSelected && !allSelected };
+    }, [value, allNamespaces]);
+
+    // Memoize selection state for "Select all matching" checkbox (when searching)
+    const matchingSelectionState = useMemo(() => {
+        const currentValue = Array.isArray(value) ? value : [];
+        const matchingNamespaces = nonEmptyFilteredOptions.map(opt => typeof opt === 'string' ? opt : getValueFromOption(opt));
+        const allSelected = matchingNamespaces.length > 0 && matchingNamespaces.every(ns => currentValue.includes(ns));
+        const someSelected = currentValue.some(v => matchingNamespaces.includes(v));
+        return { allSelected, someSelected, indeterminate: someSelected && !allSelected, matchingNamespaces };
+    }, [value, nonEmptyFilteredOptions, getValueFromOption]);
 
     const handleOptionClick = (option) => {
         const optionValue = getValueFromOption(option);
@@ -168,98 +195,55 @@ export default function SearchSelect({
                             <button
                                 className="w-full mt-2 px-3 py-2 text-sm bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors flex items-center gap-2"
                                 onClick={() => {
-                                    const allNamespaces = options.filter(opt => opt !== '');
-                                    const currentValue = Array.isArray(value) ? value : [];
-
-                                    // Check if special "all" marker is present
-                                    const hasAllMarker = currentValue.includes('*');
-                                    const allSelected = hasAllMarker || (allNamespaces.length > 0 && allNamespaces.every(ns => currentValue.includes(ns)));
-                                    const noneSelected = currentValue.length === 0 || !currentValue.some(v => allNamespaces.includes(v) || v === '*');
-
-                                    if (allSelected) {
-                                        // All selected - unselect all
+                                    if (allSelectionState.allSelected) {
                                         onChange([]);
-                                    } else if (noneSelected) {
-                                        // None selected - select all using special marker
+                                    } else if (!allSelectionState.someSelected) {
                                         onChange(['*']);
                                     } else {
-                                        // Mixed state - unselect all (safer option)
                                         onChange([]);
                                     }
                                 }}
                             >
                                 <input
                                     type="checkbox"
-                                    checked={(() => {
-                                        const allNamespaces = options.filter(opt => opt !== '');
-                                        const currentValue = Array.isArray(value) ? value : [];
-                                        const hasAllMarker = currentValue.includes('*');
-                                        return hasAllMarker || (allNamespaces.length > 0 && allNamespaces.every(ns => currentValue.includes(ns)));
-                                    })()}
-                                    ref={(el) => {
-                                        if (el) {
-                                            const allNamespaces = options.filter(opt => opt !== '');
-                                            const currentValue = Array.isArray(value) ? value : [];
-                                            const hasAllMarker = currentValue.includes('*');
-                                            const someSelected = currentValue.some(v => allNamespaces.includes(v) || v === '*');
-                                            const allSelected = hasAllMarker || (allNamespaces.length > 0 && allNamespaces.every(ns => currentValue.includes(ns)));
-                                            el.indeterminate = someSelected && !allSelected;
-                                        }
-                                    }}
+                                    checked={allSelectionState.allSelected}
+                                    ref={(el) => { if (el) el.indeterminate = allSelectionState.indeterminate; }}
                                     onChange={() => {}}
                                     className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                                 />
-                                <span>All Namespaces ({options.filter(opt => opt !== '').length})</span>
+                                <span>All Namespaces ({allNamespaces.length})</span>
                             </button>
                         )}
-                        {multiSelect && searchTerm && filteredOptions.filter(opt => opt !== '').length > 0 && (
+                        {multiSelect && searchTerm && nonEmptyFilteredOptions.length > 0 && (
                             <button
                                 className="w-full mt-2 px-3 py-2 text-sm bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors flex items-center gap-2"
                                 onClick={() => {
-                                    const matchingNamespaces = filteredOptions.filter(opt => opt !== '');
                                     const currentValue = Array.isArray(value) ? value : [];
-                                    const allMatchingSelected = matchingNamespaces.every(ns => currentValue.includes(ns));
-                                    const noneMatchingSelected = !currentValue.some(v => matchingNamespaces.includes(v));
+                                    const { matchingNamespaces, allSelected, someSelected } = matchingSelectionState;
 
-                                    if (allMatchingSelected) {
-                                        // All matching selected - unselect all matching
+                                    if (allSelected) {
                                         onChange(currentValue.filter(v => !matchingNamespaces.includes(v)));
-                                    } else if (noneMatchingSelected) {
-                                        // None matching selected - select all matching
-                                        const newSelections = [...new Set([...currentValue, ...matchingNamespaces])];
-                                        onChange(newSelections);
+                                    } else if (!someSelected) {
+                                        onChange([...new Set([...currentValue, ...matchingNamespaces])]);
                                     } else {
-                                        // Mixed state - unselect all matching (safer option)
                                         onChange(currentValue.filter(v => !matchingNamespaces.includes(v)));
                                     }
                                 }}
                             >
                                 <input
                                     type="checkbox"
-                                    checked={(() => {
-                                        const matchingNamespaces = filteredOptions.filter(opt => opt !== '');
-                                        const currentValue = Array.isArray(value) ? value : [];
-                                        return matchingNamespaces.length > 0 && matchingNamespaces.every(ns => currentValue.includes(ns));
-                                    })()}
-                                    ref={(el) => {
-                                        if (el) {
-                                            const matchingNamespaces = filteredOptions.filter(opt => opt !== '');
-                                            const currentValue = Array.isArray(value) ? value : [];
-                                            const someSelected = currentValue.some(v => matchingNamespaces.includes(v));
-                                            const allSelected = matchingNamespaces.length > 0 && matchingNamespaces.every(ns => currentValue.includes(ns));
-                                            el.indeterminate = someSelected && !allSelected;
-                                        }
-                                    }}
+                                    checked={matchingSelectionState.allSelected}
+                                    ref={(el) => { if (el) el.indeterminate = matchingSelectionState.indeterminate; }}
                                     onChange={() => {}}
                                     className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                                 />
-                                <span>Select all matching ({filteredOptions.filter(opt => opt !== '').length})</span>
+                                <span>Select all matching ({nonEmptyFilteredOptions.length})</span>
                             </button>
                         )}
                     </div>
                     <div className="overflow-y-auto flex-1">
-                        {filteredOptions.filter(opt => getValueFromOption(opt) !== '').length > 0 ? (
-                            filteredOptions.filter(opt => getValueFromOption(opt) !== '').map((option) => (
+                        {nonEmptyFilteredOptions.length > 0 ? (
+                            nonEmptyFilteredOptions.map((option) => (
                                 <div
                                     key={getValueFromOption(option) || '__all__'}
                                     className={`px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 flex items-center gap-2 ${isOptionSelected(option) ? 'text-primary font-medium' : 'text-text'}`}

@@ -3,8 +3,9 @@ import { converter, normalizeAnsiCodes, stripAnsiCodes, highlightMatchesInHtml }
 
 /**
  * Renders a single log line with ANSI color support and search highlighting.
+ * Memoized to prevent re-renders when parent re-renders with same props.
  */
-export function LogLine({
+export const LogLine = React.memo(function LogLine({
     entry,
     showTimestamps,
     searchTerm,
@@ -42,7 +43,7 @@ export function LogLine({
             <span dangerouslySetInnerHTML={{ __html: htmlContent }} />
         </div>
     );
-}
+});
 
 /**
  * Spinner component for loading states.

@@ -1229,6 +1229,59 @@ export namespace main {
 	        this.namespace = source["namespace"];
 	    }
 	}
+	export class PerformanceMetrics {
+	    timestamp: number;
+	    // Go type: struct { Alloc uint64 "json:\"alloc\""; TotalAlloc uint64 "json:\"totalAlloc\""; Sys uint64 "json:\"sys\""; HeapAlloc uint64 "json:\"heapAlloc\""; HeapSys uint64 "json:\"heapSys\""; HeapIdle uint64 "json:\"heapIdle\""; HeapInuse uint64 "json:\"heapInuse\""; HeapReleased uint64 "json:\"heapReleased\""; StackInuse uint64 "json:\"stackInuse\""; StackSys uint64 "json:\"stackSys\""; MSpanInuse uint64 "json:\"mspanInuse\""; MCacheInuse uint64 "json:\"mcacheInuse\"" }
+	    memory: any;
+	    // Go type: struct { NumGC uint32 "json:\"numGC\""; LastGCPauseNs uint64 "json:\"lastGCPauseNs\""; TotalPauseNs uint64 "json:\"totalPauseNs\""; NextGCBytes uint64 "json:\"nextGCBytes\""; GCCPUFraction float64 "json:\"gcCPUFraction\"" }
+	    gc: any;
+	    // Go type: struct { Count int "json:\"count\""; MaxObserved int "json:\"maxObserved\"" }
+	    goroutines: any;
+	    // Go type: struct { Active int "json:\"active\""; WatcherKeys []string "json:\"watcherKeys\""; TotalCreated int64 "json:\"totalCreated\""; TotalCleaned int64 "json:\"totalCleaned\"" }
+	    watchers: any;
+	    // Go type: struct { Active int "json:\"active\""; Configs int "json:\"configs\"" }
+	    portForwards: any;
+	    // Go type: struct { Active int "json:\"active\"" }
+	    ingressForwards: any;
+	    // Go type: struct { Active int "json:\"active\"" }
+	    logStreams: any;
+	    activity: struct { TopWatchers []main.;
+	
+	    static createFrom(source: any = {}) {
+	        return new PerformanceMetrics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.timestamp = source["timestamp"];
+	        this.memory = this.convertValues(source["memory"], Object);
+	        this.gc = this.convertValues(source["gc"], Object);
+	        this.goroutines = this.convertValues(source["goroutines"], Object);
+	        this.watchers = this.convertValues(source["watchers"], Object);
+	        this.portForwards = this.convertValues(source["portForwards"], Object);
+	        this.ingressForwards = this.convertValues(source["ingressForwards"], Object);
+	        this.logStreams = this.convertValues(source["logStreams"], Object);
+	        this.activity = this.convertValues(source["activity"], Object);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class PodLogEntry {
 	    podName: string;
 	    containerName: string;
@@ -1246,6 +1299,30 @@ export namespace main {
 	    }
 	}
 	
+	export class WatcherEventStats {
+	    key: string;
+	    added: number;
+	    modified: number;
+	    deleted: number;
+	    totalEvents: number;
+	    lastEventMs: number;
+	    eventsPerSec: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new WatcherEventStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.added = source["added"];
+	        this.modified = source["modified"];
+	        this.deleted = source["deleted"];
+	        this.totalEvents = source["totalEvents"];
+	        this.lastEventMs = source["lastEventMs"];
+	        this.eventsPerSec = source["eventsPerSec"];
+	    }
+	}
 	export class YamlBackupEntry {
 	    namespace: string;
 	    name: string;

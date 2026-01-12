@@ -2,6 +2,7 @@
 import {defineConfig} from 'vite'
 import react from '@vitejs/plugin-react'
 import {viteStaticCopy} from 'vite-plugin-static-copy'
+import {visualizer} from 'rollup-plugin-visualizer'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -9,8 +10,25 @@ export default defineConfig({
     globals: true,
     environment: 'node',
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'monaco': ['monaco-editor', '@monaco-editor/react'],
+          'flow': ['@xyflow/react', 'dagre'],
+          'xterm': ['xterm', 'xterm-addon-fit'],
+        }
+      }
+    }
+  },
   plugins: [
     react(),
+    visualizer({
+      filename: 'dist/stats.html',
+      open: false,
+      gzipSize: true,
+      brotliSize: true,
+    }),
     viteStaticCopy({
       targets: [
         // Core Monaco loader

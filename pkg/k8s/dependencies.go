@@ -3,11 +3,158 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
+
+// dependencyAPITimeout is the timeout for Kubernetes API calls during dependency resolution.
+// This prevents UI hangs when clusters are slow or unresponsive.
+const dependencyAPITimeout = 30 * time.Second
+
+// Relation type lookups - package level to avoid allocation per call.
+// childToParentRelations: edge goes FROM child TO parent (child uses/binds parent)
+// parentToChildRelations: edge goes FROM parent TO child (parent owns/selects child)
+var (
+	childToParentRelations = map[string]bool{
+		"uses":       true,
+		"binds":      true,
+		"references": true,
+	}
+	parentToChildRelations = map[string]bool{
+		"owns":       true,
+		"selects":    true,
+		"routes-to":  true,
+		"scales":     true,
+		"protects":   true,
+		"applies-to": true,
+	}
+)
+
+// resourceCache provides request-scoped caching for Kubernetes resources
+// to avoid duplicate API calls within a single GetResourceDependencies call
+type resourceCache struct {
+	pods         map[string][]v1.Pod               // namespace -> pods
+	services     map[string][]v1.Service           // namespace -> services
+	ingresses    map[string][]networkingv1.Ingress // namespace -> ingresses
+	replicaSets  map[string][]appsv1.ReplicaSet    // namespace -> replicasets
+	jobs         map[string][]batchv1.Job          // namespace -> jobs
+	// Cluster-wide caches for cluster-scoped resource queries
+	allPods            []v1.Pod
+	allPodsCached      bool
+	allIngresses       []networkingv1.Ingress
+	allIngressesCached bool
+	ctx                context.Context // Request context with timeout
+	cs                 kubernetes.Interface
+}
+
+func newResourceCache(ctx context.Context, cs kubernetes.Interface) *resourceCache {
+	return &resourceCache{
+		pods:        make(map[string][]v1.Pod),
+		services:    make(map[string][]v1.Service),
+		ingresses:   make(map[string][]networkingv1.Ingress),
+		replicaSets: make(map[string][]appsv1.ReplicaSet),
+		jobs:        make(map[string][]batchv1.Job),
+		ctx:         ctx,
+		cs:          cs,
+	}
+}
+
+func (rc *resourceCache) getPods(namespace string) ([]v1.Pod, error) {
+	if cached, ok := rc.pods[namespace]; ok {
+		return cached, nil
+	}
+	list, err := rc.cs.CoreV1().Pods(namespace).List(rc.ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	rc.pods[namespace] = list.Items
+	return list.Items, nil
+}
+
+func (rc *resourceCache) getServices(namespace string) ([]v1.Service, error) {
+	if cached, ok := rc.services[namespace]; ok {
+		return cached, nil
+	}
+	list, err := rc.cs.CoreV1().Services(namespace).List(rc.ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	rc.services[namespace] = list.Items
+	return list.Items, nil
+}
+
+func (rc *resourceCache) getIngresses(namespace string) ([]networkingv1.Ingress, error) {
+	if cached, ok := rc.ingresses[namespace]; ok {
+		return cached, nil
+	}
+	list, err := rc.cs.NetworkingV1().Ingresses(namespace).List(rc.ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	rc.ingresses[namespace] = list.Items
+	return list.Items, nil
+}
+
+func (rc *resourceCache) getReplicaSets(namespace string) ([]appsv1.ReplicaSet, error) {
+	if cached, ok := rc.replicaSets[namespace]; ok {
+		return cached, nil
+	}
+	list, err := rc.cs.AppsV1().ReplicaSets(namespace).List(rc.ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	rc.replicaSets[namespace] = list.Items
+	return list.Items, nil
+}
+
+func (rc *resourceCache) getJobs(namespace string) ([]batchv1.Job, error) {
+	if cached, ok := rc.jobs[namespace]; ok {
+		return cached, nil
+	}
+	list, err := rc.cs.BatchV1().Jobs(namespace).List(rc.ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	rc.jobs[namespace] = list.Items
+	return list.Items, nil
+}
+
+// getAllPods returns all pods cluster-wide with caching
+// Used for cluster-scoped resources like PriorityClass
+func (rc *resourceCache) getAllPods() ([]v1.Pod, error) {
+	if rc.allPodsCached {
+		return rc.allPods, nil
+	}
+	list, err := rc.cs.CoreV1().Pods("").List(rc.ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	rc.allPods = list.Items
+	rc.allPodsCached = true
+	return list.Items, nil
+}
+
+// getAllIngresses returns all ingresses cluster-wide with caching
+// Used for cluster-scoped resources like IngressClass
+func (rc *resourceCache) getAllIngresses() ([]networkingv1.Ingress, error) {
+	if rc.allIngressesCached {
+		return rc.allIngresses, nil
+	}
+	list, err := rc.cs.NetworkingV1().Ingresses("").List(rc.ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	rc.allIngresses = list.Items
+	rc.allIngressesCached = true
+	return list.Items, nil
+}
 
 // DependencyNode represents a node in the dependency graph
 type DependencyNode struct {
@@ -35,11 +182,14 @@ type DependencyGraph struct {
 	Edges []DependencyEdge `json:"edges"`
 }
 
+// limiterKey is a struct key for NodeLimiter maps (avoids string concat allocations)
+type limiterKey struct{ parentID, kind string }
+
 // NodeLimiter tracks how many nodes of each type have been added per parent
 type NodeLimiter struct {
-	counts    map[string]int // key: "parentID:kind" -> count
-	limit     int
-	skipped   map[string][]DependencyNode // nodes that were skipped, for expansion
+	counts  map[limiterKey]int
+	limit   int
+	skipped map[limiterKey][]DependencyNode
 }
 
 const DefaultNodeLimit = 5
@@ -47,30 +197,27 @@ const ExpansionLimit = 10
 
 func newNodeLimiter(limit int) *NodeLimiter {
 	return &NodeLimiter{
-		counts:  make(map[string]int),
+		counts:  make(map[limiterKey]int),
 		limit:   limit,
-		skipped: make(map[string][]DependencyNode),
+		skipped: make(map[limiterKey][]DependencyNode),
 	}
 }
 
 func (l *NodeLimiter) canAdd(parentID, kind string) bool {
-	key := parentID + ":" + kind
-	return l.counts[key] < l.limit
+	return l.counts[limiterKey{parentID, kind}] < l.limit
 }
 
 func (l *NodeLimiter) add(parentID, kind string) {
-	key := parentID + ":" + kind
-	l.counts[key]++
+	l.counts[limiterKey{parentID, kind}]++
 }
 
 func (l *NodeLimiter) skip(parentID, kind string, node DependencyNode) {
-	key := parentID + ":" + kind
+	key := limiterKey{parentID, kind}
 	l.skipped[key] = append(l.skipped[key], node)
 }
 
 func (l *NodeLimiter) getSkippedCount(parentID, kind string) int {
-	key := parentID + ":" + kind
-	return len(l.skipped[key])
+	return len(l.skipped[limiterKey{parentID, kind}])
 }
 
 // GetResourceDependencies resolves all dependencies for a given resource
@@ -80,58 +227,63 @@ func (c *Client) GetResourceDependencies(contextName, resourceType, namespace, n
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 
+	// Create context with timeout to prevent UI hangs on slow clusters
+	ctx, cancel := context.WithTimeout(context.Background(), dependencyAPITimeout)
+	defer cancel()
+
 	graph := &DependencyGraph{
-		Nodes: []DependencyNode{},
-		Edges: []DependencyEdge{},
+		Nodes: make([]DependencyNode, 0, 32),
+		Edges: make([]DependencyEdge, 0, 32),
 	}
 
-	nodeMap := make(map[string]bool) // Track added nodes by ID
+	nodeMap := make(map[string]bool, 32) // Track added nodes by ID, pre-sized for typical graph
+	cache := newResourceCache(ctx, cs)    // Request-scoped cache for List() results
 
 	var result *DependencyGraph
 
 	switch resourceType {
 	case "pod":
-		result, err = c.getPodDependencies(cs, namespace, name, graph, nodeMap)
+		result, err = c.getPodDependencies(cs, cache, namespace, name, graph, nodeMap)
 	case "deployment":
-		result, err = c.getDeploymentDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getDeploymentDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "statefulset":
-		result, err = c.getStatefulSetDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getStatefulSetDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "daemonset":
-		result, err = c.getDaemonSetDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getDaemonSetDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "replicaset":
-		result, err = c.getReplicaSetDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getReplicaSetDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "job":
-		result, err = c.getJobDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getJobDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "cronjob":
-		result, err = c.getCronJobDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getCronJobDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "pvc":
-		result, err = c.getPVCDependencies(cs, namespace, name, graph, nodeMap)
+		result, err = c.getPVCDependencies(cs, cache, namespace, name, graph, nodeMap)
 	case "pv":
-		result, err = c.getPVDependencies(cs, name, graph, nodeMap)
+		result, err = c.getPVDependencies(cs, cache, name, graph, nodeMap)
 	case "configmap":
-		result, err = c.getConfigMapDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getConfigMapDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "secret":
-		result, err = c.getSecretDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getSecretDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "service":
-		result, err = c.getServiceDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getServiceDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "ingress":
-		result, err = c.getIngressDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getIngressDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "endpoints":
-		result, err = c.getEndpointsDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getEndpointsDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "priorityclass":
-		result, err = c.getPriorityClassDependencies(cs, contextName, name, graph, nodeMap)
+		result, err = c.getPriorityClassDependencies(cs, cache, contextName, name, graph, nodeMap)
 	case "networkpolicy":
-		result, err = c.getNetworkPolicyDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getNetworkPolicyDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "ingressclass":
-		result, err = c.getIngressClassDependencies(cs, contextName, name, graph, nodeMap)
+		result, err = c.getIngressClassDependencies(cs, cache, contextName, name, graph, nodeMap)
 	case "storageclass":
-		result, err = c.getStorageClassDependencies(cs, contextName, name, graph, nodeMap)
+		result, err = c.getStorageClassDependencies(cs, cache, contextName, name, graph, nodeMap)
 	case "serviceaccount":
-		result, err = c.getServiceAccountDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getServiceAccountDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "hpa":
-		result, err = c.getHPADependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getHPADependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	case "pdb":
-		result, err = c.getPDBDependencies(cs, contextName, namespace, name, graph, nodeMap)
+		result, err = c.getPDBDependencies(cs, cache, contextName, namespace, name, graph, nodeMap)
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
 	}
@@ -157,46 +309,72 @@ func aggregateGraph(graph *DependencyGraph, limit int, explicitRootID string) *D
 		return nil
 	}
 
-	// Build node lookup
-	nodeByID := make(map[string]DependencyNode)
-	for _, node := range graph.Nodes {
-		nodeByID[node.ID] = node
+	nodeCount := len(graph.Nodes)
+	edgeCount := len(graph.Edges)
+
+	// Build node lookup - pre-sized, stores indices to avoid copying structs
+	nodeByID := make(map[string]int, nodeCount) // nodeID -> index in graph.Nodes
+	for i := range graph.Nodes {
+		nodeByID[graph.Nodes[i].ID] = i
 	}
 
-	// Build edge relationships - track ALL incoming edges per node
-	incomingEdges := make(map[string][]DependencyEdge) // nodeID -> all edges pointing to it
-	outgoingEdges := make(map[string][]DependencyEdge) // nodeID -> all edges from it
-	for _, edge := range graph.Edges {
-		incomingEdges[edge.Target] = append(incomingEdges[edge.Target], edge)
-		outgoingEdges[edge.Source] = append(outgoingEdges[edge.Source], edge)
+	// Estimate avg edges per node for pre-allocation
+	avgEdges := 2
+	if nodeCount > 0 {
+		avgEdges = (edgeCount / nodeCount) + 1
+	}
+
+	// Build edge relationships using indices (8 bytes) instead of struct copies (48 bytes)
+	// This reduces memory by ~6x for edge storage
+	incomingEdgeIdx := make(map[string][]int, nodeCount)
+	outgoingEdgeIdx := make(map[string][]int, nodeCount)
+	for i, edge := range graph.Edges {
+		if incomingEdgeIdx[edge.Target] == nil {
+			incomingEdgeIdx[edge.Target] = make([]int, 0, avgEdges)
+		}
+		incomingEdgeIdx[edge.Target] = append(incomingEdgeIdx[edge.Target], i)
+		if outgoingEdgeIdx[edge.Source] == nil {
+			outgoingEdgeIdx[edge.Source] = make([]int, 0, avgEdges)
+		}
+		outgoingEdgeIdx[edge.Source] = append(outgoingEdgeIdx[edge.Source], i)
 	}
 
 	// Identify "connector" nodes - nodes that connect different parts of the graph
 	// A connector node has incoming edges from different node KINDS
 	// These nodes must be kept visible to maintain graph connectivity
-	connectorNodes := make(map[string]bool)
-	for nodeID, edges := range incomingEdges {
-		sourceKinds := make(map[string]bool)
-		for _, edge := range edges {
-			if sourceNode, ok := nodeByID[edge.Source]; ok {
-				sourceKinds[sourceNode.Kind] = true
+	connectorNodes := make(map[string]bool, nodeCount/4) // estimate ~25% are connectors
+
+	// Reuse a single map for kind counting (cleared between iterations)
+	kindSet := make(map[string]bool, 8) // typically <8 different kinds
+
+	for nodeID, edgeIndices := range incomingEdgeIdx {
+		// Clear and reuse kindSet instead of allocating new map
+		for k := range kindSet {
+			delete(kindSet, k)
+		}
+		for _, ei := range edgeIndices {
+			edge := &graph.Edges[ei]
+			if idx, ok := nodeByID[edge.Source]; ok {
+				kindSet[graph.Nodes[idx].Kind] = true
 			}
 		}
-		// If this node has incoming edges from 2+ different kinds, it's a connector
-		if len(sourceKinds) >= 2 {
+		if len(kindSet) >= 2 {
 			connectorNodes[nodeID] = true
 		}
 	}
 
 	// Also mark nodes that have outgoing edges to different kinds as connectors
-	for nodeID, edges := range outgoingEdges {
-		targetKinds := make(map[string]bool)
-		for _, edge := range edges {
-			if targetNode, ok := nodeByID[edge.Target]; ok {
-				targetKinds[targetNode.Kind] = true
+	for nodeID, edgeIndices := range outgoingEdgeIdx {
+		for k := range kindSet {
+			delete(kindSet, k)
+		}
+		for _, ei := range edgeIndices {
+			edge := &graph.Edges[ei]
+			if idx, ok := nodeByID[edge.Target]; ok {
+				kindSet[graph.Nodes[idx].Kind] = true
 			}
 		}
-		if len(targetKinds) >= 2 {
+		if len(kindSet) >= 2 {
 			connectorNodes[nodeID] = true
 		}
 	}
@@ -205,7 +383,7 @@ func aggregateGraph(graph *DependencyGraph, limit int, explicitRootID string) *D
 	rootID := explicitRootID
 	if rootID == "" {
 		for _, node := range graph.Nodes {
-			if len(incomingEdges[node.ID]) == 0 {
+			if len(incomingEdgeIdx[node.ID]) == 0 {
 				rootID = node.ID
 				break
 			}
@@ -213,24 +391,8 @@ func aggregateGraph(graph *DependencyGraph, limit int, explicitRootID string) *D
 	}
 
 	// Determine primary parent for each node (for grouping purposes)
-	// Edge direction varies by relation type:
-	// - "owns", "selects", "routes-to", "scales", "protects", "applies-to": source is parent (parent → child edges)
-	// - "uses", "binds", "references": target is parent (child → parent edges)
-	childToParentRelations := map[string]bool{
-		"uses":       true,
-		"binds":      true,
-		"references": true,
-	}
-	parentToChildRelations := map[string]bool{
-		"owns":       true,
-		"selects":    true,
-		"routes-to":  true,
-		"scales":     true,
-		"protects":   true,
-		"applies-to": true,
-	}
-
-	primaryParent := make(map[string]string)
+	// Uses package-level childToParentRelations and parentToChildRelations maps
+	primaryParent := make(map[string]string, nodeCount)
 	for nodeID := range nodeByID {
 		if nodeID == rootID {
 			continue
@@ -239,7 +401,8 @@ func aggregateGraph(graph *DependencyGraph, limit int, explicitRootID string) *D
 		parent := ""
 
 		// First check outgoing edges for "uses/binds" type relations (child → parent)
-		for _, edge := range outgoingEdges[nodeID] {
+		for _, ei := range outgoingEdgeIdx[nodeID] {
+			edge := &graph.Edges[ei]
 			if childToParentRelations[edge.Relation] {
 				parent = edge.Target
 				break
@@ -248,7 +411,8 @@ func aggregateGraph(graph *DependencyGraph, limit int, explicitRootID string) *D
 
 		// Check incoming edges for "owns/selects/routes-to" type relations (parent → child)
 		if parent == "" {
-			for _, edge := range incomingEdges[nodeID] {
+			for _, ei := range incomingEdgeIdx[nodeID] {
+				edge := &graph.Edges[ei]
 				if parentToChildRelations[edge.Relation] {
 					parent = edge.Source
 					break
@@ -257,8 +421,8 @@ func aggregateGraph(graph *DependencyGraph, limit int, explicitRootID string) *D
 		}
 
 		// Fallback: any incoming edge source (but NOT if we'd create a cycle)
-		if parent == "" && len(incomingEdges[nodeID]) > 0 {
-			candidate := incomingEdges[nodeID][0].Source
+		if parent == "" && len(incomingEdgeIdx[nodeID]) > 0 {
+			candidate := graph.Edges[incomingEdgeIdx[nodeID][0]].Source
 			// Avoid cycles: don't set parent if candidate's parent would be this node
 			if primaryParent[candidate] != nodeID {
 				parent = candidate
@@ -268,18 +432,19 @@ func aggregateGraph(graph *DependencyGraph, limit int, explicitRootID string) *D
 		primaryParent[nodeID] = parent
 	}
 
-	// Build new graph with limits applied
+	// Build new graph with limits applied - pre-allocate based on input size
+	// Most nodes will be kept (limited only when exceeding threshold)
 	newGraph := &DependencyGraph{
-		Nodes: []DependencyNode{},
-		Edges: []DependencyEdge{},
+		Nodes: make([]DependencyNode, 0, nodeCount),
+		Edges: make([]DependencyEdge, 0, edgeCount),
 	}
-	keptNodes := make(map[string]bool)
-	hiddenNodes := make(map[string]bool) // Track nodes that were aggregated away
+	keptNodes := make(map[string]bool, nodeCount)
+	hiddenNodes := make(map[string]bool, nodeCount/4) // Track nodes that were aggregated away
 
 	// Always keep root node
 	if rootID != "" {
-		if rootNode, ok := nodeByID[rootID]; ok {
-			newGraph.Nodes = append(newGraph.Nodes, rootNode)
+		if rootIdx, ok := nodeByID[rootID]; ok {
+			newGraph.Nodes = append(newGraph.Nodes, graph.Nodes[rootIdx])
 			keptNodes[rootID] = true
 		}
 	}
@@ -291,14 +456,16 @@ func aggregateGraph(graph *DependencyGraph, limit int, explicitRootID string) *D
 		kind     string
 	}
 
-	processedNodes := make(map[string]bool)
+	processedNodes := make(map[string]bool, nodeCount)
 	processedNodes[rootID] = true
 
 	// Keep processing until no more nodes to process
+	// Use indices instead of copying full DependencyNode structs (~112 bytes each)
 	for {
 		// Find nodes whose parent has been processed (either kept or hidden)
-		nodesByGroup := make(map[groupKey][]DependencyNode)
-		for _, node := range graph.Nodes {
+		nodeIdxByGroup := make(map[groupKey][]int)
+		for i := range graph.Nodes {
+			node := &graph.Nodes[i]
 			if processedNodes[node.ID] {
 				continue
 			}
@@ -311,93 +478,84 @@ func aggregateGraph(graph *DependencyGraph, limit int, explicitRootID string) *D
 				continue
 			}
 			key := groupKey{parentID: parentID, kind: node.Kind}
-			nodesByGroup[key] = append(nodesByGroup[key], node)
+			nodeIdxByGroup[key] = append(nodeIdxByGroup[key], i)
 		}
 
-		if len(nodesByGroup) == 0 {
+		if len(nodeIdxByGroup) == 0 {
 			break // No more nodes to process
 		}
 
 		// Process each group
-		for key, nodes := range nodesByGroup {
-			// If parent was hidden, hide all children too (aggregate them)
+		for key, nodeIndices := range nodeIdxByGroup {
+			// If parent was hidden, hide all children too (they're implicitly aggregated
+			// under their parent's summary node)
 			if hiddenNodes[key.parentID] {
-				for _, node := range nodes {
+				for _, ni := range nodeIndices {
+					node := &graph.Nodes[ni]
 					hiddenNodes[node.ID] = true
 					processedNodes[node.ID] = true
 				}
-				// Create summary for these hidden children under the parent's summary
-				parentSummaryID := ""
-				for _, n := range newGraph.Nodes {
-					if n.IsSummary && n.ParentID != "" {
-						// Find the summary that contains the hidden parent
-						parts := splitSummaryID(n.ID)
-						if len(parts) >= 2 && parts[1] == primaryParent[key.parentID] {
-							parentSummaryID = n.ID
-							break
-						}
-					}
-				}
-				// Add these children's count to existing summary or skip
-				// (they're effectively hidden under their parent's summary)
-				_ = parentSummaryID // Children are implicitly hidden
 				continue
 			}
 
 			// Parent is visible, apply normal aggregation
-			if len(nodes) <= limit {
+			if len(nodeIndices) <= limit {
 				// Keep all nodes
-				for _, node := range nodes {
-					newGraph.Nodes = append(newGraph.Nodes, node)
+				for _, ni := range nodeIndices {
+					node := &graph.Nodes[ni]
+					newGraph.Nodes = append(newGraph.Nodes, *node)
 					keptNodes[node.ID] = true
 					processedNodes[node.ID] = true
 				}
 			} else {
-				// Separate connector nodes from regular nodes
-				var connectors, regular []DependencyNode
-				for _, node := range nodes {
-					if connectorNodes[node.ID] {
-						connectors = append(connectors, node)
+				// Separate connector nodes from regular nodes (using indices)
+				var connectorIdx, regularIdx []int
+				for _, ni := range nodeIndices {
+					if connectorNodes[graph.Nodes[ni].ID] {
+						connectorIdx = append(connectorIdx, ni)
 					} else {
-						regular = append(regular, node)
+						regularIdx = append(regularIdx, ni)
 					}
 				}
 
 				// Always keep all connector nodes
-				for _, node := range connectors {
-					newGraph.Nodes = append(newGraph.Nodes, node)
+				for _, ni := range connectorIdx {
+					node := &graph.Nodes[ni]
+					newGraph.Nodes = append(newGraph.Nodes, *node)
 					keptNodes[node.ID] = true
 					processedNodes[node.ID] = true
 				}
 
 				// Fill remaining slots with regular nodes
-				remainingSlots := limit - len(connectors)
+				remainingSlots := limit - len(connectorIdx)
 				if remainingSlots < 0 {
 					remainingSlots = 0
 				}
 
 				keptRegular := 0
-				for i := 0; i < remainingSlots && i < len(regular); i++ {
-					newGraph.Nodes = append(newGraph.Nodes, regular[i])
-					keptNodes[regular[i].ID] = true
-					processedNodes[regular[i].ID] = true
+				for i := 0; i < remainingSlots && i < len(regularIdx); i++ {
+					node := &graph.Nodes[regularIdx[i]]
+					newGraph.Nodes = append(newGraph.Nodes, *node)
+					keptNodes[node.ID] = true
+					processedNodes[node.ID] = true
 					keptRegular++
 				}
 
 				// Mark remaining regular nodes as hidden
-				for i := keptRegular; i < len(regular); i++ {
-					hiddenNodes[regular[i].ID] = true
-					processedNodes[regular[i].ID] = true
+				for i := keptRegular; i < len(regularIdx); i++ {
+					node := &graph.Nodes[regularIdx[i]]
+					hiddenNodes[node.ID] = true
+					processedNodes[node.ID] = true
 				}
 
 				// Add summary node for the hidden nodes
-				remaining := len(regular) - keptRegular
+				remaining := len(regularIdx) - keptRegular
 				if remaining > 0 {
-					summaryID := fmt.Sprintf("summary:%s:%s", key.parentID, key.kind)
+					summaryID := "summary:" + key.parentID + ":" + key.kind
 					summaryNode := DependencyNode{
 						ID:             summaryID,
 						Kind:           key.kind,
-						Name:           fmt.Sprintf("+%d more %ss", remaining, key.kind),
+						Name:           "+" + strconv.Itoa(remaining) + " more " + key.kind + "s",
 						IsSummary:      true,
 						RemainingCount: remaining,
 						ParentID:       key.parentID,
@@ -410,35 +568,37 @@ func aggregateGraph(graph *DependencyGraph, limit int, explicitRootID string) *D
 	}
 
 	// Rebuild edges for kept nodes
+	// Use a struct key for O(1) edge deduplication (avoids string allocation)
+	type edgeKey struct{ src, tgt, rel string }
+	edgeSet := make(map[edgeKey]bool, edgeCount)
+
 	for _, edge := range graph.Edges {
 		sourceKept := keptNodes[edge.Source]
 		targetKept := keptNodes[edge.Target]
 
 		if sourceKept && targetKept {
-			newGraph.Edges = append(newGraph.Edges, edge)
+			key := edgeKey{edge.Source, edge.Target, edge.Relation}
+			if !edgeSet[key] {
+				newGraph.Edges = append(newGraph.Edges, edge)
+				edgeSet[key] = true
+			}
 		} else if sourceKept && !targetKept {
 			// Check if there's a summary node for the target's group
-			if targetNode, ok := nodeByID[edge.Target]; ok {
+			if targetIdx, ok := nodeByID[edge.Target]; ok {
 				parentID := primaryParent[edge.Target]
 				if parentID == "" {
 					parentID = "_root_"
 				}
-				summaryID := fmt.Sprintf("summary:%s:%s", parentID, targetNode.Kind)
+				summaryID := "summary:" + parentID + ":" + graph.Nodes[targetIdx].Kind
 				if keptNodes[summaryID] {
-					// Add edge to summary (avoid duplicates)
-					edgeExists := false
-					for _, e := range newGraph.Edges {
-						if e.Source == edge.Source && e.Target == summaryID {
-							edgeExists = true
-							break
-						}
-					}
-					if !edgeExists {
+					key := edgeKey{edge.Source, summaryID, edge.Relation}
+					if !edgeSet[key] {
 						newGraph.Edges = append(newGraph.Edges, DependencyEdge{
 							Source:   edge.Source,
 							Target:   summaryID,
 							Relation: edge.Relation,
 						})
+						edgeSet[key] = true
 					}
 				}
 			}
@@ -448,11 +608,13 @@ func aggregateGraph(graph *DependencyGraph, limit int, explicitRootID string) *D
 	return newGraph
 }
 
+// nodeID builds a unique identifier for a dependency node.
+// Uses string concatenation instead of fmt.Sprintf for 3-5x speedup.
 func nodeID(kind, namespace, name string) string {
 	if namespace == "" {
-		return fmt.Sprintf("%s/%s", kind, name)
+		return kind + "/" + name
 	}
-	return fmt.Sprintf("%s/%s/%s", kind, namespace, name)
+	return kind + "/" + namespace + "/" + name
 }
 
 func (c *Client) addNode(graph *DependencyGraph, nodeMap map[string]bool, node DependencyNode) {
@@ -471,7 +633,7 @@ func (c *Client) addEdge(graph *DependencyGraph, source, target, relation string
 }
 
 // getPodDependencies resolves dependencies for a Pod
-func (c *Client) getPodDependencies(cs kubernetes.Interface, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getPodDependencies(cs kubernetes.Interface, cache *resourceCache, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	pod, err := cs.CoreV1().Pods(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod: %w", err)
@@ -487,7 +649,7 @@ func (c *Client) getPodDependencies(cs kubernetes.Interface, namespace, name str
 	})
 
 	// Resolve owner references (upward)
-	c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+	c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, namespace, pod.OwnerReferences)
 
 	// Resolve volume dependencies (downward)
 	c.resolvePodVolumes(cs, graph, nodeMap, podID, namespace, pod.Spec.Volumes)
@@ -497,7 +659,7 @@ func (c *Client) getPodDependencies(cs kubernetes.Interface, namespace, name str
 	c.resolvePodContainerRefs(graph, nodeMap, podID, namespace, pod.Spec.InitContainers)
 
 	// Find Services that select this Pod (and their Ingresses)
-	c.findServicesSelectingPod(cs, graph, nodeMap, namespace, pod.Labels, podID)
+	c.findServicesSelectingPod(cache, graph, nodeMap, namespace, pod.Labels, podID)
 
 	// Resolve ServiceAccount (skip "default" as it's not interesting)
 	saName := pod.Spec.ServiceAccountName
@@ -516,7 +678,7 @@ func (c *Client) getPodDependencies(cs kubernetes.Interface, namespace, name str
 }
 
 // resolveOwnerRefs traverses owner references upward
-func (c *Client) resolveOwnerRefs(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, childID, namespace string, refs []metav1.OwnerReference) {
+func (c *Client) resolveOwnerRefs(cs kubernetes.Interface, cache *resourceCache, graph *DependencyGraph, nodeMap map[string]bool, childID, namespace string, refs []metav1.OwnerReference) {
 	for _, ref := range refs {
 		if ref.Controller == nil || !*ref.Controller {
 			continue
@@ -534,14 +696,26 @@ func (c *Client) resolveOwnerRefs(cs kubernetes.Interface, graph *DependencyGrap
 		// Recursively resolve parent's owner refs
 		switch ref.Kind {
 		case "ReplicaSet":
-			rs, err := cs.AppsV1().ReplicaSets(namespace).Get(context.TODO(), ref.Name, metav1.GetOptions{})
+			// Use cache for ReplicaSet lookup
+			rsList, err := cache.getReplicaSets(namespace)
 			if err == nil {
-				c.resolveOwnerRefs(cs, graph, nodeMap, ownerID, namespace, rs.OwnerReferences)
+				for _, rs := range rsList {
+					if rs.Name == ref.Name {
+						c.resolveOwnerRefs(cs, cache, graph, nodeMap, ownerID, namespace, rs.OwnerReferences)
+						break
+					}
+				}
 			}
 		case "Job":
-			job, err := cs.BatchV1().Jobs(namespace).Get(context.TODO(), ref.Name, metav1.GetOptions{})
+			// Use cache for Job lookup
+			jobList, err := cache.getJobs(namespace)
 			if err == nil {
-				c.resolveOwnerRefs(cs, graph, nodeMap, ownerID, namespace, job.OwnerReferences)
+				for _, job := range jobList {
+					if job.Name == ref.Name {
+						c.resolveOwnerRefs(cs, cache, graph, nodeMap, ownerID, namespace, job.OwnerReferences)
+						break
+					}
+				}
 			}
 		}
 	}
@@ -697,7 +871,7 @@ func (c *Client) resolvePodContainerRefs(graph *DependencyGraph, nodeMap map[str
 }
 
 // getDeploymentDependencies resolves dependencies for a Deployment
-func (c *Client) getDeploymentDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getDeploymentDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	deploy, err := cs.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get deployment: %w", err)
@@ -711,10 +885,10 @@ func (c *Client) getDeploymentDependencies(cs kubernetes.Interface, contextName,
 		Namespace: namespace,
 	})
 
-	// Find owned ReplicaSets
-	rsList, err := cs.AppsV1().ReplicaSets(namespace).List(context.TODO(), metav1.ListOptions{})
+	// Find owned ReplicaSets (using cache)
+	rsList, err := cache.getReplicaSets(namespace)
 	if err == nil {
-		for _, rs := range rsList.Items {
+		for _, rs := range rsList {
 			for _, ref := range rs.OwnerReferences {
 				if ref.Kind == "Deployment" && ref.Name == name {
 					rsID := nodeID("ReplicaSet", namespace, rs.Name)
@@ -727,20 +901,20 @@ func (c *Client) getDeploymentDependencies(cs kubernetes.Interface, contextName,
 					c.addEdge(graph, deployID, rsID, "owns")
 
 					// Find pods owned by this ReplicaSet
-					c.findOwnedPods(cs, graph, nodeMap, rsID, namespace, rs.Name, "ReplicaSet")
+					c.findOwnedPods(cs, cache, graph, nodeMap, rsID, namespace, rs.Name, "ReplicaSet")
 				}
 			}
 		}
 	}
 
 	// Resolve Services that select this deployment's pods
-	c.findSelectingServices(cs, graph, nodeMap, namespace, deploy.Spec.Selector.MatchLabels)
+	c.findSelectingServices(cache, graph, nodeMap, namespace, deploy.Spec.Selector.MatchLabels)
 
 	return graph, nil
 }
 
 // getStatefulSetDependencies resolves dependencies for a StatefulSet
-func (c *Client) getStatefulSetDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getStatefulSetDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	sts, err := cs.AppsV1().StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get statefulset: %w", err)
@@ -755,16 +929,16 @@ func (c *Client) getStatefulSetDependencies(cs kubernetes.Interface, contextName
 	})
 
 	// Find owned Pods
-	c.findOwnedPods(cs, graph, nodeMap, stsID, namespace, name, "StatefulSet")
+	c.findOwnedPods(cs, cache, graph, nodeMap, stsID, namespace, name, "StatefulSet")
 
 	// Resolve Services
-	c.findSelectingServices(cs, graph, nodeMap, namespace, sts.Spec.Selector.MatchLabels)
+	c.findSelectingServices(cache, graph, nodeMap, namespace, sts.Spec.Selector.MatchLabels)
 
 	return graph, nil
 }
 
 // getDaemonSetDependencies resolves dependencies for a DaemonSet
-func (c *Client) getDaemonSetDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getDaemonSetDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	ds, err := cs.AppsV1().DaemonSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get daemonset: %w", err)
@@ -779,16 +953,16 @@ func (c *Client) getDaemonSetDependencies(cs kubernetes.Interface, contextName, 
 	})
 
 	// Find owned Pods
-	c.findOwnedPods(cs, graph, nodeMap, dsID, namespace, name, "DaemonSet")
+	c.findOwnedPods(cs, cache, graph, nodeMap, dsID, namespace, name, "DaemonSet")
 
 	// Resolve Services
-	c.findSelectingServices(cs, graph, nodeMap, namespace, ds.Spec.Selector.MatchLabels)
+	c.findSelectingServices(cache, graph, nodeMap, namespace, ds.Spec.Selector.MatchLabels)
 
 	return graph, nil
 }
 
 // getReplicaSetDependencies resolves dependencies for a ReplicaSet
-func (c *Client) getReplicaSetDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getReplicaSetDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	rs, err := cs.AppsV1().ReplicaSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get replicaset: %w", err)
@@ -803,21 +977,21 @@ func (c *Client) getReplicaSetDependencies(cs kubernetes.Interface, contextName,
 	})
 
 	// Resolve owner (Deployment)
-	c.resolveOwnerRefs(cs, graph, nodeMap, rsID, namespace, rs.OwnerReferences)
+	c.resolveOwnerRefs(cs, cache, graph, nodeMap, rsID, namespace, rs.OwnerReferences)
 
 	// Find owned Pods
-	c.findOwnedPods(cs, graph, nodeMap, rsID, namespace, name, "ReplicaSet")
+	c.findOwnedPods(cs, cache, graph, nodeMap, rsID, namespace, name, "ReplicaSet")
 
 	// Find Services that select these pods (and their Ingresses)
 	if rs.Spec.Selector != nil {
-		c.findSelectingServices(cs, graph, nodeMap, namespace, rs.Spec.Selector.MatchLabels)
+		c.findSelectingServices(cache, graph, nodeMap, namespace, rs.Spec.Selector.MatchLabels)
 	}
 
 	return graph, nil
 }
 
 // getJobDependencies resolves dependencies for a Job
-func (c *Client) getJobDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getJobDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	job, err := cs.BatchV1().Jobs(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job: %w", err)
@@ -832,21 +1006,21 @@ func (c *Client) getJobDependencies(cs kubernetes.Interface, contextName, namesp
 	})
 
 	// Resolve owner (CronJob)
-	c.resolveOwnerRefs(cs, graph, nodeMap, jobID, namespace, job.OwnerReferences)
+	c.resolveOwnerRefs(cs, cache, graph, nodeMap, jobID, namespace, job.OwnerReferences)
 
 	// Find owned Pods
-	c.findOwnedPods(cs, graph, nodeMap, jobID, namespace, name, "Job")
+	c.findOwnedPods(cs, cache, graph, nodeMap, jobID, namespace, name, "Job")
 
 	// Find Services that select job pods (and their Ingresses)
 	if job.Spec.Selector != nil {
-		c.findSelectingServices(cs, graph, nodeMap, namespace, job.Spec.Selector.MatchLabels)
+		c.findSelectingServices(cache, graph, nodeMap, namespace, job.Spec.Selector.MatchLabels)
 	}
 
 	return graph, nil
 }
 
 // getCronJobDependencies resolves dependencies for a CronJob
-func (c *Client) getCronJobDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getCronJobDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	_, err := cs.BatchV1().CronJobs(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cronjob: %w", err)
@@ -860,10 +1034,10 @@ func (c *Client) getCronJobDependencies(cs kubernetes.Interface, contextName, na
 		Namespace: namespace,
 	})
 
-	// Find owned Jobs
-	jobList, err := cs.BatchV1().Jobs(namespace).List(context.TODO(), metav1.ListOptions{})
+	// Find owned Jobs (using cache)
+	jobList, err := cache.getJobs(namespace)
 	if err == nil {
-		for _, job := range jobList.Items {
+		for _, job := range jobList {
 			for _, ref := range job.OwnerReferences {
 				if ref.Kind == "CronJob" && ref.Name == name {
 					jobID := nodeID("Job", namespace, job.Name)
@@ -876,7 +1050,7 @@ func (c *Client) getCronJobDependencies(cs kubernetes.Interface, contextName, na
 					c.addEdge(graph, cronJobID, jobID, "owns")
 
 					// Find pods owned by this Job
-					c.findOwnedPods(cs, graph, nodeMap, jobID, namespace, job.Name, "Job")
+					c.findOwnedPods(cs, cache, graph, nodeMap, jobID, namespace, job.Name, "Job")
 				}
 			}
 		}
@@ -886,7 +1060,7 @@ func (c *Client) getCronJobDependencies(cs kubernetes.Interface, contextName, na
 }
 
 // getPVCDependencies resolves dependencies for a PVC
-func (c *Client) getPVCDependencies(cs kubernetes.Interface, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getPVCDependencies(cs kubernetes.Interface, cache *resourceCache, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	pvc, err := cs.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pvc: %w", err)
@@ -901,10 +1075,10 @@ func (c *Client) getPVCDependencies(cs kubernetes.Interface, namespace, name str
 		Status:    string(pvc.Status.Phase),
 	})
 
-	// Find pods using this PVC
-	pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+	// Find pods using this PVC (using cache)
+	pods, err := cache.getPods(namespace)
 	if err == nil {
-		for _, pod := range pods.Items {
+		for _, pod := range pods {
 			for _, vol := range pod.Spec.Volumes {
 				if vol.PersistentVolumeClaim != nil && vol.PersistentVolumeClaim.ClaimName == name {
 					podID := nodeID("Pod", namespace, pod.Name)
@@ -918,9 +1092,9 @@ func (c *Client) getPVCDependencies(cs kubernetes.Interface, namespace, name str
 					c.addEdge(graph, podID, pvcID, "uses")
 
 					// Add pod's owner refs
-					c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+					c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, namespace, pod.OwnerReferences)
 					// Find Services selecting this pod (and their Ingresses)
-					c.findServicesSelectingPod(cs, graph, nodeMap, namespace, pod.Labels, podID)
+					c.findServicesSelectingPod(cache, graph, nodeMap, namespace, pod.Labels, podID)
 				}
 			}
 		}
@@ -935,7 +1109,7 @@ func (c *Client) getPVCDependencies(cs kubernetes.Interface, namespace, name str
 }
 
 // getPVDependencies resolves dependencies for a PV
-func (c *Client) getPVDependencies(cs kubernetes.Interface, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getPVDependencies(cs kubernetes.Interface, cache *resourceCache, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	pv, err := cs.CoreV1().PersistentVolumes().Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pv: %w", err)
@@ -970,11 +1144,11 @@ func (c *Client) getPVDependencies(cs kubernetes.Interface, name string, graph *
 		})
 		c.addEdge(graph, pvcID, pvID, "binds")
 
-		// Find pods using this PVC
+		// Find pods using this PVC (using cache)
 		if err == nil {
-			pods, err := cs.CoreV1().Pods(pvcNamespace).List(context.TODO(), metav1.ListOptions{})
+			pods, err := cache.getPods(pvcNamespace)
 			if err == nil {
-				for _, pod := range pods.Items {
+				for _, pod := range pods {
 					for _, vol := range pod.Spec.Volumes {
 						if vol.PersistentVolumeClaim != nil && vol.PersistentVolumeClaim.ClaimName == pvcName {
 							podID := nodeID("Pod", pvcNamespace, pod.Name)
@@ -986,9 +1160,9 @@ func (c *Client) getPVDependencies(cs kubernetes.Interface, name string, graph *
 								Status:    string(pod.Status.Phase),
 							})
 							c.addEdge(graph, podID, pvcID, "uses")
-							c.resolveOwnerRefs(cs, graph, nodeMap, podID, pvcNamespace, pod.OwnerReferences)
+							c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, pvcNamespace, pod.OwnerReferences)
 							// Find Services selecting this pod (and their Ingresses)
-							c.findServicesSelectingPod(cs, graph, nodeMap, pvcNamespace, pod.Labels, podID)
+							c.findServicesSelectingPod(cache, graph, nodeMap, pvcNamespace, pod.Labels, podID)
 						}
 					}
 				}
@@ -1011,7 +1185,7 @@ func (c *Client) getPVDependencies(cs kubernetes.Interface, name string, graph *
 }
 
 // getConfigMapDependencies resolves dependencies for a ConfigMap
-func (c *Client) getConfigMapDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getConfigMapDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	_, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get configmap: %w", err)
@@ -1026,13 +1200,13 @@ func (c *Client) getConfigMapDependencies(cs kubernetes.Interface, contextName, 
 	})
 
 	// Find pods using this ConfigMap
-	c.findPodsUsingConfigMap(cs, graph, nodeMap, namespace, name, cmID)
+	c.findPodsUsingConfigMap(cs, cache, graph, nodeMap, namespace, name, cmID)
 
 	return graph, nil
 }
 
 // getSecretDependencies resolves dependencies for a Secret
-func (c *Client) getSecretDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getSecretDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	_, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret: %w", err)
@@ -1047,13 +1221,13 @@ func (c *Client) getSecretDependencies(cs kubernetes.Interface, contextName, nam
 	})
 
 	// Find pods using this Secret
-	c.findPodsUsingSecret(cs, graph, nodeMap, namespace, name, secretID)
+	c.findPodsUsingSecret(cs, cache, graph, nodeMap, namespace, name, secretID)
 
 	return graph, nil
 }
 
 // getServiceDependencies resolves dependencies for a Service
-func (c *Client) getServiceDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getServiceDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	svc, err := cs.CoreV1().Services(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get service: %w", err)
@@ -1067,11 +1241,11 @@ func (c *Client) getServiceDependencies(cs kubernetes.Interface, contextName, na
 		Namespace: namespace,
 	})
 
-	// Find pods matching selector
+	// Find pods matching selector (using cache)
 	if len(svc.Spec.Selector) > 0 {
-		pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+		pods, err := cache.getPods(namespace)
 		if err == nil {
-			for _, pod := range pods.Items {
+			for _, pod := range pods {
 				if matchesSelector(pod.Labels, svc.Spec.Selector) {
 					podID := nodeID("Pod", namespace, pod.Name)
 					c.addNode(graph, nodeMap, DependencyNode{
@@ -1084,26 +1258,26 @@ func (c *Client) getServiceDependencies(cs kubernetes.Interface, contextName, na
 					c.addEdge(graph, svcID, podID, "selects")
 
 					// Add pod's owner refs
-					c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+					c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, namespace, pod.OwnerReferences)
 				}
 			}
 		}
 	}
 
 	// Find Ingresses that route to this Service
-	c.findIngressesForService(cs, graph, nodeMap, namespace, name, svcID)
+	c.findIngressesForService(cache, graph, nodeMap, namespace, name, svcID)
 
 	return graph, nil
 }
 
 // findIngressesForService finds all Ingresses that route to a given Service
-func (c *Client) findIngressesForService(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, namespace, serviceName, svcID string) {
-	ingresses, err := cs.NetworkingV1().Ingresses(namespace).List(context.TODO(), metav1.ListOptions{})
+func (c *Client) findIngressesForService(cache *resourceCache, graph *DependencyGraph, nodeMap map[string]bool, namespace, serviceName, svcID string) {
+	ingresses, err := cache.getIngresses(namespace)
 	if err != nil {
 		return
 	}
 
-	for _, ingress := range ingresses.Items {
+	for _, ingress := range ingresses {
 		routesToService := false
 
 		// Check default backend
@@ -1158,13 +1332,13 @@ func (c *Client) findIngressesForService(cs kubernetes.Interface, graph *Depende
 
 // Helper functions
 
-func (c *Client) findOwnedPods(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, ownerID, namespace, ownerName, ownerKind string) {
-	pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+func (c *Client) findOwnedPods(cs kubernetes.Interface, cache *resourceCache, graph *DependencyGraph, nodeMap map[string]bool, ownerID, namespace, ownerName, ownerKind string) {
+	pods, err := cache.getPods(namespace)
 	if err != nil {
 		return
 	}
 
-	for _, pod := range pods.Items {
+	for _, pod := range pods {
 		for _, ref := range pod.OwnerReferences {
 			if ref.Kind == ownerKind && ref.Name == ownerName {
 				podID := nodeID("Pod", namespace, pod.Name)
@@ -1186,17 +1360,17 @@ func (c *Client) findOwnedPods(cs kubernetes.Interface, graph *DependencyGraph, 
 	}
 }
 
-func (c *Client) findSelectingServices(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, namespace string, podLabels map[string]string) {
+func (c *Client) findSelectingServices(cache *resourceCache, graph *DependencyGraph, nodeMap map[string]bool, namespace string, podLabels map[string]string) {
 	if len(podLabels) == 0 {
 		return
 	}
 
-	services, err := cs.CoreV1().Services(namespace).List(context.TODO(), metav1.ListOptions{})
+	services, err := cache.getServices(namespace)
 	if err != nil {
 		return
 	}
 
-	for _, svc := range services.Items {
+	for _, svc := range services {
 		if len(svc.Spec.Selector) > 0 && matchesSelector(podLabels, svc.Spec.Selector) {
 			svcID := nodeID("Service", namespace, svc.Name)
 			c.addNode(graph, nodeMap, DependencyNode{
@@ -1214,18 +1388,18 @@ func (c *Client) findSelectingServices(cs kubernetes.Interface, graph *Dependenc
 			}
 
 			// Find Ingresses that route to this Service
-			c.findIngressesForService(cs, graph, nodeMap, namespace, svc.Name, svcID)
+			c.findIngressesForService(cache, graph, nodeMap, namespace, svc.Name, svcID)
 		}
 	}
 }
 
-func (c *Client) findPodsUsingConfigMap(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, namespace, cmName, cmID string) {
-	pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+func (c *Client) findPodsUsingConfigMap(cs kubernetes.Interface, cache *resourceCache, graph *DependencyGraph, nodeMap map[string]bool, namespace, cmName, cmID string) {
+	pods, err := cache.getPods(namespace)
 	if err != nil {
 		return
 	}
 
-	for _, pod := range pods.Items {
+	for _, pod := range pods {
 		usesConfigMap := false
 
 		// Check volumes
@@ -1270,20 +1444,20 @@ func (c *Client) findPodsUsingConfigMap(cs kubernetes.Interface, graph *Dependen
 				Status:    string(pod.Status.Phase),
 			})
 			c.addEdge(graph, podID, cmID, "uses")
-			c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+			c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, namespace, pod.OwnerReferences)
 			// Find Services selecting this pod (and their Ingresses)
-			c.findServicesSelectingPod(cs, graph, nodeMap, namespace, pod.Labels, podID)
+			c.findServicesSelectingPod(cache, graph, nodeMap, namespace, pod.Labels, podID)
 		}
 	}
 }
 
-func (c *Client) findPodsUsingSecret(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, namespace, secretName, secretID string) {
-	pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+func (c *Client) findPodsUsingSecret(cs kubernetes.Interface, cache *resourceCache, graph *DependencyGraph, nodeMap map[string]bool, namespace, secretName, secretID string) {
+	pods, err := cache.getPods(namespace)
 	if err != nil {
 		return
 	}
 
-	for _, pod := range pods.Items {
+	for _, pod := range pods {
 		usesSecret := false
 
 		// Check volumes
@@ -1328,9 +1502,9 @@ func (c *Client) findPodsUsingSecret(cs kubernetes.Interface, graph *DependencyG
 				Status:    string(pod.Status.Phase),
 			})
 			c.addEdge(graph, podID, secretID, "uses")
-			c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+			c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, namespace, pod.OwnerReferences)
 			// Find Services selecting this pod (and their Ingresses)
-			c.findServicesSelectingPod(cs, graph, nodeMap, namespace, pod.Labels, podID)
+			c.findServicesSelectingPod(cache, graph, nodeMap, namespace, pod.Labels, podID)
 		}
 	}
 }
@@ -1345,17 +1519,17 @@ func matchesSelector(labels, selector map[string]string) bool {
 }
 
 // findServicesSelectingPod finds all Services that select a given Pod
-func (c *Client) findServicesSelectingPod(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, namespace string, podLabels map[string]string, podID string) {
+func (c *Client) findServicesSelectingPod(cache *resourceCache, graph *DependencyGraph, nodeMap map[string]bool, namespace string, podLabels map[string]string, podID string) {
 	if len(podLabels) == 0 {
 		return
 	}
 
-	services, err := cs.CoreV1().Services(namespace).List(context.TODO(), metav1.ListOptions{})
+	services, err := cache.getServices(namespace)
 	if err != nil {
 		return
 	}
 
-	for _, svc := range services.Items {
+	for _, svc := range services {
 		if len(svc.Spec.Selector) > 0 && matchesSelector(podLabels, svc.Spec.Selector) {
 			svcID := nodeID("Service", namespace, svc.Name)
 			c.addNode(graph, nodeMap, DependencyNode{
@@ -1367,13 +1541,13 @@ func (c *Client) findServicesSelectingPod(cs kubernetes.Interface, graph *Depend
 			c.addEdge(graph, svcID, podID, "selects")
 
 			// Find Ingresses that route to this Service
-			c.findIngressesForService(cs, graph, nodeMap, namespace, svc.Name, svcID)
+			c.findIngressesForService(cache, graph, nodeMap, namespace, svc.Name, svcID)
 		}
 	}
 }
 
 // getEndpointsDependencies resolves dependencies for Endpoints
-func (c *Client) getEndpointsDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getEndpointsDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	endpoints, err := cs.CoreV1().Endpoints(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get endpoints: %w", err)
@@ -1400,7 +1574,7 @@ func (c *Client) getEndpointsDependencies(cs kubernetes.Interface, contextName, 
 		c.addEdge(graph, svcID, endpointsID, "owns")
 
 		// Find Ingresses that route to this Service
-		c.findIngressesForService(cs, graph, nodeMap, namespace, name, svcID)
+		c.findIngressesForService(cache, graph, nodeMap, namespace, name, svcID)
 	}
 
 	// Find Pods referenced by this Endpoints object
@@ -1432,7 +1606,7 @@ func (c *Client) getEndpointsDependencies(cs kubernetes.Interface, contextName, 
 
 				// Resolve pod's owner refs
 				if podErr == nil {
-					c.resolveOwnerRefs(cs, graph, nodeMap, podID, podNamespace, pod.OwnerReferences)
+					c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, podNamespace, pod.OwnerReferences)
 				}
 			}
 		}
@@ -1463,7 +1637,7 @@ func (c *Client) getEndpointsDependencies(cs kubernetes.Interface, contextName, 
 				c.addEdge(graph, endpointsID, podID, "references")
 
 				if podErr == nil {
-					c.resolveOwnerRefs(cs, graph, nodeMap, podID, podNamespace, pod.OwnerReferences)
+					c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, podNamespace, pod.OwnerReferences)
 				}
 			}
 		}
@@ -1473,7 +1647,7 @@ func (c *Client) getEndpointsDependencies(cs kubernetes.Interface, contextName, 
 }
 
 // getPriorityClassDependencies resolves dependencies for a PriorityClass
-func (c *Client) getPriorityClassDependencies(cs kubernetes.Interface, contextName, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getPriorityClassDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	_, err := cs.SchedulingV1().PriorityClasses().Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get priorityclass: %w", err)
@@ -1486,10 +1660,10 @@ func (c *Client) getPriorityClassDependencies(cs kubernetes.Interface, contextNa
 		Name: name,
 	})
 
-	// Find all pods using this PriorityClass
-	pods, err := cs.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	// Find all pods using this PriorityClass (cluster-wide with caching)
+	pods, err := cache.getAllPods()
 	if err == nil {
-		for _, pod := range pods.Items {
+		for _, pod := range pods {
 			if pod.Spec.PriorityClassName == name {
 				podID := nodeID("Pod", pod.Namespace, pod.Name)
 				c.addNode(graph, nodeMap, DependencyNode{
@@ -1502,7 +1676,7 @@ func (c *Client) getPriorityClassDependencies(cs kubernetes.Interface, contextNa
 				c.addEdge(graph, podID, pcID, "uses")
 
 				// Resolve pod's owner refs
-				c.resolveOwnerRefs(cs, graph, nodeMap, podID, pod.Namespace, pod.OwnerReferences)
+				c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, pod.Namespace, pod.OwnerReferences)
 			}
 		}
 	}
@@ -1511,7 +1685,7 @@ func (c *Client) getPriorityClassDependencies(cs kubernetes.Interface, contextNa
 }
 
 // getNetworkPolicyDependencies resolves dependencies for a NetworkPolicy
-func (c *Client) getNetworkPolicyDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getNetworkPolicyDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	np, err := cs.NetworkingV1().NetworkPolicies(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get networkpolicy: %w", err)
@@ -1527,9 +1701,9 @@ func (c *Client) getNetworkPolicyDependencies(cs kubernetes.Interface, contextNa
 
 	// Find pods that this policy applies to (via podSelector)
 	if np.Spec.PodSelector.MatchLabels != nil || np.Spec.PodSelector.MatchExpressions != nil {
-		pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+		pods, err := cache.getPods(namespace)
 		if err == nil {
-			for _, pod := range pods.Items {
+			for _, pod := range pods {
 				if matchesSelector(pod.Labels, np.Spec.PodSelector.MatchLabels) {
 					podID := nodeID("Pod", namespace, pod.Name)
 					c.addNode(graph, nodeMap, DependencyNode{
@@ -1542,7 +1716,7 @@ func (c *Client) getNetworkPolicyDependencies(cs kubernetes.Interface, contextNa
 					c.addEdge(graph, npID, podID, "applies-to")
 
 					// Resolve pod's owner refs
-					c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+					c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, namespace, pod.OwnerReferences)
 				}
 			}
 		}
@@ -1552,7 +1726,7 @@ func (c *Client) getNetworkPolicyDependencies(cs kubernetes.Interface, contextNa
 }
 
 // getIngressDependencies resolves dependencies for an Ingress
-func (c *Client) getIngressDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getIngressDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	ingress, err := cs.NetworkingV1().Ingresses(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ingress: %w", err)
@@ -1629,7 +1803,7 @@ func (c *Client) getIngressDependencies(cs kubernetes.Interface, contextName, na
 }
 
 // getIngressClassDependencies resolves dependencies for an IngressClass
-func (c *Client) getIngressClassDependencies(cs kubernetes.Interface, contextName, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getIngressClassDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	_, err := cs.NetworkingV1().IngressClasses().Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ingressclass: %w", err)
@@ -1642,10 +1816,10 @@ func (c *Client) getIngressClassDependencies(cs kubernetes.Interface, contextNam
 		Name: name,
 	})
 
-	// Find all Ingresses using this IngressClass
-	ingresses, err := cs.NetworkingV1().Ingresses("").List(context.TODO(), metav1.ListOptions{})
+	// Find all Ingresses using this IngressClass (cluster-wide with caching)
+	ingresses, err := cache.getAllIngresses()
 	if err == nil {
-		for _, ingress := range ingresses.Items {
+		for _, ingress := range ingresses {
 			if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName == name {
 				ingressID := nodeID("Ingress", ingress.Namespace, ingress.Name)
 				c.addNode(graph, nodeMap, DependencyNode{
@@ -1663,7 +1837,7 @@ func (c *Client) getIngressClassDependencies(cs kubernetes.Interface, contextNam
 }
 
 // getStorageClassDependencies resolves dependencies for a StorageClass
-func (c *Client) getStorageClassDependencies(cs kubernetes.Interface, contextName, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getStorageClassDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	_, err := cs.StorageV1().StorageClasses().Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get storageclass: %w", err)
@@ -1676,7 +1850,7 @@ func (c *Client) getStorageClassDependencies(cs kubernetes.Interface, contextNam
 		Name: name,
 	})
 
-	// Find all PVs using this StorageClass
+	// Find all PVs using this StorageClass (cluster-wide)
 	pvs, err := cs.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
 	if err == nil {
 		for _, pv := range pvs.Items {
@@ -1705,7 +1879,7 @@ func (c *Client) getStorageClassDependencies(cs kubernetes.Interface, contextNam
 		}
 	}
 
-	// Find all PVCs using this StorageClass directly
+	// Find all PVCs using this StorageClass directly (cluster-wide)
 	pvcs, err := cs.CoreV1().PersistentVolumeClaims("").List(context.TODO(), metav1.ListOptions{})
 	if err == nil {
 		for _, pvc := range pvcs.Items {
@@ -1729,7 +1903,7 @@ func (c *Client) getStorageClassDependencies(cs kubernetes.Interface, contextNam
 }
 
 // getServiceAccountDependencies resolves dependencies for a ServiceAccount
-func (c *Client) getServiceAccountDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getServiceAccountDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	_, err := cs.CoreV1().ServiceAccounts(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get serviceaccount: %w", err)
@@ -1743,10 +1917,10 @@ func (c *Client) getServiceAccountDependencies(cs kubernetes.Interface, contextN
 		Namespace: namespace,
 	})
 
-	// Find all Pods using this ServiceAccount
-	pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+	// Find all Pods using this ServiceAccount (using cache)
+	pods, err := cache.getPods(namespace)
 	if err == nil {
-		for _, pod := range pods.Items {
+		for _, pod := range pods {
 			podSA := pod.Spec.ServiceAccountName
 			if podSA == "" {
 				podSA = "default"
@@ -1763,9 +1937,9 @@ func (c *Client) getServiceAccountDependencies(cs kubernetes.Interface, contextN
 				c.addEdge(graph, podID, saID, "uses")
 
 				// Resolve pod's owner refs
-				c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+				c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, namespace, pod.OwnerReferences)
 				// Find Services selecting this pod
-				c.findServicesSelectingPod(cs, graph, nodeMap, namespace, pod.Labels, podID)
+				c.findServicesSelectingPod(cache, graph, nodeMap, namespace, pod.Labels, podID)
 			}
 		}
 	}
@@ -1774,7 +1948,7 @@ func (c *Client) getServiceAccountDependencies(cs kubernetes.Interface, contextN
 }
 
 // getHPADependencies resolves dependencies for a HorizontalPodAutoscaler
-func (c *Client) getHPADependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getHPADependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	hpa, err := cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get hpa: %w", err)
@@ -1806,10 +1980,10 @@ func (c *Client) getHPADependencies(cs kubernetes.Interface, contextName, namesp
 	case "Deployment":
 		deploy, err := cs.AppsV1().Deployments(namespace).Get(context.TODO(), targetName, metav1.GetOptions{})
 		if err == nil {
-			// Find ReplicaSets owned by this deployment
-			rsList, err := cs.AppsV1().ReplicaSets(namespace).List(context.TODO(), metav1.ListOptions{})
+			// Find ReplicaSets owned by this deployment (using cache)
+			rsList, err := cache.getReplicaSets(namespace)
 			if err == nil {
-				for _, rs := range rsList.Items {
+				for _, rs := range rsList {
 					for _, ref := range rs.OwnerReferences {
 						if ref.Kind == "Deployment" && ref.Name == targetName {
 							rsID := nodeID("ReplicaSet", namespace, rs.Name)
@@ -1820,25 +1994,25 @@ func (c *Client) getHPADependencies(cs kubernetes.Interface, contextName, namesp
 								Namespace: namespace,
 							})
 							c.addEdge(graph, targetID, rsID, "owns")
-							c.findOwnedPods(cs, graph, nodeMap, rsID, namespace, rs.Name, "ReplicaSet")
+							c.findOwnedPods(cs, cache, graph, nodeMap, rsID, namespace, rs.Name, "ReplicaSet")
 						}
 					}
 				}
 			}
-			c.findSelectingServices(cs, graph, nodeMap, namespace, deploy.Spec.Selector.MatchLabels)
+			c.findSelectingServices(cache, graph, nodeMap, namespace, deploy.Spec.Selector.MatchLabels)
 		}
 	case "StatefulSet":
 		sts, err := cs.AppsV1().StatefulSets(namespace).Get(context.TODO(), targetName, metav1.GetOptions{})
 		if err == nil {
-			c.findOwnedPods(cs, graph, nodeMap, targetID, namespace, targetName, "StatefulSet")
-			c.findSelectingServices(cs, graph, nodeMap, namespace, sts.Spec.Selector.MatchLabels)
+			c.findOwnedPods(cs, cache, graph, nodeMap, targetID, namespace, targetName, "StatefulSet")
+			c.findSelectingServices(cache, graph, nodeMap, namespace, sts.Spec.Selector.MatchLabels)
 		}
 	case "ReplicaSet":
 		rs, err := cs.AppsV1().ReplicaSets(namespace).Get(context.TODO(), targetName, metav1.GetOptions{})
 		if err == nil {
-			c.findOwnedPods(cs, graph, nodeMap, targetID, namespace, targetName, "ReplicaSet")
+			c.findOwnedPods(cs, cache, graph, nodeMap, targetID, namespace, targetName, "ReplicaSet")
 			if rs.Spec.Selector != nil {
-				c.findSelectingServices(cs, graph, nodeMap, namespace, rs.Spec.Selector.MatchLabels)
+				c.findSelectingServices(cache, graph, nodeMap, namespace, rs.Spec.Selector.MatchLabels)
 			}
 		}
 	}
@@ -1847,7 +2021,7 @@ func (c *Client) getHPADependencies(cs kubernetes.Interface, contextName, namesp
 }
 
 // getPDBDependencies resolves dependencies for a PodDisruptionBudget
-func (c *Client) getPDBDependencies(cs kubernetes.Interface, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
+func (c *Client) getPDBDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
 	pdb, err := cs.PolicyV1().PodDisruptionBudgets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pdb: %w", err)
@@ -1861,11 +2035,11 @@ func (c *Client) getPDBDependencies(cs kubernetes.Interface, contextName, namesp
 		Namespace: namespace,
 	})
 
-	// Find pods matching the PDB's selector
+	// Find pods matching the PDB's selector (using cache)
 	if pdb.Spec.Selector != nil {
-		pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+		pods, err := cache.getPods(namespace)
 		if err == nil {
-			for _, pod := range pods.Items {
+			for _, pod := range pods {
 				if matchesSelector(pod.Labels, pdb.Spec.Selector.MatchLabels) {
 					podID := nodeID("Pod", namespace, pod.Name)
 					c.addNode(graph, nodeMap, DependencyNode{
@@ -1878,9 +2052,9 @@ func (c *Client) getPDBDependencies(cs kubernetes.Interface, contextName, namesp
 					c.addEdge(graph, pdbID, podID, "protects")
 
 					// Resolve pod's owner refs
-					c.resolveOwnerRefs(cs, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+					c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, namespace, pod.OwnerReferences)
 					// Find Services selecting this pod
-					c.findServicesSelectingPod(cs, graph, nodeMap, namespace, pod.Labels, podID)
+					c.findServicesSelectingPod(cache, graph, nodeMap, namespace, pod.Labels, podID)
 				}
 			}
 		}
@@ -1899,57 +2073,62 @@ func (c *Client) ExpandDependencyNode(contextName, resourceType, namespace, reso
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 
+	// Create context with timeout to prevent UI hangs on slow clusters
+	ctx, cancel := context.WithTimeout(context.Background(), dependencyAPITimeout)
+	defer cancel()
+
 	graph := &DependencyGraph{
-		Nodes: []DependencyNode{},
-		Edges: []DependencyEdge{},
+		Nodes: make([]DependencyNode, 0, 32),
+		Edges: make([]DependencyEdge, 0, 32),
 	}
-	nodeMap := make(map[string]bool)
+	nodeMap := make(map[string]bool, 32)
+	cache := newResourceCache(ctx, cs) // Request-scoped cache with timeout
 
 	var fullGraph *DependencyGraph
 
 	switch resourceType {
 	case "pod":
-		fullGraph, err = c.getPodDependencies(cs, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getPodDependencies(cs, cache, namespace, resourceName, graph, nodeMap)
 	case "deployment":
-		fullGraph, err = c.getDeploymentDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getDeploymentDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "statefulset":
-		fullGraph, err = c.getStatefulSetDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getStatefulSetDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "daemonset":
-		fullGraph, err = c.getDaemonSetDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getDaemonSetDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "replicaset":
-		fullGraph, err = c.getReplicaSetDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getReplicaSetDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "job":
-		fullGraph, err = c.getJobDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getJobDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "cronjob":
-		fullGraph, err = c.getCronJobDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getCronJobDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "configmap":
-		fullGraph, err = c.getConfigMapDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getConfigMapDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "secret":
-		fullGraph, err = c.getSecretDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getSecretDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "service":
-		fullGraph, err = c.getServiceDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getServiceDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "pvc":
-		fullGraph, err = c.getPVCDependencies(cs, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getPVCDependencies(cs, cache, namespace, resourceName, graph, nodeMap)
 	case "pv":
-		fullGraph, err = c.getPVDependencies(cs, resourceName, graph, nodeMap)
+		fullGraph, err = c.getPVDependencies(cs, cache, resourceName, graph, nodeMap)
 	case "storageclass":
-		fullGraph, err = c.getStorageClassDependencies(cs, contextName, resourceName, graph, nodeMap)
+		fullGraph, err = c.getStorageClassDependencies(cs, cache, contextName, resourceName, graph, nodeMap)
 	case "ingress":
-		fullGraph, err = c.getIngressDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getIngressDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "ingressclass":
-		fullGraph, err = c.getIngressClassDependencies(cs, contextName, resourceName, graph, nodeMap)
+		fullGraph, err = c.getIngressClassDependencies(cs, cache, contextName, resourceName, graph, nodeMap)
 	case "endpoints":
-		fullGraph, err = c.getEndpointsDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getEndpointsDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "networkpolicy":
-		fullGraph, err = c.getNetworkPolicyDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getNetworkPolicyDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "priorityclass":
-		fullGraph, err = c.getPriorityClassDependencies(cs, contextName, resourceName, graph, nodeMap)
+		fullGraph, err = c.getPriorityClassDependencies(cs, cache, contextName, resourceName, graph, nodeMap)
 	case "serviceaccount":
-		fullGraph, err = c.getServiceAccountDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getServiceAccountDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "hpa":
-		fullGraph, err = c.getHPADependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getHPADependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	case "pdb":
-		fullGraph, err = c.getPDBDependencies(cs, contextName, namespace, resourceName, graph, nodeMap)
+		fullGraph, err = c.getPDBDependencies(cs, cache, contextName, namespace, resourceName, graph, nodeMap)
 	default:
 		return nil, fmt.Errorf("unsupported resource type for expansion: %s", resourceType)
 	}
@@ -1967,15 +2146,8 @@ func (c *Client) ExpandDependencyNode(contextName, resourceType, namespace, reso
 	parentID := parts[1]
 	targetKind := parts[2]
 
-	// Relations where edge direction is child → parent
-	childToParentRelations := map[string]bool{
-		"uses":       true,
-		"binds":      true,
-		"references": true,
-	}
-
-	// Build node lookup
-	nodeByID := make(map[string]DependencyNode)
+	// Build node lookup (uses package-level childToParentRelations)
+	nodeByID := make(map[string]DependencyNode, len(fullGraph.Nodes))
 	for _, node := range fullGraph.Nodes {
 		nodeByID[node.ID] = node
 	}
@@ -1983,7 +2155,7 @@ func (c *Client) ExpandDependencyNode(contextName, resourceType, namespace, reso
 	// Find all children of the parent with matching kind
 	// Need to consider edge direction: some relations have parent as source, others have parent as target
 	var matchingNodes []DependencyNode
-	seenNodes := make(map[string]bool)
+	seenNodes := make(map[string]bool, ExpansionLimit*2) // Pre-size for typical expansion
 
 	for _, edge := range fullGraph.Edges {
 		var childID string
@@ -2010,8 +2182,8 @@ func (c *Client) ExpandDependencyNode(contextName, resourceType, namespace, reso
 	// Apply offset and limit to get the expansion batch
 	// offset typically starts at DefaultNodeLimit (5), then increases by ExpansionLimit (10)
 	expandedGraph := &DependencyGraph{
-		Nodes: []DependencyNode{},
-		Edges: []DependencyEdge{},
+		Nodes: make([]DependencyNode, 0, ExpansionLimit),
+		Edges: make([]DependencyEdge, 0, ExpansionLimit*2),
 	}
 
 	endIdx := offset + ExpansionLimit
@@ -2019,7 +2191,7 @@ func (c *Client) ExpandDependencyNode(contextName, resourceType, namespace, reso
 		endIdx = len(matchingNodes)
 	}
 
-	expandedNodeIDs := make(map[string]bool)
+	expandedNodeIDs := make(map[string]bool, ExpansionLimit)
 	for i := offset; i < endIdx; i++ {
 		expandedGraph.Nodes = append(expandedGraph.Nodes, matchingNodes[i])
 		expandedNodeIDs[matchingNodes[i].ID] = true
@@ -2063,11 +2235,11 @@ func (c *Client) ExpandDependencyNode(contextName, resourceType, namespace, reso
 	// If there are more nodes after this batch, add a new summary node
 	remaining := len(matchingNodes) - endIdx
 	if remaining > 0 {
-		newSummaryID := fmt.Sprintf("summary:%s:%s", parentID, targetKind)
+		newSummaryID := "summary:" + parentID + ":" + targetKind
 		expandedGraph.Nodes = append(expandedGraph.Nodes, DependencyNode{
 			ID:             newSummaryID,
 			Kind:           targetKind,
-			Name:           fmt.Sprintf("+%d more %ss", remaining, targetKind),
+			Name:           "+" + strconv.Itoa(remaining) + " more " + targetKind + "s",
 			IsSummary:      true,
 			RemainingCount: remaining,
 			ParentID:       parentID,

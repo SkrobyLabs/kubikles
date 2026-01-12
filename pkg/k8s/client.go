@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -41,7 +42,7 @@ import (
 )
 
 type Client struct {
-	clientset      *kubernetes.Clientset
+	clientset      kubernetes.Interface
 	metricsClient  metricsclientset.Interface
 	configLoading  clientcmd.ClientConfig
 	currentContext string
@@ -163,7 +164,7 @@ func (c *Client) ListContexts() ([]string, error) {
 
 // --- Resources ---
 
-func (c *Client) getClientset() (*kubernetes.Clientset, error) {
+func (c *Client) getClientset() (kubernetes.Interface, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	if c.clientset == nil {
@@ -1638,7 +1639,7 @@ func (c *Client) StreamPodLogs(ctx context.Context, namespace, podName, containe
 	return nil
 }
 
-func (c *Client) getClientForContext(contextName string) (*kubernetes.Clientset, error) {
+func (c *Client) getClientForContext(contextName string) (kubernetes.Interface, error) {
 	c.mu.RLock()
 	if contextName == "" || contextName == c.currentContext {
 		defer c.mu.RUnlock()
@@ -4292,8 +4293,7 @@ func (c *Client) GetPodMetricsHistoryWithResolution(contextName string, info *Pr
 			if len(point) >= 2 {
 				ts, _ := point[0].(float64)
 				valStr, _ := point[1].(string)
-				var val float64
-				fmt.Sscanf(valStr, "%f", &val)
+				val, _ := strconv.ParseFloat(valStr, 64)
 				containers[containerName].CPU = append(containers[containerName].CPU, MetricsDataPoint{
 					Timestamp: int64(ts) * 1000, // Convert to milliseconds
 					Value:     val,
@@ -4321,8 +4321,7 @@ func (c *Client) GetPodMetricsHistoryWithResolution(contextName string, info *Pr
 			if len(point) >= 2 {
 				ts, _ := point[0].(float64)
 				valStr, _ := point[1].(string)
-				var val float64
-				fmt.Sscanf(valStr, "%f", &val)
+				val, _ := strconv.ParseFloat(valStr, 64)
 				containers[containerName].Memory = append(containers[containerName].Memory, MetricsDataPoint{
 					Timestamp: int64(ts) * 1000, // Convert to milliseconds
 					Value:     val,
@@ -4609,8 +4608,7 @@ func (c *Client) queryRangeToDataPoints(contextName string, info *PrometheusInfo
 			if len(point) >= 2 {
 				ts, _ := point[0].(float64)
 				valStr, _ := point[1].(string)
-				var val float64
-				fmt.Sscanf(valStr, "%f", &val)
+				val, _ := strconv.ParseFloat(valStr, 64)
 				points = append(points, MetricsDataPoint{
 					Timestamp: int64(ts) * 1000, // Convert to milliseconds
 					Value:     val,
@@ -4764,7 +4762,7 @@ func (c *Client) GetNodeMetricsHistory(contextName string, info *PrometheusInfo,
 }
 
 // getClientsetForContext gets a clientset for a specific context
-func (c *Client) getClientsetForContext(contextName string) (*kubernetes.Clientset, error) {
+func (c *Client) getClientsetForContext(contextName string) (kubernetes.Interface, error) {
 	c.mu.RLock()
 	currentCtx := c.currentContext
 	cs := c.clientset

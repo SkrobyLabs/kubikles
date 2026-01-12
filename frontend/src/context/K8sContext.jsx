@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { ListContexts, GetCurrentContext, SwitchContext, ListNamespaces, StartPortForwardsWithMode } from '../../wailsjs/go/main/App';
 import Logger from '../utils/Logger';
 
@@ -76,7 +76,7 @@ export const K8sProvider = ({ children }) => {
         localStorage.setItem(`kubikles_state_${ctx}`, JSON.stringify(state));
     };
 
-    const fetchContexts = async () => {
+    const fetchContexts = useCallback(async () => {
         try {
             Logger.debug("Fetching contexts...");
             const list = await ListContexts();
@@ -122,9 +122,9 @@ export const K8sProvider = ({ children }) => {
         } catch (err) {
             Logger.error("Failed to fetch contexts", err);
         }
-    };
+    }, []);
 
-    const fetchNamespaces = async () => {
+    const fetchNamespaces = useCallback(async () => {
         if (!currentContext) return;
         try {
             Logger.debug("Fetching namespaces...", { context: currentContext });
@@ -138,9 +138,9 @@ export const K8sProvider = ({ children }) => {
         } catch (err) {
             Logger.error("Failed to fetch namespaces", err);
         }
-    };
+    }, [currentContext]);
 
-    const switchContext = async (newContext) => {
+    const switchContext = useCallback(async (newContext) => {
         try {
             Logger.info("Switching context...", { from: currentContext, to: newContext });
 
@@ -170,7 +170,7 @@ export const K8sProvider = ({ children }) => {
             Logger.error("Failed to switch context", err);
             setIsLoadingNamespaces(false);
         }
-    };
+    }, [currentContext]);
 
     // Initial Load
     useEffect(() => {
@@ -251,12 +251,12 @@ export const K8sProvider = ({ children }) => {
         setWatcherStatus({});
     }, [currentContext]);
 
-    const triggerRefresh = () => {
+    const triggerRefresh = useCallback(() => {
         setLastRefresh(Date.now());
         Logger.debug("Triggered resource refresh");
-    };
+    }, []);
 
-    const value = {
+    const value = useMemo(() => ({
         contexts,
         currentContext,
         namespaces,
@@ -270,7 +270,19 @@ export const K8sProvider = ({ children }) => {
         lastRefresh,
         triggerRefresh,
         watcherStatus
-    };
+    }), [
+        contexts,
+        currentContext,
+        namespaces,
+        currentNamespace,
+        selectedNamespaces,
+        switchContext,
+        fetchContexts,
+        fetchNamespaces,
+        lastRefresh,
+        triggerRefresh,
+        watcherStatus
+    ]);
 
     return (
         <K8sContext.Provider value={value}>

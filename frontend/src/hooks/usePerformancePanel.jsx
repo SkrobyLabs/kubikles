@@ -1,0 +1,124 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useUI } from '../context/UIContext';
+import PerformancePanel from '../components/shared/PerformancePanel';
+import { GetPerformanceMetrics } from '../../wailsjs/go/main/App';
+
+export const usePerformancePanel = () => {
+    const [backendMetrics, setBackendMetrics] = useState(null);
+    const [metricsHistory, setMetricsHistory] = useState([]);
+    const [isPolling, setIsPolling] = useState(false);
+    const pollIntervalRef = useRef(null);
+    const { openTab, bottomTabs, setBottomTabs } = useUI();
+
+    // Fetch metrics from backend
+    const fetchMetrics = useCallback(async () => {
+        try {
+            const metrics = await GetPerformanceMetrics();
+            setBackendMetrics(metrics);
+
+            // Keep history for charts (last 60 data points = ~90 seconds at 1.5s interval)
+            setMetricsHistory(prev => {
+                const newHistory = [...prev, metrics];
+                if (newHistory.length > 60) {
+                    return newHistory.slice(-60);
+                }
+                return newHistory;
+            });
+        } catch (err) {
+            console.error('Failed to fetch performance metrics:', err);
+        }
+    }, []);
+
+    // Start polling
+    const startPolling = useCallback(() => {
+        if (pollIntervalRef.current) return;
+        setIsPolling(true);
+        fetchMetrics(); // Immediate first fetch
+        pollIntervalRef.current = setInterval(fetchMetrics, 1500); // 1.5 second interval
+    }, [fetchMetrics]);
+
+    // Stop polling
+    const stopPolling = useCallback(() => {
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+        }
+        setIsPolling(false);
+    }, []);
+
+    // Toggle polling
+    const togglePolling = useCallback(() => {
+        if (isPolling) {
+            stopPolling();
+        } else {
+            startPolling();
+        }
+    }, [isPolling, startPolling, stopPolling]);
+
+    // Update tab content when metrics change
+    useEffect(() => {
+        setBottomTabs(prev => prev.map(tab => {
+            if (tab.id === 'performance-panel') {
+                return {
+                    ...tab,
+                    content: (
+                        <PerformancePanel
+                            backendMetrics={backendMetrics}
+                            metricsHistory={metricsHistory}
+                            isPolling={isPolling}
+                            onTogglePolling={togglePolling}
+                        />
+                    )
+                };
+            }
+            return tab;
+        }));
+    }, [backendMetrics, metricsHistory, isPolling, setBottomTabs, togglePolling]);
+
+    // Open performance panel
+    const openPerformancePanel = useCallback(() => {
+        const tabId = 'performance-panel';
+        const existingTab = bottomTabs.find(t => t.id === tabId);
+
+        if (!existingTab) {
+            startPolling();
+            openTab({
+                id: tabId,
+                title: 'Performance',
+                context: null, // Context-independent
+                content: (
+                    <PerformancePanel
+                        backendMetrics={backendMetrics}
+                        metricsHistory={metricsHistory}
+                        isPolling={isPolling}
+                        onTogglePolling={togglePolling}
+                    />
+                )
+            });
+        } else {
+            // If it exists, just set it as active and ensure polling is on
+            if (!isPolling) {
+                startPolling();
+            }
+            openTab(existingTab);
+        }
+    }, [bottomTabs, openTab, backendMetrics, metricsHistory, isPolling, startPolling, togglePolling]);
+
+    // Stop polling when tab is closed
+    useEffect(() => {
+        const hasTab = bottomTabs.some(t => t.id === 'performance-panel');
+        if (!hasTab && isPolling) {
+            stopPolling();
+        }
+    }, [bottomTabs, isPolling, stopPolling]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => stopPolling();
+    }, [stopPolling]);
+
+    return {
+        openPerformancePanel,
+        isPolling
+    };
+};

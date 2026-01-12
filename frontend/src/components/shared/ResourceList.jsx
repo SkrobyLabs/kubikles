@@ -7,8 +7,8 @@ import BulkActionBar from './BulkActionBar';
 import { createFilter, getFieldsMetadata } from '../../utils/search';
 import { useUI } from '../../context/UIContext';
 
-// Tri-state checkbox component for header
-const TriStateCheckbox = ({ state, onChange, disabled = false }) => {
+// Tri-state checkbox component for header (memoized to prevent re-renders)
+const TriStateCheckbox = React.memo(({ state, onChange, disabled = false }) => {
     const handleClick = (e) => {
         e.stopPropagation();
         if (!disabled) onChange();
@@ -30,10 +30,10 @@ const TriStateCheckbox = ({ state, onChange, disabled = false }) => {
             {state === 'some' && <MinusIcon className="w-3 h-3 text-primary" />}
         </button>
     );
-};
+});
 
-// Row checkbox component
-const RowCheckbox = ({ checked, onChange, disabled = false }) => {
+// Row checkbox component (memoized to prevent re-renders on scroll)
+const RowCheckbox = React.memo(({ checked, onChange, disabled = false }) => {
     const handleClick = (e) => {
         e.stopPropagation();
         if (!disabled) onChange(e);
@@ -52,7 +52,7 @@ const RowCheckbox = ({ checked, onChange, disabled = false }) => {
             {checked && <CheckIcon className="w-3 h-3 text-white" />}
         </button>
     );
-};
+});
 
 // Default column widths for common columns
 // Note: 'name' and 'namespace' are intentionally excluded to fill remaining space
@@ -113,8 +113,15 @@ export default function ResourceList({
 }) {
     const { pendingSearch, consumePendingSearch } = useUI();
     const [sortConfig, setSortConfig] = useState(initialSort || { key: null, direction: 'asc' });
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchInput, setSearchInput] = useState(''); // Immediate input value
+    const [searchTerm, setSearchTerm] = useState('');   // Debounced value for filtering
     const [hiddenColumns, setHiddenColumns] = useState(new Set());
+
+    // Debounce search input (150ms) to avoid filtering on every keystroke
+    useEffect(() => {
+        const timer = setTimeout(() => setSearchTerm(searchInput), 150);
+        return () => clearTimeout(timer);
+    }, [searchInput]);
     const [showColumnMenu, setShowColumnMenu] = useState(false);
     const [showSearchHelp, setShowSearchHelp] = useState(false);
     const columnMenuRef = useRef(null);
@@ -197,7 +204,8 @@ export default function ResourceList({
         if (pendingSearch) {
             const search = consumePendingSearch();
             if (search) {
-                setSearchTerm(search);
+                setSearchInput(search);
+                setSearchTerm(search); // Skip debounce for programmatic search
             }
         }
     }, [pendingSearch, consumePendingSearch]);
@@ -345,6 +353,41 @@ export default function ResourceList({
         selection.deselectAll();
     }, [selection]);
 
+    // Memoize virtuoso components to prevent recreation on every render
+    const virtuosoComponents = useMemo(() => ({
+        Table: ({ style, ...props }) => (
+            <table
+                {...props}
+                ref={tableRef}
+                className="text-left border-collapse min-w-full"
+                style={style}
+            />
+        ),
+        TableHead: forwardRef((props, ref) => (
+            <thead {...props} ref={ref} className="bg-surface sticky top-0 z-10" />
+        )),
+        TableBody: forwardRef((props, ref) => (
+            <tbody {...props} ref={ref} className="divide-y divide-border" />
+        )),
+        TableRow: ({ item, ...props }) => {
+            const isHighlighted = highlightedUid === item?.metadata?.uid;
+            const isSelected = selectable && selection?.isSelected(item?.metadata?.uid);
+            return (
+                <tr
+                    {...props}
+                    className={`transition-colors ${
+                        isSelected
+                            ? 'bg-primary/10 hover:bg-primary/15'
+                            : isHighlighted
+                                ? 'bg-white/5'
+                                : 'hover:bg-white/5'
+                    } ${onRowClick ? 'cursor-pointer' : ''}`}
+                    onClick={() => onRowClick && onRowClick(item)}
+                />
+            );
+        }
+    }), [highlightedUid, selectable, selection, onRowClick]);
+
     return (
         <div className="flex flex-col h-full bg-background relative">
             {/* Header */}
@@ -360,8 +403,8 @@ export default function ResourceList({
                                 type="text"
                                 placeholder={resourceType ? `Search... (name:"x" status:Running)` : `Search ${title}...`}
                                 className="w-full bg-background border border-border rounded-md pl-9 pr-4 py-1.5 text-sm text-text focus:outline-none focus:border-primary transition-colors"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
                                 autoComplete="off"
                                 autoCorrect="off"
                                 spellCheck="false"
@@ -442,39 +485,7 @@ export default function ResourceList({
                         style={{ height: '100%' }}
                         data={sortedData}
                         overscan={50}
-                        components={{
-                            Table: ({ style, ...props }) => (
-                                <table
-                                    {...props}
-                                    ref={tableRef}
-                                    className="text-left border-collapse min-w-full"
-                                    style={style}
-                                />
-                            ),
-                            TableHead: forwardRef((props, ref) => (
-                                <thead {...props} ref={ref} className="bg-surface sticky top-0 z-10" />
-                            )),
-                            TableBody: forwardRef((props, ref) => (
-                                <tbody {...props} ref={ref} className="divide-y divide-border" />
-                            )),
-                            TableRow: ({ item, ...props }) => {
-                                const isHighlighted = highlightedUid === item?.metadata?.uid;
-                                const isSelected = selectable && selection?.isSelected(item?.metadata?.uid);
-                                return (
-                                    <tr
-                                        {...props}
-                                        className={`transition-colors ${
-                                            isSelected
-                                                ? 'bg-primary/10 hover:bg-primary/15'
-                                                : isHighlighted
-                                                    ? 'bg-white/5'
-                                                    : 'hover:bg-white/5'
-                                        } ${onRowClick ? 'cursor-pointer' : ''}`}
-                                        onClick={() => onRowClick && onRowClick(item)}
-                                    />
-                                );
-                            }
-                        }}
+                        components={virtuosoComponents}
                         fixedHeaderContent={() => (
                             <tr>
                                 {visibleColumns.map((col, colIndex) => {

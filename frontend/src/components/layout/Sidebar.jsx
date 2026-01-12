@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
     CubeIcon,
     ServerIcon,
@@ -36,6 +37,7 @@ import {
     BoltIcon
 } from '@heroicons/react/24/outline';
 import { useConfig } from '../../context/ConfigContext';
+import { usePerformancePanel } from '../../hooks/usePerformancePanel.jsx';
 import SearchSelect from '../shared/SearchSelect';
 import Logger from '../../utils/Logger';
 import { ListCRDs } from '../../../wailsjs/go/main/App';
@@ -49,6 +51,27 @@ export default function Sidebar({
     onToggleDebug
 }) {
     const { openConfigEditor } = useConfig();
+    const { openPerformancePanel } = usePerformancePanel();
+
+    // Settings menu state
+    const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+    const settingsButtonRef = useRef(null);
+    const settingsMenuRef = useRef(null);
+
+    // Close settings menu on click outside
+    useEffect(() => {
+        if (!settingsMenuOpen) return;
+
+        const handleClickOutside = (event) => {
+            if (settingsButtonRef.current && !settingsButtonRef.current.contains(event.target) &&
+                settingsMenuRef.current && !settingsMenuRef.current.contains(event.target)) {
+                setSettingsMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [settingsMenuOpen]);
 
     // Fetch CRDs for dynamic menu (lazy loaded)
     const [crds, setCRDs] = useState([]);
@@ -440,15 +463,55 @@ export default function Sidebar({
 
             {/* Footer */}
             <div className="p-4 border-t border-border shrink-0">
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-2 relative">
                     <span className="text-xs text-gray-500">v0.1.0</span>
                     <button
-                        onClick={() => openConfigEditor()}
-                        className="p-1 rounded text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
+                        ref={settingsButtonRef}
+                        onClick={() => setSettingsMenuOpen(!settingsMenuOpen)}
+                        className={`p-1 rounded transition-colors ${
+                            settingsMenuOpen
+                                ? 'text-white bg-white/10'
+                                : 'text-gray-500 hover:text-white hover:bg-white/10'
+                        }`}
                         title="Settings"
                     >
                         <Cog6ToothIcon className="w-4 h-4" />
                     </button>
+
+                    {/* Settings Dropdown Menu */}
+                    {settingsMenuOpen && createPortal(
+                        <div
+                            ref={settingsMenuRef}
+                            className="fixed w-44 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg py-1 z-[100]"
+                            style={{
+                                bottom: '52px',
+                                left: settingsButtonRef.current?.getBoundingClientRect().left - 60 || 0
+                            }}
+                        >
+                            <button
+                                onClick={() => {
+                                    setSettingsMenuOpen(false);
+                                    openConfigEditor();
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+                            >
+                                <Cog6ToothIcon className="h-4 w-4" />
+                                Settings
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setSettingsMenuOpen(false);
+                                    openPerformancePanel();
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+                            >
+                                <ChartBarIcon className="h-4 w-4" />
+                                <span className="flex-1">Performance</span>
+                                <span className="text-xs text-gray-500">Opt+P</span>
+                            </button>
+                        </div>,
+                        document.body
+                    )}
                 </div>
             </div>
         </div>
