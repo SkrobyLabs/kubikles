@@ -7,6 +7,7 @@ import { useMutatingWebhookConfigurations } from '../../../hooks/resources';
 import { useMutatingWebhookActions } from './useMutatingWebhookActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteMutatingWebhookConfiguration, GetMutatingWebhookConfigurationYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -14,7 +15,7 @@ import Logger from '../../../utils/Logger';
 
 export default function MutatingWebhookList({ isVisible }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const { mutatingWebhookConfigurations, loading } = useMutatingWebhookConfigurations(currentContext, isVisible);
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = useMutatingWebhookActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });

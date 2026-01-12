@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	goruntime "runtime"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -42,6 +44,8 @@ type App struct {
 	watcherManager        *ResourceWatcherManager
 	portForwardManager    *PortForwardManager
 	ingressForwardManager *IngressForwardManager
+	eventCoalescer        *EventCoalescer
+	logCoalescer          *LogCoalescer
 	// Log streaming
 	logStreams      map[string]context.CancelFunc
 	logStreamsMutex sync.Mutex
@@ -200,7 +204,7 @@ func NewResourceWatcherManager(ctx context.Context, app *App) *ResourceWatcherMa
 // If a watcher already exists, it increments the refCount and cancels any pending cleanup
 // If no watcher exists, it creates a new one and starts the watch loop
 func (m *ResourceWatcherManager) Subscribe(resourceType, namespace string) string {
-	key := fmt.Sprintf("%s:%s", resourceType, namespace)
+	key := resourceType + ":" + namespace
 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -244,7 +248,7 @@ func (m *ResourceWatcherManager) Subscribe(resourceType, namespace string) strin
 
 // SubscribeCRD subscribes to a CRD watcher using GVR, returning the watcher key
 func (m *ResourceWatcherManager) SubscribeCRD(group, version, resource, namespace string) string {
-	key := fmt.Sprintf("crd:%s/%s/%s:%s", group, version, resource, namespace)
+	key := "crd:" + group + "/" + version + "/" + resource + ":" + namespace
 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -394,6 +398,8 @@ func (a *App) startup(ctx context.Context) {
 	a.watcherManager = NewResourceWatcherManager(ctx, a)
 	a.portForwardManager = NewPortForwardManager(a)
 	a.ingressForwardManager = NewIngressForwardManager(a)
+	a.eventCoalescer = NewEventCoalescer(a, 16*time.Millisecond) // 60fps frame batching
+	a.logCoalescer = NewLogCoalescer(a, 16*time.Millisecond)     // 60fps log batching
 	a.loadPrometheusConfigs()
 	// Initialize event tracking
 	a.eventStats = make(map[string]*WatcherEventStats)
@@ -406,6 +412,11 @@ func (a *App) startup(ctx context.Context) {
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
 	a.LogDebug("App shutdown initiated")
+
+	// Flush any pending coalesced events
+	if a.eventCoalescer != nil {
+		a.eventCoalescer.FlushNow()
+	}
 
 	// Clean up ingress forwarding (removes hosts file entries)
 	if a.ingressForwardManager != nil {
@@ -468,11 +479,12 @@ func (a *App) GetPerformanceMetrics() PerformanceMetrics {
 	a.perfMutex.Unlock()
 
 	// Get watcher stats
-	watcherKeys := []string{}
+	var watcherKeys []string
 	activeWatchers := 0
 	if a.watcherManager != nil {
 		a.watcherManager.mutex.RLock()
 		activeWatchers = len(a.watcherManager.watchers)
+		watcherKeys = make([]string, 0, activeWatchers)
 		for key := range a.watcherManager.watchers {
 			watcherKeys = append(watcherKeys, key)
 		}
@@ -1055,8 +1067,16 @@ func (a *App) StartLogStream(namespace, podName, containerName string, timestamp
 		return "", fmt.Errorf("k8s client not initialized")
 	}
 
-	// Generate a unique stream ID
-	streamID := fmt.Sprintf("%s/%s/%s-%d", namespace, podName, containerName, time.Now().UnixNano())
+	// Generate a unique stream ID (avoid fmt.Sprintf for reduced allocations)
+	var sb strings.Builder
+	sb.WriteString(namespace)
+	sb.WriteByte('/')
+	sb.WriteString(podName)
+	sb.WriteByte('/')
+	sb.WriteString(containerName)
+	sb.WriteByte('-')
+	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
+	streamID := sb.String()
 	a.LogDebug("StartLogStream: streamID=%s", streamID)
 
 	// Create a cancellable context for this stream
@@ -1075,26 +1095,18 @@ func (a *App) StartLogStream(namespace, podName, containerName string, timestamp
 			delete(a.logStreams, streamID)
 			a.logStreamsMutex.Unlock()
 
-			// Emit done event
-			runtime.EventsEmit(a.ctx, "log-stream", LogStreamEvent{
-				StreamID: streamID,
-				Done:     true,
-			})
+			// Emit done event (flushes any pending lines first)
+			a.logCoalescer.EmitDone(streamID)
 		}()
 
 		err := a.k8sClient.StreamPodLogs(ctx, namespace, podName, containerName, timestamps, 200, func(line string) {
-			runtime.EventsEmit(a.ctx, "log-stream", LogStreamEvent{
-				StreamID: streamID,
-				Line:     line,
-			})
+			// Use log coalescer for 60fps batching - crucial for busy pods
+			a.logCoalescer.EmitLine(streamID, line)
 		})
 
 		if err != nil && err != context.Canceled {
 			a.LogDebug("Log stream error: %v", err)
-			runtime.EventsEmit(a.ctx, "log-stream", LogStreamEvent{
-				StreamID: streamID,
-				Error:    err.Error(),
-			})
+			a.logCoalescer.EmitError(streamID, err.Error())
 		}
 	}()
 
@@ -1323,7 +1335,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 				// Only emit ADDED, MODIFIED, DELETED events
 				if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
 					// Track event for performance metrics
-					watcherKey := fmt.Sprintf("%s:%s", resourceType, namespace)
+					watcherKey := resourceType + ":" + namespace
 					a.recordWatcherEvent(watcherKey, string(event.Type))
 
 					// Convert to unstructured map
@@ -1341,7 +1353,8 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 						}
 					}
 
-					runtime.EventsEmit(a.ctx, "resource-event", ResourceEvent{
+					// Use event coalescer for batched emission (60fps frame batching)
+					a.eventCoalescer.Emit(ResourceEvent{
 						Type:         string(event.Type),
 						ResourceType: resourceType,
 						Namespace:    resourceNs,
@@ -1448,7 +1461,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 				// Only emit ADDED, MODIFIED, DELETED events
 				if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
 					// Track event for performance metrics
-					watcherKey := fmt.Sprintf("%s:%s", crdResourceType, namespace)
+					watcherKey := crdResourceType + ":" + namespace
 					a.recordWatcherEvent(watcherKey, string(event.Type))
 
 					// Convert to unstructured map
@@ -1466,7 +1479,8 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 						}
 					}
 
-					runtime.EventsEmit(a.ctx, "resource-event", ResourceEvent{
+					// Use event coalescer for batched emission (60fps frame batching)
+					a.eventCoalescer.Emit(ResourceEvent{
 						Type:         string(event.Type),
 						ResourceType: crdResourceType,
 						Namespace:    resourceNs,

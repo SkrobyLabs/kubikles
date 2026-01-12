@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useUI } from '../context/UIContext';
+import { useConfig } from '../context/ConfigContext';
 import PerformancePanel from '../components/shared/PerformancePanel';
 import { GetPerformanceMetrics } from '../../wailsjs/go/main/App';
 
@@ -9,6 +10,8 @@ export const usePerformancePanel = () => {
     const [isPolling, setIsPolling] = useState(false);
     const pollIntervalRef = useRef(null);
     const { openTab, bottomTabs, setBottomTabs } = useUI();
+    const { getConfig } = useConfig();
+    const pollInterval = getConfig('performance.pollIntervalMs') ?? 1500;
 
     // Fetch metrics from backend
     const fetchMetrics = useCallback(async () => {
@@ -34,8 +37,8 @@ export const usePerformancePanel = () => {
         if (pollIntervalRef.current) return;
         setIsPolling(true);
         fetchMetrics(); // Immediate first fetch
-        pollIntervalRef.current = setInterval(fetchMetrics, 1500); // 1.5 second interval
-    }, [fetchMetrics]);
+        pollIntervalRef.current = setInterval(fetchMetrics, pollInterval);
+    }, [fetchMetrics, pollInterval]);
 
     // Stop polling
     const stopPolling = useCallback(() => {

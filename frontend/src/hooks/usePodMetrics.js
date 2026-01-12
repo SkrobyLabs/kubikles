@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GetPodMetrics } from '../../wailsjs/go/main/App';
 import { useK8s } from '../context/K8sContext';
-
-const POLL_INTERVAL = 30000; // 30 seconds
+import { useConfig } from '../context/ConfigContext';
 
 export const usePodMetrics = (isVisible) => {
     const [metrics, setMetrics] = useState({});
     const [available, setAvailable] = useState(true);
     const [loading, setLoading] = useState(false);
     const { currentContext } = useK8s();
+    const { getConfig } = useConfig();
     const intervalRef = useRef(null);
+    const pollInterval = getConfig('metrics.pollIntervalMs') ?? 30000;
 
     const fetchMetrics = useCallback(async () => {
         if (!currentContext || !isVisible) return;
@@ -84,7 +85,7 @@ export const usePodMetrics = (isVisible) => {
         fetchMetrics();
 
         // Set up polling
-        intervalRef.current = setInterval(fetchMetrics, POLL_INTERVAL);
+        intervalRef.current = setInterval(fetchMetrics, pollInterval);
 
         return () => {
             if (intervalRef.current) {
@@ -92,7 +93,7 @@ export const usePodMetrics = (isVisible) => {
                 intervalRef.current = null;
             }
         };
-    }, [fetchMetrics, isVisible]);
+    }, [fetchMetrics, isVisible, pollInterval]);
 
     // Reset on context change
     useEffect(() => {

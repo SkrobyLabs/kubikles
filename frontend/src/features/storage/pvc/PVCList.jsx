@@ -3,7 +3,7 @@ import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import { usePVCs } from '../../../hooks/resources';
 import { useK8s } from '../../../context/K8sContext';
-import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeletePVC, GetPVCYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -53,7 +53,7 @@ const renderAccessModes = (modes) => {
 
 export default function PVCList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const { pvcs, loading } = usePVCs(currentContext, selectedNamespaces, isVisible);
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = usePVCActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });

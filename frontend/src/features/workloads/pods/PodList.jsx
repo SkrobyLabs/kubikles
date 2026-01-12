@@ -9,6 +9,7 @@ import { usePodMetrics } from '../../../hooks/usePodMetrics';
 import { usePodActions } from './usePodActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeletePod, GetPodYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -17,7 +18,8 @@ import Logger from '../../../utils/Logger';
 
 export default function PodList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId, navigateWithSearch } = useUI();
+    const { navigateWithSearch } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 

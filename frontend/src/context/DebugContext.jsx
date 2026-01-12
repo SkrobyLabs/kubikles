@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 const DebugContext = createContext();
 
@@ -25,12 +25,12 @@ export const DebugProvider = ({ children }) => {
         setIsDebugMode(false);
     }, []);
 
-    const value = {
+    const value = useMemo(() => ({
         isDebugMode,
         toggleDebugMode,
         enableDebugMode,
         disableDebugMode
-    };
+    }), [isDebugMode, toggleDebugMode, enableDebugMode, disableDebugMode]);
 
     return (
         <DebugContext.Provider value={value}>

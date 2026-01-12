@@ -86,7 +86,10 @@ func buildEntriesContent(entries []Entry) string {
 	sb.WriteString(BeginMarker)
 	sb.WriteString("\n")
 	for _, e := range entries {
-		sb.WriteString(fmt.Sprintf("%s %s\n", e.IP, e.Hostname))
+		sb.WriteString(e.IP)
+		sb.WriteByte(' ')
+		sb.WriteString(e.Hostname)
+		sb.WriteByte('\n')
 	}
 	sb.WriteString(EndMarker)
 	sb.WriteString("\n")

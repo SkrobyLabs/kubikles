@@ -31,7 +31,7 @@ const Terminal = ({ url, onClose }) => {
                 foreground: '#ffffff',
             },
             fontSize: 14,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            fontFamily: 'Menlo, Monaco, "Ubuntu Mono", "DejaVu Sans Mono", "Liberation Mono", "Courier New", monospace',
         });
 
         const fitAddon = new FitAddon();

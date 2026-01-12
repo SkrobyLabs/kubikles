@@ -18,7 +18,8 @@ const formatTime = (timestamp, duration) => {
 // Node resource chart with toggleable lines:
 // - Usage (blue), Allocatable (gray dashed), Uncommitted (green) visible by default
 // - Committed (orange) toggleable, off by default
-const NodeResourceChart = ({ data, color, label, formatValue, duration }) => {
+// Memoized to prevent re-renders when parent updates with same props
+const NodeResourceChart = React.memo(({ data, color, label, formatValue, duration }) => {
     const containerRef = useRef(null);
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -292,10 +293,11 @@ const NodeResourceChart = ({ data, color, label, formatValue, duration }) => {
             </div>
         </div>
     );
-};
+});
 
 // Pod count chart showing current vs capacity
-const PodCountChart = ({ data, duration }) => {
+// Memoized to prevent re-renders when parent updates with same props
+const PodCountChart = React.memo(({ data, duration }) => {
     const containerRef = useRef(null);
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -422,10 +424,11 @@ const PodCountChart = ({ data, duration }) => {
             </div>
         </div>
     );
-};
+});
 
 // Network I/O chart
-const NetworkChart = ({ data, duration }) => {
+// Memoized to prevent re-renders when parent updates with same props
+const NetworkChart = React.memo(({ data, duration }) => {
     const containerRef = useRef(null);
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -559,7 +562,7 @@ const NetworkChart = ({ data, duration }) => {
             </div>
         </div>
     );
-};
+});
 
 const DURATIONS = [
     { value: '1h', label: '1h' },

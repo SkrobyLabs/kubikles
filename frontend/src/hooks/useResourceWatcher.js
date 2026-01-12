@@ -62,19 +62,31 @@ export const useResourceWatcher = (resourceType, namespaces, onEvent, enabled = 
 
         subscribe();
 
-        // Event listener (filters by resourceType)
+        // Event listener (filters by resourceType, checks mount state to prevent updates after cleanup)
         const handleEvent = (event) => {
-            if (event.resourceType === resourceType) {
+            if (isMounted && event.resourceType === resourceType) {
                 onEventRef.current(event);
             }
         };
 
+        // Batch event listener (for coalesced events from 60fps frame batching)
+        const handleBatchEvents = (events) => {
+            if (!isMounted || !Array.isArray(events)) return;
+            for (const event of events) {
+                if (event.resourceType === resourceType) {
+                    onEventRef.current(event);
+                }
+            }
+        };
+
         window.runtime.EventsOn("resource-event", handleEvent);
+        window.runtime.EventsOn("resource-events-batch", handleBatchEvents);
 
         // Cleanup: unsubscribe all watchers
         return () => {
             isMounted = false;
             window.runtime.EventsOff("resource-event", handleEvent);
+            window.runtime.EventsOff("resource-events-batch", handleBatchEvents);
 
             // Unsubscribe all keys that were subscribed during this effect
             subscribedKeys.forEach(key => {
@@ -138,19 +150,31 @@ export const useCRDWatcher = (group, version, resource, namespaces, onEvent, ena
 
         subscribe();
 
-        // Event listener (filters by CRD resourceType)
+        // Event listener (filters by CRD resourceType, checks mount state to prevent updates after cleanup)
         const handleEvent = (event) => {
-            if (event.resourceType === crdResourceType) {
+            if (isMounted && event.resourceType === crdResourceType) {
                 onEventRef.current(event);
             }
         };
 
+        // Batch event listener (for coalesced events from 60fps frame batching)
+        const handleBatchEvents = (events) => {
+            if (!isMounted || !Array.isArray(events)) return;
+            for (const event of events) {
+                if (event.resourceType === crdResourceType) {
+                    onEventRef.current(event);
+                }
+            }
+        };
+
         window.runtime.EventsOn("resource-event", handleEvent);
+        window.runtime.EventsOn("resource-events-batch", handleBatchEvents);
 
         // Cleanup
         return () => {
             isMounted = false;
             window.runtime.EventsOff("resource-event", handleEvent);
+            window.runtime.EventsOff("resource-events-batch", handleBatchEvents);
 
             subscribedKeys.forEach(key => {
                 UnsubscribeWatcher(key).catch(err => {

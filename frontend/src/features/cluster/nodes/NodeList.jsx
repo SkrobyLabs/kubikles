@@ -1,10 +1,11 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, memo } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
 import ResourceBar from '../../../components/shared/ResourceBar';
 import { useNodes } from '../../../hooks/resources';
 import { useNodeMetrics } from '../../../hooks/useNodeMetrics';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { formatAge } from '../../../utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import NodeActionsMenu from './NodeActionsMenu';
@@ -48,7 +49,7 @@ const getConditionsSummary = (node) => {
 };
 
 // Conditions cell component
-const ConditionsCell = ({ node }) => {
+const ConditionsCell = memo(function ConditionsCell({ node }) {
     const { isReady, issues } = getConditionsSummary(node);
 
     if (issues.length === 0) {
@@ -71,10 +72,10 @@ const ConditionsCell = ({ node }) => {
             ))}
         </div>
     );
-};
+});
 
 // Taints cell component with tooltip
-const TaintsCell = ({ node }) => {
+const TaintsCell = memo(function TaintsCell({ node }) {
     const taints = node.spec?.taints || [];
     const count = taints.length;
 
@@ -96,11 +97,11 @@ const TaintsCell = ({ node }) => {
             </div>
         </span>
     );
-};
+});
 
 export default function NodeList({ isVisible }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
     const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {

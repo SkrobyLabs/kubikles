@@ -45,6 +45,9 @@ type resourceCache struct {
 	ingresses    map[string][]networkingv1.Ingress // namespace -> ingresses
 	replicaSets  map[string][]appsv1.ReplicaSet    // namespace -> replicasets
 	jobs         map[string][]batchv1.Job          // namespace -> jobs
+	// Name-indexed maps for O(1) lookups by name
+	replicaSetsByName map[string]map[string]*appsv1.ReplicaSet // namespace -> name -> replicaset
+	jobsByName        map[string]map[string]*batchv1.Job       // namespace -> name -> job
 	// Cluster-wide caches for cluster-scoped resource queries
 	allPods            []v1.Pod
 	allPodsCached      bool
@@ -56,13 +59,15 @@ type resourceCache struct {
 
 func newResourceCache(ctx context.Context, cs kubernetes.Interface) *resourceCache {
 	return &resourceCache{
-		pods:        make(map[string][]v1.Pod),
-		services:    make(map[string][]v1.Service),
-		ingresses:   make(map[string][]networkingv1.Ingress),
-		replicaSets: make(map[string][]appsv1.ReplicaSet),
-		jobs:        make(map[string][]batchv1.Job),
-		ctx:         ctx,
-		cs:          cs,
+		pods:              make(map[string][]v1.Pod),
+		services:          make(map[string][]v1.Service),
+		ingresses:         make(map[string][]networkingv1.Ingress),
+		replicaSets:       make(map[string][]appsv1.ReplicaSet),
+		jobs:              make(map[string][]batchv1.Job),
+		replicaSetsByName: make(map[string]map[string]*appsv1.ReplicaSet),
+		jobsByName:        make(map[string]map[string]*batchv1.Job),
+		ctx:               ctx,
+		cs:                cs,
 	}
 }
 
@@ -111,7 +116,27 @@ func (rc *resourceCache) getReplicaSets(namespace string) ([]appsv1.ReplicaSet, 
 		return nil, err
 	}
 	rc.replicaSets[namespace] = list.Items
+	// Build name-indexed map for O(1) lookups
+	nameMap := make(map[string]*appsv1.ReplicaSet, len(list.Items))
+	for i := range list.Items {
+		nameMap[list.Items[i].Name] = &list.Items[i]
+	}
+	rc.replicaSetsByName[namespace] = nameMap
 	return list.Items, nil
+}
+
+// getReplicaSetByName returns a ReplicaSet by name with O(1) lookup
+func (rc *resourceCache) getReplicaSetByName(namespace, name string) (*appsv1.ReplicaSet, error) {
+	// Ensure the cache is populated
+	if _, ok := rc.replicaSetsByName[namespace]; !ok {
+		if _, err := rc.getReplicaSets(namespace); err != nil {
+			return nil, err
+		}
+	}
+	if rs, ok := rc.replicaSetsByName[namespace][name]; ok {
+		return rs, nil
+	}
+	return nil, nil
 }
 
 func (rc *resourceCache) getJobs(namespace string) ([]batchv1.Job, error) {
@@ -123,7 +148,27 @@ func (rc *resourceCache) getJobs(namespace string) ([]batchv1.Job, error) {
 		return nil, err
 	}
 	rc.jobs[namespace] = list.Items
+	// Build name-indexed map for O(1) lookups
+	nameMap := make(map[string]*batchv1.Job, len(list.Items))
+	for i := range list.Items {
+		nameMap[list.Items[i].Name] = &list.Items[i]
+	}
+	rc.jobsByName[namespace] = nameMap
 	return list.Items, nil
+}
+
+// getJobByName returns a Job by name with O(1) lookup
+func (rc *resourceCache) getJobByName(namespace, name string) (*batchv1.Job, error) {
+	// Ensure the cache is populated
+	if _, ok := rc.jobsByName[namespace]; !ok {
+		if _, err := rc.getJobs(namespace); err != nil {
+			return nil, err
+		}
+	}
+	if job, ok := rc.jobsByName[namespace][name]; ok {
+		return job, nil
+	}
+	return nil, nil
 }
 
 // getAllPods returns all pods cluster-wide with caching
@@ -696,26 +741,14 @@ func (c *Client) resolveOwnerRefs(cs kubernetes.Interface, cache *resourceCache,
 		// Recursively resolve parent's owner refs
 		switch ref.Kind {
 		case "ReplicaSet":
-			// Use cache for ReplicaSet lookup
-			rsList, err := cache.getReplicaSets(namespace)
-			if err == nil {
-				for _, rs := range rsList {
-					if rs.Name == ref.Name {
-						c.resolveOwnerRefs(cs, cache, graph, nodeMap, ownerID, namespace, rs.OwnerReferences)
-						break
-					}
-				}
+			// Use O(1) name-indexed lookup
+			if rs, err := cache.getReplicaSetByName(namespace, ref.Name); err == nil && rs != nil {
+				c.resolveOwnerRefs(cs, cache, graph, nodeMap, ownerID, namespace, rs.OwnerReferences)
 			}
 		case "Job":
-			// Use cache for Job lookup
-			jobList, err := cache.getJobs(namespace)
-			if err == nil {
-				for _, job := range jobList {
-					if job.Name == ref.Name {
-						c.resolveOwnerRefs(cs, cache, graph, nodeMap, ownerID, namespace, job.OwnerReferences)
-						break
-					}
-				}
+			// Use O(1) name-indexed lookup
+			if job, err := cache.getJobByName(namespace, ref.Name); err == nil && job != nil {
+				c.resolveOwnerRefs(cs, cache, graph, nodeMap, ownerID, namespace, job.OwnerReferences)
 			}
 		}
 	}

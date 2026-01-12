@@ -6,7 +6,7 @@ import CSIDriverActionsMenu from './CSIDriverActionsMenu';
 import { useCSIDrivers } from '../../../hooks/resources';
 import { useCSIDriverActions } from './useCSIDriverActions';
 import { useK8s } from '../../../context/K8sContext';
-import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteCSIDriver, GetCSIDriverYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -21,7 +21,7 @@ const BooleanIcon = ({ value }) => {
 
 export default function CSIDriverList({ isVisible }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const { csiDrivers, loading } = useCSIDrivers(currentContext, isVisible);
     const { handleShowDetails, handleEditYaml, handleDelete } = useCSIDriverActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });

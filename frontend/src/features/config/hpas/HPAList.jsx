@@ -6,7 +6,7 @@ import HPAActionsMenu from './HPAActionsMenu';
 import { useHPAs } from '../../../hooks/resources';
 import { useHPAActions } from './useHPAActions';
 import { useK8s } from '../../../context/K8sContext';
-import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteHPA, GetHPAYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -14,7 +14,7 @@ import Logger from '../../../utils/Logger';
 
 export default function HPAList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const { hpas, loading } = useHPAs(currentContext, selectedNamespaces, isVisible);
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = useHPAActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });

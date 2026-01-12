@@ -14,7 +14,11 @@ const configDescriptions = {
     'logs.search.filterOnly': 'If true, show only matching lines by default',
     'logs.search.contextLinesBefore': 'Number of context lines to show before matches when filtering',
     'logs.search.contextLinesAfter': 'Number of context lines to show after matches when filtering',
-    'portForwards.autoStartMode': 'Auto-start mode: "all" (start all that were running), "favorites" (only favorites), "none" (disabled)'
+    'portForwards.autoStartMode': 'Auto-start mode: "all" (start all that were running), "favorites" (only favorites), "none" (disabled)',
+    'ui.searchDebounceMs': 'Debounce delay in milliseconds for resource list search',
+    'ui.copyFeedbackMs': 'How long "Copied!" feedback shows in milliseconds',
+    'metrics.pollIntervalMs': 'Poll interval in milliseconds for node/pod metrics (default: 30000)',
+    'performance.pollIntervalMs': 'Poll interval in milliseconds for performance panel (default: 1500)'
 };
 
 // Convert nested object to flat key=value format with comments
@@ -234,6 +238,52 @@ export default function ConfigEditor() {
                                     description: 'Auto-start mode: "all" (start all that were running), "favorites" (only favorites), "none" (disabled)',
                                     enum: ['all', 'favorites', 'none'],
                                     default: 'favorites'
+                                }
+                            }
+                        },
+                        ui: {
+                            type: 'object',
+                            description: 'UI timing settings',
+                            properties: {
+                                searchDebounceMs: {
+                                    type: 'number',
+                                    description: 'Debounce delay in milliseconds for resource list search',
+                                    default: 150,
+                                    minimum: 0,
+                                    maximum: 1000
+                                },
+                                copyFeedbackMs: {
+                                    type: 'number',
+                                    description: 'How long "Copied!" feedback shows in milliseconds',
+                                    default: 2000,
+                                    minimum: 500,
+                                    maximum: 5000
+                                }
+                            }
+                        },
+                        metrics: {
+                            type: 'object',
+                            description: 'Metrics polling settings',
+                            properties: {
+                                pollIntervalMs: {
+                                    type: 'number',
+                                    description: 'Poll interval in milliseconds for node/pod metrics',
+                                    default: 30000,
+                                    minimum: 5000,
+                                    maximum: 300000
+                                }
+                            }
+                        },
+                        performance: {
+                            type: 'object',
+                            description: 'Performance panel settings',
+                            properties: {
+                                pollIntervalMs: {
+                                    type: 'number',
+                                    description: 'Poll interval in milliseconds for performance panel',
+                                    default: 1500,
+                                    minimum: 500,
+                                    maximum: 10000
                                 }
                             }
                         }

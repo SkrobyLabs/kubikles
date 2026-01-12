@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import {
     XMarkIcon,
@@ -38,7 +38,7 @@ const typeStyles = {
     }
 };
 
-function Toast({ notification, onClose }) {
+const Toast = memo(function Toast({ notification, onClose }) {
     const [copied, setCopied] = useState(false);
     const { type = 'info', title, message } = notification;
     const styles = typeStyles[type] || typeStyles.info;
@@ -100,7 +100,7 @@ function Toast({ notification, onClose }) {
             </div>
         </div>
     );
-}
+});
 
 export default function ToastContainer() {
     const { notifications, removeNotification } = useNotification();

@@ -18,7 +18,6 @@ export const UIProvider = ({ children }) => {
     const [bottomTabs, setBottomTabs] = useState([]);
     const [activeTabId, setActiveTabId] = useState(null);
     const [panelHeight, setPanelHeight] = useState(40);
-    const [activeMenuId, setActiveMenuId] = useState(null);
     const [pendingSearch, setPendingSearch] = useState(null);
     const [modal, setModal] = useState(null);
 
@@ -157,6 +156,7 @@ export const UIProvider = ({ children }) => {
     }, [currentContext]);
 
     // Memoize context value to prevent unnecessary re-renders of consumers
+    // Note: activeMenuId moved to MenuContext for better performance
     const value = useMemo(() => ({
         activeView,
         setActiveView,
@@ -175,8 +175,6 @@ export const UIProvider = ({ children }) => {
         isTabStale,
         panelHeight,
         setPanelHeight,
-        activeMenuId,
-        setActiveMenuId,
         pendingSearch,
         navigateWithSearch,
         consumePendingSearch,
@@ -197,7 +195,6 @@ export const UIProvider = ({ children }) => {
         reorderTabs,
         isTabStale,
         panelHeight,
-        activeMenuId,
         pendingSearch,
         navigateWithSearch,
         consumePendingSearch,

@@ -155,7 +155,7 @@ func (c *Client) ListContexts() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var contexts []string
+	contexts := make([]string, 0, len(rawConfig.Contexts))
 	for name := range rawConfig.Contexts {
 		contexts = append(contexts, name)
 	}
@@ -667,7 +667,7 @@ func (c *Client) GetPodMetrics() (*PodMetricsResult, error) {
 		cpuReq     int64
 		memReq     int64
 	}
-	podInfoMap := make(map[string]podInfo)
+	podInfoMap := make(map[string]podInfo, len(pods.Items))
 	for _, pod := range pods.Items {
 		key := pod.Namespace + "/" + pod.Name
 		var cpuReq, memReq int64
@@ -2644,9 +2644,9 @@ func (c *Client) GetServiceBackingPods(contextName, namespace, serviceName strin
 		return nil, fmt.Errorf("service %s has no selector", serviceName)
 	}
 
-	var selectorParts []string
+	selectorParts := make([]string, 0, len(svc.Spec.Selector))
 	for k, v := range svc.Spec.Selector {
-		selectorParts = append(selectorParts, fmt.Sprintf("%s=%s", k, v))
+		selectorParts = append(selectorParts, k+"="+v)
 	}
 	selector := strings.Join(selectorParts, ",")
 
@@ -2659,7 +2659,7 @@ func (c *Client) GetServiceBackingPods(contextName, namespace, serviceName strin
 	}
 
 	// Return names of running pods
-	var result []string
+	result := make([]string, 0, len(pods.Items))
 	for _, pod := range pods.Items {
 		if pod.Status.Phase == v1.PodRunning {
 			result = append(result, pod.Name)
@@ -2681,7 +2681,12 @@ func (c *Client) GetPodContainerPorts(contextName, namespace, podName string) ([
 		return nil, fmt.Errorf("failed to get pod %s: %w", podName, err)
 	}
 
-	var ports []int32
+	// Calculate total ports for pre-allocation
+	totalPorts := 0
+	for _, container := range pod.Spec.Containers {
+		totalPorts += len(container.Ports)
+	}
+	ports := make([]int32, 0, totalPorts)
 	for _, container := range pod.Spec.Containers {
 		for _, port := range container.Ports {
 			ports = append(ports, port.ContainerPort)
@@ -2703,7 +2708,7 @@ func (c *Client) GetServicePorts(contextName, namespace, serviceName string) ([]
 		return nil, fmt.Errorf("failed to get service %s: %w", serviceName, err)
 	}
 
-	var ports []int32
+	ports := make([]int32, 0, len(svc.Spec.Ports))
 	for _, port := range svc.Spec.Ports {
 		ports = append(ports, port.Port)
 	}
@@ -3724,10 +3729,9 @@ func (c *Client) ApplyYAML(contextName, yamlContent string) error {
 
 	// Parse apiVersion into group and version
 	var group, version string
-	if strings.Contains(apiVersion, "/") {
-		parts := strings.SplitN(apiVersion, "/", 2)
-		group = parts[0]
-		version = parts[1]
+	if g, v, found := strings.Cut(apiVersion, "/"); found {
+		group = g
+		version = v
 	} else {
 		group = ""
 		version = apiVersion
@@ -4281,12 +4285,14 @@ func (c *Client) GetPodMetricsHistoryWithResolution(contextName string, info *Pr
 			continue
 		}
 
-		if _, exists := containers[containerName]; !exists {
-			containers[containerName] = &ContainerMetricsHistory{
+		container, exists := containers[containerName]
+		if !exists {
+			container = &ContainerMetricsHistory{
 				Container: containerName,
-				CPU:       []MetricsDataPoint{},
-				Memory:    []MetricsDataPoint{},
+				CPU:       make([]MetricsDataPoint, 0, len(series.Values)),
+				Memory:    make([]MetricsDataPoint, 0, len(series.Values)),
 			}
+			containers[containerName] = container
 		}
 
 		for _, point := range series.Values {
@@ -4294,7 +4300,7 @@ func (c *Client) GetPodMetricsHistoryWithResolution(contextName string, info *Pr
 				ts, _ := point[0].(float64)
 				valStr, _ := point[1].(string)
 				val, _ := strconv.ParseFloat(valStr, 64)
-				containers[containerName].CPU = append(containers[containerName].CPU, MetricsDataPoint{
+				container.CPU = append(container.CPU, MetricsDataPoint{
 					Timestamp: int64(ts) * 1000, // Convert to milliseconds
 					Value:     val,
 				})
@@ -4309,12 +4315,14 @@ func (c *Client) GetPodMetricsHistoryWithResolution(contextName string, info *Pr
 			continue
 		}
 
-		if _, exists := containers[containerName]; !exists {
-			containers[containerName] = &ContainerMetricsHistory{
+		container, exists := containers[containerName]
+		if !exists {
+			container = &ContainerMetricsHistory{
 				Container: containerName,
-				CPU:       []MetricsDataPoint{},
-				Memory:    []MetricsDataPoint{},
+				CPU:       make([]MetricsDataPoint, 0, len(series.Values)),
+				Memory:    make([]MetricsDataPoint, 0, len(series.Values)),
 			}
+			containers[containerName] = container
 		}
 
 		for _, point := range series.Values {
@@ -4322,7 +4330,7 @@ func (c *Client) GetPodMetricsHistoryWithResolution(contextName string, info *Pr
 				ts, _ := point[0].(float64)
 				valStr, _ := point[1].(string)
 				val, _ := strconv.ParseFloat(valStr, 64)
-				containers[containerName].Memory = append(containers[containerName].Memory, MetricsDataPoint{
+				container.Memory = append(container.Memory, MetricsDataPoint{
 					Timestamp: int64(ts) * 1000, // Convert to milliseconds
 					Value:     val,
 				})
@@ -4602,18 +4610,20 @@ func (c *Client) queryRangeToDataPoints(contextName string, info *PrometheusInfo
 		return []MetricsDataPoint{}
 	}
 
-	var points []MetricsDataPoint
-	if len(result.Data.Result) > 0 {
-		for _, point := range result.Data.Result[0].Values {
-			if len(point) >= 2 {
-				ts, _ := point[0].(float64)
-				valStr, _ := point[1].(string)
-				val, _ := strconv.ParseFloat(valStr, 64)
-				points = append(points, MetricsDataPoint{
-					Timestamp: int64(ts) * 1000, // Convert to milliseconds
-					Value:     val,
-				})
-			}
+	if len(result.Data.Result) == 0 {
+		return []MetricsDataPoint{}
+	}
+	values := result.Data.Result[0].Values
+	points := make([]MetricsDataPoint, 0, len(values))
+	for _, point := range values {
+		if len(point) >= 2 {
+			ts, _ := point[0].(float64)
+			valStr, _ := point[1].(string)
+			val, _ := strconv.ParseFloat(valStr, 64)
+			points = append(points, MetricsDataPoint{
+				Timestamp: int64(ts) * 1000, // Convert to milliseconds
+				Value:     val,
+			})
 		}
 	}
 	return points

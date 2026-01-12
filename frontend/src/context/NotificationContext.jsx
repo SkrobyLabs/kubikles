@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 const NotificationContext = createContext(null);
 
@@ -37,8 +37,15 @@ export function NotificationProvider({ children }) {
         setNotifications([]);
     }, []);
 
+    const contextValue = useMemo(() => ({
+        notifications,
+        addNotification,
+        removeNotification,
+        clearAll
+    }), [notifications, addNotification, removeNotification, clearAll]);
+
     return (
-        <NotificationContext.Provider value={{ notifications, addNotification, removeNotification, clearAll }}>
+        <NotificationContext.Provider value={contextValue}>
             {children}
         </NotificationContext.Provider>
     );

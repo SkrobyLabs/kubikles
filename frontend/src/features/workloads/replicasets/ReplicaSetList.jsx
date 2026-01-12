@@ -7,6 +7,7 @@ import { useReplicaSets } from '../../../hooks/resources';
 import { useReplicaSetActions } from './useReplicaSetActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteReplicaSet, GetReplicaSetYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -21,7 +22,8 @@ function getController(item) {
 
 export default function ReplicaSetList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId, navigateWithSearch } = useUI();
+    const { navigateWithSearch } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 

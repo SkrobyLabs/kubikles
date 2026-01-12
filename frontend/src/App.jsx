@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { K8sProvider, useK8s } from './context/K8sContext';
 import { UIProvider, useUI } from './context/UIContext';
+import { MenuProvider } from './context/MenuContext';
 import { DebugProvider } from './context/DebugContext';
 import { ConfigProvider, useConfig } from './context/ConfigContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -647,8 +648,10 @@ function App() {
                 <NotificationProvider>
                     <K8sProvider>
                         <UIProvider>
-                            <MainLayout />
-                            <ToastContainer />
+                            <MenuProvider>
+                                <MainLayout />
+                                <ToastContainer />
+                            </MenuProvider>
                         </UIProvider>
                     </K8sProvider>
                 </NotificationProvider>

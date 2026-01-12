@@ -7,6 +7,7 @@ import { useDeployments, usePods } from '../../../hooks/resources';
 import { useDeploymentActions } from './useDeploymentActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteDeployment, RestartDeployment, GetDeploymentYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -15,7 +16,7 @@ import Logger from '../../../utils/Logger';
 
 export default function DeploymentList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
@@ -133,10 +134,11 @@ export default function DeploymentList({ isVisible }) {
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible); // Fetch pods for status
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs } = useDeploymentActions();
 
-    // Pre-compute deployment -> pods mapping (O(n+m) instead of O(n*m))
-    const podsByDeployment = useMemo(() => {
-        const map = new Map();
-        if (!deployments || !allPods) return map;
+    // Pre-compute deployment -> pods mapping and counts (O(n+m) instead of O(n*m))
+    const { podsByDeployment, podCountsByUid } = useMemo(() => {
+        const podsMap = new Map();
+        const countsMap = new Map();
+        if (!deployments || !allPods) return { podsByDeployment: podsMap, podCountsByUid: countsMap };
 
         for (const deployment of deployments) {
             const selector = deployment.spec?.selector?.matchLabels;
@@ -150,9 +152,11 @@ export default function DeploymentList({ isVisible }) {
                 }
                 return true;
             });
-            map.set(deploymentKey, matchingPods);
+            podsMap.set(deploymentKey, matchingPods);
+            // Pre-compute count by UID for O(1) sort lookups
+            countsMap.set(deployment.metadata?.uid, matchingPods.length);
         }
-        return map;
+        return { podsByDeployment: podsMap, podCountsByUid: countsMap };
     }, [deployments, allPods]);
 
     // Helper to get pods for a deployment from the pre-computed map
@@ -201,7 +205,7 @@ export default function DeploymentList({ isVisible }) {
                     </div>
                 );
             },
-            getValue: (item) => getPodsForDeployment(item).length
+            getValue: (item) => podCountsByUid.get(item.metadata?.uid) ?? 0
         },
         { key: 'ready', label: 'Ready', render: (item) => `${item.status?.readyReplicas || 0}/${item.status?.replicas || 0}`, getValue: (item) => item.status?.readyReplicas || 0 },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
@@ -225,7 +229,7 @@ export default function DeploymentList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs, podsLoading, getPodsForDeployment]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleRestart, handleDelete, handleViewLogs, podsLoading, allPods, getPodsForDeployment, podCountsByUid]);
 
     return (
         <>

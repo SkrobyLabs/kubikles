@@ -6,6 +6,7 @@ import SearchSelect from './SearchSelect';
 import BulkActionBar from './BulkActionBar';
 import { createFilter, getFieldsMetadata } from '../../utils/search';
 import { useUI } from '../../context/UIContext';
+import { useConfig } from '../../context/ConfigContext';
 
 // Tri-state checkbox component for header (memoized to prevent re-renders)
 const TriStateCheckbox = React.memo(({ state, onChange, disabled = false }) => {
@@ -112,16 +113,18 @@ export default function ResourceList({
     onBulkExportYaml = null,
 }) {
     const { pendingSearch, consumePendingSearch } = useUI();
+    const { getConfig } = useConfig();
     const [sortConfig, setSortConfig] = useState(initialSort || { key: null, direction: 'asc' });
     const [searchInput, setSearchInput] = useState(''); // Immediate input value
     const [searchTerm, setSearchTerm] = useState('');   // Debounced value for filtering
     const [hiddenColumns, setHiddenColumns] = useState(new Set());
 
-    // Debounce search input (150ms) to avoid filtering on every keystroke
+    // Debounce search input to avoid filtering on every keystroke
+    const searchDebounceMs = getConfig('ui.searchDebounceMs') ?? 150;
     useEffect(() => {
-        const timer = setTimeout(() => setSearchTerm(searchInput), 150);
+        const timer = setTimeout(() => setSearchTerm(searchInput), searchDebounceMs);
         return () => clearTimeout(timer);
-    }, [searchInput]);
+    }, [searchInput, searchDebounceMs]);
     const [showColumnMenu, setShowColumnMenu] = useState(false);
     const [showSearchHelp, setShowSearchHelp] = useState(false);
     const columnMenuRef = useRef(null);

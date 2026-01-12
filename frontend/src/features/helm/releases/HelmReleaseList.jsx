@@ -8,6 +8,7 @@ import { useHelmReleases } from '../../../hooks/useHelmReleases';
 import { useHelmReleaseActions } from './useHelmReleaseActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useNotification } from '../../../context/NotificationContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { ForceHelmReleaseStatus, UninstallHelmRelease, GetHelmReleaseValues, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
@@ -56,7 +57,8 @@ const getStatusClass = (status) => {
 
 export default function HelmReleaseList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId, openModal, closeModal } = useUI();
+    const { openModal, closeModal } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const { addNotification } = useNotification();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [upgradeRelease, setUpgradeRelease] = useState(null);

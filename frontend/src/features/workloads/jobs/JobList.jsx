@@ -5,6 +5,7 @@ import { useJobs } from '../../../hooks/resources';
 import { useJobActions } from './useJobActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteJob, GetJobYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import JobActionsMenu from './JobActionsMenu';
@@ -21,7 +22,8 @@ function getController(item) {
 
 export default function JobList({ isVisible }) {
     const { currentContext, selectedNamespaces, namespaces, setSelectedNamespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId, navigateWithSearch } = useUI();
+    const { navigateWithSearch } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 

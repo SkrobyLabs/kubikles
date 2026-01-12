@@ -49,7 +49,8 @@ const formatTime = (timestamp, duration) => {
 };
 
 // Interactive line chart component with proper axes
-const MetricsChart = ({ data, color, label, formatValue, duration, request, limit }) => {
+// Memoized to prevent re-renders when parent updates with same props
+const MetricsChart = React.memo(({ data, color, label, formatValue, duration, request, limit }) => {
     const containerRef = useRef(null);
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -357,7 +358,7 @@ const MetricsChart = ({ data, color, label, formatValue, duration, request, limi
             </div>
         </div>
     );
-};
+});
 
 // Duration options
 const DURATIONS = [

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 
 /**
  * Horizontal bar showing resource usage percentage
@@ -8,7 +8,7 @@ import React from 'react';
  * @param {string} color - Tailwind color class (e.g., "bg-blue-500")
  * @param {boolean} fixedColor - If true, don't override color based on thresholds
  */
-export default function ResourceBar({ percent, label, tooltipLabel, color = 'bg-blue-500', fixedColor = false }) {
+const ResourceBar = memo(function ResourceBar({ percent, label, tooltipLabel, color = 'bg-blue-500', fixedColor = false }) {
     // Clamp percent to 0-100
     const clampedPercent = Math.max(0, Math.min(100, percent));
 
@@ -39,4 +39,6 @@ export default function ResourceBar({ percent, label, tooltipLabel, color = 'bg-
             <span className="text-[10px] text-gray-400 w-8 text-right">{clampedPercent}%</span>
         </div>
     );
-}
+});
+
+export default ResourceBar;

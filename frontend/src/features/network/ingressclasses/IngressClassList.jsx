@@ -7,6 +7,7 @@ import { useIngressClasses } from '../../../hooks/resources';
 import { useIngressClassActions } from './useIngressClassActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteIngressClass, GetIngressClassYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -14,7 +15,7 @@ import Logger from '../../../utils/Logger';
 
 export default function IngressClassList({ isVisible }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const { ingressClasses, loading } = useIngressClasses(currentContext, isVisible);
     const { handleEditYaml, handleDelete } = useIngressClassActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });

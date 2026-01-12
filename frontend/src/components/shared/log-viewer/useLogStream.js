@@ -266,8 +266,50 @@ export function useLogStream({
         }
     }, []);
 
-    // Listen for log stream events
+    // Listen for log stream events (single lines and batches from 60fps coalescer)
     useEffect(() => {
+        // Process a single log line, filtering duplicates by timestamp
+        const processLine = (line) => {
+            const newEntries = parseLogLines(line, 'stream');
+            if (newEntries.length > 0) {
+                setLogs(prev => {
+                    const lastTs = prev.length > 0 ?
+                        (prev.slice().reverse().find(e => e.timestamp)?.timestamp || '') : '';
+
+                    const filteredEntries = lastTs ?
+                        newEntries.filter(e => !e.timestamp || e.timestamp > lastTs) :
+                        newEntries;
+
+                    return filteredEntries.length > 0 ? [...prev, ...filteredEntries] : prev;
+                });
+            }
+        };
+
+        // Process multiple log lines in a single state update (from batch event)
+        const processBatch = (lines) => {
+            if (!lines || lines.length === 0) return;
+
+            // Parse all lines first
+            const allNewEntries = [];
+            for (const line of lines) {
+                const entries = parseLogLines(line, 'stream');
+                allNewEntries.push(...entries);
+            }
+
+            if (allNewEntries.length > 0) {
+                setLogs(prev => {
+                    const lastTs = prev.length > 0 ?
+                        (prev.slice().reverse().find(e => e.timestamp)?.timestamp || '') : '';
+
+                    const filteredEntries = lastTs ?
+                        allNewEntries.filter(e => !e.timestamp || e.timestamp > lastTs) :
+                        allNewEntries;
+
+                    return filteredEntries.length > 0 ? [...prev, ...filteredEntries] : prev;
+                });
+            }
+        };
+
         const handleLogEvent = (event) => {
             if (!streamIdRef.current || event.streamId !== streamIdRef.current) return;
 
@@ -287,24 +329,24 @@ export function useLogStream({
             }
 
             if (event.line) {
-                const newEntries = parseLogLines(event.line, 'stream');
-                if (newEntries.length > 0) {
-                    setLogs(prev => {
-                        const lastTs = prev.length > 0 ?
-                            (prev.slice().reverse().find(e => e.timestamp)?.timestamp || '') : '';
+                processLine(event.line);
+            }
+        };
 
-                        const filteredEntries = lastTs ?
-                            newEntries.filter(e => !e.timestamp || e.timestamp > lastTs) :
-                            newEntries;
-
-                        return filteredEntries.length > 0 ? [...prev, ...filteredEntries] : prev;
-                    });
-                }
+        // Batch event handler (from 60fps log coalescer - reduces IPC overhead)
+        const handleBatchEvent = (event) => {
+            if (!streamIdRef.current || event.streamId !== streamIdRef.current) return;
+            if (event.lines) {
+                processBatch(event.lines);
             }
         };
 
         EventsOn('log-stream', handleLogEvent);
-        return () => EventsOff('log-stream');
+        EventsOn('log-stream-batch', handleBatchEvent);
+        return () => {
+            EventsOff('log-stream');
+            EventsOff('log-stream-batch');
+        };
     }, []);
 
     // Cleanup on unmount

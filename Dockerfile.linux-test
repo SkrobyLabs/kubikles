@@ -1,0 +1,40 @@
+# Lightweight Dockerfile for testing Linux-specific functionality
+# (hosts file manipulation, iptables port redirection)
+#
+# Build: docker build -f Dockerfile.linux-test -t kubikles-linux-test .
+# Run:   docker run --rm --cap-add NET_ADMIN --cap-add NET_RAW kubikles-linux-test
+
+FROM golang:1.24-bookworm AS builder
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source
+COPY pkg/ pkg/
+COPY cmd/linux-test/ cmd/linux-test/
+
+# Build the test binary
+RUN CGO_ENABLED=0 GOOS=linux go build -o linux-test ./cmd/linux-test
+
+# Runtime image
+FROM debian:bookworm-slim
+
+# Install iptables and networking tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    iptables \
+    iproute2 \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy test binary
+COPY --from=builder /app/linux-test ./
+
+# Default: run all tests
+# Container needs: --cap-add NET_ADMIN --cap-add NET_RAW for iptables
+CMD ["./linux-test", "-all"]

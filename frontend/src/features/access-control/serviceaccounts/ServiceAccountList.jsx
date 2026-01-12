@@ -3,7 +3,7 @@ import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import { useServiceAccounts } from '../../../hooks/resources';
 import { useK8s } from '../../../context/K8sContext';
-import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteServiceAccount, GetServiceAccountYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -14,7 +14,7 @@ import Logger from '../../../utils/Logger';
 
 export default function ServiceAccountList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const { serviceAccounts, loading } = useServiceAccounts(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleDelete } = useServiceAccountActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });

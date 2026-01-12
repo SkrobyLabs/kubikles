@@ -16,7 +16,8 @@ const formatTime = (timestamp, duration) => {
 };
 
 // Interactive line chart component with toggleable request/limit lines
-const MetricsChart = ({ data, color, label, formatValue, duration, request, limit }) => {
+// Memoized to prevent re-renders when parent updates with same props
+const MetricsChart = React.memo(({ data, color, label, formatValue, duration, request, limit }) => {
     const containerRef = useRef(null);
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -270,10 +271,11 @@ const MetricsChart = ({ data, color, label, formatValue, duration, request, limi
             </div>
         </div>
     );
-};
+});
 
 // Simple count chart for pods/restarts
-const CountChart = ({ data, color, label, duration }) => {
+// Memoized to prevent re-renders when parent updates with same props
+const CountChart = React.memo(({ data, color, label, duration }) => {
     const containerRef = useRef(null);
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -355,7 +357,7 @@ const CountChart = ({ data, color, label, duration }) => {
             </div>
         </div>
     );
-};
+});
 
 const DURATIONS = [
     { value: '1h', label: '1h' },

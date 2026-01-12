@@ -142,9 +142,10 @@ func (c *Client) ListOCIRegistries() ([]OCIRegistry, error) {
 			// Decode base64 auth (username:password)
 			decoded, err := base64.StdEncoding.DecodeString(auth.Auth)
 			if err == nil {
-				parts := strings.SplitN(string(decoded), ":", 2)
-				if len(parts) >= 1 {
-					username = parts[0]
+				if u, _, found := strings.Cut(string(decoded), ":"); found {
+					username = u
+				} else if len(decoded) > 0 {
+					username = string(decoded)
 				}
 			}
 		}

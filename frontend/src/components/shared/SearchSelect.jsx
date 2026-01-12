@@ -99,20 +99,26 @@ export default function SearchSelect({
     );
 
     // Memoize selection state for "All Namespaces" checkbox
+    // Use Set for O(1) lookups instead of O(n) array.includes()
     const allSelectionState = useMemo(() => {
         const currentValue = Array.isArray(value) ? value : [];
-        const hasAllMarker = currentValue.includes('*');
-        const allSelected = hasAllMarker || (allNamespaces.length > 0 && allNamespaces.every(ns => currentValue.includes(ns)));
-        const someSelected = currentValue.some(v => allNamespaces.includes(v) || v === '*');
+        const currentValueSet = new Set(currentValue);
+        const allNamespacesSet = new Set(allNamespaces);
+        const hasAllMarker = currentValueSet.has('*');
+        const allSelected = hasAllMarker || (allNamespaces.length > 0 && allNamespaces.every(ns => currentValueSet.has(ns)));
+        const someSelected = currentValue.some(v => allNamespacesSet.has(v) || v === '*');
         return { allSelected, someSelected, indeterminate: someSelected && !allSelected };
     }, [value, allNamespaces]);
 
     // Memoize selection state for "Select all matching" checkbox (when searching)
+    // Use Set for O(1) lookups instead of O(n) array.includes()
     const matchingSelectionState = useMemo(() => {
         const currentValue = Array.isArray(value) ? value : [];
+        const currentValueSet = new Set(currentValue);
         const matchingNamespaces = nonEmptyFilteredOptions.map(opt => typeof opt === 'string' ? opt : getValueFromOption(opt));
-        const allSelected = matchingNamespaces.length > 0 && matchingNamespaces.every(ns => currentValue.includes(ns));
-        const someSelected = currentValue.some(v => matchingNamespaces.includes(v));
+        const matchingNamespacesSet = new Set(matchingNamespaces);
+        const allSelected = matchingNamespaces.length > 0 && matchingNamespaces.every(ns => currentValueSet.has(ns));
+        const someSelected = currentValue.some(v => matchingNamespacesSet.has(v));
         return { allSelected, someSelected, indeterminate: someSelected && !allSelected, matchingNamespaces };
     }, [value, nonEmptyFilteredOptions, getValueFromOption]);
 

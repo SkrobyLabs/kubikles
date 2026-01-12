@@ -3,7 +3,7 @@ import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import { useClusterRoleBindings } from '../../../hooks/resources';
 import { useK8s } from '../../../context/K8sContext';
-import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteClusterRoleBinding, GetClusterRoleBindingYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -14,7 +14,7 @@ import Logger from '../../../utils/Logger';
 
 export default function ClusterRoleBindingList({ isVisible }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const { clusterRoleBindings, loading } = useClusterRoleBindings(currentContext, isVisible);
     const { handleEditYaml, handleDelete } = useClusterRoleBindingActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });

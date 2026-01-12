@@ -6,7 +6,7 @@ import CSINodeActionsMenu from './CSINodeActionsMenu';
 import { useCSINodes } from '../../../hooks/resources';
 import { useCSINodeActions } from './useCSINodeActions';
 import { useK8s } from '../../../context/K8sContext';
-import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteCSINode, GetCSINodeYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -14,7 +14,7 @@ import Logger from '../../../utils/Logger';
 
 export default function CSINodeList({ isVisible }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const { csiNodes, loading } = useCSINodes(currentContext, isVisible);
     const { handleShowDetails, handleEditYaml, handleDelete } = useCSINodeActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });

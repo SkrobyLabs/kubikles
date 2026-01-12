@@ -361,7 +361,8 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 		}
 	}
 
-	// Update hosts file and set up port redirection (443->8443, 80->8080 on macOS)
+	// Update hosts file and set up port redirection (443->8443, 80->8080)
+	// Uses pfctl on macOS, iptables on Linux
 	entries := make([]hosts.Entry, len(hostnames))
 	for i, hostname := range hostnames {
 		entries[i] = hosts.Entry{
@@ -380,7 +381,7 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 	} else {
 		m.mutex.Lock()
 		m.state.HostsFileUpdated = true
-		// On macOS, pfctl redirects 443->8443, so show 443 as the effective port
+		// Port redirection active (pfctl on macOS, iptables on Linux), show standard ports
 		m.state.LocalHTTPSPort = 443
 		if localHTTPPort > 0 {
 			m.state.LocalHTTPPort = 80

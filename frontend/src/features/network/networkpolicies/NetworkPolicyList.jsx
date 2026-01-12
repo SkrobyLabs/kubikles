@@ -7,6 +7,7 @@ import { useNetworkPolicies } from '../../../hooks/resources';
 import { useNetworkPolicyActions } from './useNetworkPolicyActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteNetworkPolicy, GetNetworkPolicyYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -14,7 +15,7 @@ import Logger from '../../../utils/Logger';
 
 export default function NetworkPolicyList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const { networkPolicies, loading } = useNetworkPolicies(currentContext, selectedNamespaces, isVisible);
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = useNetworkPolicyActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });

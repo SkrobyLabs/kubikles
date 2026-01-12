@@ -6,7 +6,7 @@ import LimitRangeActionsMenu from './LimitRangeActionsMenu';
 import { useLimitRanges } from '../../../hooks/resources';
 import { useLimitRangeActions } from './useLimitRangeActions';
 import { useK8s } from '../../../context/K8sContext';
-import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteLimitRange, GetLimitRangeYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -14,7 +14,7 @@ import Logger from '../../../utils/Logger';
 
 export default function LimitRangeList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const { limitRanges, loading } = useLimitRanges(currentContext, selectedNamespaces, isVisible);
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = useLimitRangeActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });

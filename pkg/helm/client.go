@@ -599,12 +599,10 @@ func (c *Client) ForceReleaseStatus(contextName, namespace, name, status string)
 // locateChart finds and downloads a chart from a repository
 func (c *Client) locateChart(chartRef, version string) (string, error) {
 	// Parse repo/chart format
-	parts := strings.SplitN(chartRef, "/", 2)
-	if len(parts) != 2 {
+	repoName, chartName, found := strings.Cut(chartRef, "/")
+	if !found {
 		return "", fmt.Errorf("invalid chart reference: %s (expected repo/chart)", chartRef)
 	}
-	repoName := parts[0]
-	chartName := parts[1]
 
 	// Load repository file to get the URL
 	repoFile := c.settings.RepositoryConfig

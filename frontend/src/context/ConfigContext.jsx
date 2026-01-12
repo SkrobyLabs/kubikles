@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 
 const ConfigContext = createContext();
 
@@ -23,6 +23,20 @@ const defaultConfig = {
         // - "favorites": Only start favorites that were running when app was closed
         // - "none": Don't auto-start any port forwards
         autoStartMode: "favorites"
+    },
+    ui: {
+        // Debounce delay for resource list search (ms)
+        searchDebounceMs: 150,
+        // How long "Copied!" feedback shows (ms)
+        copyFeedbackMs: 2000
+    },
+    metrics: {
+        // Poll interval for node/pod metrics (ms)
+        pollIntervalMs: 30000
+    },
+    performance: {
+        // Poll interval for performance panel (ms)
+        pollIntervalMs: 1500
     }
 };
 
@@ -137,7 +151,7 @@ export const ConfigProvider = ({ children }) => {
         setShowConfigEditor(false);
     }, []);
 
-    const value = {
+    const value = useMemo(() => ({
         config,
         getConfig,
         setConfig,
@@ -148,7 +162,7 @@ export const ConfigProvider = ({ children }) => {
         showConfigEditor,
         openConfigEditor,
         closeConfigEditor
-    };
+    }), [config, getConfig, setConfig, updateConfig, resetConfig, getConfigJson, showConfigEditor, openConfigEditor, closeConfigEditor]);
 
     return (
         <ConfigContext.Provider value={value}>

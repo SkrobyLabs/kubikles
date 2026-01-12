@@ -3,7 +3,7 @@ import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import { useStorageClasses } from '../../../hooks/resources';
 import { useK8s } from '../../../context/K8sContext';
-import { useUI } from '../../../context/UIContext';
+import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteStorageClass, GetStorageClassYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
@@ -40,7 +40,7 @@ const getBindingModeColor = (mode) => {
 
 export default function StorageClassList({ isVisible }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useUI();
+    const { activeMenuId, setActiveMenuId } = useMenu();
     const { storageClasses, loading } = useStorageClasses(currentContext, isVisible);
     const { handleShowDetails, handleEditYaml, handleDelete } = useStorageClassActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });

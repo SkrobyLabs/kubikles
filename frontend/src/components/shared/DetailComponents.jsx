@@ -91,8 +91,9 @@ export const CopyableTextBlock = ({ value, maxLines = 10 }) => {
 
 /**
  * Detail row component - displays a label/value pair
+ * Memoized to prevent re-renders when parent updates with same props
  */
-export const DetailRow = ({ label, value, children }) => (
+export const DetailRow = React.memo(({ label, value, children }) => (
     <div className="flex py-2 border-b border-border/50">
         <div className="w-32 text-xs font-medium text-gray-500 uppercase tracking-wider shrink-0">
             {label}
@@ -101,12 +102,13 @@ export const DetailRow = ({ label, value, children }) => (
             {children || value || <span className="text-gray-500">N/A</span>}
         </div>
     </div>
-);
+));
 
 /**
  * Detail section component - groups related detail rows with a title
+ * Memoized to prevent re-renders when parent updates with same props
  */
-export const DetailSection = ({ title, children }) => (
+export const DetailSection = React.memo(({ title, children }) => (
     <div className="bg-surface rounded-lg border border-border p-4 mb-4">
         {title && (
             <h3 className="text-sm font-medium text-gray-300 mb-3 pb-2 border-b border-border">
@@ -115,12 +117,13 @@ export const DetailSection = ({ title, children }) => (
         )}
         {children}
     </div>
-);
+));
 
 /**
  * Status badge component
+ * Memoized to prevent re-renders when parent updates with same props
  */
-export const StatusBadge = ({ status, variant = 'default' }) => {
+export const StatusBadge = React.memo(({ status, variant = 'default' }) => {
     const variants = {
         success: 'bg-green-500/10 text-green-400 border-green-500/30',
         warning: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
@@ -134,12 +137,13 @@ export const StatusBadge = ({ status, variant = 'default' }) => {
             {status}
         </span>
     );
-};
+});
 
 /**
  * Labels display component
+ * Memoized to prevent re-renders when parent updates with same props
  */
-export const LabelsDisplay = ({ labels, emptyText = 'None' }) => {
+export const LabelsDisplay = React.memo(({ labels, emptyText = 'None' }) => {
     if (!labels || Object.keys(labels).length === 0) {
         return <span className="text-gray-500">{emptyText}</span>;
     }
@@ -153,12 +157,13 @@ export const LabelsDisplay = ({ labels, emptyText = 'None' }) => {
                 ))}
         </div>
     );
-};
+});
 
 /**
  * Annotations display component (same as labels but with different styling)
+ * Memoized to prevent re-renders when parent updates with same props
  */
-export const AnnotationsDisplay = ({ annotations, emptyText = 'None' }) => {
+export const AnnotationsDisplay = React.memo(({ annotations, emptyText = 'None' }) => {
     if (!annotations || Object.keys(annotations).length === 0) {
         return <span className="text-gray-500">{emptyText}</span>;
     }
@@ -177,12 +182,13 @@ export const AnnotationsDisplay = ({ annotations, emptyText = 'None' }) => {
                 ))}
         </div>
     );
-};
+});
 
 /**
  * Resource count badge
+ * Memoized to prevent re-renders when parent updates with same props
  */
-export const ResourceCountBadge = ({ count, label, onClick }) => {
+export const ResourceCountBadge = React.memo(({ count, label, onClick }) => {
     const Component = onClick ? 'button' : 'div';
     return (
         <Component
@@ -197,4 +203,4 @@ export const ResourceCountBadge = ({ count, label, onClick }) => {
             <span className="text-xs text-gray-400">{label}</span>
         </Component>
     );
-};
+});

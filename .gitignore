@@ -20,6 +20,8 @@ Thumbs.db
 go.work
 
 kubikles
+*.test
+CLAUDE.md
 
 .gemini/walkthrough.md
 
