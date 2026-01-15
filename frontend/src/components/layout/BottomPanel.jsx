@@ -13,7 +13,6 @@ export default function BottomPanel({
     isTabStale,
     height = '40%'
 }) {
-    const activeTab = tabs.find(t => t.id === activeTabId);
     const [contextMenu, setContextMenu] = useState(null);
     const [draggedIndex, setDraggedIndex] = useState(null);
     const [dropTarget, setDropTarget] = useState(null);
@@ -169,12 +168,25 @@ export default function BottomPanel({
                     );
                 })}
             </div>
+            {/* Render strategy based on tab.keepAlive:
+                - keepAlive: true  -> always mounted, use CSS display to hide (Terminal, LogViewer)
+                - keepAlive: false -> only mount when active (YamlEditor, DependencyGraph, etc.)
+            */}
             <div className="flex-1 overflow-hidden relative">
-                {activeTab && (
-                    <div className="h-full w-full">
-                        {activeTab.content}
-                    </div>
-                )}
+                {tabs.map((tab) => {
+                    const isActive = tab.id === activeTabId;
+                    // keepAlive tabs stay mounted, others only render when active
+                    if (!tab.keepAlive && !isActive) return null;
+                    return (
+                        <div
+                            key={tab.id}
+                            className="absolute inset-0 h-full w-full"
+                            style={{ display: isActive ? 'block' : 'none' }}
+                        >
+                            {tab.content}
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Context Menu */}

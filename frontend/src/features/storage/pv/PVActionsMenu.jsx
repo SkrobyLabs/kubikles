@@ -43,20 +43,20 @@ export default function PVActionsMenu({ pv, isOpen, menuPosition, onOpenChange, 
     const menu = (
         <div
             ref={menuRef}
-            className="w-48 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg py-1"
+            className="w-48 bg-surface-light border border-border rounded-md shadow-lg py-1"
             style={{ position: 'fixed', top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, zIndex: 99999 }}
             onClick={(e) => e.stopPropagation()}
         >
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onEditYaml(pv)); }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
             >
                 <PencilSquareIcon className="h-4 w-4" />
                 Edit YAML
             </button>
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onShowDependencies(pv)); }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
             >
                 <ShareIcon className="h-4 w-4" />
                 Dependencies
@@ -64,7 +64,7 @@ export default function PVActionsMenu({ pv, isOpen, menuPosition, onOpenChange, 
             <div className="h-px bg-[#3d3d3d] my-1" />
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onDelete(pv)); }}
-                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-[#3d3d3d] flex items-center gap-2"
+                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-surface-hover flex items-center gap-2"
             >
                 <TrashIcon className="h-4 w-4" />
                 Delete

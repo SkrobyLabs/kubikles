@@ -73,6 +73,7 @@ export const useStatefulSetActions = () => {
             openTab({
                 id: `logs-statefulset-${statefulSet.metadata.name}`,
                 title: `Logs: ${statefulSet.metadata.name}`,
+                keepAlive: true,
                 content: (
                     <LogViewer
                         namespace={namespace}

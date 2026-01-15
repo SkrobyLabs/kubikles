@@ -292,7 +292,7 @@ export default function LogViewer({
     }, [search.displayLogs, showTimestamps, search.searchTerm, search.searchRegex, wrapLines]);
 
     return (
-        <div className="flex flex-col h-full bg-[#1e1e1e]">
+        <div className="flex flex-col h-full bg-background">
             {/* Stale Tab Banner */}
             {isStale && (
                 <div className="flex items-center gap-2 px-4 py-2 bg-red-900/30 border-b border-red-500/50 text-red-400 shrink-0">
@@ -501,7 +501,7 @@ export default function LogViewer({
                             ref={search.searchInputRef}
                             type="text"
                             placeholder={search.isRegex ? (search.searchOnEnter ? "Search (regex, Enter)..." : "Search (regex)...") : (search.searchOnEnter ? "Search (Enter)..." : "Search...")}
-                            className={`w-full bg-[#1e1e1e] border rounded-md pl-9 pr-8 py-1.5 text-sm text-white focus:outline-none transition-colors ${search.regexError ? 'border-red-500' : 'border-[#3d3d3d] focus:border-primary'}`}
+                            className={`w-full bg-background border rounded-md pl-9 pr-8 py-1.5 text-sm text-white focus:outline-none transition-colors ${search.regexError ? 'border-red-500' : 'border-border focus:border-primary'}`}
                             value={search.searchInput}
                             onChange={(e) => search.setSearchInput(e.target.value)}
                             onKeyDown={search.handleSearchKeyDown}

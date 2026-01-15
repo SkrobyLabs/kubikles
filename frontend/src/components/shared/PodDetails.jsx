@@ -123,7 +123,7 @@ export default function PodDetails({ pod, tabContext = '' }) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#1e1e1e]">
+        <div className="flex flex-col h-full bg-background">
             {/* Stale Tab Banner */}
             {isStale && (
                 <div className="flex items-center gap-2 px-4 py-2 bg-red-900/30 border-b border-red-500/50 text-red-400 shrink-0">
@@ -141,7 +141,7 @@ export default function PodDetails({ pod, tabContext = '' }) {
                         {pod.metadata?.namespace}/{pod.metadata?.name}
                     </div>
                     {/* Tab Toggle */}
-                    <div className="flex items-center bg-[#2d2d2d] rounded-md p-0.5">
+                    <div className="flex items-center bg-surface-light rounded-md p-0.5">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}

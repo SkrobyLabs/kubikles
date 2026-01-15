@@ -102,7 +102,7 @@ export default function JobDetails({ job, tabContext = '' }) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#1e1e1e]">
+        <div className="flex flex-col h-full bg-background">
             {/* Header Bar */}
             <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
@@ -150,23 +150,23 @@ export default function JobDetails({ job, tabContext = '' }) {
                 {/* Status */}
                 <DetailSection title="Status">
                     <div className="grid grid-cols-4 gap-4 mb-2">
-                        <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className="text-2xl font-bold text-gray-200">{completions}</div>
                             <div className="text-xs text-gray-500">Completions</div>
                         </div>
-                        <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className={`text-2xl font-bold ${succeeded >= completions ? 'text-green-400' : 'text-gray-200'}`}>
                                 {succeeded}
                             </div>
                             <div className="text-xs text-gray-500">Succeeded</div>
                         </div>
-                        <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className={`text-2xl font-bold ${active > 0 ? 'text-blue-400' : 'text-gray-200'}`}>
                                 {active}
                             </div>
                             <div className="text-xs text-gray-500">Active</div>
                         </div>
-                        <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className={`text-2xl font-bold ${failed > 0 ? 'text-red-400' : 'text-gray-200'}`}>
                                 {failed}
                             </div>

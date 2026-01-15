@@ -158,7 +158,7 @@ export default function MetricsList({ isVisible }) {
     return (
         <div className="flex flex-col h-full bg-background">
             {/* Header */}
-            <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0">
+            <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0 titlebar-drag">
                 <div className="flex items-center gap-3">
                     <ChartBarIcon className="h-6 w-6 text-primary" />
                     <h1 className="text-lg font-semibold text-text">Metrics</h1>

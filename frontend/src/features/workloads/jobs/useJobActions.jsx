@@ -73,6 +73,7 @@ export const useJobActions = (onRefresh) => {
             openTab({
                 id: `logs-job-${job.metadata.name}`,
                 title: `Logs: ${job.metadata.name}`,
+                keepAlive: true,
                 content: (
                     <LogViewer
                         namespace={namespace}

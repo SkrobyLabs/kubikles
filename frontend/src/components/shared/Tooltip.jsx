@@ -90,7 +90,7 @@ export default function Tooltip({ children, content, position = 'bottom' }) {
             {isVisible && createPortal(
                 <div
                     ref={tooltipRef}
-                    className="fixed z-[9999] px-2 py-1 text-xs bg-[#1e1e1e] border border-border text-white rounded shadow-lg whitespace-nowrap pointer-events-none transform -translate-x-1/2"
+                    className="fixed z-[9999] px-2 py-1 text-xs bg-background border border-border text-white rounded shadow-lg whitespace-nowrap pointer-events-none transform -translate-x-1/2"
                     style={{
                         top: `${coords.top}px`,
                         left: `${coords.left}px`,

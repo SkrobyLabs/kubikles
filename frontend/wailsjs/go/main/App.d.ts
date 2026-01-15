@@ -134,6 +134,8 @@ export function GetCronJobYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetCurrentContext():Promise<string>;
 
+export function GetCurrentTheme():Promise<main.Theme>;
+
 export function GetCustomResourceYaml(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
 
 export function GetDaemonSetYaml(arg1:string,arg2:string):Promise<string>;
@@ -244,6 +246,10 @@ export function GetStorageClass(arg1:string):Promise<v1.StorageClass>;
 
 export function GetStorageClassYaml(arg1:string):Promise<string>;
 
+export function GetThemes():Promise<Array<main.Theme>>;
+
+export function GetThemesDir():Promise<string>;
+
 export function GetValidatingWebhookConfigurationYaml(arg1:string):Promise<string>;
 
 export function Greet(arg1:string):Promise<string>;
@@ -348,7 +354,11 @@ export function OpenTerminal(arg1:string,arg2:string,arg3:string,arg4:string):Pr
 
 export function OpenTerminalWithCommand(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
 
+export function OpenThemesDir():Promise<void>;
+
 export function RefreshIngressHostnames(arg1:Array<string>):Promise<void>;
+
+export function ReloadThemes():Promise<Array<main.Theme>>;
 
 export function RemoveHelmRepository(arg1:string):Promise<void>;
 
@@ -383,6 +393,8 @@ export function SetHelmRepositoryPriority(arg1:string,arg2:number):Promise<void>
 export function SetNodeSchedulable(arg1:string,arg2:boolean):Promise<void>;
 
 export function SetOCIRegistryPriority(arg1:string,arg2:number):Promise<void>;
+
+export function SetTheme(arg1:string):Promise<void>;
 
 export function StartFavoritePortForwards(arg1:string):Promise<void>;
 

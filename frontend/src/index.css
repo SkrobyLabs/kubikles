@@ -1,12 +1,55 @@
+/* Font imports - using fontsource packages */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Theme CSS Variables - Default Dark theme (can be overridden at runtime) */
+:root {
+  /* Core colors */
+  --color-background: #1e1e1e;
+  --color-background-dark: #1a1a1a;
+  --color-surface: #252526;
+  --color-surface-light: #2d2d2d;
+  --color-surface-hover: #3d3d3d;
+  --color-primary: #007acc;
+  --color-text: #cccccc;
+  --color-text-muted: #808080;
+  --color-border: #3e3e42;
+
+  /* Status colors */
+  --color-success: #4CC38A;
+  --color-success-dark: #3AA876;
+  --color-error: #E5484D;
+  --color-error-dark: #C33A3F;
+  --color-warning: #F5A623;
+  --color-warning-dark: #D98C1C;
+  --color-red-orange: #E66B2F;
+  --color-red-orange-dark: #C75A27;
+
+  /* Scrollbar */
+  --color-scrollbar-track: #252526;
+  --color-scrollbar-thumb: #3e3e42;
+  --color-scrollbar-thumb-hover: #007acc;
+
+  /* Fonts */
+  --font-ui: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+}
+
 body {
-  @apply bg-background text-text font-sans antialiased;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   margin: 0;
   overflow: hidden;
-  /* Prevent scroll on body, handle in main */
 }
 
 /* Custom Scrollbar */
@@ -16,15 +59,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-surface;
+  background-color: var(--color-scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-border rounded;
+  background-color: var(--color-scrollbar-thumb);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-primary;
+  background-color: var(--color-scrollbar-thumb-hover);
 }
 
 /* Fix xterm scrollbar interactivity */
@@ -47,4 +91,91 @@ body {
 
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
+}
+
+/* Monospace font utility class */
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Wails window drag regions - only titlebar is draggable */
+.titlebar-drag {
+  --wails-draggable: drag;
+}
+
+/* Interactive elements within titlebar should not trigger drag */
+.titlebar-drag button,
+.titlebar-drag input,
+.titlebar-drag select,
+.titlebar-drag textarea,
+.titlebar-drag a,
+.titlebar-drag [role="button"],
+.titlebar-drag .no-drag {
+  --wails-draggable: no-drag;
+}
+
+/* ===========================================
+   GPU Acceleration for Apple Silicon (Metal)
+   =========================================== */
+
+/* React Virtuoso scroll containers - promotes to GPU layer for smooth 120Hz scrolling */
+[data-virtuoso-scroller="true"],
+[data-test-id="virtuoso-scroller"] {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* React Flow dependency graph - GPU accelerated pan/zoom */
+.react-flow__viewport {
+  will-change: transform;
+}
+
+.react-flow__renderer {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Terminal/xterm - ensure WebGL canvas stays on GPU */
+.xterm {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.xterm-screen {
+  will-change: contents;
+}
+
+/* Sidebar navigation - smooth scroll */
+nav.overflow-y-auto {
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent scroll chaining for better trackpad feel */
+.overflow-auto, .overflow-y-auto, .overflow-x-auto {
+  overscroll-behavior: contain;
+}
+
+/* Content visibility for large off-screen areas */
+/* Monaco editor container - skip rendering when not focused */
+.monaco-editor-container:not(:focus-within) {
+  contain: strict;
+}
+
+/* Modal backdrops - optimize hidden modals */
+.modal-hidden {
+  content-visibility: hidden;
+  contain-intrinsic-size: 0 500px;
+}
+
+/* Large detail panels in the bottom panel */
+.detail-panel {
+  contain: layout style paint;
+}
+
+/* Collapse sections that aren't visible */
+details:not([open]) > :not(summary) {
+  content-visibility: hidden;
 }

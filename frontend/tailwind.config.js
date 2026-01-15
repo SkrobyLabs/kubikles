@@ -7,31 +7,43 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Premium dark theme colors
-        background: '#1e1e1e',
-        surface: '#252526',
-        primary: '#007acc',
-        text: '#cccccc',
-        border: '#3e3e42',
+        // Theme colors via CSS variables (allows runtime switching)
+        background: {
+          DEFAULT: 'var(--color-background)',
+          dark: 'var(--color-background-dark)',
+        },
+        surface: {
+          DEFAULT: 'var(--color-surface)',
+          light: 'var(--color-surface-light)',
+          hover: 'var(--color-surface-hover)',
+        },
+        primary: 'var(--color-primary)',
+        text: 'var(--color-text)',
+        'text-muted': 'var(--color-text-muted)',
+        border: 'var(--color-border)',
 
         // Status Colors
         success: {
-          DEFAULT: '#4CC38A',
-          dark: '#3AA876',
+          DEFAULT: 'var(--color-success)',
+          dark: 'var(--color-success-dark)',
         },
         error: {
-          DEFAULT: '#E5484D',
-          dark: '#C33A3F',
+          DEFAULT: 'var(--color-error)',
+          dark: 'var(--color-error-dark)',
         },
         warning: {
-          DEFAULT: '#F5A623',
-          dark: '#D98C1C',
+          DEFAULT: 'var(--color-warning)',
+          dark: 'var(--color-warning-dark)',
         },
         'red-orange': {
-          DEFAULT: '#E66B2F',
-          dark: '#C75A27',
+          DEFAULT: 'var(--color-red-orange)',
+          dark: 'var(--color-red-orange-dark)',
         },
-      }
+      },
+      fontFamily: {
+        sans: ['var(--font-ui)'],
+        mono: ['var(--font-mono)'],
+      },
     },
   },
   safelist: [
@@ -46,6 +58,12 @@ export default {
     'bg-warning',
     'bg-red-orange',
     'bg-surface',
+    'bg-surface-light',
+    'bg-surface-hover',
+    'bg-background',
+    'bg-background-dark',
+    'text-text-muted',
+    'hover:bg-surface-hover',
   ],
   plugins: [],
 }

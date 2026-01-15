@@ -46,6 +46,7 @@ type App struct {
 	ingressForwardManager *IngressForwardManager
 	eventCoalescer        *EventCoalescer
 	logCoalescer          *LogCoalescer
+	themeManager          *ThemeManager
 	// Log streaming
 	logStreams      map[string]context.CancelFunc
 	logStreamsMutex sync.Mutex
@@ -338,6 +339,9 @@ func (m *ResourceWatcherManager) cleanup(watcherKey string) {
 	}
 	delete(m.watchers, watcherKey)
 
+	// Clean up event statistics for this watcher (prevents memory leak)
+	m.app.clearEventStats(watcherKey)
+
 	// Track watcher cleanup for performance metrics
 	m.app.perfMutex.Lock()
 	m.app.totalWatchersCleaned++
@@ -362,6 +366,8 @@ func (m *ResourceWatcherManager) StopAll() {
 		if watcher.Cancel != nil {
 			watcher.Cancel()
 		}
+		// Clean up event statistics (prevents memory leak)
+		m.app.clearEventStats(key)
 		m.app.LogDebug("ResourceWatcher: Stopped watcher %s", key)
 	}
 
@@ -401,6 +407,10 @@ func (a *App) startup(ctx context.Context) {
 	a.eventCoalescer = NewEventCoalescer(a, 16*time.Millisecond) // 60fps frame batching
 	a.logCoalescer = NewLogCoalescer(a, 16*time.Millisecond)     // 60fps log batching
 	a.loadPrometheusConfigs()
+	// Initialize theme manager
+	configDir, _ := os.UserConfigDir()
+	appDir := filepath.Join(configDir, "kubikles")
+	a.themeManager = NewThemeManager(a, appDir)
 	// Initialize event tracking
 	a.eventStats = make(map[string]*WatcherEventStats)
 	a.eventWindowStart = time.Now().UnixMilli()
@@ -459,6 +469,13 @@ func (a *App) recordWatcherEvent(watcherKey string, eventType string) {
 	}
 	stats.TotalEvents++
 	stats.LastEventMs = now
+}
+
+// clearEventStats removes event statistics for a watcher key (called when watcher is cleaned up)
+func (a *App) clearEventStats(watcherKey string) {
+	a.eventStatsMutex.Lock()
+	defer a.eventStatsMutex.Unlock()
+	delete(a.eventStats, watcherKey)
 }
 
 // GetPerformanceMetrics returns current performance metrics for the dashboard
@@ -649,6 +666,56 @@ func (a *App) SwitchContext(name string) error {
 	}
 
 	return a.k8sClient.SwitchContext(name)
+}
+
+// Theme methods - exposed to frontend
+
+// GetThemes returns all available themes
+func (a *App) GetThemes() []Theme {
+	if a.themeManager == nil {
+		return []Theme{}
+	}
+	return a.themeManager.GetThemes()
+}
+
+// GetCurrentTheme returns the currently active theme
+func (a *App) GetCurrentTheme() *Theme {
+	if a.themeManager == nil {
+		return nil
+	}
+	return a.themeManager.GetCurrentTheme()
+}
+
+// SetTheme switches to the specified theme
+func (a *App) SetTheme(themeID string) error {
+	if a.themeManager == nil {
+		return fmt.Errorf("theme manager not initialized")
+	}
+	return a.themeManager.SetTheme(themeID)
+}
+
+// ReloadThemes reloads user themes from disk
+func (a *App) ReloadThemes() []Theme {
+	if a.themeManager == nil {
+		return []Theme{}
+	}
+	return a.themeManager.ReloadUserThemes()
+}
+
+// GetThemesDir returns the user themes directory path
+func (a *App) GetThemesDir() string {
+	if a.themeManager == nil {
+		return ""
+	}
+	return a.themeManager.GetThemesDir()
+}
+
+// OpenThemesDir opens the themes directory in the file manager
+func (a *App) OpenThemesDir() error {
+	if a.themeManager == nil {
+		return fmt.Errorf("theme manager not initialized")
+	}
+	return a.themeManager.OpenThemesDir()
 }
 
 func (a *App) ListPods(namespace string) ([]v1.Pod, error) {

@@ -1,4 +1,4 @@
-// +build profiling
+//go:build profiling
 
 package main
 

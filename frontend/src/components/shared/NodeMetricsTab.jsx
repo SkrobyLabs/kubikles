@@ -60,8 +60,8 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
     const yMax = max * 1.05;
     const yRange = yMax - yMin || 1;
 
-    // Chart dimensions
-    const width = 400;
+    // Chart dimensions - wider aspect ratio for better horizontal usage
+    const width = 500;
     const height = 200;
     const paddingLeft = 70;
     const paddingRight = 20;
@@ -177,7 +177,7 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
             >
-                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
                     {/* Y axis grid lines */}
                     {yTicks.map((tick, i) => (
                         <g key={i}>
@@ -389,7 +389,7 @@ const PodCountChart = React.memo(({ data, duration }) => {
             </div>
             <div ref={containerRef} className="h-36 bg-background rounded border border-border relative"
                 onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)}>
-                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
                     <line x1={paddingLeft} y1={paddingTop + chartHeight} x2={width - paddingRight} y2={paddingTop + chartHeight}
                         className="stroke-gray-700" strokeWidth="0.5" />
 
@@ -529,7 +529,7 @@ const NetworkChart = React.memo(({ data, duration }) => {
             </div>
             <div ref={containerRef} className="h-36 bg-background rounded border border-border relative"
                 onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)}>
-                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
                     <line x1={paddingLeft} y1={paddingTop + chartHeight} x2={width - paddingRight} y2={paddingTop + chartHeight}
                         className="stroke-gray-700" strokeWidth="0.5" />
 
@@ -705,7 +705,7 @@ export default function NodeMetricsTab({ nodeName, isStale }) {
         <div className="h-full flex flex-col overflow-hidden">
             {/* Controls */}
             <div className="flex items-center gap-4 px-4 py-3 border-b border-border shrink-0">
-                <div className="flex items-center gap-1 bg-[#2d2d2d] rounded-md p-0.5">
+                <div className="flex items-center gap-1 bg-surface-light rounded-md p-0.5">
                     {DURATIONS.map(d => (
                         <button
                             key={d.value}

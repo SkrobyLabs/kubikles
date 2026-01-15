@@ -55,8 +55,51 @@ const RowCheckbox = React.memo(({ checked, onChange, disabled = false }) => {
     );
 });
 
-// Default column widths for common columns
-// Note: 'name' and 'namespace' are intentionally excluded to fill remaining space
+// Minimum column widths - ensure columns never get too narrow
+const MIN_COLUMN_WIDTHS = {
+    name: 150,
+    namespace: 120,
+    message: 200,
+    cpu: 80,
+    memory: 80,
+    containers: 120,
+    restarts: 80,
+    age: 80,
+    controlledBy: 120,
+    pods: 80,
+    ready: 80,
+    desired: 80,
+    current: 80,
+    available: 80,
+    condition: 120,
+    conditions: 120,
+    completions: 80,
+    lastRun: 100,
+    nextRun: 100,
+    suspend: 80,
+    schedule: 100,
+    taints: 80,
+    version: 80,
+    count: 80,
+    type: 80,
+    last: 80,
+    involvedObject: 200,
+    actions: 50,
+    status: 100,
+    cluster: 100,
+    clusterIP: 120,
+    externalIP: 120,
+    ports: 150,
+    selector: 150,
+    labels: 150,
+    node: 120,
+    ip: 100,
+    image: 200,
+    reason: 120,
+    source: 100,
+};
+
+// Default column widths for common columns (fallback if not calculated)
 const DEFAULT_COLUMN_WIDTHS = {
     cpu: 100,
     memory: 100,
@@ -85,8 +128,86 @@ const DEFAULT_COLUMN_WIDTHS = {
     actions: 50
 };
 
-// Columns that should flex to fill remaining space
-const FLEX_COLUMNS = new Set(['name', 'namespace', 'message']);
+// Average character width in pixels (approximate for our font)
+const CHAR_WIDTH_PX = 7.5;
+// Padding for cells (px on each side)
+const CELL_PADDING_PX = 24;
+
+// Calculate width needed for a string value
+const calculateTextWidth = (text) => {
+    if (!text) return 0;
+    const str = String(text);
+    return Math.ceil(str.length * CHAR_WIDTH_PX) + CELL_PADDING_PX;
+};
+
+// Calculate column widths based on data - finds width that covers ~95% of values
+const calculateColumnWidths = (columns, data, savedWidths) => {
+    if (!data || data.length === 0) return {};
+
+    const calculatedWidths = {};
+
+    for (const col of columns) {
+        // Skip columns that already have saved user widths
+        if (savedWidths[col.key]) continue;
+        // Skip special columns
+        if (col.isColumnSelector || col.isSelectionColumn) continue;
+
+        const minWidth = MIN_COLUMN_WIDTHS[col.key] || 80;
+
+        // Calculate header width
+        const headerWidth = calculateTextWidth(col.label) + 20; // extra for sort indicator
+
+        // Sample data to find content widths
+        const contentWidths = [];
+        const sampleSize = Math.min(data.length, 500); // Sample up to 500 rows
+        const step = Math.max(1, Math.floor(data.length / sampleSize));
+
+        for (let i = 0; i < data.length; i += step) {
+            const item = data[i];
+            let value;
+
+            // Get the display value
+            if (col.getValue) {
+                value = col.getValue(item);
+            } else if (col.key === 'name') {
+                value = item.metadata?.name;
+            } else if (col.key === 'namespace') {
+                value = item.metadata?.namespace;
+            } else {
+                value = item[col.key];
+            }
+
+            // For rendered content, try to extract text
+            if (col.render) {
+                // For rendered columns, use the raw value or a reasonable estimate
+                if (typeof value === 'string') {
+                    contentWidths.push(calculateTextWidth(value));
+                } else if (col.key === 'name' && item.metadata?.name) {
+                    contentWidths.push(calculateTextWidth(item.metadata.name));
+                }
+            } else if (value !== null && value !== undefined) {
+                contentWidths.push(calculateTextWidth(value));
+            }
+        }
+
+        if (contentWidths.length === 0) {
+            calculatedWidths[col.key] = Math.max(minWidth, headerWidth);
+            continue;
+        }
+
+        // Sort widths and find 95th percentile
+        contentWidths.sort((a, b) => a - b);
+        const p95Index = Math.floor(contentWidths.length * 0.95);
+        const p95Width = contentWidths[p95Index] || contentWidths[contentWidths.length - 1];
+
+        // Use the larger of: min width, header width, or 95th percentile content width
+        // Cap at a reasonable max to prevent extremely wide columns
+        const maxWidth = col.key === 'message' ? 500 : 350;
+        calculatedWidths[col.key] = Math.min(maxWidth, Math.max(minWidth, headerWidth, p95Width));
+    }
+
+    return calculatedWidths;
+};
 
 export default function ResourceList({
     title,
@@ -143,11 +264,31 @@ export default function ResourceList({
     });
     const resizingRef = useRef(null);
 
-    // Effective column widths: saved widths take precedence over defaults
+    // Track data length to know when to recalculate widths
+    // We use a ref to store the calculated widths so they persist across scrolls
+    const calculatedWidthsRef = useRef({});
+    const lastDataLengthRef = useRef(0);
+
+    // Calculate column widths based on data - only recalculate when data changes significantly
+    const calculatedWidths = useMemo(() => {
+        // Recalculate if data length changed by more than 10% or is new
+        const dataLengthChanged = Math.abs(data.length - lastDataLengthRef.current) > lastDataLengthRef.current * 0.1;
+        const isNewData = lastDataLengthRef.current === 0 && data.length > 0;
+
+        if (isNewData || dataLengthChanged) {
+            calculatedWidthsRef.current = calculateColumnWidths(columns, data, savedColumnWidths);
+            lastDataLengthRef.current = data.length;
+        }
+
+        return calculatedWidthsRef.current;
+    }, [data, columns, savedColumnWidths]);
+
+    // Effective column widths: calculated widths, then defaults, then saved widths (highest priority)
     const columnWidths = useMemo(() => ({
         ...DEFAULT_COLUMN_WIDTHS,
+        ...calculatedWidths,
         ...savedColumnWidths
-    }), [savedColumnWidths]);
+    }), [calculatedWidths, savedColumnWidths]);
 
     // Save column widths to localStorage
     useEffect(() => {
@@ -362,8 +503,8 @@ export default function ResourceList({
             <table
                 {...props}
                 ref={tableRef}
-                className="text-left border-collapse min-w-full"
-                style={style}
+                className="text-left border-collapse w-full"
+                style={{ ...style, tableLayout: 'fixed' }}
             />
         ),
         TableHead: forwardRef((props, ref) => (
@@ -394,7 +535,7 @@ export default function ResourceList({
     return (
         <div className="flex flex-col h-full bg-background relative">
             {/* Header */}
-            <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0 gap-4">
+            <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0 gap-4 titlebar-drag">
                 <div className="flex items-center gap-4 flex-1">
                     <h1 className="text-lg font-semibold text-text shrink-0">{title}</h1>
 
@@ -494,7 +635,10 @@ export default function ResourceList({
                                 {visibleColumns.map((col, colIndex) => {
                                     const isLastDataColumn = colIndex === visibleColumns.length - 2 && visibleColumns[visibleColumns.length - 1]?.isColumnSelector;
                                     const isResizable = !col.isColumnSelector && !col.isSelectionColumn;
-                                    const width = col.isSelectionColumn ? col.width : columnWidths[col.key];
+                                    // All columns get a width for table-layout: fixed
+                                    const width = col.isSelectionColumn
+                                        ? col.width
+                                        : (columnWidths[col.key] || MIN_COLUMN_WIDTHS[col.key] || 100);
 
                                     // Selection column header
                                     if (col.isSelectionColumn) {
@@ -518,7 +662,7 @@ export default function ResourceList({
                                         <th
                                             key={col.key}
                                             className={`p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none relative whitespace-nowrap ${col.isColumnSelector ? 'sticky right-0 bg-surface z-20' : 'cursor-pointer hover:text-text'}`}
-                                            style={width ? { width: `${width}px`, minWidth: `${width}px` } : undefined}
+                                            style={{ width: `${width}px`, minWidth: `${width}px` }}
                                             onClick={() => !col.isColumnSelector && handleSort(col.key)}
                                         >
                                             {col.isColumnSelector ? (
@@ -603,14 +747,14 @@ export default function ResourceList({
                                     const content = col.render ? col.render(item) : item[col.key];
                                     const isNamespaceColumn = col.key === 'namespace' && onNamespaceChange;
                                     const namespaceValue = item.metadata?.namespace;
-                                    const width = columnWidths[col.key];
-                                    const isFlex = FLEX_COLUMNS.has(col.key);
+                                    // All columns get a width for table-layout: fixed
+                                    const width = columnWidths[col.key] || MIN_COLUMN_WIDTHS[col.key] || 100;
 
                                     return (
                                         <td
                                             key={col.key}
                                             className={`p-3 text-sm text-text whitespace-nowrap ${col.isColumnSelector ? 'sticky right-0 bg-background overflow-visible' : 'overflow-hidden text-ellipsis'} ${col.align === 'center' ? 'text-center' : ''}`}
-                                            style={width ? { width: `${width}px`, minWidth: `${width}px` } : undefined}
+                                            style={{ width: `${width}px`, minWidth: `${width}px` }}
                                             title={typeof content === 'string' ? content : undefined}
                                         >
                                             {isNamespaceColumn && namespaceValue ? (

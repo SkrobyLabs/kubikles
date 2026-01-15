@@ -258,6 +258,10 @@ export function GetCurrentContext() {
   return window['go']['main']['App']['GetCurrentContext']();
 }
 
+export function GetCurrentTheme() {
+  return window['go']['main']['App']['GetCurrentTheme']();
+}
+
 export function GetCustomResourceYaml(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['GetCustomResourceYaml'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -478,6 +482,14 @@ export function GetStorageClassYaml(arg1) {
   return window['go']['main']['App']['GetStorageClassYaml'](arg1);
 }
 
+export function GetThemes() {
+  return window['go']['main']['App']['GetThemes']();
+}
+
+export function GetThemesDir() {
+  return window['go']['main']['App']['GetThemesDir']();
+}
+
 export function GetValidatingWebhookConfigurationYaml(arg1) {
   return window['go']['main']['App']['GetValidatingWebhookConfigurationYaml'](arg1);
 }
@@ -686,8 +698,16 @@ export function OpenTerminalWithCommand(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['OpenTerminalWithCommand'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function OpenThemesDir() {
+  return window['go']['main']['App']['OpenThemesDir']();
+}
+
 export function RefreshIngressHostnames(arg1) {
   return window['go']['main']['App']['RefreshIngressHostnames'](arg1);
+}
+
+export function ReloadThemes() {
+  return window['go']['main']['App']['ReloadThemes']();
 }
 
 export function RemoveHelmRepository(arg1) {
@@ -756,6 +776,10 @@ export function SetNodeSchedulable(arg1, arg2) {
 
 export function SetOCIRegistryPriority(arg1, arg2) {
   return window['go']['main']['App']['SetOCIRegistryPriority'](arg1, arg2);
+}
+
+export function SetTheme(arg1) {
+  return window['go']['main']['App']['SetTheme'](arg1);
 }
 
 export function StartFavoritePortForwards(arg1) {

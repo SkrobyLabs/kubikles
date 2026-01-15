@@ -70,6 +70,7 @@ export const usePerformancePanel = () => {
                             metricsHistory={metricsHistory}
                             isPolling={isPolling}
                             onTogglePolling={togglePolling}
+                            bottomTabs={prev}
                         />
                     )
                 };
@@ -95,6 +96,7 @@ export const usePerformancePanel = () => {
                         metricsHistory={metricsHistory}
                         isPolling={isPolling}
                         onTogglePolling={togglePolling}
+                        bottomTabs={bottomTabs}
                     />
                 )
             });

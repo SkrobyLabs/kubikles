@@ -99,7 +99,7 @@ export default function ReplicaSetDetails({ replicaSet, tabContext = '' }) {
     ], []);
 
     return (
-        <div className="flex flex-col h-full bg-[#1e1e1e]">
+        <div className="flex flex-col h-full bg-background">
             {/* Header Bar */}
             <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
@@ -111,7 +111,7 @@ export default function ReplicaSetDetails({ replicaSet, tabContext = '' }) {
                         variant={getReplicaStatus()}
                     />
                     {/* Tab Toggle */}
-                    <div className="flex items-center bg-[#2d2d2d] rounded-md p-0.5">
+                    <div className="flex items-center bg-surface-light rounded-md p-0.5">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
@@ -167,21 +167,21 @@ export default function ReplicaSetDetails({ replicaSet, tabContext = '' }) {
                 {/* Replica Status */}
                 <DetailSection title="Replicas">
                     <div className="grid grid-cols-4 gap-4 mb-2">
-                        <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className="text-2xl font-bold text-gray-200">{replicas}</div>
                             <div className="text-xs text-gray-500">Desired</div>
                         </div>
-                        <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className={`text-2xl font-bold ${readyReplicas === replicas ? 'text-green-400' : 'text-yellow-400'}`}>
                                 {readyReplicas}
                             </div>
                             <div className="text-xs text-gray-500">Ready</div>
                         </div>
-                        <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className="text-2xl font-bold text-gray-200">{availableReplicas}</div>
                             <div className="text-xs text-gray-500">Available</div>
                         </div>
-                        <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className="text-2xl font-bold text-gray-200">{fullyLabeledReplicas}</div>
                             <div className="text-xs text-gray-500">Labeled</div>
                         </div>

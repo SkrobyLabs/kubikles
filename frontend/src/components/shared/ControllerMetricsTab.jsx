@@ -28,9 +28,9 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
     const requestValue = request?.length > 0 ? request[request.length - 1]?.value : null;
     const limitValue = limit?.length > 0 ? limit[limit.length - 1]?.value : null;
 
-    // Chart dimensions (constants)
-    const width = 400;
-    const height = 160;
+    // Chart dimensions (constants) - wider aspect ratio for better horizontal usage
+    const width = 500;
+    const height = 200;
     const paddingLeft = 60;
     const paddingRight = 20;
     const paddingTop = 20;
@@ -100,7 +100,7 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
 
     if (!chartData) {
         return (
-            <div className="h-48 flex items-center justify-center text-gray-500 text-sm bg-background rounded border border-border">
+            <div className="h-56 flex items-center justify-center text-gray-500 text-sm bg-background rounded border border-border">
                 No data available
             </div>
         );
@@ -169,11 +169,11 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
             </div>
             <div
                 ref={containerRef}
-                className="h-48 bg-background rounded border border-border relative"
+                className="h-56 bg-background rounded border border-border relative"
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
             >
-                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
                     {/* Y axis grid lines */}
                     {yTicks.map((tick, i) => (
                         <g key={i}>
@@ -339,7 +339,7 @@ const CountChart = React.memo(({ data, color, label, duration }) => {
             </div>
             <div ref={containerRef} className="h-24 bg-background rounded border border-border relative"
                 onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)}>
-                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
                     <line x1={paddingLeft} y1={paddingTop + chartHeight} x2={width - paddingRight} y2={paddingTop + chartHeight}
                         className="stroke-gray-700" strokeWidth="0.5" />
                     <path d={linePath} fill="none" className={color} strokeWidth="2" strokeLinecap="round" />
@@ -460,7 +460,7 @@ export default function ControllerMetricsTab({ namespace, name, controllerType, 
         <div className="h-full flex flex-col overflow-hidden">
             {/* Controls */}
             <div className="flex items-center gap-4 px-4 py-3 border-b border-border shrink-0">
-                <div className="flex items-center gap-1 bg-[#2d2d2d] rounded-md p-0.5">
+                <div className="flex items-center gap-1 bg-surface-light rounded-md p-0.5">
                     {DURATIONS.map(d => (
                         <button
                             key={d.value}

@@ -27,7 +27,7 @@ export default function ConfirmModal() {
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
             <div className="absolute inset-0 bg-black/50" onClick={handleCancel} />
-            <div className="relative bg-[#2d2d2d] border border-[#3d3d3d] rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="relative bg-surface-light border border-border rounded-lg shadow-xl max-w-md w-full mx-4">
                 <div className="p-4">
                     <div className="flex items-start gap-3">
                         <div className="flex-shrink-0">
@@ -39,10 +39,10 @@ export default function ConfirmModal() {
                         </div>
                     </div>
                 </div>
-                <div className="flex justify-end gap-2 px-4 py-3 border-t border-[#3d3d3d]">
+                <div className="flex justify-end gap-2 px-4 py-3 border-t border-border">
                     <button
                         onClick={handleCancel}
-                        className="px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-[#3d3d3d] rounded transition-colors"
+                        className="px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-surface-hover rounded transition-colors"
                     >
                         Cancel
                     </button>

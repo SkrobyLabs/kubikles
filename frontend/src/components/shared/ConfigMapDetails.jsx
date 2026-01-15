@@ -26,7 +26,7 @@ function ConfigMapKeyValue({ keyName, value, isExpanded, onToggle }) {
     };
 
     return (
-        <div className="border border-border rounded bg-[#1a1a1a]">
+        <div className="border border-border rounded bg-background-dark">
             <div
                 className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-white/5"
                 onClick={onToggle}
@@ -79,11 +79,11 @@ function ConfigMapInfoTab({ configMap }) {
             {/* Summary */}
             <DetailSection title="Summary">
                 <div className="grid grid-cols-2 gap-4 mb-2">
-                    <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                    <div className="text-center p-3 bg-background-dark rounded border border-border">
                         <div className="text-2xl font-bold text-gray-200">{dataKeys.length}</div>
                         <div className="text-xs text-gray-500">Data Keys</div>
                     </div>
-                    <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                    <div className="text-center p-3 bg-background-dark rounded border border-border">
                         <div className="text-2xl font-bold text-gray-200">{binaryKeys.length}</div>
                         <div className="text-xs text-gray-500">Binary Keys</div>
                     </div>
@@ -158,7 +158,7 @@ function ConfigMapDataTab({ configMap }) {
                 <DetailSection title={`Binary Data (${binaryKeys.length})`}>
                     <div className="space-y-1.5">
                         {binaryKeys.map(key => (
-                            <div key={key} className="flex items-center gap-2 px-3 py-2 bg-[#1a1a1a] rounded border border-border">
+                            <div key={key} className="flex items-center gap-2 px-3 py-2 bg-background-dark rounded border border-border">
                                 <span className="font-mono text-sm text-gray-300">{key}</span>
                                 <span className="text-xs text-gray-500">
                                     ({binaryData[key] ? Math.ceil(binaryData[key].length * 0.75) : 0} bytes)
@@ -236,7 +236,7 @@ export default function ConfigMapDetails({ configMap, tabContext = '' }) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#1e1e1e]">
+        <div className="flex flex-col h-full bg-background">
             {/* Header Bar */}
             <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
@@ -244,7 +244,7 @@ export default function ConfigMapDetails({ configMap, tabContext = '' }) {
                         {namespace}/{name}
                     </div>
                     {/* Tab Toggle */}
-                    <div className="flex items-center bg-[#2d2d2d] rounded-md p-0.5">
+                    <div className="flex items-center bg-surface-light rounded-md p-0.5">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}

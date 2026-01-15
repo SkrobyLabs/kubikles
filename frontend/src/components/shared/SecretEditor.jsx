@@ -215,7 +215,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
     }
 
     return (
-        <div className="flex flex-col h-full bg-[#1e1e1e]">
+        <div className="flex flex-col h-full bg-background">
             {/* Stale Tab Banner */}
             {isStale && (
                 <div className="flex items-center gap-2 px-4 py-2 bg-red-900/30 border-b border-red-500/50 text-red-400 shrink-0">
@@ -233,7 +233,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                         {namespace}/{resourceName}
                     </div>
                     {/* Mode Toggle */}
-                    <div className="flex items-center bg-[#2d2d2d] rounded-md p-0.5">
+                    <div className="flex items-center bg-surface-light rounded-md p-0.5">
                         <button
                             onClick={() => setMode(MODE_YAML)}
                             className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
@@ -339,13 +339,13 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                             {secretEntries
                                 .filter(entry => !keySearchTerm || entry.key.toLowerCase().includes(keySearchTerm.toLowerCase()))
                                 .map((entry) => (
-                                <div key={entry.id} className="flex items-start gap-2 bg-[#2d2d2d] rounded-md p-3">
+                                <div key={entry.id} className="flex items-start gap-2 bg-surface-light rounded-md p-3">
                                     <input
                                         type="text"
                                         value={entry.key}
                                         onChange={(e) => !isStale && handleKeyChange(entry.id, e.target.value)}
                                         disabled={isStale}
-                                        className={`w-48 shrink-0 px-2 py-1.5 text-sm bg-[#1e1e1e] border border-[#3d3d3d] rounded text-gray-200 focus:outline-none focus:border-primary ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                        className={`w-48 shrink-0 px-2 py-1.5 text-sm bg-background border border-border rounded text-gray-200 focus:outline-none focus:border-primary ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
                                         placeholder="Key"
                                         autoComplete="off"
                                         autoCorrect="off"
@@ -356,7 +356,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                                         value={getDisplayValue(entry.value)}
                                         onChange={(e) => !isStale && setValueFromDisplay(entry.id, e.target.value)}
                                         disabled={isStale}
-                                        className={`flex-1 min-h-[60px] px-2 py-1.5 text-sm bg-[#1e1e1e] border border-[#3d3d3d] rounded text-gray-200 font-mono focus:outline-none focus:border-primary resize-y ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                        className={`flex-1 min-h-[60px] px-2 py-1.5 text-sm bg-background border border-border rounded text-gray-200 font-mono focus:outline-none focus:border-primary resize-y ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
                                         placeholder="Value"
                                         autoComplete="off"
                                         autoCorrect="off"
@@ -387,7 +387,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                         {!isStale && (
                             <button
                                 onClick={handleAddKey}
-                                className="mt-4 flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-400 hover:text-white bg-[#2d2d2d] hover:bg-[#3d3d3d] rounded transition-colors"
+                                className="mt-4 flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-400 hover:text-white bg-surface-light hover:bg-surface-hover rounded transition-colors"
                             >
                                 <PlusIcon className="h-4 w-4" />
                                 Add Key

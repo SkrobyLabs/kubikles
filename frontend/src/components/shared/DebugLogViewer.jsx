@@ -9,7 +9,7 @@ export default function DebugLogViewer({ logs, onClear, onDownload }) {
     }, [logs]);
 
     return (
-        <div className="h-full w-full bg-[#1e1e1e] p-4 flex flex-col">
+        <div className="h-full w-full bg-background p-4 flex flex-col">
             <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
                 <span className="text-xs font-bold text-gray-400">Backend Logs ({logs.length})</span>
                 <div className="flex gap-2">

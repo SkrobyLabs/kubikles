@@ -258,6 +258,7 @@ export default function PodContainersTab({ pod, isStale }) {
             openTab({
                 id: tabId,
                 title: `Shell: ${pod.metadata?.name}/${containerName}`,
+                keepAlive: true,
                 content: <Terminal url={url} />
             });
         } catch (err) {

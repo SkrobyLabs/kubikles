@@ -62,6 +62,7 @@ export const useReplicaSetActions = () => {
             openTab({
                 id: `logs-replicaset-${replicaSet.metadata.name}`,
                 title: `Logs: ${replicaSet.metadata.name}`,
+                keepAlive: true,
                 content: (
                     <LogViewer
                         namespace={namespace}

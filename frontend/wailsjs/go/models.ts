@@ -1299,6 +1299,151 @@ export namespace main {
 	    }
 	}
 	
+	export class ThemeFontConfig {
+	    family: string;
+	    weights?: number[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ThemeFontConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.family = source["family"];
+	        this.weights = source["weights"];
+	    }
+	}
+	export class ThemeFonts {
+	    ui: ThemeFontConfig;
+	    mono: ThemeFontConfig;
+	
+	    static createFrom(source: any = {}) {
+	        return new ThemeFonts(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ui = this.convertValues(source["ui"], ThemeFontConfig);
+	        this.mono = this.convertValues(source["mono"], ThemeFontConfig);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ThemeColors {
+	    background: string;
+	    backgroundDark: string;
+	    surface: string;
+	    surfaceLight: string;
+	    surfaceHover: string;
+	    primary: string;
+	    text: string;
+	    textMuted: string;
+	    border: string;
+	    success: string;
+	    successDark: string;
+	    error: string;
+	    errorDark: string;
+	    warning: string;
+	    warningDark: string;
+	    redOrange: string;
+	    redOrangeDark: string;
+	    scrollbarTrack: string;
+	    scrollbarThumb: string;
+	    scrollbarThumbHover: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ThemeColors(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.background = source["background"];
+	        this.backgroundDark = source["backgroundDark"];
+	        this.surface = source["surface"];
+	        this.surfaceLight = source["surfaceLight"];
+	        this.surfaceHover = source["surfaceHover"];
+	        this.primary = source["primary"];
+	        this.text = source["text"];
+	        this.textMuted = source["textMuted"];
+	        this.border = source["border"];
+	        this.success = source["success"];
+	        this.successDark = source["successDark"];
+	        this.error = source["error"];
+	        this.errorDark = source["errorDark"];
+	        this.warning = source["warning"];
+	        this.warningDark = source["warningDark"];
+	        this.redOrange = source["redOrange"];
+	        this.redOrangeDark = source["redOrangeDark"];
+	        this.scrollbarTrack = source["scrollbarTrack"];
+	        this.scrollbarThumb = source["scrollbarThumb"];
+	        this.scrollbarThumbHover = source["scrollbarThumbHover"];
+	    }
+	}
+	export class Theme {
+	    id: string;
+	    name: string;
+	    version?: string;
+	    author?: string;
+	    description?: string;
+	    colors: ThemeColors;
+	    fonts: ThemeFonts;
+	    isBuiltin: boolean;
+	    filePath?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Theme(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.version = source["version"];
+	        this.author = source["author"];
+	        this.description = source["description"];
+	        this.colors = this.convertValues(source["colors"], ThemeColors);
+	        this.fonts = this.convertValues(source["fonts"], ThemeFonts);
+	        this.isBuiltin = source["isBuiltin"];
+	        this.filePath = source["filePath"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
 	export class WatcherEventStats {
 	    key: string;
 	    added: number;

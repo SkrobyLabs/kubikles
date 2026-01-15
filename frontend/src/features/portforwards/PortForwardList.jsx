@@ -242,7 +242,7 @@ export default function PortForwardList({ isVisible }) {
     return (
         <div className="h-full flex flex-col">
             {/* Header */}
-            <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0 gap-4">
+            <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0 gap-4 titlebar-drag">
                 <div className="flex items-center gap-4 flex-1">
                     <h1 className="text-lg font-semibold text-text shrink-0">Port Forwards</h1>
 

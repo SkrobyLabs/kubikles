@@ -69,7 +69,7 @@ export default function CronJobDetails({ cronJob, tabContext = '' }) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#1e1e1e]">
+        <div className="flex flex-col h-full bg-background">
             {/* Header Bar */}
             <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
@@ -112,11 +112,11 @@ export default function CronJobDetails({ cronJob, tabContext = '' }) {
                 {/* Schedule */}
                 <DetailSection title="Schedule">
                     <div className="grid grid-cols-2 gap-4 mb-2">
-                        <div className="p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="p-3 bg-background-dark rounded border border-border">
                             <div className="text-lg font-mono font-bold text-gray-200">{schedule}</div>
                             <div className="text-xs text-gray-500">Cron Expression</div>
                         </div>
-                        <div className="p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="p-3 bg-background-dark rounded border border-border">
                             <div className={`text-lg font-bold ${suspend ? 'text-yellow-400' : 'text-green-400'}`}>
                                 {suspend ? 'Suspended' : 'Active'}
                             </div>
@@ -124,13 +124,13 @@ export default function CronJobDetails({ cronJob, tabContext = '' }) {
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4 mb-2">
-                        <div className="p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="p-3 bg-background-dark rounded border border-border">
                             <div className="text-lg font-bold text-gray-200">
                                 {lastScheduleTime ? formatAge(lastScheduleTime) : 'Never'}
                             </div>
                             <div className="text-xs text-gray-500">Last Scheduled</div>
                         </div>
-                        <div className="p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="p-3 bg-background-dark rounded border border-border">
                             <div className="text-lg font-bold text-gray-200">
                                 {lastSuccessfulTime ? formatAge(lastSuccessfulTime) : 'Never'}
                             </div>

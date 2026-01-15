@@ -106,7 +106,7 @@ export default function IngressDetails({ ingress, tabContext = '' }) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#1e1e1e]">
+        <div className="flex flex-col h-full bg-background">
             {/* Header Bar */}
             <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
@@ -160,7 +160,7 @@ export default function IngressDetails({ ingress, tabContext = '' }) {
                     {rules.length > 0 ? (
                         <div className="space-y-4">
                             {rules.map((rule, ruleIdx) => (
-                                <div key={ruleIdx} className="p-3 bg-[#1a1a1a] rounded border border-border">
+                                <div key={ruleIdx} className="p-3 bg-background-dark rounded border border-border">
                                     <div className="flex items-center gap-2 mb-2">
                                         <span className="text-sm font-medium text-gray-300">
                                             {rule.host || '*'}
@@ -205,7 +205,7 @@ export default function IngressDetails({ ingress, tabContext = '' }) {
                     <DetailSection title="TLS">
                         <div className="space-y-2">
                             {tls.map((tlsEntry, idx) => (
-                                <div key={idx} className="p-2 bg-[#1a1a1a] rounded border border-border">
+                                <div key={idx} className="p-2 bg-background-dark rounded border border-border">
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className="text-sm text-gray-300">Secret:</span>
                                         {tlsEntry.secretName ? (

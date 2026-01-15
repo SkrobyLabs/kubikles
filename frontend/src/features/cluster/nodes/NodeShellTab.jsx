@@ -96,7 +96,7 @@ const NodeShellTab = ({ nodeName, context }) => {
 
     if (state === 'loading') {
         return (
-            <div className="h-full w-full bg-[#1e1e1e] flex items-center justify-center">
+            <div className="h-full w-full bg-background flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
                     <p className="text-gray-400">Scheduling debug pod on {nodeName}...</p>
@@ -107,7 +107,7 @@ const NodeShellTab = ({ nodeName, context }) => {
 
     if (state === 'error') {
         return (
-            <div className="h-full w-full bg-[#1e1e1e] flex items-center justify-center">
+            <div className="h-full w-full bg-background flex items-center justify-center">
                 <div className="text-center">
                     <p className="text-red-400 mb-2">Failed to open shell</p>
                     <p className="text-gray-500 text-sm">{error}</p>

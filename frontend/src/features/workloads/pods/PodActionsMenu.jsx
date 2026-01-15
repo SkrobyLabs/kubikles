@@ -44,41 +44,41 @@ export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange
     const menu = (
         <div
             ref={menuRef}
-            className="w-48 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg py-1"
+            className="w-48 bg-surface-light border border-border rounded-md shadow-lg py-1"
             style={{ position: 'fixed', top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, zIndex: 99999 }}
             onClick={(e) => e.stopPropagation()}
         >
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onShowDetails(pod)); }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
             >
                 <InformationCircleIcon className="h-4 w-4" />
                 Details
             </button>
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onLogs(pod)); }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
             >
                 <DocumentTextIcon className="h-4 w-4" />
                 View Logs
             </button>
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onEditYaml(pod)); }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
             >
                 <PencilSquareIcon className="h-4 w-4" />
                 Edit
             </button>
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onShowDependencies(pod)); }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
             >
                 <ShareIcon className="h-4 w-4" />
                 Dependencies
             </button>
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onShell(pod)); }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
             >
                 <CommandLineIcon className="h-4 w-4" />
                 Shell
@@ -93,7 +93,7 @@ export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange
                         handleAction(() => onDelete(pod));
                     }
                 }}
-                className={`w-full text-left px-4 py-2 text-sm hover:bg-[#3d3d3d] flex items-center gap-2 transition-colors ${isTerminating ? 'text-red-500 font-semibold' : 'text-red-400'}`}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-surface-hover flex items-center gap-2 transition-colors ${isTerminating ? 'text-red-500 font-semibold' : 'text-red-400'}`}
             >
                 <TrashIcon className="h-4 w-4" />
                 {isTerminating ? 'Force Delete' : 'Delete'}

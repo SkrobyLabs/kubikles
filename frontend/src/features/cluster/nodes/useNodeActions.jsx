@@ -46,6 +46,7 @@ export const useNodeActions = (refetch) => {
         openTab({
             id: tabId,
             title: `Shell: ${nodeName}`,
+            keepAlive: true,
             content: <NodeShellTab nodeName={nodeName} context={currentContext} />
         });
     }, [currentContext, openTab]);

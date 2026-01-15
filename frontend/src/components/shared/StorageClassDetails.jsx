@@ -78,7 +78,7 @@ export default function StorageClassDetails({ storageClass, tabContext = '' }) {
     const parameterKeys = Object.keys(parameters);
 
     return (
-        <div className="flex flex-col h-full bg-[#1e1e1e]">
+        <div className="flex flex-col h-full bg-background">
             {/* Header Bar */}
             <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
@@ -116,15 +116,15 @@ export default function StorageClassDetails({ storageClass, tabContext = '' }) {
                 {/* Summary */}
                 <DetailSection title="Summary">
                     <div className="grid grid-cols-3 gap-4 mb-2">
-                        <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className="text-lg font-bold text-gray-200">{reclaimPolicy}</div>
                             <div className="text-xs text-gray-500">Reclaim Policy</div>
                         </div>
-                        <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className="text-lg font-bold text-gray-200">{volumeBindingMode}</div>
                             <div className="text-xs text-gray-500">Binding Mode</div>
                         </div>
-                        <div className="text-center p-3 bg-[#1a1a1a] rounded border border-border">
+                        <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className="flex items-center justify-center">
                                 {allowVolumeExpansion ? (
                                     <CheckCircleIcon className="h-6 w-6 text-green-400" />
@@ -139,7 +139,7 @@ export default function StorageClassDetails({ storageClass, tabContext = '' }) {
 
                 {/* Provisioner */}
                 <DetailSection title="Provisioner">
-                    <div className="p-3 bg-[#1a1a1a] rounded border border-border">
+                    <div className="p-3 bg-background-dark rounded border border-border">
                         <span className="font-mono text-sm text-gray-300">{provisioner}</span>
                     </div>
                 </DetailSection>
@@ -149,7 +149,7 @@ export default function StorageClassDetails({ storageClass, tabContext = '' }) {
                     {parameterKeys.length > 0 ? (
                         <div className="space-y-1.5">
                             {parameterKeys.map((key) => (
-                                <div key={key} className="flex items-start gap-2 px-3 py-2 bg-[#1a1a1a] rounded border border-border">
+                                <div key={key} className="flex items-start gap-2 px-3 py-2 bg-background-dark rounded border border-border">
                                     <span className="font-mono text-sm text-gray-400 min-w-[150px]">{key}:</span>
                                     <span className="font-mono text-sm text-gray-300 break-all">{parameters[key]}</span>
                                 </div>

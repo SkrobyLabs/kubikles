@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Terminal as XTerm } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
+import { WebglAddon } from '@xterm/addon-webgl';
 import 'xterm/css/xterm.css';
 
 const Terminal = ({ url, onClose }) => {
@@ -8,6 +9,7 @@ const Terminal = ({ url, onClose }) => {
     const xtermRef = useRef(null);
     const wsRef = useRef(null);
     const fitAddonRef = useRef(null);
+    const webglAddonRef = useRef(null);
     const onCloseRef = useRef(onClose);
     const cleanupTimeoutRef = useRef(null);
 
@@ -39,6 +41,21 @@ const Terminal = ({ url, onClose }) => {
         fitAddonRef.current = fitAddon;
 
         term.open(terminalRef.current);
+
+        // Load WebGL addon for GPU-accelerated rendering (Metal on macOS)
+        try {
+            const webglAddon = new WebglAddon();
+            webglAddon.onContextLost(() => {
+                console.warn('WebGL context lost, falling back to canvas renderer');
+                webglAddon.dispose();
+                webglAddonRef.current = null;
+            });
+            term.loadAddon(webglAddon);
+            webglAddonRef.current = webglAddon;
+            console.log('Terminal using WebGL renderer (GPU accelerated)');
+        } catch (e) {
+            console.warn('WebGL addon failed to load, using canvas renderer:', e.message);
+        }
 
         // Slight delay to ensure container has dimensions
         setTimeout(() => {
@@ -106,6 +123,11 @@ const Terminal = ({ url, onClose }) => {
             if (ws.readyState === WebSocket.OPEN) {
                 ws.close();
             }
+            // Dispose WebGL addon before terminal
+            if (webglAddonRef.current) {
+                webglAddonRef.current.dispose();
+                webglAddonRef.current = null;
+            }
             term.dispose();
             // Delay onClose to handle React Strict Mode double-invocation
             // If the effect re-runs (strict mode), this timeout will be cancelled
@@ -158,7 +180,7 @@ const Terminal = ({ url, onClose }) => {
     }, []);
 
     return (
-        <div className="h-full w-full bg-[#1e1e1e] p-2 overflow-hidden relative">
+        <div className="h-full w-full bg-background p-2 overflow-hidden relative">
             <style>{`
                 .xterm { cursor: text; position: relative; user-select: none; -ms-user-select: none; -webkit-user-select: none; }
                 .xterm.focus, .xterm:focus { outline: none; }

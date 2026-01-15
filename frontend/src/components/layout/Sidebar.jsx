@@ -37,6 +37,7 @@ import {
     BoltIcon
 } from '@heroicons/react/24/outline';
 import { useConfig } from '../../context/ConfigContext';
+import { useTheme } from '../../context/ThemeContext';
 import { usePerformancePanel } from '../../hooks/usePerformancePanel.jsx';
 import SearchSelect from '../shared/SearchSelect';
 import Logger from '../../utils/Logger';
@@ -52,20 +53,26 @@ export default function Sidebar({
 }) {
     const { openConfigEditor } = useConfig();
     const { openPerformancePanel } = usePerformancePanel();
+    const { uiFont, monoFont, setUiFont, setMonoFont, uiFonts, monoFonts } = useTheme();
 
     // Settings menu state
     const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+    const [fontSubmenu, setFontSubmenu] = useState(null); // 'ui' | 'mono' | null
     const settingsButtonRef = useRef(null);
     const settingsMenuRef = useRef(null);
 
     // Close settings menu on click outside
     useEffect(() => {
-        if (!settingsMenuOpen) return;
+        if (!settingsMenuOpen) {
+            setFontSubmenu(null);
+            return;
+        }
 
         const handleClickOutside = (event) => {
             if (settingsButtonRef.current && !settingsButtonRef.current.contains(event.target) &&
                 settingsMenuRef.current && !settingsMenuRef.current.contains(event.target)) {
                 setSettingsMenuOpen(false);
+                setFontSubmenu(null);
             }
         };
 
@@ -311,13 +318,13 @@ export default function Sidebar({
 
     return (
         <div className="w-64 bg-surface border-r border-border flex flex-col h-full relative">
-            {/* App Header */}
-            <div className="h-14 flex items-center px-4 border-b border-border shrink-0">
+            {/* Header with traffic light padding - h-14 matches ResourceList header */}
+            <div className="h-14 shrink-0 flex items-center pl-20 border-b border-border titlebar-drag">
                 <div
-                    className="flex items-center gap-2 text-primary font-bold text-xl cursor-pointer select-none"
+                    className="flex items-center gap-2 text-primary font-bold text-lg cursor-pointer select-none"
                     onClick={handleLogoClick}
                 >
-                    <CubeIcon className="h-6 w-6" />
+                    <CubeIcon className="h-5 w-5" />
                     <span>Kubikles</span>
                 </div>
             </div>
@@ -482,7 +489,7 @@ export default function Sidebar({
                     {settingsMenuOpen && createPortal(
                         <div
                             ref={settingsMenuRef}
-                            className="fixed w-44 bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg py-1 z-[100]"
+                            className="fixed w-44 bg-surface-light border border-border rounded-md shadow-lg py-1 z-[100]"
                             style={{
                                 bottom: '52px',
                                 left: settingsButtonRef.current?.getBoundingClientRect().left - 60 || 0
@@ -493,7 +500,7 @@ export default function Sidebar({
                                     setSettingsMenuOpen(false);
                                     openConfigEditor();
                                 }}
-                                className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+                                className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
                             >
                                 <Cog6ToothIcon className="h-4 w-4" />
                                 Settings
@@ -503,12 +510,75 @@ export default function Sidebar({
                                     setSettingsMenuOpen(false);
                                     openPerformancePanel();
                                 }}
-                                className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d] flex items-center gap-2"
+                                className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
                             >
                                 <ChartBarIcon className="h-4 w-4" />
                                 <span className="flex-1">Performance</span>
                                 <span className="text-xs text-gray-500">Opt+P</span>
                             </button>
+                            <div className="border-t border-border my-1" />
+                            {/* UI Font Selector */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setFontSubmenu(fontSubmenu === 'ui' ? null : 'ui')}
+                                    className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center justify-between"
+                                >
+                                    <span>UI Font</span>
+                                    <span className="text-xs text-gray-500">{uiFonts.find(f => f.id === uiFont)?.name}</span>
+                                </button>
+                                {fontSubmenu === 'ui' && (
+                                    <div className="absolute left-full top-0 ml-1 w-40 bg-surface-light border border-border rounded-md shadow-lg py-1">
+                                        {uiFonts.map(font => (
+                                            <button
+                                                key={font.id}
+                                                onClick={() => {
+                                                    setUiFont(font.id);
+                                                    setFontSubmenu(null);
+                                                }}
+                                                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
+                                                    uiFont === font.id
+                                                        ? 'text-primary bg-primary/10'
+                                                        : 'text-gray-300 hover:bg-surface-hover'
+                                                }`}
+                                            >
+                                                {uiFont === font.id && <span className="text-primary">&#10003;</span>}
+                                                <span className={uiFont === font.id ? '' : 'ml-5'}>{font.name}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            {/* Mono Font Selector */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setFontSubmenu(fontSubmenu === 'mono' ? null : 'mono')}
+                                    className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center justify-between"
+                                >
+                                    <span>Mono Font</span>
+                                    <span className="text-xs text-gray-500">{monoFonts.find(f => f.id === monoFont)?.name}</span>
+                                </button>
+                                {fontSubmenu === 'mono' && (
+                                    <div className="absolute left-full top-0 ml-1 w-40 bg-surface-light border border-border rounded-md shadow-lg py-1">
+                                        {monoFonts.map(font => (
+                                            <button
+                                                key={font.id}
+                                                onClick={() => {
+                                                    setMonoFont(font.id);
+                                                    setFontSubmenu(null);
+                                                }}
+                                                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
+                                                    monoFont === font.id
+                                                        ? 'text-primary bg-primary/10'
+                                                        : 'text-gray-300 hover:bg-surface-hover'
+                                                }`}
+                                            >
+                                                {monoFont === font.id && <span className="text-primary">&#10003;</span>}
+                                                <span className={monoFont === font.id ? '' : 'ml-5'}>{font.name}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>,
                         document.body
                     )}

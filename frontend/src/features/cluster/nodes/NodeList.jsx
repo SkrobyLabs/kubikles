@@ -90,7 +90,7 @@ const TaintsCell = memo(function TaintsCell({ node }) {
     return (
         <span className="relative group cursor-help text-gray-300 underline decoration-dotted">
             {count}
-            <div className="absolute z-50 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity delay-500 bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-xs bg-[#1e1e1e] border border-[#3d3d3d] rounded shadow-lg whitespace-pre text-left">
+            <div className="absolute z-50 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity delay-500 bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-xs bg-background border border-border rounded shadow-lg whitespace-pre text-left">
                 {tooltipLines.map((line, idx) => (
                     <div key={idx}>{line}</div>
                 ))}

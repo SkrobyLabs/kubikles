@@ -42,9 +42,23 @@ func NewEventCoalescer(app *App, frameInterval time.Duration) *EventCoalescer {
 // If this is the first event in a frame, starts the frame timer.
 // Subsequent events within the frame window are batched.
 // Updates to the same resource within a frame are coalesced (latest wins).
+//
+// IMPORTANT: DELETE events are emitted immediately and bypass coalescing.
+// This prevents a race where MODIFIED events arriving after DELETE could
+// overwrite it (since coalescing key doesn't include event type), causing
+// deleted resources to never disappear from the UI.
 func (c *EventCoalescer) Emit(event ResourceEvent) {
 	// Fast path: if coalescing is disabled (frameInterval very small), emit immediately
 	if c.frameInterval < time.Millisecond {
+		c.emitDirect(event)
+		return
+	}
+
+	// DELETE events must be emitted immediately - never coalesce them.
+	// If we coalesce, a MODIFIED event arriving after DELETE could overwrite it
+	// (same resource key), causing the deletion to be lost and the resource
+	// to remain visible in the UI indefinitely.
+	if event.Type == "DELETED" {
 		c.emitDirect(event)
 		return
 	}

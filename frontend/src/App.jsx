@@ -5,6 +5,7 @@ import { MenuProvider } from './context/MenuContext';
 import { DebugProvider } from './context/DebugContext';
 import { ConfigProvider, useConfig } from './context/ConfigContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Sidebar from './components/layout/Sidebar';
 import BottomPanel from './components/layout/BottomPanel';
 import ToastContainer from './components/shared/ToastContainer';
@@ -53,6 +54,7 @@ import CSINodeList from './features/storage/csinodes/CSINodeList';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { usePerformancePanel } from './hooks/usePerformancePanel.jsx';
 import { LogDebug } from '../wailsjs/go/main/App';
+import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
 import ConfirmModal from './components/shared/ConfirmModal';
 import ConfigEditor from './components/shared/ConfigEditor';
 import CommandPalette from './components/shared/CommandPalette';
@@ -403,6 +405,13 @@ const getCreateModalTitle = (viewId) => {
     return titles[viewId] || 'Create Resource';
 };
 
+// Zoom constants
+const ZOOM_STEP = 0.1;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2.0;
+const ZOOM_DEFAULT = 1.0;
+const ZOOM_STORAGE_KEY = 'kubikles-zoom-level';
+
 function MainLayout() {
     const {
         activeView,
@@ -437,6 +446,55 @@ function MainLayout() {
     const isDragging = useRef(false);
     const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
     const [showGenericCreateModal, setShowGenericCreateModal] = useState(false);
+
+    // Zoom state - persisted to localStorage
+    const [zoomLevel, setZoomLevel] = useState(() => {
+        const saved = localStorage.getItem(ZOOM_STORAGE_KEY);
+        return saved ? parseFloat(saved) : ZOOM_DEFAULT;
+    });
+
+    // Apply zoom level to document body
+    useEffect(() => {
+        document.body.style.zoom = zoomLevel;
+        localStorage.setItem(ZOOM_STORAGE_KEY, zoomLevel.toString());
+    }, [zoomLevel]);
+
+    // Listen for zoom events from Go menu
+    useEffect(() => {
+        const handleZoomIn = () => {
+            setZoomLevel(prev => Math.min(prev + ZOOM_STEP, ZOOM_MAX));
+        };
+        const handleZoomOut = () => {
+            setZoomLevel(prev => Math.max(prev - ZOOM_STEP, ZOOM_MIN));
+        };
+        const handleZoomReset = () => {
+            setZoomLevel(ZOOM_DEFAULT);
+        };
+
+        EventsOn('zoom:in', handleZoomIn);
+        EventsOn('zoom:out', handleZoomOut);
+        EventsOn('zoom:reset', handleZoomReset);
+
+        return () => {
+            EventsOff('zoom:in');
+            EventsOff('zoom:out');
+            EventsOff('zoom:reset');
+        };
+    }, []);
+
+    // Cmd/Ctrl+scroll to zoom
+    useEffect(() => {
+        const handleWheel = (e) => {
+            if (e.metaKey || e.ctrlKey) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+                setZoomLevel(prev => Math.min(Math.max(prev + delta, ZOOM_MIN), ZOOM_MAX));
+            }
+        };
+
+        window.addEventListener('wheel', handleWheel, { passive: false });
+        return () => window.removeEventListener('wheel', handleWheel);
+    }, []);
 
     // Resizing Logic
     const handleMouseDown = (e) => {
@@ -643,20 +701,22 @@ function MainLayout() {
 
 function App() {
     return (
-        <DebugProvider>
-            <ConfigProvider>
-                <NotificationProvider>
-                    <K8sProvider>
-                        <UIProvider>
-                            <MenuProvider>
-                                <MainLayout />
-                                <ToastContainer />
-                            </MenuProvider>
-                        </UIProvider>
-                    </K8sProvider>
-                </NotificationProvider>
-            </ConfigProvider>
-        </DebugProvider>
+        <ThemeProvider>
+            <DebugProvider>
+                <ConfigProvider>
+                    <NotificationProvider>
+                        <K8sProvider>
+                            <UIProvider>
+                                <MenuProvider>
+                                    <MainLayout />
+                                    <ToastContainer />
+                                </MenuProvider>
+                            </UIProvider>
+                        </K8sProvider>
+                    </NotificationProvider>
+                </ConfigProvider>
+            </DebugProvider>
+        </ThemeProvider>
     );
 }
 

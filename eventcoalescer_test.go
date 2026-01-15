@@ -21,6 +21,20 @@ func makeTestEvent(resourceType, namespace, name string, data string) ResourceEv
 	}
 }
 
+// Helper to create a test event with specific type
+func makeTestEventWithType(eventType, resourceType, namespace, name string) ResourceEvent {
+	return ResourceEvent{
+		Type:         eventType,
+		ResourceType: resourceType,
+		Namespace:    namespace,
+		Resource: map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"name": name,
+			},
+		},
+	}
+}
+
 func TestNewEventCoalescer_DefaultInterval(t *testing.T) {
 	app := &App{}
 	c := NewEventCoalescer(app, 0)
@@ -351,5 +365,81 @@ func TestEventCoalescer_DifferentResourceTypes(t *testing.T) {
 
 	if count != 3 {
 		t.Errorf("expected 3 events for different resource types, got %d", count)
+	}
+}
+
+func TestEventCoalescer_DeleteBypassesCoalescing(t *testing.T) {
+	app := &App{}
+	c := NewEventCoalescer(app, 100*time.Millisecond)
+
+	// Emit a DELETE event - it should bypass the buffer entirely
+	c.Emit(makeTestEventWithType("DELETED", "pods", "default", "nginx"))
+
+	// DELETE events should NOT go into the buffer
+	c.mu.Lock()
+	count := len(c.events)
+	c.mu.Unlock()
+
+	if count != 0 {
+		t.Errorf("DELETE events should bypass buffer, got %d events in buffer", count)
+	}
+}
+
+func TestEventCoalescer_DeleteNotOverwrittenByModified(t *testing.T) {
+	// This test verifies the fix for the bug where MODIFIED events
+	// could overwrite DELETED events in the coalescing buffer.
+	// With the fix, DELETE bypasses the buffer so this can't happen.
+	app := &App{}
+	c := NewEventCoalescer(app, 100*time.Millisecond)
+
+	// Simulate: pod is being terminated
+	// 1. MODIFIED (status update to Terminating)
+	c.Emit(makeTestEventWithType("MODIFIED", "pods", "default", "nginx"))
+	// 2. DELETED (pod removed from etcd)
+	c.Emit(makeTestEventWithType("DELETED", "pods", "default", "nginx"))
+	// 3. Another MODIFIED (race condition - late status update)
+	c.Emit(makeTestEventWithType("MODIFIED", "pods", "default", "nginx"))
+
+	// Only MODIFIED events should be in buffer (DELETED was emitted immediately)
+	c.mu.Lock()
+	count := len(c.events)
+	var foundType string
+	for _, e := range c.events {
+		foundType = e.Type
+	}
+	c.mu.Unlock()
+
+	if count != 1 {
+		t.Errorf("expected 1 MODIFIED event in buffer, got %d", count)
+	}
+	if foundType != "MODIFIED" {
+		t.Errorf("expected MODIFIED in buffer, got %s", foundType)
+	}
+	// The key insight: DELETED was emitted immediately and is NOT in the buffer,
+	// so it can't be overwritten by subsequent MODIFIED events.
+}
+
+func TestEventCoalescer_AddedAndModifiedCoalesce(t *testing.T) {
+	// ADDED and MODIFIED can safely coalesce since they're both "resource exists" events
+	app := &App{}
+	c := NewEventCoalescer(app, 100*time.Millisecond)
+
+	c.Emit(makeTestEventWithType("ADDED", "pods", "default", "nginx"))
+	c.Emit(makeTestEventWithType("MODIFIED", "pods", "default", "nginx"))
+
+	c.mu.Lock()
+	count := len(c.events)
+	var foundType string
+	for _, e := range c.events {
+		foundType = e.Type
+	}
+	c.mu.Unlock()
+
+	// Should coalesce to 1 event (latest wins = MODIFIED)
+	if count != 1 {
+		t.Errorf("expected 1 coalesced event, got %d", count)
+	}
+	if foundType != "MODIFIED" {
+		t.Errorf("expected MODIFIED (latest), got %s", foundType)
 	}
 }

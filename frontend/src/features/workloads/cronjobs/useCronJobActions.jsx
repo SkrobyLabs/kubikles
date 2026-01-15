@@ -73,6 +73,7 @@ export const useCronJobActions = () => {
             openTab({
                 id: `logs-cronjob-${cronJob.metadata.name}`,
                 title: `Logs: ${cronJob.metadata.name}`,
+                keepAlive: true,
                 content: (
                     <LogViewer
                         namespace={namespace}

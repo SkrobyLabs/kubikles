@@ -7,7 +7,9 @@ import {
     PlayIcon,
     PauseIcon,
     ChartBarIcon,
-    BoltIcon
+    BoltIcon,
+    CommandLineIcon,
+    DocumentTextIcon
 } from '@heroicons/react/24/outline';
 
 // Format bytes to human readable
@@ -59,7 +61,7 @@ const Sparkline = ({ data, color = 'stroke-primary', height = 32, width = 100 })
 
 // Metric card component
 const MetricCard = ({ title, value, subtitle, icon: Icon, sparklineData, sparklineColor }) => (
-    <div className="bg-[#2d2d2d] rounded-lg p-3 border border-border">
+    <div className="bg-surface-light rounded-lg p-3 border border-border">
         <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1.5">
                 {Icon && <Icon className="h-3.5 w-3.5 text-gray-500" />}
@@ -88,9 +90,26 @@ export default function PerformancePanel({
     backendMetrics,
     metricsHistory,
     isPolling,
-    onTogglePolling
+    onTogglePolling,
+    bottomTabs = []
 }) {
     const [activeTab, setActiveTab] = useState('overview');
+
+    // Count keepAlive tabs by type
+    const keepAliveCounts = useMemo(() => {
+        const shells = bottomTabs.filter(t => t.keepAlive && t.id.startsWith('shell-')).length
+            + bottomTabs.filter(t => t.keepAlive && t.id.startsWith('node-shell-')).length;
+        const logs = bottomTabs.filter(t => t.keepAlive && (
+            t.id.startsWith('logs-') ||
+            t.id.startsWith('logs-deploy-') ||
+            t.id.startsWith('logs-statefulset-') ||
+            t.id.startsWith('logs-daemonset-') ||
+            t.id.startsWith('logs-job-') ||
+            t.id.startsWith('logs-cronjob-') ||
+            t.id.startsWith('logs-replicaset-')
+        )).length;
+        return { shells, logs, total: shells + logs };
+    }, [bottomTabs]);
 
     // Extract historical data for sparklines
     const heapHistory = useMemo(() =>
@@ -107,7 +126,7 @@ export default function PerformancePanel({
 
     if (!backendMetrics) {
         return (
-            <div className="h-full flex items-center justify-center text-gray-500 bg-[#1e1e1e]">
+            <div className="h-full flex items-center justify-center text-gray-500 bg-background">
                 <div className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
                     Loading metrics...
@@ -124,7 +143,7 @@ export default function PerformancePanel({
     ];
 
     return (
-        <div className="h-full w-full bg-[#1e1e1e] flex flex-col overflow-hidden">
+        <div className="h-full w-full bg-background flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
                 <div className="flex items-center gap-4">
@@ -134,7 +153,7 @@ export default function PerformancePanel({
                     </div>
 
                     {/* Tab Navigation */}
-                    <div className="flex items-center gap-0.5 bg-[#2d2d2d] rounded p-0.5">
+                    <div className="flex items-center gap-0.5 bg-surface-light rounded p-0.5">
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
@@ -237,6 +256,21 @@ export default function PerformancePanel({
                                 value={backendMetrics.ingressForwards?.active || 0}
                             />
                         </Section>
+
+                        <Section title="Kept-Alive Tabs">
+                            <MetricCard
+                                title="Shell Tabs"
+                                icon={CommandLineIcon}
+                                value={keepAliveCounts.shells}
+                                subtitle="WebSocket connections"
+                            />
+                            <MetricCard
+                                title="Log Tabs"
+                                icon={DocumentTextIcon}
+                                value={keepAliveCounts.logs}
+                                subtitle="Streaming connections"
+                            />
+                        </Section>
                     </>
                 )}
 
@@ -261,7 +295,7 @@ export default function PerformancePanel({
                             <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
                                 Top Event Sources (sorted by total events)
                             </h3>
-                            <div className="bg-[#2d2d2d] rounded-lg border border-border overflow-hidden">
+                            <div className="bg-surface-light rounded-lg border border-border overflow-hidden">
                                 {(backendMetrics.activity?.topWatchers || []).length === 0 ? (
                                     <div className="text-gray-500 text-sm p-4">No events recorded yet</div>
                                 ) : (
@@ -362,7 +396,7 @@ export default function PerformancePanel({
 
                         <div className="mb-5">
                             <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Active Watcher Keys</h3>
-                            <div className="bg-[#2d2d2d] rounded-lg border border-border p-3 max-h-64 overflow-auto">
+                            <div className="bg-surface-light rounded-lg border border-border p-3 max-h-64 overflow-auto">
                                 {(backendMetrics.watchers?.watcherKeys || []).length === 0 ? (
                                     <div className="text-gray-500 text-sm">No active watchers</div>
                                 ) : (

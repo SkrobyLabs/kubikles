@@ -73,6 +73,7 @@ export const useDaemonSetActions = () => {
             openTab({
                 id: `logs-daemonset-${daemonSet.metadata.name}`,
                 title: `Logs: ${daemonSet.metadata.name}`,
+                keepAlive: true,
                 content: (
                     <LogViewer
                         namespace={namespace}

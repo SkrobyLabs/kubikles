@@ -54,7 +54,7 @@ export function TimePickerModal({
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
             <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-            <div className="relative bg-[#2d2d2d] border border-[#3d3d3d] rounded-lg shadow-xl max-w-sm w-full mx-4 p-4">
+            <div className="relative bg-surface-light border border-border rounded-lg shadow-xl max-w-sm w-full mx-4 p-4">
                 <h3 className="text-sm font-medium text-white mb-2">Jump to Time</h3>
                 <p className="text-xs text-gray-400 mb-3">Show logs starting from this time (server time).</p>
                 <input
@@ -69,7 +69,7 @@ export function TimePickerModal({
                         if (e.key === 'Escape') onClose();
                     }}
                     placeholder="YYYY-MM-DD HH:MM:SS"
-                    className="w-full px-3 py-2 text-sm bg-[#1e1e1e] border border-[#3d3d3d] rounded text-white mb-1 font-mono"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded text-white mb-1 font-mono"
                     autoFocus
                 />
                 {error && <p className="text-xs text-red-400 mb-2">{error}</p>}

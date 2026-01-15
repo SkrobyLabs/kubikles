@@ -19,6 +19,7 @@ export const usePodActions = () => {
         openTab({
             id: tabId,
             title: `Logs: ${podName}`,
+            keepAlive: true,
             content: <LogViewer namespace={namespace} pod={podName} containers={containers} siblingPods={siblingPods} podContainerMap={podContainerMap} ownerName={ownerName} podCreationTime={podCreationTime} tabContext={currentContext} />
         });
     };
@@ -31,6 +32,7 @@ export const usePodActions = () => {
             openTab({
                 id: tabId,
                 title: `Shell: ${podName}`,
+                keepAlive: true,
                 content: <Terminal url={url} />
             });
             Logger.info("Shell opened successfully", { namespace, pod: podName });

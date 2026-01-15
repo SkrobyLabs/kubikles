@@ -341,7 +341,7 @@ export default function ConfigEditor() {
     return (
         <div className="h-full flex flex-col bg-background">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0 titlebar-drag">
                 <h2 className="text-sm font-semibold text-text">Settings</h2>
                 <div className="flex items-center gap-3">
                     {/* Error/Success Message */}
@@ -353,7 +353,7 @@ export default function ConfigEditor() {
                     )}
 
                     {/* Mode Toggle */}
-                    <div className="flex items-center bg-[#1e1e1e] rounded overflow-hidden text-xs">
+                    <div className="flex items-center bg-background rounded overflow-hidden text-xs">
                         <button
                             onClick={() => switchMode('flat')}
                             className={`px-3 py-1.5 transition-colors ${mode === 'flat' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}

@@ -63,7 +63,7 @@ export const CopyableTextBlock = ({ value, maxLines = 10 }) => {
     return (
         <div className="relative group">
             <pre
-                className="text-sm text-gray-200 bg-[#1a1a1a] rounded border border-border p-3 whitespace-pre-wrap break-words overflow-auto"
+                className="text-sm text-gray-200 bg-background-dark rounded border border-border p-3 whitespace-pre-wrap break-words overflow-auto"
                 style={{ maxHeight: `${maxLines * 1.5}rem` }}
             >
                 {value || <span className="text-gray-500 italic">No content</span>}

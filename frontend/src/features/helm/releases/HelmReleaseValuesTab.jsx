@@ -71,7 +71,7 @@ export default function HelmReleaseValuesTab({ release, isStale }) {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-full bg-[#1e1e1e]">
+            <div className="flex items-center justify-center h-full bg-background">
                 <div className="flex items-center gap-3 text-gray-400">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
                     <span>Loading values...</span>
@@ -82,7 +82,7 @@ export default function HelmReleaseValuesTab({ release, isStale }) {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center h-full bg-[#1e1e1e] text-red-400 p-4">
+            <div className="flex flex-col items-center justify-center h-full bg-background text-red-400 p-4">
                 <ExclamationTriangleIcon className="h-8 w-8 mb-2" />
                 <span className="text-center">{error}</span>
             </div>
@@ -90,9 +90,9 @@ export default function HelmReleaseValuesTab({ release, isStale }) {
     }
 
     return (
-        <div className="h-full flex flex-col bg-[#1e1e1e]">
+        <div className="h-full flex flex-col bg-background">
             {/* Toolbar */}
-            <div className="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-[#3c3c3c]">
+            <div className="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-border">
                 <div className="flex items-center gap-4">
                     {/* User Values Only Toggle */}
                     <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
@@ -108,7 +108,7 @@ export default function HelmReleaseValuesTab({ release, isStale }) {
 
                 <div className="flex items-center gap-2">
                     {/* Format Toggle */}
-                    <div className="flex items-center bg-[#2d2d2d] rounded p-0.5">
+                    <div className="flex items-center bg-surface-light rounded p-0.5">
                         <button
                             onClick={() => setFormat('yaml')}
                             className={`px-2 py-1 text-xs font-medium rounded transition-colors ${

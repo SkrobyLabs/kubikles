@@ -57,9 +57,9 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
     const [showRequest, setShowRequest] = useState(true);
     const [showLimit, setShowLimit] = useState(true);
 
-    // Chart dimensions (constants)
-    const width = 400;
-    const height = 160;
+    // Chart dimensions (constants) - wider aspect ratio for better horizontal usage
+    const width = 500;
+    const height = 200;
     const paddingLeft = 60;
     const paddingRight = 20;
     const paddingTop = 20;
@@ -129,7 +129,7 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
 
     if (!chartData) {
         return (
-            <div className="h-48 flex items-center justify-center text-gray-500 text-sm bg-background rounded border border-border">
+            <div className="h-56 flex items-center justify-center text-gray-500 text-sm bg-background rounded border border-border">
                 No data available
             </div>
         );
@@ -199,11 +199,11 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
             </div>
             <div
                 ref={containerRef}
-                className="h-48 bg-background rounded border border-border relative"
+                className="h-56 bg-background rounded border border-border relative"
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
             >
-                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
                     {/* Y axis grid lines */}
                     {yTicks.map((tick, i) => (
                         <g key={i}>
@@ -554,7 +554,7 @@ export default function PodMetricsTab({ pod, isStale }) {
                 </div>
 
                 {/* Duration selector */}
-                <div className="flex items-center gap-1 bg-[#2d2d2d] rounded-md p-0.5">
+                <div className="flex items-center gap-1 bg-surface-light rounded-md p-0.5">
                     {DURATIONS.map(d => (
                         <button
                             key={d.value}

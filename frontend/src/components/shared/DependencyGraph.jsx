@@ -476,7 +476,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-full bg-[#1e1e1e]">
+            <div className="flex items-center justify-center h-full bg-background">
                 <div className="text-gray-400">Loading dependencies...</div>
             </div>
         );
@@ -484,14 +484,14 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
 
     if (error) {
         return (
-            <div className="flex items-center justify-center h-full bg-[#1e1e1e]">
+            <div className="flex items-center justify-center h-full bg-background">
                 <div className="text-red-400">{error}</div>
             </div>
         );
     }
 
     return (
-        <div className="h-full w-full bg-[#1e1e1e] relative">
+        <div className="h-full w-full bg-background relative">
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -502,13 +502,20 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                 fitViewOptions={{ padding: 0.2 }}
                 minZoom={0.1}
                 maxZoom={2}
+                // Performance optimizations for Apple Silicon
+                panOnScroll={true}
+                selectionOnDrag={false}
+                nodesDraggable={false}
+                nodesConnectable={false}
+                elementsSelectable={false}
+                elevateEdgesOnSelect={false}
             >
-                <Controls className="!bg-[#2d2d2d] !border-[#3d3d3d]" />
+                <Controls className="!bg-surface-light !border-border" />
                 <Background color="#3d3d3d" gap={16} />
             </ReactFlow>
 
             {/* Legend */}
-            <div className="absolute bottom-4 left-4 bg-[#2d2d2d] border border-[#3d3d3d] rounded-lg p-3 text-xs">
+            <div className="absolute bottom-4 left-4 bg-surface-light border border-border rounded-lg p-3 text-xs">
                 <div className="text-gray-400 font-medium mb-2">Legend</div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     <div className="flex items-center gap-2">
@@ -551,7 +558,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             </div>
 
             {/* Title */}
-            <div className="absolute top-4 left-4 bg-[#2d2d2d] border border-[#3d3d3d] rounded-lg px-3 py-2">
+            <div className="absolute top-4 left-4 bg-surface-light border border-border rounded-lg px-3 py-2">
                 <span className="text-gray-400 text-sm">
                     Dependencies for <span className="text-white font-medium">{resourceName}</span>
                 </span>
@@ -560,14 +567,14 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             {/* Context Menu */}
             {contextMenu && (
                 <div
-                    className="fixed bg-[#2d2d2d] border border-[#3d3d3d] rounded-md shadow-lg z-50 py-1"
+                    className="fixed bg-surface-light border border-border rounded-md shadow-lg z-50 py-1"
                     style={{ top: contextMenu.y, left: contextMenu.x }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {contextMenu.node.isSummary ? (
                         <button
                             onClick={() => handleExpandNode(contextMenu.node)}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d]"
+                            className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover"
                         >
                             Expand ({contextMenu.node.remainingCount} more)
                         </button>
@@ -575,14 +582,14 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                         <>
                             <button
                                 onClick={() => handleEditYaml(contextMenu.node)}
-                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d]"
+                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover"
                             >
                                 Edit YAML
                             </button>
                             {DEPENDENCY_SUPPORTED_KINDS.has(contextMenu.node.kind) && (
                                 <button
                                     onClick={() => handleShowDependencies(contextMenu.node)}
-                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#3d3d3d]"
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover"
                                 >
                                     Show Dependencies
                                 </button>

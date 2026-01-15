@@ -261,7 +261,7 @@ export default function YamlEditor({
     const isNamespaced = namespace !== undefined && namespace !== '';
 
     return (
-        <div className="flex flex-col h-full bg-[#1e1e1e]">
+        <div className="flex flex-col h-full bg-background">
             {/* Stale Tab Banner */}
             {isStale && (
                 <div className="flex items-center gap-2 px-4 py-2 bg-red-900/30 border-b border-red-500/50 text-red-400 shrink-0">

@@ -1,11 +1,12 @@
 # Makefile for Kubikles
 
-.PHONY: dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-all install-wails install-deps install-frontend install-hooks clean test test-frontend test-watch
+.PHONY: dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-all install-wails install-deps install-frontend install-hooks clean test test-frontend test-watch profile build-pgo
 
 # Ensure GOPATH/bin is in PATH
 GOPATH := $(shell go env GOPATH)
 WAILS := $(GOPATH)/bin/wails
 BUILD_FLAGS := -trimpath -ldflags "-s -w"
+PGO_FILE := default.pgo
 UNAME_S := $(shell uname -s)
 
 dev:
@@ -110,3 +111,51 @@ test-frontend:
 # Run frontend tests in watch mode
 test-watch:
 	cd frontend && npm run test:watch
+
+# ===========================================
+# Profile-Guided Optimization (PGO)
+# ===========================================
+# PGO improves performance by 5-15% by optimizing hot paths
+# Profile is architecture-specific (arm64 profile works on all Apple Silicon)
+
+# Build with profiling enabled and capture a CPU profile
+# Usage: make profile
+#   1. App launches with pprof on port 6060
+#   2. Use the app normally for 30-60 seconds (typical operations)
+#   3. Press Ctrl+C to stop and save profile
+profile:
+	@echo "Building with profiling enabled..."
+	$(WAILS) build -tags "profiling"
+	@echo ""
+	@echo "=== PGO Profile Collection ==="
+	@echo "1. App will start with pprof enabled on port 6060"
+	@echo "2. Use the app normally for 30-60 seconds:"
+	@echo "   - Switch contexts, browse resources"
+	@echo "   - Open logs, terminals"
+	@echo "   - View dependency graphs"
+	@echo "3. Press Ctrl+C when done"
+	@echo ""
+	@echo "Starting profile collection..."
+	@./scripts/collect-pgo-profile.sh
+
+# Build with PGO optimization (requires profile from 'make profile')
+build-pgo:
+	@if [ ! -f "$(PGO_FILE)" ]; then \
+		echo "Error: $(PGO_FILE) not found. Run 'make profile' first to generate it."; \
+		exit 1; \
+	fi
+	@echo "Building with PGO optimization from $(PGO_FILE)..."
+	$(WAILS) build $(BUILD_FLAGS) -tags pgo
+
+# Build optimized release for Apple Silicon with PGO
+build-mac-arm-pgo:
+	@if [ ! -f "$(PGO_FILE)" ]; then \
+		echo "Error: $(PGO_FILE) not found. Run 'make profile' first."; \
+		exit 1; \
+	fi
+	@echo "Building Apple Silicon release with PGO..."
+	GOFLAGS="-pgo=$(PGO_FILE)" $(WAILS) build -platform darwin/arm64 $(BUILD_FLAGS) -o Kubikles-arm64-pgo
+
+# Clean PGO profile
+clean-pgo:
+	rm -f $(PGO_FILE) cpu.pprof

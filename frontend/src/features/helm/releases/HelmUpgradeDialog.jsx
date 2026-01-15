@@ -699,7 +699,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                 {showValuesEditor && (
                                     <div className="border-t border-border">
                                         {/* Values Editor Toolbar */}
-                                        <div className="flex items-center justify-between px-3 py-2 bg-[#252526] border-b border-[#3c3c3c]">
+                                        <div className="flex items-center justify-between px-3 py-2 bg-[#252526] border-b border-border">
                                             <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
                                                 <input
                                                     type="checkbox"
@@ -713,7 +713,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
 
                                             <div className="flex items-center gap-2">
                                                 {/* Format Toggle */}
-                                                <div className="flex items-center bg-[#2d2d2d] rounded p-0.5">
+                                                <div className="flex items-center bg-surface-light rounded p-0.5">
                                                     <button
                                                         type="button"
                                                         onClick={() => handleFormatChange('yaml')}
@@ -741,7 +741,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                         </div>
 
                                         {/* Editor */}
-                                        <div className="h-48 bg-[#1e1e1e]">
+                                        <div className="h-48 bg-background">
                                             {loadingValues ? (
                                                 <div className="flex items-center justify-center h-full text-gray-400">
                                                     <ArrowPathIcon className="h-5 w-5 animate-spin mr-2" />
@@ -828,7 +828,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                 </button>
                             </button>
                             {showLogs && (
-                                <div className="border-t border-border bg-[#1a1a1a] max-h-40 overflow-y-auto font-mono text-xs">
+                                <div className="border-t border-border bg-background-dark max-h-40 overflow-y-auto font-mono text-xs">
                                     {searchLogs.map((log, i) => (
                                         <div
                                             key={i}

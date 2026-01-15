@@ -74,6 +74,7 @@ export const useDeploymentActions = () => {
             openTab({
                 id: `logs-deploy-${deployment.metadata.name}`,
                 title: `Logs: ${deployment.metadata.name}`,
+                keepAlive: true,
                 content: (
                     <LogViewer
                         namespace={namespace}
