@@ -53,7 +53,7 @@ import CSIDriverList from './features/storage/csidrivers/CSIDriverList';
 import CSINodeList from './features/storage/csinodes/CSINodeList';
 import { useDebugLogs } from './hooks/useDebugLogs';
 import { usePerformancePanel } from './hooks/usePerformancePanel.jsx';
-import { LogDebug } from '../wailsjs/go/main/App';
+import { LogDebug, SetEventCoalescerFrameInterval } from '../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
 import ConfirmModal from './components/shared/ConfirmModal';
 import ConfigEditor from './components/shared/ConfigEditor';
@@ -440,7 +440,7 @@ function MainLayout() {
         currentNamespace
     } = useK8s();
 
-    const { showConfigEditor } = useConfig();
+    const { showConfigEditor, getConfig } = useConfig();
     const { toggleDebug } = useDebugLogs();
     const { openPerformancePanel } = usePerformancePanel();
     const isDragging = useRef(false);
@@ -482,8 +482,11 @@ function MainLayout() {
         };
     }, []);
 
-    // Cmd/Ctrl+scroll to zoom
+    // Cmd/Ctrl+scroll to zoom (can be disabled in settings)
+    const scrollZoomEnabled = getConfig('ui.scrollZoomEnabled') !== false;
     useEffect(() => {
+        if (!scrollZoomEnabled) return;
+
         const handleWheel = (e) => {
             if (e.metaKey || e.ctrlKey) {
                 e.preventDefault();
@@ -494,7 +497,13 @@ function MainLayout() {
 
         window.addEventListener('wheel', handleWheel, { passive: false });
         return () => window.removeEventListener('wheel', handleWheel);
-    }, []);
+    }, [scrollZoomEnabled]);
+
+    // Apply event coalescer frame interval from config
+    const eventCoalescerMs = getConfig('performance.eventCoalescerMs') || 16;
+    useEffect(() => {
+        SetEventCoalescerFrameInterval(eventCoalescerMs);
+    }, [eventCoalescerMs]);
 
     // Resizing Logic
     const handleMouseDown = (e) => {

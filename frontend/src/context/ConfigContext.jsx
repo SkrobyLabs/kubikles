@@ -28,7 +28,9 @@ const defaultConfig = {
         // Debounce delay for resource list search (ms)
         searchDebounceMs: 150,
         // How long "Copied!" feedback shows (ms)
-        copyFeedbackMs: 2000
+        copyFeedbackMs: 2000,
+        // Enable Cmd/Ctrl+Scroll to zoom in/out
+        scrollZoomEnabled: true
     },
     metrics: {
         // Poll interval for node/pod metrics (ms)
@@ -36,7 +38,9 @@ const defaultConfig = {
     },
     performance: {
         // Poll interval for performance panel (ms)
-        pollIntervalMs: 1500
+        pollIntervalMs: 1500,
+        // Frame interval for resource event batching (ms). Lower = more responsive, higher = less CPU.
+        eventCoalescerMs: 16
     }
 };
 

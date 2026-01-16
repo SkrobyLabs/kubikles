@@ -17,8 +17,10 @@ const configDescriptions = {
     'portForwards.autoStartMode': 'Auto-start mode: "all" (start all that were running), "favorites" (only favorites), "none" (disabled)',
     'ui.searchDebounceMs': 'Debounce delay in milliseconds for resource list search',
     'ui.copyFeedbackMs': 'How long "Copied!" feedback shows in milliseconds',
+    'ui.scrollZoomEnabled': 'Enable Cmd/Ctrl+Scroll to zoom in/out',
     'metrics.pollIntervalMs': 'Poll interval in milliseconds for node/pod metrics (default: 30000)',
-    'performance.pollIntervalMs': 'Poll interval in milliseconds for performance panel (default: 1500)'
+    'performance.pollIntervalMs': 'Poll interval in milliseconds for performance panel (default: 1500)',
+    'performance.eventCoalescerMs': 'Frame interval in milliseconds for resource event batching (1-100, default: 16)'
 };
 
 // Convert nested object to flat key=value format with comments
@@ -258,6 +260,11 @@ export default function ConfigEditor() {
                                     default: 2000,
                                     minimum: 500,
                                     maximum: 5000
+                                },
+                                scrollZoomEnabled: {
+                                    type: 'boolean',
+                                    description: 'Enable Cmd/Ctrl+Scroll to zoom in/out',
+                                    default: true
                                 }
                             }
                         },
@@ -284,6 +291,13 @@ export default function ConfigEditor() {
                                     default: 1500,
                                     minimum: 500,
                                     maximum: 10000
+                                },
+                                eventCoalescerMs: {
+                                    type: 'number',
+                                    description: 'Frame interval in milliseconds for resource event batching',
+                                    default: 16,
+                                    minimum: 1,
+                                    maximum: 100
                                 }
                             }
                         }

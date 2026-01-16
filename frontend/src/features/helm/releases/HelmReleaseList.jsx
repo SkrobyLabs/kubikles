@@ -132,23 +132,35 @@ export default function HelmReleaseList({ isVisible }) {
             content: `Force release "${release.name}" status to "deployed"? This will mark the release as successfully deployed without making any changes to the actual resources.`,
             confirmText: 'Force Deployed',
             confirmStyle: 'primary',
-            onConfirm: async () => {
-                try {
-                    await ForceHelmReleaseStatus(release.namespace, release.name, 'deployed');
-                    addNotification({
-                        type: 'success',
-                        title: 'Status updated',
-                        message: `Release "${release.name}" marked as deployed`
+            onConfirm: () => {
+                // Close modal immediately - operation runs in background
+                closeModal();
+
+                // Show in-progress notification
+                addNotification({
+                    type: 'info',
+                    title: 'Updating status',
+                    message: `Forcing "${release.name}" status to deployed...`,
+                    duration: 3000
+                });
+
+                // Run operation asynchronously without blocking
+                ForceHelmReleaseStatus(release.namespace, release.name, 'deployed')
+                    .then(() => {
+                        addNotification({
+                            type: 'success',
+                            title: 'Status updated',
+                            message: `Release "${release.name}" marked as deployed`
+                        });
+                        refresh();
+                    })
+                    .catch((err) => {
+                        addNotification({
+                            type: 'error',
+                            title: 'Failed to update status',
+                            message: err?.message || String(err)
+                        });
                     });
-                    closeModal();
-                    refresh();
-                } catch (err) {
-                    addNotification({
-                        type: 'error',
-                        title: 'Failed to update status',
-                        message: err?.message || String(err)
-                    });
-                }
             }
         });
     }, [openModal, closeModal, addNotification, refresh]);

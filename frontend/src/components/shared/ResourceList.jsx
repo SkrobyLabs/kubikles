@@ -104,7 +104,7 @@ const DEFAULT_COLUMN_WIDTHS = {
     cpu: 100,
     memory: 100,
     containers: 150,
-    restarts: 100,
+    restarts: 140,
     age: 100,
     controlledBy: 150,
     pods: 100,

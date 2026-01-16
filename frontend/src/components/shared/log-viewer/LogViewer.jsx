@@ -109,7 +109,9 @@ export default function LogViewer({
 
     // Manage streaming based on follow state
     useEffect(() => {
-        if (isFollowing && namespace && selectedPod && !stream.loading) {
+        // Use isFetching() for synchronous check to avoid React batching race condition
+        // where stream.loading might still be false when this effect runs
+        if (isFollowing && namespace && selectedPod && !stream.loading && !stream.isFetching()) {
             stream.startStreaming();
         } else {
             stream.stopStreaming();

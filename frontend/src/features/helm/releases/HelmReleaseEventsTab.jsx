@@ -14,7 +14,7 @@ const EventTypeIcon = ({ type }) => {
     return <InformationCircleIcon className="w-4 h-4 text-green-400" />;
 };
 
-export default function HelmReleaseEventsTab({ release, isStale }) {
+export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 }) {
     const { currentContext, lastRefresh } = useK8s();
     const [events, setEvents] = useState([]);
     const [resources, setResources] = useState([]);
@@ -73,7 +73,7 @@ export default function HelmReleaseEventsTab({ release, isStale }) {
         };
 
         fetchData();
-    }, [currentContext, namespace, releaseName, isStale, lastRefresh]);
+    }, [currentContext, namespace, releaseName, isStale, lastRefresh, refreshKey]);
 
     // Handle real-time event updates
     const handleEvent = useCallback((event) => {

@@ -766,6 +766,10 @@ export function SearchHelmChart(arg1) {
   return window['go']['main']['App']['SearchHelmChart'](arg1);
 }
 
+export function SetEventCoalescerFrameInterval(arg1) {
+  return window['go']['main']['App']['SetEventCoalescerFrameInterval'](arg1);
+}
+
 export function SetHelmRepositoryPriority(arg1, arg2) {
   return window['go']['main']['App']['SetHelmRepositoryPriority'](arg1, arg2);
 }

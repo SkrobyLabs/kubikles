@@ -1,11 +1,13 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { XMarkIcon, ArrowPathIcon, ExclamationTriangleIcon, ChevronDownIcon, ChevronRightIcon, DocumentTextIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { SearchHelmChart, UpgradeHelmRelease, GetHelmChartVersions, GetHelmReleaseValues, GetHelmReleaseAllValues, ListChartSources, SearchChartInSource } from '../../../../wailsjs/go/main/App';
+import { useNotification } from '../../../context/NotificationContext';
 import SearchSelect from '../../../components/shared/SearchSelect';
 import Editor from '@monaco-editor/react';
 import yaml from 'js-yaml';
 
 export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
+    const { addNotification } = useNotification();
     const [loading, setLoading] = useState(true);
     const [upgrading, setUpgrading] = useState(false);
     const [error, setError] = useState(null);
@@ -320,44 +322,66 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
         }
     }, [chartSources, release.chartVersion]);
 
-    const handleUpgrade = useCallback(async () => {
+    const handleUpgrade = useCallback(() => {
         if (!selectedSource || !selectedVersion) {
             setError('Please select a chart source and version');
             return;
         }
 
-        setUpgrading(true);
-        setError(null);
-
+        // Parse custom values before closing (validation step)
+        let customValues = {};
         try {
-            // Parse custom values if editor is open
-            let customValues = {};
             if (showValuesEditor && valuesContent.trim()) {
                 customValues = parseValues();
             }
-
-            await UpgradeHelmRelease(release.namespace, release.name, {
-                repoName: selectedSource.repoName,
-                repoUrl: selectedSource.repoUrl,
-                chartName: selectedSource.chartName,
-                version: selectedVersion,
-                values: customValues,
-                reuseValues: reuseValues && !showValuesEditor, // Don't reuse if custom values provided
-                resetValues: resetValues,
-                force: force,
-                wait: wait,
-                timeout: 300, // 5 minutes
-                isOci: selectedSource.isOci || false,
-                ociRepository: selectedSource.ociRepository || ''
-            });
-            onSuccess();
         } catch (err) {
-            console.error('Failed to upgrade release:', err);
             setError(err?.message || String(err));
-        } finally {
-            setUpgrading(false);
+            return;
         }
-    }, [release, selectedSource, selectedVersion, reuseValues, resetValues, force, wait, onSuccess, showValuesEditor, valuesContent, parseValues]);
+
+        // Close dialog immediately - operation runs in background
+        onClose();
+
+        // Show in-progress notification
+        addNotification({
+            type: 'info',
+            title: 'Upgrade started',
+            message: `Upgrading "${release.name}" to ${selectedVersion}...`,
+            duration: 3000
+        });
+
+        // Run upgrade asynchronously without blocking
+        UpgradeHelmRelease(release.namespace, release.name, {
+            repoName: selectedSource.repoName,
+            repoUrl: selectedSource.repoUrl,
+            chartName: selectedSource.chartName,
+            version: selectedVersion,
+            values: customValues,
+            reuseValues: reuseValues && !showValuesEditor, // Don't reuse if custom values provided
+            resetValues: resetValues,
+            force: force,
+            wait: wait,
+            timeout: 300, // 5 minutes
+            isOci: selectedSource.isOci || false,
+            ociRepository: selectedSource.ociRepository || ''
+        })
+            .then(() => {
+                addNotification({
+                    type: 'success',
+                    title: 'Upgrade complete',
+                    message: `"${release.name}" upgraded to ${selectedVersion}`
+                });
+                onSuccess();
+            })
+            .catch((err) => {
+                console.error('Failed to upgrade release:', err);
+                addNotification({
+                    type: 'error',
+                    title: 'Upgrade failed',
+                    message: err?.message || String(err)
+                });
+            });
+    }, [release, selectedSource, selectedVersion, reuseValues, resetValues, force, wait, onClose, onSuccess, showValuesEditor, valuesContent, parseValues, addNotification]);
 
     const isCurrentVersion = selectedVersion === release.chartVersion &&
                             selectedSource?.repoName &&

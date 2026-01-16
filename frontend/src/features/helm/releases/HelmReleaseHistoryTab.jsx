@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowUturnLeftIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { GetHelmReleaseHistory, RollbackHelmRelease } from '../../../../wailsjs/go/main/App';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
+import { useNotification } from '../../../context/NotificationContext';
 import Logger from '../../../utils/Logger';
 
 const formatDate = (timestamp) => {
@@ -23,36 +24,40 @@ const getStatusIcon = (status) => {
     return null;
 };
 
-export default function HelmReleaseHistoryTab({ release, isStale }) {
+export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0 }) {
     const { currentContext, lastRefresh, triggerRefresh } = useK8s();
     const { openModal, closeModal } = useUI();
+    const { addNotification } = useNotification();
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    const currentRevision = release?.revision || 0;
+    // Determine current revision from history (the one with "deployed" status)
+    // Falls back to release.revision if history not loaded yet
+    const currentRevision = history.find(h => h.status?.toLowerCase() === 'deployed')?.revision || release?.revision || 0;
 
-    // Fetch history
-    useEffect(() => {
+    // Fetch history function
+    const fetchHistory = useCallback(async () => {
         if (!currentContext || !release || isStale) return;
 
-        const fetchHistory = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                Logger.info("Fetching Helm release history", { namespace: release.namespace, name: release.name });
-                const data = await GetHelmReleaseHistory(release.namespace, release.name);
-                setHistory(data || []);
-            } catch (err) {
-                Logger.error("Failed to fetch Helm release history", err);
-                setError(err.message || String(err));
-            } finally {
-                setLoading(false);
-            }
-        };
+        setLoading(true);
+        setError(null);
+        try {
+            Logger.info("Fetching Helm release history", { namespace: release.namespace, name: release.name });
+            const data = await GetHelmReleaseHistory(release.namespace, release.name);
+            setHistory(data || []);
+        } catch (err) {
+            Logger.error("Failed to fetch Helm release history", err);
+            setError(err.message || String(err));
+        } finally {
+            setLoading(false);
+        }
+    }, [currentContext, release, isStale]);
 
+    // Fetch on mount and when dependencies change
+    useEffect(() => {
         fetchHistory();
-    }, [currentContext, release, isStale, lastRefresh]);
+    }, [fetchHistory, lastRefresh, refreshKey]);
 
     const handleRollback = (revision) => {
         openModal({
@@ -60,17 +65,40 @@ export default function HelmReleaseHistoryTab({ release, isStale }) {
             content: `Are you sure you want to rollback "${release.name}" to revision ${revision}? This will create a new revision.`,
             confirmText: 'Rollback',
             confirmStyle: 'primary',
-            onConfirm: async () => {
-                try {
-                    Logger.info("Rolling back Helm release", { namespace: release.namespace, name: release.name, revision });
-                    await RollbackHelmRelease(release.namespace, release.name, revision);
-                    Logger.info("Rollback successful");
-                    closeModal();
-                    triggerRefresh();
-                } catch (err) {
-                    Logger.error("Failed to rollback", err);
-                    alert(`Failed to rollback: ${err.message || err}`);
-                }
+            onConfirm: () => {
+                // Close modal immediately - operation runs in background
+                closeModal();
+
+                // Show in-progress notification
+                addNotification({
+                    type: 'info',
+                    title: 'Rollback started',
+                    message: `Rolling back "${release.name}" to revision ${revision}...`,
+                    duration: 3000
+                });
+
+                Logger.info("Rolling back Helm release", { namespace: release.namespace, name: release.name, revision });
+
+                // Run rollback asynchronously without blocking
+                RollbackHelmRelease(release.namespace, release.name, revision)
+                    .then(() => {
+                        Logger.info("Rollback successful");
+                        addNotification({
+                            type: 'success',
+                            title: 'Rollback complete',
+                            message: `"${release.name}" rolled back to revision ${revision}`
+                        });
+                        // Refresh history immediately to show new revision
+                        fetchHistory();
+                    })
+                    .catch((err) => {
+                        Logger.error("Failed to rollback", err);
+                        addNotification({
+                            type: 'error',
+                            title: 'Rollback failed',
+                            message: err?.message || String(err)
+                        });
+                    });
             }
         });
     };

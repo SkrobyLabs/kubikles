@@ -388,6 +388,8 @@ export function SearchChartInSource(arg1:string,arg2:string):Promise<helm.ChartS
 
 export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;
 
+export function SetEventCoalescerFrameInterval(arg1:number):Promise<void>;
+
 export function SetHelmRepositoryPriority(arg1:string,arg2:number):Promise<void>;
 
 export function SetNodeSchedulable(arg1:string,arg2:boolean):Promise<void>;

@@ -21,7 +21,8 @@ export function useLogStream({
     currentContext
 }) {
     const [logs, setLogs] = useState([]); // Array of { timestamp, content, source }
-    const [loading, setLoading] = useState(false);
+    // Start with loading=true to prevent streaming race condition on initial mount
+    const [loading, setLoading] = useState(true);
     const [loadingAll, setLoadingAll] = useState(false);
     const [loadingBefore, setLoadingBefore] = useState(false);
     const [loadingAfter, setLoadingAfter] = useState(false);
@@ -40,6 +41,8 @@ export function useLogStream({
     const initialLoadDone = useRef(false);
     const prevPodRef = useRef(pod);
     const prevContainerRef = useRef(container);
+    // Ref to track fetch state synchronously (avoids React batching race conditions)
+    const isFetchingRef = useRef(true);
 
     // Extract first timestamp from current logs
     const getFirstTimestamp = useCallback(() => {
@@ -70,6 +73,9 @@ export function useLogStream({
 
     // Fetch logs (initial or refresh)
     const fetchLogs = useCallback(async () => {
+        // Set ref immediately to prevent streaming race condition
+        isFetchingRef.current = true;
+
         if (streamIdRef.current) {
             StopLogStream(streamIdRef.current);
             streamIdRef.current = null;
@@ -98,11 +104,15 @@ export function useLogStream({
             setHasMoreAfter(false);
         } finally {
             setLoading(false);
+            isFetchingRef.current = false;
         }
     }, [namespace, pod, container, showPrevious, sinceTime, viewMode]);
 
     // Load all logs at once
     const loadAllLogs = useCallback(async () => {
+        // Set ref immediately to prevent streaming race condition
+        isFetchingRef.current = true;
+
         if (streamIdRef.current) {
             StopLogStream(streamIdRef.current);
             streamIdRef.current = null;
@@ -124,6 +134,7 @@ export function useLogStream({
             setIsAllLoaded(false);
         } finally {
             setLoadingAll(false);
+            isFetchingRef.current = false;
         }
     }, [namespace, pod, container, showPrevious, resetChunkState]);
 
@@ -214,6 +225,9 @@ export function useLogStream({
         prevContainerRef.current = container;
 
         if (podChanged || containerChanged) {
+            // Set ref and loading immediately to prevent streaming race condition
+            isFetchingRef.current = true;
+            setLoading(true);
             resetChunkState();
             setLogs([]);
             if (isAllLoaded) {
@@ -385,6 +399,8 @@ export function useLogStream({
         resetChunkState,
         getFirstTimestamp,
         getLastTimestamp,
-        isStreaming: () => streamIdRef.current !== null
+        isStreaming: () => streamIdRef.current !== null,
+        // Synchronous check for fetch state (avoids React batching race)
+        isFetching: () => isFetchingRef.current
     };
 }

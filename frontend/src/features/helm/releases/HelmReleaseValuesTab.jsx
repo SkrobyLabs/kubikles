@@ -6,7 +6,7 @@ import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import Logger from '../../../utils/Logger';
 import yaml from 'js-yaml';
 
-export default function HelmReleaseValuesTab({ release, isStale }) {
+export default function HelmReleaseValuesTab({ release, isStale, refreshKey = 0 }) {
     const { currentContext, lastRefresh } = useK8s();
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export default function HelmReleaseValuesTab({ release, isStale }) {
         };
 
         fetchValues();
-    }, [currentContext, release, isStale, showUserOnly, lastRefresh]);
+    }, [currentContext, release, isStale, showUserOnly, lastRefresh, refreshKey]);
 
     // Format content when raw values or format changes
     useEffect(() => {

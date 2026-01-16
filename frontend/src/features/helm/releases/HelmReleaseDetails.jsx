@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { LockClosedIcon, ArrowUturnLeftIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { LockClosedIcon, ArrowUturnLeftIcon, ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../../context/K8sContext';
 import HelmReleaseInfoTab from './HelmReleaseInfoTab';
 import HelmReleaseHistoryTab from './HelmReleaseHistoryTab';
@@ -15,6 +15,15 @@ const TAB_EVENTS = 'events';
 export default function HelmReleaseDetails({ release, tabContext = '', initialTab = TAB_BASIC }) {
     const { currentContext } = useK8s();
     const { handleRollback, handleUninstall } = useHelmReleaseActions();
+    const [refreshing, setRefreshing] = useState(false);
+    const [localRefreshKey, setLocalRefreshKey] = useState(0);
+
+    const handleRefresh = () => {
+        setRefreshing(true);
+        setLocalRefreshKey(k => k + 1);
+        // Brief delay to show the animation
+        setTimeout(() => setRefreshing(false), 500);
+    };
     const [activeTab, setActiveTab] = useState(initialTab);
 
     // Check if this tab is stale (opened in a different context)
@@ -32,11 +41,11 @@ export default function HelmReleaseDetails({ release, tabContext = '', initialTa
             case TAB_BASIC:
                 return <HelmReleaseInfoTab release={release} />;
             case TAB_HISTORY:
-                return <HelmReleaseHistoryTab release={release} isStale={isStale} />;
+                return <HelmReleaseHistoryTab release={release} isStale={isStale} refreshKey={localRefreshKey} />;
             case TAB_VALUES:
-                return <HelmReleaseValuesTab release={release} isStale={isStale} />;
+                return <HelmReleaseValuesTab release={release} isStale={isStale} refreshKey={localRefreshKey} />;
             case TAB_EVENTS:
-                return <HelmReleaseEventsTab release={release} isStale={isStale} />;
+                return <HelmReleaseEventsTab release={release} isStale={isStale} refreshKey={localRefreshKey} />;
             default:
                 return null;
         }
@@ -78,6 +87,14 @@ export default function HelmReleaseDetails({ release, tabContext = '', initialTa
                     </div>
                     {/* Action Icons */}
                     <div className="flex items-center gap-1 ml-2">
+                        <button
+                            onClick={handleRefresh}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors disabled:opacity-50"
+                            title="Refresh"
+                            disabled={isStale || refreshing}
+                        >
+                            <ArrowPathIcon className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                        </button>
                         {release.revision > 1 && (
                             <button
                                 onClick={() => handleRollback(release)}

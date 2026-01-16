@@ -55,10 +55,18 @@ func (c *EventCoalescer) Emit(event ResourceEvent) {
 	}
 
 	// DELETE events must be emitted immediately - never coalesce them.
-	// If we coalesce, a MODIFIED event arriving after DELETE could overwrite it
-	// (same resource key), causing the deletion to be lost and the resource
-	// to remain visible in the UI indefinitely.
+	// Additionally, we must remove any pending ADDED/MODIFIED events for this
+	// resource from the buffer. Otherwise the sequence could be:
+	// 1. MODIFIED queued in buffer
+	// 2. DELETE arrives -> emitted immediately -> frontend removes resource
+	// 3. Frame timer fires -> MODIFIED emitted -> frontend adds resource back!
 	if event.Type == "DELETED" {
+		// Remove any pending event for this resource from the buffer
+		key := c.eventKey(event)
+		c.mu.Lock()
+		delete(c.events, key)
+		c.mu.Unlock()
+
 		c.emitDirect(event)
 		return
 	}
@@ -159,4 +167,18 @@ func (c *EventCoalescer) Stats() (pending int, frameMs float64) {
 	pending = len(c.events)
 	c.mu.Unlock()
 	return pending, float64(c.frameInterval.Milliseconds())
+}
+
+// SetFrameInterval updates the frame interval for batching.
+// Takes effect on the next frame. Value is clamped to 1-100ms.
+func (c *EventCoalescer) SetFrameInterval(ms int) {
+	if ms < 1 {
+		ms = 1
+	}
+	if ms > 100 {
+		ms = 100
+	}
+	c.mu.Lock()
+	c.frameInterval = time.Duration(ms) * time.Millisecond
+	c.mu.Unlock()
 }

@@ -443,3 +443,58 @@ func TestEventCoalescer_AddedAndModifiedCoalesce(t *testing.T) {
 		t.Errorf("expected MODIFIED (latest), got %s", foundType)
 	}
 }
+
+func TestEventCoalescer_SetFrameInterval(t *testing.T) {
+	app := &App{}
+	c := NewEventCoalescer(app, 16*time.Millisecond)
+
+	// Test normal value
+	c.SetFrameInterval(32)
+	_, frameMs := c.Stats()
+	if frameMs != 32 {
+		t.Errorf("expected frameMs 32, got %f", frameMs)
+	}
+
+	// Test clamping to minimum (1ms)
+	c.SetFrameInterval(0)
+	_, frameMs = c.Stats()
+	if frameMs != 1 {
+		t.Errorf("expected frameMs clamped to 1, got %f", frameMs)
+	}
+
+	// Test clamping to maximum (100ms)
+	c.SetFrameInterval(200)
+	_, frameMs = c.Stats()
+	if frameMs != 100 {
+		t.Errorf("expected frameMs clamped to 100, got %f", frameMs)
+	}
+}
+
+func TestEventCoalescer_DeleteClearsPendingEvents(t *testing.T) {
+	// When a DELETE arrives, it should clear any pending ADDED/MODIFIED
+	// for the same resource from the buffer
+	app := &App{}
+	c := NewEventCoalescer(app, 100*time.Millisecond) // Long interval to ensure no flush
+
+	// Queue a MODIFIED event
+	c.Emit(makeTestEventWithType("MODIFIED", "pods", "default", "nginx"))
+
+	// Verify it's in the buffer
+	c.mu.Lock()
+	countBefore := len(c.events)
+	c.mu.Unlock()
+	if countBefore != 1 {
+		t.Errorf("expected 1 pending event before DELETE, got %d", countBefore)
+	}
+
+	// Now emit DELETE for same resource - should clear the pending MODIFIED
+	c.Emit(makeTestEventWithType("DELETED", "pods", "default", "nginx"))
+
+	// Verify the buffer is now empty (MODIFIED was removed)
+	c.mu.Lock()
+	countAfter := len(c.events)
+	c.mu.Unlock()
+	if countAfter != 0 {
+		t.Errorf("expected 0 pending events after DELETE, got %d", countAfter)
+	}
+}

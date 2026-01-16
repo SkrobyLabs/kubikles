@@ -627,6 +627,16 @@ func (a *App) GetPerformanceMetrics() PerformanceMetrics {
 	return metrics
 }
 
+// SetEventCoalescerFrameInterval updates the frame interval for resource event batching.
+// Value is in milliseconds, clamped to 1-100ms. Default is 16ms (~60fps).
+// Lower values = more responsive but more CPU usage.
+// Higher values = less CPU usage but more latency.
+func (a *App) SetEventCoalescerFrameInterval(ms int) {
+	if a.eventCoalescer != nil {
+		a.eventCoalescer.SetFrameInterval(ms)
+	}
+}
+
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
