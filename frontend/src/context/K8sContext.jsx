@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { ListContexts, GetCurrentContext, SwitchContext, ListNamespaces, StartPortForwardsWithMode } from '../../wailsjs/go/main/App';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { ListContexts, GetCurrentContext, SwitchContext, ListNamespaces, StartPortForwardsWithMode, ListCRDs } from '../../wailsjs/go/main/App';
 import Logger from '../utils/Logger';
 
 // Helper to get port forward auto-start mode from settings
@@ -34,6 +34,10 @@ export const K8sProvider = ({ children }) => {
     const [lastRefresh, setLastRefresh] = useState(Date.now());
     const [isLoadingNamespaces, setIsLoadingNamespaces] = useState(false);
     const [watcherStatus, setWatcherStatus] = useState({}); // { resourceType: { status, error } }
+
+    // CRD state for owner reference resolution
+    const [crds, setCRDs] = useState([]);
+    const crdsLoadedForContext = useRef(null);
 
     // Backward compatibility: expose currentNamespace for components not yet updated
     const currentNamespace = selectedNamespaces.length === 1 ? selectedNamespaces[0] : '';
@@ -256,6 +260,49 @@ export const K8sProvider = ({ children }) => {
         Logger.debug("Triggered resource refresh");
     }, []);
 
+    // Fetch CRDs lazily when needed (for owner reference resolution)
+    const ensureCRDsLoaded = useCallback(async () => {
+        if (!currentContext) return [];
+        if (crdsLoadedForContext.current === currentContext && crds.length > 0) {
+            return crds;
+        }
+
+        try {
+            Logger.debug("Fetching CRDs for owner resolution...");
+            const list = await ListCRDs();
+            setCRDs(list || []);
+            crdsLoadedForContext.current = currentContext;
+            return list || [];
+        } catch (err) {
+            Logger.error("Failed to fetch CRDs", err);
+            return [];
+        }
+    }, [currentContext, crds]);
+
+    // Look up CRD by apiVersion and kind (for resolving owner references)
+    const findCRD = useCallback((apiVersion, kind) => {
+        if (!apiVersion || !kind) return null;
+
+        // Parse apiVersion: "group/version" or just "version" for core API
+        const parts = apiVersion.split('/');
+        const group = parts.length === 2 ? parts[0] : '';
+        const version = parts.length === 2 ? parts[1] : parts[0];
+
+        // Find matching CRD
+        return crds.find(crd => {
+            const crdGroup = crd.spec?.group || '';
+            const crdKind = crd.spec?.names?.kind || '';
+            // Match group and kind
+            return crdGroup === group && crdKind === kind;
+        }) || null;
+    }, [crds]);
+
+    // Clear CRDs on context switch
+    useEffect(() => {
+        setCRDs([]);
+        crdsLoadedForContext.current = null;
+    }, [currentContext]);
+
     const value = useMemo(() => ({
         contexts,
         currentContext,
@@ -269,7 +316,11 @@ export const K8sProvider = ({ children }) => {
         refreshNamespaces: fetchNamespaces,
         lastRefresh,
         triggerRefresh,
-        watcherStatus
+        watcherStatus,
+        // CRD lookup for owner reference resolution
+        crds,
+        ensureCRDsLoaded,
+        findCRD,
     }), [
         contexts,
         currentContext,
@@ -281,7 +332,10 @@ export const K8sProvider = ({ children }) => {
         fetchNamespaces,
         lastRefresh,
         triggerRefresh,
-        watcherStatus
+        watcherStatus,
+        crds,
+        ensureCRDsLoaded,
+        findCRD,
     ]);
 
     return (

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useK8s } from './K8sContext';
 
 const UIContext = createContext();
@@ -21,19 +21,22 @@ export const UIProvider = ({ children }) => {
     const [pendingSearch, setPendingSearch] = useState(null);
     const [modal, setModal] = useState(null);
 
+    // Use ref to store pending search for reliable consumption
+    // This avoids timing issues with React 18's batching
+    const pendingSearchRef = useRef(null);
+
     // Navigate to a view with a pre-filled search term
     const navigateWithSearch = useCallback((view, searchTerm) => {
-        setPendingSearch(searchTerm);
+        pendingSearchRef.current = searchTerm;
+        setPendingSearch(searchTerm); // Trigger re-render
         setActiveView(view);
     }, []);
 
     // Consume pending search (called by ResourceList when it mounts/updates)
     const consumePendingSearch = useCallback(() => {
-        let result = null;
-        setPendingSearch(prev => {
-            result = prev;
-            return null;
-        });
+        const result = pendingSearchRef.current;
+        pendingSearchRef.current = null;
+        setPendingSearch(null);
         return result;
     }, []);
 

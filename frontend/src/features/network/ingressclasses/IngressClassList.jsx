@@ -6,65 +6,35 @@ import IngressClassActionsMenu from './IngressClassActionsMenu';
 import { useIngressClasses } from '../../../hooks/resources';
 import { useIngressClassActions } from './useIngressClassActions';
 import { useK8s } from '../../../context/K8sContext';
-import { useUI } from '../../../context/UIContext';
 import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
-import { DeleteIngressClass, GetIngressClassYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
+import { useBulkActions } from '../../../hooks/useBulkActions';
+import { DeleteIngressClass, GetIngressClassYaml } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
-import Logger from '../../../utils/Logger';
 
 export default function IngressClassList({ isVisible }) {
     const { currentContext } = useK8s();
     const { activeMenuId, setActiveMenuId } = useMenu();
     const { ingressClasses, loading } = useIngressClasses(currentContext, isVisible);
-    const { handleEditYaml, handleDelete } = useIngressClassActions();
+    const { handleEditYaml } = useIngressClassActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
-    const [bulkActionModal, setBulkActionModal] = useState({ isOpen: false, action: null, items: [] });
-    const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, status: 'idle', results: [] });
-
-    const handleBulkDeleteClick = useCallback((selectedItems) => {
-        setBulkActionModal({ isOpen: true, action: 'delete', items: selectedItems });
-        setBulkProgress({ current: 0, total: selectedItems.length, status: 'idle', results: [] });
-    }, []);
-
-    const handleBulkActionConfirm = useCallback(async (items) => {
-        Logger.info('Bulk delete started', { count: items.length });
-        setBulkProgress(prev => ({ ...prev, status: 'inProgress', results: [] }));
-        const results = [];
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            const name = item.metadata?.name;
-            try {
-                await DeleteIngressClass(name);
-                results.push({ name, namespace: '', success: true, message: '' });
-            } catch (err) {
-                results.push({ name, namespace: '', success: false, message: err.toString() });
-            }
-            setBulkProgress(prev => ({ ...prev, current: i + 1, results: [...results] }));
-        }
-        setBulkProgress(prev => ({ ...prev, status: 'complete' }));
-    }, []);
-
-    const handleBulkActionClose = useCallback(() => {
-        setBulkActionModal({ isOpen: false, action: null, items: [] });
-        setBulkProgress({ current: 0, total: 0, status: 'idle', results: [] });
-    }, []);
-
-    const handleExportYaml = useCallback(async (items) => {
-        const entries = [];
-        for (const item of items) {
-            try {
-                const yaml = await GetIngressClassYaml(item.metadata?.name);
-                entries.push({ namespace: '', name: item.metadata?.name, kind: 'IngressClass', yaml });
-            } catch (err) {
-                entries.push({ namespace: '', name: item.metadata?.name, kind: 'IngressClass', yaml: `# Failed: ${err}` });
-            }
-        }
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        try { await SaveYamlBackup(entries, `ingressclasses-backup-${timestamp}.zip`); } catch (err) { if (err?.toString()) alert('Failed: ' + err); }
-    }, []);
+    const {
+        bulkActionModal,
+        bulkProgress,
+        openBulkDelete,
+        closeBulkAction,
+        confirmBulkAction,
+        exportYaml,
+    } = useBulkActions({
+        resourceLabel: 'IngressClass',
+        resourceType: 'ingressclasses',
+        isNamespaced: false,
+        deleteApi: DeleteIngressClass,
+        getYamlApi: GetIngressClassYaml,
+        currentContext,
+    });
 
     const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
         if (isOpen && buttonElement) {
@@ -106,14 +76,14 @@ export default function IngressClassList({ isVisible }) {
                     menuPosition={menuPosition}
                     onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `ingressclass-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={handleDelete}
+                    onDelete={(ingressClass) => openBulkDelete([ingressClass])}
                 />
             ),
             getValue: () => '',
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleDelete]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, openBulkDelete]);
 
     return (
         <>
@@ -128,9 +98,9 @@ export default function IngressClassList({ isVisible }) {
                 resourceType="ingressclasses"
                 selectable={true}
                 selection={selection}
-                onBulkDelete={handleBulkDeleteClick}
+                onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={handleBulkActionClose} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={handleBulkActionConfirm} onExportYaml={handleExportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
         </>
     );
 }

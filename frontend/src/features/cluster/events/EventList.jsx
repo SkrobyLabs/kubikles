@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
@@ -9,9 +9,10 @@ import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
 import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
-import { DeleteEvent, GetEventYAML, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
+import { useBulkActions } from '../../../hooks/useBulkActions';
+import { DeleteEvent, GetEventYAML } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
-import Logger from '../../../utils/Logger';
+import { getOwnerViewId } from '../../../utils/owner-navigation';
 
 function getEventTypeColor(type) {
     switch (type) {
@@ -24,74 +25,36 @@ function getEventTypeColor(type) {
     }
 }
 
-// Map Kubernetes resource kinds to view names
-const kindToView = {
-    'Pod': 'pods',
-    'Deployment': 'deployments',
-    'ReplicaSet': 'replicasets',
-    'StatefulSet': 'statefulsets',
-    'DaemonSet': 'daemonsets',
-    'Job': 'jobs',
-    'CronJob': 'cronjobs',
-    'Service': 'services',
-    'ConfigMap': 'configmaps',
-    'Secret': 'secrets',
-    'Node': 'nodes',
-    'Namespace': 'namespaces',
-};
-
 export default function EventList({ isVisible }) {
-    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
+    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces, crds, ensureCRDsLoaded } = useK8s();
     const { navigateWithSearch } = useUI();
+
+    // Load CRDs for involved object resolution (lazy load)
+    useEffect(() => {
+        if (isVisible) {
+            ensureCRDsLoaded();
+        }
+    }, [isVisible, ensureCRDsLoaded]);
     const { activeMenuId, setActiveMenuId } = useMenu();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
-    const [bulkActionModal, setBulkActionModal] = useState({ isOpen: false, action: null, items: [] });
-    const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, status: 'idle', results: [] });
-
-    const handleBulkDeleteClick = useCallback((selectedItems) => {
-        setBulkActionModal({ isOpen: true, action: 'delete', items: selectedItems });
-        setBulkProgress({ current: 0, total: selectedItems.length, status: 'idle', results: [] });
-    }, []);
-
-    const handleBulkActionConfirm = useCallback(async (items) => {
-        Logger.info('Bulk delete started', { count: items.length });
-        setBulkProgress(prev => ({ ...prev, status: 'inProgress', results: [] }));
-        const results = [];
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            const namespace = item.metadata?.namespace;
-            const name = item.metadata?.name;
-            try {
-                await DeleteEvent(namespace, name);
-                results.push({ name, namespace, success: true, message: '' });
-            } catch (err) {
-                results.push({ name, namespace, success: false, message: err.toString() });
-            }
-            setBulkProgress(prev => ({ ...prev, current: i + 1, results: [...results] }));
-        }
-        setBulkProgress(prev => ({ ...prev, status: 'complete' }));
-    }, []);
-
-    const handleBulkActionClose = useCallback(() => {
-        setBulkActionModal({ isOpen: false, action: null, items: [] });
-        setBulkProgress({ current: 0, total: 0, status: 'idle', results: [] });
-    }, []);
-
-    const handleExportYaml = useCallback(async (items) => {
-        const entries = [];
-        for (const item of items) {
-            try {
-                const yaml = await GetEventYAML(item.metadata?.namespace, item.metadata?.name);
-                entries.push({ namespace: item.metadata?.namespace, name: item.metadata?.name, kind: 'Event', yaml });
-            } catch (err) {
-                entries.push({ namespace: item.metadata?.namespace, name: item.metadata?.name, kind: 'Event', yaml: `# Failed: ${err}` });
-            }
-        }
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        try { await SaveYamlBackup(entries, `events-backup-${timestamp}.zip`); } catch (err) { if (err?.toString()) alert('Failed: ' + err); }
-    }, []);
+    // Unified bulk actions (also used for single delete)
+    const {
+        bulkActionModal,
+        bulkProgress,
+        openBulkDelete,
+        closeBulkAction,
+        confirmBulkAction,
+        exportYaml,
+    } = useBulkActions({
+        resourceLabel: 'Event',
+        resourceType: 'events',
+        isNamespaced: true,
+        deleteApi: DeleteEvent,
+        getYamlApi: GetEventYAML,
+        currentContext,
+    });
 
     const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
         if (isOpen && buttonElement) {
@@ -104,7 +67,7 @@ export default function EventList({ isVisible }) {
         setActiveMenuId(isOpen ? menuId : null);
     }, [setActiveMenuId]);
     const { events, loading } = useEventsList(currentContext, selectedNamespaces, isVisible);
-    const { handleShowDetails, handleEditYaml, handleDelete } = useEventActions();
+    const { handleShowDetails, handleEditYaml } = useEventActions();
 
     const columns = useMemo(() => [
         {
@@ -131,15 +94,15 @@ export default function EventList({ isVisible }) {
                     return <span className="text-gray-600">-</span>;
                 }
 
-                const viewName = kindToView[obj.kind];
+                const viewId = getOwnerViewId(obj, crds);
                 const displayText = `${obj.kind}/${obj.name}`;
 
-                if (viewName) {
+                if (viewId) {
                     return (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                navigateWithSearch(viewName, `uid:"${obj.uid}"`);
+                                navigateWithSearch(viewId, `uid:"${obj.uid}"`);
                             }}
                             className="text-primary hover:text-primary/80 hover:underline transition-colors truncate max-w-xs"
                             title={`Go to ${obj.kind}: ${obj.name}`}
@@ -192,13 +155,13 @@ export default function EventList({ isVisible }) {
                     menuPosition={menuPosition}
                     onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `event-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={() => handleEditYaml(item)}
-                    onDelete={() => handleDelete(item)}
+                    onDelete={() => openBulkDelete([item])}
                 />
             ),
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleDelete, navigateWithSearch]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, openBulkDelete, navigateWithSearch, crds]);
 
     return (
         <>
@@ -217,9 +180,18 @@ export default function EventList({ isVisible }) {
                 onRowClick={handleShowDetails}
                 selectable={true}
                 selection={selection}
-                onBulkDelete={handleBulkDeleteClick}
+                onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={handleBulkActionClose} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={handleBulkActionConfirm} onExportYaml={handleExportYaml} progress={bulkProgress} />
+            <BulkActionModal
+                isOpen={bulkActionModal.isOpen}
+                onClose={closeBulkAction}
+                action={bulkActionModal.action}
+                actionLabel="Delete"
+                items={bulkActionModal.items}
+                onConfirm={confirmBulkAction}
+                onExportYaml={exportYaml}
+                progress={bulkProgress}
+            />
         </>
     );
 }

@@ -164,6 +164,7 @@ export const getPodController = (pod) => {
     const controller = owners.find(owner => owner.controller);
     if (!controller) return null;
     return {
+        apiVersion: controller.apiVersion,
         kind: controller.kind,
         name: controller.name,
         uid: controller.uid

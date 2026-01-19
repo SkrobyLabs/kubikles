@@ -1,23 +1,17 @@
 import React, { useCallback } from 'react';
 import { useUI } from '../../context/UIContext';
+import { useK8s } from '../../context/K8sContext';
 import { getPodController } from '../../utils/k8s-helpers';
 import { formatAge } from '../../utils/formatting';
+import { getOwnerViewId } from '../../utils/owner-navigation';
 import { CopyableLabel, DetailRow } from './DetailComponents';
-
-// Map controller kind to view name
-const kindToView = {
-    'ReplicaSet': 'replicasets',
-    'Deployment': 'deployments',
-    'StatefulSet': 'statefulsets',
-    'DaemonSet': 'daemonsets',
-    'Job': 'jobs',
-    'CronJob': 'cronjobs',
-};
 
 export default function PodInfoTab({ pod }) {
     const { navigateWithSearch } = useUI();
+    const { crds } = useK8s();
 
     const controller = getPodController(pod);
+    const controllerViewId = controller ? getOwnerViewId(controller, crds) : null;
     const labels = pod.metadata?.labels || {};
     const tolerations = pod.spec?.tolerations || [];
     const qosClass = pod.status?.qosClass || 'N/A';
@@ -25,12 +19,9 @@ export default function PodInfoTab({ pod }) {
     const nodeName = pod.spec?.nodeName;
 
     const handleControllerClick = useCallback(() => {
-        if (!controller) return;
-        const viewName = kindToView[controller.kind];
-        if (viewName) {
-            navigateWithSearch(viewName, `uid:"${controller.uid}"`);
-        }
-    }, [controller, navigateWithSearch]);
+        if (!controller || !controllerViewId) return;
+        navigateWithSearch(controllerViewId, `uid:"${controller.uid}"`);
+    }, [controller, controllerViewId, navigateWithSearch]);
 
     return (
         <div className="flex flex-col h-full overflow-auto p-4">
@@ -44,7 +35,7 @@ export default function PodInfoTab({ pod }) {
                 {/* Owner / Controlled By */}
                 <DetailRow label="Owner">
                     {controller ? (
-                        kindToView[controller.kind] ? (
+                        controllerViewId ? (
                             <button
                                 onClick={handleControllerClick}
                                 className="text-primary hover:text-primary/80 hover:underline transition-colors"

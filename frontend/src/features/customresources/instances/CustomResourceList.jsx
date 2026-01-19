@@ -6,12 +6,12 @@ import { useCRDPrinterColumns } from '../../../hooks/useCRDPrinterColumns';
 import { useK8s } from '../../../context/K8sContext';
 import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
-import { DeleteCustomResource, GetCustomResourceYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
+import { useBulkActions } from '../../../hooks/useBulkActions';
+import { DeleteCustomResource, GetCustomResourceYaml } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
 import { EllipsisVerticalIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import CustomResourceActionsMenu from './CustomResourceActionsMenu';
 import { useCustomResourceActions } from './useCustomResourceActions';
-import Logger from '../../../utils/Logger';
 
 /**
  * Evaluates a JSONPath expression against an object.
@@ -98,58 +98,45 @@ const renderColumnValue = (value, type) => {
 export default function CustomResourceList({ crdInfo, isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useMenu();
-    const { handleEditYaml, handleDelete } = useCustomResourceActions(crdInfo);
+    const { handleEditYaml } = useCustomResourceActions(crdInfo);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
-    const [bulkActionModal, setBulkActionModal] = useState({ isOpen: false, action: null, items: [] });
-    const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, status: 'idle', results: [] });
-
-    const handleBulkDeleteClick = useCallback((selectedItems) => {
-        setBulkActionModal({ isOpen: true, action: 'delete', items: selectedItems });
-        setBulkProgress({ current: 0, total: selectedItems.length, status: 'idle', results: [] });
-    }, []);
-
-    const handleBulkActionConfirm = useCallback(async (items) => {
-        Logger.info('Bulk delete started', { count: items.length, kind: crdInfo.kind });
-        setBulkProgress(prev => ({ ...prev, status: 'inProgress', results: [] }));
-        const results = [];
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            const namespace = item.metadata?.namespace || '';
-            const name = item.metadata?.name;
-            try {
-                await DeleteCustomResource(crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name);
-                results.push({ name, namespace, success: true, message: '' });
-            } catch (err) {
-                results.push({ name, namespace, success: false, message: err.toString() });
-            }
-            setBulkProgress(prev => ({ ...prev, current: i + 1, results: [...results] }));
+    // Wrap APIs to match useBulkActions signature
+    // For namespaced: (context, namespace, name), for cluster-scoped: (context, name)
+    const deleteApi = useCallback((_context, namespaceOrName, maybeName) => {
+        if (crdInfo.namespaced) {
+            return DeleteCustomResource(crdInfo.group, crdInfo.version, crdInfo.resource, namespaceOrName, maybeName);
+        } else {
+            // For cluster-scoped, namespaceOrName is actually the name
+            return DeleteCustomResource(crdInfo.group, crdInfo.version, crdInfo.resource, '', namespaceOrName);
         }
-        setBulkProgress(prev => ({ ...prev, status: 'complete' }));
-    }, [crdInfo]);
+    }, [crdInfo.group, crdInfo.version, crdInfo.resource, crdInfo.namespaced]);
 
-    const handleBulkActionClose = useCallback(() => {
-        setBulkActionModal({ isOpen: false, action: null, items: [] });
-        setBulkProgress({ current: 0, total: 0, status: 'idle', results: [] });
-    }, []);
-
-    const handleExportYaml = useCallback(async (items) => {
-        const entries = [];
-        for (const item of items) {
-            const namespace = item.metadata?.namespace || '';
-            const name = item.metadata?.name;
-            try {
-                const yaml = await GetCustomResourceYaml(crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name);
-                entries.push({ namespace, name, kind: crdInfo.kind, yaml });
-            } catch (err) {
-                entries.push({ namespace, name, kind: crdInfo.kind, yaml: `# Failed: ${err}` });
-            }
+    const getYamlApi = useCallback((namespaceOrName, maybeName) => {
+        if (crdInfo.namespaced) {
+            return GetCustomResourceYaml(crdInfo.group, crdInfo.version, crdInfo.resource, namespaceOrName, maybeName);
+        } else {
+            // For cluster-scoped, namespaceOrName is actually the name
+            return GetCustomResourceYaml(crdInfo.group, crdInfo.version, crdInfo.resource, '', namespaceOrName);
         }
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        const filename = `${crdInfo.resource}-backup-${timestamp}.zip`;
-        try { await SaveYamlBackup(entries, filename); } catch (err) { if (err?.toString()) alert('Failed: ' + err); }
-    }, [crdInfo]);
+    }, [crdInfo.group, crdInfo.version, crdInfo.resource, crdInfo.namespaced]);
+
+    const {
+        bulkActionModal,
+        bulkProgress,
+        openBulkDelete,
+        closeBulkAction,
+        confirmBulkAction,
+        exportYaml,
+    } = useBulkActions({
+        resourceLabel: crdInfo.kind,
+        resourceType: crdInfo.resource,
+        isNamespaced: crdInfo.namespaced,
+        deleteApi,
+        getYamlApi,
+        currentContext,
+    });
 
     // Fetch CRD printer columns
     const { columns: printerColumns } = useCRDPrinterColumns(crdInfo.group, crdInfo.resource, isVisible);
@@ -246,7 +233,7 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
                     menuPosition={menuPosition}
                     onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `cr-${item.metadata?.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={handleDelete}
+                    onDelete={(resource) => openBulkDelete([resource])}
                 />
             ),
             getValue: () => '',
@@ -255,7 +242,7 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
         });
 
         return cols;
-    }, [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleDelete, showNamespaceColumn, printerColumns]);
+    }, [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, openBulkDelete, showNamespaceColumn, printerColumns]);
 
     return (
         <>
@@ -273,9 +260,9 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
                 resourceType={`cr-${crdInfo.group}-${crdInfo.resource}`}
                 selectable={true}
                 selection={selection}
-                onBulkDelete={handleBulkDeleteClick}
+                onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={handleBulkActionClose} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={handleBulkActionConfirm} onExportYaml={handleExportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
         </>
     );
 }

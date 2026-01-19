@@ -6,66 +6,35 @@ import EndpointsActionsMenu from './EndpointsActionsMenu';
 import { useEndpoints } from '../../../hooks/resources';
 import { useEndpointsActions } from './useEndpointsActions';
 import { useK8s } from '../../../context/K8sContext';
-import { useUI } from '../../../context/UIContext';
 import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
-import { DeleteEndpoints, GetEndpointsYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
+import { useBulkActions } from '../../../hooks/useBulkActions';
+import { DeleteEndpoints, GetEndpointsYaml } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
-import Logger from '../../../utils/Logger';
 
 export default function EndpointsList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, setActiveMenuId } = useMenu();
     const { endpoints, loading } = useEndpoints(currentContext, selectedNamespaces, isVisible);
-    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = useEndpointsActions();
+    const { handleShowDetails, handleEditYaml, handleShowDependencies } = useEndpointsActions();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
-    const [bulkActionModal, setBulkActionModal] = useState({ isOpen: false, action: null, items: [] });
-    const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, status: 'idle', results: [] });
-
-    const handleBulkDeleteClick = useCallback((selectedItems) => {
-        setBulkActionModal({ isOpen: true, action: 'delete', items: selectedItems });
-        setBulkProgress({ current: 0, total: selectedItems.length, status: 'idle', results: [] });
-    }, []);
-
-    const handleBulkActionConfirm = useCallback(async (items) => {
-        Logger.info('Bulk delete started', { count: items.length });
-        setBulkProgress(prev => ({ ...prev, status: 'inProgress', results: [] }));
-        const results = [];
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            const namespace = item.metadata?.namespace;
-            const name = item.metadata?.name;
-            try {
-                await DeleteEndpoints(namespace, name);
-                results.push({ name, namespace, success: true, message: '' });
-            } catch (err) {
-                results.push({ name, namespace, success: false, message: err.toString() });
-            }
-            setBulkProgress(prev => ({ ...prev, current: i + 1, results: [...results] }));
-        }
-        setBulkProgress(prev => ({ ...prev, status: 'complete' }));
-    }, []);
-
-    const handleBulkActionClose = useCallback(() => {
-        setBulkActionModal({ isOpen: false, action: null, items: [] });
-        setBulkProgress({ current: 0, total: 0, status: 'idle', results: [] });
-    }, []);
-
-    const handleExportYaml = useCallback(async (items) => {
-        const entries = [];
-        for (const item of items) {
-            try {
-                const yaml = await GetEndpointsYaml(item.metadata?.namespace, item.metadata?.name);
-                entries.push({ namespace: item.metadata?.namespace, name: item.metadata?.name, kind: 'Endpoints', yaml });
-            } catch (err) {
-                entries.push({ namespace: item.metadata?.namespace, name: item.metadata?.name, kind: 'Endpoints', yaml: `# Failed: ${err}` });
-            }
-        }
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        try { await SaveYamlBackup(entries, `endpoints-backup-${timestamp}.zip`); } catch (err) { if (err?.toString()) alert('Failed: ' + err); }
-    }, []);
+    const {
+        bulkActionModal,
+        bulkProgress,
+        openBulkDelete,
+        closeBulkAction,
+        confirmBulkAction,
+        exportYaml,
+    } = useBulkActions({
+        resourceLabel: 'Endpoints',
+        resourceType: 'endpoints',
+        isNamespaced: true,
+        deleteApi: DeleteEndpoints,
+        getYamlApi: GetEndpointsYaml,
+        currentContext,
+    });
 
     const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
         if (isOpen && buttonElement) {
@@ -132,14 +101,14 @@ export default function EndpointsList({ isVisible }) {
                     onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `endpoints-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={handleDelete}
+                    onDelete={(ep) => openBulkDelete([ep])}
                 />
             ),
             getValue: () => '',
             isColumnSelector: true,
             disableSort: true
         }
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleDelete]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, openBulkDelete]);
 
     return (
         <>
@@ -159,9 +128,9 @@ export default function EndpointsList({ isVisible }) {
                 onRowClick={handleShowDetails}
                 selectable={true}
                 selection={selection}
-                onBulkDelete={handleBulkDeleteClick}
+                onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={handleBulkActionClose} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={handleBulkActionConfirm} onExportYaml={handleExportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
         </>
     );
 }

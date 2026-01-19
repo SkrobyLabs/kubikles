@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
 import ResourceBar from '../../../components/shared/ResourceBar';
@@ -11,153 +11,41 @@ import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
 import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
-import { DeletePod, GetPodYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
+import { useBulkActions } from '../../../hooks/useBulkActions';
+import { DeletePod, GetPodYaml } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
 import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusPriority, getPodController } from '../../../utils/k8s-helpers';
-import Logger from '../../../utils/Logger';
+import { getOwnerViewId } from '../../../utils/owner-navigation';
 
 export default function PodList({ isVisible }) {
-    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
+    const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces, crds, ensureCRDsLoaded } = useK8s();
     const { navigateWithSearch } = useUI();
+
+    // Load CRDs for owner reference resolution (lazy load)
+    useEffect(() => {
+        if (isVisible) {
+            ensureCRDsLoaded();
+        }
+    }, [isVisible, ensureCRDsLoaded]);
     const { activeMenuId, setActiveMenuId } = useMenu();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
-    // Bulk action modal state
-    const [bulkDeleteModal, setBulkDeleteModal] = useState({
-        isOpen: false,
-        items: [],
+    const {
+        bulkActionModal,
+        bulkProgress,
+        openBulkDelete,
+        closeBulkAction,
+        confirmBulkAction,
+        exportYaml,
+    } = useBulkActions({
+        resourceLabel: 'Pod',
+        resourceType: 'pods',
+        isNamespaced: true,
+        deleteApi: DeletePod,
+        getYamlApi: GetPodYaml,
+        currentContext,
     });
-    const [bulkProgress, setBulkProgress] = useState({
-        current: 0,
-        total: 0,
-        status: 'idle', // 'idle' | 'inProgress' | 'complete'
-        results: [],
-    });
-
-    // Handle bulk delete button click
-    const handleBulkDeleteClick = useCallback((selectedItems) => {
-        setBulkDeleteModal({
-            isOpen: true,
-            items: selectedItems,
-        });
-        setBulkProgress({
-            current: 0,
-            total: selectedItems.length,
-            status: 'idle',
-            results: [],
-        });
-    }, []);
-
-    // Handle bulk delete confirmation
-    const handleBulkDeleteConfirm = useCallback(async (items) => {
-        Logger.info('Bulk delete started', { count: items.length });
-        setBulkProgress(prev => ({
-            ...prev,
-            status: 'inProgress',
-            results: [],
-        }));
-
-        const results = [];
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            const namespace = item.metadata?.namespace;
-            const name = item.metadata?.name;
-
-            try {
-                await DeletePod(currentContext, namespace, name);
-                results.push({
-                    name,
-                    namespace,
-                    success: true,
-                    message: '',
-                });
-                Logger.info('Pod deleted', { namespace, name });
-            } catch (err) {
-                results.push({
-                    name,
-                    namespace,
-                    success: false,
-                    message: err.toString(),
-                });
-                Logger.error('Failed to delete pod', { namespace, name, error: err });
-            }
-
-            setBulkProgress(prev => ({
-                ...prev,
-                current: i + 1,
-                results: [...results],
-            }));
-        }
-
-        setBulkProgress(prev => ({
-            ...prev,
-            status: 'complete',
-        }));
-        Logger.info('Bulk delete completed', {
-            total: items.length,
-            success: results.filter(r => r.success).length,
-            failed: results.filter(r => !r.success).length,
-        });
-    }, [currentContext]);
-
-    // Handle modal close
-    const handleBulkDeleteClose = useCallback(() => {
-        setBulkDeleteModal({ isOpen: false, items: [] });
-        setBulkProgress({
-            current: 0,
-            total: 0,
-            status: 'idle',
-            results: [],
-        });
-    }, []);
-
-    // Handle YAML backup export with native save dialog
-    const handleExportYaml = useCallback(async (items) => {
-        Logger.info('Exporting YAML backup', { count: items.length });
-
-        // Fetch YAML for each item
-        const entries = [];
-        for (const item of items) {
-            const namespace = item.metadata?.namespace;
-            const name = item.metadata?.name;
-
-            try {
-                const yaml = await GetPodYaml(namespace, name);
-                entries.push({
-                    namespace,
-                    name,
-                    kind: 'Pod',
-                    yaml,
-                });
-                Logger.info('Fetched YAML for backup', { namespace, name });
-            } catch (err) {
-                Logger.error('Failed to get YAML for backup', { namespace, name, error: err });
-                // Add error entry
-                entries.push({
-                    namespace,
-                    name,
-                    kind: 'Pod',
-                    yaml: `# Failed to fetch YAML: ${err}`,
-                });
-            }
-        }
-
-        // Save with native dialog
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        const defaultFilename = `pods-backup-${timestamp}.zip`;
-
-        try {
-            await SaveYamlBackup(entries, defaultFilename);
-            Logger.info('YAML backup saved');
-        } catch (err) {
-            Logger.error('Failed to save YAML backup', { error: err });
-            // Don't alert if user cancelled (empty error)
-            if (err && err.toString() !== '') {
-                alert('Failed to save backup: ' + err);
-            }
-        }
-    }, []);
 
     const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
         if (isOpen && buttonElement) {
@@ -169,10 +57,9 @@ export default function PodList({ isVisible }) {
         }
         setActiveMenuId(isOpen ? menuId : null);
     }, [setActiveMenuId]);
-    // console.log("PodList rendering");
     const { pods, loading } = usePods(currentContext, selectedNamespaces, isVisible);
     const { metrics, available: metricsAvailable } = usePodMetrics(isVisible);
-    const { openLogs, handleShell, handleEditYaml, handleShowDependencies, handleShowDetails, handleDelete } = usePodActions();
+    const { openLogs, handleShell, handleEditYaml, handleShowDependencies, handleShowDetails } = usePodActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
@@ -254,23 +141,14 @@ export default function PodList({ isVisible }) {
                     return <span className="text-gray-600">-</span>;
                 }
 
-                // Map controller kind to view name
-                const kindToView = {
-                    'ReplicaSet': 'replicasets',
-                    'Deployment': 'deployments',
-                    'StatefulSet': 'statefulsets',
-                    'DaemonSet': 'daemonsets',
-                    'Job': 'jobs',
-                    'CronJob': 'cronjobs',
-                };
-                const viewName = kindToView[controller.kind];
+                const viewId = getOwnerViewId(controller, crds);
 
-                if (viewName) {
+                if (viewId) {
                     return (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                navigateWithSearch(viewName, `uid:"${controller.uid}"`);
+                                navigateWithSearch(viewId, `uid:"${controller.uid}"`);
                             }}
                             className="text-primary hover:text-primary/80 hover:underline transition-colors"
                             title={`Go to ${controller.kind}: ${controller.name}`}
@@ -321,8 +199,8 @@ export default function PodList({ isVisible }) {
                         openLogs(item.metadata.namespace, item.metadata.name, containers, siblingPods, {}, '', item.metadata.creationTimestamp);
                     }}
                     onShell={() => handleShell(item.metadata.namespace, item.metadata.name)}
-                    onDelete={() => handleDelete(item.metadata.namespace, item.metadata.name, false)}
-                    onForceDelete={() => handleDelete(item.metadata.namespace, item.metadata.name, true)}
+                    onDelete={() => openBulkDelete([item])}
+                    onForceDelete={() => openBulkDelete([item])}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies(item)}
                     onShowDetails={() => handleShowDetails(item)}
@@ -331,7 +209,7 @@ export default function PodList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, openLogs, handleShell, handleDelete, handleEditYaml, handleShowDependencies, handleShowDetails, pods, navigateWithSearch, metrics, metricsAvailable]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, openLogs, handleShell, openBulkDelete, handleEditYaml, handleShowDependencies, handleShowDetails, pods, navigateWithSearch, metrics, metricsAvailable, crds]);
 
     return (
         <>
@@ -351,18 +229,17 @@ export default function PodList({ isVisible }) {
                 onRowClick={handleShowDetails}
                 selectable={true}
                 selection={selection}
-                onBulkDelete={handleBulkDeleteClick}
+                onBulkDelete={openBulkDelete}
             />
 
-            {/* Bulk Delete Modal */}
             <BulkActionModal
-                isOpen={bulkDeleteModal.isOpen}
-                onClose={handleBulkDeleteClose}
+                isOpen={bulkActionModal.isOpen}
+                onClose={closeBulkAction}
                 action="delete"
                 actionLabel="Delete"
-                items={bulkDeleteModal.items}
-                onConfirm={handleBulkDeleteConfirm}
-                onExportYaml={handleExportYaml}
+                items={bulkActionModal.items}
+                onConfirm={confirmBulkAction}
+                onExportYaml={exportYaml}
                 progress={bulkProgress}
             />
         </>

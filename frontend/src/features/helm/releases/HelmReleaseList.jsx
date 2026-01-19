@@ -11,8 +11,8 @@ import { useUI } from '../../../context/UIContext';
 import { useMenu } from '../../../context/MenuContext';
 import { useNotification } from '../../../context/NotificationContext';
 import { useSelection } from '../../../hooks/useSelection';
-import { ForceHelmReleaseStatus, UninstallHelmRelease, GetHelmReleaseValues, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
-import Logger from '../../../utils/Logger';
+import { useBulkActions } from '../../../hooks/useBulkActions';
+import { ForceHelmReleaseStatus, UninstallHelmRelease, GetHelmReleaseValues } from '../../../../wailsjs/go/main/App';
 
 const formatAge = (timestamp) => {
     if (!timestamp) return '-';
@@ -64,9 +64,6 @@ export default function HelmReleaseList({ isVisible }) {
     const [upgradeRelease, setUpgradeRelease] = useState(null);
     const selection = useSelection();
 
-    const [bulkActionModal, setBulkActionModal] = useState({ isOpen: false, action: null, items: [] });
-    const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, status: 'idle', results: [] });
-
     const { releases, loading, refresh } = useHelmReleases(currentContext, selectedNamespaces, isVisible);
     const {
         handleOpenDetails,
@@ -76,51 +73,50 @@ export default function HelmReleaseList({ isVisible }) {
         handleUninstall
     } = useHelmReleaseActions();
 
-    const handleBulkDeleteClick = useCallback((selectedItems) => {
-        setBulkActionModal({ isOpen: true, action: 'delete', items: selectedItems });
-        setBulkProgress({ current: 0, total: selectedItems.length, status: 'idle', results: [] });
+    // Wrapper for UninstallHelmRelease to match useBulkActions API signature (context, namespace, name)
+    const uninstallApi = useCallback(async (_context, namespace, name) => {
+        return UninstallHelmRelease(namespace, name);
     }, []);
 
-    const handleBulkActionConfirm = useCallback(async (items) => {
-        Logger.info('Bulk uninstall started', { count: items.length });
-        setBulkProgress(prev => ({ ...prev, status: 'inProgress', results: [] }));
-        const results = [];
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            const namespace = item.namespace;
-            const name = item.name;
-            try {
-                await UninstallHelmRelease(namespace, name);
-                results.push({ name, namespace, success: true, message: '' });
-            } catch (err) {
-                results.push({ name, namespace, success: false, message: err.toString() });
-            }
-            setBulkProgress(prev => ({ ...prev, current: i + 1, results: [...results] }));
-        }
-        setBulkProgress(prev => ({ ...prev, status: 'complete' }));
-        refresh();
-    }, [refresh]);
-
-    const handleBulkActionClose = useCallback(() => {
-        setBulkActionModal({ isOpen: false, action: null, items: [] });
-        setBulkProgress({ current: 0, total: 0, status: 'idle', results: [] });
-    }, []);
-
+    // Custom export for Helm releases - includes chart info in YAML header
     const handleExportYaml = useCallback(async (items) => {
-        // Fetch all values in parallel instead of sequentially
+        const { SaveYamlBackup } = await import('../../../../wailsjs/go/main/App');
         const entries = await Promise.all(
             items.map(async (item) => {
+                const namespace = item.metadata?.namespace || item.namespace;
+                const name = item.metadata?.name || item.name;
                 try {
-                    const values = await GetHelmReleaseValues(item.namespace, item.name);
-                    return { namespace: item.namespace, name: item.name, kind: 'HelmRelease', yaml: `# Helm Release: ${item.name}\n# Chart: ${item.chart}-${item.chartVersion}\n# Values:\n${values}` };
+                    const values = await GetHelmReleaseValues(namespace, name);
+                    return { namespace, name, kind: 'HelmRelease', yaml: `# Helm Release: ${name}\n# Chart: ${item.chart}-${item.chartVersion}\n# Values:\n${values}` };
                 } catch (err) {
-                    return { namespace: item.namespace, name: item.name, kind: 'HelmRelease', yaml: `# Failed: ${err}` };
+                    return { namespace, name, kind: 'HelmRelease', yaml: `# Failed: ${err}` };
                 }
             })
         );
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         try { await SaveYamlBackup(entries, `helmreleases-backup-${timestamp}.zip`); } catch (err) { if (err?.toString()) alert('Failed: ' + err); }
     }, []);
+
+    const {
+        bulkActionModal,
+        bulkProgress,
+        openBulkDelete,
+        closeBulkAction: closeBulkActionBase,
+        confirmBulkAction,
+    } = useBulkActions({
+        resourceLabel: 'Helm Release',
+        resourceType: 'helmreleases',
+        isNamespaced: true,
+        deleteApi: uninstallApi,
+        getYamlApi: GetHelmReleaseValues,
+        currentContext,
+    });
+
+    // Wrap closeBulkAction to also refresh the list
+    const closeBulkAction = useCallback(() => {
+        closeBulkActionBase();
+        refresh();
+    }, [closeBulkActionBase, refresh]);
 
     const handleUpgrade = useCallback((release) => {
         setUpgradeRelease(release);
@@ -294,9 +290,9 @@ export default function HelmReleaseList({ isVisible }) {
                 onRowClick={handleRowClick}
                 selectable={true}
                 selection={selection}
-                onBulkDelete={handleBulkDeleteClick}
+                onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={handleBulkActionClose} action={bulkActionModal.action} actionLabel="Uninstall" items={bulkActionModal.items} onConfirm={handleBulkActionConfirm} onExportYaml={handleExportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Uninstall" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={handleExportYaml} progress={bulkProgress} />
 
             {upgradeRelease && (
                 <HelmUpgradeDialog

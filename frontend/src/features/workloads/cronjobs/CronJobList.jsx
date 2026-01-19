@@ -7,12 +7,11 @@ import CronJobActionsMenu from './CronJobActionsMenu';
 import { useCronJobs } from '../../../hooks/resources';
 import { useCronJobActions } from './useCronJobActions';
 import { useK8s } from '../../../context/K8sContext';
-import { useUI } from '../../../context/UIContext';
 import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
-import { DeleteCronJob, GetCronJobYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
+import { useBulkActions } from '../../../hooks/useBulkActions';
+import { DeleteCronJob, GetCronJobYaml } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
-import Logger from '../../../utils/Logger';
 
 export default function CronJobList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
@@ -20,84 +19,21 @@ export default function CronJobList({ isVisible }) {
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
-    // Bulk action modal state
-    const [bulkActionModal, setBulkActionModal] = useState({
-        isOpen: false,
-        action: null,
-        items: [],
+    const {
+        bulkActionModal,
+        bulkProgress,
+        openBulkDelete,
+        closeBulkAction,
+        confirmBulkAction,
+        exportYaml,
+    } = useBulkActions({
+        resourceLabel: 'CronJob',
+        resourceType: 'cronjobs',
+        isNamespaced: true,
+        deleteApi: DeleteCronJob,
+        getYamlApi: GetCronJobYaml,
+        currentContext,
     });
-    const [bulkProgress, setBulkProgress] = useState({
-        current: 0,
-        total: 0,
-        status: 'idle',
-        results: [],
-    });
-
-    const handleBulkDeleteClick = useCallback((selectedItems) => {
-        setBulkActionModal({ isOpen: true, action: 'delete', items: selectedItems });
-        setBulkProgress({ current: 0, total: selectedItems.length, status: 'idle', results: [] });
-    }, []);
-
-    const handleBulkActionConfirm = useCallback(async (items) => {
-        Logger.info('Bulk delete started', { count: items.length });
-        setBulkProgress(prev => ({ ...prev, status: 'inProgress', results: [] }));
-
-        const results = [];
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            const namespace = item.metadata?.namespace;
-            const name = item.metadata?.name;
-
-            try {
-                await DeleteCronJob(currentContext, namespace, name);
-                results.push({ name, namespace, success: true, message: '' });
-                Logger.info('CronJob deleted', { namespace, name });
-            } catch (err) {
-                results.push({ name, namespace, success: false, message: err.toString() });
-                Logger.error('Failed to delete cronjob', { namespace, name, error: err });
-            }
-
-            setBulkProgress(prev => ({ ...prev, current: i + 1, results: [...results] }));
-        }
-
-        setBulkProgress(prev => ({ ...prev, status: 'complete' }));
-    }, [currentContext]);
-
-    const handleBulkActionClose = useCallback(() => {
-        setBulkActionModal({ isOpen: false, action: null, items: [] });
-        setBulkProgress({ current: 0, total: 0, status: 'idle', results: [] });
-    }, []);
-
-    const handleExportYaml = useCallback(async (items) => {
-        Logger.info('Exporting YAML backup', { count: items.length });
-
-        const entries = [];
-        for (const item of items) {
-            const namespace = item.metadata?.namespace;
-            const name = item.metadata?.name;
-
-            try {
-                const yaml = await GetCronJobYaml(namespace, name);
-                entries.push({ namespace, name, kind: 'CronJob', yaml });
-            } catch (err) {
-                Logger.error('Failed to get YAML for backup', { namespace, name, error: err });
-                entries.push({ namespace, name, kind: 'CronJob', yaml: `# Failed to fetch YAML: ${err}` });
-            }
-        }
-
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        const defaultFilename = `cronjobs-backup-${timestamp}.zip`;
-
-        try {
-            await SaveYamlBackup(entries, defaultFilename);
-            Logger.info('YAML backup saved');
-        } catch (err) {
-            Logger.error('Failed to save YAML backup', { error: err });
-            if (err && err.toString() !== '') {
-                alert('Failed to save backup: ' + err);
-            }
-        }
-    }, []);
 
     const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
         if (isOpen && buttonElement) {
@@ -110,7 +46,7 @@ export default function CronJobList({ isVisible }) {
         setActiveMenuId(isOpen ? menuId : null);
     }, [setActiveMenuId]);
     const { cronJobs, loading } = useCronJobs(currentContext, selectedNamespaces, isVisible);
-    const { handleShowDetails, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend, handleDelete } = useCronJobActions();
+    const { handleShowDetails, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend } = useCronJobActions();
 
     // Format duration for future time (reverse of formatAge)
     const formatDuration = (milliseconds) => {
@@ -233,13 +169,13 @@ export default function CronJobList({ isVisible }) {
                     onShowDependencies={() => handleShowDependencies(item)}
                     onRunNow={() => handleRunNow(item)}
                     onSuspend={() => handleSuspend(item)}
-                    onDelete={() => handleDelete(item)}
+                    onDelete={() => openBulkDelete([item])}
                 />
             ),
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend, handleDelete]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend, openBulkDelete]);
 
     return (
         <>
@@ -259,16 +195,16 @@ export default function CronJobList({ isVisible }) {
                 onRowClick={handleShowDetails}
                 selectable={true}
                 selection={selection}
-                onBulkDelete={handleBulkDeleteClick}
+                onBulkDelete={openBulkDelete}
             />
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
-                onClose={handleBulkActionClose}
+                onClose={closeBulkAction}
                 action={bulkActionModal.action}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
-                onConfirm={handleBulkActionConfirm}
-                onExportYaml={handleExportYaml}
+                onConfirm={confirmBulkAction}
+                onExportYaml={exportYaml}
                 progress={bulkProgress}
             />
         </>
