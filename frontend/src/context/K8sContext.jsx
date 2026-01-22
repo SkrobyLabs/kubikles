@@ -26,6 +26,89 @@ export const useK8s = () => {
     return context;
 };
 
+// Helper to parse connection errors and provide user-friendly messages
+const parseConnectionError = (error) => {
+    const errorStr = String(error);
+
+    // AWS CLI not found
+    if (errorStr.includes('executable aws not found') || errorStr.includes('aws: executable file not found')) {
+        return {
+            title: 'AWS CLI Not Found',
+            message: 'Your kubeconfig requires AWS CLI for authentication, but it was not found in PATH.',
+            suggestion: 'Install AWS CLI: brew install awscli (macOS) or visit https://aws.amazon.com/cli/',
+            provider: 'aws'
+        };
+    }
+
+    // Azure CLI not found
+    if (errorStr.includes('executable az not found') || errorStr.includes('az: executable file not found')) {
+        return {
+            title: 'Azure CLI Not Found',
+            message: 'Your kubeconfig requires Azure CLI for authentication, but it was not found in PATH.',
+            suggestion: 'Install Azure CLI: brew install azure-cli (macOS) or visit https://docs.microsoft.com/cli/azure/install-azure-cli',
+            provider: 'azure'
+        };
+    }
+
+    // Google Cloud CLI not found
+    if (errorStr.includes('executable gcloud not found') || errorStr.includes('gcloud: executable file not found')) {
+        return {
+            title: 'Google Cloud CLI Not Found',
+            message: 'Your kubeconfig requires gcloud CLI for authentication, but it was not found in PATH.',
+            suggestion: 'Install gcloud: https://cloud.google.com/sdk/docs/install',
+            provider: 'gcloud'
+        };
+    }
+
+    // K8s client not initialized
+    if (errorStr.includes('k8s client not initialized')) {
+        return {
+            title: 'Kubernetes Client Failed',
+            message: 'Failed to initialize the Kubernetes client. This may be due to an invalid kubeconfig or authentication issue.',
+            suggestion: 'Check your kubeconfig file (~/.kube/config) and ensure your credentials are valid.',
+            provider: 'unknown'
+        };
+    }
+
+    // Generic connection errors
+    if (errorStr.includes('connection refused') || errorStr.includes('no such host')) {
+        return {
+            title: 'Connection Failed',
+            message: 'Could not connect to the Kubernetes cluster.',
+            suggestion: 'Verify the cluster is running and accessible from your network.',
+            provider: 'network'
+        };
+    }
+
+    // Certificate/TLS errors
+    if (errorStr.includes('x509') || errorStr.includes('certificate')) {
+        return {
+            title: 'Certificate Error',
+            message: 'There was a problem with the cluster certificate.',
+            suggestion: 'Check that your kubeconfig has the correct certificate authority, or the cluster certificate is valid.',
+            provider: 'unknown'
+        };
+    }
+
+    // Unauthorized/Forbidden errors
+    if (errorStr.includes('Unauthorized') || errorStr.includes('forbidden')) {
+        return {
+            title: 'Authentication Failed',
+            message: 'Your credentials were rejected by the cluster.',
+            suggestion: 'Your token may have expired. Try refreshing your credentials or re-authenticating.',
+            provider: 'unknown'
+        };
+    }
+
+    // Default fallback
+    return {
+        title: 'Connection Error',
+        message: errorStr,
+        suggestion: 'Check your kubeconfig and cluster connectivity.',
+        provider: 'unknown'
+    };
+};
+
 export const K8sProvider = ({ children }) => {
     const [contexts, setContexts] = useState([]);
     const [currentContext, setCurrentContext] = useState('');
@@ -34,6 +117,8 @@ export const K8sProvider = ({ children }) => {
     const [lastRefresh, setLastRefresh] = useState(Date.now());
     const [isLoadingNamespaces, setIsLoadingNamespaces] = useState(false);
     const [watcherStatus, setWatcherStatus] = useState({}); // { resourceType: { status, error } }
+    const [connectionError, setConnectionError] = useState(null); // { title, message, suggestion, provider, raw }
+    const [isConnecting, setIsConnecting] = useState(true); // Initial loading state
 
     // CRD state for owner reference resolution
     const [crds, setCRDs] = useState([]);
@@ -81,6 +166,8 @@ export const K8sProvider = ({ children }) => {
     };
 
     const fetchContexts = useCallback(async () => {
+        setIsConnecting(true);
+        // Don't clear connectionError here - only clear it when we have confirmed connectivity
         try {
             Logger.debug("Fetching contexts...");
             const list = await ListContexts();
@@ -123,8 +210,17 @@ export const K8sProvider = ({ children }) => {
                 setSelectedNamespaces(savedState.namespaces);
                 Logger.debug("Restored namespaces from saved state", { namespaces: savedState.namespaces });
             }
+            // Note: Don't clear connectionError here - fetchContexts only reads local kubeconfig,
+            // not the actual cluster. Error will be cleared when actual API calls succeed.
         } catch (err) {
             Logger.error("Failed to fetch contexts", err);
+            const parsed = parseConnectionError(err);
+            setConnectionError({
+                ...parsed,
+                raw: String(err)
+            });
+        } finally {
+            setIsConnecting(false);
         }
     }, []);
 
@@ -139,14 +235,27 @@ export const K8sProvider = ({ children }) => {
             const namespacesWithAll = ['', ...namespaceNames];
             setNamespaces(namespacesWithAll);
             Logger.info("Namespaces fetched", { count: namespaceNames.length });
+            // Note: Don't clear connectionError here - other API calls might still be failing.
+            // Error is only cleared when a watcher successfully connects.
+            setIsConnecting(false);
         } catch (err) {
             Logger.error("Failed to fetch namespaces", err);
+            // Set connection error - this is the first actual cluster call
+            const parsed = parseConnectionError(err);
+            setConnectionError({
+                ...parsed,
+                raw: String(err)
+            });
+            setIsConnecting(false);
         }
     }, [currentContext]);
 
     const switchContext = useCallback(async (newContext) => {
         try {
             Logger.info("Switching context...", { from: currentContext, to: newContext });
+
+            // Clear previous connection error when switching contexts
+            setConnectionError(null);
 
             // Set loading flag first to prevent saves during switch
             setIsLoadingNamespaces(true);
@@ -230,6 +339,26 @@ export const K8sProvider = ({ children }) => {
                 ...prev,
                 [resourceType]: { status: 'error', error, namespace, recoverable }
             }));
+
+            // Check if this is an auth/connection error that should show the connection error UI
+            const errorStr = String(error);
+            const isAuthError = errorStr.includes('executable aws not found') ||
+                errorStr.includes('executable az not found') ||
+                errorStr.includes('executable gcloud not found') ||
+                errorStr.includes('aws: executable file not found') ||
+                errorStr.includes('az: executable file not found') ||
+                errorStr.includes('gcloud: executable file not found') ||
+                errorStr.includes('credential plugin') ||
+                errorStr.includes('getting credentials');
+
+            if (isAuthError) {
+                const parsed = parseConnectionError(error);
+                setConnectionError({
+                    ...parsed,
+                    raw: errorStr
+                });
+                setIsConnecting(false);
+            }
         };
 
         const handleWatcherStatus = (event) => {
@@ -239,6 +368,12 @@ export const K8sProvider = ({ children }) => {
                 ...prev,
                 [resourceType]: { status, namespace, error: null }
             }));
+
+            // Clear connection error if a watcher successfully connects
+            if (status === 'running' || status === 'connected') {
+                setConnectionError(null);
+                setIsConnecting(false);
+            }
         };
 
         window.runtime.EventsOn("watcher-error", handleWatcherError);
@@ -258,6 +393,39 @@ export const K8sProvider = ({ children }) => {
     const triggerRefresh = useCallback(() => {
         setLastRefresh(Date.now());
         Logger.debug("Triggered resource refresh");
+    }, []);
+
+    const retryConnection = useCallback(() => {
+        Logger.info("Retrying connection...");
+        fetchContexts();
+    }, [fetchContexts]);
+
+    // Check if an error is an auth/connection error and set connectionError if so
+    const checkConnectionError = useCallback((error) => {
+        if (!error) return false;
+        const errorStr = String(error);
+        const isAuthError = errorStr.includes('executable aws not found') ||
+            errorStr.includes('executable az not found') ||
+            errorStr.includes('executable gcloud not found') ||
+            errorStr.includes('aws: executable file not found') ||
+            errorStr.includes('az: executable file not found') ||
+            errorStr.includes('gcloud: executable file not found') ||
+            errorStr.includes('credential plugin') ||
+            errorStr.includes('getting credentials') ||
+            errorStr.includes('Unauthorized') ||
+            errorStr.includes('forbidden') ||
+            errorStr.includes('certificate') ||
+            errorStr.includes('x509');
+
+        if (isAuthError) {
+            const parsed = parseConnectionError(error);
+            setConnectionError({
+                ...parsed,
+                raw: errorStr
+            });
+            return true;
+        }
+        return false;
     }, []);
 
     // Fetch CRDs lazily when needed (for owner reference resolution)
@@ -321,6 +489,11 @@ export const K8sProvider = ({ children }) => {
         crds,
         ensureCRDsLoaded,
         findCRD,
+        // Connection state
+        connectionError,
+        isConnecting,
+        retryConnection,
+        checkConnectionError,
     }), [
         contexts,
         currentContext,
@@ -336,6 +509,10 @@ export const K8sProvider = ({ children }) => {
         crds,
         ensureCRDsLoaded,
         findCRD,
+        connectionError,
+        isConnecting,
+        retryConnection,
+        checkConnectionError,
     ]);
 
     return (

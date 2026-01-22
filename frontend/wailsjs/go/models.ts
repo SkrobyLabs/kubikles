@@ -1309,6 +1309,24 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class ListRequestStats {
+	    total: number;
+	    pending: number;
+	    completed: number;
+	    cancelled: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ListRequestStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.total = source["total"];
+	        this.pending = source["pending"];
+	        this.completed = source["completed"];
+	        this.cancelled = source["cancelled"];
+	    }
+	}
 	export class LogChunkResult {
 	    logs: string;
 	    hasMore: boolean;
@@ -1373,6 +1391,7 @@ export namespace main {
 	    logStreams: any;
 	    activity: struct { TopWatchers []main.;
 	    metricsRequests: MetricsRequestStats;
+	    listRequests: ListRequestStats;
 	
 	    static createFrom(source: any = {}) {
 	        return new PerformanceMetrics(source);
@@ -1390,6 +1409,7 @@ export namespace main {
 	        this.logStreams = this.convertValues(source["logStreams"], Object);
 	        this.activity = this.convertValues(source["activity"], Object);
 	        this.metricsRequests = this.convertValues(source["metricsRequests"], MetricsRequestStats);
+	        this.listRequests = this.convertValues(source["listRequests"], ListRequestStats);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

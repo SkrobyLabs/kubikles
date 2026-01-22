@@ -12,6 +12,8 @@ export function AddPortForwardConfig(arg1:main.PortForwardConfig):Promise<main.P
 
 export function ApplyYAML(arg1:string):Promise<void>;
 
+export function CancelListRequest(arg1:string):Promise<boolean>;
+
 export function CancelMetricsRequest(arg1:string):Promise<boolean>;
 
 export function ClearPrometheusConfig():Promise<void>;
@@ -202,6 +204,8 @@ export function GetLeaseYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetLimitRangeYaml(arg1:string,arg2:string):Promise<string>;
 
+export function GetListRequestStats():Promise<main.ListRequestStats>;
+
 export function GetManagedHosts():Promise<Array<string>>;
 
 export function GetMetricsRequestStats():Promise<main.MetricsRequestStats>;
@@ -298,17 +302,17 @@ export function ListClusterRoleBindings():Promise<Array<v1.ClusterRoleBinding>>;
 
 export function ListClusterRoles():Promise<Array<v1.ClusterRole>>;
 
-export function ListConfigMaps(arg1:string):Promise<Array<v1.ConfigMap>>;
+export function ListConfigMaps(arg1:string,arg2:string):Promise<Array<v1.ConfigMap>>;
 
 export function ListContexts():Promise<Array<string>>;
 
-export function ListCronJobs(arg1:string):Promise<Array<v1.CronJob>>;
+export function ListCronJobs(arg1:string,arg2:string):Promise<Array<v1.CronJob>>;
 
 export function ListCustomResources(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Array<Record<string, any>>>;
 
-export function ListDaemonSets(arg1:string):Promise<Array<v1.DaemonSet>>;
+export function ListDaemonSets(arg1:string,arg2:string):Promise<Array<v1.DaemonSet>>;
 
-export function ListDeployments(arg1:string):Promise<Array<v1.Deployment>>;
+export function ListDeployments(arg1:string,arg2:string):Promise<Array<v1.Deployment>>;
 
 export function ListEndpointSlices(arg1:string):Promise<Array<v1.EndpointSlice>>;
 
@@ -326,7 +330,7 @@ export function ListIngressClasses():Promise<Array<v1.IngressClass>>;
 
 export function ListIngresses(arg1:string):Promise<Array<v1.Ingress>>;
 
-export function ListJobs(arg1:string):Promise<Array<v1.Job>>;
+export function ListJobs(arg1:string,arg2:string):Promise<Array<v1.Job>>;
 
 export function ListLeases(arg1:string):Promise<Array<v1.Lease>>;
 
@@ -334,11 +338,11 @@ export function ListLimitRanges(arg1:string):Promise<Array<v1.LimitRange>>;
 
 export function ListMutatingWebhookConfigurations():Promise<Array<v1.MutatingWebhookConfiguration>>;
 
-export function ListNamespaces():Promise<Array<v1.Namespace>>;
+export function ListNamespaces(arg1:string):Promise<Array<v1.Namespace>>;
 
 export function ListNetworkPolicies(arg1:string):Promise<Array<v1.NetworkPolicy>>;
 
-export function ListNodes():Promise<Array<v1.Node>>;
+export function ListNodes(arg1:string):Promise<Array<v1.Node>>;
 
 export function ListOCIRegistries():Promise<Array<helm.OCIRegistry>>;
 
@@ -348,13 +352,13 @@ export function ListPVCs(arg1:string):Promise<Array<v1.PersistentVolumeClaim>>;
 
 export function ListPVs():Promise<Array<v1.PersistentVolume>>;
 
-export function ListPods(arg1:string):Promise<Array<v1.Pod>>;
+export function ListPods(arg1:string,arg2:string):Promise<Array<v1.Pod>>;
 
 export function ListPriorityClasses():Promise<Array<v1.PriorityClass>>;
 
 export function ListPrometheusInstalls():Promise<Array<k8s.PrometheusInstall>>;
 
-export function ListReplicaSets(arg1:string):Promise<Array<v1.ReplicaSet>>;
+export function ListReplicaSets(arg1:string,arg2:string):Promise<Array<v1.ReplicaSet>>;
 
 export function ListResourceQuotas(arg1:string):Promise<Array<v1.ResourceQuota>>;
 
@@ -362,13 +366,13 @@ export function ListRoleBindings(arg1:string):Promise<Array<v1.RoleBinding>>;
 
 export function ListRoles(arg1:string):Promise<Array<v1.Role>>;
 
-export function ListSecrets(arg1:string):Promise<Array<v1.Secret>>;
+export function ListSecrets(arg1:string,arg2:string):Promise<Array<v1.Secret>>;
 
 export function ListServiceAccounts(arg1:string):Promise<Array<v1.ServiceAccount>>;
 
-export function ListServices(arg1:string):Promise<Array<v1.Service>>;
+export function ListServices(arg1:string,arg2:string):Promise<Array<v1.Service>>;
 
-export function ListStatefulSets(arg1:string,arg2:string):Promise<Array<v1.StatefulSet>>;
+export function ListStatefulSets(arg1:string,arg2:string,arg3:string):Promise<Array<v1.StatefulSet>>;
 
 export function ListStorageClasses():Promise<Array<v1.StorageClass>>;
 

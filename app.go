@@ -66,6 +66,8 @@ type App struct {
 	eventWindowStart  int64 // Unix ms when tracking started
 	// Metrics request cancellation
 	metricsRequestManager *MetricsRequestManager
+	// List request cancellation
+	listRequestManager *ListRequestManager
 }
 
 // WatcherCleanupDelay is the time to wait before stopping a watcher with no subscribers
@@ -174,6 +176,9 @@ type PerformanceMetrics struct {
 
 	// Metrics Request Stats
 	MetricsRequests MetricsRequestStats `json:"metricsRequests"`
+
+	// List Request Stats
+	ListRequests ListRequestStats `json:"listRequests"`
 }
 
 // ResourceWatcher tracks a single watcher instance with reference counting
@@ -403,6 +408,7 @@ func NewApp() *App {
 		prometheusConfigs:     make(map[string]*k8s.PrometheusInfo),
 		prometheusConfigPath:  filepath.Join(appDir, "prometheus_config.json"),
 		metricsRequestManager: NewMetricsRequestManager(),
+		listRequestManager:    NewListRequestManager(),
 	}
 }
 
@@ -636,6 +642,9 @@ func (a *App) GetPerformanceMetrics() PerformanceMetrics {
 	// Metrics request stats
 	metrics.MetricsRequests = a.metricsRequestManager.GetStats()
 
+	// List request stats
+	metrics.ListRequests = a.listRequestManager.GetStats()
+
 	return metrics
 }
 
@@ -740,16 +749,36 @@ func (a *App) OpenThemesDir() error {
 	return a.themeManager.OpenThemesDir()
 }
 
-func (a *App) ListPods(namespace string) ([]v1.Pod, error) {
+func (a *App) ListPods(requestId, namespace string) ([]v1.Pod, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListPodsWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil // Return empty for cancelled requests
+		}
+		return result, err
 	}
 	return a.k8sClient.ListPods(namespace)
 }
 
-func (a *App) ListNodes() ([]v1.Node, error) {
+func (a *App) ListNodes(requestId string) ([]v1.Node, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListNodesWithContext(ctx)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListNodes()
 }
@@ -824,9 +853,19 @@ func (a *App) CreateNodeDebugPod(nodeName string) (*NodeDebugPodResult, error) {
 	}, nil
 }
 
-func (a *App) ListNamespaces() ([]v1.Namespace, error) {
+func (a *App) ListNamespaces(requestId string) ([]v1.Namespace, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListNamespacesWithContext(ctx)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListNamespaces()
 }
@@ -894,9 +933,19 @@ func (a *App) DeleteEvent(namespace, name string) error {
 	return a.k8sClient.DeleteEvent(namespace, name)
 }
 
-func (a *App) ListServices(namespace string) ([]v1.Service, error) {
+func (a *App) ListServices(requestId, namespace string) ([]v1.Service, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListServicesWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListServices(namespace)
 }
@@ -994,16 +1043,36 @@ func (a *App) DeleteIngressClass(name string) error {
 	return a.k8sClient.DeleteIngressClass(currentContext, name)
 }
 
-func (a *App) ListConfigMaps(namespace string) ([]v1.ConfigMap, error) {
+func (a *App) ListConfigMaps(requestId, namespace string) ([]v1.ConfigMap, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListConfigMapsWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListConfigMaps(namespace)
 }
 
-func (a *App) ListSecrets(namespace string) ([]v1.Secret, error) {
+func (a *App) ListSecrets(requestId, namespace string) ([]v1.Secret, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListSecretsWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListSecrets(namespace)
 }
@@ -1090,9 +1159,19 @@ func (a *App) UpdateSecretData(namespace, name string, data map[string]string) e
 	return a.k8sClient.UpdateSecretData(namespace, name, data)
 }
 
-func (a *App) ListDeployments(namespace string) ([]appsv1.Deployment, error) {
+func (a *App) ListDeployments(requestId, namespace string) ([]appsv1.Deployment, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListDeploymentsWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListDeployments(namespace)
 }
@@ -1974,9 +2053,19 @@ func (a *App) RestartDeployment(contextName, namespace, name string) error {
 }
 
 // StatefulSet operations
-func (a *App) ListStatefulSets(contextName, namespace string) ([]appsv1.StatefulSet, error) {
+func (a *App) ListStatefulSets(requestId, contextName, namespace string) ([]appsv1.StatefulSet, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListStatefulSetsWithContext(ctx, contextName, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListStatefulSets(contextName, namespace)
 }
@@ -1998,11 +2087,21 @@ func (a *App) UpdateStatefulSetYaml(namespace, name, yamlContent string) error {
 }
 
 // DaemonSet wrappers
-func (a *App) ListDaemonSets(namespace string) ([]appsv1.DaemonSet, error) {
+func (a *App) ListDaemonSets(requestId, namespace string) ([]appsv1.DaemonSet, error) {
 	currentContext := a.GetCurrentContext()
 	a.LogDebug("ListDaemonSets called: context=%s, ns=%s", currentContext, namespace)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListDaemonSetsWithContext(ctx, currentContext, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListDaemonSets(currentContext, namespace)
 }
@@ -2042,11 +2141,21 @@ func (a *App) DeleteDaemonSet(namespace, name string) error {
 }
 
 // ReplicaSet wrappers
-func (a *App) ListReplicaSets(namespace string) ([]appsv1.ReplicaSet, error) {
+func (a *App) ListReplicaSets(requestId, namespace string) ([]appsv1.ReplicaSet, error) {
 	currentContext := a.GetCurrentContext()
 	a.LogDebug("ListReplicaSets called: context=%s, ns=%s", currentContext, namespace)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListReplicaSetsWithContext(ctx, currentContext, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListReplicaSets(currentContext, namespace)
 }
@@ -2269,11 +2378,21 @@ func (a *App) SaveYamlBackup(entries []YamlBackupEntry, defaultFilename string) 
 }
 
 // Job operations
-func (a *App) ListJobs(namespace string) ([]batchv1.Job, error) {
+func (a *App) ListJobs(requestId, namespace string) ([]batchv1.Job, error) {
 	currentContext := a.GetCurrentContext()
 	a.LogDebug("ListJobs called: context=%s, ns=%s", currentContext, namespace)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListJobsWithContext(ctx, currentContext, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListJobs(currentContext, namespace)
 }
@@ -2304,11 +2423,21 @@ func (a *App) DeleteJob(namespace, name string) error {
 }
 
 // CronJob operations
-func (a *App) ListCronJobs(namespace string) ([]batchv1.CronJob, error) {
+func (a *App) ListCronJobs(requestId, namespace string) ([]batchv1.CronJob, error) {
 	currentContext := a.GetCurrentContext()
 	a.LogDebug("ListCronJobs called: context=%s, ns=%s", currentContext, namespace)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListCronJobsWithContext(ctx, currentContext, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListCronJobs(currentContext, namespace)
 }
@@ -3955,6 +4084,16 @@ func (a *App) CancelMetricsRequest(requestId string) bool {
 // GetMetricsRequestStats returns statistics about metrics requests
 func (a *App) GetMetricsRequestStats() MetricsRequestStats {
 	return a.metricsRequestManager.GetStats()
+}
+
+// CancelListRequest cancels an in-flight list request
+func (a *App) CancelListRequest(requestId string) bool {
+	return a.listRequestManager.CancelRequest(requestId)
+}
+
+// GetListRequestStats returns statistics about list requests
+func (a *App) GetListRequestStats() ListRequestStats {
+	return a.listRequestManager.GetStats()
 }
 
 // CertSubjectInfo contains parsed subject/issuer fields

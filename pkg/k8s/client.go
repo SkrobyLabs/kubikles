@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -41,6 +42,14 @@ import (
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 	"sigs.k8s.io/yaml"
 )
+
+// ErrRequestCancelled is returned when a request was cancelled
+var ErrRequestCancelled = errors.New("request cancelled")
+
+// isCancelledError checks if an error is a context cancellation or deadline exceeded
+func isCancelledError(err error) bool {
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+}
 
 // ptr returns a pointer to the given value. Used for optional fields in K8s API structs.
 func ptr[T any](v T) *T {
@@ -186,6 +195,22 @@ func (c *Client) ListPods(namespace string) ([]v1.Pod, error) {
 	}
 	pods, err := cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return pods.Items, nil
+}
+
+// ListPodsWithContext lists pods with cancellation support
+func (c *Client) ListPodsWithContext(ctx context.Context, namespace string) ([]v1.Pod, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	pods, err := cs.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return pods.Items, nil
@@ -368,6 +393,22 @@ func (c *Client) ListNodes() ([]v1.Node, error) {
 	}
 	nodes, err := cs.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return nodes.Items, nil
+}
+
+// ListNodesWithContext lists nodes with cancellation support
+func (c *Client) ListNodesWithContext(ctx context.Context) ([]v1.Node, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := cs.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return nodes.Items, nil
@@ -763,6 +804,22 @@ func (c *Client) ListNamespaces() ([]v1.Namespace, error) {
 	return namespaces.Items, nil
 }
 
+// ListNamespacesWithContext lists namespaces with cancellation support
+func (c *Client) ListNamespacesWithContext(ctx context.Context) ([]v1.Namespace, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	namespaces, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return namespaces.Items, nil
+}
+
 // NamespaceResourceCounts holds the count of various resource types in a namespace
 type NamespaceResourceCounts struct {
 	Pods         int `json:"pods"`
@@ -1098,6 +1155,22 @@ func (c *Client) ListServices(namespace string) ([]v1.Service, error) {
 	return services.Items, nil
 }
 
+// ListServicesWithContext lists services with cancellation support
+func (c *Client) ListServicesWithContext(ctx context.Context, namespace string) ([]v1.Service, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	services, err := cs.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return services.Items, nil
+}
+
 func (c *Client) GetServiceYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -1261,6 +1334,22 @@ func (c *Client) ListConfigMaps(namespace string) ([]v1.ConfigMap, error) {
 	return cms.Items, nil
 }
 
+// ListConfigMapsWithContext lists configmaps with cancellation support
+func (c *Client) ListConfigMapsWithContext(ctx context.Context, namespace string) ([]v1.ConfigMap, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	cms, err := cs.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return cms.Items, nil
+}
+
 func (c *Client) ListSecrets(namespace string) ([]v1.Secret, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -1271,6 +1360,22 @@ func (c *Client) ListSecrets(namespace string) ([]v1.Secret, error) {
 		return nil, err
 	}
 	// Sanitize secrets? For now, we return them as is, UI should handle masking.
+	return secrets.Items, nil
+}
+
+// ListSecretsWithContext lists secrets with cancellation support
+func (c *Client) ListSecretsWithContext(ctx context.Context, namespace string) ([]v1.Secret, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	secrets, err := cs.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
 	return secrets.Items, nil
 }
 
@@ -1431,6 +1536,22 @@ func (c *Client) ListDeployments(namespace string) ([]appsv1.Deployment, error) 
 	}
 	deployments, err := cs.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return deployments.Items, nil
+}
+
+// ListDeploymentsWithContext lists deployments with cancellation support
+func (c *Client) ListDeploymentsWithContext(ctx context.Context, namespace string) ([]appsv1.Deployment, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	deployments, err := cs.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return deployments.Items, nil
@@ -2832,6 +2953,22 @@ func (c *Client) ListStatefulSets(contextName, namespace string) ([]appsv1.State
 	return statefulsets.Items, nil
 }
 
+// ListStatefulSetsWithContext lists statefulsets with cancellation support
+func (c *Client) ListStatefulSetsWithContext(ctx context.Context, contextName, namespace string) ([]appsv1.StatefulSet, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	statefulsets, err := cs.AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return statefulsets.Items, nil
+}
+
 func (c *Client) GetStatefulSetYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -2895,6 +3032,22 @@ func (c *Client) ListDaemonSets(contextName, namespace string) ([]appsv1.DaemonS
 	}
 	daemonsets, err := cs.AppsV1().DaemonSets(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return daemonsets.Items, nil
+}
+
+// ListDaemonSetsWithContext lists daemonsets with cancellation support
+func (c *Client) ListDaemonSetsWithContext(ctx context.Context, contextName, namespace string) ([]appsv1.DaemonSet, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	daemonsets, err := cs.AppsV1().DaemonSets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return daemonsets.Items, nil
@@ -2968,6 +3121,22 @@ func (c *Client) ListReplicaSets(contextName, namespace string) ([]appsv1.Replic
 	return replicasets.Items, nil
 }
 
+// ListReplicaSetsWithContext lists replicasets with cancellation support
+func (c *Client) ListReplicaSetsWithContext(ctx context.Context, contextName, namespace string) ([]appsv1.ReplicaSet, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	replicasets, err := cs.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return replicasets.Items, nil
+}
+
 func (c *Client) GetReplicaSetYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -3023,6 +3192,22 @@ func (c *Client) ListJobs(contextName, namespace string) ([]batchv1.Job, error) 
 	return jobs.Items, nil
 }
 
+// ListJobsWithContext lists jobs with cancellation support
+func (c *Client) ListJobsWithContext(ctx context.Context, contextName, namespace string) ([]batchv1.Job, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	jobs, err := cs.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return jobs.Items, nil
+}
+
 func (c *Client) GetJobYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -3069,6 +3254,22 @@ func (c *Client) ListCronJobs(contextName, namespace string) ([]batchv1.CronJob,
 	}
 	cronJobs, err := cs.BatchV1().CronJobs(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return cronJobs.Items, nil
+}
+
+// ListCronJobsWithContext lists cronjobs with cancellation support
+func (c *Client) ListCronJobsWithContext(ctx context.Context, contextName, namespace string) ([]batchv1.CronJob, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	cronJobs, err := cs.BatchV1().CronJobs(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return cronJobs.Items, nil

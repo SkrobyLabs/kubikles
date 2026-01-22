@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useK8s } from '../context/K8sContext';
 import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 import { useResourceWatcher } from './useResourceWatcher';
 import { createResourceEventHandler, createNamespacedResourceEventHandler } from './useResourceEventHandler';
+import { CancelListRequest } from '../../wailsjs/go/main/App';
 
 /**
  * Factory function to create a hook for namespaced Kubernetes resources.
@@ -18,7 +19,8 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
         const [data, setData] = useState([]);
         const [loading, setLoading] = useState(false);
         const [error, setError] = useState(null);
-        const { namespaces: allNamespaces, lastRefresh } = useK8s();
+        const { namespaces: allNamespaces, lastRefresh, checkConnectionError } = useK8s();
+        const requestIdRef = useRef(null);
 
         // Calculate optimized namespaces for watching
         const optimizedNamespaces = useMemo(() => {
@@ -35,6 +37,18 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
             // Track if this effect instance is still current
             let isCancelled = false;
 
+            // Generate request ID based on resource type and namespaces
+            const nsKey = Array.isArray(selectedNamespaces)
+                ? selectedNamespaces.sort().join(',') || 'all'
+                : selectedNamespaces || 'all';
+            const newRequestId = `list-${resourceType}-${nsKey}`;
+
+            // Cancel previous request if it's different
+            if (requestIdRef.current && requestIdRef.current !== newRequestId) {
+                CancelListRequest(requestIdRef.current).catch(() => {});
+            }
+            requestIdRef.current = newRequestId;
+
             const fetchData = async () => {
                 setLoading(true);
                 try {
@@ -43,12 +57,15 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
                     if (optimized === null) {
                         if (!isCancelled) setData([]);
                     } else if (optimized === '') {
-                        const list = await listFn('');
+                        const list = await listFn(newRequestId, '');
                         if (!isCancelled) setData(list || []);
                     } else {
                         const allResults = await Promise.all(
-                            optimized.map(ns => listFn(ns).catch(err => {
-                                console.error(`Failed to fetch ${resourceType} from namespace ${ns}`, err);
+                            optimized.map(ns => listFn(newRequestId, ns).catch(err => {
+                                // Don't log cancelled request errors
+                                if (!err?.message?.includes('cancelled')) {
+                                    console.error(`Failed to fetch ${resourceType} from namespace ${ns}`, err);
+                                }
                                 return [];
                             }))
                         );
@@ -68,9 +85,12 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
                     }
                     if (!isCancelled) setError(null);
                 } catch (err) {
-                    if (!isCancelled) {
+                    // Don't show error for cancelled requests
+                    if (!isCancelled && !err?.message?.includes('cancelled')) {
                         console.error(`Failed to fetch ${resourceType}`, err);
                         setError(err);
+                        // Check if this is a connection/auth error
+                        checkConnectionError(err);
                     }
                 } finally {
                     if (!isCancelled) setLoading(false);
@@ -79,11 +99,14 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
 
             fetchData();
 
-            // Cleanup: mark as cancelled to prevent stale state updates
+            // Cleanup: mark as cancelled and cancel backend request
             return () => {
                 isCancelled = true;
+                if (requestIdRef.current) {
+                    CancelListRequest(requestIdRef.current).catch(() => {});
+                }
             };
-        }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh]);
+        }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh, checkConnectionError]);
 
         // Create selected namespaces array for event filtering
         const selectedNamespacesList = useMemo(() => {
@@ -123,31 +146,71 @@ export function createClusterScopedResourceHook(resourceType, listFn, stateName)
         const [data, setData] = useState([]);
         const [loading, setLoading] = useState(false);
         const [error, setError] = useState(null);
-        const { lastRefresh } = useK8s();
+        const { lastRefresh, checkConnectionError } = useK8s();
+        const requestIdRef = useRef(null);
 
-        const fetchData = useCallback(async () => {
+        // Generate request ID for cluster-scoped resources
+        const requestId = `list-${resourceType}-cluster`;
+
+        useEffect(() => {
             if (!currentContext || !isVisible) return;
 
+            let isCancelled = false;
+
+            // Cancel previous request if needed
+            if (requestIdRef.current && requestIdRef.current !== requestId) {
+                CancelListRequest(requestIdRef.current).catch(() => {});
+            }
+            requestIdRef.current = requestId;
+
+            const fetchData = async () => {
+                setLoading(true);
+                try {
+                    const list = await listFn(requestId);
+                    if (!isCancelled) {
+                        setData(list || []);
+                        setError(null);
+                    }
+                } catch (err) {
+                    // Don't show error for cancelled requests
+                    if (!isCancelled && !err?.message?.includes('cancelled')) {
+                        console.error(`Failed to fetch ${resourceType}`, err);
+                        setError(err);
+                        // Check if this is a connection/auth error
+                        checkConnectionError(err);
+                    }
+                } finally {
+                    if (!isCancelled) setLoading(false);
+                }
+            };
+
+            fetchData();
+
+            return () => {
+                isCancelled = true;
+                if (requestIdRef.current) {
+                    CancelListRequest(requestIdRef.current).catch(() => {});
+                }
+            };
+        }, [currentContext, isVisible, lastRefresh, requestId, checkConnectionError]);
+
+        const refetch = useCallback(async () => {
+            if (!currentContext || !isVisible) return;
             setLoading(true);
             try {
-                const list = await listFn();
+                const list = await listFn(requestId);
                 setData(list || []);
                 setError(null);
             } catch (err) {
-                console.error(`Failed to fetch ${resourceType}`, err);
-                setError(err);
+                if (!err?.message?.includes('cancelled')) {
+                    console.error(`Failed to fetch ${resourceType}`, err);
+                    setError(err);
+                    checkConnectionError(err);
+                }
             } finally {
                 setLoading(false);
             }
-        }, [currentContext, isVisible, lastRefresh]);
-
-        useEffect(() => {
-            fetchData();
-        }, [fetchData]);
-
-        const refetch = useCallback(() => {
-            fetchData();
-        }, [fetchData]);
+        }, [currentContext, isVisible, requestId, checkConnectionError]);
 
         // Subscribe to resource events (cluster-scoped, so namespace = "")
         const handleEvent = useCallback(createResourceEventHandler(setData), []);

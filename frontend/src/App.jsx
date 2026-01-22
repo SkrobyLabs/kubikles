@@ -59,6 +59,7 @@ import ConfirmModal from './components/shared/ConfirmModal';
 import ConfigEditor from './components/shared/ConfigEditor';
 import CommandPalette from './components/shared/CommandPalette';
 import CreateResourceModal from './components/shared/CreateResourceModal';
+import ConnectionError from './components/shared/ConnectionError';
 
 // Resource templates by view
 const resourceTemplates = {
@@ -437,7 +438,10 @@ function MainLayout() {
         refreshContexts,
         refreshNamespaces,
         triggerRefresh,
-        currentNamespace
+        currentNamespace,
+        connectionError,
+        isConnecting,
+        retryConnection
     } = useK8s();
 
     const { showConfigEditor, getConfig } = useConfig();
@@ -651,7 +655,20 @@ function MainLayout() {
                     onToggleDebug={toggleDebug}
                 />
                 <main className="flex-1 flex flex-col overflow-hidden">
-                    {showConfigEditor ? (
+                    {isConnecting && !connectionError && contexts.length === 0 ? (
+                        <div className="flex-1 flex items-center justify-center">
+                            <div className="text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                                <p className="text-gray-400">Connecting to cluster...</p>
+                            </div>
+                        </div>
+                    ) : connectionError ? (
+                        <ConnectionError
+                            error={connectionError}
+                            onRetry={retryConnection}
+                            isRetrying={isConnecting}
+                        />
+                    ) : showConfigEditor ? (
                         <ConfigEditor />
                     ) : (
                         /* Split View Container */
