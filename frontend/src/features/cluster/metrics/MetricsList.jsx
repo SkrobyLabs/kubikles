@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { ChartBarIcon, CheckCircleIcon, XCircleIcon, ArrowPathIcon, ServerStackIcon } from '@heroicons/react/24/outline';
-import { DetectPrometheus, ListPrometheusInstalls, TestPrometheusEndpoint, SavePrometheusConfig, ClearPrometheusConfig } from '../../../../wailsjs/go/main/App';
+import { ChartBarIcon, CheckCircleIcon, XCircleIcon, ArrowPathIcon, ServerStackIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { DetectPrometheus, ListPrometheusInstalls, TestPrometheusEndpoint, SavePrometheusConfig, ClearPrometheusConfig, AddPortForwardConfig, StartPortForward, GetRandomAvailablePort, GetPortForwardConfigs, GetActivePortForwards } from '../../../../wailsjs/go/main/App';
+import { BrowserOpenURL } from '../../../../wailsjs/runtime/runtime';
+import { useK8s } from '../../../context/K8sContext';
 
 export default function MetricsList({ isVisible }) {
+    const { currentContext } = useK8s();
     const [prometheusInfo, setPrometheusInfo] = useState(null);
     const [allInstalls, setAllInstalls] = useState([]);
     const [detecting, setDetecting] = useState(true);
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState(null);
+    const [openingUI, setOpeningUI] = useState(null); // Track which install is being opened
 
     // Custom endpoint form
     const [customEndpoint, setCustomEndpoint] = useState({
@@ -118,6 +122,72 @@ export default function MetricsList({ isVisible }) {
         }
     };
 
+    // Open Prometheus UI by port-forwarding and opening browser
+    // Reuses existing port forward if available
+    const openPrometheusUI = async (namespace, service, port, installKey = 'active') => {
+        setOpeningUI(installKey);
+        try {
+            // Check for existing port forward config for this service
+            const configs = await GetPortForwardConfigs(currentContext);
+            const existingConfig = configs?.find(c =>
+                c.namespace === namespace &&
+                c.resourceName === service &&
+                c.resourceType === 'service' &&
+                c.remotePort === port
+            );
+
+            let localPort;
+            let configId;
+
+            if (existingConfig) {
+                // Found existing config - check if it's active
+                const activeForwards = await GetActivePortForwards();
+                const isActive = activeForwards?.some(a => a.config?.id === existingConfig.id);
+
+                localPort = existingConfig.localPort;
+                configId = existingConfig.id;
+
+                if (!isActive) {
+                    // Start the existing port forward
+                    await StartPortForward(configId);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            } else {
+                // No existing config - create new one
+                localPort = await GetRandomAvailablePort();
+
+                const config = {
+                    context: currentContext,
+                    namespace: namespace,
+                    resourceType: 'service',
+                    resourceName: service,
+                    localPort: localPort,
+                    remotePort: port,
+                    label: `Prometheus UI (${service})`,
+                    favorite: false,
+                    https: false
+                };
+
+                const result = await AddPortForwardConfig(config);
+                configId = result?.id;
+
+                if (configId) {
+                    await StartPortForward(configId);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+
+            // Open in browser
+            BrowserOpenURL(`http://localhost:${localPort}`);
+            setTestResult({ success: true, message: `Opened Prometheus UI on localhost:${localPort}` });
+        } catch (err) {
+            console.error('Failed to open Prometheus UI:', err);
+            setTestResult({ success: false, message: `Failed to open UI: ${err.toString()}` });
+        } finally {
+            setOpeningUI(null);
+        }
+    };
+
     const selectInstall = async (install) => {
         setCustomEndpoint({
             namespace: install.namespace,
@@ -187,14 +257,24 @@ export default function MetricsList({ isVisible }) {
                             </div>
                         ) : prometheusInfo?.available ? (
                             <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-green-400">
-                                    <CheckCircleIcon className="h-5 w-5" />
-                                    <span className="font-medium">Connected</span>
-                                    {prometheusInfo.detectionMethod && (
-                                        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
-                                            {prometheusInfo.detectionMethod === 'crd' ? 'Operator' : 'Service'}
-                                        </span>
-                                    )}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-green-400">
+                                        <CheckCircleIcon className="h-5 w-5" />
+                                        <span className="font-medium">Connected</span>
+                                        {prometheusInfo.detectionMethod && (
+                                            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
+                                                {prometheusInfo.detectionMethod === 'crd' ? 'Operator' : 'Service'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => openPrometheusUI(prometheusInfo.namespace, prometheusInfo.service, prometheusInfo.port, 'active')}
+                                        disabled={openingUI === 'active'}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary hover:bg-primary/90 text-white rounded transition-colors disabled:opacity-50"
+                                    >
+                                        <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                                        {openingUI === 'active' ? 'Opening...' : 'Open UI'}
+                                    </button>
                                 </div>
                                 <div className="grid grid-cols-3 gap-4 text-sm">
                                     <div>
@@ -238,34 +318,52 @@ export default function MetricsList({ isVisible }) {
                                 Click to select one for manual testing.
                             </p>
                             <div className="space-y-2">
-                                {allInstalls.map((install, idx) => (
-                                    <button
-                                        key={`${install.namespace}-${install.name}-${idx}`}
-                                        onClick={() => selectInstall(install)}
-                                        className={`w-full flex items-center justify-between p-3 rounded border transition-colors ${
-                                            customEndpoint.namespace === install.namespace &&
-                                            customEndpoint.service === install.service
-                                                ? 'border-primary bg-primary/10'
-                                                : 'border-border hover:border-gray-500 hover:bg-white/5'
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-2 w-2 rounded-full bg-blue-400" />
-                                            <div className="text-left">
-                                                <div className="text-sm text-text">
-                                                    {install.namespace}/{install.service}:{install.port}
+                                {allInstalls.map((install, idx) => {
+                                    const installKey = `${install.namespace}-${install.service}-${idx}`;
+                                    const isSelected = customEndpoint.namespace === install.namespace &&
+                                        customEndpoint.service === install.service;
+
+                                    return (
+                                        <div
+                                            key={installKey}
+                                            className={`flex items-center justify-between p-3 rounded border transition-colors ${
+                                                isSelected
+                                                    ? 'border-primary bg-primary/10'
+                                                    : 'border-border hover:border-gray-500 hover:bg-white/5'
+                                            }`}
+                                        >
+                                            <button
+                                                onClick={() => selectInstall(install)}
+                                                className="flex items-center gap-3 flex-1 text-left"
+                                            >
+                                                <div className="h-2 w-2 rounded-full bg-blue-400" />
+                                                <div>
+                                                    <div className="text-sm text-text">
+                                                        {install.namespace}/{install.service}:{install.port}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {install.name !== install.service && `CR: ${install.name} • `}
+                                                        {install.type === 'operator' ? 'Prometheus Operator' : 'Standalone'}
+                                                    </div>
                                                 </div>
-                                                <div className="text-xs text-gray-500">
-                                                    {install.name !== install.service && `CR: ${install.name} • `}
-                                                    {install.type === 'operator' ? 'Prometheus Operator' : 'Standalone'}
-                                                </div>
+                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openPrometheusUI(install.namespace, install.service, install.port, installKey);
+                                                    }}
+                                                    disabled={openingUI === installKey}
+                                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-primary/20 hover:bg-primary/30 text-primary rounded transition-colors disabled:opacity-50"
+                                                    title="Open Prometheus UI in browser"
+                                                >
+                                                    <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+                                                    {openingUI === installKey ? 'Opening...' : 'Open UI'}
+                                                </button>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs text-gray-400">Click to test</span>
-                                        </div>
-                                    </button>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}

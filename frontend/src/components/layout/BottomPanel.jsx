@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { BookmarkIcon } from '@heroicons/react/24/solid';
 
 export default function BottomPanel({
     tabs,
@@ -10,6 +11,7 @@ export default function BottomPanel({
     onCloseAll,
     onCloseStaleTabs,
     onReorder,
+    onTogglePin,
     isTabStale,
     height = '40%'
 }) {
@@ -95,7 +97,12 @@ export default function BottomPanel({
     const handleDrop = (e, toIndex) => {
         e.preventDefault();
         if (draggedIndex !== null && draggedIndex !== toIndex && onReorder) {
-            onReorder(draggedIndex, toIndex);
+            // Prevent dragging between pinned and unpinned sections
+            const draggedTab = tabs[draggedIndex];
+            const targetTab = tabs[toIndex];
+            if (draggedTab?.pinned === targetTab?.pinned) {
+                onReorder(draggedIndex, toIndex);
+            }
         }
         setDraggedIndex(null);
         setDropTarget(null);
@@ -106,6 +113,9 @@ export default function BottomPanel({
         const { tabId, index } = contextMenu;
 
         switch (action) {
+            case 'pin':
+                onTogglePin?.(tabId);
+                break;
             case 'close':
                 onTabClose(tabId);
                 break;
@@ -130,6 +140,7 @@ export default function BottomPanel({
     const isLastTab = contextMenu && contextMenu.index === tabs.length - 1;
     const isOnlyTab = tabs.length === 1;
     const hasStaleTabs = tabs.some(t => isTabStale?.(t));
+    const contextMenuTab = contextMenu ? tabs.find(t => t.id === contextMenu.tabId) : null;
 
     return (
         <div
@@ -165,18 +176,23 @@ export default function BottomPanel({
                             onClick={() => onTabChange(tab.id)}
                             title={stale ? `From context: ${tab.context} (read-only)` : undefined}
                         >
+                            {tab.pinned && (
+                                <BookmarkIcon className="h-3 w-3 mr-1.5 text-primary shrink-0" title="Pinned" />
+                            )}
                             {stale && (
                                 <span className="mr-1.5 text-red-400" title="Stale - different context">⚠</span>
                             )}
                             <span className={`truncate flex-1 mr-2 select-none ${stale ? 'line-through opacity-70' : ''}`}>
                                 {tab.title}
                             </span>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onTabClose(tab.id); }}
-                                className="text-gray-500 hover:text-red-400"
-                            >
-                                ✕
-                            </button>
+                            {!tab.pinned && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onTabClose(tab.id); }}
+                                    className="text-gray-500 hover:text-red-400"
+                                >
+                                    ✕
+                                </button>
+                            )}
                         </div>
                     );
                 })}
@@ -210,8 +226,17 @@ export default function BottomPanel({
                     style={{ left: contextMenu.x, top: contextMenu.y }}
                 >
                     <button
-                        className="w-full px-3 py-1.5 text-left text-xs hover:bg-background text-text"
-                        onClick={() => menuAction('close')}
+                        className="w-full px-3 py-1.5 text-left text-xs hover:bg-background text-text flex items-center gap-2"
+                        onClick={() => menuAction('pin')}
+                    >
+                        <BookmarkIcon className="h-3 w-3" />
+                        {contextMenuTab?.pinned ? 'Unpin Tab' : 'Pin Tab'}
+                    </button>
+                    <div className="border-t border-border my-1" />
+                    <button
+                        className={`w-full px-3 py-1.5 text-left text-xs hover:bg-background ${contextMenuTab?.pinned ? 'text-gray-500 cursor-not-allowed' : 'text-text'}`}
+                        onClick={() => !contextMenuTab?.pinned && menuAction('close')}
+                        disabled={contextMenuTab?.pinned}
                     >
                         Close
                     </button>

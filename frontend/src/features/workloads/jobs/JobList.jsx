@@ -13,6 +13,7 @@ import JobActionsMenu from './JobActionsMenu';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import { formatAge } from '../../../utils/formatting';
 import { getOwnerViewId } from '../../../utils/owner-navigation';
+import { getJobConditionColor } from '../../../utils/k8s-helpers';
 
 // Get controller from owner references
 function getController(item) {
@@ -99,7 +100,10 @@ export default function JobList({ isVisible }) {
             key: 'condition',
             label: 'Condition',
             width: '20%',
-            render: (job) => getCondition(job)
+            render: (job) => {
+                const condition = getCondition(job);
+                return <span className={getJobConditionColor(condition)}>{condition}</span>;
+            }
         },
         {
             key: 'age',

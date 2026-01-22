@@ -34,11 +34,13 @@ import {
     AdjustmentsHorizontalIcon,
     QueueListIcon,
     FingerPrintIcon,
-    BoltIcon
+    BoltIcon,
+    BugAntIcon
 } from '@heroicons/react/24/outline';
 import { useConfig } from '../../context/ConfigContext';
 import { useTheme } from '../../context/ThemeContext';
 import { usePerformancePanel } from '../../hooks/usePerformancePanel.jsx';
+import { useDebugLogs } from '../../hooks/useDebugLogs.jsx';
 import SearchSelect from '../shared/SearchSelect';
 import Logger from '../../utils/Logger';
 import { ListCRDs, GetVersionInfo } from '../../../wailsjs/go/main/App';
@@ -48,11 +50,11 @@ export default function Sidebar({
     onViewChange,
     contexts,
     currentContext,
-    onContextChange,
-    onToggleDebug
+    onContextChange
 }) {
     const { openConfigEditor } = useConfig();
     const { openPerformancePanel } = usePerformancePanel();
+    const { toggleDebug } = useDebugLogs();
     const { uiFont, monoFont, setUiFont, setMonoFont, uiFonts, monoFonts } = useTheme();
 
     // Settings menu state
@@ -298,21 +300,6 @@ export default function Sidebar({
         }));
     };
 
-    // Debug Log Trigger
-    const [debugClicks, setDebugClicks] = useState(0);
-
-    useEffect(() => {
-        if (debugClicks >= 10) {
-            Logger.info("Toggling Debug Mode via Logo clicks");
-            onToggleDebug();
-            setDebugClicks(0);
-        }
-    }, [debugClicks]);
-
-    const handleLogoClick = () => {
-        setDebugClicks(prev => prev + 1);
-    };
-
     const handleViewChange = (viewId) => {
         Logger.info("Navigating to view", { view: viewId });
         onViewChange(viewId);
@@ -327,10 +314,7 @@ export default function Sidebar({
         <div className="w-64 bg-surface border-r border-border flex flex-col h-full relative">
             {/* Header with traffic light padding - h-14 matches ResourceList header */}
             <div className="h-14 shrink-0 flex items-center pl-20 border-b border-border titlebar-drag">
-                <div
-                    className="flex items-center gap-2 text-primary font-bold text-lg cursor-pointer select-none"
-                    onClick={handleLogoClick}
-                >
+                <div className="flex items-center gap-2 text-primary font-bold text-lg select-none">
                     <CubeIcon className="h-5 w-5" />
                     <span>Kubikles</span>
                 </div>
@@ -531,6 +515,16 @@ export default function Sidebar({
                                 <ChartBarIcon className="h-4 w-4" />
                                 <span className="flex-1">Performance</span>
                                 <span className="text-xs text-gray-500">Opt+P</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setSettingsMenuOpen(false);
+                                    toggleDebug();
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
+                            >
+                                <BugAntIcon className="h-4 w-4" />
+                                <span className="flex-1">Debug</span>
                             </button>
                             <div className="border-t border-border my-1" />
                             {/* UI Font Selector */}

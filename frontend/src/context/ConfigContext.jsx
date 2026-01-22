@@ -30,7 +30,7 @@ const defaultConfig = {
         // How long "Copied!" feedback shows (ms)
         copyFeedbackMs: 2000,
         // Enable Cmd/Ctrl+Scroll to zoom in/out
-        scrollZoomEnabled: true
+        scrollZoomEnabled: false
     },
     metrics: {
         // Poll interval for node/pod metrics (ms)
@@ -58,6 +58,26 @@ const deepMerge = (target, source) => {
         }
     }
     return result;
+};
+
+// Extract only values that differ from defaults (for storage)
+// This ensures users get new defaults when we update them, unless they explicitly changed the value
+const getDiff = (current, defaults) => {
+    const diff = {};
+    for (const key in current) {
+        const currentVal = current[key];
+        const defaultVal = defaults?.[key];
+
+        if (currentVal && typeof currentVal === 'object' && !Array.isArray(currentVal)) {
+            const nestedDiff = getDiff(currentVal, defaultVal || {});
+            if (Object.keys(nestedDiff).length > 0) {
+                diff[key] = nestedDiff;
+            }
+        } else if (currentVal !== defaultVal) {
+            diff[key] = currentVal;
+        }
+    }
+    return diff;
 };
 
 // Get nested value by path (e.g., "logs.search.debounceMs")
@@ -106,10 +126,16 @@ export const ConfigProvider = ({ children }) => {
 
     const [showConfigEditor, setShowConfigEditor] = useState(false);
 
-    // Persist config to localStorage
+    // Persist config to localStorage (only save values that differ from defaults)
     useEffect(() => {
         try {
-            localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+            const diff = getDiff(config, defaultConfig);
+            if (Object.keys(diff).length > 0) {
+                localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(diff));
+            } else {
+                // No differences - remove stored config so defaults are used
+                localStorage.removeItem(CONFIG_STORAGE_KEY);
+            }
         } catch (e) {
             console.error('Failed to save config to localStorage:', e);
         }

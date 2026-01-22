@@ -47,7 +47,7 @@ export const getPodStatusColor = (status) => {
         case 'Running':
             return 'text-success';
         case 'Succeeded':
-            return 'text-success/70'; // Dimmed green
+            return 'text-green-600'; // Dark green
         case 'Pending':
         case 'ContainerCreating':
         case 'Init:Running':
@@ -68,6 +68,19 @@ export const getPodStatusColor = (status) => {
             return 'text-error'; // Red
         default:
             return 'text-text';
+    }
+};
+
+export const getJobConditionColor = (condition) => {
+    switch (condition) {
+        case 'Complete':
+            return 'text-green-600'; // Dark green (same as Succeeded pods)
+        case 'Failed':
+            return 'text-error'; // Red
+        case 'Suspended':
+            return 'text-warning'; // Orange
+        default:
+            return 'text-text'; // Running/Pending - no condition yet
     }
 };
 

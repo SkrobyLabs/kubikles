@@ -51,7 +51,6 @@ import PriorityClassList from './features/cluster/priorityclasses/PriorityClassL
 import LeaseList from './features/config/leases/LeaseList';
 import CSIDriverList from './features/storage/csidrivers/CSIDriverList';
 import CSINodeList from './features/storage/csinodes/CSINodeList';
-import { useDebugLogs } from './hooks/useDebugLogs';
 import { usePerformancePanel } from './hooks/usePerformancePanel.jsx';
 import { LogDebug, SetEventCoalescerFrameInterval } from '../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
@@ -426,6 +425,7 @@ function MainLayout() {
         closeAllTabs,
         closeAllStaleTabs,
         reorderTabs,
+        togglePinTab,
         isTabStale,
         panelHeight,
         setPanelHeight
@@ -444,8 +444,7 @@ function MainLayout() {
         retryConnection
     } = useK8s();
 
-    const { showConfigEditor, getConfig } = useConfig();
-    const { toggleDebug } = useDebugLogs();
+    const { showConfigEditor, closeConfigEditor, getConfig } = useConfig();
     const { openPerformancePanel } = usePerformancePanel();
     const isDragging = useRef(false);
     const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -571,6 +570,13 @@ function MainLayout() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [refreshContexts, refreshNamespaces, triggerRefresh, openPerformancePanel]);
 
+    // Close config editor when view changes
+    useEffect(() => {
+        if (showConfigEditor) {
+            closeConfigEditor();
+        }
+    }, [activeView]);
+
     // Parse custom resource view ID: cr:{group}:{version}:{plural}:{kind}:{namespaced}
     const parsedCRView = useMemo(() => {
         if (!activeView?.startsWith('cr:')) return null;
@@ -652,7 +658,6 @@ function MainLayout() {
                     contexts={contexts}
                     currentContext={currentContext}
                     onContextChange={switchContext}
-                    onToggleDebug={toggleDebug}
                 />
                 <main className="flex-1 flex flex-col overflow-hidden">
                     {isConnecting && !connectionError && contexts.length === 0 ? (
@@ -699,6 +704,7 @@ function MainLayout() {
                                         onCloseAll={closeAllTabs}
                                         onCloseStaleTabs={closeAllStaleTabs}
                                         onReorder={reorderTabs}
+                                        onTogglePin={togglePinTab}
                                         isTabStale={isTabStale}
                                         height={`${panelHeight}%`}
                                     />

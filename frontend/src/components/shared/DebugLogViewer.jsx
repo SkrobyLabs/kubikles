@@ -1,12 +1,20 @@
-import React, { useEffect, useRef } from 'react';
-import { TrashIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useRef, useState } from 'react';
+import { TrashIcon, ArrowDownTrayIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 export default function DebugLogViewer({ logs, onClear, onDownload }) {
     const endRef = useRef(null);
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [logs]);
+
+    const handleCopy = async () => {
+        const content = logs.join('\n');
+        await navigator.clipboard.writeText(content);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     return (
         <div className="h-full w-full bg-background p-4 flex flex-col">
@@ -20,6 +28,18 @@ export default function DebugLogViewer({ logs, onClear, onDownload }) {
                     >
                         <TrashIcon className="h-3 w-3" />
                         Clear
+                    </button>
+                    <button
+                        onClick={handleCopy}
+                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
+                            copied
+                                ? 'bg-green-500/20 text-green-400'
+                                : 'bg-primary/10 text-primary hover:bg-primary/20'
+                        }`}
+                        title="Copy Logs"
+                    >
+                        {copied ? <CheckIcon className="h-3 w-3" /> : <ClipboardDocumentIcon className="h-3 w-3" />}
+                        {copied ? 'Copied!' : 'Copy'}
                     </button>
                     <button
                         onClick={onDownload}

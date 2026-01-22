@@ -100,20 +100,42 @@ export const UIProvider = ({ children }) => {
         ));
     }, []);
 
+    const togglePinTab = useCallback((tabId) => {
+        setBottomTabs(prev => {
+            const newTabs = prev.map(t =>
+                t.id === tabId ? { ...t, pinned: !t.pinned } : t
+            );
+            // Sort: pinned tabs first, then unpinned (preserve order within each group)
+            const pinned = newTabs.filter(t => t.pinned);
+            const unpinned = newTabs.filter(t => !t.pinned);
+            return [...pinned, ...unpinned];
+        });
+    }, []);
+
     const closeTab = useCallback((tabId) => {
         setBottomTabs(prev => {
+            // Don't close pinned tabs
+            const tab = prev.find(t => t.id === tabId);
+            if (tab?.pinned) return prev;
+
+            const closingIndex = prev.findIndex(t => t.id === tabId);
             const newTabs = prev.filter(t => t.id !== tabId);
+
+            // Update active tab if we're closing the active one
+            setActiveTabId(currentActive => {
+                if (currentActive !== tabId) return currentActive;
+                if (newTabs.length === 0) return null;
+                // Try to select the tab to the left, otherwise the one that took its place
+                const newIndex = Math.min(closingIndex - 1, newTabs.length - 1);
+                return newTabs[Math.max(0, newIndex)]?.id || null;
+            });
+
             return newTabs;
-        });
-        setActiveTabId(prev => {
-            // Need to check current tabs to determine new active
-            // This is handled via effect or inline check
-            return prev;
         });
     }, []);
 
     const closeOtherTabs = useCallback((tabId) => {
-        setBottomTabs(prev => prev.filter(t => t.id === tabId));
+        setBottomTabs(prev => prev.filter(t => t.id === tabId || t.pinned));
         setActiveTabId(tabId);
     }, []);
 
@@ -121,13 +143,16 @@ export const UIProvider = ({ children }) => {
         setBottomTabs(prev => {
             const index = prev.findIndex(t => t.id === tabId);
             if (index === -1) return prev;
-            return prev.slice(0, index + 1);
+            // Keep tabs to the left (including current) + any pinned tabs to the right
+            const leftTabs = prev.slice(0, index + 1);
+            const rightPinned = prev.slice(index + 1).filter(t => t.pinned);
+            return [...leftTabs, ...rightPinned];
         });
     }, []);
 
     const closeAllTabs = useCallback(() => {
-        setBottomTabs([]);
-        setActiveTabId(null);
+        setBottomTabs(prev => prev.filter(t => t.pinned));
+        setActiveTabId(prev => prev);
     }, []);
 
     const openModal = useCallback((config) => {
@@ -175,6 +200,7 @@ export const UIProvider = ({ children }) => {
         closeAllTabs,
         closeAllStaleTabs,
         reorderTabs,
+        togglePinTab,
         isTabStale,
         panelHeight,
         setPanelHeight,
@@ -196,6 +222,7 @@ export const UIProvider = ({ children }) => {
         closeAllTabs,
         closeAllStaleTabs,
         reorderTabs,
+        togglePinTab,
         isTabStale,
         panelHeight,
         pendingSearch,

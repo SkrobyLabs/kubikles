@@ -92,8 +92,8 @@ describe('getPodStatusColor', () => {
         expect(getPodStatusColor('Running')).toBe('text-success');
     });
 
-    it('returns dimmed success for Succeeded', () => {
-        expect(getPodStatusColor('Succeeded')).toBe('text-success/70');
+    it('returns dark green for Succeeded', () => {
+        expect(getPodStatusColor('Succeeded')).toBe('text-green-600');
     });
 
     it('returns warning for Pending states', () => {

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import { useConfig } from '../../context/ConfigContext';
 import { XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import ConfigEditorUI from './config-editor/ConfigEditorUI';
 
 // Descriptions for config keys (used in flat mode comments)
 const configDescriptions = {
@@ -110,7 +111,7 @@ export default function ConfigEditor() {
         closeConfigEditor
     } = useConfig();
 
-    const [mode, setMode] = useState('flat'); // 'flat' or 'json'
+    const [mode, setMode] = useState('ui'); // 'ui', 'flat', or 'json'
     const [content, setContent] = useState('');
     const [error, setError] = useState('');
     const [saved, setSaved] = useState(false);
@@ -125,9 +126,11 @@ export default function ConfigEditor() {
         return JSON.stringify(cfg, null, 2);
     };
 
-    // Initialize content
+    // Initialize content when switching to text editor modes
     useEffect(() => {
-        setContent(generateContent(config, mode));
+        if (mode !== 'ui') {
+            setContent(generateContent(config, mode));
+        }
     }, []);
 
 
@@ -137,6 +140,30 @@ export default function ConfigEditor() {
         if (newMode === mode) return;
 
         setError('');
+
+        // When switching from UI mode, generate content from current config
+        if (mode === 'ui') {
+            setContent(generateContent(config, newMode));
+            setMode(newMode);
+            return;
+        }
+
+        // When switching to UI mode, parse and save current content first
+        if (newMode === 'ui') {
+            try {
+                let parsed;
+                if (mode === 'flat') {
+                    parsed = unflattenConfig(content);
+                } else {
+                    parsed = JSON.parse(content);
+                }
+                updateConfig(parsed);
+                setMode(newMode);
+            } catch (e) {
+                setError(`Cannot switch mode: ${e.message}`);
+            }
+            return;
+        }
 
         try {
             // Parse current content first
@@ -344,7 +371,9 @@ export default function ConfigEditor() {
     const handleReset = () => {
         if (confirm('Reset configuration to defaults?')) {
             resetConfig();
-            setContent(generateContent(defaultConfig, mode));
+            if (mode !== 'ui') {
+                setContent(generateContent(defaultConfig, mode));
+            }
             setError('');
         }
     };
@@ -352,6 +381,12 @@ export default function ConfigEditor() {
     // Determine editor language based on mode
     const editorLanguage = mode === 'json' ? 'json' : 'ini';
 
+    // Render UI mode
+    if (mode === 'ui') {
+        return <ConfigEditorUI onSwitchMode={switchMode} />;
+    }
+
+    // Render text editor modes (flat/json)
     return (
         <div className="h-full flex flex-col bg-background">
             {/* Header */}
@@ -368,6 +403,12 @@ export default function ConfigEditor() {
 
                     {/* Mode Toggle */}
                     <div className="flex items-center bg-background rounded overflow-hidden text-xs">
+                        <button
+                            onClick={() => switchMode('ui')}
+                            className="px-3 py-1.5 transition-colors text-gray-400 hover:text-white"
+                        >
+                            UI
+                        </button>
                         <button
                             onClick={() => switchMode('flat')}
                             className={`px-3 py-1.5 transition-colors ${mode === 'flat' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}
