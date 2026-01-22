@@ -13,7 +13,7 @@ import dagre from 'dagre';
 import '@xyflow/react/dist/style.css';
 import { GetResourceDependencies, ExpandDependencyNode } from '../../../wailsjs/go/main/App';
 import { useUI } from '../../context/UIContext';
-import YamlEditor from './YamlEditor';
+import { LazyYamlEditor as YamlEditor } from '../lazy';
 import Logger from '../../utils/Logger';
 import {
     CubeIcon,
@@ -502,12 +502,9 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                 fitViewOptions={{ padding: 0.2 }}
                 minZoom={0.1}
                 maxZoom={2}
-                // Performance optimizations for Apple Silicon
+                // Performance optimizations
                 panOnScroll={true}
-                selectionOnDrag={false}
-                nodesDraggable={false}
                 nodesConnectable={false}
-                elementsSelectable={false}
                 elevateEdgesOnSelect={false}
             >
                 <Controls className="!bg-surface-light !border-border" />

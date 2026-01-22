@@ -3,6 +3,7 @@
 package terminal
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +13,13 @@ import (
 	"github.com/UserExistsError/conpty"
 	"github.com/gorilla/websocket"
 )
+
+// resizeMessage represents a terminal resize request from the frontend
+type resizeMessage struct {
+	Type string `json:"type"`
+	Cols int    `json:"cols"`
+	Rows int    `json:"rows"`
+}
 
 // quoteArg quotes an argument for Windows command line if needed
 func quoteArg(arg string) string {
@@ -83,13 +91,24 @@ func (s *Service) handleTerminal(w http.ResponseWriter, r *http.Request) {
 
 	// Pipe websocket to ConPTY
 	for {
-		messageType, reader, err := conn.NextReader()
+		messageType, data, err := conn.ReadMessage()
 		if err != nil {
 			break
 		}
 
 		if messageType == websocket.TextMessage || messageType == websocket.BinaryMessage {
-			_, _ = io.Copy(cpty, reader)
+			// Check if this is a resize message (JSON starting with {"type":"resize"
+			if len(data) > 0 && data[0] == '{' {
+				var msg resizeMessage
+				if json.Unmarshal(data, &msg) == nil && msg.Type == "resize" && msg.Cols > 0 && msg.Rows > 0 {
+					if err := cpty.Resize(msg.Cols, msg.Rows); err != nil {
+						log.Printf("ConPTY resize failed: %v", err)
+					}
+					continue
+				}
+			}
+			// Regular input - send to PTY
+			_, _ = cpty.Write(data)
 		}
 	}
 }

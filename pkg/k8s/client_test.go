@@ -1067,7 +1067,7 @@ func TestWatchResource(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
 
-			watcher, err := client.WatchResource(ctx, tt.resourceType, tt.namespace)
+			watcher, err := client.WatchResource(ctx, tt.resourceType, tt.namespace, "")
 			if err != nil {
 				t.Fatalf("WatchResource(%s) error = %v", tt.resourceType, err)
 			}

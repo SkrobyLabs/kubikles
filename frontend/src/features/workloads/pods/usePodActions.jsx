@@ -3,9 +3,7 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeletePod, ForceDeletePod, OpenTerminal } from '../../../../wailsjs/go/main/App';
 import LogViewer from '../../../components/shared/log-viewer';
-import Terminal from '../../../components/shared/Terminal';
-import YamlEditor from '../../../components/shared/YamlEditor';
-import DependencyGraph from '../../../components/shared/DependencyGraph';
+import { LazyTerminal as Terminal, LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../../../components/lazy';
 import PodDetails from '../../../components/shared/PodDetails';
 import Logger from '../../../utils/Logger';
 

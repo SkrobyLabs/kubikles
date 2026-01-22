@@ -178,16 +178,18 @@ type PerformanceMetrics struct {
 
 // ResourceWatcher tracks a single watcher instance with reference counting
 type ResourceWatcher struct {
-	Key          string             // "resourceType:namespace" or "crd:group/version/resource:namespace"
-	ResourceType string             // Resource type identifier
-	Namespace    string             // Namespace being watched (empty for cluster-scoped)
-	Group        string             // API group (for CRDs)
-	Version      string             // API version (for CRDs)
-	Resource     string             // Resource plural name (for CRDs)
-	IsCRD        bool               // Whether this is a CRD watcher
-	RefCount     int32              // Atomic counter for subscribers
-	Cancel       context.CancelFunc // Cancel function for the watch loop
-	CleanupTimer *time.Timer        // Delayed cleanup timer
+	Key             string             // "resourceType:namespace" or "crd:group/version/resource:namespace"
+	ResourceType    string             // Resource type identifier
+	Namespace       string             // Namespace being watched (empty for cluster-scoped)
+	Group           string             // API group (for CRDs)
+	Version         string             // API version (for CRDs)
+	Resource        string             // Resource plural name (for CRDs)
+	IsCRD           bool               // Whether this is a CRD watcher
+	RefCount        int32              // Atomic counter for subscribers
+	Cancel          context.CancelFunc // Cancel function for the watch loop
+	CleanupTimer    *time.Timer        // Delayed cleanup timer
+	ResourceVersion string             // Last known resourceVersion for resumable watches
+	mu              sync.RWMutex       // Protects ResourceVersion
 }
 
 // ResourceWatcherManager manages all active resource watchers with reference counting
@@ -1584,9 +1586,12 @@ func (a *App) StopAllWatchers() {
 	a.watcherManager.StopAll()
 }
 
-// watchResourceLoop is the generic watch loop for standard Kubernetes resources
-// It includes reconnection logic with exponential backoff
+// watchResourceLoop is the generic watch loop for standard Kubernetes resources.
+// It includes reconnection logic with exponential backoff and resourceVersion tracking
+// for resumable watches that avoid duplicate ADDED events on reconnection.
 func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace string) {
+	watcherKey := resourceType + ":" + namespace
+
 	defer func() {
 		a.LogDebug("Resource watcher stopped: type=%s, namespace=%s", resourceType, namespace)
 		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
@@ -1601,12 +1606,40 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 		return
 	}
 
-	// Reconnection parameters
-	maxRetries := 5
-	baseDelay := 1 * time.Second
-	maxDelay := 30 * time.Second
+	// Get watcher for resourceVersion tracking
+	var rw *ResourceWatcher
+	if a.watcherManager != nil {
+		a.watcherManager.mutex.RLock()
+		rw = a.watcherManager.watchers[watcherKey]
+		a.watcherManager.mutex.RUnlock()
+	}
 
-	for retryCount := 0; ; retryCount++ {
+	// Helper to get current resourceVersion
+	getResourceVersion := func() string {
+		if rw == nil {
+			return ""
+		}
+		rw.mu.RLock()
+		defer rw.mu.RUnlock()
+		return rw.ResourceVersion
+	}
+
+	// Helper to update resourceVersion
+	setResourceVersion := func(rv string) {
+		if rw != nil && rv != "" {
+			rw.mu.Lock()
+			rw.ResourceVersion = rv
+			rw.mu.Unlock()
+		}
+	}
+
+	// Reconnection parameters - more resilient for high-latency environments
+	// Uses infinite retries with exponential backoff capped at 2 minutes
+	consecutiveFailures := 0
+	baseDelay := 1 * time.Second
+	maxDelay := 2 * time.Minute
+
+	for {
 		// Check if context is cancelled before starting/reconnecting
 		select {
 		case <-ctx.Done():
@@ -1614,25 +1647,30 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 		default:
 		}
 
-		watcher, err := a.k8sClient.WatchResource(ctx, resourceType, namespace)
-		if err != nil {
-			a.LogDebug("Failed to start resource watcher: type=%s, err=%v, retry=%d", resourceType, err, retryCount)
+		// Get last known resourceVersion for resumable watch
+		resourceVersion := getResourceVersion()
 
-			// Emit error event
+		watcher, err := a.k8sClient.WatchResource(ctx, resourceType, namespace, resourceVersion)
+		if err != nil {
+			consecutiveFailures++
+			a.LogDebug("Failed to start resource watcher: type=%s, err=%v, failures=%d", resourceType, err, consecutiveFailures)
+
+			// If we have a stale resourceVersion, clear it and retry fresh
+			if resourceVersion != "" && (strings.Contains(err.Error(), "too old") || strings.Contains(err.Error(), "expired")) {
+				a.LogDebug("ResourceVersion too old, resetting: type=%s", resourceType)
+				setResourceVersion("")
+			}
+
+			// Emit error event (always recoverable with infinite retries)
 			runtime.EventsEmit(a.ctx, "watcher-error", WatcherErrorEvent{
 				ResourceType: resourceType,
 				Namespace:    namespace,
 				Error:        err.Error(),
-				Recoverable:  retryCount < maxRetries,
+				Recoverable:  true,
 			})
 
-			if retryCount >= maxRetries {
-				a.LogDebug("Resource watcher max retries exceeded: type=%s", resourceType)
-				return
-			}
-
-			// Exponential backoff
-			delay := baseDelay * time.Duration(1<<uint(retryCount))
+			// Exponential backoff with jitter
+			delay := baseDelay * time.Duration(1<<uint(min(consecutiveFailures, 7))) // Cap exponent at 7 (128s base)
 			if delay > maxDelay {
 				delay = maxDelay
 			}
@@ -1652,7 +1690,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 		}
 
 		// Successfully connected
-		retryCount = 0 // Reset retry count on successful connection
+		consecutiveFailures = 0
 		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
 			ResourceType: resourceType,
 			Namespace:    namespace,
@@ -1674,18 +1712,29 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 					break
 				}
 
+				// Convert to unstructured map to extract resourceVersion
+				resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
+				if err != nil {
+					a.LogDebug("Failed to convert resource to map: %v", err)
+					continue
+				}
+
+				// Extract and store resourceVersion for resumable watches
+				if metadata, ok := resourceMap["metadata"].(map[string]interface{}); ok {
+					if rv, ok := metadata["resourceVersion"].(string); ok {
+						setResourceVersion(rv)
+					}
+				}
+
+				// Handle BOOKMARK events (just update resourceVersion, don't emit)
+				if event.Type == "BOOKMARK" {
+					continue
+				}
+
 				// Only emit ADDED, MODIFIED, DELETED events
 				if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
 					// Track event for performance metrics
-					watcherKey := resourceType + ":" + namespace
 					a.recordWatcherEvent(watcherKey, string(event.Type))
-
-					// Convert to unstructured map
-					resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
-					if err != nil {
-						a.LogDebug("Failed to convert resource to map: %v", err)
-						continue
-					}
 
 					// Extract namespace from resource metadata
 					resourceNs := ""
@@ -1708,10 +1757,12 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 	}
 }
 
-// watchCRDLoop is the watch loop for Custom Resource Definitions using dynamic client
-// It includes reconnection logic with exponential backoff
+// watchCRDLoop is the watch loop for Custom Resource Definitions using dynamic client.
+// It includes reconnection logic with exponential backoff and resourceVersion tracking
+// for resumable watches that avoid duplicate ADDED events on reconnection.
 func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namespace string) {
 	crdResourceType := fmt.Sprintf("crd:%s/%s/%s", group, version, resource)
+	watcherKey := crdResourceType + ":" + namespace
 
 	defer func() {
 		a.LogDebug("CRD watcher stopped: gvr=%s/%s/%s, namespace=%s", group, version, resource, namespace)
@@ -1727,12 +1778,40 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 		return
 	}
 
-	// Reconnection parameters
-	maxRetries := 5
-	baseDelay := 1 * time.Second
-	maxDelay := 30 * time.Second
+	// Get watcher for resourceVersion tracking
+	var rw *ResourceWatcher
+	if a.watcherManager != nil {
+		a.watcherManager.mutex.RLock()
+		rw = a.watcherManager.watchers[watcherKey]
+		a.watcherManager.mutex.RUnlock()
+	}
 
-	for retryCount := 0; ; retryCount++ {
+	// Helper to get current resourceVersion
+	getResourceVersion := func() string {
+		if rw == nil {
+			return ""
+		}
+		rw.mu.RLock()
+		defer rw.mu.RUnlock()
+		return rw.ResourceVersion
+	}
+
+	// Helper to update resourceVersion
+	setResourceVersion := func(rv string) {
+		if rw != nil && rv != "" {
+			rw.mu.Lock()
+			rw.ResourceVersion = rv
+			rw.mu.Unlock()
+		}
+	}
+
+	// Reconnection parameters - more resilient for high-latency environments
+	// Uses infinite retries with exponential backoff capped at 2 minutes
+	consecutiveFailures := 0
+	baseDelay := 1 * time.Second
+	maxDelay := 2 * time.Minute
+
+	for {
 		// Check if context is cancelled before starting/reconnecting
 		select {
 		case <-ctx.Done():
@@ -1740,25 +1819,30 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 		default:
 		}
 
-		watcher, err := a.k8sClient.WatchCRD(ctx, group, version, resource, namespace)
-		if err != nil {
-			a.LogDebug("Failed to start CRD watcher: gvr=%s/%s/%s, err=%v, retry=%d", group, version, resource, err, retryCount)
+		// Get last known resourceVersion for resumable watch
+		resourceVersion := getResourceVersion()
 
-			// Emit error event
+		watcher, err := a.k8sClient.WatchCRD(ctx, group, version, resource, namespace, resourceVersion)
+		if err != nil {
+			consecutiveFailures++
+			a.LogDebug("Failed to start CRD watcher: gvr=%s/%s/%s, err=%v, failures=%d", group, version, resource, err, consecutiveFailures)
+
+			// If we have a stale resourceVersion, clear it and retry fresh
+			if resourceVersion != "" && (strings.Contains(err.Error(), "too old") || strings.Contains(err.Error(), "expired")) {
+				a.LogDebug("CRD ResourceVersion too old, resetting: gvr=%s/%s/%s", group, version, resource)
+				setResourceVersion("")
+			}
+
+			// Emit error event (always recoverable with infinite retries)
 			runtime.EventsEmit(a.ctx, "watcher-error", WatcherErrorEvent{
 				ResourceType: crdResourceType,
 				Namespace:    namespace,
 				Error:        err.Error(),
-				Recoverable:  retryCount < maxRetries,
+				Recoverable:  true,
 			})
 
-			if retryCount >= maxRetries {
-				a.LogDebug("CRD watcher max retries exceeded: gvr=%s/%s/%s", group, version, resource)
-				return
-			}
-
 			// Exponential backoff
-			delay := baseDelay * time.Duration(1<<uint(retryCount))
+			delay := baseDelay * time.Duration(1<<uint(min(consecutiveFailures, 7))) // Cap exponent at 7 (128s base)
 			if delay > maxDelay {
 				delay = maxDelay
 			}
@@ -1778,7 +1862,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 		}
 
 		// Successfully connected
-		retryCount = 0 // Reset retry count on successful connection
+		consecutiveFailures = 0
 		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
 			ResourceType: crdResourceType,
 			Namespace:    namespace,
@@ -1800,18 +1884,29 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 					break
 				}
 
+				// Convert to unstructured map to extract resourceVersion
+				resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
+				if err != nil {
+					a.LogDebug("Failed to convert CRD to map: %v", err)
+					continue
+				}
+
+				// Extract and store resourceVersion for resumable watches
+				if metadata, ok := resourceMap["metadata"].(map[string]interface{}); ok {
+					if rv, ok := metadata["resourceVersion"].(string); ok {
+						setResourceVersion(rv)
+					}
+				}
+
+				// Handle BOOKMARK events (just update resourceVersion, don't emit)
+				if event.Type == "BOOKMARK" {
+					continue
+				}
+
 				// Only emit ADDED, MODIFIED, DELETED events
 				if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
 					// Track event for performance metrics
-					watcherKey := crdResourceType + ":" + namespace
 					a.recordWatcherEvent(watcherKey, string(event.Type))
-
-					// Convert to unstructured map
-					resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
-					if err != nil {
-						a.LogDebug("Failed to convert CRD to map: %v", err)
-						continue
-					}
 
 					// Extract namespace from resource metadata
 					resourceNs := ""

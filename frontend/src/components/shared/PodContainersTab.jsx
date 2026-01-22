@@ -6,7 +6,7 @@ import { useUI } from '../../context/UIContext';
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
 import { OpenTerminal } from '../../../wailsjs/go/main/App';
 import PodPortForwardDialog from './PodPortForwardDialog';
-import Terminal from './Terminal';
+import { LazyTerminal as Terminal } from '../lazy';
 
 // Copy button component
 const CopyButton = ({ value }) => {

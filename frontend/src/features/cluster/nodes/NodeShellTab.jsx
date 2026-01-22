@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Terminal from '../../../components/shared/Terminal';
+import { LazyTerminal as Terminal } from '../../../components/lazy';
 import {
     CreateNodeDebugPod,
     OpenTerminalWithCommand,

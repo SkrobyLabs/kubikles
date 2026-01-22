@@ -6,7 +6,7 @@ import {
     UpdateCustomResourceYaml,
     DeleteCustomResource
 } from '../../../../wailsjs/go/main/App';
-import YamlEditor from '../../../components/shared/YamlEditor';
+import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
 
 /**
  * Hook for custom resource instance actions (edit, delete)

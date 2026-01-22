@@ -42,6 +42,11 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+// ptr returns a pointer to the given value. Used for optional fields in K8s API structs.
+func ptr[T any](v T) *T {
+	return &v
+}
+
 type Client struct {
 	clientset      kubernetes.Interface
 	metricsClient  metricsclientset.Interface
@@ -194,17 +199,27 @@ func (c *Client) WatchPods(ctx context.Context, namespace string) (watch.Interfa
 	return cs.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{})
 }
 
-// WatchResource creates a watch for the specified resource type
+// WatchTimeout is the timeout for watch connections in seconds.
+// Set to 5 minutes to work with most proxy/load balancer timeouts (typically 60s-5min).
+// The watch will automatically reconnect when this expires.
+const WatchTimeout int64 = 300 // 5 minutes
+
+// WatchResource creates a watch for the specified resource type.
+// resourceVersion: if non-empty, resumes watch from this version (avoids duplicate ADDED events)
 // Supported resource types: pods, namespaces, nodes, events, deployments, statefulsets,
 // daemonsets, replicasets, services, ingresses, ingressclasses, networkpolicies, configmaps, secrets,
 // jobs, cronjobs, persistentvolumes, persistentvolumeclaims, storageclasses, hpas, pdbs, resourcequotas, limitranges
-func (c *Client) WatchResource(ctx context.Context, resourceType, namespace string) (watch.Interface, error) {
+func (c *Client) WatchResource(ctx context.Context, resourceType, namespace, resourceVersion string) (watch.Interface, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
 
-	opts := metav1.ListOptions{}
+	opts := metav1.ListOptions{
+		TimeoutSeconds:      ptr(WatchTimeout),
+		AllowWatchBookmarks: true,
+		ResourceVersion:     resourceVersion,
+	}
 
 	switch resourceType {
 	// Core API (v1)
@@ -298,8 +313,9 @@ func (c *Client) WatchResource(ctx context.Context, resourceType, namespace stri
 	}
 }
 
-// WatchCRD creates a watch for a custom resource using the dynamic client
-func (c *Client) WatchCRD(ctx context.Context, group, version, resource, namespace string) (watch.Interface, error) {
+// WatchCRD creates a watch for a custom resource using the dynamic client.
+// resourceVersion: if non-empty, resumes watch from this version (avoids duplicate ADDED events)
+func (c *Client) WatchCRD(ctx context.Context, group, version, resource, namespace, resourceVersion string) (watch.Interface, error) {
 	dc, err := c.getDynamicClientForContext("")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create dynamic client: %w", err)
@@ -311,7 +327,11 @@ func (c *Client) WatchCRD(ctx context.Context, group, version, resource, namespa
 		Resource: resource,
 	}
 
-	opts := metav1.ListOptions{}
+	opts := metav1.ListOptions{
+		TimeoutSeconds:      ptr(WatchTimeout),
+		AllowWatchBookmarks: true,
+		ResourceVersion:     resourceVersion,
+	}
 
 	if namespace != "" {
 		return dc.Resource(gvr).Namespace(namespace).Watch(ctx, opts)

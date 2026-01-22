@@ -3,7 +3,7 @@ import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
 import { DeleteSecret } from '../../../../wailsjs/go/main/App';
 import SecretEditor from '../../../components/shared/SecretEditor';
-import DependencyGraph from '../../../components/shared/DependencyGraph';
+import { LazyDependencyGraph as DependencyGraph } from '../../../components/lazy';
 import Logger from '../../../utils/Logger';
 
 export const useSecretActions = () => {

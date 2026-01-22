@@ -5,7 +5,7 @@ import { useUI } from '../../context/UIContext';
 import { GetNamespaceResourceCounts } from '../../../wailsjs/go/main/App';
 import { formatAge } from '../../utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, ResourceCountBadge } from './DetailComponents';
-import YamlEditor from './YamlEditor';
+import { LazyYamlEditor as YamlEditor } from '../lazy';
 
 export default function NamespaceDetails({ namespace, tabContext = '' }) {
     const { currentContext } = useK8s();

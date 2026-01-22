@@ -3,6 +3,7 @@
 package terminal
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +13,13 @@ import (
 	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
 )
+
+// resizeMessage represents a terminal resize request from the frontend
+type resizeMessage struct {
+	Type string `json:"type"`
+	Cols int    `json:"cols"`
+	Rows int    `json:"rows"`
+}
 
 func (s *Service) handleTerminal(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -70,13 +78,25 @@ func (s *Service) handleTerminal(w http.ResponseWriter, r *http.Request) {
 
 	// Pipe websocket to pty
 	for {
-		messageType, reader, err := conn.NextReader()
+		messageType, data, err := conn.ReadMessage()
 		if err != nil {
 			break
 		}
 
 		if messageType == websocket.TextMessage || messageType == websocket.BinaryMessage {
-			_, _ = io.Copy(ptmx, reader)
+			// Check if this is a resize message (JSON starting with {"type":"resize"
+			if len(data) > 0 && data[0] == '{' {
+				var msg resizeMessage
+				if json.Unmarshal(data, &msg) == nil && msg.Type == "resize" && msg.Cols > 0 && msg.Rows > 0 {
+					_ = pty.Setsize(ptmx, &pty.Winsize{
+						Cols: uint16(msg.Cols),
+						Rows: uint16(msg.Rows),
+					})
+					continue
+				}
+			}
+			// Regular input - send to PTY
+			_, _ = ptmx.Write(data)
 		}
 	}
 }

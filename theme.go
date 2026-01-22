@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -415,6 +416,15 @@ func (m *ThemeManager) GetThemesDir() string {
 
 // OpenThemesDir opens the themes directory in the file manager
 func (m *ThemeManager) OpenThemesDir() error {
-	runtime.BrowserOpenURL(m.app.ctx, "file://"+m.themesDir)
+	// Windows needs file:/// (three slashes) for local paths
+	// Unix uses file:// (two slashes)
+	var url string
+	if goruntime.GOOS == "windows" {
+		// Convert backslashes to forward slashes and use file:/// prefix
+		url = "file:///" + strings.ReplaceAll(m.themesDir, "\\", "/")
+	} else {
+		url = "file://" + m.themesDir
+	}
+	runtime.BrowserOpenURL(m.app.ctx, url)
 	return nil
 }

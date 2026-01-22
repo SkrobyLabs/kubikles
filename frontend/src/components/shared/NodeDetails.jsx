@@ -4,7 +4,7 @@ import { useK8s } from '../../context/K8sContext';
 import { useUI } from '../../context/UIContext';
 import { formatAge } from '../../utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
-import YamlEditor from './YamlEditor';
+import { LazyYamlEditor as YamlEditor } from '../lazy';
 import NodeMetricsTab from './NodeMetricsTab';
 
 const TAB_BASIC = 'basic';

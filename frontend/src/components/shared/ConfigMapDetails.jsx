@@ -4,8 +4,7 @@ import { useK8s } from '../../context/K8sContext';
 import { useUI } from '../../context/UIContext';
 import { formatAge } from '../../utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, CopyableLabel } from './DetailComponents';
-import YamlEditor from './YamlEditor';
-import DependencyGraph from './DependencyGraph';
+import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 const TAB_INFO = 'info';
 const TAB_DATA = 'data';

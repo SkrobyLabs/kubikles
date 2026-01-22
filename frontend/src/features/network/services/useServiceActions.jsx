@@ -1,8 +1,7 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
-import YamlEditor from '../../../components/shared/YamlEditor';
-import DependencyGraph from '../../../components/shared/DependencyGraph';
+import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../../../components/lazy';
 import ServiceDetails from '../../../components/shared/ServiceDetails';
 import Logger from '../../../utils/Logger';
 

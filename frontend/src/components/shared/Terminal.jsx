@@ -111,11 +111,34 @@ const Terminal = ({ url, onClose }) => {
             }
         });
 
-        // Handle resize
+        // Handle resize and notify backend of new dimensions
+        const sendResizeToBackend = () => {
+            const dims = fitAddon.proposeDimensions();
+            if (dims && ws.readyState === WebSocket.OPEN) {
+                // Send resize message as JSON with special prefix
+                ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }));
+            }
+        };
+
         const handleResize = () => {
             fitAddon.fit();
+            sendResizeToBackend();
         };
         window.addEventListener('resize', handleResize);
+
+        // Send initial size after connection opens
+        const originalOnOpen = ws.onopen;
+        ws.onopen = (event) => {
+            originalOnOpen?.(event);
+            setTimeout(sendResizeToBackend, 150);
+        };
+
+        // Listen for terminal resize events from xterm
+        term.onResize(({ cols, rows }) => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+            }
+        });
 
         // Cleanup
         return () => {

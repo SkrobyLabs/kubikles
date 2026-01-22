@@ -1,8 +1,7 @@
 import React from 'react';
 import { useUI } from '../context/UIContext';
 import { useK8s } from '../context/K8sContext';
-import YamlEditor from '../components/shared/YamlEditor';
-import DependencyGraph from '../components/shared/DependencyGraph';
+import { LazyYamlEditor, LazyDependencyGraph } from '../components/lazy';
 import Logger from '../utils/Logger';
 
 /**
@@ -67,7 +66,7 @@ export function useBaseResourceActions(config) {
             id: tabId,
             title: `Edit: ${name}`,
             content: (
-                <YamlEditor
+                <LazyYamlEditor
                     resourceType={resourceType}
                     namespace={isNamespaced ? namespace : undefined}
                     resourceName={name}
@@ -91,7 +90,7 @@ export function useBaseResourceActions(config) {
             id: tabId,
             title: `Deps: ${name}`,
             content: (
-                <DependencyGraph
+                <LazyDependencyGraph
                     resourceType={resourceType}
                     namespace={isNamespaced ? namespace : undefined}
                     resourceName={name}

@@ -9,6 +9,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -95,6 +96,15 @@ func main() {
 				Title:   "Kubikles",
 				Message: "Kubernetes cluster management",
 			},
+		},
+		Windows: &windows.Options{
+			WebviewIsTransparent:              false,
+			WindowIsTranslucent:               false,
+			DisableWindowIcon:                 false,
+			DisableFramelessWindowDecorations: false,
+			WebviewUserDataPath:               "", // Use default (AppData/Local/kubikles)
+			WebviewBrowserPath:                "", // Use system WebView2
+			Theme:                             windows.Dark,
 		},
 	})
 
