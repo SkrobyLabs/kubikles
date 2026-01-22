@@ -1,5 +1,60 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { converter, normalizeAnsiCodes, stripAnsiCodes, highlightMatchesInHtml } from './logUtils';
+
+// Contrasting colors for pod/container name prefixes (designed for dark backgrounds)
+const PREFIX_COLORS = [
+    '#60a5fa', // blue-400
+    '#34d399', // emerald-400
+    '#f472b6', // pink-400
+    '#a78bfa', // violet-400
+    '#fbbf24', // amber-400
+    '#2dd4bf', // teal-400
+    '#fb923c', // orange-400
+    '#c084fc', // purple-400
+    '#4ade80', // green-400
+    '#f87171', // red-400
+    '#38bdf8', // sky-400
+    '#e879f9', // fuchsia-400
+];
+
+// Simple hash function to get consistent color index for a name
+const getColorForName = (name) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = ((hash << 5) - hash) + name.charCodeAt(i);
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return PREFIX_COLORS[Math.abs(hash) % PREFIX_COLORS.length];
+};
+
+// Parse prefix from content: [podName/containerName] or [containerName] or [podName]
+const parseLogPrefix = (content) => {
+    const match = content.match(/^\[([^\]]+)\]\s*/);
+    if (match) {
+        const prefixContent = match[1];
+        const slashIndex = prefixContent.indexOf('/');
+
+        if (slashIndex !== -1) {
+            // Format: [podName/containerName]
+            return {
+                type: 'pod-container',
+                podName: prefixContent.slice(0, slashIndex),
+                containerName: prefixContent.slice(slashIndex + 1),
+                fullPrefix: prefixContent,
+                rest: content.slice(match[0].length)
+            };
+        } else {
+            // Format: [name] - could be either pod or container depending on context
+            return {
+                type: 'single',
+                name: prefixContent,
+                fullPrefix: prefixContent,
+                rest: content.slice(match[0].length)
+            };
+        }
+    }
+    return null;
+};
 
 /**
  * Renders a single log line with ANSI color support and search highlighting.
@@ -23,8 +78,14 @@ export const LogLine = React.memo(function LogLine({
         );
     }
 
+    // Parse prefix if present (for "All Containers" or "All Pods" modes)
+    const prefixInfo = useMemo(() => parseLogPrefix(entry.content), [entry.content]);
+
+    // Get content without prefix for ANSI processing
+    const contentToProcess = prefixInfo ? prefixInfo.rest : entry.content;
+
     // Convert ANSI codes in content
-    const normalizedContent = normalizeAnsiCodes(entry.content);
+    const normalizedContent = normalizeAnsiCodes(contentToProcess);
     let htmlContent = converter.toHtml(normalizedContent);
 
     // If searching and this line matches, highlight the matches while preserving ANSI colors
@@ -33,6 +94,32 @@ export const LogLine = React.memo(function LogLine({
         htmlContent = highlightMatchesInHtml(htmlContent, strippedContent, searchRegex);
     }
 
+    // Render the prefix with appropriate coloring
+    const renderPrefix = () => {
+        if (!prefixInfo) return null;
+
+        if (prefixInfo.type === 'pod-container') {
+            // Format: [podName/containerName] - color each part differently
+            return (
+                <span className="select-none mr-1 shrink-0 font-medium">
+                    [<span style={{ color: getColorForName(prefixInfo.podName) }}>{prefixInfo.podName}</span>
+                    <span className="text-gray-500">/</span>
+                    <span style={{ color: getColorForName(prefixInfo.containerName) }}>{prefixInfo.containerName}</span>]
+                </span>
+            );
+        } else {
+            // Format: [name] - single color
+            return (
+                <span
+                    className="select-none mr-1 shrink-0 font-medium"
+                    style={{ color: getColorForName(prefixInfo.name) }}
+                >
+                    [{prefixInfo.name}]
+                </span>
+            );
+        }
+    };
+
     return (
         <div className={`flex ${entry.isMatch ? 'bg-yellow-500/10' : ''} ${wrapLines ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'}`}>
             {showTimestamps && entry.timestamp && (
@@ -40,6 +127,7 @@ export const LogLine = React.memo(function LogLine({
                     {entry.timestamp}
                 </span>
             )}
+            {renderPrefix()}
             <span dangerouslySetInnerHTML={{ __html: htmlContent }} />
         </div>
     );

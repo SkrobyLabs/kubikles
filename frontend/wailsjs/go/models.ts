@@ -1135,6 +1135,114 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class CertKeyInfo {
+	    algorithm: string;
+	    size: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CertKeyInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.algorithm = source["algorithm"];
+	        this.size = source["size"];
+	    }
+	}
+	export class CertSubjectInfo {
+	    commonName: string;
+	    organization: string;
+	    organizationalUnit: string;
+	    country: string;
+	    province: string;
+	    locality: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CertSubjectInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.commonName = source["commonName"];
+	        this.organization = source["organization"];
+	        this.organizationalUnit = source["organizationalUnit"];
+	        this.country = source["country"];
+	        this.province = source["province"];
+	        this.locality = source["locality"];
+	    }
+	}
+	export class CertificateInfo {
+	    isCertificate: boolean;
+	    subject: CertSubjectInfo;
+	    subjectRaw: string;
+	    issuer: CertSubjectInfo;
+	    issuerRaw: string;
+	    notBefore: string;
+	    notAfter: string;
+	    isExpired: boolean;
+	    isNotYetValid: boolean;
+	    daysUntilExpiry: number;
+	    validityPercentage: number;
+	    dnsNames: string[];
+	    ipAddresses: string[];
+	    emailAddresses: string[];
+	    publicKey: CertKeyInfo;
+	    signatureAlgorithm: string;
+	    keyUsage: string[];
+	    extKeyUsage: string[];
+	    serialNumber: string;
+	    version: number;
+	    fingerprintSHA256: string;
+	    fingerprintSHA1: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CertificateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.isCertificate = source["isCertificate"];
+	        this.subject = this.convertValues(source["subject"], CertSubjectInfo);
+	        this.subjectRaw = source["subjectRaw"];
+	        this.issuer = this.convertValues(source["issuer"], CertSubjectInfo);
+	        this.issuerRaw = source["issuerRaw"];
+	        this.notBefore = source["notBefore"];
+	        this.notAfter = source["notAfter"];
+	        this.isExpired = source["isExpired"];
+	        this.isNotYetValid = source["isNotYetValid"];
+	        this.daysUntilExpiry = source["daysUntilExpiry"];
+	        this.validityPercentage = source["validityPercentage"];
+	        this.dnsNames = source["dnsNames"];
+	        this.ipAddresses = source["ipAddresses"];
+	        this.emailAddresses = source["emailAddresses"];
+	        this.publicKey = this.convertValues(source["publicKey"], CertKeyInfo);
+	        this.signatureAlgorithm = source["signatureAlgorithm"];
+	        this.keyUsage = source["keyUsage"];
+	        this.extKeyUsage = source["extKeyUsage"];
+	        this.serialNumber = source["serialNumber"];
+	        this.version = source["version"];
+	        this.fingerprintSHA256 = source["fingerprintSHA256"];
+	        this.fingerprintSHA1 = source["fingerprintSHA1"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class IngressController {
 	    namespace: string;
 	    name: string;
@@ -1215,6 +1323,24 @@ export namespace main {
 	        this.hasMore = source["hasMore"];
 	    }
 	}
+	export class MetricsRequestStats {
+	    total: number;
+	    pending: number;
+	    completed: number;
+	    cancelled: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetricsRequestStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.total = source["total"];
+	        this.pending = source["pending"];
+	        this.completed = source["completed"];
+	        this.cancelled = source["cancelled"];
+	    }
+	}
 	export class NodeDebugPodResult {
 	    podName: string;
 	    namespace: string;
@@ -1246,6 +1372,7 @@ export namespace main {
 	    // Go type: struct { Active int "json:\"active\"" }
 	    logStreams: any;
 	    activity: struct { TopWatchers []main.;
+	    metricsRequests: MetricsRequestStats;
 	
 	    static createFrom(source: any = {}) {
 	        return new PerformanceMetrics(source);
@@ -1262,6 +1389,7 @@ export namespace main {
 	        this.ingressForwards = this.convertValues(source["ingressForwards"], Object);
 	        this.logStreams = this.convertValues(source["logStreams"], Object);
 	        this.activity = this.convertValues(source["activity"], Object);
+	        this.metricsRequests = this.convertValues(source["metricsRequests"], MetricsRequestStats);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1281,6 +1409,20 @@ export namespace main {
 		    }
 		    return a;
 		}
+	}
+	export class PodContainerPair {
+	    podName: string;
+	    containerNames: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PodContainerPair(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.podName = source["podName"];
+	        this.containerNames = source["containerNames"];
+	    }
 	}
 	export class PodLogEntry {
 	    podName: string;
@@ -1444,6 +1586,24 @@ export namespace main {
 	
 	
 	
+	export class VersionInfo {
+	    version: string;
+	    commit: string;
+	    isDirty: boolean;
+	    isDev: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new VersionInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.commit = source["commit"];
+	        this.isDirty = source["isDirty"];
+	        this.isDev = source["isDev"];
+	    }
+	}
 	export class WatcherEventStats {
 	    key: string;
 	    added: number;

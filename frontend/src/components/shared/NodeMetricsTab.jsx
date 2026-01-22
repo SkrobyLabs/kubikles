@@ -110,8 +110,25 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
     const handleMouseMove = useCallback((e) => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
-        const svgX = ((e.clientX - rect.left) / rect.width) * width;
-        const svgY = ((e.clientY - rect.top) / rect.height) * height;
+        // Account for CSS zoom applied to document body
+        const zoom = parseFloat(document.body.style.zoom) || 1;
+        const mouseX = e.clientX / zoom;
+        const mouseY = e.clientY / zoom;
+
+        // Calculate actual SVG render size (preserveAspectRatio="xMinYMin meet" maintains aspect ratio)
+        const viewBoxAspect = width / height;
+        const containerAspect = rect.width / rect.height;
+        let svgRenderWidth, svgRenderHeight;
+        if (containerAspect > viewBoxAspect) {
+            svgRenderHeight = rect.height;
+            svgRenderWidth = rect.height * viewBoxAspect;
+        } else {
+            svgRenderWidth = rect.width;
+            svgRenderHeight = rect.width / viewBoxAspect;
+        }
+
+        const svgX = ((mouseX - rect.left) / svgRenderWidth) * width;
+        const svgY = ((mouseY - rect.top) / svgRenderHeight) * height;
 
         if (svgX >= paddingLeft && svgX <= width - paddingRight &&
             svgY >= paddingTop && svgY <= height - paddingBottom) {
@@ -119,7 +136,7 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
             const index = Math.round((chartX / chartWidth) * (usage.length - 1));
             const clampedIndex = Math.max(0, Math.min(usage.length - 1, index));
             setHoveredIndex(clampedIndex);
-            setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+            setMousePos({ x: mouseX - rect.left, y: mouseY - rect.top });
         } else {
             setHoveredIndex(null);
         }
@@ -177,7 +194,7 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
             >
-                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
+                <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet" className="w-full h-full">
                     {/* Y axis grid lines */}
                     {yTicks.map((tick, i) => (
                         <g key={i}>
@@ -349,12 +366,27 @@ const PodCountChart = React.memo(({ data, duration }) => {
     const handleMouseMove = useCallback((e) => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
-        const svgX = ((e.clientX - rect.left) / rect.width) * width;
+        // Account for CSS zoom applied to document body
+        const zoom = parseFloat(document.body.style.zoom) || 1;
+        const mouseX = e.clientX / zoom;
+        const mouseY = e.clientY / zoom;
+
+        // Calculate actual SVG render size (preserveAspectRatio="xMinYMin meet" maintains aspect ratio)
+        const viewBoxAspect = width / height;
+        const containerAspect = rect.width / rect.height;
+        let svgRenderWidth;
+        if (containerAspect > viewBoxAspect) {
+            svgRenderWidth = rect.height * viewBoxAspect;
+        } else {
+            svgRenderWidth = rect.width;
+        }
+
+        const svgX = ((mouseX - rect.left) / svgRenderWidth) * width;
         if (svgX >= paddingLeft && svgX <= width - paddingRight) {
             const chartX = svgX - paddingLeft;
             const index = Math.round((chartX / chartWidth) * (running.length - 1));
             setHoveredIndex(Math.max(0, Math.min(running.length - 1, index)));
-            setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+            setMousePos({ x: mouseX - rect.left, y: mouseY - rect.top });
         } else {
             setHoveredIndex(null);
         }
@@ -389,7 +421,7 @@ const PodCountChart = React.memo(({ data, duration }) => {
             </div>
             <div ref={containerRef} className="h-36 bg-background rounded border border-border relative"
                 onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)}>
-                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
+                <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet" className="w-full h-full">
                     <line x1={paddingLeft} y1={paddingTop + chartHeight} x2={width - paddingRight} y2={paddingTop + chartHeight}
                         className="stroke-gray-700" strokeWidth="0.5" />
 
@@ -481,12 +513,27 @@ const NetworkChart = React.memo(({ data, duration }) => {
     const handleMouseMove = useCallback((e) => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
-        const svgX = ((e.clientX - rect.left) / rect.width) * width;
+        // Account for CSS zoom applied to document body
+        const zoom = parseFloat(document.body.style.zoom) || 1;
+        const mouseX = e.clientX / zoom;
+        const mouseY = e.clientY / zoom;
+
+        // Calculate actual SVG render size (preserveAspectRatio="xMinYMin meet" maintains aspect ratio)
+        const viewBoxAspect = width / height;
+        const containerAspect = rect.width / rect.height;
+        let svgRenderWidth;
+        if (containerAspect > viewBoxAspect) {
+            svgRenderWidth = rect.height * viewBoxAspect;
+        } else {
+            svgRenderWidth = rect.width;
+        }
+
+        const svgX = ((mouseX - rect.left) / svgRenderWidth) * width;
         if (svgX >= paddingLeft && svgX <= width - paddingRight) {
             const chartX = svgX - paddingLeft;
             const index = Math.round((chartX / chartWidth) * (baseData.length - 1));
             setHoveredIndex(Math.max(0, Math.min(baseData.length - 1, index)));
-            setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+            setMousePos({ x: mouseX - rect.left, y: mouseY - rect.top });
         } else {
             setHoveredIndex(null);
         }
@@ -529,7 +576,7 @@ const NetworkChart = React.memo(({ data, duration }) => {
             </div>
             <div ref={containerRef} className="h-36 bg-background rounded border border-border relative"
                 onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)}>
-                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
+                <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet" className="w-full h-full">
                     <line x1={paddingLeft} y1={paddingTop + chartHeight} x2={width - paddingRight} y2={paddingTop + chartHeight}
                         className="stroke-gray-700" strokeWidth="0.5" />
 
@@ -580,6 +627,7 @@ export default function NodeMetricsTab({ nodeName, isStale }) {
     const [error, setError] = useState(null);
     const [metricsData, setMetricsData] = useState(null);
     const [duration, setDuration] = useState('1h');
+    const requestIdRef = useRef(0); // Track current request to cancel stale ones
 
     useEffect(() => {
         const detect = async () => {
@@ -598,22 +646,34 @@ export default function NodeMetricsTab({ nodeName, isStale }) {
     useEffect(() => {
         if (!prometheusInfo?.available || isStale) return;
 
+        // Increment request ID to invalidate any in-flight requests
+        const currentRequestId = ++requestIdRef.current;
+        // Use stable ID for backend cancellation (without counter)
+        const requestIdString = `node-metrics-${nodeName}`;
+
         const fetchMetrics = async () => {
             setLoading(true);
             setError(null);
             try {
                 const data = await GetNodeMetricsHistory(
+                    requestIdString,
                     prometheusInfo.namespace,
                     prometheusInfo.service,
                     prometheusInfo.port,
                     nodeName,
                     duration
                 );
-                setMetricsData(data);
+                // Only update state if this request is still current
+                if (currentRequestId === requestIdRef.current) {
+                    setMetricsData(data);
+                    setLoading(false);
+                }
             } catch (err) {
-                setError(err.toString());
-            } finally {
-                setLoading(false);
+                // Only update state if this request is still current
+                if (currentRequestId === requestIdRef.current) {
+                    setError(err.toString());
+                    setLoading(false);
+                }
             }
         };
 
@@ -705,18 +765,23 @@ export default function NodeMetricsTab({ nodeName, isStale }) {
         <div className="h-full flex flex-col overflow-hidden">
             {/* Controls */}
             <div className="flex items-center gap-4 px-4 py-3 border-b border-border shrink-0">
-                <div className="flex items-center gap-1 bg-surface-light rounded-md p-0.5">
-                    {DURATIONS.map(d => (
-                        <button
-                            key={d.value}
-                            onClick={() => setDuration(d.value)}
-                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                                duration === d.value ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'
-                            }`}
-                        >
-                            {d.label}
-                        </button>
-                    ))}
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 bg-surface-light rounded-md p-0.5">
+                        {DURATIONS.map(d => (
+                            <button
+                                key={d.value}
+                                onClick={() => setDuration(d.value)}
+                                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                    duration === d.value ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                {d.label}
+                            </button>
+                        ))}
+                    </div>
+                    {loading && (
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
+                    )}
                 </div>
                 <div className="ml-auto text-xs text-gray-500">
                     Prometheus: {prometheusInfo.namespace}/{prometheusInfo.service}

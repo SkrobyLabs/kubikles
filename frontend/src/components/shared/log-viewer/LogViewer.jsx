@@ -28,11 +28,12 @@ import {
 import SearchSelect from '../SearchSelect';
 import Tooltip from '../Tooltip';
 
-import { useLogStream } from './useLogStream';
+import { useLogStream, ALL_CONTAINERS, ALL_PODS } from './useLogStream';
 import { useLogSearch } from './useLogSearch';
 import { LogLine, Spinner } from './LogLine';
 import { TimePickerModal } from './TimePickerModal';
 import { logsToVisibleString, logsToDebugString } from './logUtils';
+import { GetAllContainersLogsAll, GetAllPodsLogsAll } from '../../../../wailsjs/go/main/App';
 
 export default function LogViewer({
     namespace,
@@ -65,8 +66,14 @@ export default function LogViewer({
     }, [getConfig]);
 
     // UI state
-    const [selectedPod, setSelectedPod] = useState(pod);
-    const [selectedContainer, setSelectedContainer] = useState(containers[0] || '');
+    // Default to "All Pods" when there are multiple sibling pods
+    const [selectedPod, setSelectedPod] = useState(() =>
+        siblingPods.length > 1 ? ALL_PODS : pod
+    );
+    // Default to "All Containers" when there are multiple containers
+    const [selectedContainer, setSelectedContainer] = useState(() =>
+        containers.length > 1 ? ALL_CONTAINERS : (containers[0] || '')
+    );
     const [wrapLines, setWrapLines] = useState(() => getSafeConfig('logs.lineWrap', true, v => typeof v === 'boolean'));
     const [showTimestamps, setShowTimestamps] = useState(() => getSafeConfig('logs.showTimestamps', false, v => typeof v === 'boolean'));
     const [showPrevious, setShowPrevious] = useState(false);
@@ -84,11 +91,19 @@ export default function LogViewer({
     // Check if this tab is stale
     const isStale = tabContext && tabContext !== currentContext;
 
+    // Get current containers for the selected pod (or first pod if "All Pods")
+    const currentContainers = selectedPod === ALL_PODS
+        ? (podContainerMap[siblingPods[0]] || containers)
+        : (podContainerMap[selectedPod] || containers);
+
     // Log streaming hook
     const stream = useLogStream({
         namespace,
         pod: selectedPod,
         container: selectedContainer,
+        containers: currentContainers, // Pass all containers for "All Containers" mode
+        siblingPods, // Pass sibling pods for "All Pods" mode
+        podContainerMap, // Pass pod-container map for "All Pods" mode
         showPrevious,
         sinceTime,
         viewMode,
@@ -217,9 +232,27 @@ export default function LogViewer({
     const downloadLogs = async () => {
         setDownloading(true);
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `${selectedPod}-${timestamp}.log`;
+        const podSuffix = selectedPod === ALL_PODS ? 'all-pods' : selectedPod;
+        const containerSuffix = selectedContainer === ALL_CONTAINERS ? 'all-containers' : selectedContainer;
+        const filename = `${podSuffix}-${containerSuffix}-${timestamp}.log`;
         try {
-            const allLogs = await GetAllPodLogs(namespace, selectedPod, selectedContainer, showTimestamps, showPrevious);
+            let allLogs;
+            const isAllContainers = selectedContainer === ALL_CONTAINERS;
+
+            if (selectedPod === ALL_PODS) {
+                // Build pod-container pairs for all pods
+                const podPairs = siblingPods.map(podName => ({
+                    podName,
+                    containerNames: isAllContainers
+                        ? (podContainerMap[podName] || containers)
+                        : (selectedContainer ? [selectedContainer] : [])
+                }));
+                allLogs = await GetAllPodsLogsAll(namespace, podPairs, isAllContainers, showTimestamps, showPrevious);
+            } else if (isAllContainers) {
+                allLogs = await GetAllContainersLogsAll(namespace, selectedPod, currentContainers, showTimestamps, showPrevious);
+            } else {
+                allLogs = await GetAllPodLogs(namespace, selectedPod, selectedContainer, showTimestamps, showPrevious);
+            }
             await SavePodLogs(allLogs, filename);
         } catch (err) {
             console.error('Failed to save logs:', err);
@@ -330,24 +363,32 @@ export default function LogViewer({
                         <span className="text-xs text-gray-500">Pod:</span>
                         <div className="w-64">
                             <SearchSelect
-                                options={siblingPods.length > 0 ? siblingPods : [pod]}
+                                options={siblingPods.length > 1
+                                    ? [ALL_PODS, ...siblingPods]
+                                    : (siblingPods.length > 0 ? siblingPods : [pod])
+                                }
                                 value={selectedPod}
                                 onChange={setSelectedPod}
                                 placeholder="Select Pod..."
                                 className="text-xs"
+                                getOptionLabel={(opt) => opt === ALL_PODS ? 'All Pods' : opt}
                             />
                         </div>
                     </div>
-                    {containers.length > 0 && (
+                    {currentContainers.length > 0 && (
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-gray-500">Container:</span>
                             <div className="w-48">
                                 <SearchSelect
-                                    options={containers}
+                                    options={currentContainers.length > 1
+                                        ? [ALL_CONTAINERS, ...currentContainers]
+                                        : currentContainers
+                                    }
                                     value={selectedContainer}
                                     onChange={setSelectedContainer}
                                     placeholder="Select Container..."
                                     className="text-xs"
+                                    getOptionLabel={(opt) => opt === ALL_CONTAINERS ? 'All Containers' : opt}
                                 />
                             </div>
                         </div>
@@ -445,7 +486,11 @@ export default function LogViewer({
                     <div className="w-px h-4 bg-border mx-1" />
 
                     {/* Download */}
-                    <Tooltip content="Download container logs">
+                    <Tooltip content={
+                        selectedPod === ALL_PODS
+                            ? (selectedContainer === ALL_CONTAINERS ? "Download merged logs (all pods, all containers)" : "Download merged logs (all pods)")
+                            : (selectedContainer === ALL_CONTAINERS ? "Download merged logs (all containers)" : "Download container logs")
+                    }>
                         <button
                             onClick={downloadLogs}
                             disabled={stream.logs.length === 0 || stream.loading || downloading}

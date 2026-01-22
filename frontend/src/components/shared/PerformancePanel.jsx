@@ -240,6 +240,12 @@ export default function PerformancePanel({
                                 sparklineColor="stroke-yellow-400"
                             />
                             <MetricCard
+                                title="Metrics Requests"
+                                icon={ChartBarIcon}
+                                value={backendMetrics.metricsRequests?.pending || 0}
+                                subtitle={`Total: ${backendMetrics.metricsRequests?.total || 0} / Cancelled: ${backendMetrics.metricsRequests?.cancelled || 0}`}
+                            />
+                            <MetricCard
                                 title="Port Forwards"
                                 icon={SignalIcon}
                                 value={backendMetrics.portForwards?.active || 0}
@@ -269,6 +275,33 @@ export default function PerformancePanel({
                                 icon={DocumentTextIcon}
                                 value={keepAliveCounts.logs}
                                 subtitle="Streaming connections"
+                            />
+                        </Section>
+
+                        <Section title="Metrics Requests">
+                            <MetricCard
+                                title="Total"
+                                icon={ChartBarIcon}
+                                value={backendMetrics.metricsRequests?.total || 0}
+                                subtitle="All-time requests"
+                            />
+                            <MetricCard
+                                title="Pending"
+                                icon={ArrowPathIcon}
+                                value={backendMetrics.metricsRequests?.pending || 0}
+                                subtitle="In-flight requests"
+                            />
+                            <MetricCard
+                                title="Completed"
+                                icon={ChartBarIcon}
+                                value={backendMetrics.metricsRequests?.completed || 0}
+                                subtitle="Successfully finished"
+                            />
+                            <MetricCard
+                                title="Cancelled"
+                                icon={BoltIcon}
+                                value={backendMetrics.metricsRequests?.cancelled || 0}
+                                subtitle="Stale requests cancelled"
                             />
                         </Section>
                     </>

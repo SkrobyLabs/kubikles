@@ -621,8 +621,53 @@ export default function ResourceList({
                         Loading...
                     </div>
                 ) : sortedData.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-gray-500">
-                        No resources found
+                    <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3">
+                        <span>No resources found</span>
+                        {/* Action buttons based on why no results */}
+                        {(() => {
+                            const namespaceArray = Array.isArray(currentNamespace) ? currentNamespace : (currentNamespace ? [currentNamespace] : []);
+                            const hasNoNamespace = namespaceArray.length === 0;
+                            const hasSearchFilter = searchTerm && data.length > 0;
+                            const hasPartialNamespaces = namespaceArray.length > 0 && namespaceArray.length < namespaces.length;
+
+                            // Priority 1: No namespace selected
+                            if (hasNoNamespace && namespaces.length > 0 && onNamespaceChange) {
+                                return (
+                                    <button
+                                        onClick={() => onNamespaceChange(multiSelectNamespaces ? ['*'] : namespaces[0])}
+                                        className="px-3 py-1.5 text-xs font-medium text-primary hover:text-white bg-primary/10 hover:bg-primary/20 rounded transition-colors"
+                                    >
+                                        View all namespaces
+                                    </button>
+                                );
+                            }
+
+                            // Priority 2: Search is filtering everything out
+                            if (hasSearchFilter) {
+                                return (
+                                    <button
+                                        onClick={() => { setSearchInput(''); setSearchTerm(''); }}
+                                        className="px-3 py-1.5 text-xs font-medium text-primary hover:text-white bg-primary/10 hover:bg-primary/20 rounded transition-colors"
+                                    >
+                                        Clear search
+                                    </button>
+                                );
+                            }
+
+                            // Priority 3: Less than all namespaces selected (and not using '*' marker)
+                            if (hasPartialNamespaces && !namespaceArray.includes('*') && onNamespaceChange) {
+                                return (
+                                    <button
+                                        onClick={() => onNamespaceChange(multiSelectNamespaces ? ['*'] : namespaces[0])}
+                                        className="px-3 py-1.5 text-xs font-medium text-primary hover:text-white bg-primary/10 hover:bg-primary/20 rounded transition-colors"
+                                    >
+                                        View all namespaces
+                                    </button>
+                                );
+                            }
+
+                            return null;
+                        })()}
                     </div>
                 ) : (
                     <TableVirtuoso

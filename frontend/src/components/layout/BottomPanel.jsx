@@ -17,6 +17,18 @@ export default function BottomPanel({
     const [draggedIndex, setDraggedIndex] = useState(null);
     const [dropTarget, setDropTarget] = useState(null);
     const contextMenuRef = useRef(null);
+    const tabRefs = useRef({});
+
+    // Scroll active tab into view when it changes
+    useEffect(() => {
+        if (activeTabId && tabRefs.current[activeTabId]) {
+            tabRefs.current[activeTabId].scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'nearest'
+            });
+        }
+    }, [activeTabId]);
 
     // Close context menu on click outside
     useEffect(() => {
@@ -130,6 +142,7 @@ export default function BottomPanel({
                     return (
                         <div
                             key={tab.id}
+                            ref={(el) => { tabRefs.current[tab.id] = el; }}
                             draggable
                             onDragStart={(e) => handleDragStart(e, index)}
                             onDragEnd={handleDragEnd}

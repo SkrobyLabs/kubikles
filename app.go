@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"kubikles/pkg/certviewer"
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/terminal"
@@ -63,6 +64,8 @@ type App struct {
 	eventStatsMutex   sync.RWMutex
 	eventStats        map[string]*WatcherEventStats
 	eventWindowStart  int64 // Unix ms when tracking started
+	// Metrics request cancellation
+	metricsRequestManager *MetricsRequestManager
 }
 
 // WatcherCleanupDelay is the time to wait before stopping a watcher with no subscribers
@@ -168,6 +171,9 @@ type PerformanceMetrics struct {
 		WindowStartMs  int64               `json:"windowStartMs"`  // Start of measurement window
 		WindowDuration int64               `json:"windowDuration"` // Duration in ms
 	} `json:"activity"`
+
+	// Metrics Request Stats
+	MetricsRequests MetricsRequestStats `json:"metricsRequests"`
 }
 
 // ResourceWatcher tracks a single watcher instance with reference counting
@@ -388,12 +394,13 @@ func NewApp() *App {
 	os.MkdirAll(appDir, 0755)
 
 	return &App{
-		k8sClient:            client,
-		helmClient:           helm.NewClient(),
-		terminalService:      terminal.NewService(),
-		logStreams:           make(map[string]context.CancelFunc),
-		prometheusConfigs:    make(map[string]*k8s.PrometheusInfo),
-		prometheusConfigPath: filepath.Join(appDir, "prometheus_config.json"),
+		k8sClient:             client,
+		helmClient:            helm.NewClient(),
+		terminalService:       terminal.NewService(),
+		logStreams:            make(map[string]context.CancelFunc),
+		prometheusConfigs:     make(map[string]*k8s.PrometheusInfo),
+		prometheusConfigPath:  filepath.Join(appDir, "prometheus_config.json"),
+		metricsRequestManager: NewMetricsRequestManager(),
 	}
 }
 
@@ -623,6 +630,9 @@ func (a *App) GetPerformanceMetrics() PerformanceMetrics {
 	metrics.Activity.TotalEvents = totalEvents
 	metrics.Activity.WindowStartMs = windowStart
 	metrics.Activity.WindowDuration = now - windowStart
+
+	// Metrics request stats
+	metrics.MetricsRequests = a.metricsRequestManager.GetStats()
 
 	return metrics
 }
@@ -1021,6 +1031,22 @@ func (a *App) DeleteConfigMap(namespace, name string) error {
 	return a.k8sClient.DeleteConfigMap(namespace, name)
 }
 
+func (a *App) GetConfigMapData(namespace, name string) (map[string]string, error) {
+	a.LogDebug("GetConfigMapData called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetConfigMapData(namespace, name)
+}
+
+func (a *App) UpdateConfigMapData(namespace, name string, data map[string]string) error {
+	a.LogDebug("UpdateConfigMapData called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateConfigMapData(namespace, name, data)
+}
+
 // Secret YAML operations
 func (a *App) GetSecretYaml(namespace, name string) (string, error) {
 	a.LogDebug("GetSecretYaml called: ns=%s, name=%s", namespace, name)
@@ -1126,6 +1152,245 @@ func (a *App) GetPodLogsAfter(namespace, podName, containerName string, timestam
 		return nil, err
 	}
 	return &LogChunkResult{Logs: logs, HasMore: hasMore}, nil
+}
+
+// GetAllContainersLogs fetches logs from all containers in a pod, merged by timestamp
+func (a *App) GetAllContainersLogs(namespace, podName string, containerNames []string, timestamps bool, previous bool, sinceTime string) (string, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetAllContainersLogs called: context=%s, ns=%s, pod=%s, containers=%v, timestamps=%v, previous=%v, sinceTime=%s", currentContext, namespace, podName, containerNames, timestamps, previous, sinceTime)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetAllContainersLogs(namespace, podName, containerNames, timestamps, previous, sinceTime)
+}
+
+// GetAllContainersLogsAll fetches all logs from all containers, merged by timestamp
+func (a *App) GetAllContainersLogsAll(namespace, podName string, containerNames []string, timestamps bool, previous bool) (string, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetAllContainersLogsAll called: context=%s, ns=%s, pod=%s, containers=%v, timestamps=%v, previous=%v", currentContext, namespace, podName, containerNames, timestamps, previous)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetAllContainersLogsAll(namespace, podName, containerNames, timestamps, previous)
+}
+
+// GetAllContainersLogsFromStart fetches the first N lines from all containers, merged by timestamp
+func (a *App) GetAllContainersLogsFromStart(namespace, podName string, containerNames []string, timestamps bool, previous bool) (string, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetAllContainersLogsFromStart called: context=%s, ns=%s, pod=%s, containers=%v, timestamps=%v, previous=%v", currentContext, namespace, podName, containerNames, timestamps, previous)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetAllContainersLogsFromStart(namespace, podName, containerNames, timestamps, previous, 200)
+}
+
+// GetAllContainersLogsBefore fetches logs before a given timestamp from all containers
+func (a *App) GetAllContainersLogsBefore(namespace, podName string, containerNames []string, timestamps bool, previous bool, beforeTime string, limit int) (*LogChunkResult, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetAllContainersLogsBefore called: context=%s, ns=%s, pod=%s, containers=%v, beforeTime=%s, limit=%d", currentContext, namespace, podName, containerNames, beforeTime, limit)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	logs, hasMore, err := a.k8sClient.GetAllContainersLogsBefore(namespace, podName, containerNames, timestamps, previous, beforeTime, limit)
+	if err != nil {
+		return nil, err
+	}
+	return &LogChunkResult{Logs: logs, HasMore: hasMore}, nil
+}
+
+// GetAllContainersLogsAfter fetches logs after a given timestamp from all containers
+func (a *App) GetAllContainersLogsAfter(namespace, podName string, containerNames []string, timestamps bool, previous bool, afterTime string, limit int) (*LogChunkResult, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetAllContainersLogsAfter called: context=%s, ns=%s, pod=%s, containers=%v, afterTime=%s, limit=%d", currentContext, namespace, podName, containerNames, afterTime, limit)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	logs, hasMore, err := a.k8sClient.GetAllContainersLogsAfter(namespace, podName, containerNames, timestamps, previous, afterTime, limit)
+	if err != nil {
+		return nil, err
+	}
+	return &LogChunkResult{Logs: logs, HasMore: hasMore}, nil
+}
+
+// StartAllContainersLogStream starts streaming logs from all containers in a pod.
+// Returns a stream ID that can be used to stop the stream.
+func (a *App) StartAllContainersLogStream(namespace, podName string, containerNames []string, timestamps bool) (string, error) {
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+
+	// Generate a unique stream ID
+	var sb strings.Builder
+	sb.WriteString(namespace)
+	sb.WriteByte('/')
+	sb.WriteString(podName)
+	sb.WriteString("/__ALL__-")
+	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
+	streamID := sb.String()
+	a.LogDebug("StartAllContainersLogStream: streamID=%s, containers=%v", streamID, containerNames)
+
+	// Create a cancellable context for this stream
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Store the cancel function
+	a.logStreamsMutex.Lock()
+	a.logStreams[streamID] = cancel
+	a.logStreamsMutex.Unlock()
+
+	// Start streaming in a goroutine
+	go func() {
+		defer func() {
+			// Clean up when done
+			a.logStreamsMutex.Lock()
+			delete(a.logStreams, streamID)
+			a.logStreamsMutex.Unlock()
+
+			// Emit done event
+			a.logCoalescer.EmitDone(streamID)
+		}()
+
+		err := a.k8sClient.StreamAllContainersLogs(ctx, namespace, podName, containerNames, timestamps, 200, func(line string) {
+			a.logCoalescer.EmitLine(streamID, line)
+		})
+
+		if err != nil && err != context.Canceled {
+			a.LogDebug("All containers log stream error: %v", err)
+			a.logCoalescer.EmitError(streamID, err.Error())
+		}
+	}()
+
+	return streamID, nil
+}
+
+// PodContainerPair is passed from frontend for multi-pod log fetching
+type PodContainerPair struct {
+	PodName        string   `json:"podName"`
+	ContainerNames []string `json:"containerNames"`
+}
+
+// GetAllPodsLogs fetches logs from multiple pods, merged by timestamp
+func (a *App) GetAllPodsLogs(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, sinceTime string) (string, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetAllPodsLogs called: context=%s, ns=%s, pods=%d, allContainers=%v, timestamps=%v, previous=%v", currentContext, namespace, len(pods), allContainers, timestamps, previous)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	// Convert to k8s.PodContainerPair
+	k8sPods := make([]k8s.PodContainerPair, len(pods))
+	for i, p := range pods {
+		k8sPods[i] = k8s.PodContainerPair{PodName: p.PodName, ContainerNames: p.ContainerNames}
+	}
+	return a.k8sClient.GetAllPodsLogs(namespace, k8sPods, allContainers, timestamps, previous, sinceTime)
+}
+
+// GetAllPodsLogsAll fetches all logs from multiple pods, merged by timestamp
+func (a *App) GetAllPodsLogsAll(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool) (string, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetAllPodsLogsAll called: context=%s, ns=%s, pods=%d, allContainers=%v", currentContext, namespace, len(pods), allContainers)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	k8sPods := make([]k8s.PodContainerPair, len(pods))
+	for i, p := range pods {
+		k8sPods[i] = k8s.PodContainerPair{PodName: p.PodName, ContainerNames: p.ContainerNames}
+	}
+	return a.k8sClient.GetAllPodsLogsAll(namespace, k8sPods, allContainers, timestamps, previous)
+}
+
+// GetAllPodsLogsFromStart fetches the first N lines from multiple pods, merged by timestamp
+func (a *App) GetAllPodsLogsFromStart(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool) (string, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetAllPodsLogsFromStart called: context=%s, ns=%s, pods=%d, allContainers=%v", currentContext, namespace, len(pods), allContainers)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	k8sPods := make([]k8s.PodContainerPair, len(pods))
+	for i, p := range pods {
+		k8sPods[i] = k8s.PodContainerPair{PodName: p.PodName, ContainerNames: p.ContainerNames}
+	}
+	return a.k8sClient.GetAllPodsLogsFromStart(namespace, k8sPods, allContainers, timestamps, previous, 200)
+}
+
+// GetAllPodsLogsBefore fetches logs before a given timestamp from multiple pods
+func (a *App) GetAllPodsLogsBefore(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, beforeTime string, limit int) (*LogChunkResult, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetAllPodsLogsBefore called: context=%s, ns=%s, pods=%d, allContainers=%v, beforeTime=%s", currentContext, namespace, len(pods), allContainers, beforeTime)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	k8sPods := make([]k8s.PodContainerPair, len(pods))
+	for i, p := range pods {
+		k8sPods[i] = k8s.PodContainerPair{PodName: p.PodName, ContainerNames: p.ContainerNames}
+	}
+	logs, hasMore, err := a.k8sClient.GetAllPodsLogsBefore(namespace, k8sPods, allContainers, timestamps, previous, beforeTime, limit)
+	if err != nil {
+		return nil, err
+	}
+	return &LogChunkResult{Logs: logs, HasMore: hasMore}, nil
+}
+
+// GetAllPodsLogsAfter fetches logs after a given timestamp from multiple pods
+func (a *App) GetAllPodsLogsAfter(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, afterTime string, limit int) (*LogChunkResult, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetAllPodsLogsAfter called: context=%s, ns=%s, pods=%d, allContainers=%v, afterTime=%s", currentContext, namespace, len(pods), allContainers, afterTime)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	k8sPods := make([]k8s.PodContainerPair, len(pods))
+	for i, p := range pods {
+		k8sPods[i] = k8s.PodContainerPair{PodName: p.PodName, ContainerNames: p.ContainerNames}
+	}
+	logs, hasMore, err := a.k8sClient.GetAllPodsLogsAfter(namespace, k8sPods, allContainers, timestamps, previous, afterTime, limit)
+	if err != nil {
+		return nil, err
+	}
+	return &LogChunkResult{Logs: logs, HasMore: hasMore}, nil
+}
+
+// StartAllPodsLogStream starts streaming logs from multiple pods, merged by timestamp
+func (a *App) StartAllPodsLogStream(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool) (string, error) {
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+
+	// Generate a unique stream ID
+	var sb strings.Builder
+	sb.WriteString(namespace)
+	sb.WriteString("/__ALL_PODS__-")
+	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
+	streamID := sb.String()
+	a.LogDebug("StartAllPodsLogStream: streamID=%s, pods=%d, allContainers=%v", streamID, len(pods), allContainers)
+
+	k8sPods := make([]k8s.PodContainerPair, len(pods))
+	for i, p := range pods {
+		k8sPods[i] = k8s.PodContainerPair{PodName: p.PodName, ContainerNames: p.ContainerNames}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	a.logStreamsMutex.Lock()
+	a.logStreams[streamID] = cancel
+	a.logStreamsMutex.Unlock()
+
+	go func() {
+		defer func() {
+			a.logStreamsMutex.Lock()
+			delete(a.logStreams, streamID)
+			a.logStreamsMutex.Unlock()
+			a.logCoalescer.EmitDone(streamID)
+		}()
+
+		err := a.k8sClient.StreamAllPodsLogs(ctx, namespace, k8sPods, allContainers, timestamps, 200, func(line string) {
+			a.logCoalescer.EmitLine(streamID, line)
+		})
+
+		if err != nil && err != context.Canceled {
+			a.LogDebug("All pods log stream error: %v", err)
+			a.logCoalescer.EmitError(streamID, err.Error())
+		}
+	}()
+
+	return streamID, nil
 }
 
 // LogStreamEvent is emitted for each log line during streaming
@@ -3464,9 +3729,9 @@ func (a *App) TestPrometheusEndpoint(namespace, service string, port int) error 
 }
 
 // GetPodMetricsHistory retrieves historical metrics for a pod from Prometheus
-func (a *App) GetPodMetricsHistory(prometheusNamespace, prometheusService string, prometheusPort int, namespace, pod, container, duration string) (*k8s.PodMetricsHistory, error) {
+func (a *App) GetPodMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, pod, container, duration string) (*k8s.PodMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetPodMetricsHistory called: context=%s, pod=%s/%s, duration=%s", currentContext, namespace, pod, duration)
+	a.LogDebug("GetPodMetricsHistory called: context=%s, pod=%s/%s, duration=%s, requestId=%s", currentContext, namespace, pod, duration, requestId)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3497,14 +3762,18 @@ func (a *App) GetPodMetricsHistory(prometheusNamespace, prometheusService string
 		Port:      prometheusPort,
 	}
 
+	// Start cancellable request
+	ctx := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId)
+
 	// Target ~150 data points for readable charts (chart width ~320px, line width 2px)
-	return a.k8sClient.GetPodMetricsHistoryWithResolution(currentContext, info, namespace, pod, container, dur, 150)
+	return a.k8sClient.GetPodMetricsHistoryWithContext(ctx, currentContext, info, namespace, pod, container, dur, 150)
 }
 
 // GetControllerMetricsHistory retrieves historical metrics for a controller (deployment, statefulset, etc.)
-func (a *App) GetControllerMetricsHistory(prometheusNamespace, prometheusService string, prometheusPort int, namespace, name, controllerType, duration string) (*k8s.ControllerMetricsHistory, error) {
+func (a *App) GetControllerMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, name, controllerType, duration string) (*k8s.ControllerMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetControllerMetricsHistory called: context=%s, controller=%s/%s, type=%s, duration=%s", currentContext, namespace, name, controllerType, duration)
+	a.LogDebug("GetControllerMetricsHistory called: context=%s, controller=%s/%s, type=%s, duration=%s, requestId=%s", currentContext, namespace, name, controllerType, duration, requestId)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3535,13 +3804,17 @@ func (a *App) GetControllerMetricsHistory(prometheusNamespace, prometheusService
 		Port:      prometheusPort,
 	}
 
-	return a.k8sClient.GetControllerMetricsHistory(currentContext, info, namespace, name, controllerType, dur, 150)
+	// Start cancellable request
+	ctx := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId)
+
+	return a.k8sClient.GetControllerMetricsHistoryWithContext(ctx, currentContext, info, namespace, name, controllerType, dur, 150)
 }
 
 // GetNodeMetricsHistory retrieves historical metrics for a node
-func (a *App) GetNodeMetricsHistory(prometheusNamespace, prometheusService string, prometheusPort int, nodeName, duration string) (*k8s.NodeMetricsHistory, error) {
+func (a *App) GetNodeMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, nodeName, duration string) (*k8s.NodeMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetNodeMetricsHistory called: context=%s, node=%s, duration=%s", currentContext, nodeName, duration)
+	a.LogDebug("GetNodeMetricsHistory called: context=%s, node=%s, duration=%s, requestId=%s", currentContext, nodeName, duration, requestId)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3572,5 +3845,186 @@ func (a *App) GetNodeMetricsHistory(prometheusNamespace, prometheusService strin
 		Port:      prometheusPort,
 	}
 
-	return a.k8sClient.GetNodeMetricsHistory(currentContext, info, nodeName, dur, 150)
+	// Start cancellable request
+	ctx := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId)
+
+	return a.k8sClient.GetNodeMetricsHistoryWithContext(ctx, currentContext, info, nodeName, dur, 150)
+}
+
+// CancelMetricsRequest cancels an in-flight metrics request
+func (a *App) CancelMetricsRequest(requestId string) bool {
+	return a.metricsRequestManager.CancelRequest(requestId)
+}
+
+// GetMetricsRequestStats returns statistics about metrics requests
+func (a *App) GetMetricsRequestStats() MetricsRequestStats {
+	return a.metricsRequestManager.GetStats()
+}
+
+// CertSubjectInfo contains parsed subject/issuer fields
+type CertSubjectInfo struct {
+	CommonName         string `json:"commonName"`
+	Organization       string `json:"organization"`
+	OrganizationalUnit string `json:"organizationalUnit"`
+	Country            string `json:"country"`
+	Province           string `json:"province"`
+	Locality           string `json:"locality"`
+}
+
+// CertKeyInfo contains public key information
+type CertKeyInfo struct {
+	Algorithm string `json:"algorithm"`
+	Size      int    `json:"size"`
+}
+
+// CertificateInfo contains parsed certificate information for the frontend
+type CertificateInfo struct {
+	IsCertificate bool `json:"isCertificate"`
+
+	// Subject and Issuer
+	Subject    CertSubjectInfo `json:"subject"`
+	SubjectRaw string          `json:"subjectRaw"`
+	Issuer     CertSubjectInfo `json:"issuer"`
+	IssuerRaw  string          `json:"issuerRaw"`
+
+	// Validity
+	NotBefore          string `json:"notBefore"`
+	NotAfter           string `json:"notAfter"`
+	IsExpired          bool   `json:"isExpired"`
+	IsNotYetValid      bool   `json:"isNotYetValid"`
+	DaysUntilExpiry    int    `json:"daysUntilExpiry"`
+	ValidityPercentage int    `json:"validityPercentage"`
+
+	// SANs
+	DNSNames       []string `json:"dnsNames"`
+	IPAddresses    []string `json:"ipAddresses"`
+	EmailAddresses []string `json:"emailAddresses"`
+
+	// Key Info
+	PublicKey          CertKeyInfo `json:"publicKey"`
+	SignatureAlgorithm string      `json:"signatureAlgorithm"`
+	KeyUsage           []string    `json:"keyUsage"`
+	ExtKeyUsage        []string    `json:"extKeyUsage"`
+
+	// Identifiers
+	SerialNumber string `json:"serialNumber"`
+	Version      int    `json:"version"`
+
+	// Fingerprints
+	FingerprintSHA256 string `json:"fingerprintSHA256"`
+	FingerprintSHA1   string `json:"fingerprintSHA1"`
+}
+
+// GetCertificateInfo parses PEM certificate data and returns info for display
+func (a *App) GetCertificateInfo(pemData string) (*CertificateInfo, error) {
+	if !certviewer.IsPEMCertificate(pemData) {
+		return &CertificateInfo{IsCertificate: false}, nil
+	}
+
+	info, err := certviewer.ParseCertInfo(pemData)
+	if err != nil {
+		return nil, err
+	}
+
+	return &CertificateInfo{
+		IsCertificate: true,
+		Subject: CertSubjectInfo{
+			CommonName:         info.Subject.CommonName,
+			Organization:       info.Subject.Organization,
+			OrganizationalUnit: info.Subject.OrganizationalUnit,
+			Country:            info.Subject.Country,
+			Province:           info.Subject.Province,
+			Locality:           info.Subject.Locality,
+		},
+		SubjectRaw: info.SubjectRaw,
+		Issuer: CertSubjectInfo{
+			CommonName:         info.Issuer.CommonName,
+			Organization:       info.Issuer.Organization,
+			OrganizationalUnit: info.Issuer.OrganizationalUnit,
+			Country:            info.Issuer.Country,
+			Province:           info.Issuer.Province,
+			Locality:           info.Issuer.Locality,
+		},
+		IssuerRaw:          info.IssuerRaw,
+		NotBefore:          info.NotBefore,
+		NotAfter:           info.NotAfter,
+		IsExpired:          info.IsExpired,
+		IsNotYetValid:      info.IsNotYetValid,
+		DaysUntilExpiry:    info.DaysUntilExpiry,
+		ValidityPercentage: info.ValidityPercentage,
+		DNSNames:           info.DNSNames,
+		IPAddresses:        info.IPAddresses,
+		EmailAddresses:     info.EmailAddresses,
+		PublicKey: CertKeyInfo{
+			Algorithm: info.PublicKey.Algorithm,
+			Size:      info.PublicKey.Size,
+		},
+		SignatureAlgorithm: info.SignatureAlgorithm,
+		KeyUsage:           info.KeyUsage,
+		ExtKeyUsage:        info.ExtKeyUsage,
+		SerialNumber:       info.SerialNumber,
+		Version:            info.Version,
+		FingerprintSHA256:  info.FingerprintSHA256,
+		FingerprintSHA1:    info.FingerprintSHA1,
+	}, nil
+}
+
+// GetAllCertificateInfo parses PEM data and returns info for all certificates (for chains)
+func (a *App) GetAllCertificateInfo(pemData string) ([]*CertificateInfo, error) {
+	if !certviewer.IsPEMCertificate(pemData) {
+		return nil, fmt.Errorf("data does not contain valid PEM certificates")
+	}
+
+	infos, err := certviewer.ParseAllCertInfo(pemData)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*CertificateInfo
+	for _, info := range infos {
+		result = append(result, &CertificateInfo{
+			IsCertificate: true,
+			Subject: CertSubjectInfo{
+				CommonName:         info.Subject.CommonName,
+				Organization:       info.Subject.Organization,
+				OrganizationalUnit: info.Subject.OrganizationalUnit,
+				Country:            info.Subject.Country,
+				Province:           info.Subject.Province,
+				Locality:           info.Subject.Locality,
+			},
+			SubjectRaw: info.SubjectRaw,
+			Issuer: CertSubjectInfo{
+				CommonName:         info.Issuer.CommonName,
+				Organization:       info.Issuer.Organization,
+				OrganizationalUnit: info.Issuer.OrganizationalUnit,
+				Country:            info.Issuer.Country,
+				Province:           info.Issuer.Province,
+				Locality:           info.Issuer.Locality,
+			},
+			IssuerRaw:          info.IssuerRaw,
+			NotBefore:          info.NotBefore,
+			NotAfter:           info.NotAfter,
+			IsExpired:          info.IsExpired,
+			IsNotYetValid:      info.IsNotYetValid,
+			DaysUntilExpiry:    info.DaysUntilExpiry,
+			ValidityPercentage: info.ValidityPercentage,
+			DNSNames:           info.DNSNames,
+			IPAddresses:        info.IPAddresses,
+			EmailAddresses:     info.EmailAddresses,
+			PublicKey: CertKeyInfo{
+				Algorithm: info.PublicKey.Algorithm,
+				Size:      info.PublicKey.Size,
+			},
+			SignatureAlgorithm: info.SignatureAlgorithm,
+			KeyUsage:           info.KeyUsage,
+			ExtKeyUsage:        info.ExtKeyUsage,
+			SerialNumber:       info.SerialNumber,
+			Version:            info.Version,
+			FingerprintSHA256:  info.FingerprintSHA256,
+			FingerprintSHA1:    info.FingerprintSHA1,
+		})
+	}
+
+	return result, nil
 }

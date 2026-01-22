@@ -37,7 +37,7 @@ export default function ConfigMapList({ isVisible }) {
             const name = item.metadata?.name;
 
             try {
-                await DeleteConfigMap(currentContext, namespace, name);
+                await DeleteConfigMap(namespace, name);
                 results.push({ name, namespace, success: true, message: '' });
                 Logger.info('ConfigMap deleted', { namespace, name });
             } catch (err) {
@@ -88,7 +88,7 @@ export default function ConfigMapList({ isVisible }) {
         setActiveMenuId(isOpen ? menuId : null);
     }, [setActiveMenuId]);
     const { configMaps, loading } = useConfigMaps(currentContext, selectedNamespaces, isVisible);
-    const { handleShowDetails, handleEditYaml, handleShowDependencies, handleDelete } = useConfigMapActions();
+    const { handleEditYaml, handleEditKeyValue, handleShowDependencies, handleDelete } = useConfigMapActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
@@ -130,7 +130,7 @@ export default function ConfigMapList({ isVisible }) {
                 multiSelectNamespaces={true}
                 initialSort={{ key: 'age', direction: 'desc' }}
                 resourceType="configmaps"
-                onRowClick={handleShowDetails}
+                onRowClick={handleEditKeyValue}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={handleBulkDeleteClick}

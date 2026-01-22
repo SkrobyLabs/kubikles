@@ -41,7 +41,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { usePerformancePanel } from '../../hooks/usePerformancePanel.jsx';
 import SearchSelect from '../shared/SearchSelect';
 import Logger from '../../utils/Logger';
-import { ListCRDs } from '../../../wailsjs/go/main/App';
+import { ListCRDs, GetVersionInfo } from '../../../wailsjs/go/main/App';
 
 export default function Sidebar({
     activeView,
@@ -58,6 +58,13 @@ export default function Sidebar({
     // Settings menu state
     const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
     const [fontSubmenu, setFontSubmenu] = useState(null); // 'ui' | 'mono' | null
+
+    // Version info
+    const [versionInfo, setVersionInfo] = useState(null);
+
+    useEffect(() => {
+        GetVersionInfo().then(setVersionInfo).catch(() => {});
+    }, []);
     const settingsButtonRef = useRef(null);
     const settingsMenuRef = useRef(null);
 
@@ -471,7 +478,16 @@ export default function Sidebar({
             {/* Footer */}
             <div className="p-4 border-t border-border shrink-0">
                 <div className="flex items-center justify-center gap-2 relative">
-                    <span className="text-xs text-gray-500">v0.1.0</span>
+                    {/* Version display */}
+                    <span
+                        className="text-xs text-gray-500 cursor-default flex items-center gap-1"
+                        title={versionInfo?.commit || ''}
+                    >
+                        {versionInfo?.version || 'dev'}
+                        {versionInfo?.isDirty && (
+                            <span className="text-amber-500 font-medium" title="Uncommitted changes">m</span>
+                        )}
+                    </span>
                     <button
                         ref={settingsButtonRef}
                         onClick={() => setSettingsMenuOpen(!settingsMenuOpen)}

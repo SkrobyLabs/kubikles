@@ -5,15 +5,20 @@
 # Ensure GOPATH/bin is in PATH
 GOPATH := $(shell go env GOPATH)
 WAILS := $(GOPATH)/bin/wails
-BUILD_FLAGS := -trimpath -ldflags "-s -w"
 PGO_FILE := default.pgo
 UNAME_S := $(shell uname -s)
+
+# Version info from git
+GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "")
+GIT_DIRTY := $(shell git diff --quiet 2>/dev/null && echo "false" || echo "true")
+VERSION_LDFLAGS := -X main.GitCommit=$(GIT_COMMIT) -X main.GitDirty=$(GIT_DIRTY)
+BUILD_FLAGS := -trimpath -ldflags "-s -w $(VERSION_LDFLAGS)"
 
 dev:
 	$(WAILS) dev
 
 build:
-	$(WAILS) build
+	$(WAILS) build -ldflags "$(VERSION_LDFLAGS)"
 
 # Build optimized portable executable for current platform
 build-release:

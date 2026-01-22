@@ -1,18 +1,34 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { GetPodLogs, GetAllPodLogs, GetPodLogsFromStart, GetPodLogsBefore, GetPodLogsAfter, StartLogStream, StopLogStream } from '../../../../wailsjs/go/main/App';
+import {
+    GetPodLogs, GetAllPodLogs, GetPodLogsFromStart, GetPodLogsBefore, GetPodLogsAfter,
+    StartLogStream, StopLogStream,
+    GetAllContainersLogs, GetAllContainersLogsAll, GetAllContainersLogsFromStart,
+    GetAllContainersLogsBefore, GetAllContainersLogsAfter, StartAllContainersLogStream,
+    GetAllPodsLogs, GetAllPodsLogsAll, GetAllPodsLogsFromStart,
+    GetAllPodsLogsBefore, GetAllPodsLogsAfter, StartAllPodsLogStream
+} from '../../../../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../../../../wailsjs/runtime/runtime';
 import { parseLogLines } from './logUtils';
+
+// Special constants for "All" modes
+export const ALL_CONTAINERS = '__ALL__';
+export const ALL_PODS = '__ALL_PODS__';
 
 const CHUNK_SIZE = 200; // Number of lines to load per chunk
 
 /**
  * Hook for managing log fetching, streaming, and chunk loading.
  * Handles initial load, pagination (before/after), and real-time streaming.
+ * Supports "All Containers" mode when container === ALL_CONTAINERS.
+ * Supports "All Pods" mode when pod === ALL_PODS.
  */
 export function useLogStream({
     namespace,
     pod,
     container,
+    containers, // Array of all container names (needed for "All Containers" mode)
+    siblingPods, // Array of sibling pod names (needed for "All Pods" mode)
+    podContainerMap, // Map of podName -> containerNames (needed for "All Pods" mode)
     showPrevious,
     sinceTime,
     viewMode,
@@ -20,6 +36,19 @@ export function useLogStream({
     isStale,
     currentContext
 }) {
+    const isAllContainers = container === ALL_CONTAINERS;
+    const isAllPods = pod === ALL_PODS;
+
+    // Build pod-container pairs for "All Pods" mode
+    const buildPodContainerPairs = useCallback(() => {
+        if (!isAllPods || !siblingPods?.length) return [];
+        return siblingPods.map(podName => ({
+            podName,
+            containerNames: isAllContainers
+                ? (podContainerMap?.[podName] || containers || [])
+                : (container ? [container] : [])
+        }));
+    }, [isAllPods, isAllContainers, siblingPods, podContainerMap, containers, container]);
     const [logs, setLogs] = useState([]); // Array of { timestamp, content, source }
     // Start with loading=true to prevent streaming race condition on initial mount
     const [loading, setLoading] = useState(true);
@@ -41,6 +70,7 @@ export function useLogStream({
     const initialLoadDone = useRef(false);
     const prevPodRef = useRef(pod);
     const prevContainerRef = useRef(container);
+    const prevShowPreviousRef = useRef(showPrevious);
     // Ref to track fetch state synchronously (avoids React batching race conditions)
     const isFetchingRef = useRef(true);
 
@@ -88,12 +118,26 @@ export function useLogStream({
 
         try {
             let logData;
+            const podPairs = buildPodContainerPairs();
+
             if (viewMode === 'start') {
-                logData = await GetPodLogsFromStart(namespace, pod, container, true, showPrevious);
+                if (isAllPods && podPairs.length > 0) {
+                    logData = await GetAllPodsLogsFromStart(namespace, podPairs, isAllContainers, true, showPrevious);
+                } else if (isAllContainers && containers?.length > 0) {
+                    logData = await GetAllContainersLogsFromStart(namespace, pod, containers, true, showPrevious);
+                } else {
+                    logData = await GetPodLogsFromStart(namespace, pod, container, true, showPrevious);
+                }
                 setHasMoreBefore(false);
                 setHasMoreAfter(true);
             } else {
-                logData = await GetPodLogs(namespace, pod, container, true, showPrevious, sinceTime);
+                if (isAllPods && podPairs.length > 0) {
+                    logData = await GetAllPodsLogs(namespace, podPairs, isAllContainers, true, showPrevious, sinceTime);
+                } else if (isAllContainers && containers?.length > 0) {
+                    logData = await GetAllContainersLogs(namespace, pod, containers, true, showPrevious, sinceTime);
+                } else {
+                    logData = await GetPodLogs(namespace, pod, container, true, showPrevious, sinceTime);
+                }
                 setHasMoreBefore(true);
                 setHasMoreAfter(false);
             }
@@ -106,7 +150,7 @@ export function useLogStream({
             setLoading(false);
             isFetchingRef.current = false;
         }
-    }, [namespace, pod, container, showPrevious, sinceTime, viewMode]);
+    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, sinceTime, viewMode]);
 
     // Load all logs at once
     const loadAllLogs = useCallback(async () => {
@@ -121,22 +165,33 @@ export function useLogStream({
         resetChunkState();
         setStreamDisconnected(false);
         setDisconnectReason('');
+        setLoading(true); // Also set loading for consistency with fetchLogs
         setLoadingAll(true);
         setHasMoreBefore(false);
         setHasMoreAfter(false);
         setIsAllLoaded(true);
 
         try {
-            const allLogs = await GetAllPodLogs(namespace, pod, container, true, showPrevious);
+            let allLogs;
+            const podPairs = buildPodContainerPairs();
+
+            if (isAllPods && podPairs.length > 0) {
+                allLogs = await GetAllPodsLogsAll(namespace, podPairs, isAllContainers, true, showPrevious);
+            } else if (isAllContainers && containers?.length > 0) {
+                allLogs = await GetAllContainersLogsAll(namespace, pod, containers, true, showPrevious);
+            } else {
+                allLogs = await GetAllPodLogs(namespace, pod, container, true, showPrevious);
+            }
             setLogs(parseLogLines(allLogs, 'initial'));
         } catch (err) {
             setLogs([{ timestamp: '', content: `Error fetching all logs: ${err}`, source: 'error' }]);
             setIsAllLoaded(false);
         } finally {
+            setLoading(false);
             setLoadingAll(false);
             isFetchingRef.current = false;
         }
-    }, [namespace, pod, container, showPrevious, resetChunkState]);
+    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, resetChunkState]);
 
     // Load older logs (when scrolling to top)
     const loadOlderLogs = useCallback(async () => {
@@ -155,10 +210,25 @@ export function useLogStream({
         setLoadingBefore(true);
 
         try {
-            const result = await GetPodLogsBefore(
-                namespace, pod, container,
-                true, showPrevious, firstTs, CHUNK_SIZE
-            );
+            let result;
+            const podPairs = buildPodContainerPairs();
+
+            if (isAllPods && podPairs.length > 0) {
+                result = await GetAllPodsLogsBefore(
+                    namespace, podPairs, isAllContainers,
+                    true, showPrevious, firstTs, CHUNK_SIZE
+                );
+            } else if (isAllContainers && containers?.length > 0) {
+                result = await GetAllContainersLogsBefore(
+                    namespace, pod, containers,
+                    true, showPrevious, firstTs, CHUNK_SIZE
+                );
+            } else {
+                result = await GetPodLogsBefore(
+                    namespace, pod, container,
+                    true, showPrevious, firstTs, CHUNK_SIZE
+                );
+            }
 
             if (result.logs && result.logs.trim()) {
                 const newEntries = parseLogLines(result.logs, 'before');
@@ -175,7 +245,7 @@ export function useLogStream({
             loadingBeforeRef.current = false;
             setLoadingBefore(false);
         }
-    }, [hasMoreBefore, getFirstTimestamp, namespace, pod, container, showPrevious]);
+    }, [hasMoreBefore, getFirstTimestamp, namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious]);
 
     // Load newer logs (when scrolling to bottom, not following)
     const loadNewerLogs = useCallback(async () => {
@@ -194,10 +264,25 @@ export function useLogStream({
         setLoadingAfter(true);
 
         try {
-            const result = await GetPodLogsAfter(
-                namespace, pod, container,
-                true, showPrevious, lastTs, CHUNK_SIZE
-            );
+            let result;
+            const podPairs = buildPodContainerPairs();
+
+            if (isAllPods && podPairs.length > 0) {
+                result = await GetAllPodsLogsAfter(
+                    namespace, podPairs, isAllContainers,
+                    true, showPrevious, lastTs, CHUNK_SIZE
+                );
+            } else if (isAllContainers && containers?.length > 0) {
+                result = await GetAllContainersLogsAfter(
+                    namespace, pod, containers,
+                    true, showPrevious, lastTs, CHUNK_SIZE
+                );
+            } else {
+                result = await GetPodLogsAfter(
+                    namespace, pod, container,
+                    true, showPrevious, lastTs, CHUNK_SIZE
+                );
+            }
 
             if (result.logs && result.logs.trim()) {
                 const newEntries = parseLogLines(result.logs, 'after');
@@ -213,18 +298,23 @@ export function useLogStream({
             loadingAfterRef.current = false;
             setLoadingAfter(false);
         }
-    }, [hasMoreAfter, getLastTimestamp, namespace, pod, container, showPrevious]);
+    }, [hasMoreAfter, getLastTimestamp, namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious]);
 
-    // Handle pod/container changes
+    // Handle pod/container/showPrevious changes
     useEffect(() => {
-        if (!namespace || !pod) return;
+        // For "All Pods" mode, we only need namespace and siblingPods
+        if (!namespace) return;
+        if (!isAllPods && !pod) return;
+        if (isAllPods && (!siblingPods || siblingPods.length === 0)) return;
 
         const podChanged = prevPodRef.current !== pod;
         const containerChanged = prevContainerRef.current !== container;
+        const showPreviousChanged = prevShowPreviousRef.current !== showPrevious;
         prevPodRef.current = pod;
         prevContainerRef.current = container;
+        prevShowPreviousRef.current = showPrevious;
 
-        if (podChanged || containerChanged) {
+        if (podChanged || containerChanged || showPreviousChanged) {
             // Set ref and loading immediately to prevent streaming race condition
             isFetchingRef.current = true;
             setLoading(true);
@@ -248,7 +338,7 @@ export function useLogStream({
 
         initialLoadDone.current = true;
         fetchLogs();
-    }, [namespace, pod, container, showPrevious, sinceTime, viewMode, isAllLoaded, initialPosition, fetchLogs, loadAllLogs, resetChunkState]);
+    }, [namespace, pod, container, siblingPods, isAllPods, showPrevious, sinceTime, viewMode, isAllLoaded, initialPosition, fetchLogs, loadAllLogs, resetChunkState]);
 
     // Stop stream when tab becomes stale
     useEffect(() => {
@@ -266,12 +356,21 @@ export function useLogStream({
         }
 
         try {
-            const streamId = await StartLogStream(namespace, pod, container, true);
+            let streamId;
+            const podPairs = buildPodContainerPairs();
+
+            if (isAllPods && podPairs.length > 0) {
+                streamId = await StartAllPodsLogStream(namespace, podPairs, isAllContainers, true);
+            } else if (isAllContainers && containers?.length > 0) {
+                streamId = await StartAllContainersLogStream(namespace, pod, containers, true);
+            } else {
+                streamId = await StartLogStream(namespace, pod, container, true);
+            }
             streamIdRef.current = streamId;
         } catch (err) {
             console.error('Failed to start log stream:', err);
         }
-    }, [namespace, pod, container]);
+    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs]);
 
     const stopStreaming = useCallback(() => {
         if (streamIdRef.current) {

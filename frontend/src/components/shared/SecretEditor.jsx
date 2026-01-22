@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { GetSecretYaml, UpdateSecretYaml, GetSecretData, UpdateSecretData } from '../../../wailsjs/go/main/App';
+import { GetSecretYaml, UpdateSecretYaml, GetSecretData, UpdateSecretData, GetCertificateInfo, GetAllCertificateInfo } from '../../../wailsjs/go/main/App';
 import { useK8s } from '../../context/K8sContext';
 import Logger from '../../utils/Logger';
-import { EyeIcon, EyeSlashIcon, TrashIcon, PlusIcon, LockClosedIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, TrashIcon, PlusIcon, LockClosedIcon, MagnifyingGlassIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import CertificateModal from './CertificateModal';
 
 const MODE_YAML = 'yaml';
 const MODE_KEYVALUE = 'keyvalue';
@@ -38,9 +39,88 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
     const [keySearchTerm, setKeySearchTerm] = useState('');
     const editorRef = useRef(null);
     const nextIdRef = useRef(0);
+    const [certInfoCache, setCertInfoCache] = useState({});
+    const [selectedCert, setSelectedCert] = useState(null); // { certificates: [], pemData } for modal
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
+
+    // Check if a value looks like a PEM certificate
+    const isPEMCertificate = (value) => value?.includes('-----BEGIN CERTIFICATE-----');
+
+    // Load certificate info for entries that look like certificates
+    useEffect(() => {
+        const loadCertInfo = async () => {
+            for (const entry of secretEntries) {
+                if (isPEMCertificate(entry.value) && !certInfoCache[entry.id]) {
+                    try {
+                        const info = await GetCertificateInfo(entry.value);
+                        if (info?.isCertificate) {
+                            setCertInfoCache(prev => ({ ...prev, [entry.id]: info }));
+                        }
+                    } catch (err) {
+                        Logger.debug("Failed to parse certificate", { key: entry.key, error: err });
+                    }
+                }
+            }
+        };
+        if (mode === MODE_KEYVALUE && secretEntries.length > 0) {
+            loadCertInfo();
+        }
+    }, [secretEntries, mode]);
+
+    // Handle opening certificate modal
+    const handleViewCertificate = async (entry) => {
+        try {
+            // Fetch all certificates in the chain
+            const certificates = await GetAllCertificateInfo(entry.value);
+            if (certificates?.length > 0) {
+                // Cache the first cert for the badge display
+                if (!certInfoCache[entry.id]) {
+                    setCertInfoCache(prev => ({ ...prev, [entry.id]: certificates[0] }));
+                }
+                setSelectedCert({ certificates, pemData: entry.value });
+            }
+        } catch (err) {
+            Logger.error("Failed to get certificate info", err);
+            alert(`Failed to parse certificate: ${err}`);
+        }
+    };
+
+    // Get expiry badge color based on days until expiry
+    const getExpiryBadgeStyle = (certInfo) => {
+        if (!certInfo) return null;
+        if (certInfo.isExpired || certInfo.daysUntilExpiry < 7) {
+            return 'bg-red-600/20 text-red-400 border-red-500/30';
+        }
+        if (certInfo.daysUntilExpiry <= 30) {
+            return 'bg-amber-600/20 text-amber-400 border-amber-500/30';
+        }
+        return 'bg-green-600/20 text-green-400 border-green-500/30';
+    };
+
+    // Format expiry text
+    const getExpiryText = (certInfo) => {
+        if (!certInfo) return '';
+        if (certInfo.isExpired) return 'Expired';
+        if (certInfo.daysUntilExpiry === 0) return 'Expires today';
+        if (certInfo.daysUntilExpiry === 1) return 'Expires tomorrow';
+        return `${certInfo.daysUntilExpiry}d`;
+    };
+
+    // Get first SAN or subject for display
+    const getCertSummary = (certInfo) => {
+        if (!certInfo) return '';
+        if (certInfo.dnsNames?.length > 0) {
+            const first = certInfo.dnsNames[0];
+            if (certInfo.dnsNames.length > 1) {
+                return `${first} +${certInfo.dnsNames.length - 1}`;
+            }
+            return first;
+        }
+        // Use subject.commonName if no SANs
+        return certInfo.subject?.commonName || '';
+    };
 
     const generateId = () => {
         nextIdRef.current += 1;
@@ -215,6 +295,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
     }
 
     return (
+        <>
         <div className="flex flex-col h-full bg-background">
             {/* Stale Tab Banner */}
             {isStale && (
@@ -338,41 +419,70 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                         <div className="space-y-2">
                             {secretEntries
                                 .filter(entry => !keySearchTerm || entry.key.toLowerCase().includes(keySearchTerm.toLowerCase()))
-                                .map((entry) => (
-                                <div key={entry.id} className="flex items-start gap-2 bg-surface-light rounded-md p-3">
-                                    <input
-                                        type="text"
-                                        value={entry.key}
-                                        onChange={(e) => !isStale && handleKeyChange(entry.id, e.target.value)}
-                                        disabled={isStale}
-                                        className={`w-48 shrink-0 px-2 py-1.5 text-sm bg-background border border-border rounded text-gray-200 focus:outline-none focus:border-primary ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                        placeholder="Key"
-                                        autoComplete="off"
-                                        autoCorrect="off"
-                                        autoCapitalize="off"
-                                        spellCheck="false"
-                                    />
-                                    <textarea
-                                        value={getDisplayValue(entry.value)}
-                                        onChange={(e) => !isStale && setValueFromDisplay(entry.id, e.target.value)}
-                                        disabled={isStale}
-                                        className={`flex-1 min-h-[60px] px-2 py-1.5 text-sm bg-background border border-border rounded text-gray-200 font-mono focus:outline-none focus:border-primary resize-y ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                        placeholder="Value"
-                                        autoComplete="off"
-                                        autoCorrect="off"
-                                        autoCapitalize="off"
-                                        spellCheck="false"
-                                    />
-                                    <button
-                                        onClick={() => !isStale && handleDeleteEntry(entry.id)}
-                                        disabled={isStale}
-                                        className={`p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors ${isStale ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        title="Delete key"
-                                    >
-                                        <TrashIcon className="h-4 w-4" />
-                                    </button>
-                                </div>
-                            ))}
+                                .map((entry) => {
+                                    const isCert = isPEMCertificate(entry.value);
+                                    const certInfo = certInfoCache[entry.id];
+                                    return (
+                                        <div key={entry.id} className="flex items-start gap-2 bg-surface-light rounded-md p-3">
+                                                <input
+                                                    type="text"
+                                                    value={entry.key}
+                                                    onChange={(e) => !isStale && handleKeyChange(entry.id, e.target.value)}
+                                                    disabled={isStale}
+                                                    className={`w-48 shrink-0 px-2 py-1.5 text-sm bg-background border border-border rounded text-gray-200 focus:outline-none focus:border-primary ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                                    placeholder="Key"
+                                                    autoComplete="off"
+                                                    autoCorrect="off"
+                                                    autoCapitalize="off"
+                                                    spellCheck="false"
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <textarea
+                                                        value={getDisplayValue(entry.value)}
+                                                        onChange={(e) => !isStale && setValueFromDisplay(entry.id, e.target.value)}
+                                                        disabled={isStale}
+                                                        className={`w-full min-h-[60px] px-2 py-1.5 text-sm bg-background border border-border rounded text-gray-200 font-mono focus:outline-none focus:border-primary resize-y ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                                        placeholder="Value"
+                                                        autoComplete="off"
+                                                        autoCorrect="off"
+                                                        autoCapitalize="off"
+                                                        spellCheck="false"
+                                                    />
+                                                    {/* Certificate expiry badge - aligned under textarea */}
+                                                    {isCert && certInfo && (
+                                                        <div className="mt-1.5">
+                                                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs rounded border ${getExpiryBadgeStyle(certInfo)}`}>
+                                                                <ShieldCheckIcon className="h-3 w-3" />
+                                                                <span>{getExpiryText(certInfo)}</span>
+                                                                {getCertSummary(certInfo) && (
+                                                                    <span className="text-gray-400">({getCertSummary(certInfo)})</span>
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col gap-1 shrink-0">
+                                                    {isCert && (
+                                                        <button
+                                                            onClick={() => handleViewCertificate(entry)}
+                                                            className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 rounded transition-colors"
+                                                            title="View certificate details"
+                                                        >
+                                                            <ShieldCheckIcon className="h-4 w-4" />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => !isStale && handleDeleteEntry(entry.id)}
+                                                        disabled={isStale}
+                                                        className={`p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors ${isStale ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        title="Delete key"
+                                                    >
+                                                        <TrashIcon className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                        </div>
+                                    );
+                                })}
                             {secretEntries.length === 0 && (
                                 <div className="text-gray-500 text-sm text-center py-8">
                                     No secret data. Click "Add Key" to create one.
@@ -397,5 +507,15 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                 )}
             </div>
         </div>
+
+        {/* Certificate Details Modal */}
+        {selectedCert && (
+            <CertificateModal
+                certificates={selectedCert.certificates}
+                pemData={selectedCert.pemData}
+                onClose={() => setSelectedCert(null)}
+            />
+        )}
+        </>
     );
 }

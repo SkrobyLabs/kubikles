@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -1295,6 +1296,37 @@ func (c *Client) DeleteConfigMap(namespace, name string) error {
 	return cs.CoreV1().ConfigMaps(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
 
+func (c *Client) GetConfigMapData(namespace, name string) (map[string]string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	cm, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]string)
+	for k, v := range cm.Data {
+		result[k] = v
+	}
+	return result, nil
+}
+
+// UpdateConfigMapData updates the configmap's data from a map of key -> value
+func (c *Client) UpdateConfigMapData(namespace, name string, data map[string]string) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	cm, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	cm.Data = data
+	_, err = cs.CoreV1().ConfigMaps(namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
+	return err
+}
+
 // Secret YAML operations
 func (c *Client) GetSecretYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
@@ -1637,6 +1669,978 @@ func (c *Client) StreamPodLogs(ctx context.Context, namespace, podName, containe
 		return err
 	}
 	return nil
+}
+
+// timestampedLogLine represents a log line with parsed timestamp for sorting
+type timestampedLogLine struct {
+	timestamp string // RFC3339 format timestamp
+	content   string // Full line content including timestamp and container prefix
+}
+
+// GetAllContainersLogs fetches logs from all containers in a pod, merges them by timestamp,
+// and prefixes each line with [containerName]. Returns the last 200 lines by default.
+func (c *Client) GetAllContainersLogs(namespace, podName string, containerNames []string, timestamps bool, previous bool, sinceTime string) (string, error) {
+	if len(containerNames) == 0 {
+		return "", nil
+	}
+
+	// Fetch logs from all containers concurrently
+	type containerLogs struct {
+		containerName string
+		logs          string
+		err           error
+	}
+
+	results := make(chan containerLogs, len(containerNames))
+	var wg sync.WaitGroup
+
+	for _, containerName := range containerNames {
+		wg.Add(1)
+		go func(cn string) {
+			defer wg.Done()
+			// Always fetch with timestamps so we can sort
+			logs, err := c.getPodLogsWithOptions(namespace, podName, cn, nil, true, previous, sinceTime)
+			results <- containerLogs{containerName: cn, logs: logs, err: err}
+		}(containerName)
+	}
+
+	wg.Wait()
+	close(results)
+
+	// Collect all log lines with timestamps
+	var allLines []timestampedLogLine
+	for result := range results {
+		if result.err != nil {
+			// Add error as a log line
+			allLines = append(allLines, timestampedLogLine{
+				timestamp: time.Now().Format(time.RFC3339Nano),
+				content:   fmt.Sprintf("[%s] Error fetching logs: %v", result.containerName, result.err),
+			})
+			continue
+		}
+
+		lines := strings.Split(result.logs, "\n")
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+			// Parse timestamp from line (first 30 chars)
+			var ts, content string
+			if len(line) >= 31 && line[30] == ' ' {
+				ts = line[:30]
+				content = line[31:]
+			} else {
+				ts = ""
+				content = line
+			}
+
+			// Build the merged line with container prefix
+			var mergedLine string
+			if timestamps && ts != "" {
+				mergedLine = fmt.Sprintf("%s [%s] %s", ts, result.containerName, content)
+			} else if ts != "" {
+				mergedLine = fmt.Sprintf("%s [%s] %s", ts, result.containerName, content)
+			} else {
+				mergedLine = fmt.Sprintf("[%s] %s", result.containerName, content)
+			}
+
+			allLines = append(allLines, timestampedLogLine{
+				timestamp: ts,
+				content:   mergedLine,
+			})
+		}
+	}
+
+	// Sort by timestamp
+	sort.SliceStable(allLines, func(i, j int) bool {
+		return allLines[i].timestamp < allLines[j].timestamp
+	})
+
+	// Build result, taking last 200 lines if sinceTime is empty
+	var resultLines []string
+	for _, line := range allLines {
+		if timestamps {
+			resultLines = append(resultLines, line.content)
+		} else {
+			// Strip the timestamp prefix if caller doesn't want timestamps
+			if len(line.content) > 31 && line.content[30] == ' ' {
+				resultLines = append(resultLines, line.content[31:])
+			} else {
+				resultLines = append(resultLines, line.content)
+			}
+		}
+	}
+
+	// If sinceTime is set, return first 200 lines after that time
+	// Otherwise return last 200 lines
+	if sinceTime != "" && len(resultLines) > 200 {
+		resultLines = resultLines[:200]
+	} else if sinceTime == "" && len(resultLines) > 200 {
+		resultLines = resultLines[len(resultLines)-200:]
+	}
+
+	return strings.Join(resultLines, "\n"), nil
+}
+
+// GetAllContainersLogsAll fetches all logs from all containers, merged by timestamp
+func (c *Client) GetAllContainersLogsAll(namespace, podName string, containerNames []string, timestamps bool, previous bool) (string, error) {
+	if len(containerNames) == 0 {
+		return "", nil
+	}
+
+	// Fetch logs from all containers concurrently
+	type containerLogs struct {
+		containerName string
+		logs          string
+		err           error
+	}
+
+	results := make(chan containerLogs, len(containerNames))
+	var wg sync.WaitGroup
+
+	for _, containerName := range containerNames {
+		wg.Add(1)
+		go func(cn string) {
+			defer wg.Done()
+			logs, err := c.getPodLogsWithOptions(namespace, podName, cn, nil, true, previous, "")
+			results <- containerLogs{containerName: cn, logs: logs, err: err}
+		}(containerName)
+	}
+
+	wg.Wait()
+	close(results)
+
+	// Collect and merge all log lines
+	var allLines []timestampedLogLine
+	for result := range results {
+		if result.err != nil {
+			allLines = append(allLines, timestampedLogLine{
+				timestamp: time.Now().Format(time.RFC3339Nano),
+				content:   fmt.Sprintf("[%s] Error fetching logs: %v", result.containerName, result.err),
+			})
+			continue
+		}
+
+		lines := strings.Split(result.logs, "\n")
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+			var ts, content string
+			if len(line) >= 31 && line[30] == ' ' {
+				ts = line[:30]
+				content = line[31:]
+			} else {
+				ts = ""
+				content = line
+			}
+
+			var mergedLine string
+			if ts != "" {
+				mergedLine = fmt.Sprintf("%s [%s] %s", ts, result.containerName, content)
+			} else {
+				mergedLine = fmt.Sprintf("[%s] %s", result.containerName, content)
+			}
+
+			allLines = append(allLines, timestampedLogLine{
+				timestamp: ts,
+				content:   mergedLine,
+			})
+		}
+	}
+
+	sort.SliceStable(allLines, func(i, j int) bool {
+		return allLines[i].timestamp < allLines[j].timestamp
+	})
+
+	var resultLines []string
+	for _, line := range allLines {
+		if timestamps {
+			resultLines = append(resultLines, line.content)
+		} else {
+			if len(line.content) > 31 && line.content[30] == ' ' {
+				resultLines = append(resultLines, line.content[31:])
+			} else {
+				resultLines = append(resultLines, line.content)
+			}
+		}
+	}
+
+	return strings.Join(resultLines, "\n"), nil
+}
+
+// GetAllContainersLogsFromStart fetches the first N lines from all containers, merged by timestamp
+func (c *Client) GetAllContainersLogsFromStart(namespace, podName string, containerNames []string, timestamps bool, previous bool, lineLimit int) (string, error) {
+	allLogs, err := c.GetAllContainersLogsAll(namespace, podName, containerNames, timestamps, previous)
+	if err != nil {
+		return "", err
+	}
+	if lineLimit <= 0 {
+		lineLimit = 200
+	}
+	lines := strings.Split(allLogs, "\n")
+	if len(lines) <= lineLimit {
+		return allLogs, nil
+	}
+	return strings.Join(lines[:lineLimit], "\n"), nil
+}
+
+// GetAllContainersLogsBefore fetches logs before a given timestamp from all containers
+func (c *Client) GetAllContainersLogsBefore(namespace, podName string, containerNames []string, timestamps bool, previous bool, beforeTime string, lineLimit int) (string, bool, error) {
+	// Fetch all logs with timestamps to properly merge and find position
+	allLogs, err := c.GetAllContainersLogsAll(namespace, podName, containerNames, true, previous)
+	if err != nil {
+		return "", false, err
+	}
+	if lineLimit <= 0 {
+		lineLimit = 200
+	}
+
+	lines := strings.Split(allLogs, "\n")
+
+	// Normalize beforeTime
+	compareLen := 30
+	if len(beforeTime) < compareLen {
+		compareLen = len(beforeTime)
+	}
+	beforeTimePrefix := beforeTime[:compareLen]
+
+	// Find cutoff index
+	cutoffIndex := -1
+	for i, line := range lines {
+		if len(line) >= 30 {
+			lineTime := line[:30]
+			if lineTime >= beforeTimePrefix {
+				cutoffIndex = i
+				break
+			}
+		}
+	}
+
+	var resultLines []string
+	hasMoreBefore := false
+
+	if cutoffIndex == -1 {
+		if len(lines) > lineLimit {
+			resultLines = lines[len(lines)-lineLimit:]
+			hasMoreBefore = true
+		} else {
+			resultLines = lines
+		}
+	} else if cutoffIndex == 0 {
+		return "", false, nil
+	} else {
+		startIndex := cutoffIndex - lineLimit
+		if startIndex < 0 {
+			startIndex = 0
+		} else {
+			hasMoreBefore = true
+		}
+		resultLines = lines[startIndex:cutoffIndex]
+	}
+
+	// Strip timestamps if caller doesn't want them
+	if !timestamps {
+		for i, line := range resultLines {
+			if len(line) > 31 {
+				resultLines[i] = line[31:]
+			}
+		}
+	}
+
+	return strings.Join(resultLines, "\n"), hasMoreBefore, nil
+}
+
+// GetAllContainersLogsAfter fetches logs after a given timestamp from all containers
+func (c *Client) GetAllContainersLogsAfter(namespace, podName string, containerNames []string, timestamps bool, previous bool, afterTime string, lineLimit int) (string, bool, error) {
+	// Fetch all logs with timestamps
+	allLogs, err := c.GetAllContainersLogsAll(namespace, podName, containerNames, true, previous)
+	if err != nil {
+		return "", false, err
+	}
+	if lineLimit <= 0 {
+		lineLimit = 200
+	}
+
+	lines := strings.Split(allLogs, "\n")
+
+	// Normalize afterTime
+	compareLen := 30
+	if len(afterTime) < compareLen {
+		compareLen = len(afterTime)
+	}
+	afterTimePrefix := afterTime[:compareLen]
+
+	// Skip lines at or before afterTime
+	startIdx := 0
+	for i, line := range lines {
+		if len(line) >= 30 {
+			lineTime := line[:30]
+			if lineTime <= afterTimePrefix {
+				startIdx = i + 1
+				continue
+			}
+		}
+		break
+	}
+
+	if startIdx >= len(lines) {
+		return "", false, nil
+	}
+
+	lines = lines[startIdx:]
+
+	hasMoreAfter := len(lines) > lineLimit
+	if hasMoreAfter {
+		lines = lines[:lineLimit]
+	}
+
+	// Strip timestamps if caller doesn't want them
+	if !timestamps {
+		for i, line := range lines {
+			if len(line) > 31 {
+				lines[i] = line[31:]
+			}
+		}
+	}
+
+	return strings.Join(lines, "\n"), hasMoreAfter, nil
+}
+
+// StreamAllContainersLogs streams logs from all containers, merging them in real-time by timestamp.
+// Each line is prefixed with [containerName].
+func (c *Client) StreamAllContainersLogs(ctx context.Context, namespace, podName string, containerNames []string, timestamps bool, tailLines int64, onLine func(line string)) error {
+	if len(containerNames) == 0 {
+		return nil
+	}
+
+	// For real-time streaming, we need to collect lines from all containers
+	// and emit them in timestamp order. We use a priority queue approach.
+	type streamLine struct {
+		timestamp     string
+		containerName string
+		content       string
+		fullLine      string
+	}
+
+	lineChan := make(chan streamLine, 1000)
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(containerNames))
+
+	// Start a goroutine for each container
+	for _, containerName := range containerNames {
+		wg.Add(1)
+		go func(cn string) {
+			defer wg.Done()
+			err := c.StreamPodLogs(ctx, namespace, podName, cn, true, tailLines, func(line string) {
+				var ts, content string
+				if len(line) >= 31 && line[30] == ' ' {
+					ts = line[:30]
+					content = line[31:]
+				} else {
+					ts = ""
+					content = line
+				}
+
+				var fullLine string
+				if timestamps && ts != "" {
+					fullLine = fmt.Sprintf("%s [%s] %s", ts, cn, content)
+				} else if ts != "" {
+					fullLine = fmt.Sprintf("%s [%s] %s", ts, cn, content)
+				} else {
+					fullLine = fmt.Sprintf("[%s] %s", cn, content)
+				}
+
+				select {
+				case lineChan <- streamLine{timestamp: ts, containerName: cn, content: content, fullLine: fullLine}:
+				case <-ctx.Done():
+					return
+				}
+			})
+			if err != nil && err != context.Canceled {
+				errChan <- err
+			}
+		}(containerName)
+	}
+
+	// Close channels when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(lineChan)
+		close(errChan)
+	}()
+
+	// Buffer for sorting incoming lines within a small time window
+	var buffer []streamLine
+	flushTicker := time.NewTicker(50 * time.Millisecond)
+	defer flushTicker.Stop()
+
+	flushBuffer := func() {
+		if len(buffer) == 0 {
+			return
+		}
+		// Sort buffer by timestamp
+		sort.SliceStable(buffer, func(i, j int) bool {
+			return buffer[i].timestamp < buffer[j].timestamp
+		})
+		for _, line := range buffer {
+			if timestamps {
+				onLine(line.fullLine)
+			} else {
+				// Strip timestamp from output
+				if len(line.fullLine) > 31 && line.fullLine[30] == ' ' {
+					onLine(line.fullLine[31:])
+				} else {
+					onLine(line.fullLine)
+				}
+			}
+		}
+		buffer = buffer[:0]
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			flushBuffer()
+			return ctx.Err()
+		case line, ok := <-lineChan:
+			if !ok {
+				flushBuffer()
+				// Check for errors
+				for err := range errChan {
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+			buffer = append(buffer, line)
+		case <-flushTicker.C:
+			flushBuffer()
+		}
+	}
+}
+
+// PodContainerPair represents a pod and its containers for multi-pod log fetching
+type PodContainerPair struct {
+	PodName        string
+	ContainerNames []string // If empty or single, just use [podName] prefix; if multiple, use [podName/containerName]
+}
+
+// GetAllPodsLogs fetches logs from multiple pods, merges them by timestamp.
+// When allContainers is true, prefixes with [podName/containerName], otherwise [podName].
+func (c *Client) GetAllPodsLogs(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, sinceTime string) (string, error) {
+	if len(pods) == 0 {
+		return "", nil
+	}
+
+	type podContainerLogs struct {
+		podName       string
+		containerName string
+		logs          string
+		err           error
+	}
+
+	// Count total fetches needed
+	totalFetches := 0
+	for _, p := range pods {
+		if allContainers && len(p.ContainerNames) > 0 {
+			totalFetches += len(p.ContainerNames)
+		} else {
+			totalFetches++
+		}
+	}
+
+	results := make(chan podContainerLogs, totalFetches)
+	var wg sync.WaitGroup
+
+	for _, p := range pods {
+		if allContainers && len(p.ContainerNames) > 1 {
+			// Fetch from all containers
+			for _, cn := range p.ContainerNames {
+				wg.Add(1)
+				go func(podName, containerName string) {
+					defer wg.Done()
+					logs, err := c.getPodLogsWithOptions(namespace, podName, containerName, nil, true, previous, sinceTime)
+					results <- podContainerLogs{podName: podName, containerName: containerName, logs: logs, err: err}
+				}(p.PodName, cn)
+			}
+		} else {
+			// Fetch from single/first container
+			containerName := ""
+			if len(p.ContainerNames) > 0 {
+				containerName = p.ContainerNames[0]
+			}
+			wg.Add(1)
+			go func(podName, cn string) {
+				defer wg.Done()
+				logs, err := c.getPodLogsWithOptions(namespace, podName, cn, nil, true, previous, sinceTime)
+				results <- podContainerLogs{podName: podName, containerName: cn, logs: logs, err: err}
+			}(p.PodName, containerName)
+		}
+	}
+
+	wg.Wait()
+	close(results)
+
+	var allLines []timestampedLogLine
+	for result := range results {
+		prefix := result.podName
+		if allContainers && result.containerName != "" {
+			prefix = result.podName + "/" + result.containerName
+		}
+
+		if result.err != nil {
+			allLines = append(allLines, timestampedLogLine{
+				timestamp: time.Now().Format(time.RFC3339Nano),
+				content:   fmt.Sprintf("[%s] Error fetching logs: %v", prefix, result.err),
+			})
+			continue
+		}
+
+		lines := strings.Split(result.logs, "\n")
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+			var ts, content string
+			if len(line) >= 31 && line[30] == ' ' {
+				ts = line[:30]
+				content = line[31:]
+			} else {
+				ts = ""
+				content = line
+			}
+
+			var mergedLine string
+			if ts != "" {
+				mergedLine = fmt.Sprintf("%s [%s] %s", ts, prefix, content)
+			} else {
+				mergedLine = fmt.Sprintf("[%s] %s", prefix, content)
+			}
+
+			allLines = append(allLines, timestampedLogLine{
+				timestamp: ts,
+				content:   mergedLine,
+			})
+		}
+	}
+
+	sort.SliceStable(allLines, func(i, j int) bool {
+		return allLines[i].timestamp < allLines[j].timestamp
+	})
+
+	var resultLines []string
+	for _, line := range allLines {
+		if timestamps {
+			resultLines = append(resultLines, line.content)
+		} else {
+			if len(line.content) > 31 && line.content[30] == ' ' {
+				resultLines = append(resultLines, line.content[31:])
+			} else {
+				resultLines = append(resultLines, line.content)
+			}
+		}
+	}
+
+	if sinceTime != "" && len(resultLines) > 200 {
+		resultLines = resultLines[:200]
+	} else if sinceTime == "" && len(resultLines) > 200 {
+		resultLines = resultLines[len(resultLines)-200:]
+	}
+
+	return strings.Join(resultLines, "\n"), nil
+}
+
+// GetAllPodsLogsAll fetches all logs from multiple pods, merged by timestamp (no truncation)
+func (c *Client) GetAllPodsLogsAll(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool) (string, error) {
+	if len(pods) == 0 {
+		return "", nil
+	}
+
+	type podContainerLogs struct {
+		podName       string
+		containerName string
+		logs          string
+		err           error
+	}
+
+	totalFetches := 0
+	for _, p := range pods {
+		if allContainers && len(p.ContainerNames) > 0 {
+			totalFetches += len(p.ContainerNames)
+		} else {
+			totalFetches++
+		}
+	}
+
+	results := make(chan podContainerLogs, totalFetches)
+	var wg sync.WaitGroup
+
+	for _, p := range pods {
+		if allContainers && len(p.ContainerNames) > 1 {
+			for _, cn := range p.ContainerNames {
+				wg.Add(1)
+				go func(podName, containerName string) {
+					defer wg.Done()
+					logs, err := c.getPodLogsWithOptions(namespace, podName, containerName, nil, true, previous, "")
+					results <- podContainerLogs{podName: podName, containerName: containerName, logs: logs, err: err}
+				}(p.PodName, cn)
+			}
+		} else {
+			containerName := ""
+			if len(p.ContainerNames) > 0 {
+				containerName = p.ContainerNames[0]
+			}
+			wg.Add(1)
+			go func(podName, cn string) {
+				defer wg.Done()
+				logs, err := c.getPodLogsWithOptions(namespace, podName, cn, nil, true, previous, "")
+				results <- podContainerLogs{podName: podName, containerName: cn, logs: logs, err: err}
+			}(p.PodName, containerName)
+		}
+	}
+
+	wg.Wait()
+	close(results)
+
+	var allLines []timestampedLogLine
+	for result := range results {
+		prefix := result.podName
+		if allContainers && result.containerName != "" {
+			prefix = result.podName + "/" + result.containerName
+		}
+
+		if result.err != nil {
+			allLines = append(allLines, timestampedLogLine{
+				timestamp: time.Now().Format(time.RFC3339Nano),
+				content:   fmt.Sprintf("[%s] Error fetching logs: %v", prefix, result.err),
+			})
+			continue
+		}
+
+		lines := strings.Split(result.logs, "\n")
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+			var ts, content string
+			if len(line) >= 31 && line[30] == ' ' {
+				ts = line[:30]
+				content = line[31:]
+			} else {
+				ts = ""
+				content = line
+			}
+
+			var mergedLine string
+			if ts != "" {
+				mergedLine = fmt.Sprintf("%s [%s] %s", ts, prefix, content)
+			} else {
+				mergedLine = fmt.Sprintf("[%s] %s", prefix, content)
+			}
+
+			allLines = append(allLines, timestampedLogLine{
+				timestamp: ts,
+				content:   mergedLine,
+			})
+		}
+	}
+
+	sort.SliceStable(allLines, func(i, j int) bool {
+		return allLines[i].timestamp < allLines[j].timestamp
+	})
+
+	var resultLines []string
+	for _, line := range allLines {
+		if timestamps {
+			resultLines = append(resultLines, line.content)
+		} else {
+			if len(line.content) > 31 && line.content[30] == ' ' {
+				resultLines = append(resultLines, line.content[31:])
+			} else {
+				resultLines = append(resultLines, line.content)
+			}
+		}
+	}
+
+	return strings.Join(resultLines, "\n"), nil
+}
+
+// GetAllPodsLogsFromStart fetches the first N lines from multiple pods, merged by timestamp
+func (c *Client) GetAllPodsLogsFromStart(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, lineLimit int) (string, error) {
+	allLogs, err := c.GetAllPodsLogsAll(namespace, pods, allContainers, timestamps, previous)
+	if err != nil {
+		return "", err
+	}
+	if lineLimit <= 0 {
+		lineLimit = 200
+	}
+	lines := strings.Split(allLogs, "\n")
+	if len(lines) <= lineLimit {
+		return allLogs, nil
+	}
+	return strings.Join(lines[:lineLimit], "\n"), nil
+}
+
+// GetAllPodsLogsBefore fetches logs before a given timestamp from multiple pods
+func (c *Client) GetAllPodsLogsBefore(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, beforeTime string, lineLimit int) (string, bool, error) {
+	allLogs, err := c.GetAllPodsLogsAll(namespace, pods, allContainers, true, previous)
+	if err != nil {
+		return "", false, err
+	}
+	if lineLimit <= 0 {
+		lineLimit = 200
+	}
+
+	lines := strings.Split(allLogs, "\n")
+
+	compareLen := 30
+	if len(beforeTime) < compareLen {
+		compareLen = len(beforeTime)
+	}
+	beforeTimePrefix := beforeTime[:compareLen]
+
+	cutoffIndex := -1
+	for i, line := range lines {
+		if len(line) >= 30 {
+			lineTime := line[:30]
+			if lineTime >= beforeTimePrefix {
+				cutoffIndex = i
+				break
+			}
+		}
+	}
+
+	var resultLines []string
+	hasMoreBefore := false
+
+	if cutoffIndex == -1 {
+		if len(lines) > lineLimit {
+			resultLines = lines[len(lines)-lineLimit:]
+			hasMoreBefore = true
+		} else {
+			resultLines = lines
+		}
+	} else if cutoffIndex == 0 {
+		return "", false, nil
+	} else {
+		startIndex := cutoffIndex - lineLimit
+		if startIndex < 0 {
+			startIndex = 0
+		} else {
+			hasMoreBefore = true
+		}
+		resultLines = lines[startIndex:cutoffIndex]
+	}
+
+	if !timestamps {
+		for i, line := range resultLines {
+			if len(line) > 31 {
+				resultLines[i] = line[31:]
+			}
+		}
+	}
+
+	return strings.Join(resultLines, "\n"), hasMoreBefore, nil
+}
+
+// GetAllPodsLogsAfter fetches logs after a given timestamp from multiple pods
+func (c *Client) GetAllPodsLogsAfter(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, afterTime string, lineLimit int) (string, bool, error) {
+	allLogs, err := c.GetAllPodsLogsAll(namespace, pods, allContainers, true, previous)
+	if err != nil {
+		return "", false, err
+	}
+	if lineLimit <= 0 {
+		lineLimit = 200
+	}
+
+	lines := strings.Split(allLogs, "\n")
+
+	compareLen := 30
+	if len(afterTime) < compareLen {
+		compareLen = len(afterTime)
+	}
+	afterTimePrefix := afterTime[:compareLen]
+
+	startIdx := 0
+	for i, line := range lines {
+		if len(line) >= 30 {
+			lineTime := line[:30]
+			if lineTime <= afterTimePrefix {
+				startIdx = i + 1
+				continue
+			}
+		}
+		break
+	}
+
+	if startIdx >= len(lines) {
+		return "", false, nil
+	}
+
+	lines = lines[startIdx:]
+
+	hasMoreAfter := len(lines) > lineLimit
+	if hasMoreAfter {
+		lines = lines[:lineLimit]
+	}
+
+	if !timestamps {
+		for i, line := range lines {
+			if len(line) > 31 {
+				lines[i] = line[31:]
+			}
+		}
+	}
+
+	return strings.Join(lines, "\n"), hasMoreAfter, nil
+}
+
+// StreamAllPodsLogs streams logs from multiple pods, merging them in real-time by timestamp.
+func (c *Client) StreamAllPodsLogs(ctx context.Context, namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, tailLines int64, onLine func(line string)) error {
+	if len(pods) == 0 {
+		return nil
+	}
+
+	type streamLine struct {
+		timestamp string
+		fullLine  string
+	}
+
+	lineChan := make(chan streamLine, 1000)
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(pods)*10)
+
+	for _, p := range pods {
+		if allContainers && len(p.ContainerNames) > 1 {
+			for _, cn := range p.ContainerNames {
+				wg.Add(1)
+				go func(podName, containerName string) {
+					defer wg.Done()
+					prefix := podName + "/" + containerName
+					err := c.StreamPodLogs(ctx, namespace, podName, containerName, true, tailLines, func(line string) {
+						var ts, content string
+						if len(line) >= 31 && line[30] == ' ' {
+							ts = line[:30]
+							content = line[31:]
+						} else {
+							ts = ""
+							content = line
+						}
+
+						var fullLine string
+						if timestamps && ts != "" {
+							fullLine = fmt.Sprintf("%s [%s] %s", ts, prefix, content)
+						} else if ts != "" {
+							fullLine = fmt.Sprintf("%s [%s] %s", ts, prefix, content)
+						} else {
+							fullLine = fmt.Sprintf("[%s] %s", prefix, content)
+						}
+
+						select {
+						case lineChan <- streamLine{timestamp: ts, fullLine: fullLine}:
+						case <-ctx.Done():
+							return
+						}
+					})
+					if err != nil && err != context.Canceled {
+						errChan <- err
+					}
+				}(p.PodName, cn)
+			}
+		} else {
+			containerName := ""
+			if len(p.ContainerNames) > 0 {
+				containerName = p.ContainerNames[0]
+			}
+			wg.Add(1)
+			go func(podName, cn string) {
+				defer wg.Done()
+				prefix := podName
+				err := c.StreamPodLogs(ctx, namespace, podName, cn, true, tailLines, func(line string) {
+					var ts, content string
+					if len(line) >= 31 && line[30] == ' ' {
+						ts = line[:30]
+						content = line[31:]
+					} else {
+						ts = ""
+						content = line
+					}
+
+					var fullLine string
+					if timestamps && ts != "" {
+						fullLine = fmt.Sprintf("%s [%s] %s", ts, prefix, content)
+					} else if ts != "" {
+						fullLine = fmt.Sprintf("%s [%s] %s", ts, prefix, content)
+					} else {
+						fullLine = fmt.Sprintf("[%s] %s", prefix, content)
+					}
+
+					select {
+					case lineChan <- streamLine{timestamp: ts, fullLine: fullLine}:
+					case <-ctx.Done():
+						return
+					}
+				})
+				if err != nil && err != context.Canceled {
+					errChan <- err
+				}
+			}(p.PodName, containerName)
+		}
+	}
+
+	go func() {
+		wg.Wait()
+		close(lineChan)
+		close(errChan)
+	}()
+
+	var buffer []streamLine
+	flushTicker := time.NewTicker(50 * time.Millisecond)
+	defer flushTicker.Stop()
+
+	flushBuffer := func() {
+		if len(buffer) == 0 {
+			return
+		}
+		sort.SliceStable(buffer, func(i, j int) bool {
+			return buffer[i].timestamp < buffer[j].timestamp
+		})
+		for _, line := range buffer {
+			if timestamps {
+				onLine(line.fullLine)
+			} else {
+				if len(line.fullLine) > 31 && line.fullLine[30] == ' ' {
+					onLine(line.fullLine[31:])
+				} else {
+					onLine(line.fullLine)
+				}
+			}
+		}
+		buffer = buffer[:0]
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			flushBuffer()
+			return ctx.Err()
+		case line, ok := <-lineChan:
+			if !ok {
+				flushBuffer()
+				for err := range errChan {
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+			buffer = append(buffer, line)
+		case <-flushTicker.C:
+			flushBuffer()
+		}
+	}
 }
 
 func (c *Client) getClientForContext(contextName string) (kubernetes.Interface, error) {
@@ -4130,6 +5134,11 @@ func (c *Client) testPrometheusConnection(contextName string, info *PrometheusIn
 
 // queryPrometheusRaw makes a raw query to Prometheus via K8s API proxy
 func (c *Client) queryPrometheusRaw(contextName string, info *PrometheusInfo, path string, params map[string]string) ([]byte, error) {
+	return c.queryPrometheusRawWithContext(context.Background(), contextName, info, path, params)
+}
+
+// queryPrometheusRawWithContext makes a raw query to Prometheus with cancellation support
+func (c *Client) queryPrometheusRawWithContext(ctx context.Context, contextName string, info *PrometheusInfo, path string, params map[string]string) ([]byte, error) {
 	cs, err := c.getClientsetForContext(contextName)
 	if err != nil {
 		return nil, err
@@ -4147,7 +5156,7 @@ func (c *Client) queryPrometheusRaw(contextName string, info *PrometheusInfo, pa
 		req = req.Param(k, v)
 	}
 
-	result, err := req.DoRaw(context.TODO())
+	result, err := req.DoRaw(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("prometheus query failed: %w", err)
 	}
@@ -4178,8 +5187,8 @@ func (c *Client) QueryPrometheus(contextName string, info *PrometheusInfo, query
 	return &result, nil
 }
 
-// QueryPrometheusRange executes a range query against Prometheus
-func (c *Client) QueryPrometheusRange(contextName string, info *PrometheusInfo, query string, start, end time.Time, step time.Duration) (*PrometheusQueryResult, error) {
+// QueryPrometheusRangeWithContext executes a range query against Prometheus with cancellation support
+func (c *Client) QueryPrometheusRangeWithContext(ctx context.Context, contextName string, info *PrometheusInfo, query string, start, end time.Time, step time.Duration) (*PrometheusQueryResult, error) {
 	params := map[string]string{
 		"query": query,
 		"start": fmt.Sprintf("%d", start.Unix()),
@@ -4187,7 +5196,7 @@ func (c *Client) QueryPrometheusRange(contextName string, info *PrometheusInfo, 
 		"step":  fmt.Sprintf("%d", int(step.Seconds())),
 	}
 
-	data, err := c.queryPrometheusRaw(contextName, info, "api/v1/query_range", params)
+	data, err := c.queryPrometheusRawWithContext(ctx, contextName, info, "api/v1/query_range", params)
 	if err != nil {
 		return nil, err
 	}
@@ -4204,13 +5213,8 @@ func (c *Client) QueryPrometheusRange(contextName string, info *PrometheusInfo, 
 	return &result, nil
 }
 
-// GetPodMetricsHistory retrieves historical CPU and memory metrics for a pod
-func (c *Client) GetPodMetricsHistory(contextName string, info *PrometheusInfo, namespace, pod, container string, duration time.Duration) (*PodMetricsHistory, error) {
-	// Default to 150 data points for readable charts
-	return c.GetPodMetricsHistoryWithResolution(contextName, info, namespace, pod, container, duration, 150)
-}
-
-func (c *Client) GetPodMetricsHistoryWithResolution(contextName string, info *PrometheusInfo, namespace, pod, container string, duration time.Duration, maxDataPoints int) (*PodMetricsHistory, error) {
+// GetPodMetricsHistoryWithContext retrieves historical metrics with cancellation support
+func (c *Client) GetPodMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, namespace, pod, container string, duration time.Duration, maxDataPoints int) (*PodMetricsHistory, error) {
 	end := time.Now()
 	start := end.Add(-duration)
 
@@ -4259,7 +5263,7 @@ func (c *Client) GetPodMetricsHistoryWithResolution(contextName string, info *Pr
 		namespace, pod, containerFilter,
 	)
 
-	cpuResult, err := c.QueryPrometheusRange(contextName, info, cpuQuery, start, end, step)
+	cpuResult, err := c.QueryPrometheusRangeWithContext(ctx, contextName, info, cpuQuery, start, end, step)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query CPU metrics: %w", err)
 	}
@@ -4270,7 +5274,7 @@ func (c *Client) GetPodMetricsHistoryWithResolution(contextName string, info *Pr
 		namespace, pod, containerFilter,
 	)
 
-	memResult, err := c.QueryPrometheusRange(contextName, info, memQuery, start, end, step)
+	memResult, err := c.QueryPrometheusRangeWithContext(ctx, contextName, info, memQuery, start, end, step)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query memory metrics: %w", err)
 	}
@@ -4406,7 +5410,8 @@ type NetworkMetrics struct {
 }
 
 // GetControllerMetricsHistory retrieves historical metrics for a controller
-func (c *Client) GetControllerMetricsHistory(contextName string, info *PrometheusInfo, namespace, name, controllerType string, duration time.Duration, maxDataPoints int) (*ControllerMetricsHistory, error) {
+// GetControllerMetricsHistoryWithContext retrieves historical metrics with cancellation support
+func (c *Client) GetControllerMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, namespace, name, controllerType string, duration time.Duration, maxDataPoints int) (*ControllerMetricsHistory, error) {
 	end := time.Now()
 	start := end.Add(-duration)
 
@@ -4467,35 +5472,35 @@ func (c *Client) GetControllerMetricsHistory(contextName string, info *Prometheu
 		`sum(rate(container_cpu_usage_seconds_total{namespace="%s", pod=~"%s", container!="", container!="POD"}[5m])) * 1000`,
 		namespace, podRegex,
 	)
-	result.CPU.Usage = c.queryRangeToDataPoints(contextName, info, cpuUsageQuery, start, end, step)
+	result.CPU.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuUsageQuery, start, end, step)
 
 	// CPU Request (from kube-state-metrics, convert cores to millicores)
 	cpuRequestQuery := fmt.Sprintf(
 		`sum(kube_pod_container_resource_requests{namespace="%s", pod=~"%s", resource="cpu"}) * 1000`,
 		namespace, podRegex,
 	)
-	result.CPU.Request = c.queryRangeToDataPoints(contextName, info, cpuRequestQuery, start, end, step)
+	result.CPU.Request = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuRequestQuery, start, end, step)
 
 	// CPU Limit
 	cpuLimitQuery := fmt.Sprintf(
 		`sum(kube_pod_container_resource_limits{namespace="%s", pod=~"%s", resource="cpu"}) * 1000`,
 		namespace, podRegex,
 	)
-	result.CPU.Limit = c.queryRangeToDataPoints(contextName, info, cpuLimitQuery, start, end, step)
+	result.CPU.Limit = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuLimitQuery, start, end, step)
 
 	// Node Allocatable CPU (for nodes where controller pods run)
 	cpuAllocatableQuery := fmt.Sprintf(
 		`sum(kube_node_status_allocatable{resource="cpu"} * on(node) group_left() (sum by(node) (kube_pod_info{namespace="%s", pod=~"%s"}) > 0)) * 1000`,
 		namespace, podRegex,
 	)
-	result.CPU.NodeAllocatable = c.queryRangeToDataPoints(contextName, info, cpuAllocatableQuery, start, end, step)
+	result.CPU.NodeAllocatable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuAllocatableQuery, start, end, step)
 
 	// Node Uncommitted CPU (allocatable - committed requests on those nodes)
 	cpuUncommittedQuery := fmt.Sprintf(
 		`(sum(kube_node_status_allocatable{resource="cpu"} * on(node) group_left() (sum by(node) (kube_pod_info{namespace="%s", pod=~"%s"}) > 0)) - sum(kube_pod_container_resource_requests{resource="cpu"} * on(pod, namespace) group_left(node) (kube_pod_info{node=~".+"} * on(node) group_left() (sum by(node) (kube_pod_info{namespace="%s", pod=~"%s"}) > 0)))) * 1000`,
 		namespace, podRegex, namespace, podRegex,
 	)
-	result.CPU.NodeUncommitted = c.queryRangeToDataPoints(contextName, info, cpuUncommittedQuery, start, end, step)
+	result.CPU.NodeUncommitted = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuUncommittedQuery, start, end, step)
 
 	// --- Memory Metrics ---
 	// Memory Usage (bytes)
@@ -4503,35 +5508,35 @@ func (c *Client) GetControllerMetricsHistory(contextName string, info *Prometheu
 		`sum(container_memory_working_set_bytes{namespace="%s", pod=~"%s", container!="", container!="POD"})`,
 		namespace, podRegex,
 	)
-	result.Memory.Usage = c.queryRangeToDataPoints(contextName, info, memUsageQuery, start, end, step)
+	result.Memory.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memUsageQuery, start, end, step)
 
 	// Memory Request
 	memRequestQuery := fmt.Sprintf(
 		`sum(kube_pod_container_resource_requests{namespace="%s", pod=~"%s", resource="memory"})`,
 		namespace, podRegex,
 	)
-	result.Memory.Request = c.queryRangeToDataPoints(contextName, info, memRequestQuery, start, end, step)
+	result.Memory.Request = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memRequestQuery, start, end, step)
 
 	// Memory Limit
 	memLimitQuery := fmt.Sprintf(
 		`sum(kube_pod_container_resource_limits{namespace="%s", pod=~"%s", resource="memory"})`,
 		namespace, podRegex,
 	)
-	result.Memory.Limit = c.queryRangeToDataPoints(contextName, info, memLimitQuery, start, end, step)
+	result.Memory.Limit = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memLimitQuery, start, end, step)
 
 	// Node Allocatable Memory
 	memAllocatableQuery := fmt.Sprintf(
 		`sum(kube_node_status_allocatable{resource="memory"} * on(node) group_left() (sum by(node) (kube_pod_info{namespace="%s", pod=~"%s"}) > 0))`,
 		namespace, podRegex,
 	)
-	result.Memory.NodeAllocatable = c.queryRangeToDataPoints(contextName, info, memAllocatableQuery, start, end, step)
+	result.Memory.NodeAllocatable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memAllocatableQuery, start, end, step)
 
 	// Node Uncommitted Memory
 	memUncommittedQuery := fmt.Sprintf(
 		`sum(kube_node_status_allocatable{resource="memory"} * on(node) group_left() (sum by(node) (kube_pod_info{namespace="%s", pod=~"%s"}) > 0)) - sum(kube_pod_container_resource_requests{resource="memory"} * on(pod, namespace) group_left(node) (kube_pod_info{node=~".+"} * on(node) group_left() (sum by(node) (kube_pod_info{namespace="%s", pod=~"%s"}) > 0)))`,
 		namespace, podRegex, namespace, podRegex,
 	)
-	result.Memory.NodeUncommitted = c.queryRangeToDataPoints(contextName, info, memUncommittedQuery, start, end, step)
+	result.Memory.NodeUncommitted = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memUncommittedQuery, start, end, step)
 
 	// --- Pod Count Metrics ---
 	// Running pods
@@ -4539,14 +5544,14 @@ func (c *Client) GetControllerMetricsHistory(contextName string, info *Prometheu
 		`count(kube_pod_status_phase{namespace="%s", pod=~"%s", phase="Running"})`,
 		namespace, podRegex,
 	)
-	result.Pods.Running = c.queryRangeToDataPoints(contextName, info, podsRunningQuery, start, end, step)
+	result.Pods.Running = c.queryRangeToDataPointsWithContext(ctx, contextName, info, podsRunningQuery, start, end, step)
 
 	// Ready pods
 	podsReadyQuery := fmt.Sprintf(
 		`sum(kube_pod_status_ready{namespace="%s", pod=~"%s", condition="true"})`,
 		namespace, podRegex,
 	)
-	result.Pods.Ready = c.queryRangeToDataPoints(contextName, info, podsReadyQuery, start, end, step)
+	result.Pods.Ready = c.queryRangeToDataPointsWithContext(ctx, contextName, info, podsReadyQuery, start, end, step)
 
 	// Desired replicas (depends on controller type)
 	var desiredQuery string
@@ -4561,7 +5566,7 @@ func (c *Client) GetControllerMetricsHistory(contextName string, info *Prometheu
 		desiredQuery = fmt.Sprintf(`kube_daemonset_status_desired_number_scheduled{namespace="%s", daemonset="%s"}`, namespace, name)
 	}
 	if desiredQuery != "" {
-		result.Pods.Desired = c.queryRangeToDataPoints(contextName, info, desiredQuery, start, end, step)
+		result.Pods.Desired = c.queryRangeToDataPointsWithContext(ctx, contextName, info, desiredQuery, start, end, step)
 	}
 
 	// --- Network Metrics ---
@@ -4570,42 +5575,43 @@ func (c *Client) GetControllerMetricsHistory(contextName string, info *Prometheu
 		`sum(rate(container_network_receive_bytes_total{namespace="%s", pod=~"%s"}[5m]))`,
 		namespace, podRegex,
 	)
-	result.Network.ReceiveBytes = c.queryRangeToDataPoints(contextName, info, rxBytesQuery, start, end, step)
+	result.Network.ReceiveBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxBytesQuery, start, end, step)
 
 	// Transmit bytes/s
 	txBytesQuery := fmt.Sprintf(
 		`sum(rate(container_network_transmit_bytes_total{namespace="%s", pod=~"%s"}[5m]))`,
 		namespace, podRegex,
 	)
-	result.Network.TransmitBytes = c.queryRangeToDataPoints(contextName, info, txBytesQuery, start, end, step)
+	result.Network.TransmitBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txBytesQuery, start, end, step)
 
 	// Dropped packets (receive)
 	rxDroppedQuery := fmt.Sprintf(
 		`sum(rate(container_network_receive_packets_dropped_total{namespace="%s", pod=~"%s"}[5m]))`,
 		namespace, podRegex,
 	)
-	result.Network.ReceiveDropped = c.queryRangeToDataPoints(contextName, info, rxDroppedQuery, start, end, step)
+	result.Network.ReceiveDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxDroppedQuery, start, end, step)
 
 	// Dropped packets (transmit)
 	txDroppedQuery := fmt.Sprintf(
 		`sum(rate(container_network_transmit_packets_dropped_total{namespace="%s", pod=~"%s"}[5m]))`,
 		namespace, podRegex,
 	)
-	result.Network.TransmitDropped = c.queryRangeToDataPoints(contextName, info, txDroppedQuery, start, end, step)
+	result.Network.TransmitDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txDroppedQuery, start, end, step)
 
 	// --- Restarts ---
 	restartsQuery := fmt.Sprintf(
 		`sum(kube_pod_container_status_restarts_total{namespace="%s", pod=~"%s"})`,
 		namespace, podRegex,
 	)
-	result.Restarts = c.queryRangeToDataPoints(contextName, info, restartsQuery, start, end, step)
+	result.Restarts = c.queryRangeToDataPointsWithContext(ctx, contextName, info, restartsQuery, start, end, step)
 
 	return result, nil
 }
 
 // queryRangeToDataPoints is a helper that runs a range query and converts to data points
-func (c *Client) queryRangeToDataPoints(contextName string, info *PrometheusInfo, query string, start, end time.Time, step time.Duration) []MetricsDataPoint {
-	result, err := c.QueryPrometheusRange(contextName, info, query, start, end, step)
+// queryRangeToDataPointsWithContext is a helper that runs a range query with cancellation support
+func (c *Client) queryRangeToDataPointsWithContext(ctx context.Context, contextName string, info *PrometheusInfo, query string, start, end time.Time, step time.Duration) []MetricsDataPoint {
+	result, err := c.QueryPrometheusRangeWithContext(ctx, contextName, info, query, start, end, step)
 	if err != nil {
 		return []MetricsDataPoint{}
 	}
@@ -4653,7 +5659,8 @@ type NodePodMetrics struct {
 }
 
 // GetNodeMetricsHistory retrieves historical metrics for a specific node
-func (c *Client) GetNodeMetricsHistory(contextName string, info *PrometheusInfo, nodeName string, duration time.Duration, maxDataPoints int) (*NodeMetricsHistory, error) {
+// GetNodeMetricsHistoryWithContext retrieves historical metrics with cancellation support
+func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, nodeName string, duration time.Duration, maxDataPoints int) (*NodeMetricsHistory, error) {
 	end := time.Now()
 	start := end.Add(-duration)
 
@@ -4694,14 +5701,14 @@ func (c *Client) GetNodeMetricsHistory(contextName string, info *PrometheusInfo,
 		`sum(rate(container_cpu_usage_seconds_total{node="%s", container!="", container!="POD"}[5m]))`,
 		nodeName,
 	)
-	result.CPU.Usage = c.queryRangeToDataPoints(contextName, info, cpuUsageQuery, start, end, step)
+	result.CPU.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuUsageQuery, start, end, step)
 
 	// CPU Allocatable (node capacity for pods, in cores)
 	cpuAllocatableQuery := fmt.Sprintf(
 		`kube_node_status_allocatable{node="%s", resource="cpu"}`,
 		nodeName,
 	)
-	result.CPU.Allocatable = c.queryRangeToDataPoints(contextName, info, cpuAllocatableQuery, start, end, step)
+	result.CPU.Allocatable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuAllocatableQuery, start, end, step)
 
 	// CPU Committed = sum of max(usage, request) per container
 	// First get requests for pods on this node, then join with usage and compute max
@@ -4709,7 +5716,7 @@ func (c *Client) GetNodeMetricsHistory(contextName string, info *PrometheusInfo,
 		`sum(max by(namespace, pod, container) (label_replace(rate(container_cpu_usage_seconds_total{node="%s", container!="", container!="POD"}[5m]), "src", "usage", "", "") or label_replace(kube_pod_container_resource_requests{resource="cpu"} * on(namespace, pod) group_left() (kube_pod_info{node="%s"} > bool 0), "src", "request", "", "")))`,
 		nodeName, nodeName,
 	)
-	result.CPU.Committed = c.queryRangeToDataPoints(contextName, info, cpuCommittedQuery, start, end, step)
+	result.CPU.Committed = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuCommittedQuery, start, end, step)
 
 	// CPU Uncommitted - calculated in frontend from allocatable - committed
 
@@ -4719,14 +5726,14 @@ func (c *Client) GetNodeMetricsHistory(contextName string, info *PrometheusInfo,
 		`sum(container_memory_working_set_bytes{node="%s", container!="", container!="POD"})`,
 		nodeName,
 	)
-	result.Memory.Usage = c.queryRangeToDataPoints(contextName, info, memUsageQuery, start, end, step)
+	result.Memory.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memUsageQuery, start, end, step)
 
 	// Memory Allocatable
 	memAllocatableQuery := fmt.Sprintf(
 		`kube_node_status_allocatable{node="%s", resource="memory"}`,
 		nodeName,
 	)
-	result.Memory.Allocatable = c.queryRangeToDataPoints(contextName, info, memAllocatableQuery, start, end, step)
+	result.Memory.Allocatable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memAllocatableQuery, start, end, step)
 
 	// Memory Committed = sum of max(usage, request) per container
 	// First get requests for pods on this node, then join with usage and compute max
@@ -4734,7 +5741,7 @@ func (c *Client) GetNodeMetricsHistory(contextName string, info *PrometheusInfo,
 		`sum(max by(namespace, pod, container) (label_replace(container_memory_working_set_bytes{node="%s", container!="", container!="POD"}, "src", "usage", "", "") or label_replace(kube_pod_container_resource_requests{resource="memory"} * on(namespace, pod) group_left() (kube_pod_info{node="%s"} > bool 0), "src", "request", "", "")))`,
 		nodeName, nodeName,
 	)
-	result.Memory.Committed = c.queryRangeToDataPoints(contextName, info, memCommittedQuery, start, end, step)
+	result.Memory.Committed = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memCommittedQuery, start, end, step)
 
 	// Memory Uncommitted - calculated in frontend from allocatable - committed
 
@@ -4744,14 +5751,14 @@ func (c *Client) GetNodeMetricsHistory(contextName string, info *PrometheusInfo,
 		`count(kube_pod_info{node="%s"})`,
 		nodeName,
 	)
-	result.Pods.Running = c.queryRangeToDataPoints(contextName, info, podRunningQuery, start, end, step)
+	result.Pods.Running = c.queryRangeToDataPointsWithContext(ctx, contextName, info, podRunningQuery, start, end, step)
 
 	// Pod capacity
 	podCapacityQuery := fmt.Sprintf(
 		`kube_node_status_capacity{node="%s", resource="pods"}`,
 		nodeName,
 	)
-	result.Pods.Capacity = c.queryRangeToDataPoints(contextName, info, podCapacityQuery, start, end, step)
+	result.Pods.Capacity = c.queryRangeToDataPointsWithContext(ctx, contextName, info, podCapacityQuery, start, end, step)
 
 	// --- Network Metrics ---
 	// Network receive bytes/s - try multiple label patterns (node, kubernetes_node, or instance regex)
@@ -4759,14 +5766,14 @@ func (c *Client) GetNodeMetricsHistory(contextName string, info *PrometheusInfo,
 		`sum(rate(node_network_receive_bytes_total{node="%s", device!~"lo|veth.*|docker.*|cali.*|cni.*|br.*|flannel.*|cbr.*"}[5m])) or sum(rate(node_network_receive_bytes_total{kubernetes_node="%s", device!~"lo|veth.*|docker.*|cali.*|cni.*|br.*|flannel.*|cbr.*"}[5m])) or sum(rate(node_network_receive_bytes_total{instance=~"%s.*", device!~"lo|veth.*|docker.*|cali.*|cni.*|br.*|flannel.*|cbr.*"}[5m]))`,
 		nodeName, nodeName, nodeName,
 	)
-	result.Network.ReceiveBytes = c.queryRangeToDataPoints(contextName, info, rxBytesQuery, start, end, step)
+	result.Network.ReceiveBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxBytesQuery, start, end, step)
 
 	// Network transmit bytes/s
 	txBytesQuery := fmt.Sprintf(
 		`sum(rate(node_network_transmit_bytes_total{node="%s", device!~"lo|veth.*|docker.*|cali.*|cni.*|br.*|flannel.*|cbr.*"}[5m])) or sum(rate(node_network_transmit_bytes_total{kubernetes_node="%s", device!~"lo|veth.*|docker.*|cali.*|cni.*|br.*|flannel.*|cbr.*"}[5m])) or sum(rate(node_network_transmit_bytes_total{instance=~"%s.*", device!~"lo|veth.*|docker.*|cali.*|cni.*|br.*|flannel.*|cbr.*"}[5m]))`,
 		nodeName, nodeName, nodeName,
 	)
-	result.Network.TransmitBytes = c.queryRangeToDataPoints(contextName, info, txBytesQuery, start, end, step)
+	result.Network.TransmitBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txBytesQuery, start, end, step)
 
 	return result, nil
 }

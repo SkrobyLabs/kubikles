@@ -12,6 +12,8 @@ export function AddPortForwardConfig(arg1:main.PortForwardConfig):Promise<main.P
 
 export function ApplyYAML(arg1:string):Promise<void>;
 
+export function CancelMetricsRequest(arg1:string):Promise<boolean>;
+
 export function ClearPrometheusConfig():Promise<void>;
 
 export function CollectIngressHostnames(arg1:Array<string>):Promise<Array<string>>;
@@ -108,7 +110,29 @@ export function ForceHelmReleaseStatus(arg1:string,arg2:string,arg3:string):Prom
 
 export function GetActivePortForwards():Promise<Array<main.ActivePortForward>>;
 
+export function GetAllCertificateInfo(arg1:string):Promise<Array<main.CertificateInfo>>;
+
+export function GetAllContainersLogs(arg1:string,arg2:string,arg3:Array<string>,arg4:boolean,arg5:boolean,arg6:string):Promise<string>;
+
+export function GetAllContainersLogsAfter(arg1:string,arg2:string,arg3:Array<string>,arg4:boolean,arg5:boolean,arg6:string,arg7:number):Promise<main.LogChunkResult>;
+
+export function GetAllContainersLogsAll(arg1:string,arg2:string,arg3:Array<string>,arg4:boolean,arg5:boolean):Promise<string>;
+
+export function GetAllContainersLogsBefore(arg1:string,arg2:string,arg3:Array<string>,arg4:boolean,arg5:boolean,arg6:string,arg7:number):Promise<main.LogChunkResult>;
+
+export function GetAllContainersLogsFromStart(arg1:string,arg2:string,arg3:Array<string>,arg4:boolean,arg5:boolean):Promise<string>;
+
 export function GetAllPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean):Promise<string>;
+
+export function GetAllPodsLogs(arg1:string,arg2:Array<main.PodContainerPair>,arg3:boolean,arg4:boolean,arg5:boolean,arg6:string):Promise<string>;
+
+export function GetAllPodsLogsAfter(arg1:string,arg2:Array<main.PodContainerPair>,arg3:boolean,arg4:boolean,arg5:boolean,arg6:string,arg7:number):Promise<main.LogChunkResult>;
+
+export function GetAllPodsLogsAll(arg1:string,arg2:Array<main.PodContainerPair>,arg3:boolean,arg4:boolean,arg5:boolean):Promise<string>;
+
+export function GetAllPodsLogsBefore(arg1:string,arg2:Array<main.PodContainerPair>,arg3:boolean,arg4:boolean,arg5:boolean,arg6:string,arg7:number):Promise<main.LogChunkResult>;
+
+export function GetAllPodsLogsFromStart(arg1:string,arg2:Array<main.PodContainerPair>,arg3:boolean,arg4:boolean,arg5:boolean):Promise<string>;
 
 export function GetAvailablePort(arg1:number):Promise<number>;
 
@@ -122,13 +146,17 @@ export function GetCSINodeYaml(arg1:string):Promise<string>;
 
 export function GetCachedPrometheusConfig():Promise<k8s.PrometheusInfo>;
 
+export function GetCertificateInfo(arg1:string):Promise<main.CertificateInfo>;
+
 export function GetClusterRoleBindingYaml(arg1:string):Promise<string>;
 
 export function GetClusterRoleYaml(arg1:string):Promise<string>;
 
+export function GetConfigMapData(arg1:string,arg2:string):Promise<Record<string, string>>;
+
 export function GetConfigMapYaml(arg1:string,arg2:string):Promise<string>;
 
-export function GetControllerMetricsHistory(arg1:string,arg2:string,arg3:number,arg4:string,arg5:string,arg6:string,arg7:string):Promise<k8s.ControllerMetricsHistory>;
+export function GetControllerMetricsHistory(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string,arg7:string,arg8:string):Promise<k8s.ControllerMetricsHistory>;
 
 export function GetCronJobYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -176,6 +204,8 @@ export function GetLimitRangeYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetManagedHosts():Promise<Array<string>>;
 
+export function GetMetricsRequestStats():Promise<main.MetricsRequestStats>;
+
 export function GetMutatingWebhookConfigurationYaml(arg1:string):Promise<string>;
 
 export function GetNamespaceResourceCounts(arg1:string):Promise<k8s.NamespaceResourceCounts>;
@@ -186,7 +216,7 @@ export function GetNetworkPolicyYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetNodeMetrics():Promise<k8s.NodeMetricsResult>;
 
-export function GetNodeMetricsHistory(arg1:string,arg2:string,arg3:number,arg4:string,arg5:string):Promise<k8s.NodeMetricsHistory>;
+export function GetNodeMetricsHistory(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string):Promise<k8s.NodeMetricsHistory>;
 
 export function GetNodeYaml(arg1:string):Promise<string>;
 
@@ -208,7 +238,7 @@ export function GetPodLogsFromStart(arg1:string,arg2:string,arg3:string,arg4:boo
 
 export function GetPodMetrics():Promise<k8s.PodMetricsResult>;
 
-export function GetPodMetricsHistory(arg1:string,arg2:string,arg3:number,arg4:string,arg5:string,arg6:string,arg7:string):Promise<k8s.PodMetricsHistory>;
+export function GetPodMetricsHistory(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string,arg7:string,arg8:string):Promise<k8s.PodMetricsHistory>;
 
 export function GetPodPorts(arg1:string,arg2:string):Promise<Array<number>>;
 
@@ -251,6 +281,8 @@ export function GetThemes():Promise<Array<main.Theme>>;
 export function GetThemesDir():Promise<string>;
 
 export function GetValidatingWebhookConfigurationYaml(arg1:string):Promise<string>;
+
+export function GetVersionInfo():Promise<main.VersionInfo>;
 
 export function Greet(arg1:string):Promise<string>;
 
@@ -398,6 +430,10 @@ export function SetOCIRegistryPriority(arg1:string,arg2:number):Promise<void>;
 
 export function SetTheme(arg1:string):Promise<void>;
 
+export function StartAllContainersLogStream(arg1:string,arg2:string,arg3:Array<string>,arg4:boolean):Promise<string>;
+
+export function StartAllPodsLogStream(arg1:string,arg2:Array<main.PodContainerPair>,arg3:boolean,arg4:boolean):Promise<string>;
+
 export function StartFavoritePortForwards(arg1:string):Promise<void>;
 
 export function StartIngressForward(arg1:main.IngressController,arg2:Array<string>):Promise<void>;
@@ -447,6 +483,8 @@ export function UpdateCSINodeYaml(arg1:string,arg2:string):Promise<void>;
 export function UpdateClusterRoleBindingYaml(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateClusterRoleYaml(arg1:string,arg2:string):Promise<void>;
+
+export function UpdateConfigMapData(arg1:string,arg2:string,arg3:Record<string, string>):Promise<void>;
 
 export function UpdateConfigMapYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

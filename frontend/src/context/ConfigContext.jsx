@@ -12,7 +12,7 @@ const defaultConfig = {
             debounceMs: 200,
             searchOnEnter: true,
             useRegex: false,
-            filterOnly: false,
+            filterOnly: true,
             contextLinesBefore: 1,
             contextLinesAfter: 5
         }

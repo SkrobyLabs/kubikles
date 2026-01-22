@@ -14,6 +14,10 @@ export function ApplyYAML(arg1) {
   return window['go']['main']['App']['ApplyYAML'](arg1);
 }
 
+export function CancelMetricsRequest(arg1) {
+  return window['go']['main']['App']['CancelMetricsRequest'](arg1);
+}
+
 export function ClearPrometheusConfig() {
   return window['go']['main']['App']['ClearPrometheusConfig']();
 }
@@ -206,8 +210,52 @@ export function GetActivePortForwards() {
   return window['go']['main']['App']['GetActivePortForwards']();
 }
 
+export function GetAllCertificateInfo(arg1) {
+  return window['go']['main']['App']['GetAllCertificateInfo'](arg1);
+}
+
+export function GetAllContainersLogs(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['GetAllContainersLogs'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function GetAllContainersLogsAfter(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetAllContainersLogsAfter'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+export function GetAllContainersLogsAll(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetAllContainersLogsAll'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function GetAllContainersLogsBefore(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetAllContainersLogsBefore'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+export function GetAllContainersLogsFromStart(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetAllContainersLogsFromStart'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function GetAllPodLogs(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['GetAllPodLogs'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function GetAllPodsLogs(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['GetAllPodsLogs'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function GetAllPodsLogsAfter(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetAllPodsLogsAfter'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+export function GetAllPodsLogsAll(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetAllPodsLogsAll'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function GetAllPodsLogsBefore(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetAllPodsLogsBefore'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+export function GetAllPodsLogsFromStart(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetAllPodsLogsFromStart'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function GetAvailablePort(arg1) {
@@ -234,6 +282,10 @@ export function GetCachedPrometheusConfig() {
   return window['go']['main']['App']['GetCachedPrometheusConfig']();
 }
 
+export function GetCertificateInfo(arg1) {
+  return window['go']['main']['App']['GetCertificateInfo'](arg1);
+}
+
 export function GetClusterRoleBindingYaml(arg1) {
   return window['go']['main']['App']['GetClusterRoleBindingYaml'](arg1);
 }
@@ -242,12 +294,16 @@ export function GetClusterRoleYaml(arg1) {
   return window['go']['main']['App']['GetClusterRoleYaml'](arg1);
 }
 
+export function GetConfigMapData(arg1, arg2) {
+  return window['go']['main']['App']['GetConfigMapData'](arg1, arg2);
+}
+
 export function GetConfigMapYaml(arg1, arg2) {
   return window['go']['main']['App']['GetConfigMapYaml'](arg1, arg2);
 }
 
-export function GetControllerMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
-  return window['go']['main']['App']['GetControllerMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+export function GetControllerMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
+  return window['go']['main']['App']['GetControllerMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
 
 export function GetCronJobYaml(arg1, arg2) {
@@ -342,6 +398,10 @@ export function GetManagedHosts() {
   return window['go']['main']['App']['GetManagedHosts']();
 }
 
+export function GetMetricsRequestStats() {
+  return window['go']['main']['App']['GetMetricsRequestStats']();
+}
+
 export function GetMutatingWebhookConfigurationYaml(arg1) {
   return window['go']['main']['App']['GetMutatingWebhookConfigurationYaml'](arg1);
 }
@@ -362,8 +422,8 @@ export function GetNodeMetrics() {
   return window['go']['main']['App']['GetNodeMetrics']();
 }
 
-export function GetNodeMetricsHistory(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['GetNodeMetricsHistory'](arg1, arg2, arg3, arg4, arg5);
+export function GetNodeMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['GetNodeMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function GetNodeYaml(arg1) {
@@ -406,8 +466,8 @@ export function GetPodMetrics() {
   return window['go']['main']['App']['GetPodMetrics']();
 }
 
-export function GetPodMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
-  return window['go']['main']['App']['GetPodMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+export function GetPodMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
+  return window['go']['main']['App']['GetPodMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
 
 export function GetPodPorts(arg1, arg2) {
@@ -492,6 +552,10 @@ export function GetThemesDir() {
 
 export function GetValidatingWebhookConfigurationYaml(arg1) {
   return window['go']['main']['App']['GetValidatingWebhookConfigurationYaml'](arg1);
+}
+
+export function GetVersionInfo() {
+  return window['go']['main']['App']['GetVersionInfo']();
 }
 
 export function Greet(arg1) {
@@ -786,6 +850,14 @@ export function SetTheme(arg1) {
   return window['go']['main']['App']['SetTheme'](arg1);
 }
 
+export function StartAllContainersLogStream(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['StartAllContainersLogStream'](arg1, arg2, arg3, arg4);
+}
+
+export function StartAllPodsLogStream(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['StartAllPodsLogStream'](arg1, arg2, arg3, arg4);
+}
+
 export function StartFavoritePortForwards(arg1) {
   return window['go']['main']['App']['StartFavoritePortForwards'](arg1);
 }
@@ -884,6 +956,10 @@ export function UpdateClusterRoleBindingYaml(arg1, arg2) {
 
 export function UpdateClusterRoleYaml(arg1, arg2) {
   return window['go']['main']['App']['UpdateClusterRoleYaml'](arg1, arg2);
+}
+
+export function UpdateConfigMapData(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateConfigMapData'](arg1, arg2, arg3);
 }
 
 export function UpdateConfigMapYaml(arg1, arg2, arg3) {

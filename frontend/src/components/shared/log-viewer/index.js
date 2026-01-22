@@ -25,7 +25,7 @@ export { LogLine, Spinner } from './LogLine';
 export { TimePickerModal } from './TimePickerModal';
 
 // Export hooks for custom implementations
-export { useLogStream } from './useLogStream';
+export { useLogStream, ALL_CONTAINERS, ALL_PODS } from './useLogStream';
 export { useLogSearch } from './useLogSearch';
 
 // Export utilities
