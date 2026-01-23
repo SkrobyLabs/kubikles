@@ -44,7 +44,7 @@ export default function PVDetails({ pv, tabContext = '' }) {
         const tabId = `yaml-pv-${pv.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${name}`,
+            title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="pv"
@@ -60,7 +60,7 @@ export default function PVDetails({ pv, tabContext = '' }) {
         const tabId = `deps-pv-${pv.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${name}`,
+            title: `${name}`,
             content: (
                 <DependencyGraph
                     resourceType="pv"

@@ -5046,6 +5046,7 @@ type PodMetricsHistory struct {
 	Namespace  string                    `json:"namespace"`
 	Pod        string                    `json:"pod"`
 	Containers []ContainerMetricsHistory `json:"containers"`
+	Network    *NetworkMetrics           `json:"network"`
 }
 
 // DetectPrometheus tries to find a Prometheus installation in the cluster
@@ -5470,6 +5471,7 @@ func (c *Client) GetPodMetricsHistoryWithContext(ctx context.Context, contextNam
 		Namespace:  namespace,
 		Pod:        pod,
 		Containers: []ContainerMetricsHistory{},
+		Network:    &NetworkMetrics{},
 	}
 
 	// Build container filter
@@ -5568,6 +5570,49 @@ func (c *Client) GetPodMetricsHistoryWithContext(ctx context.Context, contextNam
 		result.Containers = append(result.Containers, *ch)
 	}
 
+	// --- Network Metrics (pod-level) ---
+	// Receive bytes/s
+	rxBytesQuery := fmt.Sprintf(
+		`sum(rate(container_network_receive_bytes_total{namespace="%s", pod="%s"}[5m]))`,
+		namespace, pod,
+	)
+	result.Network.ReceiveBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxBytesQuery, start, end, step)
+
+	// Transmit bytes/s
+	txBytesQuery := fmt.Sprintf(
+		`sum(rate(container_network_transmit_bytes_total{namespace="%s", pod="%s"}[5m]))`,
+		namespace, pod,
+	)
+	result.Network.TransmitBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txBytesQuery, start, end, step)
+
+	// Receive packets/s
+	rxPacketsQuery := fmt.Sprintf(
+		`sum(rate(container_network_receive_packets_total{namespace="%s", pod="%s"}[5m]))`,
+		namespace, pod,
+	)
+	result.Network.ReceivePackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxPacketsQuery, start, end, step)
+
+	// Transmit packets/s
+	txPacketsQuery := fmt.Sprintf(
+		`sum(rate(container_network_transmit_packets_total{namespace="%s", pod="%s"}[5m]))`,
+		namespace, pod,
+	)
+	result.Network.TransmitPackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txPacketsQuery, start, end, step)
+
+	// Dropped packets (receive)
+	rxDroppedQuery := fmt.Sprintf(
+		`sum(rate(container_network_receive_packets_dropped_total{namespace="%s", pod="%s"}[5m]))`,
+		namespace, pod,
+	)
+	result.Network.ReceiveDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxDroppedQuery, start, end, step)
+
+	// Dropped packets (transmit)
+	txDroppedQuery := fmt.Sprintf(
+		`sum(rate(container_network_transmit_packets_dropped_total{namespace="%s", pod="%s"}[5m]))`,
+		namespace, pod,
+	)
+	result.Network.TransmitDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txDroppedQuery, start, end, step)
+
 	return result, nil
 }
 
@@ -5592,6 +5637,15 @@ func (c *Client) TestPrometheusEndpoint(contextName string, endpoint PrometheusE
 	}
 
 	return nil
+}
+
+// NamespaceMetricsHistory holds historical metrics for a namespace
+type NamespaceMetricsHistory struct {
+	Namespace string                   `json:"namespace"`
+	CPU       []MetricsDataPoint       `json:"cpu"`    // millicores
+	Memory    []MetricsDataPoint       `json:"memory"` // bytes
+	Network   *NetworkMetrics          `json:"network"`
+	PodCount  []MetricsDataPoint       `json:"podCount"`
 }
 
 // ControllerMetricsHistory holds historical metrics for a controller (deployment, statefulset, etc.)
@@ -5624,10 +5678,12 @@ type PodCountMetrics struct {
 
 // NetworkMetrics holds network I/O metrics
 type NetworkMetrics struct {
-	ReceiveBytes    []MetricsDataPoint `json:"receiveBytes"`
-	TransmitBytes   []MetricsDataPoint `json:"transmitBytes"`
-	ReceiveDropped  []MetricsDataPoint `json:"receiveDropped"`
-	TransmitDropped []MetricsDataPoint `json:"transmitDropped"`
+	ReceiveBytes     []MetricsDataPoint `json:"receiveBytes"`
+	TransmitBytes    []MetricsDataPoint `json:"transmitBytes"`
+	ReceivePackets   []MetricsDataPoint `json:"receivePackets"`
+	TransmitPackets  []MetricsDataPoint `json:"transmitPackets"`
+	ReceiveDropped   []MetricsDataPoint `json:"receiveDropped"`
+	TransmitDropped  []MetricsDataPoint `json:"transmitDropped"`
 }
 
 // GetControllerMetricsHistory retrieves historical metrics for a controller
@@ -5805,6 +5861,20 @@ func (c *Client) GetControllerMetricsHistoryWithContext(ctx context.Context, con
 	)
 	result.Network.TransmitBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txBytesQuery, start, end, step)
 
+	// Receive packets/s
+	rxPacketsQuery := fmt.Sprintf(
+		`sum(rate(container_network_receive_packets_total{namespace="%s", pod=~"%s"}[5m]))`,
+		namespace, podRegex,
+	)
+	result.Network.ReceivePackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxPacketsQuery, start, end, step)
+
+	// Transmit packets/s
+	txPacketsQuery := fmt.Sprintf(
+		`sum(rate(container_network_transmit_packets_total{namespace="%s", pod=~"%s"}[5m]))`,
+		namespace, podRegex,
+	)
+	result.Network.TransmitPackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txPacketsQuery, start, end, step)
+
 	// Dropped packets (receive)
 	rxDroppedQuery := fmt.Sprintf(
 		`sum(rate(container_network_receive_packets_dropped_total{namespace="%s", pod=~"%s"}[5m]))`,
@@ -5825,6 +5895,109 @@ func (c *Client) GetControllerMetricsHistoryWithContext(ctx context.Context, con
 		namespace, podRegex,
 	)
 	result.Restarts = c.queryRangeToDataPointsWithContext(ctx, contextName, info, restartsQuery, start, end, step)
+
+	return result, nil
+}
+
+// GetNamespaceMetricsHistoryWithContext retrieves historical metrics for a namespace with cancellation support
+func (c *Client) GetNamespaceMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, namespace string, duration time.Duration, maxDataPoints int) (*NamespaceMetricsHistory, error) {
+	end := time.Now()
+	start := end.Add(-duration)
+
+	// Calculate step based on duration and target data points
+	step := duration / time.Duration(maxDataPoints)
+	if step < 15*time.Second {
+		step = 15 * time.Second
+	}
+
+	// Round step to nice intervals
+	switch {
+	case step < 30*time.Second:
+		step = 15 * time.Second
+	case step < time.Minute:
+		step = 30 * time.Second
+	case step < 5*time.Minute:
+		step = time.Minute
+	case step < 15*time.Minute:
+		step = 5 * time.Minute
+	case step < 30*time.Minute:
+		step = 15 * time.Minute
+	case step < time.Hour:
+		step = 30 * time.Minute
+	default:
+		step = time.Hour
+	}
+
+	result := &NamespaceMetricsHistory{
+		Namespace: namespace,
+		Network:   &NetworkMetrics{},
+	}
+
+	// --- CPU Metrics ---
+	// CPU Usage (millicores) - sum of all containers in the namespace
+	cpuUsageQuery := fmt.Sprintf(
+		`sum(rate(container_cpu_usage_seconds_total{namespace="%s", container!="", container!="POD"}[5m])) * 1000`,
+		namespace,
+	)
+	result.CPU = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuUsageQuery, start, end, step)
+
+	// --- Memory Metrics ---
+	// Memory Usage (bytes) - sum of all containers in the namespace
+	memUsageQuery := fmt.Sprintf(
+		`sum(container_memory_working_set_bytes{namespace="%s", container!="", container!="POD"})`,
+		namespace,
+	)
+	result.Memory = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memUsageQuery, start, end, step)
+
+	// --- Pod Count ---
+	podCountQuery := fmt.Sprintf(
+		`count(kube_pod_info{namespace="%s"})`,
+		namespace,
+	)
+	result.PodCount = c.queryRangeToDataPointsWithContext(ctx, contextName, info, podCountQuery, start, end, step)
+
+	// --- Network Metrics ---
+	// Receive bytes/s
+	rxBytesQuery := fmt.Sprintf(
+		`sum(rate(container_network_receive_bytes_total{namespace="%s"}[5m]))`,
+		namespace,
+	)
+	result.Network.ReceiveBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxBytesQuery, start, end, step)
+
+	// Transmit bytes/s
+	txBytesQuery := fmt.Sprintf(
+		`sum(rate(container_network_transmit_bytes_total{namespace="%s"}[5m]))`,
+		namespace,
+	)
+	result.Network.TransmitBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txBytesQuery, start, end, step)
+
+	// Receive packets/s
+	rxPacketsQuery := fmt.Sprintf(
+		`sum(rate(container_network_receive_packets_total{namespace="%s"}[5m]))`,
+		namespace,
+	)
+	result.Network.ReceivePackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxPacketsQuery, start, end, step)
+
+	// Transmit packets/s
+	txPacketsQuery := fmt.Sprintf(
+		`sum(rate(container_network_transmit_packets_total{namespace="%s"}[5m]))`,
+		namespace,
+	)
+	result.Network.TransmitPackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txPacketsQuery, start, end, step)
+
+	// Dropped packets (receive)
+	rxDroppedQuery := fmt.Sprintf(
+		`sum(rate(container_network_receive_packets_dropped_total{namespace="%s"}[5m]))`,
+		namespace,
+	)
+	result.Network.ReceiveDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxDroppedQuery, start, end, step)
+
+	// Dropped packets (transmit)
+	txDroppedQuery := fmt.Sprintf(
+		`sum(rate(container_network_transmit_packets_dropped_total{namespace="%s"}[5m]))`,
+		namespace,
+	)
+	result.Network.TransmitDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txDroppedQuery, start, end, step)
 
 	return result, nil
 }
@@ -5982,19 +6155,49 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 	result.Pods.Capacity = c.queryRangeToDataPointsWithContext(ctx, contextName, info, podCapacityQuery, start, end, step)
 
 	// --- Network Metrics ---
-	// Network receive bytes/s - try multiple label patterns (node, kubernetes_node, or instance regex)
+	// Network receive bytes/s - join with node_uname_info to match by node name
+	// Use positive device filter for physical interfaces (eth*, en*) which works across Linux distributions
+	// Fallback to node/kubernetes_node labels for clusters where those are available
 	rxBytesQuery := fmt.Sprintf(
-		`sum(rate(node_network_receive_bytes_total{node="%s", device!~"lo|veth.*|docker.*|cali.*|cni.*|br.*|flannel.*|cbr.*"}[5m])) or sum(rate(node_network_receive_bytes_total{kubernetes_node="%s", device!~"lo|veth.*|docker.*|cali.*|cni.*|br.*|flannel.*|cbr.*"}[5m])) or sum(rate(node_network_receive_bytes_total{instance=~"%s.*", device!~"lo|veth.*|docker.*|cali.*|cni.*|br.*|flannel.*|cbr.*"}[5m]))`,
+		`sum(rate(node_network_receive_bytes_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(node_network_receive_bytes_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_receive_bytes_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
 		nodeName, nodeName, nodeName,
 	)
 	result.Network.ReceiveBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxBytesQuery, start, end, step)
 
 	// Network transmit bytes/s
 	txBytesQuery := fmt.Sprintf(
-		`sum(rate(node_network_transmit_bytes_total{node="%s", device!~"lo|veth.*|docker.*|cali.*|cni.*|br.*|flannel.*|cbr.*"}[5m])) or sum(rate(node_network_transmit_bytes_total{kubernetes_node="%s", device!~"lo|veth.*|docker.*|cali.*|cni.*|br.*|flannel.*|cbr.*"}[5m])) or sum(rate(node_network_transmit_bytes_total{instance=~"%s.*", device!~"lo|veth.*|docker.*|cali.*|cni.*|br.*|flannel.*|cbr.*"}[5m]))`,
+		`sum(rate(node_network_transmit_bytes_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(node_network_transmit_bytes_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_transmit_bytes_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
 		nodeName, nodeName, nodeName,
 	)
 	result.Network.TransmitBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txBytesQuery, start, end, step)
+
+	// Network receive packets/s
+	rxPacketsQuery := fmt.Sprintf(
+		`sum(rate(node_network_receive_packets_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(node_network_receive_packets_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_receive_packets_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
+		nodeName, nodeName, nodeName,
+	)
+	result.Network.ReceivePackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxPacketsQuery, start, end, step)
+
+	// Network transmit packets/s
+	txPacketsQuery := fmt.Sprintf(
+		`sum(rate(node_network_transmit_packets_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(node_network_transmit_packets_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_transmit_packets_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
+		nodeName, nodeName, nodeName,
+	)
+	result.Network.TransmitPackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txPacketsQuery, start, end, step)
+
+	// Network receive dropped packets/s
+	rxDroppedQuery := fmt.Sprintf(
+		`sum(rate(node_network_receive_drop_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(node_network_receive_drop_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_receive_drop_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
+		nodeName, nodeName, nodeName,
+	)
+	result.Network.ReceiveDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxDroppedQuery, start, end, step)
+
+	// Network transmit dropped packets/s
+	txDroppedQuery := fmt.Sprintf(
+		`sum(rate(node_network_transmit_drop_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(node_network_transmit_drop_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_transmit_drop_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
+		nodeName, nodeName, nodeName,
+	)
+	result.Network.TransmitDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txDroppedQuery, start, end, step)
 
 	return result, nil
 }

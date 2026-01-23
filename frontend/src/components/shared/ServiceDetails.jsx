@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { LockClosedIcon, SignalIcon, ClipboardDocumentIcon, CheckIcon, PlayIcon, StopIcon, TrashIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { LockClosedIcon, SignalIcon, ClipboardDocumentIcon, CheckIcon, PlayIcon, StopIcon, TrashIcon, ArrowTopRightOnSquareIcon, PencilSquareIcon, ShareIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context/K8sContext';
 import { usePortForwards } from '../../hooks/usePortForwards';
 import { useUI } from '../../context/UIContext';
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
 import ServicePortForwardDialog from './ServicePortForwardDialog';
+import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 // Copy button component
 const CopyButton = ({ value }) => {
@@ -89,11 +90,50 @@ const DetailRow = ({ label, value, children }) => (
 export default function ServiceDetails({ service, tabContext = '' }) {
     const { currentContext } = useK8s();
     const { configs, activeForwards, startForward, stopForward, deleteConfig } = usePortForwards(currentContext, true);
-    const { openModal, closeModal } = useUI();
+    const { openModal, closeModal, openTab, closeTab } = useUI();
     const [portForwardDialog, setPortForwardDialog] = useState({ open: false, port: null });
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
+
+    const name = service.metadata?.name;
+    const namespace = service.metadata?.namespace;
+
+    const handleEditYaml = () => {
+        const tabId = `yaml-service-${service.metadata?.uid}`;
+        openTab({
+            id: tabId,
+            title: `${name}`,
+            icon: GlobeAltIcon,
+            actionLabel: 'Edit',
+            content: (
+                <YamlEditor
+                    resourceType="service"
+                    namespace={namespace}
+                    resourceName={name}
+                    onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
+
+    const handleShowDependencies = () => {
+        const tabId = `deps-service-${service.metadata?.uid}`;
+        openTab({
+            id: tabId,
+            title: `${name}`,
+            icon: GlobeAltIcon,
+            content: (
+                <DependencyGraph
+                    resourceType="service"
+                    namespace={namespace}
+                    resourceName={name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
 
     // Service data
     const spec = service.spec || {};
@@ -224,7 +264,25 @@ export default function ServiceDetails({ service, tabContext = '' }) {
             <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
                     <div className="text-sm font-medium text-gray-400">
-                        {service.metadata?.namespace}/{service.metadata?.name}
+                        {namespace}/{name}
+                    </div>
+                    {/* Action Icons */}
+                    <div className="flex items-center gap-1 ml-2">
+                        <button
+                            onClick={handleEditYaml}
+                            className={`p-1.5 rounded transition-colors ${isStale ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                            title="Edit YAML"
+                            disabled={isStale}
+                        >
+                            <PencilSquareIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={handleShowDependencies}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title="Dependencies"
+                        >
+                            <ShareIcon className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
             </div>

@@ -5,6 +5,7 @@ import { DeleteConfigMap } from '../../../../wailsjs/go/main/App';
 import ConfigMapEditor from '../../../components/shared/ConfigMapEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
 import Logger from '../../../utils/Logger';
+import { DocumentTextIcon, PencilSquareIcon, ShareIcon } from '@heroicons/react/24/outline';
 
 export const useConfigMapActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
@@ -15,7 +16,9 @@ export const useConfigMapActions = () => {
         const tabId = `configmap-${configMap.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${configMap.metadata.name}`,
+            title: `${configMap.metadata.name}`,
+            icon: DocumentTextIcon,
+            actionLabel: 'Edit',
             content: (
                 <ConfigMapEditor
                     namespace={configMap.metadata.namespace}
@@ -32,7 +35,9 @@ export const useConfigMapActions = () => {
         const tabId = `configmap-${configMap.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${configMap.metadata.name}`,
+            title: `${configMap.metadata.name}`,
+            icon: DocumentTextIcon,
+            actionLabel: 'Edit',
             content: (
                 <ConfigMapEditor
                     namespace={configMap.metadata.namespace}
@@ -50,7 +55,8 @@ export const useConfigMapActions = () => {
         const tabId = `deps-configmap-${configMap.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${configMap.metadata.name}`,
+            title: `${configMap.metadata.name}`,
+            icon: DocumentTextIcon,
             content: (
                 <DependencyGraph
                     resourceType="configmap"

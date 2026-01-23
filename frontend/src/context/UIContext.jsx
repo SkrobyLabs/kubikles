@@ -21,6 +21,9 @@ export const UIProvider = ({ children }) => {
     const [pendingSearch, setPendingSearch] = useState(null);
     const [modal, setModal] = useState(null);
 
+    // Track active detail tab per resource type (e.g., { pod: 'metrics', node: 'basic' })
+    const [detailTabByResourceType, setDetailTabByResourceType] = useState({});
+
     // Use ref to store pending search for reliable consumption
     // This avoids timing issues with React 18's batching
     const pendingSearchRef = useRef(null);
@@ -163,6 +166,19 @@ export const UIProvider = ({ children }) => {
         setModal(null);
     }, []);
 
+    // Get the active detail tab for a resource type, with fallback to default
+    const getDetailTab = useCallback((resourceType, defaultTab) => {
+        return detailTabByResourceType[resourceType] || defaultTab;
+    }, [detailTabByResourceType]);
+
+    // Set the active detail tab for a resource type
+    const setDetailTab = useCallback((resourceType, tab) => {
+        setDetailTabByResourceType(prev => ({
+            ...prev,
+            [resourceType]: tab
+        }));
+    }, []);
+
     const reorderTabs = useCallback((fromIndex, toIndex) => {
         setBottomTabs(prev => {
             const newTabs = [...prev];
@@ -209,7 +225,9 @@ export const UIProvider = ({ children }) => {
         consumePendingSearch,
         modal,
         openModal,
-        closeModal
+        closeModal,
+        getDetailTab,
+        setDetailTab
     }), [
         activeView,
         bottomTabs,
@@ -230,7 +248,9 @@ export const UIProvider = ({ children }) => {
         consumePendingSearch,
         modal,
         openModal,
-        closeModal
+        closeModal,
+        getDetailTab,
+        setDetailTab
     ]);
 
     return (

@@ -537,7 +537,7 @@ export default function ResourceList({
             {/* Header */}
             <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0 gap-4 titlebar-drag">
                 <div className="flex items-center gap-4 flex-1">
-                    <h1 className="text-lg font-semibold text-text shrink-0">{title}</h1>
+                    <h1 className="text-lg font-semibold text-text shrink-0 no-drag">{title}</h1>
 
                     {/* Search Bar */}
                     <div className="relative max-w-md w-full flex items-center gap-1">
@@ -555,7 +555,7 @@ export default function ResourceList({
                             />
                         </div>
                         {resourceType && (
-                            <div className="relative" ref={searchHelpRef}>
+                            <div className="relative no-drag" ref={searchHelpRef}>
                                 <button
                                     onClick={() => setShowSearchHelp(!showSearchHelp)}
                                     className="p-1 text-gray-400 hover:text-gray-300 transition-colors"
@@ -599,7 +599,7 @@ export default function ResourceList({
 
                 {/* Namespace Selector */}
                 {showNamespaceSelector && (
-                    <div className="w-64">
+                    <div className="w-64 no-drag">
                         <SearchSelect
                             options={namespaces}
                             value={currentNamespace}

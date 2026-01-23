@@ -14,7 +14,7 @@ export const useClusterRoleBindingActions = () => {
         const tabId = `clusterrolebinding-${clusterRoleBinding.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${clusterRoleBinding.metadata.name}`,
+            title: `${clusterRoleBinding.metadata.name}`,
             content: (
                 <YamlEditor
                     resourceType="clusterrolebinding"

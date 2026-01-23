@@ -30,7 +30,7 @@ export default function StorageClassDetails({ storageClass, tabContext = '' }) {
         const tabId = `yaml-storageclass-${storageClass.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${name}`,
+            title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="storageclass"
@@ -46,7 +46,7 @@ export default function StorageClassDetails({ storageClass, tabContext = '' }) {
         const tabId = `deps-storageclass-${storageClass.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${name}`,
+            title: `${name}`,
             content: (
                 <DependencyGraph
                     resourceType="storageclass"

@@ -76,11 +76,11 @@ export const configSchema = {
         }
     },
     metrics: {
-        _meta: { label: 'Metrics', description: 'Metrics polling settings' },
+        _meta: { label: 'Kubernetes Metrics', description: 'CPU/Memory metrics from Kubernetes metrics-server' },
         pollIntervalMs: {
             type: 'number',
             label: 'Poll Interval',
-            description: 'How often to refresh node/pod metrics',
+            description: 'How often to refresh CPU/Memory metrics in resource list views',
             min: 5000,
             max: 300000,
             step: 1000,
@@ -127,6 +127,25 @@ export const configSchema = {
     },
     ui: {
         _meta: { label: 'UI', description: 'User interface settings' },
+        fonts: {
+            _meta: { label: 'Fonts', isNested: true },
+            uiFont: {
+                type: 'enum',
+                label: 'UI Font',
+                description: 'Font for the user interface',
+                source: 'theme', // Special marker - value comes from ThemeContext
+                optionsSource: 'uiFonts',
+                default: 'inter'
+            },
+            monoFont: {
+                type: 'enum',
+                label: 'Monospace Font',
+                description: 'Font for code, logs, and terminals',
+                source: 'theme',
+                optionsSource: 'monoFonts',
+                default: 'jetbrains'
+            }
+        },
         searchDebounceMs: {
             type: 'number',
             label: 'Search Debounce',
@@ -152,6 +171,12 @@ export const configSchema = {
             label: 'Scroll Zoom',
             description: 'Enable Cmd/Ctrl+Scroll to zoom in/out',
             default: false
+        },
+        showTabIcons: {
+            type: 'boolean',
+            label: 'Show Tab Icons',
+            description: 'Display resource type icons in tab titles',
+            default: true
         }
     }
 };

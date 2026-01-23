@@ -3,6 +3,7 @@ import { useUI } from '../context/UIContext';
 import { useK8s } from '../context/K8sContext';
 import { LazyYamlEditor, LazyDependencyGraph } from '../components/lazy';
 import Logger from '../utils/Logger';
+import { getResourceIcon } from '../utils/resourceIcons';
 
 /**
  * Creates standard resource action handlers for showing details, editing YAML,
@@ -49,6 +50,7 @@ export function useBaseResourceActions(config) {
         openTab({
             id: tabId,
             title: getTabTitle(resource),
+            icon: getResourceIcon(resourceType),
             content: <DetailsComponent {...props} />
         });
     };
@@ -64,7 +66,9 @@ export function useBaseResourceActions(config) {
         const tabId = `yaml-${resourceType}-${resource.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${name}`,
+            title: name,
+            icon: getResourceIcon(resourceType),
+            actionLabel: 'Edit',
             content: (
                 <LazyYamlEditor
                     resourceType={resourceType}
@@ -88,7 +92,9 @@ export function useBaseResourceActions(config) {
         const tabId = `deps-${resourceType}-${resource.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${name}`,
+            title: name,
+            icon: getResourceIcon(resourceType),
+            actionLabel: 'Deps',
             content: (
                 <LazyDependencyGraph
                     resourceType={resourceType}

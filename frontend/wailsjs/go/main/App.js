@@ -414,6 +414,10 @@ export function GetMutatingWebhookConfigurationYaml(arg1) {
   return window['go']['main']['App']['GetMutatingWebhookConfigurationYaml'](arg1);
 }
 
+export function GetNamespaceMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['GetNamespaceMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
 export function GetNamespaceResourceCounts(arg1) {
   return window['go']['main']['App']['GetNamespaceResourceCounts'](arg1);
 }

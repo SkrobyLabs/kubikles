@@ -34,7 +34,7 @@ export default function CronJobDetails({ cronJob, tabContext = '' }) {
         const tabId = `yaml-cronjob-${cronJob.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${name}`,
+            title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="cronjob"
@@ -51,7 +51,7 @@ export default function CronJobDetails({ cronJob, tabContext = '' }) {
         const tabId = `deps-cronjob-${cronJob.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${name}`,
+            title: `${name}`,
             content: (
                 <DependencyGraph
                     resourceType="cronjob"

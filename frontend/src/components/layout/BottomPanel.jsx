@@ -1,5 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BookmarkIcon } from '@heroicons/react/24/solid';
+import { PencilSquareIcon, ShareIcon, DocumentTextIcon, CommandLineIcon } from '@heroicons/react/24/outline';
+import { useConfig } from '../../context/ConfigContext';
+import { getTabIcon } from '../../utils/resourceIcons';
+
+// Map action labels to icons
+const actionIconMap = {
+    'Edit': PencilSquareIcon,
+    'Deps': ShareIcon,
+    'Logs': DocumentTextIcon,
+    'Shell': CommandLineIcon,
+};
 
 export default function BottomPanel({
     tabs,
@@ -15,6 +26,9 @@ export default function BottomPanel({
     isTabStale,
     height = '40%'
 }) {
+    const { getConfig } = useConfig();
+    const showTabIcons = getConfig('ui.showTabIcons');
+
     const [contextMenu, setContextMenu] = useState(null);
     const [draggedIndex, setDraggedIndex] = useState(null);
     const [dropTarget, setDropTarget] = useState(null);
@@ -182,8 +196,18 @@ export default function BottomPanel({
                             {stale && (
                                 <span className="mr-1.5 text-red-400" title="Stale - different context">⚠</span>
                             )}
+                            {showTabIcons && (() => {
+                                const TabIcon = tab.icon || getTabIcon(tab.id);
+                                const ActionIcon = tab.actionLabel ? actionIconMap[tab.actionLabel] : null;
+                                return (
+                                    <>
+                                        {TabIcon && <TabIcon className="h-3.5 w-3.5 mr-1 shrink-0 opacity-70" />}
+                                        {ActionIcon && <ActionIcon className="h-3 w-3 mr-1.5 shrink-0 opacity-50" />}
+                                    </>
+                                );
+                            })()}
                             <span className={`truncate flex-1 mr-2 select-none ${stale ? 'line-through opacity-70' : ''}`}>
-                                {tab.title}
+                                {!showTabIcons && tab.actionLabel ? `${tab.actionLabel}: ${tab.title}` : tab.title}
                             </span>
                             {!tab.pinned && (
                                 <button

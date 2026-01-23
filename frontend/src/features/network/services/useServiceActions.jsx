@@ -4,6 +4,7 @@ import { useK8s } from '../../../context/K8sContext';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../../../components/lazy';
 import ServiceDetails from '../../../components/shared/ServiceDetails';
 import Logger from '../../../utils/Logger';
+import { GlobeAltIcon, PencilSquareIcon, ShareIcon } from '@heroicons/react/24/outline';
 
 export const useServiceActions = () => {
     const { openTab, closeTab } = useUI();
@@ -14,7 +15,9 @@ export const useServiceActions = () => {
         const tabId = `yaml-service-${service.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${service.metadata.name}`,
+            title: `${service.metadata.name}`,
+            icon: GlobeAltIcon,
+            actionLabel: 'Edit',
             content: (
                 <YamlEditor
                     resourceType="service"
@@ -32,7 +35,8 @@ export const useServiceActions = () => {
         const tabId = `deps-service-${service.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${service.metadata.name}`,
+            title: `${service.metadata.name}`,
+            icon: GlobeAltIcon,
             content: (
                 <DependencyGraph
                     resourceType="service"
@@ -50,6 +54,7 @@ export const useServiceActions = () => {
         openTab({
             id: tabId,
             title: `${service.metadata.name}`,
+            icon: GlobeAltIcon,
             content: (
                 <ServiceDetails
                     service={service}

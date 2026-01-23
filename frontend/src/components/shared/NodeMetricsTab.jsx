@@ -458,17 +458,25 @@ const PodCountChart = React.memo(({ data, duration }) => {
     );
 });
 
-// Network I/O chart
+// Network I/O chart with bandwidth and packets view toggle
 // Memoized to prevent re-renders when parent updates with same props
 const NetworkChart = React.memo(({ data, duration }) => {
     const containerRef = useRef(null);
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [viewMode, setViewMode] = useState('bandwidth'); // 'bandwidth' or 'packets'
 
-    const hasRx = data?.receiveBytes?.length > 0;
-    const hasTx = data?.transmitBytes?.length > 0;
+    const hasRxBytes = data?.receiveBytes?.length > 0;
+    const hasTxBytes = data?.transmitBytes?.length > 0;
+    const hasRxPackets = data?.receivePackets?.length > 0;
+    const hasTxPackets = data?.transmitPackets?.length > 0;
+    const hasRxDropped = data?.receiveDropped?.length > 0;
+    const hasTxDropped = data?.transmitDropped?.length > 0;
 
-    if (!hasRx && !hasTx) {
+    const hasBandwidth = hasRxBytes || hasTxBytes;
+    const hasPackets = hasRxPackets || hasTxPackets;
+
+    if (!hasBandwidth && !hasPackets) {
         return (
             <div className="relative">
                 <div className="text-sm font-medium text-gray-300 mb-2">Network I/O</div>
@@ -479,8 +487,14 @@ const NetworkChart = React.memo(({ data, duration }) => {
         );
     }
 
-    const rx = data.receiveBytes || [];
-    const tx = data.transmitBytes || [];
+    // Select data based on view mode
+    const isBandwidthView = viewMode === 'bandwidth';
+    const rx = isBandwidthView ? (data.receiveBytes || []) : (data.receivePackets || []);
+    const tx = isBandwidthView ? (data.transmitBytes || []) : (data.transmitPackets || []);
+    const rxDropped = data.receiveDropped || [];
+    const txDropped = data.transmitDropped || [];
+    const hasRx = isBandwidthView ? hasRxBytes : hasRxPackets;
+    const hasTx = isBandwidthView ? hasTxBytes : hasTxPackets;
 
     const allValues = [...rx.map(d => d.value), ...tx.map(d => d.value)];
     const max = Math.max(...allValues, 1);
@@ -544,16 +558,53 @@ const NetworkChart = React.memo(({ data, duration }) => {
         return `${formatBytes(value)}/s`;
     };
 
+    const formatPacketRate = (value) => {
+        if (value == null || isNaN(value)) return '-';
+        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M/s`;
+        if (value >= 1000) return `${(value / 1000).toFixed(1)}K/s`;
+        return `${Math.round(value)}/s`;
+    };
+
     const currentRx = rx[rx.length - 1]?.value || 0;
     const currentTx = tx[tx.length - 1]?.value || 0;
+    const currentRxDropped = rxDropped[rxDropped.length - 1]?.value || 0;
+    const currentTxDropped = txDropped[txDropped.length - 1]?.value || 0;
     const hoveredRxPoint = hoveredIndex !== null && rxPoints[hoveredIndex];
     const hoveredTxPoint = hoveredIndex !== null && txPoints[hoveredIndex];
+    const hoveredRxDropped = hoveredIndex !== null && rxDropped[hoveredIndex];
+    const hoveredTxDropped = hoveredIndex !== null && txDropped[hoveredIndex];
+
+    const formatValue = isBandwidthView ? formatRate : formatPacketRate;
+    const unit = isBandwidthView ? '' : ' pkt';
 
     return (
         <div className="relative">
             <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-3">
-                    <span className="text-xs font-medium text-gray-400">Network I/O</span>
+                    <span className="text-xs font-medium text-gray-400">Network</span>
+                    {/* View toggle */}
+                    <div className="flex items-center gap-0.5 bg-gray-800 rounded p-0.5">
+                        <button
+                            onClick={() => setViewMode('bandwidth')}
+                            className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
+                                viewMode === 'bandwidth'
+                                    ? 'bg-gray-600 text-white'
+                                    : 'text-gray-400 hover:text-gray-300'
+                            }`}
+                        >
+                            Bytes
+                        </button>
+                        <button
+                            onClick={() => setViewMode('packets')}
+                            className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
+                                viewMode === 'packets'
+                                    ? 'bg-gray-600 text-white'
+                                    : 'text-gray-400 hover:text-gray-300'
+                            }`}
+                        >
+                            Packets
+                        </button>
+                    </div>
                     <div className="flex items-center gap-2 text-xs">
                         {hasRx && (
                             <span className="flex items-center gap-1 text-cyan-400">
@@ -569,9 +620,14 @@ const NetworkChart = React.memo(({ data, duration }) => {
                         )}
                     </div>
                 </div>
-                <div className="text-xs">
-                    {hasRx && <span className="text-cyan-400 mr-2">↓{formatRate(currentRx)}</span>}
-                    {hasTx && <span className="text-yellow-400">↑{formatRate(currentTx)}</span>}
+                <div className="text-xs flex items-center gap-2">
+                    {hasRx && <span className="text-cyan-400">↓{formatValue(currentRx)}</span>}
+                    {hasTx && <span className="text-yellow-400">↑{formatValue(currentTx)}</span>}
+                    {!isBandwidthView && (currentRxDropped > 0 || currentTxDropped > 0) && (
+                        <span className="text-red-400" title="Dropped packets">
+                            ⚠ {formatPacketRate(currentRxDropped + currentTxDropped)} dropped
+                        </span>
+                    )}
                 </div>
             </div>
             <div ref={containerRef} className="h-36 bg-background rounded border border-border relative"
@@ -601,9 +657,14 @@ const NetworkChart = React.memo(({ data, duration }) => {
                 </svg>
                 {(hoveredRxPoint || hoveredTxPoint) && (
                     <div className="absolute z-10 pointer-events-none bg-surface border border-border rounded px-2 py-1 text-xs"
-                        style={{ left: Math.min(mousePos.x + 10, containerRef.current?.offsetWidth - 120 || 0), top: mousePos.y - 40 }}>
-                        {hoveredRxPoint && <div className="text-cyan-400">RX: {formatRate(hoveredRxPoint.value)}</div>}
-                        {hoveredTxPoint && <div className="text-yellow-400">TX: {formatRate(hoveredTxPoint.value)}</div>}
+                        style={{ left: Math.min(mousePos.x + 10, containerRef.current?.offsetWidth - 140 || 0), top: mousePos.y - 50 }}>
+                        {hoveredRxPoint && <div className="text-cyan-400">RX: {formatValue(hoveredRxPoint.value)}</div>}
+                        {hoveredTxPoint && <div className="text-yellow-400">TX: {formatValue(hoveredTxPoint.value)}</div>}
+                        {!isBandwidthView && (hoveredRxDropped || hoveredTxDropped) && (
+                            <div className="text-red-400 text-[10px] mt-0.5">
+                                Dropped: ↓{formatPacketRate(hoveredRxDropped?.value || 0)} ↑{formatPacketRate(hoveredTxDropped?.value || 0)}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

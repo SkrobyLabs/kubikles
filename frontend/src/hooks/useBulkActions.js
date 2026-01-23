@@ -101,7 +101,8 @@ export function useBulkActions(config) {
                 if (isNamespaced) {
                     await api(currentContext, namespace, name);
                 } else {
-                    await api(currentContext, name);
+                    // Cluster-scoped resources only take (name), not context
+                    await api(name);
                 }
                 results.push({ name, namespace: namespace || '', success: true, message: '' });
                 Logger.info(`${resourceLabel} ${action}d`, { namespace, name });

@@ -14,7 +14,7 @@ export const useServiceAccountActions = () => {
         const tabId = `serviceaccount-${serviceAccount.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${serviceAccount.metadata.name}`,
+            title: `${serviceAccount.metadata.name}`,
             content: (
                 <YamlEditor
                     resourceType="serviceaccount"

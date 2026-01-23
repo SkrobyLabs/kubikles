@@ -212,6 +212,8 @@ export function GetMetricsRequestStats():Promise<main.MetricsRequestStats>;
 
 export function GetMutatingWebhookConfigurationYaml(arg1:string):Promise<string>;
 
+export function GetNamespaceMetricsHistory(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string):Promise<k8s.NamespaceMetricsHistory>;
+
 export function GetNamespaceResourceCounts(arg1:string):Promise<k8s.NamespaceResourceCounts>;
 
 export function GetNamespaceYAML(arg1:string):Promise<string>;

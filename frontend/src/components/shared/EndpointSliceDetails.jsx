@@ -1,12 +1,58 @@
 import React from 'react';
-import DetailsPanel from './DetailsPanel';
+import { PencilSquareIcon, ShareIcon, QueueListIcon } from '@heroicons/react/24/outline';
+import { useK8s } from '../../context/K8sContext';
+import { useUI } from '../../context/UIContext';
 import { formatAge } from '../../utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
+import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function EndpointSliceDetails({ endpointSlice, tabContext }) {
+export default function EndpointSliceDetails({ endpointSlice, tabContext = '' }) {
+    const { currentContext } = useK8s();
+    const { openTab, closeTab } = useUI();
+
     const metadata = endpointSlice?.metadata || {};
     const endpoints = endpointSlice?.endpoints || [];
     const ports = endpointSlice?.ports || [];
+
+    const isStale = tabContext && tabContext !== currentContext;
+    const name = metadata.name;
+    const namespace = metadata.namespace;
+
+    const handleEditYaml = () => {
+        const tabId = `yaml-endpointslice-${endpointSlice.metadata?.uid}`;
+        openTab({
+            id: tabId,
+            title: `${name}`,
+            icon: QueueListIcon,
+            actionLabel: 'Edit',
+            content: (
+                <YamlEditor
+                    resourceType="endpointslice"
+                    namespace={namespace}
+                    resourceName={name}
+                    onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
+
+    const handleShowDependencies = () => {
+        const tabId = `deps-endpointslice-${endpointSlice.metadata?.uid}`;
+        openTab({
+            id: tabId,
+            title: `${name}`,
+            icon: QueueListIcon,
+            content: (
+                <DependencyGraph
+                    resourceType="endpointslice"
+                    namespace={namespace}
+                    resourceName={name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
 
     const basicInfo = [
         { label: 'Name', value: metadata.name },
@@ -21,11 +67,6 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext }) {
         return metadata.labels?.['kubernetes.io/service-name'] || '-';
     };
 
-    const formatPorts = () => {
-        if (!ports || ports.length === 0) return '-';
-        return ports.map(p => `${p.port}/${p.protocol || 'TCP'}${p.name ? ` (${p.name})` : ''}`).join(', ');
-    };
-
     const getEndpointStatus = (endpoint) => {
         const conditions = endpoint.conditions || {};
         if (conditions.ready === true) return { text: 'Ready', color: 'text-green-400' };
@@ -35,11 +76,37 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext }) {
     };
 
     return (
-        <DetailsPanel
-            title={metadata.name}
-            subtitle="EndpointSlice"
-        >
-            <div className="space-y-6 p-4">
+        <div className="flex flex-col h-full bg-background">
+            {/* Header Bar */}
+            <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
+                <div className="flex items-center gap-4">
+                    <div className="text-sm font-medium text-gray-400">
+                        {namespace}/{name}
+                    </div>
+                    {/* Action Icons */}
+                    <div className="flex items-center gap-1 ml-2">
+                        <button
+                            onClick={handleEditYaml}
+                            className={`p-1.5 rounded transition-colors ${isStale ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                            title="Edit YAML"
+                            disabled={isStale}
+                        >
+                            <PencilSquareIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={handleShowDependencies}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title="Dependencies"
+                        >
+                            <ShareIcon className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="h-full overflow-auto p-4">
+            <div className="space-y-6">
                 {/* Basic Info */}
                 <div>
                     <h3 className="text-sm font-medium text-gray-400 mb-3">Basic Information</h3>
@@ -144,6 +211,7 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext }) {
                     <AnnotationsDisplay annotations={metadata.annotations} />
                 </div>
             </div>
-        </DetailsPanel>
+            </div>
+        </div>
     );
 }

@@ -391,6 +391,216 @@ const CountChart = React.memo(({ data, color, label, duration }) => {
     );
 });
 
+// Network I/O chart with bandwidth and packets view toggle
+const NetworkChart = React.memo(({ data, duration }) => {
+    const containerRef = useRef(null);
+    const [hoveredIndex, setHoveredIndex] = useState(null);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [viewMode, setViewMode] = useState('bandwidth'); // 'bandwidth' or 'packets'
+
+    const hasRxBytes = data?.receiveBytes?.length > 0;
+    const hasTxBytes = data?.transmitBytes?.length > 0;
+    const hasRxPackets = data?.receivePackets?.length > 0;
+    const hasTxPackets = data?.transmitPackets?.length > 0;
+    const hasRxDropped = data?.receiveDropped?.length > 0;
+    const hasTxDropped = data?.transmitDropped?.length > 0;
+
+    const hasBandwidth = hasRxBytes || hasTxBytes;
+    const hasPackets = hasRxPackets || hasTxPackets;
+
+    if (!hasBandwidth && !hasPackets) {
+        return (
+            <div className="relative">
+                <div className="text-sm font-medium text-gray-300 mb-2">Network I/O</div>
+                <div className="h-24 flex items-center justify-center text-gray-500 text-sm bg-background rounded border border-border">
+                    No data available
+                </div>
+            </div>
+        );
+    }
+
+    // Select data based on view mode
+    const isBandwidthView = viewMode === 'bandwidth';
+    const rx = isBandwidthView ? (data.receiveBytes || []) : (data.receivePackets || []);
+    const tx = isBandwidthView ? (data.transmitBytes || []) : (data.transmitPackets || []);
+    const rxDropped = data.receiveDropped || [];
+    const txDropped = data.transmitDropped || [];
+    const hasRx = isBandwidthView ? hasRxBytes : hasRxPackets;
+    const hasTx = isBandwidthView ? hasTxBytes : hasTxPackets;
+
+    const allValues = [...rx.map(d => d.value), ...tx.map(d => d.value)];
+    const max = Math.max(...allValues, 1);
+    const yMax = max * 1.1;
+    const yRange = yMax || 1;
+
+    const width = 400;
+    const height = 100;
+    const paddingLeft = 55;
+    const paddingRight = 20;
+    const paddingTop = 15;
+    const paddingBottom = 25;
+    const chartWidth = width - paddingLeft - paddingRight;
+    const chartHeight = height - paddingTop - paddingBottom;
+
+    const baseData = hasRx ? rx : tx;
+    const generatePoints = (dataPoints) => {
+        return dataPoints.map((d, i) => {
+            const x = paddingLeft + (i / (dataPoints.length - 1)) * chartWidth;
+            const y = paddingTop + chartHeight - (d.value / yRange) * chartHeight;
+            return { x, y, value: d.value, timestamp: d.timestamp };
+        });
+    };
+
+    const rxPoints = hasRx ? generatePoints(rx) : [];
+    const txPoints = hasTx ? generatePoints(tx) : [];
+
+    const createPath = (points) => points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+    const handleMouseMove = useCallback((e) => {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const zoom = parseFloat(document.body.style.zoom) || 1;
+        const mouseX = e.clientX / zoom;
+        const mouseY = e.clientY / zoom;
+
+        const viewBoxAspect = width / height;
+        const containerAspect = rect.width / rect.height;
+        let svgRenderWidth;
+        if (containerAspect > viewBoxAspect) {
+            svgRenderWidth = rect.height * viewBoxAspect;
+        } else {
+            svgRenderWidth = rect.width;
+        }
+
+        const svgX = ((mouseX - rect.left) / svgRenderWidth) * width;
+        if (svgX >= paddingLeft && svgX <= width - paddingRight) {
+            const chartX = svgX - paddingLeft;
+            const index = Math.round((chartX / chartWidth) * (baseData.length - 1));
+            setHoveredIndex(Math.max(0, Math.min(baseData.length - 1, index)));
+            setMousePos({ x: mouseX - rect.left, y: mouseY - rect.top });
+        } else {
+            setHoveredIndex(null);
+        }
+    }, [baseData.length, chartWidth]);
+
+    const formatRate = (value) => {
+        if (value == null || isNaN(value)) return '-';
+        return `${formatBytes(value)}/s`;
+    };
+
+    const formatPacketRate = (value) => {
+        if (value == null || isNaN(value)) return '-';
+        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M/s`;
+        if (value >= 1000) return `${(value / 1000).toFixed(1)}K/s`;
+        return `${Math.round(value)}/s`;
+    };
+
+    const currentRx = rx[rx.length - 1]?.value || 0;
+    const currentTx = tx[tx.length - 1]?.value || 0;
+    const currentRxDropped = rxDropped[rxDropped.length - 1]?.value || 0;
+    const currentTxDropped = txDropped[txDropped.length - 1]?.value || 0;
+    const hoveredRxPoint = hoveredIndex !== null && rxPoints[hoveredIndex];
+    const hoveredTxPoint = hoveredIndex !== null && txPoints[hoveredIndex];
+    const hoveredRxDropped = hoveredIndex !== null && rxDropped[hoveredIndex];
+    const hoveredTxDropped = hoveredIndex !== null && txDropped[hoveredIndex];
+
+    const formatValue = isBandwidthView ? formatRate : formatPacketRate;
+
+    return (
+        <div className="relative">
+            <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-3">
+                    <span className="text-xs font-medium text-gray-400">Network</span>
+                    {/* View toggle */}
+                    <div className="flex items-center gap-0.5 bg-gray-800 rounded p-0.5">
+                        <button
+                            onClick={() => setViewMode('bandwidth')}
+                            className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
+                                viewMode === 'bandwidth'
+                                    ? 'bg-gray-600 text-white'
+                                    : 'text-gray-400 hover:text-gray-300'
+                            }`}
+                        >
+                            Bytes
+                        </button>
+                        <button
+                            onClick={() => setViewMode('packets')}
+                            className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
+                                viewMode === 'packets'
+                                    ? 'bg-gray-600 text-white'
+                                    : 'text-gray-400 hover:text-gray-300'
+                            }`}
+                        >
+                            Packets
+                        </button>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                        {hasRx && (
+                            <span className="flex items-center gap-1 text-cyan-400">
+                                <span className="w-3 h-0.5 bg-cyan-500"></span>
+                                RX
+                            </span>
+                        )}
+                        {hasTx && (
+                            <span className="flex items-center gap-1 text-yellow-400">
+                                <span className="w-3 h-0.5 bg-yellow-500"></span>
+                                TX
+                            </span>
+                        )}
+                    </div>
+                </div>
+                <div className="text-xs flex items-center gap-2">
+                    {hasRx && <span className="text-cyan-400">↓{formatValue(currentRx)}</span>}
+                    {hasTx && <span className="text-yellow-400">↑{formatValue(currentTx)}</span>}
+                    {!isBandwidthView && (currentRxDropped > 0 || currentTxDropped > 0) && (
+                        <span className="text-red-400" title="Dropped packets">
+                            ⚠ {formatPacketRate(currentRxDropped + currentTxDropped)} dropped
+                        </span>
+                    )}
+                </div>
+            </div>
+            <div ref={containerRef} className="h-24 bg-background rounded border border-border relative"
+                onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)}>
+                <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet" className="w-full h-full">
+                    <line x1={paddingLeft} y1={paddingTop + chartHeight} x2={width - paddingRight} y2={paddingTop + chartHeight}
+                        className="stroke-gray-700" strokeWidth="0.5" />
+
+                    {/* RX line (cyan) */}
+                    {rxPoints.length > 0 && (
+                        <path d={createPath(rxPoints)} fill="none" className="stroke-cyan-500" strokeWidth="2" strokeLinecap="round" />
+                    )}
+
+                    {/* TX line (yellow) */}
+                    {txPoints.length > 0 && (
+                        <path d={createPath(txPoints)} fill="none" className="stroke-yellow-500" strokeWidth="2" strokeLinecap="round" />
+                    )}
+
+                    {hoveredRxPoint && (
+                        <circle cx={hoveredRxPoint.x} cy={hoveredRxPoint.y} r="3"
+                            className="fill-cyan-500" stroke="white" strokeWidth="1.5" />
+                    )}
+                    {hoveredTxPoint && (
+                        <circle cx={hoveredTxPoint.x} cy={hoveredTxPoint.y} r="3"
+                            className="fill-yellow-500" stroke="white" strokeWidth="1.5" />
+                    )}
+                </svg>
+                {(hoveredRxPoint || hoveredTxPoint) && (
+                    <div className="absolute z-10 pointer-events-none bg-surface border border-border rounded px-2 py-1 text-xs"
+                        style={{ left: Math.min(mousePos.x + 10, containerRef.current?.offsetWidth - 140 || 0), top: mousePos.y - 50 }}>
+                        {hoveredRxPoint && <div className="text-cyan-400">RX: {formatValue(hoveredRxPoint.value)}</div>}
+                        {hoveredTxPoint && <div className="text-yellow-400">TX: {formatValue(hoveredTxPoint.value)}</div>}
+                        {!isBandwidthView && (hoveredRxDropped || hoveredTxDropped) && (
+                            <div className="text-red-400 text-[10px] mt-0.5">
+                                Dropped: ↓{formatPacketRate(hoveredRxDropped?.value || 0)} ↑{formatPacketRate(hoveredTxDropped?.value || 0)}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+});
+
 const DURATIONS = [
     { value: '1h', label: '1h' },
     { value: '6h', label: '6h' },
@@ -568,8 +778,8 @@ export default function ControllerMetricsTab({ namespace, name, controllerType, 
                             />
                         </div>
 
-                        {/* Pod count and Restarts */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* Pod count, Restarts, and Network */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                             <CountChart
                                 data={metricsData.pods?.running}
                                 color="stroke-green-500"
@@ -580,6 +790,10 @@ export default function ControllerMetricsTab({ namespace, name, controllerType, 
                                 data={metricsData.restarts}
                                 color="stroke-red-500"
                                 label="Total Restarts"
+                                duration={duration}
+                            />
+                            <NetworkChart
+                                data={metricsData.network}
                                 duration={duration}
                             />
                         </div>

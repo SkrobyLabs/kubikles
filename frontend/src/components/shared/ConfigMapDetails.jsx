@@ -173,8 +173,9 @@ function ConfigMapDataTab({ configMap }) {
 
 export default function ConfigMapDetails({ configMap, tabContext = '' }) {
     const { currentContext } = useK8s();
-    const { openTab, closeTab } = useUI();
-    const [activeTab, setActiveTab] = useState(TAB_INFO);
+    const { openTab, closeTab, getDetailTab, setDetailTab } = useUI();
+    const activeTab = getDetailTab('configmap', TAB_INFO);
+    const setActiveTab = (tab) => setDetailTab('configmap', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
 
@@ -189,7 +190,7 @@ export default function ConfigMapDetails({ configMap, tabContext = '' }) {
         const tabId = `yaml-configmap-${configMap.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${name}`,
+            title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="configmap"
@@ -206,7 +207,7 @@ export default function ConfigMapDetails({ configMap, tabContext = '' }) {
         const tabId = `deps-configmap-${configMap.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${name}`,
+            title: `${name}`,
             content: (
                 <DependencyGraph
                     resourceType="configmap"

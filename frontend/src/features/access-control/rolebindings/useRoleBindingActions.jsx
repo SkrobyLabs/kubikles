@@ -14,7 +14,7 @@ export const useRoleBindingActions = () => {
         const tabId = `rolebinding-${roleBinding.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${roleBinding.metadata.name}`,
+            title: `${roleBinding.metadata.name}`,
             content: (
                 <YamlEditor
                     resourceType="rolebinding"

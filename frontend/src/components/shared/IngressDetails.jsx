@@ -44,7 +44,7 @@ export default function IngressDetails({ ingress, tabContext = '' }) {
         const tabId = `yaml-ingress-${ingress.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${name}`,
+            title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="ingress"
@@ -61,7 +61,7 @@ export default function IngressDetails({ ingress, tabContext = '' }) {
         const tabId = `deps-ingress-${ingress.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${name}`,
+            title: `${name}`,
             content: (
                 <DependencyGraph
                     resourceType="ingress"

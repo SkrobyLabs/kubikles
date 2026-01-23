@@ -14,7 +14,7 @@ export const useRoleActions = () => {
         const tabId = `role-${role.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${role.metadata.name}`,
+            title: `${role.metadata.name}`,
             content: (
                 <YamlEditor
                     resourceType="role"

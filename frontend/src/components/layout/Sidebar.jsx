@@ -38,7 +38,6 @@ import {
     BugAntIcon
 } from '@heroicons/react/24/outline';
 import { useConfig } from '../../context/ConfigContext';
-import { useTheme } from '../../context/ThemeContext';
 import { usePerformancePanel } from '../../hooks/usePerformancePanel.jsx';
 import { useDebugLogs } from '../../hooks/useDebugLogs.jsx';
 import SearchSelect from '../shared/SearchSelect';
@@ -55,11 +54,8 @@ export default function Sidebar({
     const { openConfigEditor } = useConfig();
     const { openPerformancePanel } = usePerformancePanel();
     const { toggleDebug } = useDebugLogs();
-    const { uiFont, monoFont, setUiFont, setMonoFont, uiFonts, monoFonts } = useTheme();
-
     // Settings menu state
     const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
-    const [fontSubmenu, setFontSubmenu] = useState(null); // 'ui' | 'mono' | null
 
     // Version info
     const [versionInfo, setVersionInfo] = useState(null);
@@ -72,16 +68,12 @@ export default function Sidebar({
 
     // Close settings menu on click outside
     useEffect(() => {
-        if (!settingsMenuOpen) {
-            setFontSubmenu(null);
-            return;
-        }
+        if (!settingsMenuOpen) return;
 
         const handleClickOutside = (event) => {
             if (settingsButtonRef.current && !settingsButtonRef.current.contains(event.target) &&
                 settingsMenuRef.current && !settingsMenuRef.current.contains(event.target)) {
                 setSettingsMenuOpen(false);
-                setFontSubmenu(null);
             }
         };
 
@@ -526,69 +518,6 @@ export default function Sidebar({
                                 <BugAntIcon className="h-4 w-4" />
                                 <span className="flex-1">Debug</span>
                             </button>
-                            <div className="border-t border-border my-1" />
-                            {/* UI Font Selector */}
-                            <div className="relative">
-                                <button
-                                    onClick={() => setFontSubmenu(fontSubmenu === 'ui' ? null : 'ui')}
-                                    className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center justify-between"
-                                >
-                                    <span>UI Font</span>
-                                    <span className="text-xs text-gray-500">{uiFonts.find(f => f.id === uiFont)?.name}</span>
-                                </button>
-                                {fontSubmenu === 'ui' && (
-                                    <div className="absolute left-full top-0 ml-1 w-40 bg-surface-light border border-border rounded-md shadow-lg py-1">
-                                        {uiFonts.map(font => (
-                                            <button
-                                                key={font.id}
-                                                onClick={() => {
-                                                    setUiFont(font.id);
-                                                    setFontSubmenu(null);
-                                                }}
-                                                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
-                                                    uiFont === font.id
-                                                        ? 'text-primary bg-primary/10'
-                                                        : 'text-gray-300 hover:bg-surface-hover'
-                                                }`}
-                                            >
-                                                {uiFont === font.id && <span className="text-primary">&#10003;</span>}
-                                                <span className={uiFont === font.id ? '' : 'ml-5'}>{font.name}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            {/* Mono Font Selector */}
-                            <div className="relative">
-                                <button
-                                    onClick={() => setFontSubmenu(fontSubmenu === 'mono' ? null : 'mono')}
-                                    className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center justify-between"
-                                >
-                                    <span>Mono Font</span>
-                                    <span className="text-xs text-gray-500">{monoFonts.find(f => f.id === monoFont)?.name}</span>
-                                </button>
-                                {fontSubmenu === 'mono' && (
-                                    <div className="absolute left-full top-0 ml-1 w-40 bg-surface-light border border-border rounded-md shadow-lg py-1">
-                                        {monoFonts.map(font => (
-                                            <button
-                                                key={font.id}
-                                                onClick={() => {
-                                                    setMonoFont(font.id);
-                                                    setFontSubmenu(null);
-                                                }}
-                                                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
-                                                    monoFont === font.id
-                                                        ? 'text-primary bg-primary/10'
-                                                        : 'text-gray-300 hover:bg-surface-hover'
-                                                }`}
-                                            >
-                                                {monoFont === font.id && <span className="text-primary">&#10003;</span>}
-                                                <span className={monoFont === font.id ? '' : 'ml-5'}>{font.name}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
                         </div>,
                         document.body
                     )}

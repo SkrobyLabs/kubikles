@@ -6,6 +6,7 @@ import LogViewer from '../../../components/shared/log-viewer';
 import { LazyTerminal as Terminal, LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../../../components/lazy';
 import PodDetails from '../../../components/shared/PodDetails';
 import Logger from '../../../utils/Logger';
+import { CubeIcon } from '@heroicons/react/24/outline';
 
 export const usePodActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
@@ -13,10 +14,12 @@ export const usePodActions = () => {
 
     const openLogs = (namespace, podName, containers = [], siblingPods = [], podContainerMap = {}, ownerName = '', podCreationTime = '') => {
         Logger.info("Opening logs", { namespace, pod: podName });
-        const tabId = `logs-${podName}`;
+        const tabId = `logs-pod-${podName}`;
         openTab({
             id: tabId,
-            title: `Logs: ${podName}`,
+            title: podName,
+            icon: CubeIcon,
+            actionLabel: 'Logs',
             keepAlive: true,
             content: <LogViewer namespace={namespace} pod={podName} containers={containers} siblingPods={siblingPods} podContainerMap={podContainerMap} ownerName={ownerName} podCreationTime={podCreationTime} tabContext={currentContext} />
         });
@@ -26,10 +29,12 @@ export const usePodActions = () => {
         Logger.info("Opening shell", { namespace, pod: podName });
         try {
             const url = await OpenTerminal(currentContext, namespace, podName, "");
-            const tabId = `shell-${podName}`;
+            const tabId = `terminal-pod-${podName}`;
             openTab({
                 id: tabId,
-                title: `Shell: ${podName}`,
+                title: podName,
+                icon: CubeIcon,
+                actionLabel: 'Shell',
                 keepAlive: true,
                 content: <Terminal url={url} />
             });
@@ -42,10 +47,12 @@ export const usePodActions = () => {
 
     const handleEditYaml = (pod) => {
         Logger.info("Opening YAML editor", { namespace: pod.metadata.namespace, pod: pod.metadata.name });
-        const tabId = `yaml-${pod.metadata.uid}`;
+        const tabId = `yaml-pod-${pod.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${pod.metadata.name}`,
+            title: pod.metadata.name,
+            icon: CubeIcon,
+            actionLabel: 'Edit',
             content: (
                 <YamlEditor
                     resourceType="pod"
@@ -60,10 +67,12 @@ export const usePodActions = () => {
 
     const handleShowDependencies = (pod) => {
         Logger.info("Opening dependency graph", { namespace: pod.metadata.namespace, pod: pod.metadata.name });
-        const tabId = `deps-${pod.metadata.uid}`;
+        const tabId = `deps-pod-${pod.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${pod.metadata.name}`,
+            title: pod.metadata.name,
+            icon: CubeIcon,
+            actionLabel: 'Deps',
             content: (
                 <DependencyGraph
                     resourceType="pod"
@@ -77,10 +86,11 @@ export const usePodActions = () => {
 
     const handleShowDetails = (pod) => {
         Logger.info("Opening pod details", { namespace: pod.metadata.namespace, pod: pod.metadata.name });
-        const tabId = `details-${pod.metadata.uid}`;
+        const tabId = `details-pod-${pod.metadata.uid}`;
         openTab({
             id: tabId,
             title: `${pod.metadata.name}`,
+            icon: CubeIcon,
             content: (
                 <PodDetails
                     pod={pod}

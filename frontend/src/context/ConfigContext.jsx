@@ -30,7 +30,9 @@ const defaultConfig = {
         // How long "Copied!" feedback shows (ms)
         copyFeedbackMs: 2000,
         // Enable Cmd/Ctrl+Scroll to zoom in/out
-        scrollZoomEnabled: false
+        scrollZoomEnabled: false,
+        // Display resource type icons in tab titles
+        showTabIcons: true
     },
     metrics: {
         // Poll interval for node/pod metrics (ms)

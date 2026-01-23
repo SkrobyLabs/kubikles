@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { ChevronDownIcon, SignalIcon, ClipboardDocumentIcon, CheckIcon, PlayIcon, StopIcon, TrashIcon, ArrowTopRightOnSquareIcon, CommandLineIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, SignalIcon, ClipboardDocumentIcon, CheckIcon, PlayIcon, StopIcon, TrashIcon, ArrowTopRightOnSquareIcon, CommandLineIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context/K8sContext';
 import { usePortForwards } from '../../hooks/usePortForwards';
 import { useUI } from '../../context/UIContext';
@@ -7,6 +7,7 @@ import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
 import { OpenTerminal } from '../../../wailsjs/go/main/App';
 import PodPortForwardDialog from './PodPortForwardDialog';
 import { LazyTerminal as Terminal } from '../lazy';
+import EnvVarSection from './EnvVarDisplay';
 
 // Copy button component
 const CopyButton = ({ value }) => {
@@ -254,10 +255,12 @@ export default function PodContainersTab({ pod, isStale }) {
     const handleShell = useCallback(async (containerName) => {
         try {
             const url = await OpenTerminal(currentContext, pod.metadata?.namespace, pod.metadata?.name, containerName);
-            const tabId = `shell-${pod.metadata?.name}-${containerName}`;
+            const tabId = `terminal-pod-${pod.metadata?.name}-${containerName}`;
             openTab({
                 id: tabId,
-                title: `Shell: ${pod.metadata?.name}/${containerName}`,
+                title: `${pod.metadata?.name}/${containerName}`,
+                icon: CubeIcon,
+                actionLabel: 'Shell',
                 keepAlive: true,
                 content: <Terminal url={url} />
             });
@@ -506,6 +509,22 @@ export default function PodContainersTab({ pod, isStale }) {
                     <DetailRow label="Working Dir" value={spec.workingDir} />
                 )}
             </div>
+
+            {/* Environment Variables Section */}
+            {(spec?.env?.length > 0 || spec?.envFrom?.length > 0) && (
+                <div className="bg-surface rounded-lg border border-border p-4 mt-4">
+                    <h3 className="text-sm font-medium text-gray-300 mb-3 pb-2 border-b border-border">
+                        Environment Variables
+                    </h3>
+                    <EnvVarSection
+                        env={spec.env}
+                        envFrom={spec.envFrom}
+                        pod={pod}
+                        namespace={pod.metadata?.namespace}
+                        isStale={isStale}
+                    />
+                </div>
+            )}
 
             {/* Port Forward Dialog */}
             <PodPortForwardDialog

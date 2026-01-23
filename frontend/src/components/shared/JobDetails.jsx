@@ -37,7 +37,7 @@ export default function JobDetails({ job, tabContext = '' }) {
         const tabId = `yaml-job-${job.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${name}`,
+            title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="job"
@@ -54,7 +54,7 @@ export default function JobDetails({ job, tabContext = '' }) {
         const tabId = `deps-job-${job.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${name}`,
+            title: `${name}`,
             content: (
                 <DependencyGraph
                     resourceType="job"

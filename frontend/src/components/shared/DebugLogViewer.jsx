@@ -44,10 +44,10 @@ export default function DebugLogViewer({ logs, onClear, onDownload }) {
                     <button
                         onClick={onDownload}
                         className="flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-1 rounded hover:bg-primary/20 transition-colors"
-                        title="Download Logs"
+                        title="Save Logs"
                     >
                         <ArrowDownTrayIcon className="h-3 w-3" />
-                        Download
+                        Save
                     </button>
                 </div>
             </div>

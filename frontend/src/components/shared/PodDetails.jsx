@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { LockClosedIcon, DocumentTextIcon, PencilSquareIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context/K8sContext';
+import { useUI } from '../../context/UIContext';
 import { usePodActions } from '../../features/workloads/pods/usePodActions';
 import { ListPods } from '../../../wailsjs/go/main/App';
 import { getPodController } from '../../utils/k8s-helpers';
@@ -19,7 +20,9 @@ const TAB_METRICS = 'metrics';
 export default function PodDetails({ pod, tabContext = '' }) {
     const { currentContext } = useK8s();
     const { openLogs, handleEditYaml, handleShowDependencies } = usePodActions();
-    const [activeTab, setActiveTab] = useState(TAB_BASIC);
+    const { getDetailTab, setDetailTab } = useUI();
+    const activeTab = getDetailTab('pod', TAB_BASIC);
+    const setActiveTab = (tab) => setDetailTab('pod', tab);
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;

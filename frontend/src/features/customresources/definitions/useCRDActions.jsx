@@ -14,7 +14,7 @@ export const useCRDActions = () => {
         const tabId = `crd-${crd.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${crd.metadata.name}`,
+            title: `${crd.metadata.name}`,
             content: (
                 <YamlEditor
                     resourceType="crd"

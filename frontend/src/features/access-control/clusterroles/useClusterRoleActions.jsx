@@ -14,7 +14,7 @@ export const useClusterRoleActions = () => {
         const tabId = `clusterrole-${clusterRole.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${clusterRole.metadata.name}`,
+            title: `${clusterRole.metadata.name}`,
             content: (
                 <YamlEditor
                     resourceType="clusterrole"

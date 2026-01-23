@@ -1,8 +1,10 @@
 import React from 'react';
-import DetailsPanel from './DetailsPanel';
+import { PencilSquareIcon, ShareIcon, CheckCircleIcon, XCircleIcon, CpuChipIcon } from '@heroicons/react/24/outline';
+import { useK8s } from '../../context/K8sContext';
+import { useUI } from '../../context/UIContext';
 import { formatAge } from '../../utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 const BooleanBadge = ({ value, label }) => {
     return (
@@ -19,9 +21,51 @@ const BooleanBadge = ({ value, label }) => {
     );
 };
 
-export default function CSIDriverDetails({ csiDriver, tabContext }) {
+export default function CSIDriverDetails({ csiDriver, tabContext = '' }) {
+    const { currentContext } = useK8s();
+    const { openTab, closeTab } = useUI();
+
     const metadata = csiDriver?.metadata || {};
     const spec = csiDriver?.spec || {};
+
+    const isStale = tabContext && tabContext !== currentContext;
+    const name = metadata.name;
+
+    const handleEditYaml = () => {
+        const tabId = `yaml-csidriver-${csiDriver.metadata?.uid}`;
+        openTab({
+            id: tabId,
+            title: `${name}`,
+            icon: CpuChipIcon,
+            actionLabel: 'Edit',
+            content: (
+                <YamlEditor
+                    resourceType="csidriver"
+                    namespace=""
+                    resourceName={name}
+                    onClose={() => closeTab(tabId)}
+                    tabContext={currentContext}
+                />
+            )
+        });
+    };
+
+    const handleShowDependencies = () => {
+        const tabId = `deps-csidriver-${csiDriver.metadata?.uid}`;
+        openTab({
+            id: tabId,
+            title: `${name}`,
+            icon: CpuChipIcon,
+            content: (
+                <DependencyGraph
+                    resourceType="csidriver"
+                    namespace=""
+                    resourceName={name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
 
     const basicInfo = [
         { label: 'Name', value: metadata.name },
@@ -40,11 +84,37 @@ export default function CSIDriverDetails({ csiDriver, tabContext }) {
     const tokenRequests = spec.tokenRequests || [];
 
     return (
-        <DetailsPanel
-            title={metadata.name}
-            subtitle="CSI Driver"
-        >
-            <div className="space-y-6 p-4">
+        <div className="flex flex-col h-full bg-background">
+            {/* Header Bar */}
+            <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
+                <div className="flex items-center gap-4">
+                    <div className="text-sm font-medium text-gray-400">
+                        {name}
+                    </div>
+                    {/* Action Icons */}
+                    <div className="flex items-center gap-1 ml-2">
+                        <button
+                            onClick={handleEditYaml}
+                            className={`p-1.5 rounded transition-colors ${isStale ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                            title="Edit YAML"
+                            disabled={isStale}
+                        >
+                            <PencilSquareIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={handleShowDependencies}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title="Dependencies"
+                        >
+                            <ShareIcon className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="h-full overflow-auto p-4">
+            <div className="space-y-6">
                 {/* Basic Info */}
                 <div>
                     <h3 className="text-sm font-medium text-gray-400 mb-3">Basic Information</h3>
@@ -144,6 +214,7 @@ export default function CSIDriverDetails({ csiDriver, tabContext }) {
                     <AnnotationsDisplay annotations={metadata.annotations} />
                 </div>
             </div>
-        </DetailsPanel>
+            </div>
+        </div>
     );
 }

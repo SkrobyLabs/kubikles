@@ -12,8 +12,9 @@ const TAB_METRICS = 'metrics';
 
 export default function ReplicaSetDetails({ replicaSet, tabContext = '' }) {
     const { currentContext } = useK8s();
-    const { openTab, closeTab, navigateWithSearch } = useUI();
-    const [activeTab, setActiveTab] = useState(TAB_BASIC);
+    const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
+    const activeTab = getDetailTab('replicaset', TAB_BASIC);
+    const setActiveTab = (tab) => setDetailTab('replicaset', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
 
@@ -37,7 +38,7 @@ export default function ReplicaSetDetails({ replicaSet, tabContext = '' }) {
         const tabId = `yaml-replicaset-${replicaSet.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${name}`,
+            title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="replicaset"
@@ -54,7 +55,7 @@ export default function ReplicaSetDetails({ replicaSet, tabContext = '' }) {
         const tabId = `deps-replicaset-${replicaSet.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${name}`,
+            title: `${name}`,
             content: (
                 <DependencyGraph
                     resourceType="replicaset"

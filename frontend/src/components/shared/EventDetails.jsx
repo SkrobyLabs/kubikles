@@ -43,7 +43,7 @@ export default function EventDetails({ event, tabContext = '' }) {
         const tabId = `yaml-event-${event.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${event.metadata.name}`,
+            title: `${event.metadata.name}`,
             content: (
                 <YamlEditor
                     resourceType="event"

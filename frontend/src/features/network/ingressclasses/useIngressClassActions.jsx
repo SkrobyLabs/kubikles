@@ -4,6 +4,7 @@ import { useK8s } from '../../../context/K8sContext';
 import { DeleteIngressClass } from '../../../../wailsjs/go/main/App';
 import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
 import Logger from '../../../utils/Logger';
+import { TagIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 
 export const useIngressClassActions = () => {
     const { openTab, closeTab, showConfirm } = useUI();
@@ -14,7 +15,9 @@ export const useIngressClassActions = () => {
         const tabId = `yaml-ingressclass-${ingressClass.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${ingressClass.metadata.name}`,
+            title: `${ingressClass.metadata.name}`,
+            icon: TagIcon,
+            actionLabel: 'Edit',
             content: (
                 <YamlEditor
                     resourceType="ingressclass"

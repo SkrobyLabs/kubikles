@@ -163,7 +163,7 @@ export default function SearchSelect({
     };
 
     return (
-        <div className={`relative ${className}`} ref={wrapperRef}>
+        <div className={`relative no-drag ${className}`} ref={wrapperRef}>
             <button
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 disabled={disabled}

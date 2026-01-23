@@ -82,7 +82,7 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
         const tabId = `yaml-pvc-${pvc.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${name}`,
+            title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="pvc"
@@ -99,7 +99,7 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
         const tabId = `deps-pvc-${pvc.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${name}`,
+            title: `${name}`,
             content: (
                 <DependencyGraph
                     resourceType="pvc"

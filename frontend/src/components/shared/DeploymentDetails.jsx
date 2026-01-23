@@ -12,8 +12,9 @@ const TAB_METRICS = 'metrics';
 
 export default function DeploymentDetails({ deployment, tabContext = '' }) {
     const { currentContext } = useK8s();
-    const { openTab, closeTab, navigateWithSearch } = useUI();
-    const [activeTab, setActiveTab] = useState(TAB_BASIC);
+    const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
+    const activeTab = getDetailTab('deployment', TAB_BASIC);
+    const setActiveTab = (tab) => setDetailTab('deployment', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
 
@@ -37,7 +38,7 @@ export default function DeploymentDetails({ deployment, tabContext = '' }) {
         const tabId = `yaml-deployment-${deployment.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${name}`,
+            title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="deployment"
@@ -54,7 +55,7 @@ export default function DeploymentDetails({ deployment, tabContext = '' }) {
         const tabId = `deps-deployment-${deployment.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${name}`,
+            title: `${name}`,
             content: (
                 <DependencyGraph
                     resourceType="deployment"

@@ -4076,6 +4076,47 @@ func (a *App) GetNodeMetricsHistory(requestId, prometheusNamespace, prometheusSe
 	return a.k8sClient.GetNodeMetricsHistoryWithContext(ctx, currentContext, info, nodeName, dur, 150)
 }
 
+// GetNamespaceMetricsHistory retrieves historical metrics for a namespace
+func (a *App) GetNamespaceMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, duration string) (*k8s.NamespaceMetricsHistory, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetNamespaceMetricsHistory called: context=%s, namespace=%s, duration=%s, requestId=%s", currentContext, namespace, duration, requestId)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+
+	// Parse duration
+	var dur time.Duration
+	switch duration {
+	case "1h":
+		dur = time.Hour
+	case "6h":
+		dur = 6 * time.Hour
+	case "24h":
+		dur = 24 * time.Hour
+	case "7d":
+		dur = 7 * 24 * time.Hour
+	case "30d":
+		dur = 30 * 24 * time.Hour
+	case "all":
+		dur = 365 * 24 * time.Hour
+	default:
+		dur = time.Hour
+	}
+
+	info := &k8s.PrometheusInfo{
+		Available: true,
+		Namespace: prometheusNamespace,
+		Service:   prometheusService,
+		Port:      prometheusPort,
+	}
+
+	// Start cancellable request
+	ctx := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId)
+
+	return a.k8sClient.GetNamespaceMetricsHistoryWithContext(ctx, currentContext, info, namespace, dur, 150)
+}
+
 // CancelMetricsRequest cancels an in-flight metrics request
 func (a *App) CancelMetricsRequest(requestId string) bool {
 	return a.metricsRequestManager.CancelRequest(requestId)

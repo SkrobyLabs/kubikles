@@ -5,6 +5,7 @@ import { DeleteSecret } from '../../../../wailsjs/go/main/App';
 import SecretEditor from '../../../components/shared/SecretEditor';
 import { LazyDependencyGraph as DependencyGraph } from '../../../components/lazy';
 import Logger from '../../../utils/Logger';
+import { LockClosedIcon, PencilSquareIcon, ShareIcon } from '@heroicons/react/24/outline';
 
 export const useSecretActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
@@ -15,7 +16,9 @@ export const useSecretActions = () => {
         const tabId = `secret-${secret.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${secret.metadata.name}`,
+            title: `${secret.metadata.name}`,
+            icon: LockClosedIcon,
+            actionLabel: 'Edit',
             content: (
                 <SecretEditor
                     namespace={secret.metadata.namespace}
@@ -32,7 +35,9 @@ export const useSecretActions = () => {
         const tabId = `secret-${secret.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${secret.metadata.name}`,
+            title: `${secret.metadata.name}`,
+            icon: LockClosedIcon,
+            actionLabel: 'Edit',
             content: (
                 <SecretEditor
                     namespace={secret.metadata.namespace}
@@ -50,7 +55,8 @@ export const useSecretActions = () => {
         const tabId = `deps-secret-${secret.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${secret.metadata.name}`,
+            title: `${secret.metadata.name}`,
+            icon: LockClosedIcon,
             content: (
                 <DependencyGraph
                     resourceType="secret"

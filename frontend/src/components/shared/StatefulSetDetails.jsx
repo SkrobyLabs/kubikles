@@ -12,8 +12,9 @@ const TAB_METRICS = 'metrics';
 
 export default function StatefulSetDetails({ statefulSet, tabContext = '' }) {
     const { currentContext } = useK8s();
-    const { openTab, closeTab, navigateWithSearch } = useUI();
-    const [activeTab, setActiveTab] = useState(TAB_BASIC);
+    const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
+    const activeTab = getDetailTab('statefulset', TAB_BASIC);
+    const setActiveTab = (tab) => setDetailTab('statefulset', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
 
@@ -39,7 +40,7 @@ export default function StatefulSetDetails({ statefulSet, tabContext = '' }) {
         const tabId = `yaml-statefulset-${statefulSet.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${name}`,
+            title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="statefulset"
@@ -56,7 +57,7 @@ export default function StatefulSetDetails({ statefulSet, tabContext = '' }) {
         const tabId = `deps-statefulset-${statefulSet.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Deps: ${name}`,
+            title: `${name}`,
             content: (
                 <DependencyGraph
                     resourceType="statefulset"

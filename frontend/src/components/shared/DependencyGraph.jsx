@@ -255,7 +255,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
 
         openTab({
             id: tabId,
-            title: `Edit: ${node.label}`,
+            title: `${node.label}`,
             content: (
                 <YamlEditor
                     resourceType={resType}
@@ -274,7 +274,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
 
         openTab({
             id: tabId,
-            title: `Deps: ${node.label}`,
+            title: `${node.label}`,
             content: (
                 <DependencyGraph
                     resourceType={resType}

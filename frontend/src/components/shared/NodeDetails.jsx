@@ -27,8 +27,9 @@ function formatCPU(cpu) {
 
 export default function NodeDetails({ node, tabContext = '' }) {
     const { currentContext } = useK8s();
-    const { openTab, closeTab, navigateWithSearch } = useUI();
-    const [activeTab, setActiveTab] = useState(TAB_BASIC);
+    const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
+    const activeTab = getDetailTab('node', TAB_BASIC);
+    const setActiveTab = (tab) => setDetailTab('node', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
 
@@ -54,7 +55,7 @@ export default function NodeDetails({ node, tabContext = '' }) {
         const tabId = `yaml-node-${node.metadata.uid}`;
         openTab({
             id: tabId,
-            title: `Edit: ${name}`,
+            title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="node"

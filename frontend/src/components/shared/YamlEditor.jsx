@@ -84,7 +84,7 @@ export default function YamlEditor({
 
         openTab({
             id: tabId,
-            title: `Edit: ${controllerOwner.name}`,
+            title: `${controllerOwner.name}`,
             content: (
                 <YamlEditor
                     resourceType={ownerType}

@@ -4,6 +4,7 @@ import { DeleteNode, SetNodeSchedulable } from '../../../../wailsjs/go/main/App'
 import NodeDetails from '../../../components/shared/NodeDetails';
 import NodeShellTab from './NodeShellTab';
 import Logger from '../../../utils/Logger';
+import { ServerIcon, CommandLineIcon } from '@heroicons/react/24/outline';
 
 export const useNodeActions = (refetch) => {
     const {
@@ -40,12 +41,14 @@ export const useNodeActions = (refetch) => {
 
     const handleShell = useCallback((node) => {
         const nodeName = node.metadata.name;
-        const tabId = `node-shell-${node.metadata.uid}`;
+        const tabId = `terminal-node-${node.metadata.uid}`;
         Logger.info("Opening shell on node", { node: nodeName });
 
         openTab({
             id: tabId,
-            title: `Shell: ${nodeName}`,
+            title: nodeName,
+            icon: ServerIcon,
+            actionLabel: 'Shell',
             keepAlive: true,
             content: <NodeShellTab nodeName={nodeName} context={currentContext} />
         });
