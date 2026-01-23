@@ -21,6 +21,11 @@ func (m *Manager) AddEntriesWithPortRedirect(entries []Entry, httpsPort, httpPor
 		return nil
 	}
 
+	// SECURITY: Validate all hostnames before using in shell commands
+	if err := ValidateEntries(entries); err != nil {
+		return fmt.Errorf("invalid hostname: %w", err)
+	}
+
 	// First, read current content and remove any existing managed block
 	content, err := os.ReadFile(m.hostsPath)
 	if err != nil {

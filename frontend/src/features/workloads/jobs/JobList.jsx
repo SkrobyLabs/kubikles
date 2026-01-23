@@ -14,6 +14,7 @@ import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import { formatAge } from '../../../utils/formatting';
 import { getOwnerViewId } from '../../../utils/owner-navigation';
 import { getJobConditionColor } from '../../../utils/k8s-helpers';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 // Get controller from owner references
 function getController(item) {
@@ -32,8 +33,7 @@ export default function JobList({ isVisible }) {
             ensureCRDsLoaded();
         }
     }, [isVisible, ensureCRDsLoaded]);
-    const { activeMenuId, setActiveMenuId } = useMenu();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
 
     const {
@@ -51,17 +51,6 @@ export default function JobList({ isVisible }) {
         getYamlApi: GetJobYaml,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
     const { jobs, loading } = useJobs(currentContext, selectedNamespaces, isVisible);
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useJobActions();
 

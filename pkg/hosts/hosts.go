@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -19,6 +20,37 @@ const (
 type Entry struct {
 	IP       string `json:"ip"`
 	Hostname string `json:"hostname"`
+}
+
+// hostnameRegex validates RFC 1123 hostnames
+// Allows: a-z, A-Z, 0-9, hyphen, dot
+// Max 253 chars total, max 63 chars per label
+var hostnameRegex = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`)
+
+// ValidateHostname checks if a hostname is safe for use in shell commands.
+// Returns error if hostname contains characters that could enable command injection.
+func ValidateHostname(hostname string) error {
+	if hostname == "" {
+		return fmt.Errorf("hostname cannot be empty")
+	}
+	if len(hostname) > 253 {
+		return fmt.Errorf("hostname exceeds maximum length of 253 characters")
+	}
+	if !hostnameRegex.MatchString(hostname) {
+		return fmt.Errorf("hostname contains invalid characters: %q", hostname)
+	}
+	return nil
+}
+
+// ValidateEntries validates all entries and returns an error if any hostname is invalid.
+// This MUST be called before passing entries to AddEntries or AddEntriesWithPortRedirect.
+func ValidateEntries(entries []Entry) error {
+	for _, e := range entries {
+		if err := ValidateHostname(e.Hostname); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Manager handles hosts file operations

@@ -13,6 +13,7 @@ import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteReplicaSet, GetReplicaSetYaml } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
 import { getOwnerViewId } from '../../../utils/owner-navigation';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 // Get controller from owner references
 function getController(item) {
@@ -31,8 +32,7 @@ export default function ReplicaSetList({ isVisible }) {
             ensureCRDsLoaded();
         }
     }, [isVisible, ensureCRDsLoaded]);
-    const { activeMenuId, setActiveMenuId } = useMenu();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
 
     const {
@@ -50,17 +50,6 @@ export default function ReplicaSetList({ isVisible }) {
         getYamlApi: GetReplicaSetYaml,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
     const { replicaSets, loading } = useReplicaSets(currentContext, selectedNamespaces, isVisible);
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useReplicaSetActions();
 

@@ -3,6 +3,8 @@ package main
 import (
 	"embed"
 
+	"kubikles/pkg/crashlog"
+
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
@@ -17,6 +19,11 @@ import (
 var assets embed.FS
 
 func main() {
+	// Initialize crash logging - writes to kubikles.log in config dir
+	cleanup := crashlog.Init()
+	defer cleanup()
+	defer crashlog.LogPanic()
+
 	// Create an instance of the app structure
 	app := NewApp()
 
@@ -109,6 +116,6 @@ func main() {
 	})
 
 	if err != nil {
-		println("Error:", err.Error())
+		crashlog.LogFatal("Wails error: %v", err)
 	}
 }

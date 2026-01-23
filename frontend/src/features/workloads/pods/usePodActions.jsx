@@ -1,7 +1,7 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
-import { DeletePod, ForceDeletePod, OpenTerminal } from '../../../../wailsjs/go/main/App';
+import { DeletePod, ForceDeletePod } from '../../../../wailsjs/go/main/App';
 import LogViewer from '../../../components/shared/log-viewer';
 import { LazyTerminal as Terminal, LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../../../components/lazy';
 import PodDetails from '../../../components/shared/PodDetails';
@@ -25,24 +25,25 @@ export const usePodActions = () => {
         });
     };
 
-    const handleShell = async (namespace, podName) => {
+    const handleShell = (namespace, podName) => {
         Logger.info("Opening shell", { namespace, pod: podName });
-        try {
-            const url = await OpenTerminal(currentContext, namespace, podName, "");
-            const tabId = `terminal-pod-${podName}`;
-            openTab({
-                id: tabId,
-                title: podName,
-                icon: CubeIcon,
-                actionLabel: 'Shell',
-                keepAlive: true,
-                content: <Terminal url={url} />
-            });
-            Logger.info("Shell opened successfully", { namespace, pod: podName });
-        } catch (err) {
-            Logger.error("Failed to open shell", err);
-            alert("Failed to open shell: " + err);
-        }
+        const tabId = `terminal-pod-${podName}`;
+        openTab({
+            id: tabId,
+            title: podName,
+            icon: CubeIcon,
+            actionLabel: 'Shell',
+            keepAlive: true,
+            content: (
+                <Terminal
+                    namespace={namespace}
+                    pod={podName}
+                    container=""
+                    context={currentContext}
+                />
+            )
+        });
+        Logger.info("Shell opened successfully", { namespace, pod: podName });
     };
 
     const handleEditYaml = (pod) => {

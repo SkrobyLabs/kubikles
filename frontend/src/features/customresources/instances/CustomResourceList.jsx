@@ -1,10 +1,9 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import { useCustomResources } from '../../../hooks/useCustomResources';
 import { useCRDPrinterColumns } from '../../../hooks/useCRDPrinterColumns';
 import { useK8s } from '../../../context/K8sContext';
-import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteCustomResource, GetCustomResourceYaml } from '../../../../wailsjs/go/main/App';
@@ -12,6 +11,7 @@ import { formatAge } from '../../../utils/formatting';
 import { EllipsisVerticalIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import CustomResourceActionsMenu from './CustomResourceActionsMenu';
 import { useCustomResourceActions } from './useCustomResourceActions';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 /**
  * Evaluates a JSONPath expression against an object.
@@ -97,9 +97,8 @@ const renderColumnValue = (value, type) => {
  */
 export default function CustomResourceList({ crdInfo, isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useMenu();
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { handleEditYaml } = useCustomResourceActions(crdInfo);
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
     // Wrap APIs to match useBulkActions signature
@@ -140,17 +139,6 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
 
     // Fetch CRD printer columns
     const { columns: printerColumns } = useCRDPrinterColumns(crdInfo.group, crdInfo.resource, isVisible);
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
 
     const { resources, loading, error } = useCustomResources(
         currentContext,

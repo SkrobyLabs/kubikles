@@ -3,7 +3,6 @@ import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import { useStorageClasses } from '../../../hooks/resources';
 import { useK8s } from '../../../context/K8sContext';
-import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteStorageClass, GetStorageClassYaml } from '../../../../wailsjs/go/main/App';
@@ -11,6 +10,7 @@ import { formatAge } from '../../../utils/formatting';
 import { EllipsisVerticalIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import StorageClassActionsMenu from './StorageClassActionsMenu';
 import { useStorageClassActions } from './useStorageClassActions';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 // Get color for reclaim policy
 const getReclaimPolicyColor = (policy) => {
@@ -40,10 +40,9 @@ const getBindingModeColor = (mode) => {
 
 export default function StorageClassList({ isVisible }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useMenu();
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { storageClasses, loading } = useStorageClasses(currentContext, isVisible);
     const { handleShowDetails, handleEditYaml } = useStorageClassActions();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
     // Unified bulk actions (also used for single delete)
@@ -62,17 +61,6 @@ export default function StorageClassList({ isVisible }) {
         getYamlApi: GetStorageClassYaml,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
 
     const columns = useMemo(() => [
         {

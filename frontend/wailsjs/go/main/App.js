@@ -26,6 +26,10 @@ export function ClearPrometheusConfig() {
   return window['go']['main']['App']['ClearPrometheusConfig']();
 }
 
+export function CloseTerminalSession(arg1) {
+  return window['go']['main']['App']['CloseTerminalSession'](arg1);
+}
+
 export function CollectIngressHostnames(arg1) {
   return window['go']['main']['App']['CollectIngressHostnames'](arg1);
 }
@@ -310,6 +314,10 @@ export function GetControllerMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6, 
   return window['go']['main']['App']['GetControllerMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
 
+export function GetCrashLogPath() {
+  return window['go']['main']['App']['GetCrashLogPath']();
+}
+
 export function GetCronJobYaml(arg1, arg2) {
   return window['go']['main']['App']['GetCronJobYaml'](arg1, arg2);
 }
@@ -388,6 +396,10 @@ export function GetIngressYaml(arg1, arg2) {
 
 export function GetJobYaml(arg1, arg2) {
   return window['go']['main']['App']['GetJobYaml'](arg1, arg2);
+}
+
+export function GetK8sInitError() {
+  return window['go']['main']['App']['GetK8sInitError']();
 }
 
 export function GetLeaseYaml(arg1, arg2) {
@@ -766,12 +778,8 @@ export function LogoutOCIRegistry(arg1) {
   return window['go']['main']['App']['LogoutOCIRegistry'](arg1);
 }
 
-export function OpenTerminal(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['OpenTerminal'](arg1, arg2, arg3, arg4);
-}
-
-export function OpenTerminalWithCommand(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['OpenTerminalWithCommand'](arg1, arg2, arg3, arg4, arg5);
+export function OpenCrashLogDir() {
+  return window['go']['main']['App']['OpenCrashLogDir']();
 }
 
 export function OpenThemesDir() {
@@ -796,6 +804,10 @@ export function RemoveOCIRegistry(arg1) {
 
 export function ResizePVC(arg1, arg2, arg3) {
   return window['go']['main']['App']['ResizePVC'](arg1, arg2, arg3);
+}
+
+export function ResizeTerminal(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ResizeTerminal'](arg1, arg2, arg3);
 }
 
 export function RestartDaemonSet(arg1, arg2) {
@@ -842,12 +854,20 @@ export function SearchHelmChart(arg1) {
   return window['go']['main']['App']['SearchHelmChart'](arg1);
 }
 
+export function SendTerminalInput(arg1, arg2) {
+  return window['go']['main']['App']['SendTerminalInput'](arg1, arg2);
+}
+
 export function SetEventCoalescerFrameInterval(arg1) {
   return window['go']['main']['App']['SetEventCoalescerFrameInterval'](arg1);
 }
 
 export function SetHelmRepositoryPriority(arg1, arg2) {
   return window['go']['main']['App']['SetHelmRepositoryPriority'](arg1, arg2);
+}
+
+export function SetK8sAPITimeout(arg1) {
+  return window['go']['main']['App']['SetK8sAPITimeout'](arg1);
 }
 
 export function SetNodeSchedulable(arg1, arg2) {
@@ -890,6 +910,10 @@ export function StartPortForwardsWithMode(arg1, arg2) {
   return window['go']['main']['App']['StartPortForwardsWithMode'](arg1, arg2);
 }
 
+export function StartTerminalSession(arg1) {
+  return window['go']['main']['App']['StartTerminalSession'](arg1);
+}
+
 export function StopAllPortForwards() {
   return window['go']['main']['App']['StopAllPortForwards']();
 }
@@ -924,6 +948,10 @@ export function SuspendCronJob(arg1, arg2, arg3) {
 
 export function SwitchContext(arg1) {
   return window['go']['main']['App']['SwitchContext'](arg1);
+}
+
+export function TestCrash(arg1) {
+  return window['go']['main']['App']['TestCrash'](arg1);
 }
 
 export function TestEmit() {

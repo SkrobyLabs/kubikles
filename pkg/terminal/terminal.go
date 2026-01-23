@@ -1,50 +1,7 @@
 package terminal
 
-import (
-	"log"
-	"net"
-	"net/http"
-
-	"github.com/gorilla/websocket"
-)
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins for local app
-	},
-}
-
-type Service struct {
-	Port int
-}
-
-func NewService() *Service {
-	return &Service{}
-}
-
-func (s *Service) Start() error {
-	listener, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		return err
-	}
-	s.Port = listener.Addr().(*net.TCPAddr).Port
-
-	http.HandleFunc("/terminal", s.handleTerminal)
-
-	go func() {
-		if err := http.Serve(listener, nil); err != nil {
-			log.Printf("Terminal server error: %v", err)
-		}
-	}()
-
-	log.Printf("Terminal server started on port %d", s.Port)
-	return nil
-}
-
-// buildKubectlArgs constructs the kubectl exec command arguments
-func buildKubectlArgs(namespace, pod, container, contextName, customCommand string) []string {
+// BuildKubectlArgs constructs the kubectl exec command arguments
+func BuildKubectlArgs(namespace, pod, container, contextName, customCommand string) []string {
 	cmdArgs := []string{"exec", "-it"}
 	if contextName != "" {
 		cmdArgs = append(cmdArgs, "--context", contextName)

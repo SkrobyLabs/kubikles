@@ -2,12 +2,14 @@ import React, { useEffect, useRef } from 'react';
 import { Terminal as XTerm } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
+import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
+import { StartTerminalSession, SendTerminalInput, ResizeTerminal, CloseTerminalSession } from '../../../wailsjs/go/main/App';
 import 'xterm/css/xterm.css';
 
-const Terminal = ({ url, onClose }) => {
+const Terminal = ({ namespace, pod, container, context, command, onClose }) => {
     const terminalRef = useRef(null);
     const xtermRef = useRef(null);
-    const wsRef = useRef(null);
+    const sessionIdRef = useRef(null);
     const fitAddonRef = useRef(null);
     const webglAddonRef = useRef(null);
     const onCloseRef = useRef(onClose);
@@ -69,54 +71,58 @@ const Terminal = ({ url, onClose }) => {
 
         xtermRef.current = term;
 
-        // Connect to WebSocket
-        const ws = new WebSocket(url);
-        wsRef.current = ws;
+        // Start terminal session via Wails
+        StartTerminalSession({ namespace, pod, container, context, command })
+            .then(sessionId => {
+                sessionIdRef.current = sessionId;
+                term.write('\r\n\x1b[32mConnected to terminal...\x1b[0m\r\n');
 
-        ws.onopen = () => {
-            console.log("WebSocket connected");
-            term.write('\r\n\x1b[32mConnected to terminal...\x1b[0m\r\n');
-        };
+                // Send initial resize after connection
+                setTimeout(() => {
+                    const dims = fitAddon.proposeDimensions();
+                    if (dims && sessionIdRef.current) {
+                        ResizeTerminal(sessionIdRef.current, dims.cols, dims.rows);
+                    }
+                }, 150);
+            })
+            .catch(err => {
+                term.write(`\r\n\x1b[31mFailed to start terminal: ${err}\x1b[0m\r\n`);
+            });
 
-        ws.onmessage = (event) => {
-            if (event.data instanceof Blob) {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    term.write(reader.result);
-                };
-                reader.readAsText(event.data);
-            } else {
+        // Listen for terminal output events
+        const handleTerminalOutput = (event) => {
+            if (!sessionIdRef.current || event.sessionId !== sessionIdRef.current) return;
+
+            if (event.done) {
+                term.write('\r\n\x1b[33mProcess exited. Terminal disconnected.\x1b[0m\r\n');
+                sessionIdRef.current = null;
+                return;
+            }
+
+            if (event.error) {
+                term.write(`\r\n\x1b[31mError: ${event.error}\x1b[0m\r\n`);
+                return;
+            }
+
+            if (event.data) {
                 term.write(event.data);
             }
         };
 
-        ws.onclose = () => {
-            // Backend sends a disconnect message, so we don't need to print another one here.
-            console.log("WebSocket closed");
-        };
+        EventsOn('terminal:output', handleTerminalOutput);
 
-        ws.onerror = (err) => {
-            // Suppress generic "Event" errors which happen on normal close
-            if (err instanceof Event && err.type === 'error') {
-                console.log("WebSocket connection closed (cleanly or with generic error)");
-                return;
-            }
-            console.error("WebSocket error:", err);
-            term.write(`\r\n\x1b[31mWebSocket error: ${err}\x1b[0m\r\n`);
-        };
-
+        // Send input to terminal
         term.onData((data) => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(data);
+            if (sessionIdRef.current) {
+                SendTerminalInput(sessionIdRef.current, data);
             }
         });
 
-        // Handle resize and notify backend of new dimensions
+        // Handle resize
         const sendResizeToBackend = () => {
             const dims = fitAddon.proposeDimensions();
-            if (dims && ws.readyState === WebSocket.OPEN) {
-                // Send resize message as JSON with special prefix
-                ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }));
+            if (dims && sessionIdRef.current) {
+                ResizeTerminal(sessionIdRef.current, dims.cols, dims.rows);
             }
         };
 
@@ -126,32 +132,31 @@ const Terminal = ({ url, onClose }) => {
         };
         window.addEventListener('resize', handleResize);
 
-        // Send initial size after connection opens
-        const originalOnOpen = ws.onopen;
-        ws.onopen = (event) => {
-            originalOnOpen?.(event);
-            setTimeout(sendResizeToBackend, 150);
-        };
-
         // Listen for terminal resize events from xterm
         term.onResize(({ cols, rows }) => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+            if (sessionIdRef.current) {
+                ResizeTerminal(sessionIdRef.current, cols, rows);
             }
         });
 
         // Cleanup
         return () => {
             window.removeEventListener('resize', handleResize);
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.close();
+            EventsOff('terminal:output');
+
+            // Close the terminal session
+            if (sessionIdRef.current) {
+                CloseTerminalSession(sessionIdRef.current);
+                sessionIdRef.current = null;
             }
+
             // Dispose WebGL addon before terminal
             if (webglAddonRef.current) {
                 webglAddonRef.current.dispose();
                 webglAddonRef.current = null;
             }
             term.dispose();
+
             // Delay onClose to handle React Strict Mode double-invocation
             // If the effect re-runs (strict mode), this timeout will be cancelled
             if (onCloseRef.current) {
@@ -162,7 +167,7 @@ const Terminal = ({ url, onClose }) => {
                 }, 100);
             }
         };
-    }, [url]);
+    }, [namespace, pod, container, context, command]);
 
     // Re-fit when the container size changes or becomes visible
     useEffect(() => {

@@ -16,6 +16,7 @@ import { DeletePod, GetPodYaml } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
 import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusPriority, getPodController } from '../../../utils/k8s-helpers';
 import { getOwnerViewId } from '../../../utils/owner-navigation';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 export default function PodList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces, crds, ensureCRDsLoaded } = useK8s();
@@ -27,8 +28,7 @@ export default function PodList({ isVisible }) {
             ensureCRDsLoaded();
         }
     }, [isVisible, ensureCRDsLoaded]);
-    const { activeMenuId, setActiveMenuId } = useMenu();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
 
     const {
@@ -46,17 +46,6 @@ export default function PodList({ isVisible }) {
         getYamlApi: GetPodYaml,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
     const { pods, loading } = usePods(currentContext, selectedNamespaces, isVisible);
     const { metrics, available: metricsAvailable } = usePodMetrics(isVisible);
     const { openLogs, handleShell, handleEditYaml, handleShowDependencies, handleShowDetails } = usePodActions();

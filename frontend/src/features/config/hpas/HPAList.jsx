@@ -6,18 +6,17 @@ import HPAActionsMenu from './HPAActionsMenu';
 import { useHPAs } from '../../../hooks/resources';
 import { useHPAActions } from './useHPAActions';
 import { useK8s } from '../../../context/K8sContext';
-import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteHPA, GetHPAYaml } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 export default function HPAList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useMenu();
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { hpas, loading } = useHPAs(currentContext, selectedNamespaces, isVisible);
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useHPAActions();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
     const {
@@ -35,17 +34,6 @@ export default function HPAList({ isVisible }) {
         getYamlApi: GetHPAYaml,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
 
     const getScaleTarget = (hpa) => {
         const ref = hpa.spec?.scaleTargetRef;

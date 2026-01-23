@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ListContexts, GetCurrentContext, SwitchContext, ListNamespaces, StartPortForwardsWithMode, ListCRDs } from '../../wailsjs/go/main/App';
+import { ListContexts, GetCurrentContext, SwitchContext, ListNamespaces, StartPortForwardsWithMode, ListCRDs, GetK8sInitError } from '../../wailsjs/go/main/App';
 import Logger from '../utils/Logger';
 
 // Helper to get port forward auto-start mode from settings
@@ -287,7 +287,29 @@ export const K8sProvider = ({ children }) => {
 
     // Initial Load
     useEffect(() => {
-        fetchContexts();
+        // Check for K8s client initialization errors first
+        const checkInitError = async () => {
+            try {
+                const initError = await GetK8sInitError();
+                if (initError) {
+                    Logger.error("K8s client initialization failed", { error: initError });
+                    setConnectionError({
+                        title: 'Kubernetes Client Failed to Initialize',
+                        message: initError,
+                        suggestion: 'Check your kubeconfig file (~/.kube/config) and ensure it is valid.',
+                        provider: 'unknown',
+                        raw: initError
+                    });
+                    setIsConnecting(false);
+                    return;
+                }
+            } catch (err) {
+                Logger.error("Failed to check K8s init error", err);
+            }
+            // If no init error, proceed with normal loading
+            fetchContexts();
+        };
+        checkInitError();
     }, []);
 
     // Fetch namespaces when context changes

@@ -52,7 +52,7 @@ import LeaseList from './features/config/leases/LeaseList';
 import CSIDriverList from './features/storage/csidrivers/CSIDriverList';
 import CSINodeList from './features/storage/csinodes/CSINodeList';
 import { usePerformancePanel } from './hooks/usePerformancePanel.jsx';
-import { LogDebug, SetEventCoalescerFrameInterval } from '../wailsjs/go/main/App';
+import { LogDebug, SetEventCoalescerFrameInterval, SetK8sAPITimeout } from '../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
 import ConfirmModal from './components/shared/ConfirmModal';
 import ConfigEditor from './components/shared/ConfigEditor';
@@ -507,6 +507,12 @@ function MainLayout() {
     useEffect(() => {
         SetEventCoalescerFrameInterval(eventCoalescerMs);
     }, [eventCoalescerMs]);
+
+    // Apply Kubernetes API timeout from config
+    const apiTimeoutMs = getConfig('kubernetes.apiTimeoutMs') || 60000;
+    useEffect(() => {
+        SetK8sAPITimeout(apiTimeoutMs);
+    }, [apiTimeoutMs]);
 
     // Resizing Logic
     const handleMouseDown = (e) => {

@@ -4,7 +4,6 @@ import { useK8s } from '../../context/K8sContext';
 import { usePortForwards } from '../../hooks/usePortForwards';
 import { useUI } from '../../context/UIContext';
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
-import { OpenTerminal } from '../../../wailsjs/go/main/App';
 import PodPortForwardDialog from './PodPortForwardDialog';
 import { LazyTerminal as Terminal } from '../lazy';
 import EnvVarSection from './EnvVarDisplay';
@@ -252,21 +251,23 @@ export default function PodContainersTab({ pod, isStale }) {
     }, []);
 
     // Handle shell into container
-    const handleShell = useCallback(async (containerName) => {
-        try {
-            const url = await OpenTerminal(currentContext, pod.metadata?.namespace, pod.metadata?.name, containerName);
-            const tabId = `terminal-pod-${pod.metadata?.name}-${containerName}`;
-            openTab({
-                id: tabId,
-                title: `${pod.metadata?.name}/${containerName}`,
-                icon: CubeIcon,
-                actionLabel: 'Shell',
-                keepAlive: true,
-                content: <Terminal url={url} />
-            });
-        } catch (err) {
-            console.error('Failed to open shell:', err);
-        }
+    const handleShell = useCallback((containerName) => {
+        const tabId = `terminal-pod-${pod.metadata?.name}-${containerName}`;
+        openTab({
+            id: tabId,
+            title: `${pod.metadata?.name}/${containerName}`,
+            icon: CubeIcon,
+            actionLabel: 'Shell',
+            keepAlive: true,
+            content: (
+                <Terminal
+                    namespace={pod.metadata?.namespace}
+                    pod={pod.metadata?.name}
+                    container={containerName}
+                    context={currentContext}
+                />
+            )
+        });
     }, [currentContext, pod.metadata?.namespace, pod.metadata?.name, openTab]);
 
     // Get containers from spec and match with status

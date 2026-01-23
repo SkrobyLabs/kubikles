@@ -10,6 +10,7 @@ import { formatAge } from '../../../utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import NodeActionsMenu from './NodeActionsMenu';
 import { useNodeActions } from './useNodeActions';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 // Helper to get node conditions summary
 const getConditionsSummary = (node) => {
@@ -101,19 +102,7 @@ const TaintsCell = memo(function TaintsCell({ node }) {
 
 export default function NodeList({ isVisible }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useMenu();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { nodes, loading, refetch } = useNodes(currentContext, isVisible);
     const { metrics, available: metricsAvailable } = useNodeMetrics(isVisible);
     const { handleShowDetails, handleEditYaml, handleCordonUncordon, handleShell, handleDelete } = useNodeActions(refetch);

@@ -6,18 +6,17 @@ import EndpointSliceActionsMenu from './EndpointSliceActionsMenu';
 import { useEndpointSlices } from '../../../hooks/resources';
 import { useEndpointSliceActions } from './useEndpointSliceActions';
 import { useK8s } from '../../../context/K8sContext';
-import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteEndpointSlice, GetEndpointSliceYaml } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 export default function EndpointSliceList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useMenu();
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { endpointSlices, loading } = useEndpointSlices(currentContext, selectedNamespaces, isVisible);
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useEndpointSliceActions();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
     const {
@@ -35,17 +34,6 @@ export default function EndpointSliceList({ isVisible }) {
         getYamlApi: GetEndpointSliceYaml,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
 
     const getEndpointCount = (eps) => {
         return (eps.endpoints || []).length;

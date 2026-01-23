@@ -11,6 +11,7 @@ import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteNamespace, GetNamespaceYAML } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 // Get namespace status from conditions
 function getNamespaceStatus(namespace) {
@@ -33,8 +34,7 @@ function getStatusColor(status) {
 
 export default function NamespaceList({ isVisible }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useMenu();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
 
     // Unified bulk actions (also used for single delete)
@@ -53,17 +53,6 @@ export default function NamespaceList({ isVisible }) {
         getYamlApi: GetNamespaceYAML,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
     const { namespaces, loading } = useNamespacesList(currentContext, isVisible);
     const { handleShowDetails, handleEditYaml } = useNamespaceActions();
 

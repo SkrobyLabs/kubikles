@@ -12,11 +12,11 @@ import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteDeployment, RestartDeployment, GetDeploymentYaml } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
 import { getEffectivePodStatus, getPodStatusColor } from '../../../utils/k8s-helpers';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 export default function DeploymentList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useMenu();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
 
     // Unified bulk actions (also used for single delete/restart)
@@ -37,17 +37,6 @@ export default function DeploymentList({ isVisible }) {
         getYamlApi: GetDeploymentYaml,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
     // console.log("DeploymentList rendering");
     const { deployments, loading: deploymentsLoading } = useDeployments(currentContext, selectedNamespaces, isVisible);
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible); // Fetch pods for status

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LazyTerminal as Terminal } from '../../../components/lazy';
 import {
     CreateNodeDebugPod,
-    OpenTerminalWithCommand,
     DeletePod,
     ListPods
 } from '../../../../wailsjs/go/main/App';
@@ -38,7 +37,7 @@ const waitForPodRunning = async (namespace, podName, timeoutMs = 60000, pollInte
 
 const NodeShellTab = ({ nodeName, context }) => {
     const [state, setState] = useState('loading'); // loading, connected, error
-    const [terminalUrl, setTerminalUrl] = useState(null);
+    const [debugPodInfo, setDebugPodInfo] = useState(null);
     const [error, setError] = useState(null);
     const debugPodInfoRef = useRef(null);
     const initStartedRef = useRef(false);
@@ -51,16 +50,15 @@ const NodeShellTab = ({ nodeName, context }) => {
         const initialize = async () => {
             try {
                 Logger.info("Creating debug pod for node shell", { node: nodeName });
-                const debugPodInfo = await CreateNodeDebugPod(nodeName);
-                debugPodInfoRef.current = debugPodInfo;
-                Logger.info("Debug pod created", { podName: debugPodInfo.podName, namespace: debugPodInfo.namespace });
+                const podInfo = await CreateNodeDebugPod(nodeName);
+                debugPodInfoRef.current = podInfo;
+                setDebugPodInfo(podInfo);
+                Logger.info("Debug pod created", { podName: podInfo.podName, namespace: podInfo.namespace });
 
                 Logger.info("Waiting for debug pod to be running...");
-                await waitForPodRunning(debugPodInfo.namespace, debugPodInfo.podName);
+                await waitForPodRunning(podInfo.namespace, podInfo.podName);
                 Logger.info("Debug pod is running");
 
-                const url = await OpenTerminalWithCommand(context, debugPodInfo.namespace, debugPodInfo.podName, "shell", "nsenter");
-                setTerminalUrl(url);
                 setState('connected');
                 Logger.info("Shell opened successfully", { node: nodeName });
             } catch (err) {
@@ -116,7 +114,16 @@ const NodeShellTab = ({ nodeName, context }) => {
         );
     }
 
-    return <Terminal url={terminalUrl} onClose={handleTerminalClose} />;
+    return (
+        <Terminal
+            namespace={debugPodInfo?.namespace}
+            pod={debugPodInfo?.podName}
+            container="shell"
+            context={context}
+            command="nsenter"
+            onClose={handleTerminalClose}
+        />
+    );
 };
 
 export default NodeShellTab;

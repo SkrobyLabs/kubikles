@@ -66,14 +66,10 @@ export default function LogViewer({
     }, [getConfig]);
 
     // UI state
-    // Default to "All Pods" when there are multiple sibling pods
-    const [selectedPod, setSelectedPod] = useState(() =>
-        siblingPods.length > 1 ? ALL_PODS : pod
-    );
-    // Default to "All Containers" when there are multiple containers
-    const [selectedContainer, setSelectedContainer] = useState(() =>
-        containers.length > 1 ? ALL_CONTAINERS : (containers[0] || '')
-    );
+    // Always default to the specific pod that was requested
+    const [selectedPod, setSelectedPod] = useState(pod);
+    // Default to first container for the selected pod
+    const [selectedContainer, setSelectedContainer] = useState(containers[0] || '');
     const [wrapLines, setWrapLines] = useState(() => getSafeConfig('logs.lineWrap', true, v => typeof v === 'boolean'));
     const [showTimestamps, setShowTimestamps] = useState(() => getSafeConfig('logs.showTimestamps', false, v => typeof v === 'boolean'));
     const [showPrevious, setShowPrevious] = useState(false);

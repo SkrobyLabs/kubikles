@@ -45,6 +45,7 @@ type ActivePortForward struct {
 	// Internal fields (not serialized)
 	stopChan chan struct{}
 	doneChan chan struct{}
+	stopOnce sync.Once // Ensures stopChan is only closed once
 }
 
 // PortForwardEvent is emitted when port forward status changes
@@ -354,8 +355,10 @@ func (m *PortForwardManager) stopInternal(configID string, updateWasRunning bool
 
 	m.mutex.Unlock()
 
-	// Signal stop
-	close(af.stopChan)
+	// Signal stop (only once to prevent panic on double-close)
+	af.stopOnce.Do(func() {
+		close(af.stopChan)
+	})
 
 	// Wait for goroutine to finish (with timeout)
 	select {

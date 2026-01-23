@@ -6,21 +6,20 @@ import ServiceActionsMenu from './ServiceActionsMenu';
 import { useServices } from '../../../hooks/resources';
 import { useServiceActions } from './useServiceActions';
 import { useK8s } from '../../../context/K8sContext';
-import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteService, GetServiceYaml } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 // Helper to format ports display (avoids duplicate computation in render/getValue)
 const getPortsDisplay = (item) => item.spec?.ports?.map(p => `${p.port}/${p.protocol}`).join(', ') || '';
 
 export default function ServiceList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useMenu();
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { services, loading } = useServices(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleShowDependencies, handleShowDetails } = useServiceActions();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
     const {
@@ -38,17 +37,6 @@ export default function ServiceList({ isVisible }) {
         getYamlApi: GetServiceYaml,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },

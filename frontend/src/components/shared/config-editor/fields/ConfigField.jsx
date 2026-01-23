@@ -3,8 +3,9 @@ import BooleanField from './BooleanField';
 import NumberField from './NumberField';
 import EnumField from './EnumField';
 import TextField from './TextField';
+import ReadonlyField from './ReadonlyField';
 
-export default function ConfigField({ schema, value, onChange, isModified }) {
+export default function ConfigField({ schema, value, onChange, isModified, asyncValue, onAction }) {
     const { type, label, description } = schema;
 
     switch (type) {
@@ -43,6 +44,18 @@ export default function ConfigField({ schema, value, onChange, isModified }) {
                     onChange={onChange}
                     isModified={isModified}
                     options={schema.options}
+                />
+            );
+
+        case 'readonly':
+            return (
+                <ReadonlyField
+                    label={label}
+                    description={description}
+                    value={asyncValue ?? value}
+                    showCopy={schema.showCopy !== false}
+                    showOpenFolder={schema.showOpenFolder}
+                    onOpenFolder={schema.action && onAction ? () => onAction(schema.action) : undefined}
                 />
             );
 

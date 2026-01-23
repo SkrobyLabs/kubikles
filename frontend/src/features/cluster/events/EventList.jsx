@@ -13,6 +13,7 @@ import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteEvent, GetEventYAML } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
 import { getOwnerViewId } from '../../../utils/owner-navigation';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 function getEventTypeColor(type) {
     switch (type) {
@@ -35,8 +36,7 @@ export default function EventList({ isVisible }) {
             ensureCRDsLoaded();
         }
     }, [isVisible, ensureCRDsLoaded]);
-    const { activeMenuId, setActiveMenuId } = useMenu();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
 
     // Unified bulk actions (also used for single delete)
@@ -55,17 +55,6 @@ export default function EventList({ isVisible }) {
         getYamlApi: GetEventYAML,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
     const { events, loading } = useEventsList(currentContext, selectedNamespaces, isVisible);
     const { handleShowDetails, handleEditYaml } = useEventActions();
 

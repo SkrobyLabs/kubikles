@@ -6,18 +6,17 @@ import CSINodeActionsMenu from './CSINodeActionsMenu';
 import { useCSINodes } from '../../../hooks/resources';
 import { useCSINodeActions } from './useCSINodeActions';
 import { useK8s } from '../../../context/K8sContext';
-import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteCSINode, GetCSINodeYaml } from '../../../../wailsjs/go/main/App';
 import { formatAge } from '../../../utils/formatting';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 export default function CSINodeList({ isVisible }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useMenu();
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { csiNodes, loading } = useCSINodes(currentContext, isVisible);
     const { handleShowDetails, handleEditYaml } = useCSINodeActions();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
     // Unified bulk actions (also used for single delete)
@@ -36,17 +35,6 @@ export default function CSINodeList({ isVisible }) {
         getYamlApi: GetCSINodeYaml,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
 
     const getDriverCount = (csiNode) => {
         const drivers = csiNode.spec?.drivers || [];

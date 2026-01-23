@@ -5,6 +5,7 @@ import {k8s} from '../models';
 import {helm} from '../models';
 import {v1} from '../models';
 import {v2} from '../models';
+import {terminal} from '../models';
 
 export function AddHelmRepository(arg1:string,arg2:string,arg3:number):Promise<void>;
 
@@ -17,6 +18,8 @@ export function CancelListRequest(arg1:string):Promise<boolean>;
 export function CancelMetricsRequest(arg1:string):Promise<boolean>;
 
 export function ClearPrometheusConfig():Promise<void>;
+
+export function CloseTerminalSession(arg1:string):Promise<void>;
 
 export function CollectIngressHostnames(arg1:Array<string>):Promise<Array<string>>;
 
@@ -160,6 +163,8 @@ export function GetConfigMapYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetControllerMetricsHistory(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string,arg7:string,arg8:string):Promise<k8s.ControllerMetricsHistory>;
 
+export function GetCrashLogPath():Promise<string>;
+
 export function GetCronJobYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetCurrentContext():Promise<string>;
@@ -199,6 +204,8 @@ export function GetIngressForwardState():Promise<main.IngressForwardState>;
 export function GetIngressYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetJobYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetK8sInitError():Promise<string>;
 
 export function GetLeaseYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -388,9 +395,7 @@ export function LoginOCIRegistry(arg1:string,arg2:string,arg3:string):Promise<vo
 
 export function LogoutOCIRegistry(arg1:string):Promise<void>;
 
-export function OpenTerminal(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
-
-export function OpenTerminalWithCommand(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
+export function OpenCrashLogDir():Promise<void>;
 
 export function OpenThemesDir():Promise<void>;
 
@@ -403,6 +408,8 @@ export function RemoveHelmRepository(arg1:string):Promise<void>;
 export function RemoveOCIRegistry(arg1:string):Promise<void>;
 
 export function ResizePVC(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<void>;
 
 export function RestartDaemonSet(arg1:string,arg2:string):Promise<void>;
 
@@ -426,9 +433,13 @@ export function SearchChartInSource(arg1:string,arg2:string):Promise<helm.ChartS
 
 export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;
 
+export function SendTerminalInput(arg1:string,arg2:string):Promise<void>;
+
 export function SetEventCoalescerFrameInterval(arg1:number):Promise<void>;
 
 export function SetHelmRepositoryPriority(arg1:string,arg2:number):Promise<void>;
+
+export function SetK8sAPITimeout(arg1:number):Promise<void>;
 
 export function SetNodeSchedulable(arg1:string,arg2:boolean):Promise<void>;
 
@@ -450,6 +461,8 @@ export function StartPortForward(arg1:string):Promise<void>;
 
 export function StartPortForwardsWithMode(arg1:string,arg2:string):Promise<void>;
 
+export function StartTerminalSession(arg1:terminal.SessionOptions):Promise<string>;
+
 export function StopAllPortForwards():Promise<void>;
 
 export function StopAllWatchers():Promise<void>;
@@ -467,6 +480,8 @@ export function SubscribeResourceWatcher(arg1:string,arg2:string):Promise<string
 export function SuspendCronJob(arg1:string,arg2:string,arg3:boolean):Promise<void>;
 
 export function SwitchContext(arg1:string):Promise<void>;
+
+export function TestCrash(arg1:boolean):Promise<void>;
 
 export function TestEmit():Promise<void>;
 

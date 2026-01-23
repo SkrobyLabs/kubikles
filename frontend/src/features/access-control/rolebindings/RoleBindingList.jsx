@@ -3,7 +3,6 @@ import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import { useRoleBindings } from '../../../hooks/resources';
 import { useK8s } from '../../../context/K8sContext';
-import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteRoleBinding, GetRoleBindingYaml } from '../../../../wailsjs/go/main/App';
@@ -11,13 +10,13 @@ import { formatAge } from '../../../utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import RoleBindingActionsMenu from './RoleBindingActionsMenu';
 import { useRoleBindingActions } from './useRoleBindingActions';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 export default function RoleBindingList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useMenu();
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { roleBindings, loading } = useRoleBindings(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml } = useRoleBindingActions();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
     // Unified bulk actions (also used for single delete)
@@ -36,17 +35,6 @@ export default function RoleBindingList({ isVisible }) {
         getYamlApi: GetRoleBindingYaml,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },

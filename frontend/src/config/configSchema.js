@@ -1,5 +1,17 @@
 // Configuration schema - single source of truth for property metadata
 export const configSchema = {
+    app: {
+        _meta: { label: 'App', description: 'Application information and diagnostics' },
+        crashLogPath: {
+            type: 'readonly',
+            label: 'Crash Log Location',
+            description: 'Log file for debugging crashes and errors',
+            asyncSource: 'crashLogPath',
+            showCopy: true,
+            showOpenFolder: true,
+            action: 'openCrashLogDir'
+        }
+    },
     logs: {
         _meta: { label: 'Logs', description: 'Log viewer settings' },
         lineWrap: {
@@ -75,11 +87,21 @@ export const configSchema = {
             }
         }
     },
-    metrics: {
-        _meta: { label: 'Kubernetes Metrics', description: 'CPU/Memory metrics from Kubernetes metrics-server' },
-        pollIntervalMs: {
+    kubernetes: {
+        _meta: { label: 'Kubernetes', description: 'Kubernetes API and metrics settings' },
+        apiTimeoutMs: {
             type: 'number',
-            label: 'Poll Interval',
+            label: 'API Timeout',
+            description: 'Timeout for Kubernetes API requests. Increase for slow clusters.',
+            min: 10000,
+            max: 300000,
+            step: 5000,
+            unit: 'ms',
+            default: 60000
+        },
+        metricsPollIntervalMs: {
+            type: 'number',
+            label: 'Metrics Poll Interval',
             description: 'How often to refresh CPU/Memory metrics in resource list views',
             min: 5000,
             max: 300000,

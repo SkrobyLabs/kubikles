@@ -11,11 +11,11 @@ import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ConfigMapActionsMenu from './ConfigMapActionsMenu';
 import { useConfigMapActions } from './useConfigMapActions';
 import Logger from '../../../utils/Logger';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 export default function ConfigMapList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useMenu();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
 
     const [bulkActionModal, setBulkActionModal] = useState({ isOpen: false, action: null, items: [] });
@@ -76,17 +76,6 @@ export default function ConfigMapList({ isVisible }) {
             if (err && err.toString() !== '') alert('Failed to save backup: ' + err);
         }
     }, []);
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
     const { configMaps, loading } = useConfigMaps(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleEditKeyValue, handleShowDependencies, handleDelete } = useConfigMapActions();
 

@@ -8,11 +8,11 @@ import { useHelmReleases } from '../../../hooks/useHelmReleases';
 import { useHelmReleaseActions } from './useHelmReleaseActions';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
-import { useMenu } from '../../../context/MenuContext';
 import { useNotification } from '../../../context/NotificationContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { ForceHelmReleaseStatus, UninstallHelmRelease, GetHelmReleaseValues } from '../../../../wailsjs/go/main/App';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 const formatAge = (timestamp) => {
     if (!timestamp) return '-';
@@ -58,9 +58,8 @@ const getStatusClass = (status) => {
 export default function HelmReleaseList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { openModal, closeModal } = useUI();
-    const { activeMenuId, setActiveMenuId } = useMenu();
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { addNotification } = useNotification();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [upgradeRelease, setUpgradeRelease] = useState(null);
     const selection = useSelection();
 
@@ -169,17 +168,6 @@ export default function HelmReleaseList({ isVisible }) {
     const handleRowClick = useCallback((item) => {
         handleOpenDetails(item);
     }, [handleOpenDetails]);
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
 
     const columns = useMemo(() => [
         {

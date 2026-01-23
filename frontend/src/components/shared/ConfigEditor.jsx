@@ -19,7 +19,8 @@ const configDescriptions = {
     'ui.searchDebounceMs': 'Debounce delay in milliseconds for resource list search',
     'ui.copyFeedbackMs': 'How long "Copied!" feedback shows in milliseconds',
     'ui.scrollZoomEnabled': 'Enable Cmd/Ctrl+Scroll to zoom in/out',
-    'metrics.pollIntervalMs': 'Poll interval in milliseconds for node/pod metrics (default: 30000)',
+    'kubernetes.apiTimeoutMs': 'API request timeout in milliseconds. Increase for slow clusters (default: 60000)',
+    'kubernetes.metricsPollIntervalMs': 'Poll interval in milliseconds for Kubernetes CPU/Memory metrics (default: 30000)',
     'performance.pollIntervalMs': 'Poll interval in milliseconds for performance panel (default: 1500)',
     'performance.eventCoalescerMs': 'Frame interval in milliseconds for resource event batching (1-100, default: 16)'
 };
@@ -295,13 +296,20 @@ export default function ConfigEditor() {
                                 }
                             }
                         },
-                        metrics: {
+                        kubernetes: {
                             type: 'object',
-                            description: 'Metrics polling settings',
+                            description: 'Kubernetes API settings',
                             properties: {
-                                pollIntervalMs: {
+                                apiTimeoutMs: {
                                     type: 'number',
-                                    description: 'Poll interval in milliseconds for node/pod metrics',
+                                    description: 'API request timeout in milliseconds. Increase for slow clusters.',
+                                    default: 60000,
+                                    minimum: 10000,
+                                    maximum: 300000
+                                },
+                                metricsPollIntervalMs: {
+                                    type: 'number',
+                                    description: 'Poll interval in milliseconds for Kubernetes CPU/Memory metrics',
                                     default: 30000,
                                     minimum: 5000,
                                     maximum: 300000

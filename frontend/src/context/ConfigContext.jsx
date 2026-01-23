@@ -34,9 +34,11 @@ const defaultConfig = {
         // Display resource type icons in tab titles
         showTabIcons: true
     },
-    metrics: {
-        // Poll interval for node/pod metrics (ms)
-        pollIntervalMs: 30000
+    kubernetes: {
+        // API request timeout (ms). Increase for slow clusters.
+        apiTimeoutMs: 60000,
+        // Poll interval for Kubernetes CPU/Memory metrics (ms)
+        metricsPollIntervalMs: 30000
     },
     performance: {
         // Poll interval for performance panel (ms)
@@ -44,6 +46,22 @@ const defaultConfig = {
         // Frame interval for resource event batching (ms). Lower = more responsive, higher = less CPU.
         eventCoalescerMs: 16
     }
+};
+
+// Migrate old config structure to new
+const migrateConfig = (config) => {
+    const migrated = { ...config };
+
+    // Migrate metrics.pollIntervalMs -> kubernetes.metricsPollIntervalMs
+    if (config.metrics?.pollIntervalMs !== undefined) {
+        if (!migrated.kubernetes) migrated.kubernetes = {};
+        if (migrated.kubernetes.metricsPollIntervalMs === undefined) {
+            migrated.kubernetes.metricsPollIntervalMs = config.metrics.pollIntervalMs;
+        }
+        delete migrated.metrics;
+    }
+
+    return migrated;
 };
 
 // Storage key for localStorage
@@ -117,8 +135,10 @@ export const ConfigProvider = ({ children }) => {
             const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
             if (saved) {
                 const parsed = JSON.parse(saved);
+                // Migrate old config structure if needed
+                const migrated = migrateConfig(parsed);
                 // Merge with defaults to handle new config keys
-                return deepMerge(defaultConfig, parsed);
+                return deepMerge(defaultConfig, migrated);
             }
         } catch (e) {
             console.error('Failed to load config from localStorage:', e);

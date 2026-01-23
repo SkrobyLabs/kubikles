@@ -10,7 +10,7 @@ export const usePodMetrics = (isVisible) => {
     const { currentContext } = useK8s();
     const { getConfig } = useConfig();
     const intervalRef = useRef(null);
-    const pollInterval = getConfig('metrics.pollIntervalMs') ?? 30000;
+    const pollInterval = getConfig('kubernetes.metricsPollIntervalMs') ?? 30000;
 
     const fetchMetrics = useCallback(async () => {
         if (!currentContext || !isVisible) return;

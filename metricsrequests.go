@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // MetricsRequestStats contains statistics about metrics requests
@@ -14,10 +15,22 @@ type MetricsRequestStats struct {
 	Cancelled int64 `json:"cancelled"`
 }
 
-// MetricsRequestManager manages cancellable metrics requests
+// DefaultMetricsRequestTimeout is the default timeout for metrics requests
+const DefaultMetricsRequestTimeout = 30 * time.Second
+
+// metricsRequestEntry tracks a single request with its sequence number
+type metricsRequestEntry struct {
+	cancel   context.CancelFunc
+	sequence int64
+}
+
+// MetricsRequestManager manages cancellable metrics requests with timeout
 type MetricsRequestManager struct {
 	mu       sync.RWMutex
-	requests map[string]context.CancelFunc
+	requests map[string]*metricsRequestEntry
+
+	// Global sequence counter for race condition prevention
+	sequence atomic.Int64
 
 	// Stats counters
 	total     atomic.Int64
@@ -29,39 +42,46 @@ type MetricsRequestManager struct {
 // NewMetricsRequestManager creates a new request manager
 func NewMetricsRequestManager() *MetricsRequestManager {
 	return &MetricsRequestManager{
-		requests: make(map[string]context.CancelFunc),
+		requests: make(map[string]*metricsRequestEntry),
 	}
 }
 
-// StartRequest creates a new cancellable context for a request
-// Returns the context to use for the request
-func (m *MetricsRequestManager) StartRequest(requestId string) context.Context {
+// StartRequest creates a new cancellable context for a request with timeout.
+// Returns the context to use and the sequence number for completing.
+func (m *MetricsRequestManager) StartRequest(requestId string) (context.Context, int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	// Cancel any existing request with this ID
-	if cancel, exists := m.requests[requestId]; exists {
-		cancel()
+	if entry, exists := m.requests[requestId]; exists {
+		entry.cancel()
 		m.cancelled.Add(1)
 		m.pending.Add(-1)
 	}
 
-	// Create new cancellable context
-	ctx, cancel := context.WithCancel(context.Background())
-	m.requests[requestId] = cancel
+	// Create new cancellable context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultMetricsRequestTimeout)
+	seq := m.sequence.Add(1)
+	m.requests[requestId] = &metricsRequestEntry{
+		cancel:   cancel,
+		sequence: seq,
+	}
 
 	m.total.Add(1)
 	m.pending.Add(1)
 
-	return ctx
+	return ctx, seq
 }
 
-// CompleteRequest marks a request as completed and removes it from tracking
-func (m *MetricsRequestManager) CompleteRequest(requestId string) {
+// CompleteRequest marks a request as completed and removes it from tracking.
+// Only completes if the sequence number matches (prevents double-decrement race condition).
+func (m *MetricsRequestManager) CompleteRequest(requestId string, sequence int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if _, exists := m.requests[requestId]; exists {
+	// Only complete if sequence matches (prevents double-decrement when old request
+	// completes after new one starts)
+	if entry, exists := m.requests[requestId]; exists && entry.sequence == sequence {
 		delete(m.requests, requestId)
 		m.completed.Add(1)
 		m.pending.Add(-1)
@@ -73,8 +93,8 @@ func (m *MetricsRequestManager) CancelRequest(requestId string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if cancel, exists := m.requests[requestId]; exists {
-		cancel()
+	if entry, exists := m.requests[requestId]; exists {
+		entry.cancel()
 		delete(m.requests, requestId)
 		m.cancelled.Add(1)
 		m.pending.Add(-1)

@@ -6,13 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"kubikles/pkg/certviewer"
+	"kubikles/pkg/crashlog"
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/terminal"
-	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,8 +42,9 @@ import (
 type App struct {
 	ctx                   context.Context
 	k8sClient             *k8s.Client
+	k8sInitError          error // Stores K8s client initialization error for frontend display
 	helmClient            *helm.Client
-	terminalService       *terminal.Service
+	terminalManager       *terminal.Manager
 	watcherManager        *ResourceWatcherManager
 	portForwardManager    *PortForwardManager
 	ingressForwardManager *IngressForwardManager
@@ -393,6 +396,7 @@ func NewApp() *App {
 	client, err := k8s.NewClient()
 	if err != nil {
 		fmt.Printf("Error initializing K8s client: %v\n", err)
+		// Continue - UI will show the error via GetK8sInitError()
 	}
 
 	// Setup prometheus config path
@@ -402,8 +406,9 @@ func NewApp() *App {
 
 	return &App{
 		k8sClient:             client,
+		k8sInitError:          err,
 		helmClient:            helm.NewClient(),
-		terminalService:       terminal.NewService(),
+		terminalManager:       terminal.NewManager(),
 		logStreams:            make(map[string]context.CancelFunc),
 		prometheusConfigs:     make(map[string]*k8s.PrometheusInfo),
 		prometheusConfigPath:  filepath.Join(appDir, "prometheus_config.json"),
@@ -415,6 +420,8 @@ func NewApp() *App {
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
+	crashlog.Log("App startup initiated")
+
 	a.ctx = ctx
 	a.watcherManager = NewResourceWatcherManager(ctx, a)
 	a.portForwardManager = NewPortForwardManager(a)
@@ -429,9 +436,19 @@ func (a *App) startup(ctx context.Context) {
 	// Initialize event tracking
 	a.eventStats = make(map[string]*WatcherEventStats)
 	a.eventWindowStart = time.Now().UnixMilli()
-	if err := a.terminalService.Start(); err != nil {
-		fmt.Printf("Failed to start terminal service: %v\n", err)
+	// Set context on terminal manager for event emission
+	if a.terminalManager != nil {
+		a.terminalManager.SetContext(ctx)
 	}
+
+	// Log K8s client status
+	if a.k8sInitError != nil {
+		crashlog.LogError("K8s client initialization failed: %v", a.k8sInitError)
+	} else {
+		crashlog.Log("K8s client initialized successfully")
+	}
+
+	crashlog.Log("App startup complete")
 }
 
 // shutdown is called when the app is closing
@@ -456,6 +473,11 @@ func (a *App) shutdown(ctx context.Context) {
 	// Stop all watchers
 	if a.watcherManager != nil {
 		a.watcherManager.StopAll()
+	}
+
+	// Close all terminal sessions
+	if a.terminalManager != nil {
+		a.terminalManager.CloseAllSessions()
 	}
 
 	a.LogDebug("App shutdown complete")
@@ -658,6 +680,14 @@ func (a *App) SetEventCoalescerFrameInterval(ms int) {
 	}
 }
 
+// SetK8sAPITimeout sets the timeout for Kubernetes API calls.
+// Accepts timeout in milliseconds. Default is 60000ms (60 seconds).
+func (a *App) SetK8sAPITimeout(ms int) {
+	if a.k8sClient != nil && ms > 0 {
+		a.k8sClient.SetAPITimeout(time.Duration(ms) * time.Millisecond)
+	}
+}
+
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
@@ -669,6 +699,15 @@ func (a *App) TestEmit() {
 }
 
 // --- K8s Methods Exposed to Frontend ---
+
+// GetK8sInitError returns the error message if K8s client failed to initialize.
+// Returns empty string if initialization was successful.
+func (a *App) GetK8sInitError() string {
+	if a.k8sInitError != nil {
+		return a.k8sInitError.Error()
+	}
+	return ""
+}
 
 func (a *App) ListContexts() ([]string, error) {
 	if a.k8sClient == nil {
@@ -1557,6 +1596,52 @@ func (a *App) LogDebug(format string, args ...interface{}) {
 	}
 }
 
+// GetCrashLogPath returns the path to the crash log file
+func (a *App) GetCrashLogPath() string {
+	return crashlog.GetLogPath()
+}
+
+// TestCrash triggers a panic for testing crash logging.
+// Set inGoroutine=true to test goroutine panic recovery.
+func (a *App) TestCrash(inGoroutine bool) {
+	crashlog.Log("TestCrash called: inGoroutine=%v", inGoroutine)
+	if inGoroutine {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					crashlog.LogError("TEST GOROUTINE PANIC RECOVERED: %v\nStack: %s", r, string(debug.Stack()))
+				}
+			}()
+			panic("TEST PANIC IN GOROUTINE")
+		}()
+	} else {
+		panic("TEST PANIC IN MAIN CALL")
+	}
+}
+
+// OpenCrashLogDir opens the directory containing the crash log
+func (a *App) OpenCrashLogDir() error {
+	logPath := crashlog.GetLogPath()
+	if logPath == "" {
+		return fmt.Errorf("crash log path not available")
+	}
+	logDir := filepath.Dir(logPath)
+
+	// Use native file manager based on OS
+	var cmd *exec.Cmd
+	switch goruntime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", logDir)
+	case "windows":
+		// Windows explorer handles paths with spaces when passed directly
+		cmd = exec.Command("explorer", logDir)
+	default: // Linux and others
+		cmd = exec.Command("xdg-open", logDir)
+	}
+
+	return cmd.Start()
+}
+
 func (a *App) DeletePod(contextName, namespace, name string) error {
 	a.LogDebug("DeletePod called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
@@ -1601,30 +1686,39 @@ func (a *App) UpdatePodYaml(namespace, name, yamlContent string) error {
 	return a.k8sClient.UpdatePodYaml(namespace, name, yamlContent)
 }
 
-func (a *App) OpenTerminal(contextName, namespace, podName, containerName string) (string, error) {
-	a.LogDebug("OpenTerminal called: context=%s, ns=%s, pod=%s, container=%s", contextName, namespace, podName, containerName)
-	if a.terminalService == nil {
-		return "", fmt.Errorf("terminal service not initialized")
+// StartTerminalSession starts a new terminal session and returns the session ID
+func (a *App) StartTerminalSession(opts terminal.SessionOptions) (string, error) {
+	a.LogDebug("StartTerminalSession called: context=%s, ns=%s, pod=%s, container=%s, cmd=%s",
+		opts.Context, opts.Namespace, opts.Pod, opts.Container, opts.Command)
+	if a.terminalManager == nil {
+		return "", fmt.Errorf("terminal manager not initialized")
 	}
-
-	// Generate a unique ID for the terminal session (unused for now, but good for future)
-	// terminalID := fmt.Sprintf("%s-%s-%s", namespace, podName, containerName)
-	url := fmt.Sprintf("ws://localhost:%d/terminal?context=%s&namespace=%s&pod=%s&container=%s",
-		a.terminalService.Port, contextName, namespace, podName, containerName)
-
-	return url, nil
+	return a.terminalManager.StartSession(opts)
 }
 
-func (a *App) OpenTerminalWithCommand(contextName, namespace, podName, containerName, command string) (string, error) {
-	a.LogDebug("OpenTerminalWithCommand called: context=%s, ns=%s, pod=%s, container=%s, cmd=%s", contextName, namespace, podName, containerName, command)
-	if a.terminalService == nil {
-		return "", fmt.Errorf("terminal service not initialized")
+// SendTerminalInput sends input to a terminal session
+func (a *App) SendTerminalInput(sessionID string, data string) error {
+	if a.terminalManager == nil {
+		return fmt.Errorf("terminal manager not initialized")
 	}
+	return a.terminalManager.SendInput(sessionID, []byte(data))
+}
 
-	wsURL := fmt.Sprintf("ws://localhost:%d/terminal?context=%s&namespace=%s&pod=%s&container=%s&command=%s",
-		a.terminalService.Port, contextName, namespace, podName, containerName, url.QueryEscape(command))
+// ResizeTerminal resizes a terminal session
+func (a *App) ResizeTerminal(sessionID string, cols, rows int) error {
+	if a.terminalManager == nil {
+		return fmt.Errorf("terminal manager not initialized")
+	}
+	return a.terminalManager.Resize(sessionID, cols, rows)
+}
 
-	return wsURL, nil
+// CloseTerminalSession closes a terminal session
+func (a *App) CloseTerminalSession(sessionID string) error {
+	a.LogDebug("CloseTerminalSession called: sessionID=%s", sessionID)
+	if a.terminalManager == nil {
+		return fmt.Errorf("terminal manager not initialized")
+	}
+	return a.terminalManager.CloseSession(sessionID)
 }
 
 // --- Generic Resource Watcher (exposed to frontend) ---
@@ -1672,6 +1766,10 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 	watcherKey := resourceType + ":" + namespace
 
 	defer func() {
+		if r := recover(); r != nil {
+			crashlog.LogError("PANIC in watchResourceLoop: type=%s, namespace=%s, panic=%v\nStack: %s",
+				resourceType, namespace, r, string(debug.Stack()))
+		}
 		a.LogDebug("Resource watcher stopped: type=%s, namespace=%s", resourceType, namespace)
 		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
 			ResourceType: resourceType,
@@ -1844,6 +1942,10 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 	watcherKey := crdResourceType + ":" + namespace
 
 	defer func() {
+		if r := recover(); r != nil {
+			crashlog.LogError("PANIC in watchCRDLoop: gvr=%s/%s/%s, namespace=%s, panic=%v\nStack: %s",
+				group, version, resource, namespace, r, string(debug.Stack()))
+		}
 		a.LogDebug("CRD watcher stopped: gvr=%s/%s/%s, namespace=%s", group, version, resource, namespace)
 		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
 			ResourceType: crdResourceType,
@@ -3986,9 +4088,9 @@ func (a *App) GetPodMetricsHistory(requestId, prometheusNamespace, prometheusSer
 		Port:      prometheusPort,
 	}
 
-	// Start cancellable request
-	ctx := a.metricsRequestManager.StartRequest(requestId)
-	defer a.metricsRequestManager.CompleteRequest(requestId)
+	// Start cancellable request with timeout
+	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
 
 	// Target ~150 data points for readable charts (chart width ~320px, line width 2px)
 	return a.k8sClient.GetPodMetricsHistoryWithContext(ctx, currentContext, info, namespace, pod, container, dur, 150)
@@ -4028,9 +4130,9 @@ func (a *App) GetControllerMetricsHistory(requestId, prometheusNamespace, promet
 		Port:      prometheusPort,
 	}
 
-	// Start cancellable request
-	ctx := a.metricsRequestManager.StartRequest(requestId)
-	defer a.metricsRequestManager.CompleteRequest(requestId)
+	// Start cancellable request with timeout
+	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
 
 	return a.k8sClient.GetControllerMetricsHistoryWithContext(ctx, currentContext, info, namespace, name, controllerType, dur, 150)
 }
@@ -4069,9 +4171,9 @@ func (a *App) GetNodeMetricsHistory(requestId, prometheusNamespace, prometheusSe
 		Port:      prometheusPort,
 	}
 
-	// Start cancellable request
-	ctx := a.metricsRequestManager.StartRequest(requestId)
-	defer a.metricsRequestManager.CompleteRequest(requestId)
+	// Start cancellable request with timeout
+	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
 
 	return a.k8sClient.GetNodeMetricsHistoryWithContext(ctx, currentContext, info, nodeName, dur, 150)
 }
@@ -4110,9 +4212,9 @@ func (a *App) GetNamespaceMetricsHistory(requestId, prometheusNamespace, prometh
 		Port:      prometheusPort,
 	}
 
-	// Start cancellable request
-	ctx := a.metricsRequestManager.StartRequest(requestId)
-	defer a.metricsRequestManager.CompleteRequest(requestId)
+	// Start cancellable request with timeout
+	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
 
 	return a.k8sClient.GetNamespaceMetricsHistoryWithContext(ctx, currentContext, info, namespace, dur, 150)
 }

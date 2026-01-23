@@ -3,7 +3,6 @@ import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import { useCRDs } from '../../../hooks/useCRDs';
 import { useK8s } from '../../../context/K8sContext';
-import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteCRD, GetCRDYaml } from '../../../../wailsjs/go/main/App';
@@ -11,13 +10,13 @@ import { formatAge } from '../../../utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import CRDActionsMenu from './CRDActionsMenu';
 import { useCRDActions } from './useCRDActions';
+import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 export default function CRDList({ isVisible }) {
     const { currentContext } = useK8s();
-    const { activeMenuId, setActiveMenuId } = useMenu();
+    const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { crds, loading } = useCRDs(currentContext, isVisible);
     const { handleEditYaml } = useCRDActions();
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const selection = useSelection();
 
     // Wrap APIs to match useBulkActions signature (context, name) for cluster-scoped
@@ -39,17 +38,6 @@ export default function CRDList({ isVisible }) {
         getYamlApi,
         currentContext,
     });
-
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
-        if (isOpen && buttonElement) {
-            const rect = buttonElement.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + 4,
-                left: rect.right - 192
-            });
-        }
-        setActiveMenuId(isOpen ? menuId : null);
-    }, [setActiveMenuId]);
 
     // Get the served versions as a comma-separated string
     const getVersions = (crd) => {

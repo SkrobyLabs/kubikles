@@ -1,10 +1,58 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import ConfigField from './fields/ConfigField';
 import ConfigFieldGroup from './ConfigFieldGroup';
 import { configSchema, isModified } from '../../../config/configSchema';
+import { GetCrashLogPath, OpenCrashLogDir } from '../../../../wailsjs/go/main/App';
+
+// Async value sources
+const asyncSources = {
+    crashLogPath: GetCrashLogPath
+};
+
+// Action handlers
+const actionHandlers = {
+    openCrashLogDir: OpenCrashLogDir
+};
 
 export default function ConfigSection({ section, config, onFieldChange, searchResults }) {
     const sectionSchema = configSchema[section];
+    const [asyncValues, setAsyncValues] = useState({});
+
+    // Load async values for readonly fields
+    useEffect(() => {
+        if (!sectionSchema) return;
+
+        const loadAsyncValues = async () => {
+            const { _meta, ...fields } = sectionSchema;
+            const newValues = {};
+
+            for (const [key, schema] of Object.entries(fields)) {
+                if (schema.asyncSource && asyncSources[schema.asyncSource]) {
+                    try {
+                        newValues[key] = await asyncSources[schema.asyncSource]();
+                    } catch (err) {
+                        console.error(`Failed to load async value for ${key}:`, err);
+                        newValues[key] = 'Error loading value';
+                    }
+                }
+            }
+
+            if (Object.keys(newValues).length > 0) {
+                setAsyncValues(newValues);
+            }
+        };
+
+        loadAsyncValues();
+    }, [section, sectionSchema]);
+
+    const handleAction = useCallback((action) => {
+        if (actionHandlers[action]) {
+            actionHandlers[action]().catch(err => {
+                console.error(`Action ${action} failed:`, err);
+            });
+        }
+    }, []);
+
     if (!sectionSchema) return null;
 
     const { _meta, ...fields } = sectionSchema;
@@ -79,6 +127,8 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
                                 value={value}
                                 onChange={(val) => onFieldChange(path, val)}
                                 isModified={isModified(path, value)}
+                                asyncValue={asyncValues[key]}
+                                onAction={handleAction}
                             />
                         );
                     })}

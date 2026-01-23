@@ -26,20 +26,38 @@ func init() {
 }
 
 // ProfilingCommands provides runtime profiling utilities accessible from frontend
-type ProfilingCommands struct{}
+type ProfilingCommands struct {
+	cpuProfileFile *os.File // Stores the file handle for proper cleanup
+}
 
 // StartCPUProfile starts CPU profiling to a file
 func (p *ProfilingCommands) StartCPUProfile(filename string) error {
+	// Close any existing profile file first
+	if p.cpuProfileFile != nil {
+		pprof.StopCPUProfile()
+		p.cpuProfileFile.Close()
+		p.cpuProfileFile = nil
+	}
+
 	f, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
-	return pprof.StartCPUProfile(f)
+	if err := pprof.StartCPUProfile(f); err != nil {
+		f.Close()
+		return err
+	}
+	p.cpuProfileFile = f
+	return nil
 }
 
-// StopCPUProfile stops CPU profiling
+// StopCPUProfile stops CPU profiling and closes the file
 func (p *ProfilingCommands) StopCPUProfile() {
 	pprof.StopCPUProfile()
+	if p.cpuProfileFile != nil {
+		p.cpuProfileFile.Close()
+		p.cpuProfileFile = nil
+	}
 }
 
 // WriteHeapProfile writes a memory profile

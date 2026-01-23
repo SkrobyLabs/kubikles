@@ -1730,6 +1730,31 @@ export namespace resource {
 
 }
 
+export namespace terminal {
+	
+	export class SessionOptions {
+	    namespace: string;
+	    pod: string;
+	    container: string;
+	    context: string;
+	    command: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.namespace = source["namespace"];
+	        this.pod = source["pod"];
+	        this.container = source["container"];
+	        this.context = source["context"];
+	        this.command = source["command"];
+	    }
+	}
+
+}
+
 export namespace v1 {
 	
 	export class PodAntiAffinity {
