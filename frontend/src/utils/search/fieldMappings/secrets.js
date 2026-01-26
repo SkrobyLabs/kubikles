@@ -3,6 +3,9 @@
  *
  * Secret-specific fields for advanced search filtering.
  * Extends common fields with Secret-specific extractors.
+ *
+ * Note: List view uses metadata-only fetch for performance.
+ * Key names are not available - only keycount from table API.
  */
 
 import { commonFields } from './common';
@@ -15,13 +18,11 @@ export const secretFields = {
         aliases: ['secrettype']
     },
 
-    keys: {
-        extractor: (item) => Object.keys(item.data || {}).join(' '),
-        aliases: ['key', 'datakeys']
-    },
+    // Note: 'keys' field removed - not available in metadata-only list view
+    // Key count is available from the Table API response
 
     keycount: {
-        extractor: (item) => String(Object.keys(item.data || {}).length),
-        aliases: ['count']
+        extractor: (item) => String(item.dataKeys ?? 0),
+        aliases: ['count', 'datakeys']
     }
 };

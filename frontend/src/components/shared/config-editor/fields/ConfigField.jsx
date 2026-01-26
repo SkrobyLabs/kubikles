@@ -14,6 +14,7 @@ export default function ConfigField({ schema, value, onChange, isModified, async
                 <BooleanField
                     label={label}
                     description={description}
+                    subtext={schema.subtext}
                     value={value}
                     onChange={onChange}
                     isModified={isModified}

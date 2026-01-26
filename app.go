@@ -688,6 +688,26 @@ func (a *App) SetK8sAPITimeout(ms int) {
 	}
 }
 
+// SetForceHTTP1 enables or disables forcing HTTP/1.1 instead of HTTP/2.
+// HTTP/1.1 opens multiple connections for parallel requests, avoiding
+// HTTP/2 flow control bottlenecks. Requires context switch to take effect.
+func (a *App) SetForceHTTP1(enabled bool) {
+	if a.k8sClient != nil {
+		a.k8sClient.SetForceHTTP1(enabled)
+		a.LogDebug("Force HTTP/1.1: %v", enabled)
+	}
+}
+
+// SetClientPoolSize sets the number of clientsets in the rotation pool.
+// More clients = more parallel HTTP/2 connections. Set to 0 to disable pooling.
+// Requires context switch to take effect.
+func (a *App) SetClientPoolSize(size int) {
+	if a.k8sClient != nil {
+		a.k8sClient.SetClientPoolSize(size)
+		a.LogDebug("Client pool size: %d", size)
+	}
+}
+
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
@@ -1114,6 +1134,28 @@ func (a *App) ListSecrets(requestId, namespace string) ([]v1.Secret, error) {
 		return result, err
 	}
 	return a.k8sClient.ListSecrets(namespace)
+}
+
+// ListSecretsMetadata returns a lightweight list of secrets for display purposes.
+// It uses the Table API to avoid transferring actual secret data.
+func (a *App) ListSecretsMetadata(requestId, namespace string) ([]k8s.SecretListItem, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListSecretsMetadataWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
+	}
+	// For non-cancellable requests, use a default context
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	return a.k8sClient.ListSecretsMetadataWithContext(ctx, namespace)
 }
 
 // ConfigMap YAML operations
@@ -4237,6 +4279,20 @@ func (a *App) CancelListRequest(requestId string) bool {
 // GetListRequestStats returns statistics about list requests
 func (a *App) GetListRequestStats() ListRequestStats {
 	return a.listRequestManager.GetStats()
+}
+
+// SetRequestCancellationEnabled enables or disables actual HTTP request cancellation.
+// Due to a Go HTTP/2 bug (golang/go#34944), cancelling requests can cause O(N²) performance
+// collapse and connection pool issues. When disabled, requests complete in background
+// but stale results are ignored via sequence tracking.
+func (a *App) SetRequestCancellationEnabled(enabled bool) {
+	a.listRequestManager.SetCancellationEnabled(enabled)
+	a.LogDebug("Request cancellation enabled: %v", enabled)
+}
+
+// IsRequestCancellationEnabled returns whether HTTP request cancellation is enabled.
+func (a *App) IsRequestCancellationEnabled() bool {
+	return a.listRequestManager.IsCancellationEnabled()
 }
 
 // CertSubjectInfo contains parsed subject/issuer fields

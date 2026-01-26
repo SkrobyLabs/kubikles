@@ -104,7 +104,8 @@ export default function NodeList({ isVisible }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { nodes, loading, refetch } = useNodes(currentContext, isVisible);
-    const { metrics, available: metricsAvailable } = useNodeMetrics(isVisible);
+    // Delay metrics fetch until nodes are loaded to prioritize showing node list first
+    const { metrics, available: metricsAvailable } = useNodeMetrics(isVisible, !loading && nodes.length > 0);
     const { handleShowDetails, handleEditYaml, handleCordonUncordon, handleShell, handleDelete } = useNodeActions(refetch);
 
     const columns = useMemo(() => [

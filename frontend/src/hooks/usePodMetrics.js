@@ -3,7 +3,7 @@ import { GetPodMetrics } from '../../wailsjs/go/main/App';
 import { useK8s } from '../context/K8sContext';
 import { useConfig } from '../context/ConfigContext';
 
-export const usePodMetrics = (isVisible) => {
+export const usePodMetrics = (isVisible, isReady = true) => {
     const [metrics, setMetrics] = useState({});
     const [available, setAvailable] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -70,10 +70,10 @@ export const usePodMetrics = (isVisible) => {
         }
     }, [currentContext, isVisible]);
 
-    // Initial fetch and polling
+    // Initial fetch and polling - wait for isReady (e.g., pods loaded) before fetching
     useEffect(() => {
-        if (!isVisible) {
-            // Clear interval when not visible
+        if (!isVisible || !isReady) {
+            // Clear interval when not visible or not ready
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
@@ -81,7 +81,7 @@ export const usePodMetrics = (isVisible) => {
             return;
         }
 
-        // Fetch immediately
+        // Fetch immediately once ready
         fetchMetrics();
 
         // Set up polling
@@ -93,7 +93,7 @@ export const usePodMetrics = (isVisible) => {
                 intervalRef.current = null;
             }
         };
-    }, [fetchMetrics, isVisible, pollInterval]);
+    }, [fetchMetrics, isVisible, isReady, pollInterval]);
 
     // Reset on context change
     useEffect(() => {

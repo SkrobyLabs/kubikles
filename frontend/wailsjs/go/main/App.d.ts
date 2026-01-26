@@ -299,6 +299,8 @@ export function GetVersionInfo():Promise<main.VersionInfo>;
 
 export function Greet(arg1:string):Promise<string>;
 
+export function IsRequestCancellationEnabled():Promise<boolean>;
+
 export function ListCRDs():Promise<Array<v1.CustomResourceDefinition>>;
 
 export function ListCSIDrivers():Promise<Array<v1.CSIDriver>>;
@@ -377,6 +379,8 @@ export function ListRoles(arg1:string):Promise<Array<v1.Role>>;
 
 export function ListSecrets(arg1:string,arg2:string):Promise<Array<v1.Secret>>;
 
+export function ListSecretsMetadata(arg1:string,arg2:string):Promise<Array<k8s.SecretListItem>>;
+
 export function ListServiceAccounts(arg1:string):Promise<Array<v1.ServiceAccount>>;
 
 export function ListServices(arg1:string,arg2:string):Promise<Array<v1.Service>>;
@@ -435,7 +439,11 @@ export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;
 
 export function SendTerminalInput(arg1:string,arg2:string):Promise<void>;
 
+export function SetClientPoolSize(arg1:number):Promise<void>;
+
 export function SetEventCoalescerFrameInterval(arg1:number):Promise<void>;
+
+export function SetForceHTTP1(arg1:boolean):Promise<void>;
 
 export function SetHelmRepositoryPriority(arg1:string,arg2:number):Promise<void>;
 
@@ -444,6 +452,8 @@ export function SetK8sAPITimeout(arg1:number):Promise<void>;
 export function SetNodeSchedulable(arg1:string,arg2:boolean):Promise<void>;
 
 export function SetOCIRegistryPriority(arg1:string,arg2:number):Promise<void>;
+
+export function SetRequestCancellationEnabled(arg1:boolean):Promise<void>;
 
 export function SetTheme(arg1:string):Promise<void>;
 

@@ -19,10 +19,14 @@ const configDescriptions = {
     'ui.searchDebounceMs': 'Debounce delay in milliseconds for resource list search',
     'ui.copyFeedbackMs': 'How long "Copied!" feedback shows in milliseconds',
     'ui.scrollZoomEnabled': 'Enable Cmd/Ctrl+Scroll to zoom in/out',
+    'ui.showTabIcons': 'Display resource type icons in tab titles',
     'kubernetes.apiTimeoutMs': 'API request timeout in milliseconds. Increase for slow clusters (default: 60000)',
     'kubernetes.metricsPollIntervalMs': 'Poll interval in milliseconds for Kubernetes CPU/Memory metrics (default: 30000)',
     'performance.pollIntervalMs': 'Poll interval in milliseconds for performance panel (default: 1500)',
-    'performance.eventCoalescerMs': 'Frame interval in milliseconds for resource event batching (1-100, default: 16)'
+    'performance.eventCoalescerMs': 'Frame interval in milliseconds for resource event batching (1-100, default: 16)',
+    'performance.enableRequestCancellation': 'Cancel in-flight API requests when navigating. Disable if experiencing slow navigation (Go HTTP/2 bug workaround).',
+    'performance.forceHttp1': 'Use HTTP/1.1 instead of HTTP/2. Opens multiple connections for parallel requests. Requires context switch.',
+    'performance.clientPoolSize': 'Additional K8s client connections for parallelism (0 = just main connection). Requires context switch.'
 };
 
 // Convert nested object to flat key=value format with comments
@@ -293,6 +297,11 @@ export default function ConfigEditor() {
                                     type: 'boolean',
                                     description: 'Enable Cmd/Ctrl+Scroll to zoom in/out',
                                     default: true
+                                },
+                                showTabIcons: {
+                                    type: 'boolean',
+                                    description: 'Display resource type icons in tab titles',
+                                    default: true
                                 }
                             }
                         },
@@ -333,6 +342,23 @@ export default function ConfigEditor() {
                                     default: 16,
                                     minimum: 1,
                                     maximum: 100
+                                },
+                                enableRequestCancellation: {
+                                    type: 'boolean',
+                                    description: 'Cancel in-flight API requests when navigating. Disable if experiencing slow navigation (Go HTTP/2 bug workaround).',
+                                    default: false
+                                },
+                                forceHttp1: {
+                                    type: 'boolean',
+                                    description: 'Use HTTP/1.1 instead of HTTP/2. Opens multiple connections for parallel requests. Requires context switch.',
+                                    default: false
+                                },
+                                clientPoolSize: {
+                                    type: 'number',
+                                    description: 'Additional K8s client connections for parallelism (0 = just main connection). Requires context switch.',
+                                    default: 0,
+                                    minimum: 0,
+                                    maximum: 10
                                 }
                             }
                         }

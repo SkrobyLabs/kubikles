@@ -59,6 +59,7 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
         const [error, setError] = useState(null);
         const { namespaces: allNamespaces, lastRefresh, checkConnectionError } = useK8s();
         const requestIdRef = useRef(null);
+        const fetchInProgressRef = useRef(false); // Prevent duplicate fetches from StrictMode
 
         // Calculate optimized namespaces for watching
         const optimizedNamespaces = useMemo(() => {
@@ -72,6 +73,13 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
         useEffect(() => {
             if (!currentContext || selectedNamespaces === null || selectedNamespaces === undefined || !isVisible) return;
 
+            // Prevent duplicate fetches from React StrictMode double-mount
+            // Check if we're already fetching for the same query
+            const queryKey = `${resourceType}-${createNamespaceKey(selectedNamespaces)}-${currentContext}`;
+            if (fetchInProgressRef.current === queryKey) {
+                return; // Already fetching for this exact query
+            }
+
             // Track if this effect instance is still current
             let isCancelled = false;
 
@@ -84,6 +92,7 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
                 CancelListRequest(requestIdRef.current).catch(() => {});
             }
             requestIdRef.current = newRequestId;
+            fetchInProgressRef.current = queryKey;
 
             const fetchData = async () => {
                 setLoading(true);
@@ -136,6 +145,10 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
                     }
                 } finally {
                     if (!isCancelled && !skipLoadingReset) setLoading(false);
+                    // Clear fetch-in-progress flag when done
+                    if (fetchInProgressRef.current === queryKey) {
+                        fetchInProgressRef.current = null;
+                    }
                 }
             };
 
@@ -144,6 +157,8 @@ export function createNamespacedResourceHook(resourceType, listFn, stateName) {
             // Cleanup: mark as cancelled and cancel backend request
             return () => {
                 isCancelled = true;
+                // Clear fetch-in-progress flag on cleanup to allow re-fetch
+                fetchInProgressRef.current = null;
                 if (requestIdRef.current) {
                     CancelListRequest(requestIdRef.current).catch(() => {});
                 }
@@ -190,9 +205,16 @@ export function createClusterScopedResourceHook(resourceType, listFn, stateName)
         const [error, setError] = useState(null);
         const { lastRefresh, checkConnectionError } = useK8s();
         const requestIdRef = useRef(null);
+        const fetchInProgressRef = useRef(null); // Prevent duplicate fetches from StrictMode
 
         useEffect(() => {
             if (!currentContext || !isVisible) return;
+
+            // Prevent duplicate fetches from React StrictMode double-mount
+            const queryKey = `${resourceType}-cluster-${currentContext}`;
+            if (fetchInProgressRef.current === queryKey) {
+                return; // Already fetching for this exact query
+            }
 
             let isCancelled = false;
 
@@ -204,6 +226,7 @@ export function createClusterScopedResourceHook(resourceType, listFn, stateName)
                 CancelListRequest(requestIdRef.current).catch(() => {});
             }
             requestIdRef.current = requestId;
+            fetchInProgressRef.current = queryKey;
 
             const fetchData = async () => {
                 setLoading(true);
@@ -229,6 +252,10 @@ export function createClusterScopedResourceHook(resourceType, listFn, stateName)
                     }
                 } finally {
                     if (!isCancelled && !skipLoadingReset) setLoading(false);
+                    // Clear fetch-in-progress flag when done
+                    if (fetchInProgressRef.current === queryKey) {
+                        fetchInProgressRef.current = null;
+                    }
                 }
             };
 
@@ -236,6 +263,8 @@ export function createClusterScopedResourceHook(resourceType, listFn, stateName)
 
             return () => {
                 isCancelled = true;
+                // Clear fetch-in-progress flag on cleanup to allow re-fetch
+                fetchInProgressRef.current = null;
                 if (requestIdRef.current) {
                     CancelListRequest(requestIdRef.current).catch(() => {});
                 }

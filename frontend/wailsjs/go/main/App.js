@@ -586,6 +586,10 @@ export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
+export function IsRequestCancellationEnabled() {
+  return window['go']['main']['App']['IsRequestCancellationEnabled']();
+}
+
 export function ListCRDs() {
   return window['go']['main']['App']['ListCRDs']();
 }
@@ -742,6 +746,10 @@ export function ListSecrets(arg1, arg2) {
   return window['go']['main']['App']['ListSecrets'](arg1, arg2);
 }
 
+export function ListSecretsMetadata(arg1, arg2) {
+  return window['go']['main']['App']['ListSecretsMetadata'](arg1, arg2);
+}
+
 export function ListServiceAccounts(arg1) {
   return window['go']['main']['App']['ListServiceAccounts'](arg1);
 }
@@ -858,8 +866,16 @@ export function SendTerminalInput(arg1, arg2) {
   return window['go']['main']['App']['SendTerminalInput'](arg1, arg2);
 }
 
+export function SetClientPoolSize(arg1) {
+  return window['go']['main']['App']['SetClientPoolSize'](arg1);
+}
+
 export function SetEventCoalescerFrameInterval(arg1) {
   return window['go']['main']['App']['SetEventCoalescerFrameInterval'](arg1);
+}
+
+export function SetForceHTTP1(arg1) {
+  return window['go']['main']['App']['SetForceHTTP1'](arg1);
 }
 
 export function SetHelmRepositoryPriority(arg1, arg2) {
@@ -876,6 +892,10 @@ export function SetNodeSchedulable(arg1, arg2) {
 
 export function SetOCIRegistryPriority(arg1, arg2) {
   return window['go']['main']['App']['SetOCIRegistryPriority'](arg1, arg2);
+}
+
+export function SetRequestCancellationEnabled(arg1) {
+  return window['go']['main']['App']['SetRequestCancellationEnabled'](arg1);
 }
 
 export function SetTheme(arg1) {

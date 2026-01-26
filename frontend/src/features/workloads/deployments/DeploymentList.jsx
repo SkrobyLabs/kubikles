@@ -39,7 +39,9 @@ export default function DeploymentList({ isVisible }) {
     });
     // console.log("DeploymentList rendering");
     const { deployments, loading: deploymentsLoading } = useDeployments(currentContext, selectedNamespaces, isVisible);
-    const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible); // Fetch pods for status
+    // Defer pods fetch until deployments are loaded to prioritize showing deployment list first
+    const deploymentsReady = !deploymentsLoading && deployments.length > 0;
+    const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible && deploymentsReady); // Fetch pods for status
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useDeploymentActions();
 
     // Pre-compute deployment -> pods mapping and counts (O(n+m) instead of O(n*m))

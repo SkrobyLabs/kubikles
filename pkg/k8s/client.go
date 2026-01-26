@@ -3,16 +3,22 @@ package k8s
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log"
+	"net/http"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -39,6 +45,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 	"sigs.k8s.io/yaml"
 )
@@ -63,6 +70,18 @@ type Client struct {
 	currentContext string
 	mu             sync.RWMutex
 	apiTimeout     time.Duration
+	warmupDone     chan struct{} // Closed when connection warmup completes
+
+	// HTTP protocol settings
+	// When true, forces HTTP/1.1 instead of HTTP/2. HTTP/1.1 opens multiple TCP
+	// connections for parallel requests, avoiding HTTP/2 flow control bottlenecks.
+	forceHTTP1 bool
+
+	// Client pool for rotating connections. Each clientset has its own HTTP/2
+	// connection, so rotating between them provides better parallelism.
+	clientPool     []kubernetes.Interface
+	clientPoolSize int
+	clientPoolIdx  uint64 // atomic counter for round-robin
 }
 
 // DefaultAPITimeout is the default timeout for Kubernetes API calls
@@ -73,6 +92,26 @@ func (c *Client) SetAPITimeout(timeout time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.apiTimeout = timeout
+}
+
+// SetForceHTTP1 enables or disables forcing HTTP/1.1 instead of HTTP/2.
+// HTTP/1.1 opens multiple connections for parallel requests, avoiding
+// HTTP/2 single-connection bottlenecks. Requires reconnect to take effect.
+func (c *Client) SetForceHTTP1(enabled bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.forceHTTP1 = enabled
+	log.Printf("[K8s Client] Force HTTP/1.1: %v", enabled)
+}
+
+// SetClientPoolSize sets the number of clientsets in the rotation pool.
+// More clients = more parallel HTTP/2 connections. Set to 0 to disable pooling.
+// Requires reconnect to take effect.
+func (c *Client) SetClientPoolSize(size int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.clientPoolSize = size
+	log.Printf("[K8s Client] Client pool size: %d", size)
 }
 
 // contextWithTimeout returns a context with the configured API timeout
@@ -157,12 +196,61 @@ func (c *Client) loadConfig(contextName string) error {
 		return fmt.Errorf("failed to load client config: %w", err)
 	}
 
+	// Apply HTTP protocol settings
+	if c.forceHTTP1 {
+		// Force HTTP/1.1 by disabling HTTP/2 ALPN negotiation
+		if config.TLSClientConfig.NextProtos == nil {
+			config.TLSClientConfig.NextProtos = []string{"http/1.1"}
+		}
+		// Also need to disable HTTP/2 at the transport level
+		config.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
+			if t, ok := rt.(*http.Transport); ok {
+				t.TLSNextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
+				t.ForceAttemptHTTP2 = false
+			}
+			return rt
+		}
+		log.Printf("[K8s Client] Using HTTP/1.1 (HTTP/2 disabled)")
+	}
+
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return fmt.Errorf("failed to create clientset: %w", err)
 	}
 
 	c.clientset = clientset
+
+	// Create additional client connections for rotation (improves parallelism)
+	c.clientPool = nil
+	if c.clientPoolSize > 0 {
+		c.clientPool = make([]kubernetes.Interface, c.clientPoolSize)
+		for i := 0; i < c.clientPoolSize; i++ {
+			// Create a fresh config for each pool member to ensure separate connections
+			poolConfig, err := c.configLoading.ClientConfig()
+			if err != nil {
+				return fmt.Errorf("failed to load pool client config: %w", err)
+			}
+			// Apply same HTTP settings
+			if c.forceHTTP1 {
+				if poolConfig.TLSClientConfig.NextProtos == nil {
+					poolConfig.TLSClientConfig.NextProtos = []string{"http/1.1"}
+				}
+				poolConfig.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
+					if t, ok := rt.(*http.Transport); ok {
+						t.TLSNextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
+						t.ForceAttemptHTTP2 = false
+					}
+					return rt
+				}
+			}
+			poolCs, err := kubernetes.NewForConfig(poolConfig)
+			if err != nil {
+				return fmt.Errorf("failed to create pool clientset %d: %w", i, err)
+			}
+			c.clientPool[i] = poolCs
+		}
+		log.Printf("[K8s Client] Created %d additional client connections (%d total)", c.clientPoolSize, c.clientPoolSize+1)
+	}
 
 	// Update current context
 	rawConfig, err := c.configLoading.RawConfig()
@@ -178,7 +266,54 @@ func (c *Client) loadConfig(contextName string) error {
 }
 
 func (c *Client) SwitchContext(contextName string) error {
-	return c.loadConfig(contextName)
+	if err := c.loadConfig(contextName); err != nil {
+		return err
+	}
+
+	// Create a new warmup channel
+	c.mu.Lock()
+	c.warmupDone = make(chan struct{})
+	warmupChan := c.warmupDone
+	c.mu.Unlock()
+
+	// Warm up the connection by making a lightweight API call in the background.
+	// This triggers TLS handshake, auth token fetch, and connection pooling
+	// so subsequent requests are fast.
+	go func() {
+		defer close(warmupChan)
+		start := time.Now()
+		cs, err := c.getClientset()
+		if err != nil {
+			log.Printf("[Warmup] Failed to get clientset: %v", err)
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		// RESTClient().Get() is a lightweight call that warms up the connection
+		err = cs.CoreV1().RESTClient().Get().AbsPath("/api/v1").Do(ctx).Error()
+		log.Printf("[Warmup] Connection warmup took %v, err=%v", time.Since(start), err)
+	}()
+
+	return nil
+}
+
+// WaitForWarmup waits for connection warmup to complete (max 15 seconds)
+func (c *Client) WaitForWarmup() {
+	c.mu.RLock()
+	warmupChan := c.warmupDone
+	c.mu.RUnlock()
+
+	if warmupChan == nil {
+		return
+	}
+
+	select {
+	case <-warmupChan:
+		// Warmup completed
+	case <-time.After(15 * time.Second):
+		// Timeout waiting for warmup
+		log.Printf("[Warmup] Timeout waiting for warmup to complete")
+	}
 }
 
 func (c *Client) GetCurrentContext() string {
@@ -203,11 +338,26 @@ func (c *Client) ListContexts() ([]string, error) {
 
 func (c *Client) getClientset() (kubernetes.Interface, error) {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if c.clientset == nil {
+	pool := c.clientPool
+	mainCs := c.clientset
+	c.mu.RUnlock()
+
+	if mainCs == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
-	return c.clientset, nil
+
+	// If pool is configured, rotate among main client + pool clients
+	if len(pool) > 0 {
+		idx := atomic.AddUint64(&c.clientPoolIdx, 1)
+		totalClients := uint64(len(pool) + 1) // main + additional
+		selected := idx % totalClients
+		if selected == 0 {
+			return mainCs, nil
+		}
+		return pool[selected-1], nil
+	}
+
+	return mainCs, nil
 }
 
 func (c *Client) ListPods(namespace string) ([]v1.Pod, error) {
@@ -577,21 +727,54 @@ func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Fetch node metrics from metrics-server
-	nodeMetricsList, err := c.metricsClient.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
-	}
-
-	// Fetch node capacities
+	// Get clientset early so we can use it in goroutines
 	cs, err := c.getClientset()
 	if err != nil {
 		return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
 	}
 
-	nodes, err := cs.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-	if err != nil {
+	// Fetch node metrics, nodes, pods, and pod metrics in parallel
+	var nodeMetricsList *metricsv1beta1.NodeMetricsList
+	var nodes *v1.NodeList
+	var pods *v1.PodList
+	var podMetricsList *metricsv1beta1.PodMetricsList
+	var podMetricsErr error
+
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		nodeMetricsList, err = c.metricsClient.MetricsV1beta1().NodeMetricses().List(gctx, metav1.ListOptions{})
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		nodes, err = cs.CoreV1().Nodes().List(gctx, metav1.ListOptions{})
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		pods, err = cs.CoreV1().Pods("").List(gctx, metav1.ListOptions{})
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		podMetricsList, err = c.metricsClient.MetricsV1beta1().PodMetricses("").List(gctx, metav1.ListOptions{})
+		// Pod metrics might fail, but we can still return node metrics without committed
+		podMetricsErr = err
+		return nil // Don't fail the group for pod metrics
+	})
+
+	if err := g.Wait(); err != nil {
 		return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
+	// Clear podMetricsList if it failed
+	if podMetricsErr != nil {
+		podMetricsList = nil
 	}
 
 	// Build capacity map
@@ -600,19 +783,6 @@ func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 		cpu := node.Status.Capacity.Cpu().MilliValue() // millicores
 		mem := node.Status.Capacity.Memory().Value()   // bytes
 		capacityMap[node.Name] = struct{ cpu, memory int64 }{cpu, mem}
-	}
-
-	// Fetch all pods to calculate requested resources per node
-	pods, err := cs.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
-	}
-
-	// Fetch pod metrics for committed calculation
-	podMetricsList, err := c.metricsClient.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})
-	if err != nil {
-		// Pod metrics might fail, but we can still return node metrics without committed
-		podMetricsList = nil
 	}
 
 	// Build container usage map: namespace/podName/containerName -> {cpu, memory}
@@ -727,26 +897,38 @@ func (c *Client) GetPodMetrics() (*PodMetricsResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Fetch pod metrics from metrics-server
-	podMetricsList, err := c.metricsClient.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
-	}
-
-	// Fetch all pods to get requests and node assignments
+	// Get clientset early so we can use it in goroutines
 	cs, err := c.getClientset()
 	if err != nil {
 		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
 	}
 
-	pods, err := cs.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
-	}
+	// Fetch pod metrics, pods, and nodes in parallel
+	var podMetricsList *metricsv1beta1.PodMetricsList
+	var pods *v1.PodList
+	var nodes *v1.NodeList
 
-	// Fetch node capacities
-	nodes, err := cs.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-	if err != nil {
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		podMetricsList, err = c.metricsClient.MetricsV1beta1().PodMetricses("").List(gctx, metav1.ListOptions{})
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		pods, err = cs.CoreV1().Pods("").List(gctx, metav1.ListOptions{})
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		nodes, err = cs.CoreV1().Nodes().List(gctx, metav1.ListOptions{})
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
 	}
 
@@ -829,13 +1011,17 @@ func (c *Client) GetPodMetrics() (*PodMetricsResult, error) {
 }
 
 func (c *Client) ListNamespaces() ([]v1.Namespace, error) {
+	start := time.Now()
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("[ListNamespaces] getClientset took %v", time.Since(start))
+	apiStart := time.Now()
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
 	namespaces, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	log.Printf("[ListNamespaces] API call took %v, returned %d items", time.Since(apiStart), len(namespaces.Items))
 	if err != nil {
 		return nil, err
 	}
@@ -1400,13 +1586,17 @@ func (c *Client) DeleteIngressClass(contextName, name string) error {
 }
 
 func (c *Client) ListConfigMaps(namespace string) ([]v1.ConfigMap, error) {
+	start := time.Now()
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("[ListConfigMaps] getClientset took %v", time.Since(start))
+	apiStart := time.Now()
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
 	cms, err := cs.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
+	log.Printf("[ListConfigMaps] API call took %v, returned %d items", time.Since(apiStart), len(cms.Items))
 	if err != nil {
 		return nil, err
 	}
@@ -1415,11 +1605,27 @@ func (c *Client) ListConfigMaps(namespace string) ([]v1.ConfigMap, error) {
 
 // ListConfigMapsWithContext lists configmaps with cancellation support
 func (c *Client) ListConfigMapsWithContext(ctx context.Context, namespace string) ([]v1.ConfigMap, error) {
+	start := time.Now()
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
+	getClientsetTime := time.Since(start)
+
+	apiStart := time.Now()
 	cms, err := cs.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
+	apiTime := time.Since(apiStart)
+
+	// Check context state
+	ctxErr := ctx.Err()
+	deadline, hasDeadline := ctx.Deadline()
+	deadlineInfo := "no deadline"
+	if hasDeadline {
+		deadlineInfo = fmt.Sprintf("deadline in %v", time.Until(deadline))
+	}
+
+	log.Printf("[ListConfigMapsWithContext] getClientset=%v, API=%v, total=%v, ns=%q, items=%d, err=%v, ctxErr=%v, %s",
+		getClientsetTime, apiTime, time.Since(start), namespace, len(cms.Items), err, ctxErr, deadlineInfo)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
@@ -1430,13 +1636,17 @@ func (c *Client) ListConfigMapsWithContext(ctx context.Context, namespace string
 }
 
 func (c *Client) ListSecrets(namespace string) ([]v1.Secret, error) {
+	start := time.Now()
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("[ListSecrets] getClientset took %v", time.Since(start))
+	apiStart := time.Now()
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
 	secrets, err := cs.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
+	log.Printf("[ListSecrets] API call took %v, returned %d items", time.Since(apiStart), len(secrets.Items))
 	if err != nil {
 		return nil, err
 	}
@@ -1446,11 +1656,13 @@ func (c *Client) ListSecrets(namespace string) ([]v1.Secret, error) {
 
 // ListSecretsWithContext lists secrets with cancellation support
 func (c *Client) ListSecretsWithContext(ctx context.Context, namespace string) ([]v1.Secret, error) {
+	start := time.Now()
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
 	secrets, err := cs.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
+	log.Printf("[ListSecretsWithContext] API call took %v, ns=%q, items=%d, err=%v", time.Since(start), namespace, len(secrets.Items), err)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
@@ -1458,6 +1670,138 @@ func (c *Client) ListSecretsWithContext(ctx context.Context, namespace string) (
 		return nil, err
 	}
 	return secrets.Items, nil
+}
+
+// SecretListItem is a lightweight representation of a Secret for list views.
+// It contains only the fields needed for display, avoiding transfer of actual secret data.
+type SecretListItem struct {
+	Metadata SecretMetadata `json:"metadata"`
+	Type     string         `json:"type"`
+	DataKeys int            `json:"dataKeys"` // Number of data keys, not the actual data
+}
+
+// SecretMetadata contains only the metadata fields needed for list display
+type SecretMetadata struct {
+	Name              string            `json:"name"`
+	Namespace         string            `json:"namespace"`
+	UID               string            `json:"uid"`
+	CreationTimestamp metav1.Time       `json:"creationTimestamp"`
+	Labels            map[string]string `json:"labels,omitempty"`
+	Annotations       map[string]string `json:"annotations,omitempty"`
+}
+
+// ListSecretsMetadataWithContext lists secrets using metadata-only fetch for list views.
+// This avoids transferring the actual secret data, significantly reducing response size.
+func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace string) ([]SecretListItem, error) {
+	start := time.Now()
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+
+	// Build the request path
+	var path string
+	if namespace == "" {
+		path = "/api/v1/secrets"
+	} else {
+		path = fmt.Sprintf("/api/v1/namespaces/%s/secrets", namespace)
+	}
+
+	// Use Table format with metadata-only objects
+	// This returns column data (name, type, data count, age) plus minimal object metadata
+	// without the actual secret data
+	result := cs.CoreV1().RESTClient().Get().
+		AbsPath(path).
+		SetHeader("Accept", "application/json;as=Table;g=meta.k8s.io;v=v1").
+		Do(ctx)
+
+	if err := result.Error(); err != nil {
+		log.Printf("[ListSecretsMetadata] API call failed after %v, ns=%q, err=%v", time.Since(start), namespace, err)
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+
+	// Parse the Table response
+	body, err := result.Raw()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var table metav1.Table
+	if err := json.Unmarshal(body, &table); err != nil {
+		return nil, fmt.Errorf("failed to parse table response: %w", err)
+	}
+
+	// Find column indices
+	nameIdx, typeIdx, dataIdx := -1, -1, -1
+	for i, col := range table.ColumnDefinitions {
+		switch col.Name {
+		case "Name":
+			nameIdx = i
+		case "Type":
+			typeIdx = i
+		case "Data":
+			dataIdx = i
+		}
+	}
+
+	// Convert rows to SecretListItem
+	items := make([]SecretListItem, 0, len(table.Rows))
+	for _, row := range table.Rows {
+		item := SecretListItem{}
+
+		// Extract cells
+		if nameIdx >= 0 && nameIdx < len(row.Cells) {
+			if name, ok := row.Cells[nameIdx].(string); ok {
+				item.Metadata.Name = name
+			}
+		}
+		if typeIdx >= 0 && typeIdx < len(row.Cells) {
+			if t, ok := row.Cells[typeIdx].(string); ok {
+				item.Type = t
+			}
+		}
+		if dataIdx >= 0 && dataIdx < len(row.Cells) {
+			// Data column contains count as number
+			switch v := row.Cells[dataIdx].(type) {
+			case float64:
+				item.DataKeys = int(v)
+			case int64:
+				item.DataKeys = int(v)
+			case int:
+				item.DataKeys = v
+			}
+		}
+
+		// Extract metadata from the embedded object
+		if row.Object.Raw != nil {
+			var partialMeta struct {
+				Metadata struct {
+					Name              string            `json:"name"`
+					Namespace         string            `json:"namespace"`
+					UID               string            `json:"uid"`
+					CreationTimestamp metav1.Time       `json:"creationTimestamp"`
+					Labels            map[string]string `json:"labels,omitempty"`
+					Annotations       map[string]string `json:"annotations,omitempty"`
+				} `json:"metadata"`
+			}
+			if err := json.Unmarshal(row.Object.Raw, &partialMeta); err == nil {
+				item.Metadata.Name = partialMeta.Metadata.Name
+				item.Metadata.Namespace = partialMeta.Metadata.Namespace
+				item.Metadata.UID = partialMeta.Metadata.UID
+				item.Metadata.CreationTimestamp = partialMeta.Metadata.CreationTimestamp
+				item.Metadata.Labels = partialMeta.Metadata.Labels
+				item.Metadata.Annotations = partialMeta.Metadata.Annotations
+			}
+		}
+
+		items = append(items, item)
+	}
+
+	log.Printf("[ListSecretsMetadata] API call took %v, ns=%q, items=%d", time.Since(start), namespace, len(items))
+	return items, nil
 }
 
 // ConfigMap YAML operations

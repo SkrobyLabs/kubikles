@@ -28,7 +28,7 @@ import {
     ListServices,
     ListIngresses,
     ListConfigMaps,
-    ListSecrets,
+    ListSecretsMetadata,
     ListPVCs,
     ListPVs,
     ListNodes,
@@ -92,8 +92,8 @@ export const useIngresses = createNamespacedResourceHook('ingresses', ListIngres
 /** Hook for Kubernetes ConfigMaps */
 export const useConfigMaps = createNamespacedResourceHook('configmaps', ListConfigMaps, 'configMaps');
 
-/** Hook for Kubernetes Secrets */
-export const useSecrets = createNamespacedResourceHook('secrets', ListSecrets, 'secrets');
+/** Hook for Kubernetes Secrets - uses metadata-only fetch to avoid transferring secret data */
+export const useSecrets = createNamespacedResourceHook('secrets', ListSecretsMetadata, 'secrets');
 
 /** Hook for Kubernetes PersistentVolumeClaims */
 export const usePVCs = createNamespacedResourceHook('persistentvolumeclaims', ListPVCs, 'pvcs');

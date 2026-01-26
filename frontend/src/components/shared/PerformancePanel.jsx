@@ -240,18 +240,6 @@ export default function PerformancePanel({
                                 sparklineColor="stroke-yellow-400"
                             />
                             <MetricCard
-                                title="Metrics Requests"
-                                icon={ChartBarIcon}
-                                value={backendMetrics.metricsRequests?.pending || 0}
-                                subtitle={`Total: ${backendMetrics.metricsRequests?.total || 0} / Cancelled: ${backendMetrics.metricsRequests?.cancelled || 0}`}
-                            />
-                            <MetricCard
-                                title="List Requests"
-                                icon={ArrowPathIcon}
-                                value={backendMetrics.listRequests?.pending || 0}
-                                subtitle={`Total: ${backendMetrics.listRequests?.total || 0} / Cancelled: ${backendMetrics.listRequests?.cancelled || 0}`}
-                            />
-                            <MetricCard
                                 title="Port Forwards"
                                 icon={SignalIcon}
                                 value={backendMetrics.portForwards?.active || 0}

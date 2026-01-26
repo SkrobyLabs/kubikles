@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { SetRequestCancellationEnabled, SetForceHTTP1, SetClientPoolSize } from '../../wailsjs/go/main/App';
 
 const ConfigContext = createContext();
 
@@ -44,7 +45,19 @@ const defaultConfig = {
         // Poll interval for performance panel (ms)
         pollIntervalMs: 1500,
         // Frame interval for resource event batching (ms). Lower = more responsive, higher = less CPU.
-        eventCoalescerMs: 16
+        eventCoalescerMs: 16,
+        // Enable actual HTTP request cancellation when navigating between views.
+        // Due to a Go HTTP/2 bug (golang/go#34944), cancelling requests can cause
+        // performance issues. When disabled, requests complete in background
+        // but stale results are ignored. Disable if experiencing slow navigation.
+        enableRequestCancellation: true,
+        // Force HTTP/1.1 instead of HTTP/2. HTTP/1.1 opens multiple TCP connections
+        // for parallel requests, avoiding HTTP/2 flow control bottlenecks.
+        // Requires context switch to take effect.
+        forceHttp1: false,
+        // Additional K8s client connections for better parallelism.
+        // 0 = just main connection. Requires context switch.
+        clientPoolSize: 0
     }
 };
 
@@ -162,6 +175,30 @@ export const ConfigProvider = ({ children }) => {
             console.error('Failed to save config to localStorage:', e);
         }
     }, [config]);
+
+    // Sync request cancellation setting to backend
+    useEffect(() => {
+        const enabled = config.performance?.enableRequestCancellation ?? true;
+        SetRequestCancellationEnabled(enabled).catch(err => {
+            console.error('Failed to set request cancellation setting:', err);
+        });
+    }, [config.performance?.enableRequestCancellation]);
+
+    // Sync HTTP protocol setting to backend
+    useEffect(() => {
+        const forceHttp1 = config.performance?.forceHttp1 ?? false;
+        SetForceHTTP1(forceHttp1).catch(err => {
+            console.error('Failed to set HTTP/1 setting:', err);
+        });
+    }, [config.performance?.forceHttp1]);
+
+    // Sync client pool size setting to backend
+    useEffect(() => {
+        const poolSize = config.performance?.clientPoolSize ?? 0;
+        SetClientPoolSize(poolSize).catch(err => {
+            console.error('Failed to set client pool size:', err);
+        });
+    }, [config.performance?.clientPoolSize]);
 
     // Get a config value by path
     const getConfig = useCallback((path) => {

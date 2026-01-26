@@ -37,7 +37,9 @@ export default function StatefulSetList({ isVisible }) {
         currentContext,
     });
     const { statefulSets, loading: statefulSetsLoading } = useStatefulSets(currentContext, selectedNamespaces, isVisible);
-    const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible);
+    // Defer pods fetch until statefulsets are loaded to prioritize showing the list first
+    const statefulSetsReady = !statefulSetsLoading && statefulSets.length > 0;
+    const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible && statefulSetsReady);
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useStatefulSetActions();
 
     const columns = useMemo(() => [

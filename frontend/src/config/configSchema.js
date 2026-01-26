@@ -131,6 +131,29 @@ export const configSchema = {
             step: 1,
             unit: 'ms',
             default: 16
+        },
+        enableRequestCancellation: {
+            type: 'boolean',
+            label: 'Enable Request Cancellation',
+            description: 'Cancel in-flight API requests when navigating away',
+            subtext: 'Disable if experiencing slow navigation. Works around Go HTTP/2 bug where cancellation causes performance collapse.',
+            default: true
+        },
+        forceHttp1: {
+            type: 'boolean',
+            label: 'Force HTTP/1.1',
+            description: 'Use HTTP/1.1 instead of HTTP/2',
+            subtext: 'Opens multiple TCP connections for parallel requests, avoiding HTTP/2 flow control bottlenecks. Requires context switch.',
+            default: false
+        },
+        clientPoolSize: {
+            type: 'number',
+            label: 'Additional Connections',
+            description: 'Extra K8s client connections for better parallelism (0 = just main connection). Requires context switch.',
+            min: 0,
+            max: 10,
+            step: 1,
+            default: 0
         }
     },
     portForwards: {

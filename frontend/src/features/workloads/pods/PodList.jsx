@@ -47,7 +47,8 @@ export default function PodList({ isVisible }) {
         currentContext,
     });
     const { pods, loading } = usePods(currentContext, selectedNamespaces, isVisible);
-    const { metrics, available: metricsAvailable } = usePodMetrics(isVisible);
+    // Delay metrics fetch until pods are loaded to prioritize showing pod list first
+    const { metrics, available: metricsAvailable } = usePodMetrics(isVisible, !loading && pods.length > 0);
     const { openLogs, handleShell, handleEditYaml, handleShowDependencies, handleShowDetails } = usePodActions();
 
     const columns = useMemo(() => [
