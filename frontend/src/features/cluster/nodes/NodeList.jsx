@@ -115,7 +115,7 @@ export default function NodeList({ isVisible }) {
             label: 'CPU',
             render: (item) => {
                 const m = metrics[item.metadata?.name];
-                if (!metricsAvailable) return <span className="text-gray-500 italic text-xs">N/A</span>;
+                if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
                 if (!m) return <span className="text-gray-500 text-xs">--</span>;
                 return (
                     <div className="flex flex-col gap-0.5">
@@ -132,7 +132,7 @@ export default function NodeList({ isVisible }) {
             label: 'Memory',
             render: (item) => {
                 const m = metrics[item.metadata?.name];
-                if (!metricsAvailable) return <span className="text-gray-500 italic text-xs">N/A</span>;
+                if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
                 if (!m) return <span className="text-gray-500 text-xs">--</span>;
                 return (
                     <div className="flex flex-col gap-0.5">
@@ -143,6 +143,17 @@ export default function NodeList({ isVisible }) {
                 );
             },
             getValue: (item) => metrics[item.metadata?.name]?.memCommittedPercent ?? -1
+        },
+        {
+            key: 'pods',
+            label: 'Pods',
+            render: (item) => {
+                const m = metrics[item.metadata?.name];
+                if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
+                if (!m) return <span className="text-gray-500 text-xs">--</span>;
+                return <ResourceBar percent={m.podPercent} label="" tooltipLabel={`${m.podCount}/${m.podCapacity}`} color="bg-green-500" />;
+            },
+            getValue: (item) => metrics[item.metadata?.name]?.podPercent ?? -1
         },
         {
             key: 'conditions',

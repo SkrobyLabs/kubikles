@@ -153,6 +153,7 @@ export default function CRDList({ isVisible }) {
                 showNamespaceSelector={false}
                 initialSort={{ key: 'age', direction: 'desc' }}
                 resourceType="crds"
+                onRowClick={handleEditYaml}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

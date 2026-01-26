@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { ChartBarIcon, CheckCircleIcon, XCircleIcon, ArrowPathIcon, ServerStackIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, CheckCircleIcon, XCircleIcon, ArrowPathIcon, ServerStackIcon, ArrowTopRightOnSquareIcon, CpuChipIcon } from '@heroicons/react/24/outline';
 import { DetectPrometheus, ListPrometheusInstalls, TestPrometheusEndpoint, SavePrometheusConfig, ClearPrometheusConfig, AddPortForwardConfig, StartPortForward, GetRandomAvailablePort, GetPortForwardConfigs, GetActivePortForwards } from '../../../../wailsjs/go/main/App';
 import { BrowserOpenURL } from '../../../../wailsjs/runtime/runtime';
 import { useK8s } from '../../../context/K8sContext';
+import { useNodeMetrics } from '../../../hooks/useNodeMetrics';
 
 export default function MetricsList({ isVisible }) {
     const { currentContext } = useK8s();
+    // Check Kubernetes Metrics API availability (metrics-server)
+    const { available: k8sMetricsAvailable, loading: k8sMetricsLoading } = useNodeMetrics(isVisible);
+
     const [prometheusInfo, setPrometheusInfo] = useState(null);
     const [allInstalls, setAllInstalls] = useState([]);
     const [detecting, setDetecting] = useState(true);
@@ -246,9 +250,55 @@ export default function MetricsList({ isVisible }) {
             {/* Content */}
             <div className="flex-1 overflow-auto p-6">
                 <div className="max-w-2xl mx-auto space-y-6">
-                    {/* Active Connection */}
+                    {/* Kubernetes Metrics API (metrics-server) Status */}
                     <div className="bg-surface border border-border rounded-lg p-6">
-                        <h2 className="text-lg font-medium text-text mb-4">Active Connection</h2>
+                        <h2 className="text-lg font-medium text-text mb-4 flex items-center gap-2">
+                            <CpuChipIcon className="h-5 w-5" />
+                            Kubernetes Metrics API
+                        </h2>
+                        {k8sMetricsLoading || k8sMetricsAvailable === null ? (
+                            <div className="flex items-center gap-3 text-gray-400">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                                Checking metrics-server availability...
+                            </div>
+                        ) : k8sMetricsAvailable ? (
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 text-green-400">
+                                    <CheckCircleIcon className="h-5 w-5" />
+                                    <span className="font-medium">Available</span>
+                                    <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
+                                        metrics-server
+                                    </span>
+                                </div>
+                                <p className="text-sm text-gray-400">
+                                    The Kubernetes Metrics API is available. Real-time CPU and memory usage data
+                                    is displayed in the Nodes and Pods lists.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 text-yellow-400">
+                                    <XCircleIcon className="h-5 w-5" />
+                                    <span className="font-medium">Not Available</span>
+                                </div>
+                                <p className="text-sm text-gray-400 mb-3">
+                                    The Kubernetes Metrics Server is not installed or not responding.
+                                    Install it to see real-time CPU and memory metrics.
+                                </p>
+                                <div className="bg-background rounded p-3 text-sm font-mono text-gray-300 overflow-x-auto">
+                                    kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    Note: For local clusters (minikube, kind, Docker Desktop), the metrics server may need
+                                    additional configuration like <code className="bg-background px-1 rounded">--kubelet-insecure-tls</code>.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Prometheus - Active Connection */}
+                    <div className="bg-surface border border-border rounded-lg p-6">
+                        <h2 className="text-lg font-medium text-text mb-4">Prometheus Connection</h2>
 
                         {detecting ? (
                             <div className="flex items-center gap-3 text-gray-400">

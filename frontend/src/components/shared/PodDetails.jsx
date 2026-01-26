@@ -129,7 +129,7 @@ export default function PodDetails({ pod, tabContext = '' }) {
         <div className="flex flex-col h-full bg-background">
             {/* Stale Tab Banner */}
             {isStale && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-red-900/30 border-b border-red-500/50 text-red-400 shrink-0">
+                <div className="flex items-center gap-2 px-4 py-2 bg-amber-900/30 border-b border-amber-500/50 text-amber-400 shrink-0">
                     <LockClosedIcon className="h-5 w-5" />
                     <span className="text-sm">
                         This pod is from context <span className="font-medium">{tabContext}</span>.

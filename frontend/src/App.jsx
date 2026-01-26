@@ -18,6 +18,7 @@ import NodeList from './features/cluster/nodes/NodeList';
 import NamespaceList from './features/cluster/namespaces/NamespaceList';
 import EventList from './features/cluster/events/EventList';
 import MetricsList from './features/cluster/metrics/MetricsList';
+import MetricsOverview from './features/cluster/metrics/MetricsOverview';
 import ServiceList from './features/network/services/ServiceList';
 import IngressList from './features/network/ingresses/IngressList';
 import IngressClassList from './features/network/ingressclasses/IngressClassList';
@@ -423,7 +424,6 @@ function MainLayout() {
         closeOtherTabs,
         closeTabsToRight,
         closeAllTabs,
-        closeAllStaleTabs,
         reorderTabs,
         togglePinTab,
         isTabStale,
@@ -436,6 +436,7 @@ function MainLayout() {
         currentContext,
         switchContext,
         refreshContexts,
+        refreshContextsIfChanged,
         refreshNamespaces,
         triggerRefresh,
         currentNamespace,
@@ -620,7 +621,9 @@ function MainLayout() {
             case 'nodes': return <NodeList isVisible={true} />;
             case 'namespaces': return <NamespaceList isVisible={true} />;
             case 'events': return <EventList isVisible={true} />;
-            case 'metrics': return <MetricsList isVisible={true} />;
+            case 'metrics': return <MetricsOverview isVisible={true} />; // backward compat
+            case 'metrics-overview': return <MetricsOverview isVisible={true} />;
+            case 'metrics-settings': return <MetricsList isVisible={true} />;
             case 'services': return <ServiceList isVisible={true} />;
             case 'ingresses': return <IngressList isVisible={true} />;
             case 'ingressclasses': return <IngressClassList isVisible={true} />;
@@ -664,6 +667,7 @@ function MainLayout() {
                     contexts={contexts}
                     currentContext={currentContext}
                     onContextChange={switchContext}
+                    onContextSelectorOpen={refreshContextsIfChanged}
                 />
                 <main className="flex-1 flex flex-col overflow-hidden">
                     {isConnecting && !connectionError && contexts.length === 0 ? (
@@ -708,7 +712,6 @@ function MainLayout() {
                                         onCloseOthers={closeOtherTabs}
                                         onCloseToRight={closeTabsToRight}
                                         onCloseAll={closeAllTabs}
-                                        onCloseStaleTabs={closeAllStaleTabs}
                                         onReorder={reorderTabs}
                                         onTogglePin={togglePinTab}
                                         isTabStale={isTabStale}

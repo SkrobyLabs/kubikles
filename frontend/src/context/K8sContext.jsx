@@ -224,6 +224,27 @@ export const K8sProvider = ({ children }) => {
         }
     }, []);
 
+    // Lightweight refresh that only updates if contexts changed (avoids UI flicker)
+    const refreshContextsIfChanged = useCallback(async () => {
+        try {
+            const list = await ListContexts();
+            const sortedList = (list || []).sort((a, b) => a.localeCompare(b));
+
+            // Only update if the list actually changed
+            setContexts(prev => {
+                const lengthChanged = prev.length !== sortedList.length;
+                const contentChanged = sortedList.some((ctx, i) => ctx !== prev[i]);
+                if (lengthChanged || contentChanged) {
+                    Logger.debug("Kubeconfig contexts changed", { previous: prev, current: sortedList });
+                    return sortedList;
+                }
+                return prev;
+            });
+        } catch (err) {
+            Logger.error("Failed to refresh contexts", err);
+        }
+    }, []);
+
     const fetchNamespaces = useCallback(async () => {
         if (!currentContext) return;
         try {
@@ -503,6 +524,7 @@ export const K8sProvider = ({ children }) => {
         setSelectedNamespaces,
         switchContext,
         refreshContexts: fetchContexts,
+        refreshContextsIfChanged,
         refreshNamespaces: fetchNamespaces,
         lastRefresh,
         triggerRefresh,
@@ -524,6 +546,7 @@ export const K8sProvider = ({ children }) => {
         selectedNamespaces,
         switchContext,
         fetchContexts,
+        refreshContextsIfChanged,
         fetchNamespaces,
         lastRefresh,
         triggerRefresh,

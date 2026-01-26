@@ -12,7 +12,8 @@ export default function SearchSelect({
     getOptionValue = null,  // (option) => string value
     getOptionLabel = null,  // (option) => string label for display
     renderOption = null,    // (option, isSelected) => ReactNode for custom rendering
-    disabled = false
+    disabled = false,
+    onOpen = null,          // Callback when dropdown opens
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -162,10 +163,19 @@ export default function SearchSelect({
         return getDisplayLabel(value);
     };
 
+    const handleToggle = () => {
+        if (disabled) return;
+        const willOpen = !isOpen;
+        setIsOpen(willOpen);
+        if (willOpen && onOpen) {
+            onOpen();
+        }
+    };
+
     return (
         <div className={`relative no-drag ${className}`} ref={wrapperRef}>
             <button
-                onClick={() => !disabled && setIsOpen(!isOpen)}
+                onClick={handleToggle}
                 disabled={disabled}
                 className={`w-full flex items-center justify-between px-3 py-2 bg-surface border border-border rounded text-sm text-text transition-colors ${
                     disabled

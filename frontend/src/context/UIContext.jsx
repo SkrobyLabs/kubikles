@@ -43,37 +43,17 @@ export const UIProvider = ({ children }) => {
         return result;
     }, []);
 
-    // Persistence for activeView
-    // We want to save activeView per context, similar to namespace
+    // Persistence for activeView - save globally (not per-context)
     useEffect(() => {
-        if (!currentContext) return;
-
-        const saved = localStorage.getItem(`kubikles_state_${currentContext}`);
+        const saved = localStorage.getItem('kubikles_active_view');
         if (saved) {
-            try {
-                const state = JSON.parse(saved);
-                if (state.view) {
-                    setActiveView(state.view);
-                }
-            } catch (e) {
-                console.error("Failed to parse saved view state", e);
-            }
+            setActiveView(saved);
         }
-    }, [currentContext]);
+    }, []);
 
     useEffect(() => {
-        if (!currentContext) return;
-
-        const existing = localStorage.getItem(`kubikles_state_${currentContext}`);
-        let state = {};
-        if (existing) {
-            try {
-                state = JSON.parse(existing);
-            } catch (e) { }
-        }
-        state.view = activeView;
-        localStorage.setItem(`kubikles_state_${currentContext}`, JSON.stringify(state));
-    }, [currentContext, activeView]);
+        localStorage.setItem('kubikles_active_view', activeView);
+    }, [activeView]);
 
     // Tab Management (all callbacks memoized to prevent re-renders)
     const openTab = useCallback((tab) => {
@@ -193,12 +173,6 @@ export const UIProvider = ({ children }) => {
         return tab.context && tab.context !== currentContext;
     }, [currentContext]);
 
-    // Close all stale tabs
-    const closeAllStaleTabs = useCallback(() => {
-        setBottomTabs(prev => prev.filter(t => !(t.context && t.context !== currentContext)));
-        setActiveTabId(prev => prev); // Will be cleaned up by effect if needed
-    }, [currentContext]);
-
     // Memoize context value to prevent unnecessary re-renders of consumers
     // Note: activeMenuId moved to MenuContext for better performance
     const value = useMemo(() => ({
@@ -214,7 +188,6 @@ export const UIProvider = ({ children }) => {
         closeOtherTabs,
         closeTabsToRight,
         closeAllTabs,
-        closeAllStaleTabs,
         reorderTabs,
         togglePinTab,
         isTabStale,
@@ -238,7 +211,6 @@ export const UIProvider = ({ children }) => {
         closeOtherTabs,
         closeTabsToRight,
         closeAllTabs,
-        closeAllStaleTabs,
         reorderTabs,
         togglePinTab,
         isTabStale,

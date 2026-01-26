@@ -1,293 +1,240 @@
-# Kubikles - AI Codebase Reference
+# Kubikles AI Reference
 
-This document provides efficient context for AI assistants working with the Kubikles codebase, eliminating the need to re-scan the project structure on each session.
+Quick-access reference for AI assistants. This document eliminates the need to re-scan the codebase.
 
-## Project Overview
+## Identity
 
-Kubikles is a lightweight Kubernetes desktop client built with **Go** (backend) and **React** (frontend), connected via **Wails** framework. It provides real-time cluster management with features like pod logs, YAML editing, terminal access, and dependency graph visualization.
+**Kubikles** - Lightweight, high-performance desktop Kubernetes client. Go+React via Wails framework. Alternative to Lens.
 
----
+## Tech Stack
 
-## Directory Structure
+| Layer | Tech |
+|-------|------|
+| Desktop | Wails v2 |
+| Backend | Go 1.24+, client-go |
+| Frontend | React 18, Vite, TailwindCSS |
+| Editor | Monaco |
+| Terminal | xterm.js (WebGL) |
+| Graphs | React Flow + dagre |
+
+## Project Structure
 
 ```
 kubikles/
-├── main.go                    # Wails entry point
-├── app.go                     # Main App struct - all backend methods exposed to frontend
-├── go.mod                     # Go 1.24+
-├── wails.json                 # Wails configuration
-├── Makefile                   # make dev, make build
+├── main.go                 # Entry point, Wails setup, menus
+├── app.go                  # Main App struct (~3200 lines) - all Wails bindings
+├── eventcoalescer.go       # 16ms event batching for IPC efficiency
+├── logcoalescer.go         # Log streaming batching
+├── portforward.go          # Port forward management
+├── ingressforward.go       # Ingress forwarding
+├── metricsrequests.go      # Prometheus metrics handling
+├── listrequests.go         # Cancellable K8s list requests
+├── theme.go                # Theme management
+├── profiling.go            # PGO profiling support
+├── version.go              # Version info
 │
 ├── pkg/
 │   ├── k8s/
-│   │   ├── client.go          # Kubernetes client wrapper (List*, Get*, Update*, Delete*)
-│   │   └── dependencies.go    # Dependency graph resolution
-│   └── terminal/
-│       └── terminal.go        # WebSocket terminal service
+│   │   ├── client.go       # K8s API wrapper (214KB) - all resource operations
+│   │   └── dependencies.go # Dependency graph computation (76KB)
+│   ├── terminal/
+│   │   ├── manager.go      # Session lifecycle
+│   │   ├── session_unix.go # Unix/macOS PTY
+│   │   └── session_windows.go # Windows conpty
+│   ├── helm/
+│   │   ├── client.go       # Helm operations
+│   │   ├── oci.go          # OCI registry
+│   │   └── repo.go         # Repository management
+│   ├── hosts/              # Platform-specific hosts file
+│   ├── certviewer/         # Certificate inspection
+│   └── crashlog/           # Crash logging
 │
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx            # Main layout + context providers
-│   │   ├── context/
-│   │   │   ├── K8sContext.jsx # Kubernetes state (contexts, namespaces)
-│   │   │   └── UIContext.jsx  # UI state (views, tabs, modals)
-│   │   ├── features/          # Feature-based organization
-│   │   │   ├── cluster/       # nodes/, namespaces/, events/
-│   │   │   ├── workloads/     # pods/, deployments/, statefulsets/, daemonsets/,
-│   │   │   │                  # replicasets/, jobs/, cronjobs/
-│   │   │   ├── config/        # configmaps/, secrets/
-│   │   │   ├── network/       # services/
-│   │   │   └── storage/       # pv/, pvc/, storageclass/
-│   │   ├── components/
-│   │   │   ├── layout/        # Sidebar.jsx, BottomPanel.jsx
-│   │   │   └── shared/        # ResourceList.jsx, YamlEditor.jsx, LogViewer.jsx,
-│   │   │                      # Terminal.jsx, DependencyGraph.jsx, ConfirmModal.jsx
-│   │   ├── hooks/             # usePods.js, useDeployments.js, etc.
-│   │   └── utils/
-│   │       ├── resourceRegistry.js  # Central resource type definitions
-│   │       ├── k8s-helpers.js       # Status helpers, pod filtering
-│   │       ├── Logger.js            # Logging utility
-│   │       └── formatting.js        # Date/time formatting
-│   └── wailsjs/               # Auto-generated Wails bindings
+├── frontend/src/
+│   ├── App.jsx             # Root component, providers, view routing
+│   ├── main.jsx            # Entry, Monaco config
+│   ├── context/
+│   │   ├── K8sContext.jsx      # K8s state (contexts, namespaces, CRDs)
+│   │   ├── UIContext.jsx       # UI state (tabs, modals, panels)
+│   │   ├── ConfigContext.jsx   # User settings, port forwards
+│   │   ├── ThemeContext.jsx    # Active theme
+│   │   ├── MenuContext.jsx     # Context menus
+│   │   ├── DebugContext.jsx    # Debug logging
+│   │   └── NotificationContext.jsx # Toast notifications
+│   ├── features/
+│   │   ├── workloads/      # pods/, deployments/, statefulsets/, daemonsets/,
+│   │   │                   # replicasets/, jobs/, cronjobs/
+│   │   ├── cluster/        # nodes/, namespaces/, events/, metrics/, webhooks/,
+│   │   │                   # priorityclasses/
+│   │   ├── config/         # configmaps/, secrets/, hpas/, pdbs/, resourcequotas/,
+│   │   │                   # leases/, limitranges/
+│   │   ├── storage/        # pv/, pvc/, storageclass/, csidrivers/, csinodes/
+│   │   ├── network/        # services/, ingresses/, networkpolicies/, endpoints/,
+│   │   │                   # endpointslices/, ingressclasses/
+│   │   ├── access-control/ # roles/, clusterroles/, rolebindings/,
+│   │   │                   # clusterrolebindings/, serviceaccounts/
+│   │   ├── customresources/ # CRDs and custom instances
+│   │   ├── helm/           # Helm releases and repositories
+│   │   └── portforwards/   # Port forward management UI
+│   ├── components/
+│   │   ├── layout/         # Sidebar.jsx, BottomPanel.jsx
+│   │   └── shared/         # ResourceList.jsx, YamlEditor.jsx, LogViewer.jsx,
+│   │                       # Terminal.jsx, DependencyGraph.jsx, ConfigEditor/
+│   ├── hooks/              # ~25 hooks: useResource.js, useResourceWatcher.js,
+│   │                       # usePortForwards.js, useIngressForward.js, etc.
+│   └── utils/
+│       ├── resourceRegistry.js  # Central resource type definitions
+│       ├── k8s-helpers.js       # Status helpers
+│       ├── Logger.js            # Logging utility
+│       └── formatting.js        # Date/time formatting
 │
-└── build/bin/                 # Compiled binaries
+├── docs/
+│   ├── ai/README.md        # THIS FILE
+│   ├── architecture.md     # High-level architecture
+│   ├── getting-started.md  # Setup guide
+│   ├── PERFORMANCE-PLAN.md # Optimization strategies
+│   └── APPLE-SILICON-OPTIMIZATIONS.md
+│
+└── Makefile                # dev, build, build-all, test, profile, build-pgo
 ```
 
----
+## Key Systems
 
-## Key Patterns
+### 1. Event Coalescing (`eventcoalescer.go`)
+Batches K8s watch events within 16ms windows (60fps). Deduplicates rapid updates. DELETE emits immediately. Reduces IPC overhead significantly.
 
-### 1. Context Providers
-
-**K8sContext** (`context/K8sContext.jsx`)
-```javascript
-// Provides:
-const {
-  contexts, currentContext, switchContext,
-  namespaces, selectedNamespaces, setSelectedNamespaces,
-  refreshContexts, refreshNamespaces, triggerRefresh
-} = useK8s();
+### 2. Wails Communication
+**Bindings** (sync): Go methods auto-exposed to JS
+```go
+// Go (app.go)
+func (a *App) ListPods(namespace string) ([]v1.Pod, error)
+```
+```js
+// JS
+import { ListPods } from '../wailsjs/go/main/App';
+const pods = await ListPods('default');
 ```
 
-**UIContext** (`context/UIContext.jsx`)
-```javascript
-// Provides:
-const {
-  activeView, setActiveView,
-  openTab, closeTab, bottomTabs, activeTabId,
-  openModal, closeModal, modal,
-  activeMenuId, setActiveMenuId,
-  navigateWithSearch, consumePendingSearch
-} = useUI();
+**Events** (async): Real-time updates
+```go
+// Go emits
+runtime.EventsEmit(a.ctx, "pod-event", event)
+```
+```js
+// JS listens
+window.runtime.EventsOn("pod-event", callback)
 ```
 
-### 2. Data Fetching Hooks
+### 3. Resource Watcher Pattern
+Watchers use reference counting. Start on first subscriber, cleanup 5s after last unsubscribe.
 
-All resource hooks follow this pattern (`hooks/use[Resource].js`):
+### 4. Port Forwarding
+Persistent configs stored in user settings. Modes: favorites, all, none. Supports pod and service forwards. HTTPS for browser.
 
-```javascript
+### 5. Terminal Sessions
+Platform-specific: PTY on Unix, conpty on Windows. WebSocket-based with resize support. Session IDs for lifecycle management.
+
+### 6. HTTP Protocol Management
+Supports HTTP/1.1 vs HTTP/2 selection. Avoids HTTP/2 flow control bottlenecks. Connection warmup/cooldown for performance.
+
+## Context Providers
+
+```js
+// K8sContext
+const { contexts, currentContext, switchContext, namespaces,
+        selectedNamespaces, setSelectedNamespaces, crds } = useK8s();
+
+// UIContext
+const { activeView, setActiveView, openTab, closeTab, bottomTabs,
+        openModal, closeModal, navigateWithSearch } = useUI();
+
+// ConfigContext
+const { config, updateConfig, portForwards, savePortForward } = useConfig();
+
+// ThemeContext
+const { theme, setTheme, themes } = useTheme();
+```
+
+## Data Fetching Pattern
+
+All resource hooks follow:
+```js
 export const useResource = (currentContext, selectedNamespaces, isVisible) => {
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!isVisible) return;  // Only fetch when visible
-
-    // Fetch data
+    if (!isVisible) return;
     const data = await ListResources(namespace);
     setItems(data);
 
-    // Setup watcher
     StartResourceWatcher(namespace);
-
-    // Listen for IPC events
-    window.runtime.EventsOn("resource-event", (event) => {
-      // Handle ADDED, MODIFIED, DELETED
-    });
+    window.runtime.EventsOn("resource-event", handleEvent);
   }, [currentContext, selectedNamespaces, isVisible]);
 
-  return { items, loading, error, setItems };
+  return { items, loading, error };
 };
 ```
 
-### 3. Action Hooks
+## Feature Module Pattern
 
-Each feature has `use[Resource]Actions.jsx`:
+Each resource type (`features/[category]/[resource]/`):
+- `[Resource]List.jsx` - List view with ResourceList component
+- `use[Resource]Actions.jsx` - Edit, delete, view handlers
+- `[Resource]ActionsMenu.jsx` - Context menu (optional)
 
-```javascript
-export const useResourceActions = () => {
-  const { openTab, closeTab, openModal, closeModal } = useUI();
-  const { currentContext } = useK8s();
+## Adding New Resource
 
-  const handleEditYaml = (resource) => {
-    openTab({
-      id: `yaml-${resource.metadata.uid}`,
-      title: `Edit: ${resource.metadata.name}`,
-      content: <YamlEditor resourceType="..." namespace="..." resourceName="..." />
-    });
-  };
+1. **Backend** (`pkg/k8s/client.go`): Add List/Get/Update/Delete methods
+2. **Expose** (`app.go`): Wrap client methods, add watcher
+3. **Generate**: `wails generate module`
+4. **Hook** (`hooks/use[Resource].js`): Copy pattern from existing
+5. **Feature** (`features/[category]/[resource]/`): List + Actions
+6. **Register** (`utils/resourceRegistry.js`): Add resource config
+7. **Route** (`App.jsx`): Add case in renderContent
+8. **Sidebar** (`Sidebar.jsx`): Add navigation item
 
-  const handleDelete = (resource) => {
-    openModal({
-      title: `Delete ${resource.metadata.name}?`,
-      content: 'Are you sure?',
-      confirmStyle: 'danger',
-      onConfirm: async () => {
-        await DeleteResource(namespace, name);
-        closeModal();
-      }
-    });
-  };
+## Critical Files Quick Reference
 
-  return { handleEditYaml, handleDelete, ... };
-};
-```
-
-### 4. Feature List Component
-
-Each resource type follows (`features/[category]/[resource]/[Resource]List.jsx`):
-
-```javascript
-export default function ResourceList({ isVisible }) {
-  const { currentContext, selectedNamespaces, namespaces } = useK8s();
-  const { activeMenuId, setActiveMenuId } = useUI();
-  const { items, loading } = useResource(currentContext, selectedNamespaces, isVisible);
-  const { handleEditYaml, handleDelete } = useResourceActions();
-
-  const columns = useMemo(() => [
-    { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-    { key: 'status', label: 'Status', render: (item) => <StatusBadge />, getValue: (item) => item.status },
-    { key: 'actions', label: '...', render: (item) => <ActionsMenu ... />, isColumnSelector: true }
-  ], []);
-
-  return (
-    <ResourceList
-      title="Resources"
-      columns={columns}
-      data={items}
-      isLoading={loading}
-      namespaces={namespaces}
-      currentNamespace={selectedNamespaces}
-      onNamespaceChange={setSelectedNamespaces}
-      multiSelectNamespaces={true}
-      resourceType="resource"
-    />
-  );
-}
-```
-
-### 5. Wails Communication
-
-**Calling backend:**
-```javascript
-import { ListPods, DeletePod } from '../../wailsjs/go/main/App';
-const pods = await ListPods(namespace);
-await DeletePod(currentContext, namespace, name);
-```
-
-**Receiving events:**
-```javascript
-window.runtime.EventsOn("pod-event", (event) => {
-  // event.type: "ADDED" | "MODIFIED" | "DELETED"
-  // event.pod: the pod object
-});
-```
-
-**Emitting from backend:**
-```go
-runtime.EventsEmit(a.ctx, "pod-event", PodEvent{Type: "ADDED", Pod: &pod})
-```
-
----
-
-## Adding a New Resource Type
-
-### 1. Backend (`pkg/k8s/client.go`)
-```go
-func (c *Client) ListIngresses(namespace string) ([]netv1.Ingress, error) {
-  cs, _ := c.getClientset()
-  list, err := cs.NetworkingV1().Ingresses(namespace).List(context.TODO(), metav1.ListOptions{})
-  return list.Items, err
-}
-```
-
-### 2. Expose in `app.go`
-```go
-func (a *App) ListIngresses(namespace string) ([]netv1.Ingress, error) {
-  return a.k8sClient.ListIngresses(namespace)
-}
-```
-
-### 3. Generate bindings
-```bash
-wails generate module
-```
-
-### 4. Create hook (`hooks/useIngresses.js`)
-Copy pattern from `usePods.js`, replace resource-specific parts.
-
-### 5. Create feature folder
-```
-frontend/src/features/network/ingresses/
-├── IngressList.jsx
-├── useIngressActions.jsx
-└── IngressActionsMenu.jsx (optional)
-```
-
-### 6. Register in `resourceRegistry.js`
-```javascript
-ingress: {
-  kind: 'Ingress',
-  plural: 'ingresses',
-  namespaced: true,
-  getYaml: (ns, name) => GetIngressYaml(ns, name),
-  updateYaml: (ns, name, content) => UpdateIngressYaml(ns, name, content),
-}
-```
-
-### 7. Add to App.jsx
-```javascript
-case 'ingresses': return <IngressList isVisible={true} />;
-```
-
-### 8. Add to Sidebar.jsx
-
----
-
-## Critical Files
-
-| File | Purpose |
+| Task | File(s) |
 |------|---------|
-| `app.go` | All backend methods exposed to frontend |
-| `pkg/k8s/client.go` | Kubernetes API operations |
-| `frontend/src/App.jsx` | Main layout, view routing |
-| `frontend/src/context/K8sContext.jsx` | Kubernetes state management |
-| `frontend/src/context/UIContext.jsx` | UI state (tabs, modals, views) |
-| `frontend/src/components/shared/ResourceList.jsx` | Universal data table |
-| `frontend/src/utils/resourceRegistry.js` | Resource type definitions |
-| `frontend/src/utils/k8s-helpers.js` | Status helpers, pod filtering |
+| Add K8s operation | `pkg/k8s/client.go` + `app.go` |
+| Add view/feature | `App.jsx` + `Sidebar.jsx` + `features/` |
+| Add context state | Relevant `context/*.jsx` |
+| Add shared component | `components/shared/` |
+| Configure resource | `utils/resourceRegistry.js` |
+| Theme customization | `theme.go` + `ThemeContext.jsx` |
+| Port forward logic | `portforward.go` + `hooks/usePortForwards.js` |
+| Terminal behavior | `pkg/terminal/` + `components/shared/Terminal.jsx` |
+| Dependency graph | `pkg/k8s/dependencies.go` + `DependencyGraph.jsx` |
 
----
+## Build Commands
 
-## Common Operations
+```bash
+make dev              # Development with hot-reload
+make build            # Current platform
+make build-release    # Optimized portable
+make build-all        # All platforms
+make test             # Frontend tests
+make profile          # Collect PGO profile
+make build-pgo        # Build with PGO
+```
 
-| Task | Location |
-|------|----------|
-| Add backend method | `app.go` + `pkg/k8s/client.go` |
-| Add new view | `App.jsx` (renderContent) + `Sidebar.jsx` |
-| Add tab content | Use `openTab()` from `useUI()` |
-| Show confirmation | Use `openModal()` from `useUI()` |
-| Get resource YAML | `resourceRegistry.js` → `getYaml(namespace, name)` |
-| Navigate with search | `navigateWithSearch(view, searchTerm)` |
-| Real-time updates | `StartResourceWatcher()` + `EventsOn("resource-event")` |
+## Performance Notes
 
----
+- Event coalescing: 16ms batches
+- Reference-counted watchers
+- Request-scoped caching in dependency graphs
+- HTTP/1.1 option for parallelism
+- Sequence tracking prevents stale updates
+- PGO available (5-15% improvement)
+- Apple Silicon runtime tuning (GOGC=150, GOMEMLIMIT=2GB)
 
-## Tech Stack Quick Reference
+## Supported Resources
 
-- **Backend**: Go 1.24+ with client-go (Kubernetes)
-- **Frontend**: React 18 + Vite + TailwindCSS
-- **Desktop**: Wails v2
-- **Editor**: Monaco Editor
-- **Terminal**: xterm.js
-- **Graphs**: React Flow + dagre
+**Workloads**: Pods, Deployments, StatefulSets, DaemonSets, ReplicaSets, Jobs, CronJobs
+**Cluster**: Nodes, Namespaces, Events, Metrics, PriorityClasses, Webhooks
+**Config**: ConfigMaps, Secrets, HPAs, PDBs, ResourceQuotas, Leases, LimitRanges
+**Storage**: PVs, PVCs, StorageClasses, CSI Drivers, CSI Nodes
+**Network**: Services, Ingresses, NetworkPolicies, Endpoints, EndpointSlices, IngressClasses
+**Access Control**: Roles, ClusterRoles, RoleBindings, ClusterRoleBindings, ServiceAccounts
+**Custom**: CRDs and custom resource instances
+**Helm**: Releases and repositories

@@ -202,7 +202,7 @@ func (m *Manager) RemoveEntriesWithPortRedirect() error {
 	return nil
 }
 
-// RemoveEntries removes all kubikles-managed entries from the hosts file
+// RemoveEntries removes all Kubikles-managed entries from the hosts file
 func (m *Manager) RemoveEntries() error {
 	return m.RemoveEntriesWithPortRedirect()
 }

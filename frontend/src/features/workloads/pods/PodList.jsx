@@ -60,7 +60,7 @@ export default function PodList({ isVisible }) {
             render: (item) => {
                 const key = `${item.metadata?.namespace}/${item.metadata?.name}`;
                 const m = metrics[key];
-                if (!metricsAvailable) return <span className="text-gray-500 italic text-xs">N/A</span>;
+                if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
                 if (!m) return <span className="text-gray-500 text-xs">--</span>;
                 return (
                     <div className="flex flex-col gap-0.5">
@@ -80,7 +80,7 @@ export default function PodList({ isVisible }) {
             render: (item) => {
                 const key = `${item.metadata?.namespace}/${item.metadata?.name}`;
                 const m = metrics[key];
-                if (!metricsAvailable) return <span className="text-gray-500 italic text-xs">N/A</span>;
+                if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
                 if (!m) return <span className="text-gray-500 text-xs">--</span>;
                 return (
                     <div className="flex flex-col gap-0.5">

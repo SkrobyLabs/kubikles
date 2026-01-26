@@ -49,7 +49,8 @@ export default function Sidebar({
     onViewChange,
     contexts,
     currentContext,
-    onContextChange
+    onContextChange,
+    onContextSelectorOpen
 }) {
     const { openConfigEditor } = useConfig();
     const { openPerformancePanel } = usePerformancePanel();
@@ -176,13 +177,19 @@ export default function Sidebar({
 
     const menuGroups = [
         {
+            title: 'Metrics',
+            items: [
+                { id: 'metrics-overview', label: 'Overview', icon: ChartBarIcon },
+                { id: 'metrics-settings', label: 'Settings', icon: Cog6ToothIcon },
+            ]
+        },
+        {
             title: 'Cluster',
             items: [
                 { id: 'nodes', label: 'Nodes', icon: ServerIcon },
                 { id: 'namespaces', label: 'Namespaces', icon: FolderIcon },
                 { id: 'events', label: 'Events', icon: BellAlertIcon },
                 { id: 'priorityclasses', label: 'Priority Classes', icon: BoltIcon },
-                { id: 'metrics', label: 'Metrics', icon: ChartBarIcon },
             ]
         },
         {
@@ -322,6 +329,7 @@ export default function Sidebar({
                     value={currentContext}
                     onChange={handleContextChange}
                     placeholder="Select Context..."
+                    onOpen={onContextSelectorOpen}
                 />
             </div>
 

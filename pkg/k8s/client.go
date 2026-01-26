@@ -136,6 +136,8 @@ type NodeMetrics struct {
 	MemRequested int64  `json:"memRequested"` // bytes (sum of pod requests)
 	CPUCommitted int64  `json:"cpuCommitted"` // millicores (sum of max(usage, request) per container)
 	MemCommitted int64  `json:"memCommitted"` // bytes (sum of max(usage, request) per container)
+	PodCount     int64  `json:"podCount"`     // number of running pods on node
+	PodCapacity  int64  `json:"podCapacity"`  // max pods allowed on node
 }
 
 // NodeMetricsResult wraps the metrics response with availability status
@@ -219,6 +221,7 @@ func (c *Client) loadConfig(contextName string) error {
 	}
 
 	c.clientset = clientset
+	c.metricsClient = nil // Reset metrics client so it's recreated for the new context
 
 	// Create additional client connections for rotation (improves parallelism)
 	c.clientPool = nil
@@ -772,17 +775,24 @@ func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 		return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
 	}
 
+	// Check if metrics-server returned any data
+	// The API might exist but return empty results if metrics-server isn't functioning
+	if nodeMetricsList == nil || len(nodeMetricsList.Items) == 0 {
+		return &NodeMetricsResult{Available: false, Error: "metrics-server returned no data"}, nil
+	}
+
 	// Clear podMetricsList if it failed
 	if podMetricsErr != nil {
 		podMetricsList = nil
 	}
 
 	// Build capacity map
-	capacityMap := make(map[string]struct{ cpu, memory int64 })
+	capacityMap := make(map[string]struct{ cpu, memory, pods int64 })
 	for _, node := range nodes.Items {
 		cpu := node.Status.Capacity.Cpu().MilliValue() // millicores
 		mem := node.Status.Capacity.Memory().Value()   // bytes
-		capacityMap[node.Name] = struct{ cpu, memory int64 }{cpu, mem}
+		podCap := node.Status.Capacity.Pods().Value()  // max pods
+		capacityMap[node.Name] = struct{ cpu, memory, pods int64 }{cpu, mem, podCap}
 	}
 
 	// Build container usage map: namespace/podName/containerName -> {cpu, memory}
@@ -803,6 +813,7 @@ func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 	type nodeResources struct {
 		requestedCPU, requestedMem int64
 		committedCPU, committedMem int64
+		podCount                   int64
 	}
 	resourcesMap := make(map[string]*nodeResources)
 
@@ -816,6 +827,7 @@ func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 			resourcesMap[nodeName] = &nodeResources{}
 		}
 		res := resourcesMap[nodeName]
+		res.podCount++
 
 		for _, container := range pod.Spec.Containers {
 			var reqCPU, reqMem int64
@@ -852,23 +864,40 @@ func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 	for _, nm := range nodeMetricsList.Items {
 		cap := capacityMap[nm.Name]
 		res := resourcesMap[nm.Name]
-		var reqCPU, reqMem, comCPU, comMem int64
+		var reqCPU, reqMem, comCPU, comMem, podCount int64
 		if res != nil {
 			reqCPU = res.requestedCPU
 			reqMem = res.requestedMem
 			comCPU = res.committedCPU
 			comMem = res.committedMem
+			podCount = res.podCount
 		}
+
+		// Get node-level usage from metrics-server
+		cpuUsage := nm.Usage.Cpu().MilliValue()
+		memUsage := nm.Usage.Memory().Value()
+
+		// Ensure committed >= usage at node level
+		// (container-level committed may be lower than node usage due to system processes)
+		if cpuUsage > comCPU {
+			comCPU = cpuUsage
+		}
+		if memUsage > comMem {
+			comMem = memUsage
+		}
+
 		result = append(result, NodeMetrics{
 			Name:         nm.Name,
-			CPUUsage:     nm.Usage.Cpu().MilliValue(), // millicores
-			MemoryUsage:  nm.Usage.Memory().Value(),   // bytes
+			CPUUsage:     cpuUsage,  // millicores
+			MemoryUsage:  memUsage,  // bytes
 			CPUCapacity:  cap.cpu,
 			MemCapacity:  cap.memory,
 			CPURequested: reqCPU,
 			MemRequested: reqMem,
 			CPUCommitted: comCPU,
 			MemCommitted: comMem,
+			PodCount:     podCount,
+			PodCapacity:  cap.pods,
 		})
 	}
 
@@ -930,6 +959,12 @@ func (c *Client) GetPodMetrics() (*PodMetricsResult, error) {
 
 	if err := g.Wait(); err != nil {
 		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
+	// Check if metrics-server returned any data
+	// The API might exist but return empty results if metrics-server isn't functioning
+	if podMetricsList == nil || len(podMetricsList.Items) == 0 {
+		return &PodMetricsResult{Available: false, Error: "metrics-server returned no data"}, nil
 	}
 
 	// Build node capacity map
@@ -6755,8 +6790,8 @@ type NodeMetricsHistory struct {
 type NodeResourceMetrics struct {
 	Usage       []MetricsDataPoint `json:"usage"`
 	Allocatable []MetricsDataPoint `json:"allocatable"`
+	Reserved    []MetricsDataPoint `json:"reserved"`
 	Committed   []MetricsDataPoint `json:"committed"`
-	Uncommitted []MetricsDataPoint `json:"uncommitted"`
 }
 
 // NodePodMetrics holds pod count metrics for a node
@@ -6817,6 +6852,13 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 	)
 	result.CPU.Allocatable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuAllocatableQuery, start, end, step)
 
+	// CPU Reserved = sum of requests for pods on this node
+	cpuReservedQuery := fmt.Sprintf(
+		`sum(kube_pod_container_resource_requests{resource="cpu"} * on(namespace, pod) group_left() (kube_pod_info{node="%s"} > bool 0))`,
+		nodeName,
+	)
+	result.CPU.Reserved = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuReservedQuery, start, end, step)
+
 	// CPU Committed = sum of max(usage, request) per container
 	// First get requests for pods on this node, then join with usage and compute max
 	cpuCommittedQuery := fmt.Sprintf(
@@ -6824,8 +6866,6 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 		nodeName, nodeName,
 	)
 	result.CPU.Committed = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuCommittedQuery, start, end, step)
-
-	// CPU Uncommitted - calculated in frontend from allocatable - committed
 
 	// --- Memory Metrics ---
 	// Memory Usage (all pods on this node)
@@ -6842,6 +6882,13 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 	)
 	result.Memory.Allocatable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memAllocatableQuery, start, end, step)
 
+	// Memory Reserved = sum of requests for pods on this node
+	memReservedQuery := fmt.Sprintf(
+		`sum(kube_pod_container_resource_requests{resource="memory"} * on(namespace, pod) group_left() (kube_pod_info{node="%s"} > bool 0))`,
+		nodeName,
+	)
+	result.Memory.Reserved = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memReservedQuery, start, end, step)
+
 	// Memory Committed = sum of max(usage, request) per container
 	// First get requests for pods on this node, then join with usage and compute max
 	memCommittedQuery := fmt.Sprintf(
@@ -6849,8 +6896,6 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 		nodeName, nodeName,
 	)
 	result.Memory.Committed = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memCommittedQuery, start, end, step)
-
-	// Memory Uncommitted - calculated in frontend from allocatable - committed
 
 	// --- Pod Count Metrics ---
 	// Running pods on node

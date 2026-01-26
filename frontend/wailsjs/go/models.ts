@@ -757,6 +757,8 @@ export namespace k8s {
 	    memRequested: number;
 	    cpuCommitted: number;
 	    memCommitted: number;
+	    podCount: number;
+	    podCapacity: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new NodeMetrics(source);
@@ -773,6 +775,8 @@ export namespace k8s {
 	        this.memRequested = source["memRequested"];
 	        this.cpuCommitted = source["cpuCommitted"];
 	        this.memCommitted = source["memCommitted"];
+	        this.podCount = source["podCount"];
+	        this.podCapacity = source["podCapacity"];
 	    }
 	}
 	export class NodePodMetrics {
@@ -810,8 +814,8 @@ export namespace k8s {
 	export class NodeResourceMetrics {
 	    usage: MetricsDataPoint[];
 	    allocatable: MetricsDataPoint[];
+	    reserved: MetricsDataPoint[];
 	    committed: MetricsDataPoint[];
-	    uncommitted: MetricsDataPoint[];
 	
 	    static createFrom(source: any = {}) {
 	        return new NodeResourceMetrics(source);
@@ -821,8 +825,8 @@ export namespace k8s {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.usage = this.convertValues(source["usage"], MetricsDataPoint);
 	        this.allocatable = this.convertValues(source["allocatable"], MetricsDataPoint);
+	        this.reserved = this.convertValues(source["reserved"], MetricsDataPoint);
 	        this.committed = this.convertValues(source["committed"], MetricsDataPoint);
-	        this.uncommitted = this.convertValues(source["uncommitted"], MetricsDataPoint);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

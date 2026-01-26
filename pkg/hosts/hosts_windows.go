@@ -155,7 +155,7 @@ func (m *Manager) addEntriesInternal(entries []Entry) error {
 	return nil
 }
 
-// RemoveEntries removes all kubikles-managed entries from the hosts file and cleans up portproxy rules
+// RemoveEntries removes all Kubikles-managed entries from the hosts file and cleans up portproxy rules
 func (m *Manager) RemoveEntries() error {
 	// Read current content
 	content, err := os.ReadFile(m.hostsPath)

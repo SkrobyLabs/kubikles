@@ -20,12 +20,13 @@ export default function BottomPanel({
     onCloseOthers,
     onCloseToRight,
     onCloseAll,
-    onCloseStaleTabs,
     onReorder,
     onTogglePin,
     isTabStale,
     height = '40%'
 }) {
+    // Filter out stale tabs unless they are pinned
+    const visibleTabs = tabs.filter(tab => !isTabStale?.(tab) || tab.pinned);
     const { getConfig } = useConfig();
     const showTabIcons = getConfig('ui.showTabIcons');
 
@@ -139,9 +140,6 @@ export default function BottomPanel({
             case 'closeRight':
                 onCloseToRight?.(tabId);
                 break;
-            case 'closeStaleTabs':
-                onCloseStaleTabs?.();
-                break;
             case 'closeAll':
                 onCloseAll?.();
                 break;
@@ -149,12 +147,11 @@ export default function BottomPanel({
         setContextMenu(null);
     };
 
-    if (!tabs || tabs.length === 0) return null;
+    if (!visibleTabs || visibleTabs.length === 0) return null;
 
-    const isLastTab = contextMenu && contextMenu.index === tabs.length - 1;
-    const isOnlyTab = tabs.length === 1;
-    const hasStaleTabs = tabs.some(t => isTabStale?.(t));
-    const contextMenuTab = contextMenu ? tabs.find(t => t.id === contextMenu.tabId) : null;
+    const isLastTab = contextMenu && contextMenu.index === visibleTabs.length - 1;
+    const isOnlyTab = visibleTabs.length === 1;
+    const contextMenuTab = contextMenu ? visibleTabs.find(t => t.id === contextMenu.tabId) : null;
 
     return (
         <div
@@ -162,7 +159,7 @@ export default function BottomPanel({
             style={{ height: height }}
         >
             <div className="flex items-center bg-background border-b border-border overflow-x-auto">
-                {tabs.map((tab, index) => {
+                {visibleTabs.map((tab, index) => {
                     const stale = isTabStale?.(tab);
                     return (
                         <div
@@ -178,7 +175,7 @@ export default function BottomPanel({
                             className={`
                                 flex items-center px-4 py-2 text-xs font-medium cursor-pointer border-r border-border min-w-[150px] max-w-[250px]
                                 ${stale
-                                    ? 'bg-red-900/20 text-red-400/70 border-b-2 border-b-red-500/50'
+                                    ? 'bg-amber-900/20 text-amber-400/70 border-b-2 border-b-amber-500/50'
                                     : tab.id === activeTabId
                                         ? 'bg-surface text-primary border-b-2 border-b-primary'
                                         : 'text-gray-400 hover:text-text hover:bg-surface'
@@ -194,7 +191,7 @@ export default function BottomPanel({
                                 <BookmarkIcon className="h-3 w-3 mr-1.5 text-primary shrink-0" title="Pinned" />
                             )}
                             {stale && (
-                                <span className="mr-1.5 text-red-400" title="Stale - different context">⚠</span>
+                                <span className="mr-1.5 text-amber-400" title="Stale - different context">⚠</span>
                             )}
                             {showTabIcons && (() => {
                                 const TabIcon = tab.icon || getTabIcon(tab.id);
@@ -278,17 +275,6 @@ export default function BottomPanel({
                     >
                         Close Tabs to Right
                     </button>
-                    {hasStaleTabs && (
-                        <>
-                            <div className="border-t border-border my-1" />
-                            <button
-                                className="w-full px-3 py-1.5 text-left text-xs hover:bg-background text-red-400"
-                                onClick={() => menuAction('closeStaleTabs')}
-                            >
-                                Close Stale Tabs
-                            </button>
-                        </>
-                    )}
                     <div className="border-t border-border my-1" />
                     <button
                         className="w-full px-3 py-1.5 text-left text-xs hover:bg-background text-text"

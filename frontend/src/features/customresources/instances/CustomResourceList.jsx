@@ -246,6 +246,7 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
                 multiSelectNamespaces={true}
                 initialSort={{ key: 'age', direction: 'desc' }}
                 resourceType={`cr-${crdInfo.group}-${crdInfo.resource}`}
+                onRowClick={handleEditYaml}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

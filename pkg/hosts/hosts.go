@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	// Marker comments used to identify kubikles-managed entries
+	// Marker comments used to identify Kubikles-managed entries
 	BeginMarker = "# BEGIN kubikles-managed"
 	EndMarker   = "# END kubikles-managed"
 )
@@ -65,7 +65,7 @@ func NewManager() *Manager {
 	}
 }
 
-// GetManagedEntries returns the current kubikles-managed entries from the hosts file
+// GetManagedEntries returns the current Kubikles-managed entries from the hosts file
 func (m *Manager) GetManagedEntries() ([]Entry, error) {
 	content, err := os.ReadFile(m.hostsPath)
 	if err != nil {
@@ -75,7 +75,7 @@ func (m *Manager) GetManagedEntries() ([]Entry, error) {
 	return parseManagedEntries(string(content)), nil
 }
 
-// parseManagedEntries extracts kubikles-managed entries from hosts file content
+// parseManagedEntries extracts Kubikles-managed entries from hosts file content
 func parseManagedEntries(content string) []Entry {
 	var entries []Entry
 	var inManagedBlock bool
@@ -128,7 +128,7 @@ func buildEntriesContent(entries []Entry) string {
 	return sb.String()
 }
 
-// removeExistingManagedBlock removes the kubikles-managed block from hosts content
+// removeExistingManagedBlock removes the Kubikles-managed block from hosts content
 func removeExistingManagedBlock(content string) string {
 	var result strings.Builder
 	var inManagedBlock bool

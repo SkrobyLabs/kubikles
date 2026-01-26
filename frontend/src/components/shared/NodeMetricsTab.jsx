@@ -23,11 +23,12 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
     const containerRef = useRef(null);
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-    const [showCommitted, setShowCommitted] = useState(false);
+    const [showCommitted, setShowCommitted] = useState(true);
+    const [showReserved, setShowReserved] = useState(false);
 
     const hasUsage = data?.usage?.length > 0;
     const hasAllocatable = data?.allocatable?.length > 0;
-    const hasUncommitted = data?.uncommitted?.length > 0;
+    const hasReserved = data?.reserved?.length > 0;
     const hasCommitted = data?.committed?.length > 0;
 
     if (!hasUsage) {
@@ -43,14 +44,14 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
 
     const usage = data.usage;
     const allocatable = data.allocatable || [];
-    const uncommitted = data.uncommitted || [];
+    const reserved = data.reserved || [];
     const committed = data.committed || [];
 
     // Calculate Y-axis bounds
     const allValues = [
         ...usage.map(d => d.value),
         ...allocatable.map(d => d.value),
-        ...uncommitted.map(d => d.value),
+        ...(showReserved ? reserved.map(d => d.value) : []),
         ...(showCommitted ? committed.map(d => d.value) : [])
     ];
     const max = Math.max(...allValues) || 1;
@@ -81,7 +82,7 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
 
     const usagePoints = generatePoints(usage);
     const allocatablePoints = hasAllocatable ? generatePoints(allocatable) : [];
-    const uncommittedPoints = hasUncommitted ? generatePoints(uncommitted) : [];
+    const reservedPoints = hasReserved ? generatePoints(reserved) : [];
     const committedPoints = hasCommitted ? generatePoints(committed) : [];
 
     const createPath = (points) => points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
@@ -104,8 +105,6 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
     }));
 
     const currentUsage = usage[usage.length - 1]?.value || 0;
-    const currentAllocatable = allocatable[allocatable.length - 1]?.value || 0;
-    const currentUncommitted = uncommitted[uncommitted.length - 1]?.value || 0;
 
     const handleMouseMove = useCallback((e) => {
         if (!containerRef.current) return;
@@ -148,7 +147,7 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
 
     const hoveredPoint = hoveredIndex !== null ? usagePoints[hoveredIndex] : null;
     const hoveredAllocatable = hoveredIndex !== null && allocatablePoints[hoveredIndex];
-    const hoveredUncommitted = hoveredIndex !== null && uncommittedPoints[hoveredIndex];
+    const hoveredReserved = hoveredIndex !== null && reservedPoints[hoveredIndex];
     const hoveredCommitted = hoveredIndex !== null && committedPoints[hoveredIndex];
 
     return (
@@ -166,10 +165,16 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                             <span className="w-3 h-0.5 bg-gray-500 border-dashed"></span>
                             Allocatable
                         </span>
-                        <span className="flex items-center gap-1 text-green-400">
-                            <span className="w-3 h-0.5 bg-green-500"></span>
-                            Uncommitted
-                        </span>
+                        {hasReserved && (
+                            <button
+                                onClick={() => setShowReserved(!showReserved)}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${!showReserved ? 'opacity-40' : ''}`}
+                                title={showReserved ? 'Hide reserved line' : 'Show reserved line'}
+                            >
+                                <span className={`w-3 h-0.5 ${showReserved ? 'bg-yellow-500' : 'bg-gray-500'}`}></span>
+                                <span className={showReserved ? 'text-yellow-400' : 'text-gray-500'}>Reserved</span>
+                            </button>
+                        )}
                         {hasCommitted && (
                             <button
                                 onClick={() => setShowCommitted(!showCommitted)}
@@ -242,14 +247,14 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                         <path d={createPath(allocatablePoints)} fill="none" className="stroke-gray-500" strokeWidth="1.5" strokeDasharray="6,3" />
                     )}
 
-                    {/* Uncommitted line (green) */}
-                    {uncommittedPoints.length > 0 && (
-                        <path d={createPath(uncommittedPoints)} fill="none" className="stroke-green-500" strokeWidth="1.5" />
+                    {/* Reserved line (yellow, toggleable) */}
+                    {showReserved && reservedPoints.length > 0 && (
+                        <path d={createPath(reservedPoints)} fill="none" className="stroke-yellow-500" strokeWidth="1.5" strokeDasharray="4,2" />
                     )}
 
                     {/* Committed line (orange, toggleable) */}
                     {showCommitted && committedPoints.length > 0 && (
-                        <path d={createPath(committedPoints)} fill="none" className="stroke-orange-500" strokeWidth="1.5" strokeDasharray="4,2" />
+                        <path d={createPath(committedPoints)} fill="none" className="stroke-orange-500" strokeWidth="1.5" />
                     )}
 
                     {/* Usage area fill */}
@@ -269,9 +274,9 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                                 <circle cx={hoveredAllocatable.x} cy={hoveredAllocatable.y} r="3"
                                     className="fill-gray-500" stroke="white" strokeWidth="1.5" />
                             )}
-                            {hoveredUncommitted && (
-                                <circle cx={hoveredUncommitted.x} cy={hoveredUncommitted.y} r="3"
-                                    className="fill-green-500" stroke="white" strokeWidth="1.5" />
+                            {showReserved && hoveredReserved && (
+                                <circle cx={hoveredReserved.x} cy={hoveredReserved.y} r="3"
+                                    className="fill-yellow-500" stroke="white" strokeWidth="1.5" />
                             )}
                             {showCommitted && hoveredCommitted && (
                                 <circle cx={hoveredCommitted.x} cy={hoveredCommitted.y} r="3"
@@ -299,8 +304,8 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                         {hoveredAllocatable && (
                             <div className="text-xs text-gray-400">Allocatable: {formatValue(hoveredAllocatable.value)}</div>
                         )}
-                        {hoveredUncommitted && (
-                            <div className="text-xs text-green-400">Uncommitted: {formatValue(hoveredUncommitted.value)}</div>
+                        {showReserved && hoveredReserved && (
+                            <div className="text-xs text-yellow-400">Reserved: {formatValue(hoveredReserved.value)}</div>
                         )}
                         {showCommitted && hoveredCommitted && (
                             <div className="text-xs text-orange-400">Committed: {formatValue(hoveredCommitted.value)}</div>
@@ -741,47 +746,10 @@ export default function NodeMetricsTab({ nodeName, isStale }) {
         fetchMetrics();
     }, [prometheusInfo, nodeName, duration, isStale]);
 
-    // Calculate uncommitted = allocatable - committed for each data point
+    // Pass through metrics data (reserved data comes from backend if available)
     const enrichedMetricsData = useMemo(() => {
         if (!metricsData) return null;
-
-        const calculateUncommitted = (allocatable, committed) => {
-            if (!allocatable?.length) return [];
-            if (!committed?.length) {
-                // If no committed data, uncommitted = allocatable
-                return allocatable.map(p => ({ timestamp: p.timestamp, value: p.value }));
-            }
-
-            // Find closest committed value for each allocatable timestamp
-            return allocatable.map(p => {
-                // Find the committed point with the closest timestamp
-                let closestCommitted = committed[0];
-                let minDiff = Math.abs(p.timestamp - committed[0].timestamp);
-                for (const c of committed) {
-                    const diff = Math.abs(p.timestamp - c.timestamp);
-                    if (diff < minDiff) {
-                        minDiff = diff;
-                        closestCommitted = c;
-                    }
-                }
-                return {
-                    timestamp: p.timestamp,
-                    value: Math.max(0, p.value - closestCommitted.value)
-                };
-            });
-        };
-
-        return {
-            ...metricsData,
-            cpu: metricsData.cpu ? {
-                ...metricsData.cpu,
-                uncommitted: calculateUncommitted(metricsData.cpu.allocatable, metricsData.cpu.committed)
-            } : null,
-            memory: metricsData.memory ? {
-                ...metricsData.memory,
-                uncommitted: calculateUncommitted(metricsData.memory.allocatable, metricsData.memory.committed)
-            } : null
-        };
+        return metricsData;
     }, [metricsData]);
 
     const formatCPU = (value) => {

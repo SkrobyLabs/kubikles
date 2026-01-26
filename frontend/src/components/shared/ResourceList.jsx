@@ -57,16 +57,17 @@ const RowCheckbox = React.memo(({ checked, onChange, disabled = false }) => {
 
 // Minimum column widths - ensure columns never get too narrow
 const MIN_COLUMN_WIDTHS = {
+    _selection: 44,
     name: 150,
     namespace: 120,
     message: 200,
-    cpu: 80,
-    memory: 80,
+    cpu: 100,
+    memory: 100,
     containers: 120,
     restarts: 80,
     age: 80,
     controlledBy: 120,
-    pods: 80,
+    pods: 100,
     ready: 80,
     desired: 80,
     current: 80,
@@ -146,11 +147,16 @@ const calculateColumnWidths = (columns, data, savedWidths) => {
 
     const calculatedWidths = {};
 
+    // Columns that render visual components with fixed widths - skip auto-calculation
+    const fixedWidthColumns = new Set(['cpu', 'memory', 'pods']);
+
     for (const col of columns) {
         // Skip columns that already have saved user widths
         if (savedWidths[col.key]) continue;
         // Skip special columns
         if (col.isColumnSelector || col.isSelectionColumn) continue;
+        // Skip columns that render fixed-width visual components (e.g., resource bars)
+        if (fixedWidthColumns.has(col.key)) continue;
 
         const minWidth = MIN_COLUMN_WIDTHS[col.key] || 80;
 
@@ -446,7 +452,7 @@ export default function ResourceList({
             key: '_selection',
             label: '',
             isSelectionColumn: true,
-            width: 40,
+            width: MIN_COLUMN_WIDTHS._selection,
         };
 
         return [checkboxColumn, ...baseVisibleColumns];
