@@ -1,6 +1,6 @@
 # Makefile for Kubikles
 
-.PHONY: dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-all install-wails install-deps install-frontend install-hooks clean test test-frontend test-watch profile build-pgo
+.PHONY: dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch profile build-pgo
 
 # Ensure GOPATH/bin is in PATH
 GOPATH := $(shell go env GOPATH)
@@ -46,51 +46,26 @@ build-linux-amd64:
 build-linux-arm64:
 	$(WAILS) build -platform linux/arm64 $(BUILD_FLAGS) -o Kubikles-linux-arm64
 
+# Build portable Linux AppImage (bundles into single executable)
+build-appimage:
+	@./scripts/build-appimage.sh
+
 # Build all platforms
 build-all: clean build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64
 
 install-wails:
 	go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-# Install all dependencies (platform-aware)
-install-deps:
-ifeq ($(UNAME_S),Darwin)
-	@echo "Installing dependencies for macOS..."
-	@command -v brew >/dev/null 2>&1 || { echo "Homebrew not found. Install from https://brew.sh"; exit 1; }
-	@command -v go >/dev/null 2>&1 || brew install go
-	@command -v node >/dev/null 2>&1 || brew install node
-	@brew list mingw-w64 >/dev/null 2>&1 || brew install mingw-w64
-	@echo "Installing Wails..."
-	@go install github.com/wailsapp/wails/v2/cmd/wails@latest
-	@echo "Installing frontend dependencies..."
-	@cd frontend && npm install
-	@echo "Installing git hooks..."
-	@$(MAKE) install-hooks
-	@echo "Done! Run 'make dev' to start development server."
-else ifeq ($(OS),Windows_NT)
-	@echo "Installing dependencies for Windows..."
-	@command -v go >/dev/null 2>&1 || { echo "Go not found. Install from https://go.dev/dl/"; exit 1; }
-	@command -v node >/dev/null 2>&1 || { echo "Node.js not found. Install from https://nodejs.org/"; exit 1; }
-	@echo "Installing Wails..."
-	@go install github.com/wailsapp/wails/v2/cmd/wails@latest
-	@echo "Installing frontend dependencies..."
-	@cd frontend && npm install
-	@echo "Installing git hooks..."
-	@$(MAKE) install-hooks
-	@echo "Done! Run 'make dev' to start development server."
-else
-	@echo "Installing dependencies for Linux..."
-	@command -v go >/dev/null 2>&1 || { echo "Go not found. Install from https://go.dev/dl/"; exit 1; }
-	@command -v node >/dev/null 2>&1 || { echo "Node.js not found. Install from https://nodejs.org/"; exit 1; }
-	@echo "Installing Wails..."
-	@go install github.com/wailsapp/wails/v2/cmd/wails@latest
-	@echo "Installing frontend dependencies..."
-	@cd frontend && npm install
-	@echo "Installing git hooks..."
-	@$(MAKE) install-hooks
-	@echo "Note: For cross-compiling to Windows, install mingw-w64"
-	@echo "Done! Run 'make dev' to start development server."
-endif
+# Install all dependencies (cross-platform setup script)
+install-deps: setup
+
+# Full setup: system deps, Go, Node, Wails, frontend, hooks
+setup:
+	@./scripts/setup.sh
+
+# Setup without system dependencies (if you already have GTK/WebKit)
+setup-quick:
+	@./scripts/setup.sh --skip-system-deps
 
 # Install frontend dependencies only
 install-frontend:
