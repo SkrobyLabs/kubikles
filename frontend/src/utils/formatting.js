@@ -35,3 +35,11 @@ export const formatBytes = (bytes) => {
     const value = bytes / Math.pow(k, i);
     return `${value.toFixed(i > 0 ? 1 : 0)} ${sizes[Math.min(i, sizes.length - 1)]}`;
 };
+
+export const formatCpu = (millicores) => {
+    if (millicores == null || millicores === 0) return '0m';
+    if (millicores >= 1000) {
+        return `${(millicores / 1000).toFixed(1)} cores`;
+    }
+    return `${Math.round(millicores)}m`;
+};

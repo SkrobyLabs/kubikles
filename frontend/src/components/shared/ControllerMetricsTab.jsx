@@ -23,13 +23,27 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [showRequest, setShowRequest] = useState(false);
     const [showLimit, setShowLimit] = useState(false);
+    const [containerWidth, setContainerWidth] = useState(500);
+
+    // Track container size for responsive width
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver(entries => {
+            const entry = entries[0];
+            if (entry) {
+                setContainerWidth(entry.contentRect.width);
+            }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, []);
 
     // Get request/limit values (use last data point if available)
     const requestValue = request?.length > 0 ? request[request.length - 1]?.value : null;
     const limitValue = limit?.length > 0 ? limit[limit.length - 1]?.value : null;
 
-    // Chart dimensions (constants) - wider aspect ratio for better horizontal usage
-    const width = 500;
+    // Chart dimensions - width from container, fixed height
+    const width = Math.max(300, containerWidth);
     const height = 200;
     const paddingLeft = 60;
     const paddingRight = 20;
@@ -296,6 +310,20 @@ const CountChart = React.memo(({ data, color, label, duration }) => {
     const containerRef = useRef(null);
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [containerWidth, setContainerWidth] = useState(400);
+
+    // Track container size for responsive width
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver(entries => {
+            const entry = entries[0];
+            if (entry) {
+                setContainerWidth(entry.contentRect.width);
+            }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, []);
 
     if (!data || data.length === 0) {
         return (
@@ -314,7 +342,7 @@ const CountChart = React.memo(({ data, color, label, duration }) => {
     const yMax = max + range * 0.1;
     const yRange = yMax - yMin || 1;
 
-    const width = 400;
+    const width = Math.max(300, containerWidth);
     const height = 100;
     const paddingLeft = 40;
     const paddingRight = 20;
@@ -397,6 +425,20 @@ const NetworkChart = React.memo(({ data, duration }) => {
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [viewMode, setViewMode] = useState('bandwidth'); // 'bandwidth' or 'packets'
+    const [containerWidth, setContainerWidth] = useState(400);
+
+    // Track container size for responsive width
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver(entries => {
+            const entry = entries[0];
+            if (entry) {
+                setContainerWidth(entry.contentRect.width);
+            }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, []);
 
     const hasRxBytes = data?.receiveBytes?.length > 0;
     const hasTxBytes = data?.transmitBytes?.length > 0;
@@ -433,7 +475,7 @@ const NetworkChart = React.memo(({ data, duration }) => {
     const yMax = max * 1.1;
     const yRange = yMax || 1;
 
-    const width = 400;
+    const width = Math.max(300, containerWidth);
     const height = 100;
     const paddingLeft = 55;
     const paddingRight = 20;

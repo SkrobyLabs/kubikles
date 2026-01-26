@@ -24,6 +24,10 @@ export const UIProvider = ({ children }) => {
     // Track active detail tab per resource type (e.g., { pod: 'metrics', node: 'basic' })
     const [detailTabByResourceType, setDetailTabByResourceType] = useState({});
 
+    // Track last active tab per K8s context for restoration on context switch
+    const activeTabByContextRef = useRef({});
+    const previousContextRef = useRef(currentContext);
+
     // Use ref to store pending search for reliable consumption
     // This avoids timing issues with React 18's batching
     const pendingSearchRef = useRef(null);
@@ -42,6 +46,44 @@ export const UIProvider = ({ children }) => {
         setPendingSearch(null);
         return result;
     }, []);
+
+    // Handle context switches - save/restore active tab per context
+    useEffect(() => {
+        const prevContext = previousContextRef.current;
+
+        // Skip if context hasn't actually changed
+        if (prevContext === currentContext) return;
+
+        // Save current active tab for the previous context
+        if (prevContext && activeTabId) {
+            activeTabByContextRef.current[prevContext] = activeTabId;
+        }
+
+        // Find visible tabs for the new context
+        // A tab is visible if: it's not stale (belongs to current context or is context-independent) OR it's pinned
+        const visibleTabs = bottomTabs.filter(tab => {
+            const isStale = tab.context && tab.context !== currentContext;
+            return !isStale || tab.pinned;
+        });
+
+        // Try to restore last active tab for this context
+        const savedTabId = activeTabByContextRef.current[currentContext];
+        const savedTabStillVisible = savedTabId && visibleTabs.some(t => t.id === savedTabId);
+
+        if (savedTabStillVisible) {
+            // Restore the last active tab for this context
+            setActiveTabId(savedTabId);
+        } else if (visibleTabs.length > 0) {
+            // Fall back to first visible tab
+            setActiveTabId(visibleTabs[0].id);
+        } else {
+            // No visible tabs
+            setActiveTabId(null);
+        }
+
+        // Update previous context ref
+        previousContextRef.current = currentContext;
+    }, [currentContext, bottomTabs, activeTabId]);
 
     // Persistence for activeView - save globally (not per-context)
     useEffect(() => {

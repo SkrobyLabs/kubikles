@@ -41,6 +41,11 @@ const defaultConfig = {
         // Poll interval for Kubernetes CPU/Memory metrics (ms)
         metricsPollIntervalMs: 30000
     },
+    metrics: {
+        // Preferred metrics source: "auto" (try K8s first, fallback to Prometheus),
+        // "k8s" (K8s Metrics API only), or "prometheus" (Prometheus only)
+        preferredSource: "auto"
+    },
     performance: {
         // Poll interval for performance panel (ms)
         pollIntervalMs: 1500,

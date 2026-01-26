@@ -25,6 +25,20 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [showCommitted, setShowCommitted] = useState(true);
     const [showReserved, setShowReserved] = useState(false);
+    const [containerWidth, setContainerWidth] = useState(500);
+
+    // Track container size for responsive chart
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver(entries => {
+            const entry = entries[0];
+            if (entry) {
+                setContainerWidth(entry.contentRect.width);
+            }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, []);
 
     const hasUsage = data?.usage?.length > 0;
     const hasAllocatable = data?.allocatable?.length > 0;
@@ -61,8 +75,8 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
     const yMax = max * 1.05;
     const yRange = yMax - yMin || 1;
 
-    // Chart dimensions - wider aspect ratio for better horizontal usage
-    const width = 500;
+    // Chart dimensions - width from container, fixed height
+    const width = Math.max(300, containerWidth);
     const height = 200;
     const paddingLeft = 70;
     const paddingRight = 20;
@@ -323,6 +337,20 @@ const PodCountChart = React.memo(({ data, duration }) => {
     const containerRef = useRef(null);
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [containerWidth, setContainerWidth] = useState(400);
+
+    // Track container size for responsive chart
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver(entries => {
+            const entry = entries[0];
+            if (entry) {
+                setContainerWidth(entry.contentRect.width);
+            }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, []);
 
     const hasRunning = data?.running?.length > 0;
     const hasCapacity = data?.capacity?.length > 0;
@@ -346,7 +374,7 @@ const PodCountChart = React.memo(({ data, duration }) => {
     const yMax = max * 1.1;
     const yRange = yMax || 1;
 
-    const width = 400;
+    const width = Math.max(300, containerWidth);
     const height = 120;
     const paddingLeft = 45;
     const paddingRight = 20;
@@ -470,6 +498,20 @@ const NetworkChart = React.memo(({ data, duration }) => {
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [viewMode, setViewMode] = useState('bandwidth'); // 'bandwidth' or 'packets'
+    const [containerWidth, setContainerWidth] = useState(400);
+
+    // Track container size for responsive chart
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver(entries => {
+            const entry = entries[0];
+            if (entry) {
+                setContainerWidth(entry.contentRect.width);
+            }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, []);
 
     const hasRxBytes = data?.receiveBytes?.length > 0;
     const hasTxBytes = data?.transmitBytes?.length > 0;
@@ -506,7 +548,7 @@ const NetworkChart = React.memo(({ data, duration }) => {
     const yMax = max * 1.1;
     const yRange = yMax || 1;
 
-    const width = 400;
+    const width = Math.max(300, containerWidth);
     const height = 120;
     const paddingLeft = 55;
     const paddingRight = 20;

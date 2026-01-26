@@ -56,9 +56,23 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [showRequest, setShowRequest] = useState(true);
     const [showLimit, setShowLimit] = useState(true);
+    const [containerWidth, setContainerWidth] = useState(500);
 
-    // Chart dimensions (constants) - wider aspect ratio for better horizontal usage
-    const width = 500;
+    // Track container size for responsive width
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver(entries => {
+            const entry = entries[0];
+            if (entry) {
+                setContainerWidth(entry.contentRect.width);
+            }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, []);
+
+    // Chart dimensions - width from container, fixed height
+    const width = Math.max(300, containerWidth);
     const height = 200;
     const paddingLeft = 60;
     const paddingRight = 20;
@@ -385,6 +399,20 @@ const NetworkChart = React.memo(({ data, duration }) => {
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [viewMode, setViewMode] = useState('bandwidth'); // 'bandwidth' or 'packets'
+    const [containerWidth, setContainerWidth] = useState(500);
+
+    // Track container size for responsive width
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver(entries => {
+            const entry = entries[0];
+            if (entry) {
+                setContainerWidth(entry.contentRect.width);
+            }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, []);
 
     const hasRxBytes = data?.receiveBytes?.length > 0;
     const hasTxBytes = data?.transmitBytes?.length > 0;
@@ -419,7 +447,7 @@ const NetworkChart = React.memo(({ data, duration }) => {
     const yMax = max * 1.1;
     const yRange = yMax || 1;
 
-    const width = 500;
+    const width = Math.max(300, containerWidth);
     const height = 200;
     const paddingLeft = 60;
     const paddingRight = 20;

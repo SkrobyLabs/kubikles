@@ -14,6 +14,7 @@ export default function SearchSelect({
     renderOption = null,    // (option, isSelected) => ReactNode for custom rendering
     disabled = false,
     onOpen = null,          // Callback when dropdown opens
+    preserveOrder = false,  // If true, don't sort alphabetically (preserve input order)
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -79,16 +80,24 @@ export default function SearchSelect({
     // Memoize filtered/sorted options (computed once per search/value change)
     const filteredOptions = useMemo(() => {
         const lowerSearch = searchTerm.toLowerCase();
-        return options
-            .filter(option => getDisplayLabel(option).toLowerCase().includes(lowerSearch))
-            .sort((a, b) => {
-                const aSelected = isOptionSelected(a);
-                const bSelected = isOptionSelected(b);
-                if (aSelected && !bSelected) return -1;
-                if (!aSelected && bSelected) return 1;
-                return getDisplayLabel(a).localeCompare(getDisplayLabel(b));
-            });
-    }, [options, searchTerm, isOptionSelected, getDisplayLabel]);
+        const filtered = options.filter(option =>
+            getDisplayLabel(option).toLowerCase().includes(lowerSearch)
+        );
+
+        // If preserveOrder is true, keep the original order (just filter, don't sort)
+        if (preserveOrder) {
+            return filtered;
+        }
+
+        // Default: sort with selected first, then alphabetically
+        return filtered.sort((a, b) => {
+            const aSelected = isOptionSelected(a);
+            const bSelected = isOptionSelected(b);
+            if (aSelected && !bSelected) return -1;
+            if (!aSelected && bSelected) return 1;
+            return getDisplayLabel(a).localeCompare(getDisplayLabel(b));
+        });
+    }, [options, searchTerm, isOptionSelected, getDisplayLabel, preserveOrder]);
 
     // Memoize "all namespaces" (non-empty options) - used in multiple places
     const allNamespaces = useMemo(() => options.filter(opt => opt !== ''), [options]);

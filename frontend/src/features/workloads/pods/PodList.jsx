@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
-import ResourceBar from '../../../components/shared/ResourceBar';
+import AggregateResourceBar from '../../../components/shared/AggregateResourceBar';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import PodActionsMenu from './PodActionsMenu';
 import { usePods } from '../../../hooks/resources';
@@ -13,7 +13,7 @@ import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeletePod, GetPodYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
+import { formatAge, formatBytes, formatCpu } from '../../../utils/formatting';
 import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusPriority, getPodController } from '../../../utils/k8s-helpers';
 import { getOwnerViewId } from '../../../utils/owner-navigation';
 import { useMenuPosition } from '../../../hooks/useMenuPosition';
@@ -63,10 +63,18 @@ export default function PodList({ isVisible }) {
                 if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
                 if (!m) return <span className="text-gray-500 text-xs">--</span>;
                 return (
-                    <div className="flex flex-col gap-0.5">
-                        <ResourceBar percent={m.cpuPercent} label="" tooltipLabel="Used" color="bg-blue-500" />
-                        <ResourceBar percent={m.cpuCommittedPercent} label="" tooltipLabel="Committed" color="bg-red-500" fixedColor />
-                    </div>
+                    <AggregateResourceBar
+                        usagePercent={m.cpuPercent}
+                        reservedPercent={m.cpuReservedPercent}
+                        committedPercent={m.cpuCommittedPercent}
+                        type="cpu"
+                        label="CPU"
+                        usageValue={m.cpuUsage}
+                        reservedValue={m.cpuRequested}
+                        committedValue={m.cpuCommitted}
+                        capacityValue={m.nodeCpuCapacity}
+                        formatValue={formatCpu}
+                    />
                 );
             },
             getValue: (item) => {
@@ -83,10 +91,18 @@ export default function PodList({ isVisible }) {
                 if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
                 if (!m) return <span className="text-gray-500 text-xs">--</span>;
                 return (
-                    <div className="flex flex-col gap-0.5">
-                        <ResourceBar percent={m.memPercent} label="" tooltipLabel="Used" color="bg-purple-500" />
-                        <ResourceBar percent={m.memCommittedPercent} label="" tooltipLabel="Committed" color="bg-red-500" fixedColor />
-                    </div>
+                    <AggregateResourceBar
+                        usagePercent={m.memPercent}
+                        reservedPercent={m.memReservedPercent}
+                        committedPercent={m.memCommittedPercent}
+                        type="memory"
+                        label="Memory"
+                        usageValue={m.memoryUsage}
+                        reservedValue={m.memRequested}
+                        committedValue={m.memCommitted}
+                        capacityValue={m.nodeMemCapacity}
+                        formatValue={formatBytes}
+                    />
                 );
             },
             getValue: (item) => {

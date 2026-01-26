@@ -49,6 +49,8 @@ export const useNamespaceMetrics = (isVisible, isReady = true) => {
                 byNamespace[namespace] = {
                     cpuUsage: 0,
                     memUsage: 0,
+                    cpuRequested: 0,
+                    memRequested: 0,
                     cpuCommitted: 0,
                     memCommitted: 0,
                     podCount: 0
@@ -57,6 +59,8 @@ export const useNamespaceMetrics = (isVisible, isReady = true) => {
 
             byNamespace[namespace].cpuUsage += pod.cpuUsage || 0;
             byNamespace[namespace].memUsage += pod.memoryUsage || 0;
+            byNamespace[namespace].cpuRequested += pod.cpuRequested || 0;
+            byNamespace[namespace].memRequested += pod.memRequested || 0;
             byNamespace[namespace].cpuCommitted += pod.cpuCommitted || 0;
             byNamespace[namespace].memCommitted += pod.memCommitted || 0;
             byNamespace[namespace].podCount += 1;
@@ -72,6 +76,12 @@ export const useNamespaceMetrics = (isVisible, isReady = true) => {
                     : 0,
                 memUsagePercent: clusterTotals.memCapacity > 0
                     ? Math.round((metrics.memUsage / clusterTotals.memCapacity) * 100)
+                    : 0,
+                cpuReservedPercent: clusterTotals.cpuCapacity > 0
+                    ? Math.round((metrics.cpuRequested / clusterTotals.cpuCapacity) * 100)
+                    : 0,
+                memReservedPercent: clusterTotals.memCapacity > 0
+                    ? Math.round((metrics.memRequested / clusterTotals.memCapacity) * 100)
                     : 0,
                 cpuCommittedPercent: clusterTotals.cpuCapacity > 0
                     ? Math.round((metrics.cpuCommitted / clusterTotals.cpuCapacity) * 100)

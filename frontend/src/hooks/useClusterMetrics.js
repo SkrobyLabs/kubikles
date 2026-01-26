@@ -1,6 +1,5 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { useNodeMetrics } from './useNodeMetrics';
-import { usePodMetrics } from './usePodMetrics';
 
 /**
  * Hook combining node and pod metrics with cluster-wide aggregations.
@@ -14,14 +13,11 @@ import { usePodMetrics } from './usePodMetrics';
  */
 export const useClusterMetrics = (isVisible) => {
     // Disable auto-polling - user will manually refresh
-    const { metrics: nodeMetricsMap, available: nodeAvailable, loading: nodeLoading, refresh: refreshNodes } = useNodeMetrics(isVisible, true, false);
-    const { available: podAvailable, loading: podLoading, refresh: refreshPods } = usePodMetrics(isVisible, true, false);
+    // Only use node metrics - they include pod count per node, which is all we need for Overview
+    const { metrics: nodeMetricsMap, available: nodeAvailable, loading: nodeLoading, source: metricsSource, refresh: refreshNodes } = useNodeMetrics(isVisible, true, false);
 
-    // Combined refresh function
-    const refresh = useCallback(() => {
-        refreshNodes();
-        refreshPods();
-    }, [refreshNodes, refreshPods]);
+    // Refresh is just node metrics refresh
+    const refresh = refreshNodes;
 
     // Convert node metrics map to array
     const nodeMetrics = useMemo(() => {
@@ -113,18 +109,16 @@ export const useClusterMetrics = (isVisible) => {
         };
     }, [nodeMetricsMap]);
 
-    // Available is true only when both hooks have successfully fetched
-    // null means not yet checked, false means unavailable
-    const available = nodeAvailable === null || podAvailable === null
-        ? null
-        : nodeAvailable && podAvailable;
-    const loading = nodeLoading || podLoading;
+    // Available when node metrics are available (either from K8s or Prometheus)
+    const available = nodeAvailable;
+    const loading = nodeLoading;
 
     return {
         nodeMetrics,
         clusterTotals,
         available,
         loading,
+        source: metricsSource, // 'k8s' or 'prometheus'
         refresh
     };
 };

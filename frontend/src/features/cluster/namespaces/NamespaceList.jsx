@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ResourceList from '../../../components/shared/ResourceList';
-import ResourceBar from '../../../components/shared/ResourceBar';
+import AggregateResourceBar from '../../../components/shared/AggregateResourceBar';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import NamespaceActionsMenu from './NamespaceActionsMenu';
 import { useNamespacesList } from '../../../hooks/resources';
@@ -12,7 +12,7 @@ import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteNamespace, GetNamespaceYAML } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
+import { formatAge, formatBytes, formatCpu } from '../../../utils/formatting';
 import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 // Get namespace status from conditions
@@ -77,10 +77,17 @@ export default function NamespaceList({ isVisible }) {
                 if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
                 if (!m) return <span className="text-gray-500 text-xs">--</span>;
                 return (
-                    <div className="flex flex-col gap-0.5">
-                        <ResourceBar percent={m.cpuUsagePercent} label="" tooltipLabel="Used" color="bg-blue-500" />
-                        <ResourceBar percent={m.cpuCommittedPercent} label="" tooltipLabel="Committed" color="bg-red-500" fixedColor />
-                    </div>
+                    <AggregateResourceBar
+                        usagePercent={m.cpuUsagePercent}
+                        reservedPercent={m.cpuReservedPercent}
+                        committedPercent={m.cpuCommittedPercent}
+                        type="cpu"
+                        label="CPU"
+                        usageValue={m.cpuUsage}
+                        reservedValue={m.cpuRequested}
+                        committedValue={m.cpuCommitted}
+                        formatValue={formatCpu}
+                    />
                 );
             },
             getValue: (item) => {
@@ -97,10 +104,17 @@ export default function NamespaceList({ isVisible }) {
                 if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
                 if (!m) return <span className="text-gray-500 text-xs">--</span>;
                 return (
-                    <div className="flex flex-col gap-0.5">
-                        <ResourceBar percent={m.memUsagePercent} label="" tooltipLabel="Used" color="bg-purple-500" />
-                        <ResourceBar percent={m.memCommittedPercent} label="" tooltipLabel="Committed" color="bg-red-500" fixedColor />
-                    </div>
+                    <AggregateResourceBar
+                        usagePercent={m.memUsagePercent}
+                        reservedPercent={m.memReservedPercent}
+                        committedPercent={m.memCommittedPercent}
+                        type="memory"
+                        label="Memory"
+                        usageValue={m.memUsage}
+                        reservedValue={m.memRequested}
+                        committedValue={m.memCommitted}
+                        formatValue={formatBytes}
+                    />
                 );
             },
             getValue: (item) => {

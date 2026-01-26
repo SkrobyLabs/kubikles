@@ -1,12 +1,13 @@
 import React, { useMemo, useState, useCallback, memo } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
+import AggregateResourceBar from '../../../components/shared/AggregateResourceBar';
 import ResourceBar from '../../../components/shared/ResourceBar';
 import { useNodes } from '../../../hooks/resources';
 import { useNodeMetrics } from '../../../hooks/useNodeMetrics';
 import { useK8s } from '../../../context/K8sContext';
 import { useUI } from '../../../context/UIContext';
 import { useMenu } from '../../../context/MenuContext';
-import { formatAge } from '../../../utils/formatting';
+import { formatAge, formatBytes, formatCpu } from '../../../utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import NodeActionsMenu from './NodeActionsMenu';
 import { useNodeActions } from './useNodeActions';
@@ -118,11 +119,18 @@ export default function NodeList({ isVisible }) {
                 if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
                 if (!m) return <span className="text-gray-500 text-xs">--</span>;
                 return (
-                    <div className="flex flex-col gap-0.5">
-                        <ResourceBar percent={m.cpuPercent} label="" tooltipLabel="Used" color="bg-blue-500" />
-                        <ResourceBar percent={m.cpuReservedPercent} label="" tooltipLabel="Reserved" color="bg-yellow-500" fixedColor />
-                        <ResourceBar percent={m.cpuCommittedPercent} label="" tooltipLabel="Committed" color="bg-red-500" fixedColor />
-                    </div>
+                    <AggregateResourceBar
+                        usagePercent={m.cpuPercent}
+                        reservedPercent={m.cpuReservedPercent}
+                        committedPercent={m.cpuCommittedPercent}
+                        type="cpu"
+                        label="CPU"
+                        usageValue={m.cpuUsage}
+                        reservedValue={m.cpuRequested}
+                        committedValue={m.cpuCommitted}
+                        capacityValue={m.cpuCapacity}
+                        formatValue={formatCpu}
+                    />
                 );
             },
             getValue: (item) => metrics[item.metadata?.name]?.cpuCommittedPercent ?? -1
@@ -135,11 +143,18 @@ export default function NodeList({ isVisible }) {
                 if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
                 if (!m) return <span className="text-gray-500 text-xs">--</span>;
                 return (
-                    <div className="flex flex-col gap-0.5">
-                        <ResourceBar percent={m.memPercent} label="" tooltipLabel="Used" color="bg-purple-500" />
-                        <ResourceBar percent={m.memReservedPercent} label="" tooltipLabel="Reserved" color="bg-yellow-500" fixedColor />
-                        <ResourceBar percent={m.memCommittedPercent} label="" tooltipLabel="Committed" color="bg-red-500" fixedColor />
-                    </div>
+                    <AggregateResourceBar
+                        usagePercent={m.memPercent}
+                        reservedPercent={m.memReservedPercent}
+                        committedPercent={m.memCommittedPercent}
+                        type="memory"
+                        label="Memory"
+                        usageValue={m.memoryUsage}
+                        reservedValue={m.memRequested}
+                        committedValue={m.memCommitted}
+                        capacityValue={m.memCapacity}
+                        formatValue={formatBytes}
+                    />
                 );
             },
             getValue: (item) => metrics[item.metadata?.name]?.memCommittedPercent ?? -1

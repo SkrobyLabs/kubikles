@@ -433,6 +433,7 @@ function MainLayout() {
 
     const {
         contexts,
+        sortedContexts,
         currentContext,
         switchContext,
         refreshContexts,
@@ -664,7 +665,7 @@ function MainLayout() {
                 <Sidebar
                     activeView={activeView}
                     onViewChange={setActiveView}
-                    contexts={contexts}
+                    contexts={sortedContexts}
                     currentContext={currentContext}
                     onContextChange={switchContext}
                     onContextSelectorOpen={refreshContextsIfChanged}

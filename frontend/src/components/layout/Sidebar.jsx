@@ -330,6 +330,7 @@ export default function Sidebar({
                     onChange={handleContextChange}
                     placeholder="Select Context..."
                     onOpen={onContextSelectorOpen}
+                    preserveOrder
                 />
             </div>
 

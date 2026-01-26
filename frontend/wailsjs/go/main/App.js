@@ -446,6 +446,10 @@ export function GetNodeMetrics() {
   return window['go']['main']['App']['GetNodeMetrics']();
 }
 
+export function GetNodeMetricsFromPrometheus(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetNodeMetricsFromPrometheus'](arg1, arg2, arg3);
+}
+
 export function GetNodeMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['GetNodeMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6);
 }

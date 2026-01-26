@@ -1,57 +1,37 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
     ChartBarIcon,
     ServerIcon,
     CubeIcon,
     ArrowRightIcon,
     ExclamationTriangleIcon,
-    ArrowPathIcon
+    ArrowPathIcon,
+    ChevronDownIcon
 } from '@heroicons/react/24/outline';
+import AggregateResourceBar from '../../../components/shared/AggregateResourceBar';
 import { useClusterMetrics } from '../../../hooks/useClusterMetrics';
 import { useUI } from '../../../context/UIContext';
-import { formatBytes } from '../../../utils/formatting';
+import { useConfig } from '../../../context/ConfigContext';
+import { formatBytes, formatCpu } from '../../../utils/formatting';
 
-// Format CPU millicores for display
-const formatCpu = (millicores) => {
-    if (millicores == null || millicores === 0) return '0m';
-    if (millicores >= 1000) {
-        return `${(millicores / 1000).toFixed(1)} cores`;
-    }
-    return `${Math.round(millicores)}m`;
-};
+// Tooltip text for over-committed resources
+const OVERCOMMIT_TOOLTIP = "Over-committed: Some containers are using more CPU/memory than their requests. This works because other pods aren't using their full reservations. Under contention, pods would be throttled to their guaranteed amounts.";
 
-// Stacked bar showing usage and reserved-excess as distinct segments
-const ResourceBar = ({ usagePercent, reservedPercent }) => {
-    // Reserved excess is the portion of reserved that exceeds usage
-    const reservedExcess = Math.max(0, reservedPercent - usagePercent);
-
+// Percentage display with tooltip for over-committed values (>100%)
+const PercentValue = ({ value, className = "" }) => {
+    const isOverCommitted = value > 100;
     return (
-        <div className="relative h-4 bg-gray-700 rounded overflow-hidden flex">
-            {/* Usage (blue) */}
-            <div
-                className="h-full bg-primary shrink-0"
-                style={{ width: `${Math.min(100, usagePercent)}%` }}
-            />
-            {/* Reserved excess (yellow) - only shows if reserved > usage */}
-            {reservedExcess > 0 && (
-                <div
-                    className="h-full bg-yellow-500 shrink-0"
-                    style={{ width: `${Math.min(100 - usagePercent, reservedExcess)}%` }}
-                />
-            )}
-            {/* Committed marker (red line) at the committed boundary */}
-            {(usagePercent > 0 || reservedPercent > 0) && (
-                <div
-                    className="absolute top-0 bottom-0 w-0.5 bg-red-500"
-                    style={{ left: `${Math.min(100, Math.max(usagePercent, reservedPercent))}%` }}
-                />
-            )}
-        </div>
+        <span
+            className={`${className} ${isOverCommitted ? 'cursor-help' : ''}`}
+            title={isOverCommitted ? OVERCOMMIT_TOOLTIP : undefined}
+        >
+            {value}%{isOverCommitted && <span className="text-yellow-500 ml-0.5">*</span>}
+        </span>
     );
 };
 
 // Metric row in the summary table
-const MetricRow = ({ label, usage, reserved, committed, capacity, formatFn, usagePercent, reservedPercent }) => (
+const MetricRow = ({ label, usage, reserved, committed, capacity, formatFn, usagePercent, reservedPercent, committedPercent }) => (
     <tr className="border-b border-border/50 last:border-0">
         <td className="py-3 text-sm font-medium text-text">{label}</td>
         <td className="py-3 text-sm text-right text-blue-400">{formatFn(usage)}</td>
@@ -59,9 +39,12 @@ const MetricRow = ({ label, usage, reserved, committed, capacity, formatFn, usag
         <td className="py-3 text-sm text-right text-red-400">{committed != null ? formatFn(committed) : '-'}</td>
         <td className="py-3 text-sm text-right text-gray-400">{formatFn(capacity)}</td>
         <td className="py-3 pl-4 w-48">
-            <ResourceBar
+            <AggregateResourceBar
                 usagePercent={usagePercent}
-                reservedPercent={reservedPercent ?? 0}
+                reservedPercent={reservedPercent}
+                committedPercent={committedPercent}
+                showPercent={false}
+                barClassName="w-full h-4"
             />
         </td>
     </tr>
@@ -110,7 +93,7 @@ const ClusterSummaryCard = ({ clusterTotals, loading }) => {
                                 CPU Committed
                             </div>
                             <div className="text-2xl font-semibold text-text">
-                                {clusterTotals.cpuCommittedPercent}%
+                                <PercentValue value={clusterTotals.cpuCommittedPercent} />
                             </div>
                         </div>
                         <div className="bg-background rounded-lg p-4">
@@ -119,7 +102,7 @@ const ClusterSummaryCard = ({ clusterTotals, loading }) => {
                                 Memory Committed
                             </div>
                             <div className="text-2xl font-semibold text-text">
-                                {clusterTotals.memCommittedPercent}%
+                                <PercentValue value={clusterTotals.memCommittedPercent} />
                             </div>
                         </div>
                     </div>
@@ -147,6 +130,7 @@ const ClusterSummaryCard = ({ clusterTotals, loading }) => {
                                     formatFn={formatCpu}
                                     usagePercent={clusterTotals.cpuUsagePercent}
                                     reservedPercent={clusterTotals.cpuReservedPercent}
+                                    committedPercent={clusterTotals.cpuCommittedPercent}
                                 />
                                 <MetricRow
                                     label="Memory"
@@ -157,6 +141,7 @@ const ClusterSummaryCard = ({ clusterTotals, loading }) => {
                                     formatFn={formatBytes}
                                     usagePercent={clusterTotals.memUsagePercent}
                                     reservedPercent={clusterTotals.memReservedPercent}
+                                    committedPercent={clusterTotals.memCommittedPercent}
                                 />
                                 <MetricRow
                                     label="Pods"
@@ -283,14 +268,20 @@ const NodesTable = ({ nodes, onNodeClick, onViewAll }) => {
                                     onClick={() => onNodeClick(node.name)}
                                     className="border-t border-border/50 hover:bg-white/5 cursor-pointer transition-colors"
                                 >
-                                    {nodeColumns.map(col => (
-                                        <td
-                                            key={col.key}
-                                            className={`py-2 ${col.align === 'right' ? 'text-right' : ''} ${col.color || 'text-text'} ${col.key === 'name' ? 'truncate max-w-[180px]' : ''}`}
-                                        >
-                                            {col.key === 'name' ? node.name : `${col.getValue(node)}%`}
-                                        </td>
-                                    ))}
+                                    {nodeColumns.map(col => {
+                                        const value = col.getValue(node);
+                                        const isCommitted = col.key === 'cpuCommittedPercent' || col.key === 'memCommittedPercent';
+                                        return (
+                                            <td
+                                                key={col.key}
+                                                className={`py-2 ${col.align === 'right' ? 'text-right' : ''} ${col.color || 'text-text'} ${col.key === 'name' ? 'truncate max-w-[180px]' : ''}`}
+                                            >
+                                                {col.key === 'name' ? node.name : (
+                                                    isCommitted ? <PercentValue value={value} /> : `${value}%`
+                                                )}
+                                            </td>
+                                        );
+                                    })}
                                     <td className="py-2">
                                         <ArrowRightIcon className="h-3 w-3 text-gray-500" />
                                     </td>
@@ -329,15 +320,83 @@ const MetricsUnavailableMessage = () => (
     </div>
 );
 
+// Source options for the selector
+const sourceOptions = [
+    { value: 'auto', label: 'Auto' },
+    { value: 'k8s', label: 'K8s Metrics API' },
+    { value: 'prometheus', label: 'Prometheus' }
+];
+
+// Simple dropdown component matching SearchSelect styling
+const SourceSelect = ({ value, onChange, options }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const wrapperRef = useRef(null);
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const selectedOption = options.find(opt => opt.value === value) || options[0];
+
+    const handleSelect = (optValue) => {
+        onChange(optValue);
+        setIsOpen(false);
+    };
+
+    return (
+        <div className="relative" ref={wrapperRef}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center justify-between px-3 py-1.5 bg-surface border border-border rounded text-sm text-text hover:border-primary focus:outline-none focus:border-primary transition-colors min-w-[140px]"
+            >
+                <span className="truncate">{selectedOption.label}</span>
+                <ChevronDownIcon className="h-4 w-4 text-gray-400 ml-2 shrink-0" />
+            </button>
+
+            {isOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-surface border border-border rounded shadow-lg">
+                    {options.map((option) => (
+                        <div
+                            key={option.value}
+                            className={`px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 ${
+                                option.value === value ? 'text-primary font-medium' : 'text-text'
+                            }`}
+                            onClick={() => handleSelect(option.value)}
+                        >
+                            {option.label}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 export default function MetricsOverview({ isVisible }) {
     const { navigateWithSearch, setActiveView } = useUI();
+    const { getConfig, setConfig } = useConfig();
     const {
         nodeMetrics,
         clusterTotals,
         available,
         loading,
+        source,
         refresh
     } = useClusterMetrics(isVisible);
+
+    // Get preferred source from config
+    const preferredSource = getConfig('metrics.preferredSource') ?? 'auto';
+
+    // Handle source change - useEffect in useNodeMetrics will auto-refresh when config changes
+    const handleSourceChange = (newValue) => {
+        setConfig('metrics.preferredSource', newValue);
+    };
 
     // Navigation handlers
     const handleNodeClick = (nodeName) => {
@@ -345,6 +404,9 @@ export default function MetricsOverview({ isVisible }) {
     };
 
     const handleViewAllNodes = () => setActiveView('nodes');
+
+    // Format source name for display
+    const sourceLabel = source === 'prometheus' ? 'Prometheus' : 'K8s Metrics API';
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -355,13 +417,30 @@ export default function MetricsOverview({ isVisible }) {
                     <h1 className="text-lg font-semibold text-text">Metrics Overview</h1>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-400">
-                    <span>Source: K8s Metrics API</span>
+                    {/* Source selector */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Source:</span>
+                        <SourceSelect
+                            value={preferredSource}
+                            onChange={handleSourceChange}
+                            options={sourceOptions}
+                        />
+                    </div>
+
+                    {/* Status indicator */}
                     {available === true && (
-                        <span className="h-2 w-2 rounded-full bg-green-500" title="Metrics available"></span>
+                        <div className="flex items-center gap-1.5" title={`Using ${sourceLabel}`}>
+                            <span className="text-xs text-gray-500">({sourceLabel})</span>
+                            <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                        </div>
                     )}
                     {available === false && (
-                        <span className="h-2 w-2 rounded-full bg-yellow-500" title="Metrics unavailable"></span>
+                        <div className="flex items-center gap-1.5" title="Metrics unavailable">
+                            <span className="text-xs text-gray-500">(unavailable)</span>
+                            <span className="h-2 w-2 rounded-full bg-yellow-500"></span>
+                        </div>
                     )}
+
                     <button
                         onClick={refresh}
                         disabled={loading}

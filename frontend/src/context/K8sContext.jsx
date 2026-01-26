@@ -120,6 +120,16 @@ export const K8sProvider = ({ children }) => {
     const [connectionError, setConnectionError] = useState(null); // { title, message, suggestion, provider, raw }
     const [isConnecting, setIsConnecting] = useState(true); // Initial loading state
 
+    // Track when each context was last accessed (for sorting)
+    const [contextAccessTimes, setContextAccessTimes] = useState(() => {
+        try {
+            const saved = localStorage.getItem('kubikles_context_access_times');
+            return saved ? JSON.parse(saved) : {};
+        } catch {
+            return {};
+        }
+    });
+
     // CRD state for owner reference resolution
     const [crds, setCRDs] = useState([]);
     const crdsLoadedForContext = useRef(null);
@@ -165,6 +175,30 @@ export const K8sProvider = ({ children }) => {
         localStorage.setItem(`kubikles_state_${ctx}`, JSON.stringify(state));
     };
 
+    // Update context access time (call when switching to a context)
+    const updateContextAccessTime = useCallback((ctx) => {
+        if (!ctx) return;
+        setContextAccessTimes(prev => {
+            const updated = { ...prev, [ctx]: Date.now() };
+            localStorage.setItem('kubikles_context_access_times', JSON.stringify(updated));
+            return updated;
+        });
+    }, []);
+
+    // Sorted contexts: by last accessed (descending), then by name
+    const sortedContexts = useMemo(() => {
+        return [...contexts].sort((a, b) => {
+            const timeA = contextAccessTimes[a] || 0;
+            const timeB = contextAccessTimes[b] || 0;
+            // Sort by access time descending (most recent first)
+            if (timeA !== timeB) {
+                return timeB - timeA;
+            }
+            // Then by name ascending
+            return a.localeCompare(b);
+        });
+    }, [contexts, contextAccessTimes]);
+
     const fetchContexts = useCallback(async () => {
         setIsConnecting(true);
         // Don't clear connectionError here - only clear it when we have confirmed connectivity
@@ -202,6 +236,7 @@ export const K8sProvider = ({ children }) => {
             }
 
             setCurrentContext(contextToUse);
+            updateContextAccessTime(contextToUse);
             Logger.info("Contexts fetched", { count: sortedList.length, current: contextToUse });
 
             // Load saved namespaces for this context
@@ -222,7 +257,7 @@ export const K8sProvider = ({ children }) => {
         } finally {
             setIsConnecting(false);
         }
-    }, []);
+    }, [updateContextAccessTime]);
 
     // Lightweight refresh that only updates if contexts changed (avoids UI flicker)
     const refreshContextsIfChanged = useCallback(async () => {
@@ -291,6 +326,7 @@ export const K8sProvider = ({ children }) => {
             setSelectedNamespaces([]);
 
             setCurrentContext(newContext);
+            updateContextAccessTime(newContext);
 
             // Save the context preference
             localStorage.setItem('kubikles_last_context', newContext);
@@ -304,7 +340,7 @@ export const K8sProvider = ({ children }) => {
             Logger.error("Failed to switch context", err);
             setIsLoadingNamespaces(false);
         }
-    }, [currentContext]);
+    }, [currentContext, updateContextAccessTime]);
 
     // Initial Load
     useEffect(() => {
@@ -516,6 +552,7 @@ export const K8sProvider = ({ children }) => {
 
     const value = useMemo(() => ({
         contexts,
+        sortedContexts,
         currentContext,
         namespaces,
         currentNamespace,
@@ -540,6 +577,7 @@ export const K8sProvider = ({ children }) => {
         checkConnectionError,
     }), [
         contexts,
+        sortedContexts,
         currentContext,
         namespaces,
         currentNamespace,

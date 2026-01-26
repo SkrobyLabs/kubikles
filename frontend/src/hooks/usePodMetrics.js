@@ -38,6 +38,12 @@ export const usePodMetrics = (isVisible, isReady = true, autoPoll = true) => {
                 const memPercent = m.nodeMemCapacity > 0
                     ? Math.round((m.memoryUsage / m.nodeMemCapacity) * 100)
                     : 0;
+                const cpuReservedPercent = m.nodeCpuCapacity > 0
+                    ? Math.round((m.cpuRequested / m.nodeCpuCapacity) * 100)
+                    : 0;
+                const memReservedPercent = m.nodeMemCapacity > 0
+                    ? Math.round((m.memRequested / m.nodeMemCapacity) * 100)
+                    : 0;
                 const cpuCommittedPercent = m.nodeCpuCapacity > 0
                     ? Math.round((m.cpuCommitted / m.nodeCpuCapacity) * 100)
                     : 0;
@@ -48,6 +54,8 @@ export const usePodMetrics = (isVisible, isReady = true, autoPoll = true) => {
                 metricsMap[key] = {
                     cpuPercent,
                     memPercent,
+                    cpuReservedPercent,
+                    memReservedPercent,
                     cpuCommittedPercent,
                     memCommittedPercent,
                     cpuUsage: m.cpuUsage,
