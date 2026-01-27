@@ -325,6 +325,25 @@ func (c *Client) GetCurrentContext() string {
 	return c.currentContext
 }
 
+// TestConnection performs a quick connectivity check to the cluster.
+// Returns nil if the cluster is reachable, or an error describing the failure.
+// Use a short timeout (e.g., 5 seconds) for fast feedback on unreachable clusters.
+func (c *Client) TestConnection(ctx context.Context) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return fmt.Errorf("failed to get clientset: %w", err)
+	}
+
+	// Use RESTClient with context for proper timeout control
+	// Hits /api which is lightweight and respects the context deadline
+	err = cs.CoreV1().RESTClient().Get().AbsPath("/api").Do(ctx).Error()
+	if err != nil {
+		return fmt.Errorf("cluster unreachable: %w", err)
+	}
+
+	return nil
+}
+
 func (c *Client) ListContexts() ([]string, error) {
 	rawConfig, err := c.configLoading.RawConfig()
 	if err != nil {

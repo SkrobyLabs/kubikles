@@ -13,6 +13,8 @@ export function AddPortForwardConfig(arg1:main.PortForwardConfig):Promise<main.P
 
 export function ApplyYAML(arg1:string):Promise<void>;
 
+export function CancelConnectionTest():Promise<void>;
+
 export function CancelListRequest(arg1:string):Promise<boolean>;
 
 export function CancelMetricsRequest(arg1:string):Promise<boolean>;
@@ -492,6 +494,8 @@ export function SubscribeResourceWatcher(arg1:string,arg2:string):Promise<string
 export function SuspendCronJob(arg1:string,arg2:string,arg3:boolean):Promise<void>;
 
 export function SwitchContext(arg1:string):Promise<void>;
+
+export function TestConnection(arg1:number):Promise<void>;
 
 export function TestCrash(arg1:boolean):Promise<void>;
 

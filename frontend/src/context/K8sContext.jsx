@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ListContexts, GetCurrentContext, SwitchContext, ListNamespaces, StartPortForwardsWithMode, ListCRDs, GetK8sInitError } from '../../wailsjs/go/main/App';
+import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespaces, StartPortForwardsWithMode, ListCRDs, GetK8sInitError } from '../../wailsjs/go/main/App';
 import Logger from '../utils/Logger';
 
 // Helper to get port forward auto-start mode from settings
@@ -14,6 +14,23 @@ const getPortForwardAutoStartMode = () => {
         Logger.error('Failed to read port forward settings', e);
     }
     return 'favorites'; // Default
+};
+
+// Helper to get connection test timeout (seconds) from settings
+const getConnectionTestTimeout = () => {
+    try {
+        const saved = localStorage.getItem('kubikles_settings');
+        if (saved) {
+            const settings = JSON.parse(saved);
+            const timeout = settings?.kubernetes?.connectionTestTimeoutSeconds;
+            if (typeof timeout === 'number' && timeout > 0) {
+                return timeout;
+            }
+        }
+    } catch (e) {
+        Logger.error('Failed to read connection test timeout setting', e);
+    }
+    return 5; // Default 5 seconds
 };
 
 const K8sContext = createContext();
@@ -112,6 +129,7 @@ const parseConnectionError = (error) => {
 export const K8sProvider = ({ children }) => {
     const [contexts, setContexts] = useState([]);
     const [currentContext, setCurrentContext] = useState('');
+    const currentContextRef = useRef(''); // Ref for event handlers to avoid stale closures
     const [namespaces, setNamespaces] = useState([]);
     const [selectedNamespaces, setSelectedNamespaces] = useState(['default']);
     const [lastRefresh, setLastRefresh] = useState(Date.now());
@@ -239,14 +257,13 @@ export const K8sProvider = ({ children }) => {
             updateContextAccessTime(contextToUse);
             Logger.info("Contexts fetched", { count: sortedList.length, current: contextToUse });
 
-            // Load saved namespaces for this context
+            // Load saved namespaces for this context (will be overwritten by data loading effect)
             const savedState = loadContextState(contextToUse);
             if (savedState.namespaces && savedState.namespaces.length > 0) {
                 setSelectedNamespaces(savedState.namespaces);
                 Logger.debug("Restored namespaces from saved state", { namespaces: savedState.namespaces });
             }
-            // Note: Don't clear connectionError here - fetchContexts only reads local kubeconfig,
-            // not the actual cluster. Error will be cleared when actual API calls succeed.
+            // Connection test happens in the data loading effect when currentContext changes
         } catch (err) {
             Logger.error("Failed to fetch contexts", err);
             const parsed = parseConnectionError(err);
@@ -254,9 +271,9 @@ export const K8sProvider = ({ children }) => {
                 ...parsed,
                 raw: String(err)
             });
-        } finally {
             setIsConnecting(false);
         }
+        // Note: isConnecting will be cleared by the data loading effect after connection test
     }, [updateContextAccessTime]);
 
     // Lightweight refresh that only updates if contexts changed (avoids UI flicker)
@@ -310,34 +327,33 @@ export const K8sProvider = ({ children }) => {
         try {
             Logger.info("Switching context...", { from: currentContext, to: newContext });
 
-            // Clear previous connection error when switching contexts
-            setConnectionError(null);
+            // Update ref IMMEDIATELY so any in-flight requests see the new context
+            // and ignore their stale results. This must happen before any async calls.
+            currentContextRef.current = newContext;
 
-            // Set loading flag first to prevent saves during switch
+            // Clear previous errors and show connecting state
+            setConnectionError(null);
+            setIsConnecting(true);
+
+            // Clear state immediately to prevent stale data display
+            setNamespaces([]);
+            setSelectedNamespaces([]);
+            setWatcherStatus({});
+
+            // Set loading flag to prevent saves during switch
             setIsLoadingNamespaces(true);
 
+            // This cancels pending connection tests and switches context
             await SwitchContext(newContext);
 
-            // Clear namespaces immediately to prevent stale data
-            setNamespaces([]);
-
-            // Clear selected namespaces to prevent unnecessary fetches
-            // We'll restore saved state after namespaces are fetched
-            setSelectedNamespaces([]);
-
+            // Update UI state - connection test happens in the data loading effect
             setCurrentContext(newContext);
             updateContextAccessTime(newContext);
-
-            // Save the context preference
             localStorage.setItem('kubikles_last_context', newContext);
-            Logger.debug("Saved context to localStorage", { context: newContext });
-
-            Logger.info("Context switched successfully", { context: newContext });
-
-            // We need to trigger namespace fetch after switch
-            // fetchNamespaces will be called by useEffect when currentContext changes
+            Logger.debug("Context switched, data loading will follow", { context: newContext });
         } catch (err) {
             Logger.error("Failed to switch context", err);
+            setIsConnecting(false);
             setIsLoadingNamespaces(false);
         }
     }, [currentContext, updateContextAccessTime]);
@@ -371,32 +387,83 @@ export const K8sProvider = ({ children }) => {
 
     // Fetch namespaces when context changes
     useEffect(() => {
-        if (currentContext) {
-            const loadNamespacesAndRestoreState = async () => {
-                setIsLoadingNamespaces(true);
-                await fetchNamespaces();
+        if (!currentContext) return;
 
-                // After namespaces are loaded, restore saved state
-                const savedState = loadContextState(currentContext);
-                if (savedState.namespaces && savedState.namespaces.length > 0) {
-                    setSelectedNamespaces(savedState.namespaces);
-                    Logger.debug("Restored namespaces after context switch", { namespaces: savedState.namespaces });
+        // Capture the context this effect is for - used to detect stale results
+        const contextForThisEffect = currentContext;
+        let cancelled = false;
+
+        const loadNamespacesAndRestoreState = async () => {
+            setIsLoadingNamespaces(true);
+
+            // Quick connectivity check - fail fast if cluster unreachable
+            const connectionTimeout = getConnectionTestTimeout();
+            Logger.debug("Testing connection to cluster...", { context: contextForThisEffect, timeoutSeconds: connectionTimeout });
+            try {
+                await TestConnection(connectionTimeout);
+                // Check if context changed while we were waiting
+                if (cancelled || currentContextRef.current !== contextForThisEffect) {
+                    Logger.debug("Connection test completed but context changed, ignoring", {
+                        testedContext: contextForThisEffect,
+                        currentContext: currentContextRef.current
+                    });
+                    return;
                 }
+                Logger.info("Connection test passed", { context: contextForThisEffect });
+            } catch (connErr) {
+                // Check if context changed while we were waiting
+                if (cancelled || currentContextRef.current !== contextForThisEffect) {
+                    Logger.debug("Connection test failed but context changed, ignoring", {
+                        testedContext: contextForThisEffect,
+                        currentContext: currentContextRef.current
+                    });
+                    return;
+                }
+                Logger.error("Connection test failed", { context: contextForThisEffect, error: connErr });
+                const parsed = parseConnectionError(String(connErr));
+                setConnectionError({
+                    ...parsed,
+                    raw: String(connErr)
+                });
+                setIsConnecting(false);
                 setIsLoadingNamespaces(false);
+                return; // Don't proceed with namespace loading if connection fails
+            }
 
-                // Start port forwards based on auto-start mode setting
-                const autoStartMode = getPortForwardAutoStartMode();
-                try {
-                    await StartPortForwardsWithMode(currentContext, autoStartMode);
-                    Logger.debug("Started port forwards", { context: currentContext, mode: autoStartMode });
-                } catch (err) {
-                    Logger.error("Failed to start port forwards", err);
-                }
-            };
+            await fetchNamespaces();
 
-            loadNamespacesAndRestoreState();
-            localStorage.setItem('kubikles_context', currentContext);
-        }
+            // Check again after namespace fetch
+            if (cancelled || currentContextRef.current !== contextForThisEffect) {
+                Logger.debug("Namespace fetch completed but context changed, ignoring");
+                return;
+            }
+
+            // After namespaces are loaded, restore saved state
+            const savedState = loadContextState(contextForThisEffect);
+            if (savedState.namespaces && savedState.namespaces.length > 0) {
+                setSelectedNamespaces(savedState.namespaces);
+                Logger.debug("Restored namespaces after context switch", { namespaces: savedState.namespaces });
+            }
+            setIsLoadingNamespaces(false);
+            setIsConnecting(false);
+
+            // Start port forwards based on auto-start mode setting
+            const autoStartMode = getPortForwardAutoStartMode();
+            try {
+                await StartPortForwardsWithMode(contextForThisEffect, autoStartMode);
+                Logger.debug("Started port forwards", { context: contextForThisEffect, mode: autoStartMode });
+            } catch (err) {
+                Logger.error("Failed to start port forwards", err);
+            }
+        };
+
+        loadNamespacesAndRestoreState();
+        localStorage.setItem('kubikles_context', currentContext);
+
+        // Cleanup: mark this effect as cancelled if context changes
+        return () => {
+            cancelled = true;
+        };
     }, [currentContext]);
 
     // Save namespaces when they change (but not while loading)
@@ -412,7 +479,14 @@ export const K8sProvider = ({ children }) => {
         if (!window.runtime) return;
 
         const handleWatcherError = (event) => {
-            const { resourceType, namespace, error, recoverable } = event;
+            const { resourceType, namespace, error, recoverable, context } = event;
+
+            // Ignore errors from a different context (stale events after context switch)
+            if (context && context !== currentContextRef.current) {
+                Logger.debug("Ignoring stale watcher error from old context", { context, currentContext: currentContextRef.current });
+                return;
+            }
+
             Logger.warn("Watcher error received", { resourceType, namespace, error, recoverable });
             setWatcherStatus(prev => ({
                 ...prev,
@@ -441,7 +515,14 @@ export const K8sProvider = ({ children }) => {
         };
 
         const handleWatcherStatus = (event) => {
-            const { resourceType, namespace, status } = event;
+            const { resourceType, namespace, status, context } = event;
+
+            // Ignore status from a different context (stale events after context switch)
+            if (context && context !== currentContextRef.current) {
+                Logger.debug("Ignoring stale watcher status from old context", { context, currentContext: currentContextRef.current });
+                return;
+            }
+
             Logger.debug("Watcher status changed", { resourceType, namespace, status });
             setWatcherStatus(prev => ({
                 ...prev,
@@ -463,6 +544,11 @@ export const K8sProvider = ({ children }) => {
             window.runtime.EventsOff("watcher-status", handleWatcherStatus);
         };
     }, []);
+
+    // Keep context ref in sync for event handlers (avoids stale closures)
+    useEffect(() => {
+        currentContextRef.current = currentContext;
+    }, [currentContext]);
 
     // Clear watcher status on context switch
     useEffect(() => {

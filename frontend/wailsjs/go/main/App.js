@@ -14,6 +14,10 @@ export function ApplyYAML(arg1) {
   return window['go']['main']['App']['ApplyYAML'](arg1);
 }
 
+export function CancelConnectionTest() {
+  return window['go']['main']['App']['CancelConnectionTest']();
+}
+
 export function CancelListRequest(arg1) {
   return window['go']['main']['App']['CancelListRequest'](arg1);
 }
@@ -972,6 +976,10 @@ export function SuspendCronJob(arg1, arg2, arg3) {
 
 export function SwitchContext(arg1) {
   return window['go']['main']['App']['SwitchContext'](arg1);
+}
+
+export function TestConnection(arg1) {
+  return window['go']['main']['App']['TestConnection'](arg1);
 }
 
 export function TestCrash(arg1) {

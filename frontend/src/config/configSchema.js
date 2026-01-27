@@ -108,6 +108,17 @@ export const configSchema = {
             step: 1000,
             unit: 'ms',
             default: 30000
+        },
+        connectionTestTimeoutSeconds: {
+            type: 'number',
+            label: 'Connection Test Timeout',
+            description: 'When switching contexts, a connectivity check runs first to fail fast if cluster is unreachable',
+            subtext: 'Increase for high-latency clusters. Decrease for faster failure detection.',
+            min: 1,
+            max: 30,
+            step: 1,
+            unit: 's',
+            default: 5
         }
     },
     performance: {

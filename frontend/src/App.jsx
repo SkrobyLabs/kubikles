@@ -671,11 +671,15 @@ function MainLayout() {
                     onContextSelectorOpen={refreshContextsIfChanged}
                 />
                 <main className="flex-1 flex flex-col overflow-hidden">
-                    {isConnecting && !connectionError && contexts.length === 0 ? (
+                    {showConfigEditor ? (
+                        <ConfigEditor />
+                    ) : isConnecting && !connectionError ? (
                         <div className="flex-1 flex items-center justify-center">
                             <div className="text-center">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                                <p className="text-gray-400">Connecting to cluster...</p>
+                                <p className="text-gray-400">
+                                    Connecting to {currentContext || 'cluster'}...
+                                </p>
                             </div>
                         </div>
                     ) : connectionError ? (
@@ -684,8 +688,6 @@ function MainLayout() {
                             onRetry={retryConnection}
                             isRetrying={isConnecting}
                         />
-                    ) : showConfigEditor ? (
-                        <ConfigEditor />
                     ) : (
                         /* Split View Container */
                         <div className="flex-1 flex flex-col overflow-hidden">

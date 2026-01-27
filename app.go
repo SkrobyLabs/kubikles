@@ -71,6 +71,9 @@ type App struct {
 	metricsRequestManager *MetricsRequestManager
 	// List request cancellation
 	listRequestManager *ListRequestManager
+	// Connection test cancellation
+	connTestMutex  sync.Mutex
+	connTestCancel context.CancelFunc
 }
 
 // WatcherCleanupDelay is the time to wait before stopping a watcher with no subscribers
@@ -90,6 +93,7 @@ type WatcherErrorEvent struct {
 	Namespace    string `json:"namespace"`    // Namespace being watched
 	Error        string `json:"error"`        // Error message
 	Recoverable  bool   `json:"recoverable"`  // Whether the watcher will retry
+	Context      string `json:"context"`      // K8s context this error belongs to
 }
 
 // WatcherStatusEvent is emitted when watcher status changes
@@ -97,6 +101,7 @@ type WatcherStatusEvent struct {
 	ResourceType string `json:"resourceType"` // Resource type
 	Namespace    string `json:"namespace"`    // Namespace being watched
 	Status       string `json:"status"`       // "connected", "reconnecting", "stopped"
+	Context      string `json:"context"`      // K8s context this status belongs to
 }
 
 // WatcherEventStats tracks event counts and timing for a single watcher
@@ -748,6 +753,9 @@ func (a *App) SwitchContext(name string) error {
 		return fmt.Errorf("k8s client not initialized")
 	}
 
+	// Cancel any pending connection test
+	a.CancelConnectionTest()
+
 	// Stop all existing watchers before switching context
 	// This prevents stale events from the old context being processed
 	if a.watcherManager != nil {
@@ -756,6 +764,44 @@ func (a *App) SwitchContext(name string) error {
 	}
 
 	return a.k8sClient.SwitchContext(name)
+}
+
+// TestConnection performs a quick connectivity check to the current cluster.
+// timeoutSeconds specifies how long to wait before giving up (recommended: 5-10s).
+// Returns nil if reachable, or an error describing the failure.
+// Any previous connection test is cancelled before starting a new one.
+func (a *App) TestConnection(timeoutSeconds int) error {
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = 5
+	}
+
+	// Cancel any previous connection test and store the new cancel func
+	a.connTestMutex.Lock()
+	if a.connTestCancel != nil {
+		a.connTestCancel()
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSeconds)*time.Second)
+	a.connTestCancel = cancel
+	a.connTestMutex.Unlock()
+
+	// Ensure cancel is called when done (idempotent, safe to call multiple times)
+	defer cancel()
+
+	return a.k8sClient.TestConnection(ctx)
+}
+
+// CancelConnectionTest cancels any in-progress connection test.
+func (a *App) CancelConnectionTest() {
+	a.connTestMutex.Lock()
+	defer a.connTestMutex.Unlock()
+	if a.connTestCancel != nil {
+		a.connTestCancel()
+		a.connTestCancel = nil
+	}
 }
 
 // Theme methods - exposed to frontend
@@ -1842,6 +1888,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 			ResourceType: resourceType,
 			Namespace:    namespace,
 			Status:       "stopped",
+			Context:      a.GetCurrentContext(),
 		})
 	}()
 
@@ -1911,6 +1958,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 				Namespace:    namespace,
 				Error:        err.Error(),
 				Recoverable:  true,
+				Context:      a.GetCurrentContext(),
 			})
 
 			// Exponential backoff with jitter
@@ -1923,6 +1971,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 				ResourceType: resourceType,
 				Namespace:    namespace,
 				Status:       "reconnecting",
+				Context:      a.GetCurrentContext(),
 			})
 
 			select {
@@ -1939,6 +1988,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 			ResourceType: resourceType,
 			Namespace:    namespace,
 			Status:       "connected",
+			Context:      a.GetCurrentContext(),
 		})
 
 		// Process events from this watcher
@@ -2018,6 +2068,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 			ResourceType: crdResourceType,
 			Namespace:    namespace,
 			Status:       "stopped",
+			Context:      a.GetCurrentContext(),
 		})
 	}()
 
@@ -2087,6 +2138,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 				Namespace:    namespace,
 				Error:        err.Error(),
 				Recoverable:  true,
+				Context:      a.GetCurrentContext(),
 			})
 
 			// Exponential backoff
@@ -2099,6 +2151,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 				ResourceType: crdResourceType,
 				Namespace:    namespace,
 				Status:       "reconnecting",
+				Context:      a.GetCurrentContext(),
 			})
 
 			select {
@@ -2115,6 +2168,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 			ResourceType: crdResourceType,
 			Namespace:    namespace,
 			Status:       "connected",
+			Context:      a.GetCurrentContext(),
 		})
 
 		// Process events from this watcher

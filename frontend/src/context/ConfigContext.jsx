@@ -39,7 +39,11 @@ const defaultConfig = {
         // API request timeout (ms). Increase for slow clusters.
         apiTimeoutMs: 60000,
         // Poll interval for Kubernetes CPU/Memory metrics (ms)
-        metricsPollIntervalMs: 30000
+        metricsPollIntervalMs: 30000,
+        // Connection test timeout (seconds). When switching contexts, a quick
+        // connectivity check is performed to fail fast if the cluster is unreachable.
+        // Increase if you have high-latency clusters that need more time.
+        connectionTestTimeoutSeconds: 5
     },
     metrics: {
         // Preferred metrics source: "auto" (try K8s first, fallback to Prometheus),
