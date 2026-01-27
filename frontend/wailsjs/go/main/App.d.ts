@@ -255,6 +255,8 @@ export function GetPodLogsFromStart(arg1:string,arg2:string,arg3:string,arg4:boo
 
 export function GetPodMetrics():Promise<k8s.PodMetricsResult>;
 
+export function GetPodMetricsFromPrometheus(arg1:string,arg2:string,arg3:number):Promise<k8s.PodMetricsResult>;
+
 export function GetPodMetricsHistory(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string,arg7:string,arg8:string):Promise<k8s.PodMetricsHistory>;
 
 export function GetPodPorts(arg1:string,arg2:string):Promise<Array<number>>;

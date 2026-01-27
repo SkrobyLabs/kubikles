@@ -1,14 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChartBarIcon, CheckCircleIcon, XCircleIcon, ArrowPathIcon, ServerStackIcon, ArrowTopRightOnSquareIcon, CpuChipIcon } from '@heroicons/react/24/outline';
-import { DetectPrometheus, ListPrometheusInstalls, TestPrometheusEndpoint, SavePrometheusConfig, ClearPrometheusConfig, AddPortForwardConfig, StartPortForward, GetRandomAvailablePort, GetPortForwardConfigs, GetActivePortForwards } from '../../../../wailsjs/go/main/App';
+import { GetNodeMetrics, DetectPrometheus, ListPrometheusInstalls, TestPrometheusEndpoint, SavePrometheusConfig, ClearPrometheusConfig, AddPortForwardConfig, StartPortForward, GetRandomAvailablePort, GetPortForwardConfigs, GetActivePortForwards } from '../../../../wailsjs/go/main/App';
 import { BrowserOpenURL } from '../../../../wailsjs/runtime/runtime';
 import { useK8s } from '../../../context/K8sContext';
-import { useNodeMetrics } from '../../../hooks/useNodeMetrics';
+import { useConfig } from '../../../context/ConfigContext';
+import SourceSelect, { sourceOptions } from '../../../components/shared/SourceSelect';
 
 export default function MetricsList({ isVisible }) {
     const { currentContext } = useK8s();
-    // Check Kubernetes Metrics API availability (metrics-server)
-    const { available: k8sMetricsAvailable, loading: k8sMetricsLoading } = useNodeMetrics(isVisible);
+    const { getConfig, setConfig } = useConfig();
+
+    // Direct K8s Metrics API check (bypasses dual-source logic so we test metrics-server specifically)
+    const [k8sMetricsAvailable, setK8sMetricsAvailable] = useState(null);
+    const [k8sMetricsLoading, setK8sMetricsLoading] = useState(false);
+
+    const checkK8sMetrics = useCallback(async () => {
+        if (!currentContext || !isVisible) return;
+        setK8sMetricsLoading(true);
+        try {
+            const result = await GetNodeMetrics();
+            setK8sMetricsAvailable(result?.available ?? false);
+        } catch {
+            setK8sMetricsAvailable(false);
+        } finally {
+            setK8sMetricsLoading(false);
+        }
+    }, [currentContext, isVisible]);
+
+    useEffect(() => {
+        if (isVisible) {
+            checkK8sMetrics();
+        }
+    }, [checkK8sMetrics, isVisible]);
+
+    // Reset on context change
+    useEffect(() => {
+        setK8sMetricsAvailable(null);
+    }, [currentContext]);
+
+    // Metrics source preference
+    const preferredSource = getConfig('metrics.preferredSource') ?? 'auto';
+    const handleSourceChange = (newValue) => {
+        setConfig('metrics.preferredSource', newValue);
+    };
 
     const [prometheusInfo, setPrometheusInfo] = useState(null);
     const [allInstalls, setAllInstalls] = useState([]);
@@ -33,6 +67,7 @@ export default function MetricsList({ isVisible }) {
     const detectPrometheus = async () => {
         setDetecting(true);
         setTestResult(null);
+        checkK8sMetrics(); // Also re-check K8s metrics API
         try {
             // Fetch both detected info and all installations
             const [info, installs] = await Promise.all([
@@ -237,14 +272,24 @@ export default function MetricsList({ isVisible }) {
                     <ChartBarIcon className="h-6 w-6 text-primary" />
                     <h1 className="text-lg font-semibold text-text">Metrics</h1>
                 </div>
-                <button
-                    onClick={detectPrometheus}
-                    disabled={detecting}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded transition-colors disabled:opacity-50"
-                >
-                    <ArrowPathIcon className={`h-4 w-4 ${detecting ? 'animate-spin' : ''}`} />
-                    Re-detect
-                </button>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Source:</span>
+                        <SourceSelect
+                            value={preferredSource}
+                            onChange={handleSourceChange}
+                            options={sourceOptions}
+                        />
+                    </div>
+                    <button
+                        onClick={detectPrometheus}
+                        disabled={detecting}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded transition-colors disabled:opacity-50"
+                    >
+                        <ArrowPathIcon className={`h-4 w-4 ${detecting ? 'animate-spin' : ''}`} />
+                        Re-detect
+                    </button>
+                </div>
             </div>
 
             {/* Content */}

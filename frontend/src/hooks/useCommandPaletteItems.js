@@ -5,6 +5,13 @@ import { useK8s } from '../context/K8sContext';
 // Static menu structure matching Sidebar.jsx
 const menuGroups = [
     {
+        title: 'Metrics',
+        items: [
+            { id: 'metrics-overview', label: 'Overview' },
+            { id: 'metrics-settings', label: 'Settings' },
+        ]
+    },
+    {
         title: 'Cluster',
         items: [
             { id: 'nodes', label: 'Nodes' },

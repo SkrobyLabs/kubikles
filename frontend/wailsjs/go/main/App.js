@@ -498,6 +498,10 @@ export function GetPodMetrics() {
   return window['go']['main']['App']['GetPodMetrics']();
 }
 
+export function GetPodMetricsFromPrometheus(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetPodMetricsFromPrometheus'](arg1, arg2, arg3);
+}
+
 export function GetPodMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
   return window['go']['main']['App']['GetPodMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }

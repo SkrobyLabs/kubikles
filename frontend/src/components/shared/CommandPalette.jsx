@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
 import { useCommandPaletteItems } from '../../hooks/useCommandPaletteItems';
 import { useUI } from '../../context/UIContext';
+import { useConfig } from '../../context/ConfigContext';
+import { usePerformancePanel } from '../../hooks/usePerformancePanel';
+import { useDebugLogs } from '../../hooks/useDebugLogs';
 
 /**
  * CommandPalette - VS Code-style command palette for quick navigation
@@ -13,13 +17,15 @@ import { useUI } from '../../context/UIContext';
  */
 export default function CommandPalette({ isOpen, onClose, onCreateResource }) {
     const { setActiveView } = useUI();
+    const { openConfigEditor } = useConfig();
+    const { openPerformancePanel } = usePerformancePanel();
+    const { toggleDebug } = useDebugLogs();
     const { items: navigationItems, loading } = useCommandPaletteItems();
 
-    // Add action items at the top
     const items = useMemo(() => {
-        const actions = [];
+        const topActions = [];
         if (onCreateResource) {
-            actions.push({
+            topActions.push({
                 id: 'action:create-resource',
                 label: 'Create Resource',
                 path: 'Actions > Create Resource',
@@ -27,7 +33,14 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource }) {
                 action: 'create-resource'
             });
         }
-        return [...actions, ...navigationItems];
+        // App utilities at the bottom
+        const appActions = [
+            { id: 'action:settings', label: 'Settings', path: 'Kubikles > Settings', type: 'action', action: 'settings' },
+            { id: 'action:performance', label: 'Performance', path: 'Kubikles > Performance', type: 'action', action: 'performance' },
+            { id: 'action:debug', label: 'Debug', path: 'Kubikles > Debug', type: 'action', action: 'debug' },
+            { id: 'action:report-bug', label: 'Report a Bug', path: 'Kubikles > Report a Bug', type: 'action', action: 'report-bug' },
+        ];
+        return [...topActions, ...navigationItems, ...appActions];
     }, [navigationItems, onCreateResource]);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -107,14 +120,18 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource }) {
     // Handle selection
     const handleSelect = useCallback((item) => {
         if (item.type === 'action') {
-            if (item.action === 'create-resource') {
-                onCreateResource?.();
+            switch (item.action) {
+                case 'create-resource': onCreateResource?.(); break;
+                case 'settings': openConfigEditor(); break;
+                case 'performance': openPerformancePanel(); break;
+                case 'debug': toggleDebug(); break;
+                case 'report-bug': BrowserOpenURL('https://github.com/SkrobyLabs/kubikles/issues'); break;
             }
         } else {
             setActiveView(item.viewId);
         }
         onClose();
-    }, [setActiveView, onClose, onCreateResource]);
+    }, [setActiveView, onClose, onCreateResource, openConfigEditor, openPerformancePanel, toggleDebug]);
 
     // Handle keyboard navigation
     const handleKeyDown = useCallback((e) => {
@@ -205,8 +222,8 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource }) {
                                         : 'text-gray-300 hover:bg-white/5'
                                 }`}
                             >
-                                {/* Show icon for action items */}
-                                {item.type === 'action' && (
+                                {/* Show + icon only for create actions */}
+                                {item.action === 'create-resource' && (
                                     <PlusIcon className="h-4 w-4 text-primary shrink-0" />
                                 )}
                                 <span className="text-sm truncate">

@@ -1094,6 +1094,180 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 	return &NodeMetricsResult{Available: true, Metrics: result}, nil
 }
 
+// GetPodMetricsFromPrometheus fetches pod metrics from Prometheus as a fallback when metrics-server is unavailable
+func (c *Client) GetPodMetricsFromPrometheus(contextName string, info *PrometheusInfo) (*PodMetricsResult, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	cs, err := c.getClientsetForContext(contextName)
+	if err != nil {
+		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
+	// Get nodes for capacity info
+	nodes, err := cs.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
+	// Build node capacity map
+	nodeCapacityMap := make(map[string]struct{ cpu, memory int64 })
+	for _, node := range nodes.Items {
+		nodeCapacityMap[node.Name] = struct{ cpu, memory int64 }{
+			cpu:    node.Status.Capacity.Cpu().MilliValue(),
+			memory: node.Status.Capacity.Memory().Value(),
+		}
+	}
+
+	// Query Prometheus for pod-level metrics in parallel
+	var cpuUsageResult, memUsageResult *PrometheusQueryResult
+	var cpuRequestsResult, memRequestsResult *PrometheusQueryResult
+	var podInfoResult *PrometheusQueryResult
+
+	g, gctx := errgroup.WithContext(ctx)
+
+	// Pod CPU usage (rate over 5m, excluding POD sandbox containers)
+	g.Go(func() error {
+		cpuUsageResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
+			`sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{container!="", container!="POD"}[5m]))`)
+		return nil
+	})
+
+	// Pod Memory usage (working set, excluding POD sandbox containers)
+	g.Go(func() error {
+		memUsageResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
+			`sum by (namespace, pod) (container_memory_working_set_bytes{container!="", container!="POD"})`)
+		return nil
+	})
+
+	// Pod CPU requests
+	g.Go(func() error {
+		cpuRequestsResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
+			`sum by (namespace, pod) (kube_pod_container_resource_requests{resource="cpu", unit="core"})`)
+		return nil
+	})
+
+	// Pod Memory requests
+	g.Go(func() error {
+		memRequestsResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
+			`sum by (namespace, pod) (kube_pod_container_resource_requests{resource="memory", unit="byte"})`)
+		return nil
+	})
+
+	// Pod-to-node mapping
+	g.Go(func() error {
+		podInfoResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
+			`kube_pod_info{node!=""}`)
+		return nil
+	})
+
+	g.Wait()
+
+	// Helper to extract pod-keyed values from Prometheus result (namespace + pod labels)
+	extractPodValues := func(result *PrometheusQueryResult) map[string]float64 {
+		values := make(map[string]float64)
+		if result == nil || result.Data.Result == nil {
+			return values
+		}
+		for _, r := range result.Data.Result {
+			ns, nsOk := r.Metric["namespace"]
+			pod, podOk := r.Metric["pod"]
+			if !nsOk || !podOk {
+				continue
+			}
+			if len(r.Value) >= 2 {
+				if valStr, ok := r.Value[1].(string); ok {
+					if val, err := strconv.ParseFloat(valStr, 64); err == nil {
+						values[ns+"/"+pod] = val
+					}
+				}
+			}
+		}
+		return values
+	}
+
+	cpuUsage := extractPodValues(cpuUsageResult)
+	memUsage := extractPodValues(memUsageResult)
+
+	// Check if we have any usage data
+	if len(cpuUsage) == 0 && len(memUsage) == 0 {
+		return &PodMetricsResult{Available: false, Error: "prometheus returned no pod usage metrics"}, nil
+	}
+
+	cpuRequests := extractPodValues(cpuRequestsResult)
+	memRequests := extractPodValues(memRequestsResult)
+
+	// Build pod-to-node mapping from kube_pod_info
+	podNodeMap := make(map[string]string) // "namespace/pod" -> node
+	if podInfoResult != nil && podInfoResult.Data.Result != nil {
+		for _, r := range podInfoResult.Data.Result {
+			ns := r.Metric["namespace"]
+			pod := r.Metric["pod"]
+			node := r.Metric["node"]
+			if ns != "" && pod != "" && node != "" {
+				podNodeMap[ns+"/"+pod] = node
+			}
+		}
+	}
+
+	// Collect all pod keys from usage data
+	podKeys := make(map[string]struct{})
+	for k := range cpuUsage {
+		podKeys[k] = struct{}{}
+	}
+	for k := range memUsage {
+		podKeys[k] = struct{}{}
+	}
+
+	// Build result
+	result := make([]PodMetrics, 0, len(podKeys))
+	for key := range podKeys {
+		parts := strings.SplitN(key, "/", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		ns, name := parts[0], parts[1]
+
+		nodeName := podNodeMap[key]
+		if nodeName == "" {
+			continue // Skip pods without a node mapping
+		}
+
+		cpuUsageMilli := int64(cpuUsage[key] * 1000)   // cores to millicores
+		memUsageBytes := int64(memUsage[key])
+		cpuReqMilli := int64(cpuRequests[key] * 1000)   // cores to millicores
+		memReqBytes := int64(memRequests[key])
+
+		// Committed = max(usage, requested)
+		cpuCommitted := cpuUsageMilli
+		if cpuReqMilli > cpuCommitted {
+			cpuCommitted = cpuReqMilli
+		}
+		memCommitted := memUsageBytes
+		if memReqBytes > memCommitted {
+			memCommitted = memReqBytes
+		}
+
+		nodeCap := nodeCapacityMap[nodeName]
+
+		result = append(result, PodMetrics{
+			Namespace:       ns,
+			Name:            name,
+			NodeName:        nodeName,
+			CPUUsage:        cpuUsageMilli,
+			MemoryUsage:     memUsageBytes,
+			CPURequested:    cpuReqMilli,
+			MemRequested:    memReqBytes,
+			CPUCommitted:    cpuCommitted,
+			MemCommitted:    memCommitted,
+			NodeCPUCapacity: nodeCap.cpu,
+			NodeMemCapacity: nodeCap.memory,
+		})
+	}
+
+	return &PodMetricsResult{Available: true, Metrics: result}, nil
+}
+
 // GetPodMetrics fetches CPU and Memory metrics for all pods, relative to node capacity
 func (c *Client) GetPodMetrics() (*PodMetricsResult, error) {
 	c.mu.Lock()

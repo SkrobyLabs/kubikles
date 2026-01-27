@@ -927,6 +927,31 @@ func (a *App) GetNodeMetricsFromPrometheus(prometheusNamespace, prometheusServic
 	return result, err
 }
 
+// GetPodMetricsFromPrometheus fetches pod metrics from Prometheus (fallback when metrics-server unavailable)
+func (a *App) GetPodMetricsFromPrometheus(prometheusNamespace, prometheusService string, prometheusPort int) (*k8s.PodMetricsResult, error) {
+	currentContext := a.GetCurrentContext()
+	a.LogDebug("GetPodMetricsFromPrometheus called: context=%s, prometheus=%s/%s:%d", currentContext, prometheusNamespace, prometheusService, prometheusPort)
+	if a.k8sClient == nil {
+		a.LogDebug("GetPodMetricsFromPrometheus: k8s client not initialized")
+		return &k8s.PodMetricsResult{Available: false}, nil
+	}
+
+	info := &k8s.PrometheusInfo{
+		Available: true,
+		Namespace: prometheusNamespace,
+		Service:   prometheusService,
+		Port:      prometheusPort,
+	}
+
+	result, err := a.k8sClient.GetPodMetricsFromPrometheus(currentContext, info)
+	if err != nil {
+		a.LogDebug("GetPodMetricsFromPrometheus error: %v", err)
+	} else {
+		a.LogDebug("GetPodMetricsFromPrometheus result: available=%v, metrics_count=%d, error=%s", result.Available, len(result.Metrics), result.Error)
+	}
+	return result, err
+}
+
 func (a *App) GetNodeYaml(name string) (string, error) {
 	a.LogDebug("GetNodeYaml called: name=%s", name)
 	if a.k8sClient == nil {
