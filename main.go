@@ -18,6 +18,9 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed build/appicon.png
+var appIcon []byte
+
 func main() {
 	// Initialize crash logging - writes to kubikles.log in config dir
 	cleanup := crashlog.Init()
@@ -106,6 +109,7 @@ func main() {
 			About: &mac.AboutInfo{
 				Title:   "Kubikles",
 				Message: "Kubernetes cluster management",
+				Icon:    appIcon,
 			},
 		},
 		Windows: &windows.Options{

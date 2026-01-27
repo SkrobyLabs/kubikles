@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect x="80" y="80" width="864" height="864" rx="180" ry="180" fill="#1a1d23"/>
+  <circle cx="512" cy="512" r="340" fill="none" stroke="#1e5a8a" stroke-width="7" stroke-dasharray="12 8" opacity="0.7"/>
+  <line x1="512.0" y1="392.0" x2="512.0" y2="172.0" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
+  <line x1="605.8" y1="437.2" x2="777.8" y2="300.0" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
+  <line x1="629.0" y1="538.7" x2="843.5" y2="587.7" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
+  <line x1="564.1" y1="620.1" x2="659.5" y2="818.3" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
+  <line x1="459.9" y1="620.1" x2="364.5" y2="818.3" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
+  <line x1="395.0" y1="538.7" x2="180.5" y2="587.7" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
+  <line x1="418.2" y1="437.2" x2="246.2" y2="300.0" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
+  <circle cx="512.0" cy="172.0" r="50" fill="#007acc" opacity="0.2"/>
+  <circle cx="512.0" cy="172.0" r="38" fill="#3ba0e6"/>
+  <circle cx="777.8" cy="300.0" r="50" fill="#007acc" opacity="0.2"/>
+  <circle cx="777.8" cy="300.0" r="38" fill="#3ba0e6"/>
+  <circle cx="843.5" cy="587.7" r="50" fill="#007acc" opacity="0.2"/>
+  <circle cx="843.5" cy="587.7" r="38" fill="#3ba0e6"/>
+  <circle cx="659.5" cy="818.3" r="50" fill="#007acc" opacity="0.2"/>
+  <circle cx="659.5" cy="818.3" r="38" fill="#3ba0e6"/>
+  <circle cx="364.5" cy="818.3" r="50" fill="#007acc" opacity="0.2"/>
+  <circle cx="364.5" cy="818.3" r="38" fill="#3ba0e6"/>
+  <circle cx="180.5" cy="587.7" r="50" fill="#007acc" opacity="0.2"/>
+  <circle cx="180.5" cy="587.7" r="38" fill="#3ba0e6"/>
+  <circle cx="246.2" cy="300.0" r="50" fill="#007acc" opacity="0.2"/>
+  <circle cx="246.2" cy="300.0" r="38" fill="#3ba0e6"/>
+  <circle cx="512" cy="512" r="120" fill="#007acc"/>
+  <circle cx="512" cy="512" r="100" fill="#1a1d23"/>
+  <text x="512" y="552" text-anchor="middle" font-family="-apple-system, SF Pro Display, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="130" fill="#e8eaed">K</text>
+</svg>

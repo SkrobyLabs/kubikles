@@ -71,10 +71,10 @@ create_appdir() {
     # Copy desktop file
     cp "$BUILD_DIR/appimage/kubikles.desktop" "$APPDIR/"
 
-    # Copy icon
-    cp "$PROJECT_ROOT/frontend/src/assets/images/logo-universal.png" \
+    # Copy icon (square app icon, not the landscape logo)
+    cp "$PROJECT_ROOT/build/appicon.png" \
         "$APPDIR/usr/share/icons/hicolor/256x256/apps/kubikles.png"
-    cp "$PROJECT_ROOT/frontend/src/assets/images/logo-universal.png" \
+    cp "$PROJECT_ROOT/build/appicon.png" \
         "$APPDIR/kubikles.png"
 
     # Create AppRun script

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Environment } from '../../../wailsjs/runtime/runtime';
+import appIcon from '../../assets/images/logo-universal.png';
 import {
     CubeIcon,
     ServerIcon,
@@ -60,9 +62,11 @@ export default function Sidebar({
 
     // Version info
     const [versionInfo, setVersionInfo] = useState(null);
+    const [isMac, setIsMac] = useState(true); // default true to avoid layout shift on macOS
 
     useEffect(() => {
         GetVersionInfo().then(setVersionInfo).catch(() => {});
+        Environment().then(env => setIsMac(env.platform === 'darwin')).catch(() => {});
     }, []);
     const settingsButtonRef = useRef(null);
     const settingsMenuRef = useRef(null);
@@ -311,10 +315,10 @@ export default function Sidebar({
 
     return (
         <div className="w-64 bg-surface border-r border-border flex flex-col h-full relative">
-            {/* Header with traffic light padding - h-14 matches ResourceList header */}
-            <div className="h-14 shrink-0 flex items-center pl-20 border-b border-border titlebar-drag">
+            {/* Header - pl-20 on macOS for traffic light buttons, pl-4 otherwise */}
+            <div className={`h-14 shrink-0 flex items-center ${isMac ? 'pl-20' : 'pl-4'} border-b border-border titlebar-drag`}>
                 <div className="flex items-center gap-2 text-primary font-bold text-lg select-none">
-                    <CubeIcon className="h-5 w-5" />
+                    <img src={appIcon} alt="" className="h-6 w-6 rounded-full" />
                     <span>Kubikles</span>
                 </div>
             </div>

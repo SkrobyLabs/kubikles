@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Kubikles
+Comment=Kubernetes cluster management
+Exec=kubikles
+Icon=kubikles
+Categories=Development;System;
+Terminal=false
+StartupWMClass=kubikles
