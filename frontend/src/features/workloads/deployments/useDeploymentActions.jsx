@@ -13,6 +13,7 @@ export const useDeploymentActions = () => {
         createDeleteHandler,
         openTab,
         currentContext,
+        addNotification,
     } = useBaseResourceActions({
         resourceType: 'deployment',
         resourceLabel: 'Deployment',
@@ -27,7 +28,7 @@ export const useDeploymentActions = () => {
             Logger.info("Restart triggered successfully", { name: deployment.metadata.name });
         } catch (err) {
             Logger.error("Failed to restart deployment", err);
-            alert(`Failed to restart deployment: ${err}`);
+            addNotification({ type: 'error', title: 'Failed to restart deployment', message: String(err) });
         }
     };
 
@@ -53,7 +54,7 @@ export const useDeploymentActions = () => {
             });
 
             if (deploymentPods.length === 0) {
-                alert(`No pods found for deployment "${deployment.metadata.name}".`);
+                addNotification({ type: 'warning', title: 'No pods found', message: `No pods found for deployment "${deployment.metadata.name}".` });
                 return;
             }
 
@@ -89,7 +90,7 @@ export const useDeploymentActions = () => {
             });
         } catch (err) {
             Logger.error("Failed to get pods for Deployment", err);
-            alert(`Failed to get pods for deployment: ${err.message || err}`);
+            addNotification({ type: 'error', title: 'Failed to get pods for deployment', message: String(err.message || err) });
         }
     };
 

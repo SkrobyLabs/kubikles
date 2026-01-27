@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
+import { useNotification } from '../../../context/NotificationContext';
 import { DeletePod, ForceDeletePod } from '../../../../wailsjs/go/main/App';
 import LogViewer from '../../../components/shared/log-viewer';
 import { LazyTerminal as Terminal, LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../../../components/lazy';
@@ -11,6 +12,7 @@ import { CubeIcon } from '@heroicons/react/24/outline';
 export const usePodActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+    const { addNotification } = useNotification();
 
     const openLogs = (namespace, podName, containers = [], siblingPods = [], podContainerMap = {}, ownerName = '', podCreationTime = '') => {
         Logger.info("Opening logs", { namespace, pod: podName });
@@ -123,7 +125,7 @@ export const usePodActions = () => {
                     closeModal();
                 } catch (err) {
                     Logger.error(`Failed to ${actionType.toLowerCase()} pod`, err);
-                    alert(`Failed to ${actionType.toLowerCase()} pod: ${err}`);
+                    addNotification({ type: 'error', title: `Failed to ${actionType.toLowerCase()} pod`, message: String(err) });
                 }
             }
         });

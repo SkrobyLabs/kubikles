@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { GetSecretYaml, UpdateSecretYaml, GetSecretData, UpdateSecretData, GetCertificateInfo, GetAllCertificateInfo } from '../../../wailsjs/go/main/App';
 import { useK8s } from '../../context/K8sContext';
+import { useNotification } from '../../context/NotificationContext';
 import Logger from '../../utils/Logger';
 import { EyeIcon, EyeSlashIcon, TrashIcon, PlusIcon, LockClosedIcon, MagnifyingGlassIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import CertificateModal from './CertificateModal';
@@ -29,6 +30,7 @@ const entriesToObject = (entries) => {
 
 export default function SecretEditor({ namespace, resourceName, onClose, tabContext = '', initialMode = MODE_YAML }) {
     const { currentContext } = useK8s();
+    const { addNotification } = useNotification();
     const [mode, setMode] = useState(initialMode);
     const [yamlContent, setYamlContent] = useState('');
     const [secretEntries, setSecretEntries] = useState([]);
@@ -83,7 +85,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
             }
         } catch (err) {
             Logger.error("Failed to get certificate info", err);
-            alert(`Failed to parse certificate: ${err}`);
+            addNotification({ type: 'error', title: 'Failed to parse certificate', message: String(err) });
         }
     };
 
@@ -157,13 +159,13 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
         try {
             await UpdateSecretYaml(namespace, resourceName, yamlContent);
             Logger.info("YAML saved successfully", { namespace, name: resourceName });
-            alert("Secret saved successfully!");
+            addNotification({ type: 'success', title: 'Secret saved successfully' });
             // Refresh key-value data after YAML save
             const data = await GetSecretData(namespace, resourceName);
             setSecretEntries(objectToEntries(data));
         } catch (err) {
             Logger.error("Failed to save secret", err);
-            alert(`Failed to save secret: ${err}`);
+            addNotification({ type: 'error', title: 'Failed to save secret', message: String(err) });
         } finally {
             setSaving(false);
         }
@@ -176,13 +178,13 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
             const dataToSave = entriesToObject(secretEntries);
             await UpdateSecretData(namespace, resourceName, dataToSave);
             Logger.info("Secret data saved successfully", { namespace, name: resourceName });
-            alert("Secret saved successfully!");
+            addNotification({ type: 'success', title: 'Secret saved successfully' });
             // Refresh YAML after key-value save
             const yaml = await GetSecretYaml(namespace, resourceName);
             setYamlContent(yaml);
         } catch (err) {
             Logger.error("Failed to save secret", err);
-            alert(`Failed to save secret: ${err}`);
+            addNotification({ type: 'error', title: 'Failed to save secret', message: String(err) });
         } finally {
             setSaving(false);
         }

@@ -3,6 +3,7 @@ import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import { useConfigMaps } from '../../../hooks/resources';
 import { useK8s } from '../../../context/K8sContext';
+import { useNotification } from '../../../context/NotificationContext';
 import { useMenu } from '../../../context/MenuContext';
 import { useSelection } from '../../../hooks/useSelection';
 import { DeleteConfigMap, GetConfigMapYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
@@ -15,6 +16,7 @@ import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
 export default function ConfigMapList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
+    const { addNotification } = useNotification();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
 
@@ -73,7 +75,7 @@ export default function ConfigMapList({ isVisible }) {
         try {
             await SaveYamlBackup(entries, `configmaps-backup-${timestamp}.zip`);
         } catch (err) {
-            if (err && err.toString() !== '') alert('Failed to save backup: ' + err);
+            if (err && err.toString() !== '') addNotification({ type: 'error', title: 'Failed to save backup', message: String(err) });
         }
     }, []);
     const { configMaps, loading } = useConfigMaps(currentContext, selectedNamespaces, isVisible);

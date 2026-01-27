@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
+import { useNotification } from '../../../context/NotificationContext';
 import { DeleteClusterRoleBinding } from '../../../../wailsjs/go/main/App';
 import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
 import Logger from '../../../utils/Logger';
@@ -8,6 +9,7 @@ import Logger from '../../../utils/Logger';
 export const useClusterRoleBindingActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+    const { addNotification } = useNotification();
 
     const handleEditYaml = (clusterRoleBinding) => {
         Logger.info("Opening ClusterRoleBinding editor", { name: clusterRoleBinding.metadata.name });
@@ -42,7 +44,7 @@ export const useClusterRoleBindingActions = () => {
                     closeModal();
                 } catch (err) {
                     Logger.error("Failed to delete ClusterRoleBinding", err);
-                    alert(`Failed to delete cluster role binding: ${err}`);
+                    addNotification({ type: 'error', title: 'Failed to delete cluster role binding', message: String(err) });
                 }
             }
         });

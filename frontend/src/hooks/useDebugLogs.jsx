@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useUI } from '../context/UIContext';
 import { useDebug } from '../context/DebugContext';
+import { useNotification } from '../context/NotificationContext';
 import DebugLogViewer from '../components/shared/DebugLogViewer';
 import { SaveLogFile } from '../../wailsjs/go/main/App';
 
@@ -9,6 +10,7 @@ export const useDebugLogs = () => {
     const isListenerRegistered = useRef(false);
     const { openTab, bottomTabs, setBottomTabs } = useUI(); // We need setBottomTabs to update content
     const { enableDebugMode } = useDebug();
+    const { addNotification } = useNotification();
 
     useEffect(() => {
         if (window.runtime && !isListenerRegistered.current) {
@@ -41,7 +43,7 @@ export const useDebugLogs = () => {
             await SaveLogFile(content);
         } catch (err) {
             console.error("Failed to save logs:", err);
-            alert("Failed to save logs: " + err);
+            addNotification({ type: 'error', title: 'Failed to save logs', message: String(err) });
         }
     };
 

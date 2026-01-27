@@ -13,6 +13,7 @@ export const useStatefulSetActions = () => {
         createDeleteHandler,
         openTab,
         currentContext,
+        addNotification,
     } = useBaseResourceActions({
         resourceType: 'statefulset',
         resourceLabel: 'StatefulSet',
@@ -27,7 +28,7 @@ export const useStatefulSetActions = () => {
             Logger.info("Restart triggered successfully", { name: statefulSet.metadata.name });
         } catch (err) {
             Logger.error("Failed to restart statefulset", err);
-            alert(`Failed to restart statefulset: ${err}`);
+            addNotification({ type: 'error', title: 'Failed to restart statefulset', message: String(err) });
         }
     };
 
@@ -52,7 +53,7 @@ export const useStatefulSetActions = () => {
             });
 
             if (statefulSetPods.length === 0) {
-                alert(`No pods found for statefulset "${statefulSet.metadata.name}".`);
+                addNotification({ type: 'warning', title: 'No pods found', message: `No pods found for statefulset "${statefulSet.metadata.name}".` });
                 return;
             }
 
@@ -88,7 +89,7 @@ export const useStatefulSetActions = () => {
             });
         } catch (err) {
             Logger.error("Failed to get pods for StatefulSet", err);
-            alert(`Failed to get pods for statefulset: ${err.message || err}`);
+            addNotification({ type: 'error', title: 'Failed to get pods for statefulset', message: String(err.message || err) });
         }
     };
 

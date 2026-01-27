@@ -519,7 +519,7 @@ export default function EnvVarSection({
     const [resolvingAll, setResolvingAll] = useState(false);
 
     const totalCount = env.length + envFrom.length;
-    const COLLAPSE_THRESHOLD = 5;
+    const COLLAPSE_THRESHOLD = 50;
 
     // Filter env vars by search
     const filteredEnv = useMemo(() => {

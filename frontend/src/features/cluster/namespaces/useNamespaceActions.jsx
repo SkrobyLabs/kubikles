@@ -9,6 +9,7 @@ export const useNamespaceActions = () => {
         handleEditYaml,
         openModal,
         closeModal,
+        addNotification,
     } = useBaseResourceActions({
         resourceType: 'namespace',
         resourceLabel: 'Namespace',
@@ -40,7 +41,7 @@ export const useNamespaceActions = () => {
                     closeModal();
                 } catch (err) {
                     Logger.error("Failed to delete namespace", err);
-                    alert(`Failed to delete namespace: ${err}`);
+                    addNotification({ type: 'error', title: 'Failed to delete namespace', message: String(err) });
                 }
             }
         });

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
+import { useNotification } from '../../../context/NotificationContext';
 import { DeleteSecret } from '../../../../wailsjs/go/main/App';
 import SecretEditor from '../../../components/shared/SecretEditor';
 import { LazyDependencyGraph as DependencyGraph } from '../../../components/lazy';
@@ -10,6 +11,7 @@ import { LockClosedIcon, PencilSquareIcon, ShareIcon } from '@heroicons/react/24
 export const useSecretActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+    const { addNotification } = useNotification();
 
     const handleEditYaml = (secret) => {
         Logger.info("Opening secret editor", { namespace: secret.metadata.namespace, secret: secret.metadata.name });
@@ -85,7 +87,7 @@ export const useSecretActions = () => {
                     closeModal();
                 } catch (err) {
                     Logger.error("Failed to delete secret", err);
-                    alert(`Failed to delete secret: ${err}`);
+                    addNotification({ type: 'error', title: 'Failed to delete secret', message: String(err) });
                 }
             }
         });

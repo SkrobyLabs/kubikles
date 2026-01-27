@@ -93,7 +93,7 @@ export default function HelmReleaseList({ isVisible }) {
             })
         );
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        try { await SaveYamlBackup(entries, `helmreleases-backup-${timestamp}.zip`); } catch (err) { if (err?.toString()) alert('Failed: ' + err); }
+        try { await SaveYamlBackup(entries, `helmreleases-backup-${timestamp}.zip`); } catch (err) { if (err?.toString()) addNotification({ type: 'error', title: 'Failed to save backup', message: String(err) }); }
     }, []);
 
     const {

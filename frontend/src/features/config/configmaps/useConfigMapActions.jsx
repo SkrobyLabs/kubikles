@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
+import { useNotification } from '../../../context/NotificationContext';
 import { DeleteConfigMap } from '../../../../wailsjs/go/main/App';
 import ConfigMapEditor from '../../../components/shared/ConfigMapEditor';
 import DependencyGraph from '../../../components/shared/DependencyGraph';
@@ -10,6 +11,7 @@ import { DocumentTextIcon, PencilSquareIcon, ShareIcon } from '@heroicons/react/
 export const useConfigMapActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+    const { addNotification } = useNotification();
 
     const handleEditYaml = (configMap) => {
         Logger.info("Opening configmap editor", { namespace: configMap.metadata.namespace, configMap: configMap.metadata.name });
@@ -85,7 +87,7 @@ export const useConfigMapActions = () => {
                     closeModal();
                 } catch (err) {
                     Logger.error("Failed to delete configmap", err);
-                    alert(`Failed to delete configmap: ${err}`);
+                    addNotification({ type: 'error', title: 'Failed to delete configmap', message: String(err) });
                 }
             }
         });

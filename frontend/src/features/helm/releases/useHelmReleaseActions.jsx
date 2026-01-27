@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
+import { useNotification } from '../../../context/NotificationContext';
 import { UninstallHelmRelease } from '../../../../wailsjs/go/main/App';
 import HelmReleaseDetails from './HelmReleaseDetails';
 import Logger from '../../../utils/Logger';
@@ -8,6 +9,7 @@ import Logger from '../../../utils/Logger';
 export const useHelmReleaseActions = () => {
     const { openTab, openModal, closeModal } = useUI();
     const { currentContext, triggerRefresh } = useK8s();
+    const { addNotification } = useNotification();
 
     // Open details tab with specific initial tab
     const handleOpenDetails = useCallback((release, initialTab = 'basic') => {
@@ -63,7 +65,7 @@ export const useHelmReleaseActions = () => {
                     triggerRefresh();
                 } catch (err) {
                     Logger.error("Failed to uninstall Helm release", err);
-                    alert(`Failed to uninstall: ${err.message || err}`);
+                    addNotification({ type: 'error', title: 'Failed to uninstall', message: String(err.message || err) });
                 }
             }
         });

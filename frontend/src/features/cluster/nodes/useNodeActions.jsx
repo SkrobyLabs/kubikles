@@ -13,6 +13,7 @@ export const useNodeActions = (refetch) => {
         createDeleteHandler,
         openTab,
         currentContext,
+        addNotification,
     } = useBaseResourceActions({
         resourceType: 'node',
         resourceLabel: 'Node',
@@ -35,7 +36,7 @@ export const useNodeActions = (refetch) => {
             if (refetch) refetch();
         } catch (err) {
             Logger.error(`Failed to ${action.toLowerCase()} node`, err);
-            alert(`Failed to ${action.toLowerCase()} node: ${err}`);
+            addNotification({ type: 'error', title: `Failed to ${action.toLowerCase()} node`, message: String(err) });
         }
     }, [refetch]);
 

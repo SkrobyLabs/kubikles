@@ -14,6 +14,7 @@ export const useJobActions = (onRefresh) => {
         openModal,
         closeModal,
         currentContext,
+        addNotification,
     } = useBaseResourceActions({
         resourceType: 'job',
         resourceLabel: 'Job',
@@ -35,7 +36,7 @@ export const useJobActions = (onRefresh) => {
                     if (onRefresh) onRefresh();
                 } catch (err) {
                     Logger.error("Failed to delete Job", err);
-                    alert(`Failed to delete job: ${err.message || err}`);
+                    addNotification({ type: 'error', title: 'Failed to delete job', message: String(err.message || err) });
                 }
             }
         });
@@ -52,7 +53,7 @@ export const useJobActions = (onRefresh) => {
             );
 
             if (jobPods.length === 0) {
-                alert(`No pods found for job "${job.metadata.name}". The job may not have created any pods yet.`);
+                addNotification({ type: 'warning', title: 'No pods found', message: `No pods found for job "${job.metadata.name}". The job may not have created any pods yet.` });
                 return;
             }
 
@@ -88,7 +89,7 @@ export const useJobActions = (onRefresh) => {
             });
         } catch (err) {
             Logger.error("Failed to get pods for Job", err);
-            alert(`Failed to get pods for job: ${err.message || err}`);
+            addNotification({ type: 'error', title: 'Failed to get pods for job', message: String(err.message || err) });
         }
     };
 

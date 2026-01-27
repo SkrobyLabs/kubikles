@@ -13,6 +13,7 @@ export const useDaemonSetActions = () => {
         createDeleteHandler,
         openTab,
         currentContext,
+        addNotification,
     } = useBaseResourceActions({
         resourceType: 'daemonset',
         resourceLabel: 'DaemonSet',
@@ -27,7 +28,7 @@ export const useDaemonSetActions = () => {
             Logger.info("DaemonSet restarted successfully", { name: daemonSet.metadata.name });
         } catch (err) {
             Logger.error("Failed to restart DaemonSet", err);
-            alert(`Failed to restart daemonset: ${err.message || err}`);
+            addNotification({ type: 'error', title: 'Failed to restart daemonset', message: String(err.message || err) });
         }
     };
 
@@ -52,7 +53,7 @@ export const useDaemonSetActions = () => {
             });
 
             if (daemonSetPods.length === 0) {
-                alert(`No pods found for daemonset "${daemonSet.metadata.name}".`);
+                addNotification({ type: 'warning', title: 'No pods found', message: `No pods found for daemonset "${daemonSet.metadata.name}".` });
                 return;
             }
 
@@ -88,7 +89,7 @@ export const useDaemonSetActions = () => {
             });
         } catch (err) {
             Logger.error("Failed to get pods for DaemonSet", err);
-            alert(`Failed to get pods for daemonset: ${err.message || err}`);
+            addNotification({ type: 'error', title: 'Failed to get pods for daemonset', message: String(err.message || err) });
         }
     };
 

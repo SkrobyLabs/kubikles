@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
+import { useNotification } from '../../../context/NotificationContext';
 import { DeleteServiceAccount } from '../../../../wailsjs/go/main/App';
 import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
 import Logger from '../../../utils/Logger';
@@ -8,6 +9,7 @@ import Logger from '../../../utils/Logger';
 export const useServiceAccountActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+    const { addNotification } = useNotification();
 
     const handleEditYaml = (serviceAccount) => {
         Logger.info("Opening ServiceAccount editor", { namespace: serviceAccount.metadata.namespace, name: serviceAccount.metadata.name });
@@ -44,7 +46,7 @@ export const useServiceAccountActions = () => {
                     closeModal();
                 } catch (err) {
                     Logger.error("Failed to delete ServiceAccount", err);
-                    alert(`Failed to delete service account: ${err}`);
+                    addNotification({ type: 'error', title: 'Failed to delete service account', message: String(err) });
                 }
             }
         });

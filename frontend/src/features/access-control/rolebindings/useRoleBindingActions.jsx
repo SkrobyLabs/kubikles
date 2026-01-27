@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
+import { useNotification } from '../../../context/NotificationContext';
 import { DeleteRoleBinding } from '../../../../wailsjs/go/main/App';
 import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
 import Logger from '../../../utils/Logger';
@@ -8,6 +9,7 @@ import Logger from '../../../utils/Logger';
 export const useRoleBindingActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+    const { addNotification } = useNotification();
 
     const handleEditYaml = (roleBinding) => {
         Logger.info("Opening RoleBinding editor", { namespace: roleBinding.metadata.namespace, name: roleBinding.metadata.name });
@@ -44,7 +46,7 @@ export const useRoleBindingActions = () => {
                     closeModal();
                 } catch (err) {
                     Logger.error("Failed to delete RoleBinding", err);
-                    alert(`Failed to delete role binding: ${err}`);
+                    addNotification({ type: 'error', title: 'Failed to delete role binding', message: String(err) });
                 }
             }
         });

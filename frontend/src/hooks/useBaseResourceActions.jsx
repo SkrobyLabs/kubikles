@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUI } from '../context/UIContext';
 import { useK8s } from '../context/K8sContext';
+import { useNotification } from '../context/NotificationContext';
 import { LazyYamlEditor, LazyDependencyGraph } from '../components/lazy';
 import Logger from '../utils/Logger';
 import { getResourceIcon } from '../utils/resourceIcons';
@@ -22,6 +23,7 @@ import { getResourceIcon } from '../utils/resourceIcons';
 export function useBaseResourceActions(config) {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+    const { addNotification } = useNotification();
 
     const {
         resourceType,
@@ -134,7 +136,7 @@ export function useBaseResourceActions(config) {
                         closeModal();
                     } catch (err) {
                         Logger.error(`Failed to delete ${resourceLabel}`, err);
-                        alert(`Failed to delete ${resourceLabel.toLowerCase()}: ${err.message || err}`);
+                        addNotification({ type: 'error', title: `Failed to delete ${resourceLabel.toLowerCase()}`, message: String(err.message || err) });
                     }
                 }
             });
@@ -152,5 +154,6 @@ export function useBaseResourceActions(config) {
         openModal,
         closeModal,
         currentContext,
+        addNotification,
     };
 }

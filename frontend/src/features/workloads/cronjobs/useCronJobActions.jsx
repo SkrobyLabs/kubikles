@@ -16,6 +16,7 @@ export const useCronJobActions = () => {
         openModal,
         closeModal,
         currentContext,
+        addNotification,
     } = useBaseResourceActions({
         resourceType: 'cronjob',
         resourceLabel: 'CronJob',
@@ -37,7 +38,7 @@ export const useCronJobActions = () => {
             });
 
             if (cronJobJobs.length === 0) {
-                alert(`No jobs found for cronjob "${cronJob.metadata.name}". The cronjob may not have run yet.`);
+                addNotification({ type: 'warning', title: 'No jobs found', message: `No jobs found for cronjob "${cronJob.metadata.name}". The cronjob may not have run yet.` });
                 return;
             }
 
@@ -52,7 +53,7 @@ export const useCronJobActions = () => {
             );
 
             if (jobPods.length === 0) {
-                alert(`No pods found for job "${mostRecentJob.metadata.name}".`);
+                addNotification({ type: 'warning', title: 'No pods found', message: `No pods found for job "${mostRecentJob.metadata.name}".` });
                 return;
             }
 
@@ -88,7 +89,7 @@ export const useCronJobActions = () => {
             });
         } catch (err) {
             Logger.error("Failed to get logs for CronJob", err);
-            alert(`Failed to get logs for cronjob: ${err.message || err}`);
+            addNotification({ type: 'error', title: 'Failed to get logs for cronjob', message: String(err.message || err) });
         }
     };
 
@@ -102,7 +103,7 @@ export const useCronJobActions = () => {
             triggerRefresh();
         } catch (err) {
             Logger.error("Failed to trigger CronJob", err);
-            alert(`Failed to trigger cronjob: ${err.message || err}`);
+            addNotification({ type: 'error', title: 'Failed to trigger cronjob', message: String(err.message || err) });
         }
     };
 
@@ -120,7 +121,7 @@ export const useCronJobActions = () => {
         } catch (err) {
             const action = cronJob.spec?.suspend ? "resume" : "suspend";
             Logger.error(`Failed to ${action} CronJob`, err);
-            alert(`Failed to ${action} cronjob: ${err.message || err}`);
+            addNotification({ type: 'error', title: `Failed to ${action} cronjob`, message: String(err.message || err) });
         }
     };
 
@@ -142,7 +143,7 @@ export const useCronJobActions = () => {
                     triggerRefresh();
                 } catch (err) {
                     Logger.error("Failed to delete CronJob", err);
-                    alert(`Failed to delete cronjob: ${err.message || err}`);
+                    addNotification({ type: 'error', title: 'Failed to delete cronjob', message: String(err.message || err) });
                 }
             }
         });

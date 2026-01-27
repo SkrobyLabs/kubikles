@@ -13,6 +13,7 @@ export const useReplicaSetActions = () => {
         createDeleteHandler,
         openTab,
         currentContext,
+        addNotification,
     } = useBaseResourceActions({
         resourceType: 'replicaset',
         resourceLabel: 'ReplicaSet',
@@ -41,7 +42,7 @@ export const useReplicaSetActions = () => {
             });
 
             if (replicaSetPods.length === 0) {
-                alert(`No pods found for replicaset "${replicaSet.metadata.name}".`);
+                addNotification({ type: 'warning', title: 'No pods found', message: `No pods found for replicaset "${replicaSet.metadata.name}".` });
                 return;
             }
 
@@ -77,7 +78,7 @@ export const useReplicaSetActions = () => {
             });
         } catch (err) {
             Logger.error("Failed to get pods for ReplicaSet", err);
-            alert(`Failed to get pods for replicaset: ${err.message || err}`);
+            addNotification({ type: 'error', title: 'Failed to get pods for replicaset', message: String(err.message || err) });
         }
     };
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
+import { useNotification } from '../../../context/NotificationContext';
 import { DeleteRole } from '../../../../wailsjs/go/main/App';
 import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
 import Logger from '../../../utils/Logger';
@@ -8,6 +9,7 @@ import Logger from '../../../utils/Logger';
 export const useRoleActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+    const { addNotification } = useNotification();
 
     const handleEditYaml = (role) => {
         Logger.info("Opening Role editor", { namespace: role.metadata.namespace, name: role.metadata.name });
@@ -44,7 +46,7 @@ export const useRoleActions = () => {
                     closeModal();
                 } catch (err) {
                     Logger.error("Failed to delete Role", err);
-                    alert(`Failed to delete role: ${err}`);
+                    addNotification({ type: 'error', title: 'Failed to delete role', message: String(err) });
                 }
             }
         });

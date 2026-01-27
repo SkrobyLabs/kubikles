@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { GetConfigMapYaml, UpdateConfigMapYaml, GetConfigMapData, UpdateConfigMapData } from '../../../wailsjs/go/main/App';
 import { useK8s } from '../../context/K8sContext';
+import { useNotification } from '../../context/NotificationContext';
 import Logger from '../../utils/Logger';
 import { TrashIcon, PlusIcon, LockClosedIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
@@ -28,6 +29,7 @@ const entriesToObject = (entries) => {
 
 export default function ConfigMapEditor({ namespace, resourceName, onClose, tabContext = '', initialMode = MODE_YAML }) {
     const { currentContext } = useK8s();
+    const { addNotification } = useNotification();
     const [mode, setMode] = useState(initialMode);
     const [yamlContent, setYamlContent] = useState('');
     const [configMapEntries, setConfigMapEntries] = useState([]);
@@ -76,13 +78,13 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
         try {
             await UpdateConfigMapYaml(namespace, resourceName, yamlContent);
             Logger.info("YAML saved successfully", { namespace, name: resourceName });
-            alert("ConfigMap saved successfully!");
+            addNotification({ type: 'success', title: 'ConfigMap saved successfully' });
             // Refresh key-value data after YAML save
             const data = await GetConfigMapData(namespace, resourceName);
             setConfigMapEntries(objectToEntries(data));
         } catch (err) {
             Logger.error("Failed to save configmap", err);
-            alert(`Failed to save configmap: ${err}`);
+            addNotification({ type: 'error', title: 'Failed to save ConfigMap', message: String(err) });
         } finally {
             setSaving(false);
         }
@@ -95,13 +97,13 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
             const dataToSave = entriesToObject(configMapEntries);
             await UpdateConfigMapData(namespace, resourceName, dataToSave);
             Logger.info("ConfigMap data saved successfully", { namespace, name: resourceName });
-            alert("ConfigMap saved successfully!");
+            addNotification({ type: 'success', title: 'ConfigMap saved successfully' });
             // Refresh YAML after key-value save
             const yaml = await GetConfigMapYaml(namespace, resourceName);
             setYamlContent(yaml);
         } catch (err) {
             Logger.error("Failed to save configmap", err);
-            alert(`Failed to save configmap: ${err}`);
+            addNotification({ type: 'error', title: 'Failed to save ConfigMap', message: String(err) });
         } finally {
             setSaving(false);
         }

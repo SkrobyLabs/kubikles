@@ -4,6 +4,7 @@ import { getResource, getResourceByKind } from '../../utils/resourceRegistry';
 import Logger from '../../utils/Logger';
 import { useUI } from '../../context/UIContext';
 import { useK8s } from '../../context/K8sContext';
+import { useNotification } from '../../context/NotificationContext';
 import { ExclamationTriangleIcon, InformationCircleIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 
 // Extract controller owner from YAML content
@@ -50,6 +51,7 @@ export default function YamlEditor({
 }) {
     const { openTab, closeTab } = useUI();
     const { currentContext } = useK8s();
+    const { addNotification } = useNotification();
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -164,13 +166,13 @@ export default function YamlEditor({
             Logger.info("YAML reloaded", { resourceType, namespace, name: resourceName });
         } catch (err) {
             Logger.error("Failed to reload YAML", err);
-            alert(`Failed to reload YAML: ${err}`);
+            addNotification({ type: 'error', title: 'Failed to reload YAML', message: String(err) });
         }
     };
 
     const handleSave = async () => {
         if (!resource && !updateYamlFn) {
-            alert(`Unknown resource type: ${resourceType}`);
+            addNotification({ type: 'error', title: 'Unknown resource type', message: resourceType });
             return;
         }
 
@@ -201,7 +203,7 @@ export default function YamlEditor({
                 Logger.warn("Failed to refresh YAML after save", refreshErr);
             }
 
-            alert("YAML saved successfully!");
+            addNotification({ type: 'success', title: 'YAML saved successfully' });
         } catch (err) {
             Logger.error("Failed to save YAML", err);
 
@@ -211,7 +213,7 @@ export default function YamlEditor({
                 setHasConflict(true);
                 Logger.warn("Conflict detected - resource was modified externally", { resourceType, namespace, name: resourceName });
             } else {
-                alert(`Failed to save YAML: ${err}`);
+                addNotification({ type: 'error', title: 'Failed to save YAML', message: String(err) });
             }
         } finally {
             setSaving(false);

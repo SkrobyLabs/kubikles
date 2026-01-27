@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUI } from '../../../context/UIContext';
 import { useK8s } from '../../../context/K8sContext';
+import { useNotification } from '../../../context/NotificationContext';
 import { DeleteCRD } from '../../../../wailsjs/go/main/App';
 import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
 import Logger from '../../../utils/Logger';
@@ -8,6 +9,7 @@ import Logger from '../../../utils/Logger';
 export const useCRDActions = () => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+    const { addNotification } = useNotification();
 
     const handleEditYaml = (crd) => {
         Logger.info("Opening CRD YAML editor", { name: crd.metadata.name });
@@ -42,7 +44,7 @@ export const useCRDActions = () => {
                     closeModal();
                 } catch (err) {
                     Logger.error("Failed to delete CRD", err);
-                    alert(`Failed to delete CRD: ${err}`);
+                    addNotification({ type: 'error', title: 'Failed to delete CRD', message: String(err) });
                 }
             }
         });
