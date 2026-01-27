@@ -35,7 +35,7 @@ export default function ConfirmModal() {
                         </div>
                         <div className="flex-1">
                             <h3 className="text-lg font-medium text-white mb-2">{title}</h3>
-                            <p className="text-sm text-gray-400">{content}</p>
+                            <div className="text-sm text-gray-400">{content}</div>
                         </div>
                     </div>
                 </div>
@@ -46,12 +46,14 @@ export default function ConfirmModal() {
                     >
                         Cancel
                     </button>
-                    <button
-                        onClick={handleConfirm}
-                        className={`px-4 py-2 text-sm rounded transition-colors ${confirmButtonClass}`}
-                    >
-                        {confirmText}
-                    </button>
+                    {onConfirm && (
+                        <button
+                            onClick={handleConfirm}
+                            className={`px-4 py-2 text-sm rounded transition-colors ${confirmButtonClass}`}
+                        >
+                            {confirmText}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>,

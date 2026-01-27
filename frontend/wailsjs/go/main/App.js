@@ -38,8 +38,16 @@ export function CollectIngressHostnames(arg1) {
   return window['go']['main']['App']['CollectIngressHostnames'](arg1);
 }
 
+export function ConfirmDialog(arg1, arg2) {
+  return window['go']['main']['App']['ConfirmDialog'](arg1, arg2);
+}
+
 export function CreateNodeDebugPod(arg1) {
   return window['go']['main']['App']['CreateNodeDebugPod'](arg1);
+}
+
+export function CreatePodDirectory(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['CreatePodDirectory'](arg1, arg2, arg3, arg4);
 }
 
 export function DeleteCRD(arg1) {
@@ -150,6 +158,10 @@ export function DeletePod(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeletePod'](arg1, arg2, arg3);
 }
 
+export function DeletePodFile(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['DeletePodFile'](arg1, arg2, arg3, arg4);
+}
+
 export function DeletePortForwardConfig(arg1) {
   return window['go']['main']['App']['DeletePortForwardConfig'](arg1);
 }
@@ -204,6 +216,18 @@ export function DetectIngressController() {
 
 export function DetectPrometheus() {
   return window['go']['main']['App']['DetectPrometheus']();
+}
+
+export function DownloadPodFile(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['DownloadPodFile'](arg1, arg2, arg3, arg4);
+}
+
+export function DownloadPodFiles(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['DownloadPodFiles'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function DownloadPodFolder(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['DownloadPodFolder'](arg1, arg2, arg3, arg4);
 }
 
 export function ExpandDependencyNode(arg1, arg2, arg3, arg4, arg5) {
@@ -726,6 +750,10 @@ export function ListPVs() {
   return window['go']['main']['App']['ListPVs']();
 }
 
+export function ListPodFiles(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ListPodFiles'](arg1, arg2, arg3, arg4);
+}
+
 export function ListPods(arg1, arg2) {
   return window['go']['main']['App']['ListPods'](arg1, arg2);
 }
@@ -1184,4 +1212,12 @@ export function UpdateValidatingWebhookConfigurationYaml(arg1, arg2) {
 
 export function UpgradeHelmRelease(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpgradeHelmRelease'](arg1, arg2, arg3);
+}
+
+export function UploadFileToPod(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['UploadFileToPod'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function UploadToPod(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['UploadToPod'](arg1, arg2, arg3, arg4);
 }

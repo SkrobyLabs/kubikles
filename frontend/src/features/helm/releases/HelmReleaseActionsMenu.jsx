@@ -88,7 +88,7 @@ export default function HelmReleaseActionsMenu({
                 <ClockIcon className="h-4 w-4" />
                 View History
             </button>
-            <div className="h-px bg-[#3d3d3d] my-1" />
+            <div className="h-px bg-surface-hover my-1" />
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onUpgrade(release)); }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
@@ -114,7 +114,7 @@ export default function HelmReleaseActionsMenu({
                     Force Deployed
                 </button>
             )}
-            <div className="h-px bg-[#3d3d3d] my-1" />
+            <div className="h-px bg-surface-hover my-1" />
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onUninstall(release)); }}
                 className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-surface-hover flex items-center gap-2"

@@ -355,7 +355,7 @@ export default function PerformancePanel({
                                 ) : (
                                     <table className="w-full text-xs">
                                         <thead>
-                                            <tr className="border-b border-border bg-[#252525]">
+                                            <tr className="border-b border-border bg-surface">
                                                 <th className="text-left py-2 px-3 font-medium text-gray-400">Watcher</th>
                                                 <th className="text-right py-2 px-2 font-medium text-gray-400 w-20">Added</th>
                                                 <th className="text-right py-2 px-2 font-medium text-gray-400 w-20">Modified</th>

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PencilSquareIcon, DocumentTextIcon, CommandLineIcon, TrashIcon, EllipsisVerticalIcon, ShareIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, DocumentTextIcon, CommandLineIcon, TrashIcon, EllipsisVerticalIcon, ShareIcon, InformationCircleIcon, FolderIcon } from '@heroicons/react/24/outline';
 
-export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange, onLogs, onEditYaml, onShowDependencies, onShowDetails, onDelete, onForceDelete, onShell }) {
+export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange, onLogs, onEditYaml, onShowDependencies, onShowDetails, onDelete, onForceDelete, onShell, onFiles }) {
     const buttonRef = useRef(null);
     const menuRef = useRef(null);
 
@@ -83,7 +83,14 @@ export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange
                 <CommandLineIcon className="h-4 w-4" />
                 Shell
             </button>
-            <div className="h-px bg-[#3d3d3d] my-1" />
+            <button
+                onClick={(e) => { e.stopPropagation(); handleAction(() => onFiles(pod)); }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
+            >
+                <FolderIcon className="h-4 w-4" />
+                Files
+            </button>
+            <div className="h-px bg-surface-hover my-1" />
             <button
                 onClick={(e) => {
                     e.stopPropagation();

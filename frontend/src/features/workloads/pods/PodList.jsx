@@ -49,7 +49,7 @@ export default function PodList({ isVisible }) {
     const { pods, loading } = usePods(currentContext, selectedNamespaces, isVisible);
     // Delay metrics fetch until pods are loaded to prioritize showing pod list first
     const { metrics, available: metricsAvailable } = usePodMetrics(isVisible, !loading && pods.length > 0);
-    const { openLogs, handleShell, handleEditYaml, handleShowDependencies, handleShowDetails } = usePodActions();
+    const { openLogs, handleShell, handleFiles, handleEditYaml, handleShowDependencies, handleShowDetails } = usePodActions();
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
@@ -205,6 +205,7 @@ export default function PodList({ isVisible }) {
                         openLogs(item.metadata.namespace, item.metadata.name, containers, siblingPods, {}, '', item.metadata.creationTimestamp);
                     }}
                     onShell={() => handleShell(item.metadata.namespace, item.metadata.name)}
+                    onFiles={() => handleFiles(item)}
                     onDelete={() => openBulkDelete([item])}
                     onForceDelete={() => openBulkDelete([item])}
                     onEditYaml={() => handleEditYaml(item)}
@@ -215,7 +216,7 @@ export default function PodList({ isVisible }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, openLogs, handleShell, openBulkDelete, handleEditYaml, handleShowDependencies, handleShowDetails, pods, navigateWithSearch, metrics, metricsAvailable, crds]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, openLogs, handleShell, handleFiles, openBulkDelete, handleEditYaml, handleShowDependencies, handleShowDetails, pods, navigateWithSearch, metrics, metricsAvailable, crds]);
 
     return (
         <>

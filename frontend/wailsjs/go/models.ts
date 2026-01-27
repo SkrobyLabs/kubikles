@@ -1567,6 +1567,30 @@ export namespace main {
 	        this.containerNames = source["containerNames"];
 	    }
 	}
+	export class PodFileInfo {
+	    name: string;
+	    isDir: boolean;
+	    size: number;
+	    permissions: string;
+	    owner: string;
+	    group: string;
+	    modTime: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PodFileInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.isDir = source["isDir"];
+	        this.size = source["size"];
+	        this.permissions = source["permissions"];
+	        this.owner = source["owner"];
+	        this.group = source["group"];
+	        this.modTime = source["modTime"];
+	    }
+	}
 	export class PodLogEntry {
 	    podName: string;
 	    containerName: string;

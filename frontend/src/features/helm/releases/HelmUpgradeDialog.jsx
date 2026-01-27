@@ -723,7 +723,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                 {showValuesEditor && (
                                     <div className="border-t border-border">
                                         {/* Values Editor Toolbar */}
-                                        <div className="flex items-center justify-between px-3 py-2 bg-[#252526] border-b border-border">
+                                        <div className="flex items-center justify-between px-3 py-2 bg-surface border-b border-border">
                                             <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
                                                 <input
                                                     type="checkbox"

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BookmarkIcon } from '@heroicons/react/24/solid';
-import { PencilSquareIcon, ShareIcon, DocumentTextIcon, CommandLineIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, ShareIcon, DocumentTextIcon, CommandLineIcon, FolderIcon } from '@heroicons/react/24/outline';
 import { useConfig } from '../../context/ConfigContext';
 import { getTabIcon } from '../../utils/resourceIcons';
 
@@ -10,6 +10,7 @@ const actionIconMap = {
     'Deps': ShareIcon,
     'Logs': DocumentTextIcon,
     'Shell': CommandLineIcon,
+    'Files': FolderIcon,
 };
 
 export default function BottomPanel({

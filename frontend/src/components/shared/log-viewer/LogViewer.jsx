@@ -537,7 +537,7 @@ export default function LogViewer({
 
             {/* Search Bar */}
             {search.showSearch && (
-                <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-[#252526] shrink-0">
+                <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-surface shrink-0">
                     <div className="relative flex-1 max-w-md">
                         <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                         <input

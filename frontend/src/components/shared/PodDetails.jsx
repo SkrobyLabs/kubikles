@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { LockClosedIcon, DocumentTextIcon, PencilSquareIcon, ShareIcon } from '@heroicons/react/24/outline';
+import React, { useMemo, useCallback } from 'react';
+import { LockClosedIcon, DocumentTextIcon, PencilSquareIcon, ShareIcon, FolderIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context/K8sContext';
 import { useUI } from '../../context/UIContext';
 import { usePodActions } from '../../features/workloads/pods/usePodActions';
@@ -19,7 +19,7 @@ const TAB_METRICS = 'metrics';
 
 export default function PodDetails({ pod, tabContext = '' }) {
     const { currentContext } = useK8s();
-    const { openLogs, handleEditYaml, handleShowDependencies } = usePodActions();
+    const { openLogs, handleEditYaml, handleShowDependencies, handleFiles } = usePodActions();
     const { getDetailTab, setDetailTab } = useUI();
     const activeTab = getDetailTab('pod', TAB_BASIC);
     const setActiveTab = (tab) => setDetailTab('pod', tab);
@@ -181,6 +181,13 @@ export default function PodDetails({ pod, tabContext = '' }) {
                             title="Dependencies"
                         >
                             <ShareIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => handleFiles(pod)}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title="Browse Files"
+                        >
+                            <FolderIcon className="w-4 h-4" />
                         </button>
                     </div>
                 </div>

@@ -82,7 +82,7 @@ export default function CronJobActionsMenu({ cronJob, isOpen, menuPosition, onOp
                 {isSuspended ? <PlayIcon className="h-4 w-4" /> : <PauseIcon className="h-4 w-4" />}
                 {isSuspended ? 'Resume' : 'Suspend'}
             </button>
-            <div className="h-px bg-[#3d3d3d] my-1" />
+            <div className="h-px bg-surface-hover my-1" />
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onDelete(cronJob)); }}
                 className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-surface-hover flex items-center gap-2"

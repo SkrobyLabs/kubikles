@@ -25,7 +25,11 @@ export function CloseTerminalSession(arg1:string):Promise<void>;
 
 export function CollectIngressHostnames(arg1:Array<string>):Promise<Array<string>>;
 
+export function ConfirmDialog(arg1:string,arg2:string):Promise<boolean>;
+
 export function CreateNodeDebugPod(arg1:string):Promise<main.NodeDebugPodResult>;
+
+export function CreatePodDirectory(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
 export function DeleteCRD(arg1:string):Promise<void>;
 
@@ -81,6 +85,8 @@ export function DeletePVC(arg1:string,arg2:string):Promise<void>;
 
 export function DeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function DeletePodFile(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
 export function DeletePortForwardConfig(arg1:string):Promise<void>;
 
 export function DeletePriorityClass(arg1:string):Promise<void>;
@@ -108,6 +114,12 @@ export function DeleteValidatingWebhookConfiguration(arg1:string):Promise<void>;
 export function DetectIngressController():Promise<main.IngressController>;
 
 export function DetectPrometheus():Promise<k8s.PrometheusInfo>;
+
+export function DownloadPodFile(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
+export function DownloadPodFiles(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<string>):Promise<void>;
+
+export function DownloadPodFolder(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
 export function ExpandDependencyNode(arg1:string,arg2:string,arg3:string,arg4:string,arg5:number):Promise<k8s.DependencyGraph>;
 
@@ -369,6 +381,8 @@ export function ListPVCs(arg1:string):Promise<Array<v1.PersistentVolumeClaim>>;
 
 export function ListPVs():Promise<Array<v1.PersistentVolume>>;
 
+export function ListPodFiles(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Array<main.PodFileInfo>>;
+
 export function ListPods(arg1:string,arg2:string):Promise<Array<v1.Pod>>;
 
 export function ListPriorityClasses():Promise<Array<v1.PriorityClass>>;
@@ -598,3 +612,7 @@ export function UpdateStorageClassYaml(arg1:string,arg2:string):Promise<void>;
 export function UpdateValidatingWebhookConfigurationYaml(arg1:string,arg2:string):Promise<void>;
 
 export function UpgradeHelmRelease(arg1:string,arg2:string,arg3:helm.UpgradeOptions):Promise<void>;
+
+export function UploadFileToPod(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
+
+export function UploadToPod(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;

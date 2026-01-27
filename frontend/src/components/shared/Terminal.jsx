@@ -6,6 +6,19 @@ import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { StartTerminalSession, SendTerminalInput, ResizeTerminal, CloseTerminalSession } from '../../../wailsjs/go/main/App';
 import 'xterm/css/xterm.css';
 
+// Get theme colors from CSS variables
+const getThemeColors = () => {
+    const root = document.documentElement;
+    const getVar = (name, fallback) => getComputedStyle(root).getPropertyValue(name).trim() || fallback;
+    return {
+        background: getVar('--color-background', '#1e1e1e'),
+        foreground: getVar('--color-text', '#cccccc'),
+        cursor: getVar('--color-primary', '#007acc'),
+        cursorAccent: getVar('--color-background', '#1e1e1e'),
+        selectionBackground: getVar('--color-primary', '#007acc') + '40',
+    };
+};
+
 const Terminal = ({ namespace, pod, container, context, command, onClose }) => {
     const terminalRef = useRef(null);
     const xtermRef = useRef(null);
@@ -27,13 +40,11 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }) => {
             cleanupTimeoutRef.current = null;
         }
 
-        // Initialize xterm
+        // Initialize xterm with theme colors
+        const themeColors = getThemeColors();
         const term = new XTerm({
             cursorBlink: true,
-            theme: {
-                background: '#1e1e1e',
-                foreground: '#ffffff',
-            },
+            theme: themeColors,
             fontSize: 14,
             fontFamily: 'Menlo, Monaco, "Ubuntu Mono", "DejaVu Sans Mono", "Liberation Mono", "Courier New", monospace',
         });
