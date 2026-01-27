@@ -232,8 +232,8 @@ export default function ResourceList({
     onRefresh = null,
     customHeaderActions = null,
     // Selection props
-    selection = null,  // Selection hook result from useSelection
-    selectable = false, // Enable selection mode
+    selection = null,
+    selectable = false,
     // Bulk action callbacks
     onBulkDelete = null,
     onBulkRestart = null,
@@ -527,7 +527,7 @@ export default function ResourceList({
                     {...props}
                     className={`transition-colors ${
                         isSelected
-                            ? 'bg-primary/10 hover:bg-primary/15'
+                            ? 'bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-primary)_24%,transparent)]'
                             : isHighlighted
                                 ? 'bg-white/5'
                                 : 'hover:bg-white/5'

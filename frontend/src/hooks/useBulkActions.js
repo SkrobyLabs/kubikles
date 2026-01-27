@@ -126,12 +126,18 @@ export function useBulkActions(config) {
     /**
      * Export YAML backup for items
      * @param {Array} items - Array of resources to export
+     * @param {Object} [options] - Optional progress/cancel options
+     * @param {Function} [options.onProgress] - Called with (current, total) after each item
+     * @param {AbortSignal} [options.signal] - AbortSignal to cancel the export
      */
-    const exportYaml = useCallback(async (items) => {
+    const exportYaml = useCallback(async (items, { onProgress, signal } = {}) => {
         Logger.info('Exporting YAML backup', { resourceType, count: items.length });
 
         const entries = [];
-        for (const item of items) {
+        for (let i = 0; i < items.length; i++) {
+            if (signal?.aborted) break;
+
+            const item = items[i];
             const namespace = item.metadata?.namespace;
             const name = item.metadata?.name;
 
@@ -145,17 +151,20 @@ export function useBulkActions(config) {
                 Logger.error('Failed to get YAML for backup', { namespace, name, error: err });
                 entries.push({ namespace: namespace || '', name, kind: resourceLabel, yaml: `# Failed to fetch YAML: ${err}` });
             }
+
+            onProgress?.(i + 1, items.length);
         }
+
+        if (entries.length === 0) return;
 
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         const filename = `${resourceType}-backup-${timestamp}.zip`;
 
         try {
             await SaveYamlBackup(entries, filename);
-            Logger.info('YAML backup saved', { filename });
+            Logger.info('YAML backup saved', { filename, partial: signal?.aborted });
         } catch (err) {
             Logger.error('Failed to save YAML backup', { error: err });
-            // Don't use alert - errors are shown in the modal results
             if (err && err.toString() !== '') {
                 Logger.error('Backup save failed', { error: err.toString() });
             }

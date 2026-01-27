@@ -78,20 +78,23 @@ export default function HelmReleaseList({ isVisible }) {
     }, []);
 
     // Custom export for Helm releases - includes chart info in YAML header
-    const handleExportYaml = useCallback(async (items) => {
+    const handleExportYaml = useCallback(async (items, { onProgress, signal } = {}) => {
         const { SaveYamlBackup } = await import('../../../../wailsjs/go/main/App');
-        const entries = await Promise.all(
-            items.map(async (item) => {
-                const namespace = item.metadata?.namespace || item.namespace;
-                const name = item.metadata?.name || item.name;
-                try {
-                    const values = await GetHelmReleaseValues(namespace, name);
-                    return { namespace, name, kind: 'HelmRelease', yaml: `# Helm Release: ${name}\n# Chart: ${item.chart}-${item.chartVersion}\n# Values:\n${values}` };
-                } catch (err) {
-                    return { namespace, name, kind: 'HelmRelease', yaml: `# Failed: ${err}` };
-                }
-            })
-        );
+        const entries = [];
+        for (let i = 0; i < items.length; i++) {
+            if (signal?.aborted) break;
+            const item = items[i];
+            const namespace = item.metadata?.namespace || item.namespace;
+            const name = item.metadata?.name || item.name;
+            try {
+                const values = await GetHelmReleaseValues(namespace, name);
+                entries.push({ namespace, name, kind: 'HelmRelease', yaml: `# Helm Release: ${name}\n# Chart: ${item.chart}-${item.chartVersion}\n# Values:\n${values}` });
+            } catch (err) {
+                entries.push({ namespace, name, kind: 'HelmRelease', yaml: `# Failed: ${err}` });
+            }
+            onProgress?.(i + 1, items.length);
+        }
+        if (entries.length === 0) return;
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         try { await SaveYamlBackup(entries, `helmreleases-backup-${timestamp}.zip`); } catch (err) { if (err?.toString()) addNotification({ type: 'error', title: 'Failed to save backup', message: String(err) }); }
     }, []);

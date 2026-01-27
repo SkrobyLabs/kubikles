@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 
 const MenuContext = createContext();
 
@@ -19,6 +19,13 @@ export const MenuProvider = ({ children }) => {
 
     const closeMenu = useCallback(() => {
         setActiveMenuId(null);
+    }, []);
+
+    // Auto-close menus when the window loses focus (e.g. tab switch, alt-tab)
+    useEffect(() => {
+        const handleBlur = () => setActiveMenuId(null);
+        window.addEventListener('blur', handleBlur);
+        return () => window.removeEventListener('blur', handleBlur);
     }, []);
 
     const value = useMemo(() => ({

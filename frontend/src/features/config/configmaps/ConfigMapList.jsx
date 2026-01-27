@@ -58,10 +58,12 @@ export default function ConfigMapList({ isVisible }) {
         setBulkProgress({ current: 0, total: 0, status: 'idle', results: [] });
     }, []);
 
-    const handleExportYaml = useCallback(async (items) => {
+    const handleExportYaml = useCallback(async (items, { onProgress, signal } = {}) => {
         Logger.info('Exporting YAML backup', { count: items.length });
         const entries = [];
-        for (const item of items) {
+        for (let i = 0; i < items.length; i++) {
+            if (signal?.aborted) break;
+            const item = items[i];
             const namespace = item.metadata?.namespace;
             const name = item.metadata?.name;
             try {
@@ -70,7 +72,9 @@ export default function ConfigMapList({ isVisible }) {
             } catch (err) {
                 entries.push({ namespace, name, kind: 'ConfigMap', yaml: `# Failed to fetch YAML: ${err}` });
             }
+            onProgress?.(i + 1, items.length);
         }
+        if (entries.length === 0) return;
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         try {
             await SaveYamlBackup(entries, `configmaps-backup-${timestamp}.zip`);

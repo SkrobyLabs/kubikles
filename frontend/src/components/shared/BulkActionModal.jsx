@@ -31,7 +31,8 @@ export default function BulkActionModal({
 }) {
     const [detailsExpanded, setDetailsExpanded] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [backupInProgress, setBackupInProgress] = useState(false);
+    const [backupProgress, setBackupProgress] = useState({ status: 'idle', current: 0, total: 0 });
+    const backupAbortRef = useRef(null);
     const modalRef = useRef(null);
 
     // Get action-specific styles
@@ -60,14 +61,23 @@ export default function BulkActionModal({
 
     const styles = getActionStyles();
 
+    // Cancel any in-progress backup
+    const cancelBackup = useCallback(() => {
+        if (backupAbortRef.current) {
+            backupAbortRef.current.abort();
+            backupAbortRef.current = null;
+        }
+    }, []);
+
     // Handle keyboard events
     useEffect(() => {
         if (!isOpen) return;
 
         const handleKeyDown = (e) => {
             if (e.key === 'Escape') {
+                cancelBackup();
                 onClose();
-            } else if (e.key === 'Delete' && progress.status === 'idle') {
+            } else if (e.key === 'Delete' && progress.status === 'idle' && backupProgress.status !== 'inProgress') {
                 onConfirm(items);
             }
             // Enter does nothing (as per user request)
@@ -75,7 +85,7 @@ export default function BulkActionModal({
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose, onConfirm, items, progress.status]);
+    }, [isOpen, onClose, onConfirm, items, progress.status, backupProgress.status, cancelBackup]);
 
     // Focus trap
     useEffect(() => {
@@ -98,20 +108,34 @@ export default function BulkActionModal({
     useEffect(() => {
         if (isOpen && progress.status === 'idle') {
             setDetailsExpanded(false);
-            setBackupInProgress(false);
+            setBackupProgress({ status: 'idle', current: 0, total: 0 });
         }
     }, [isOpen, progress.status]);
 
-    // Handle backup with loading state
+    // Handle close — also cancel backup
+    const handleClose = useCallback(() => {
+        cancelBackup();
+        onClose();
+    }, [cancelBackup, onClose]);
+
+    // Handle backup with progress tracking
     const handleBackup = useCallback(async () => {
-        if (!onExportYaml || backupInProgress) return;
-        setBackupInProgress(true);
+        if (!onExportYaml || backupProgress.status === 'inProgress') return;
+
+        const controller = new AbortController();
+        backupAbortRef.current = controller;
+
+        setBackupProgress({ status: 'inProgress', current: 0, total: items.length });
         try {
-            await onExportYaml(items);
+            await onExportYaml(items, {
+                onProgress: (current, total) => setBackupProgress({ status: 'inProgress', current, total }),
+                signal: controller.signal,
+            });
         } finally {
-            setBackupInProgress(false);
+            backupAbortRef.current = null;
+            setBackupProgress({ status: 'idle', current: 0, total: 0 });
         }
-    }, [onExportYaml, items, backupInProgress]);
+    }, [onExportYaml, items, backupProgress.status]);
 
     if (!isOpen) return null;
 
@@ -136,7 +160,7 @@ export default function BulkActionModal({
                             : `${actionLabel} ${items.length} ${items.length === 1 ? 'Resource' : 'Resources'}`}
                     </h2>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="p-1 hover:bg-white/10 rounded transition-colors"
                     >
                         <XMarkIcon className="h-5 w-5 text-gray-400" />
@@ -308,41 +332,56 @@ export default function BulkActionModal({
                     {progress.status === 'idle' ? (
                         <>
                             <div className="flex items-center gap-2">
-                                {onExportYaml && (
+                                {onExportYaml && backupProgress.status === 'inProgress' ? (
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <ArrowPathIcon className="h-4 w-4 animate-spin text-gray-400 shrink-0" />
+                                            <span className="text-sm text-gray-300 tabular-nums">
+                                                <span className="inline-block text-right" style={{ width: `${String(backupProgress.total).length}ch` }}>
+                                                    {backupProgress.current}
+                                                </span>
+                                                {' / '}{backupProgress.total}
+                                            </span>
+                                            <div className="w-24 h-1.5 bg-background rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-primary rounded-full"
+                                                    style={{ width: `${backupProgress.total > 0 ? Math.round((backupProgress.current / backupProgress.total) * 100) : 0}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={cancelBackup}
+                                            className="px-2 py-1 text-xs text-gray-400 hover:text-text hover:bg-white/10 rounded transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                ) : onExportYaml ? (
                                     <button
                                         onClick={handleBackup}
-                                        disabled={backupInProgress}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors ${
-                                            backupInProgress
-                                                ? 'text-gray-500 cursor-not-allowed'
-                                                : 'text-gray-300 hover:text-text hover:bg-white/10'
-                                        }`}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors text-gray-300 hover:text-text hover:bg-white/10"
                                         title="Download YAML backup before action"
                                     >
-                                        {backupInProgress ? (
-                                            <>
-                                                <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                                                <span>Downloading...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ArrowDownTrayIcon className="h-4 w-4" />
-                                                <span>Backup YAML</span>
-                                            </>
-                                        )}
+                                        <ArrowDownTrayIcon className="h-4 w-4" />
+                                        <span>Backup YAML</span>
                                     </button>
-                                )}
+                                ) : null}
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={onClose}
+                                    onClick={handleClose}
                                     className="px-4 py-1.5 text-sm text-gray-300 hover:text-text hover:bg-white/10 rounded transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={() => onConfirm(items)}
-                                    className={`px-4 py-1.5 text-sm rounded transition-colors ${styles.buttonClass}`}
+                                    disabled={backupProgress.status === 'inProgress'}
+                                    className={`px-4 py-1.5 text-sm rounded transition-colors ${
+                                        backupProgress.status === 'inProgress'
+                                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                            : styles.buttonClass
+                                    }`}
                                 >
                                     {actionLabel}
                                 </button>

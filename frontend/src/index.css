@@ -50,6 +50,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Allow text selection in editable/content areas */
+input, textarea, [contenteditable="true"],
+pre, code, .monaco-editor, .xterm {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* Custom Scrollbar */
