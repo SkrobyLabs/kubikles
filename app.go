@@ -1781,7 +1781,8 @@ func (a *App) OpenCrashLogDir() error {
 	return cmd.Start()
 }
 
-func (a *App) DeletePod(contextName, namespace, name string) error {
+func (a *App) DeletePod(namespace, name string) error {
+	contextName := a.GetCurrentContext()
 	a.LogDebug("DeletePod called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
@@ -1795,7 +1796,8 @@ func (a *App) DeletePod(contextName, namespace, name string) error {
 	return err
 }
 
-func (a *App) ForceDeletePod(contextName, namespace, name string) error {
+func (a *App) ForceDeletePod(namespace, name string) error {
+	contextName := a.GetCurrentContext()
 	a.LogDebug("ForceDeletePod called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
@@ -2273,7 +2275,8 @@ func (a *App) UpdateDeploymentYaml(namespace, name, yamlContent string) error {
 	return a.k8sClient.UpdateDeploymentYaml(namespace, name, yamlContent)
 }
 
-func (a *App) DeleteDeployment(contextName, namespace, name string) error {
+func (a *App) DeleteDeployment(namespace, name string) error {
+	contextName := a.GetCurrentContext()
 	a.LogDebug("DeleteDeployment called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
@@ -2287,7 +2290,8 @@ func (a *App) DeleteDeployment(contextName, namespace, name string) error {
 	return err
 }
 
-func (a *App) RestartDeployment(contextName, namespace, name string) error {
+func (a *App) RestartDeployment(namespace, name string) error {
+	contextName := a.GetCurrentContext()
 	a.LogDebug("RestartDeployment called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
@@ -2434,7 +2438,8 @@ func (a *App) DeleteReplicaSet(namespace, name string) error {
 	return a.k8sClient.DeleteReplicaSet(currentContext, namespace, name)
 }
 
-func (a *App) RestartStatefulSet(contextName, namespace, name string) error {
+func (a *App) RestartStatefulSet(namespace, name string) error {
+	contextName := a.GetCurrentContext()
 	a.LogDebug("RestartStatefulSet called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
@@ -2448,7 +2453,8 @@ func (a *App) RestartStatefulSet(contextName, namespace, name string) error {
 	return err
 }
 
-func (a *App) DeleteStatefulSet(contextName, namespace, name string) error {
+func (a *App) DeleteStatefulSet(namespace, name string) error {
+	contextName := a.GetCurrentContext()
 	a.LogDebug("DeleteStatefulSet called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")

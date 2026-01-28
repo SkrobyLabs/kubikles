@@ -24,7 +24,7 @@ export const useStatefulSetActions = () => {
     const handleRestart = async (statefulSet) => {
         Logger.info("Restarting statefulset", { namespace: statefulSet.metadata.namespace, name: statefulSet.metadata.name });
         try {
-            await RestartStatefulSet(currentContext, statefulSet.metadata.namespace, statefulSet.metadata.name);
+            await RestartStatefulSet(statefulSet.metadata.namespace, statefulSet.metadata.name);
             Logger.info("Restart triggered successfully", { name: statefulSet.metadata.name });
         } catch (err) {
             Logger.error("Failed to restart statefulset", err);
@@ -34,7 +34,7 @@ export const useStatefulSetActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (statefulSet) => {
-            await DeleteStatefulSet(currentContext, statefulSet.metadata.namespace, statefulSet.metadata.name);
+            await DeleteStatefulSet(statefulSet.metadata.namespace, statefulSet.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this statefulset? This will also delete all associated pods.' }
     );

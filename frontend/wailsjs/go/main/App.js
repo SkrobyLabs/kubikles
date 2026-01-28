@@ -86,8 +86,8 @@ export function DeleteDaemonSet(arg1, arg2) {
   return window['go']['main']['App']['DeleteDaemonSet'](arg1, arg2);
 }
 
-export function DeleteDeployment(arg1, arg2, arg3) {
-  return window['go']['main']['App']['DeleteDeployment'](arg1, arg2, arg3);
+export function DeleteDeployment(arg1, arg2) {
+  return window['go']['main']['App']['DeleteDeployment'](arg1, arg2);
 }
 
 export function DeleteEndpointSlice(arg1, arg2) {
@@ -154,8 +154,8 @@ export function DeletePVC(arg1, arg2) {
   return window['go']['main']['App']['DeletePVC'](arg1, arg2);
 }
 
-export function DeletePod(arg1, arg2, arg3) {
-  return window['go']['main']['App']['DeletePod'](arg1, arg2, arg3);
+export function DeletePod(arg1, arg2) {
+  return window['go']['main']['App']['DeletePod'](arg1, arg2);
 }
 
 export function DeletePodFile(arg1, arg2, arg3, arg4) {
@@ -198,8 +198,8 @@ export function DeleteServiceAccount(arg1, arg2) {
   return window['go']['main']['App']['DeleteServiceAccount'](arg1, arg2);
 }
 
-export function DeleteStatefulSet(arg1, arg2, arg3) {
-  return window['go']['main']['App']['DeleteStatefulSet'](arg1, arg2, arg3);
+export function DeleteStatefulSet(arg1, arg2) {
+  return window['go']['main']['App']['DeleteStatefulSet'](arg1, arg2);
 }
 
 export function DeleteStorageClass(arg1) {
@@ -234,8 +234,8 @@ export function ExpandDependencyNode(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['ExpandDependencyNode'](arg1, arg2, arg3, arg4, arg5);
 }
 
-export function ForceDeletePod(arg1, arg2, arg3) {
-  return window['go']['main']['App']['ForceDeletePod'](arg1, arg2, arg3);
+export function ForceDeletePod(arg1, arg2) {
+  return window['go']['main']['App']['ForceDeletePod'](arg1, arg2);
 }
 
 export function ForceHelmReleaseStatus(arg1, arg2, arg3) {
@@ -862,12 +862,12 @@ export function RestartDaemonSet(arg1, arg2) {
   return window['go']['main']['App']['RestartDaemonSet'](arg1, arg2);
 }
 
-export function RestartDeployment(arg1, arg2, arg3) {
-  return window['go']['main']['App']['RestartDeployment'](arg1, arg2, arg3);
+export function RestartDeployment(arg1, arg2) {
+  return window['go']['main']['App']['RestartDeployment'](arg1, arg2);
 }
 
-export function RestartStatefulSet(arg1, arg2, arg3) {
-  return window['go']['main']['App']['RestartStatefulSet'](arg1, arg2, arg3);
+export function RestartStatefulSet(arg1, arg2) {
+  return window['go']['main']['App']['RestartStatefulSet'](arg1, arg2);
 }
 
 export function RollbackHelmRelease(arg1, arg2, arg3) {

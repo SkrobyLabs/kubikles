@@ -13,10 +13,9 @@ import Logger from '../utils/Logger';
  * @param {string} config.resourceLabel - Human-readable label (e.g., 'ConfigMap', 'Deployment')
  * @param {string} config.resourceType - Resource type for backup filename (e.g., 'configmaps', 'deployments')
  * @param {boolean} [config.isNamespaced=true] - Whether the resource is namespaced
- * @param {Function} config.deleteApi - Delete function: (context, namespace, name) or (context, name) for cluster-scoped
+ * @param {Function} config.deleteApi - Delete function: (namespace, name) or (name) for cluster-scoped
  * @param {Function} [config.restartApi] - Optional restart function with same signature as deleteApi
  * @param {Function} config.getYamlApi - Get YAML function: (namespace, name) or (name) for cluster-scoped
- * @param {string} config.currentContext - Current K8s context
  * @returns {Object} Bulk action state and handlers
  */
 export function useBulkActions(config) {
@@ -27,7 +26,6 @@ export function useBulkActions(config) {
         deleteApi,
         restartApi,
         getYamlApi,
-        currentContext,
     } = config;
 
     // Modal state
@@ -99,9 +97,8 @@ export function useBulkActions(config) {
 
             try {
                 if (isNamespaced) {
-                    await api(currentContext, namespace, name);
+                    await api(namespace, name);
                 } else {
-                    // Cluster-scoped resources only take (name), not context
                     await api(name);
                 }
                 results.push({ name, namespace: namespace || '', success: true, message: '' });
@@ -121,7 +118,7 @@ export function useBulkActions(config) {
             success: results.filter(r => r.success).length,
             failed: results.filter(r => !r.success).length,
         });
-    }, [bulkActionModal.action, deleteApi, restartApi, isNamespaced, currentContext, resourceLabel, resourceType]);
+    }, [bulkActionModal.action, deleteApi, restartApi, isNamespaced, resourceLabel, resourceType]);
 
     /**
      * Export YAML backup for items

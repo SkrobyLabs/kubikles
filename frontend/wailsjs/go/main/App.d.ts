@@ -49,7 +49,7 @@ export function DeleteCustomResource(arg1:string,arg2:string,arg3:string,arg4:st
 
 export function DeleteDaemonSet(arg1:string,arg2:string):Promise<void>;
 
-export function DeleteDeployment(arg1:string,arg2:string,arg3:string):Promise<void>;
+export function DeleteDeployment(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteEndpointSlice(arg1:string,arg2:string):Promise<void>;
 
@@ -83,7 +83,7 @@ export function DeletePV(arg1:string):Promise<void>;
 
 export function DeletePVC(arg1:string,arg2:string):Promise<void>;
 
-export function DeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
+export function DeletePod(arg1:string,arg2:string):Promise<void>;
 
 export function DeletePodFile(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
@@ -105,7 +105,7 @@ export function DeleteService(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteServiceAccount(arg1:string,arg2:string):Promise<void>;
 
-export function DeleteStatefulSet(arg1:string,arg2:string,arg3:string):Promise<void>;
+export function DeleteStatefulSet(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteStorageClass(arg1:string):Promise<void>;
 
@@ -123,7 +123,7 @@ export function DownloadPodFolder(arg1:string,arg2:string,arg3:string,arg4:strin
 
 export function ExpandDependencyNode(arg1:string,arg2:string,arg3:string,arg4:string,arg5:number):Promise<k8s.DependencyGraph>;
 
-export function ForceDeletePod(arg1:string,arg2:string,arg3:string):Promise<void>;
+export function ForceDeletePod(arg1:string,arg2:string):Promise<void>;
 
 export function ForceHelmReleaseStatus(arg1:string,arg2:string,arg3:string):Promise<void>;
 
@@ -437,9 +437,9 @@ export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<void
 
 export function RestartDaemonSet(arg1:string,arg2:string):Promise<void>;
 
-export function RestartDeployment(arg1:string,arg2:string,arg3:string):Promise<void>;
+export function RestartDeployment(arg1:string,arg2:string):Promise<void>;
 
-export function RestartStatefulSet(arg1:string,arg2:string,arg3:string):Promise<void>;
+export function RestartStatefulSet(arg1:string,arg2:string):Promise<void>;
 
 export function RollbackHelmRelease(arg1:string,arg2:string,arg3:number):Promise<void>;
 

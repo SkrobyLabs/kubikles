@@ -183,9 +183,9 @@ export const usePodActions = () => {
             onConfirm: async () => {
                 try {
                     if (isTerminating) {
-                        await ForceDeletePod(currentContext, namespace, name);
+                        await ForceDeletePod(namespace, name);
                     } else {
-                        await DeletePod(currentContext, namespace, name);
+                        await DeletePod(namespace, name);
                     }
                     Logger.info(`Pod ${actionType.toLowerCase()}d successfully`, { namespace, name });
                     closeModal();

@@ -24,7 +24,7 @@ export const useDaemonSetActions = () => {
     const handleRestart = async (daemonSet) => {
         Logger.info("Restart DaemonSet requested", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name });
         try {
-            await RestartDaemonSet(currentContext, daemonSet.metadata.namespace, daemonSet.metadata.name);
+            await RestartDaemonSet(daemonSet.metadata.namespace, daemonSet.metadata.name);
             Logger.info("DaemonSet restarted successfully", { name: daemonSet.metadata.name });
         } catch (err) {
             Logger.error("Failed to restart DaemonSet", err);
@@ -34,7 +34,7 @@ export const useDaemonSetActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (daemonSet) => {
-            await DeleteDaemonSet(currentContext, daemonSet.metadata.namespace, daemonSet.metadata.name);
+            await DeleteDaemonSet(daemonSet.metadata.namespace, daemonSet.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this daemonset? This will also delete all associated pods.' }
     );

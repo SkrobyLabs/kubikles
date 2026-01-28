@@ -24,7 +24,7 @@ export const useDeploymentActions = () => {
     const handleRestart = async (deployment) => {
         Logger.info("Restarting deployment", { namespace: deployment.metadata.namespace, name: deployment.metadata.name });
         try {
-            await RestartDeployment(currentContext, deployment.metadata.namespace, deployment.metadata.name);
+            await RestartDeployment(deployment.metadata.namespace, deployment.metadata.name);
             Logger.info("Restart triggered successfully", { name: deployment.metadata.name });
         } catch (err) {
             Logger.error("Failed to restart deployment", err);
@@ -34,7 +34,7 @@ export const useDeploymentActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (deployment) => {
-            await DeleteDeployment(currentContext, deployment.metadata.namespace, deployment.metadata.name);
+            await DeleteDeployment(deployment.metadata.namespace, deployment.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this deployment? This will also delete all associated pods.' }
     );

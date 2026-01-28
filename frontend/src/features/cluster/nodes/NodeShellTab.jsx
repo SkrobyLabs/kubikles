@@ -69,7 +69,7 @@ const NodeShellTab = ({ nodeName, context }) => {
                 // Cleanup debug pod if it was created
                 if (debugPodInfoRef.current) {
                     try {
-                        await DeletePod(context, debugPodInfoRef.current.namespace, debugPodInfoRef.current.podName);
+                        await DeletePod(debugPodInfoRef.current.namespace, debugPodInfoRef.current.podName);
                     } catch (cleanupErr) {
                         Logger.warn("Failed to cleanup debug pod after error", cleanupErr);
                     }
@@ -84,7 +84,7 @@ const NodeShellTab = ({ nodeName, context }) => {
         if (debugPodInfoRef.current) {
             try {
                 Logger.info("Cleaning up debug pod", { podName: debugPodInfoRef.current.podName });
-                await DeletePod(context, debugPodInfoRef.current.namespace, debugPodInfoRef.current.podName);
+                await DeletePod(debugPodInfoRef.current.namespace, debugPodInfoRef.current.podName);
                 Logger.info("Debug pod deleted successfully");
             } catch (err) {
                 Logger.warn("Failed to cleanup debug pod", err);
