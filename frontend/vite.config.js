@@ -3,9 +3,27 @@ import {defineConfig} from 'vite'
 import react from '@vitejs/plugin-react'
 import {viteStaticCopy} from 'vite-plugin-static-copy'
 import {visualizer} from 'rollup-plugin-visualizer'
+import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  resolve: {
+    alias: {
+      // Redirect wailsjs imports to our adapters for dual-mode support
+      // The adapters detect runtime mode and route to Wails bindings or HTTP API
+      'wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.js'),
+      'wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.js'),
+      // Also handle relative imports that may occur
+      '../wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.js'),
+      '../../wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.js'),
+      '../../../wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.js'),
+      '../../../../wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.js'),
+      '../wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.js'),
+      '../../wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.js'),
+      '../../../wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.js'),
+      '../../../../wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.js'),
+    },
+  },
   test: {
     globals: true,
     environment: 'node',

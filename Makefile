@@ -53,6 +53,39 @@ build-appimage:
 # Build all platforms
 build-all: clean build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64
 
+# ===========================================
+# Headless Server Builds (no Wails/GUI dependencies)
+# ===========================================
+# These builds create a minimal server-only binary without GUI dependencies.
+# Ideal for running on headless servers or in containers.
+
+# Build headless server for current platform
+build-headless:
+	@echo "Building headless server..."
+	@cd frontend && npm run build 2>&1 | grep -v "WARNING\|nesting\|css-syntax-error\|invalid-@nest" || true
+	@mkdir -p build/bin
+	CGO_ENABLED=0 go build -tags headless $(BUILD_FLAGS) -o build/bin/kubikles-server
+	@echo "Built build/bin/kubikles-server"
+
+# Build headless for Linux AMD64 (static binary for containers)
+build-headless-linux-amd64:
+	@echo "Building headless server for Linux AMD64..."
+	@cd frontend && npm run build 2>&1 | grep -v "WARNING\|nesting\|css-syntax-error\|invalid-@nest" || true
+	@mkdir -p build/bin
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags headless $(BUILD_FLAGS) -o build/bin/kubikles-server-linux-amd64
+	@echo "Built build/bin/kubikles-server-linux-amd64"
+
+# Build headless for Linux ARM64
+build-headless-linux-arm64:
+	@echo "Building headless server for Linux ARM64..."
+	@cd frontend && npm run build 2>&1 | grep -v "WARNING\|nesting\|css-syntax-error\|invalid-@nest" || true
+	@mkdir -p build/bin
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags headless $(BUILD_FLAGS) -o build/bin/kubikles-server-linux-arm64
+	@echo "Built build/bin/kubikles-server-linux-arm64"
+
+# Build headless for all Linux platforms
+build-headless-all: build-headless-linux-amd64 build-headless-linux-arm64
+
 install-wails:
 	go install github.com/wailsapp/wails/v2/cmd/wails@latest
 

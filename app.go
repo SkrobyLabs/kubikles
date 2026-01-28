@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"kubikles/pkg/certviewer"
 	"kubikles/pkg/crashlog"
+	"kubikles/pkg/events"
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/terminal"
@@ -75,6 +76,8 @@ type App struct {
 	// Connection test cancellation
 	connTestMutex  sync.Mutex
 	connTestCancel context.CancelFunc
+	// Event emission (unified for desktop and server modes)
+	emitter events.Emitter
 }
 
 // WatcherCleanupDelay is the time to wait before stopping a watcher with no subscribers
@@ -429,6 +432,9 @@ func (a *App) startup(ctx context.Context) {
 	crashlog.Log("App startup initiated")
 
 	a.ctx = ctx
+	// Set up Wails emitter for desktop mode
+	a.emitter = events.NewWailsEmitter(ctx)
+
 	a.watcherManager = NewResourceWatcherManager(ctx, a)
 	a.portForwardManager = NewPortForwardManager(a)
 	a.ingressForwardManager = NewIngressForwardManager(a)
@@ -442,9 +448,10 @@ func (a *App) startup(ctx context.Context) {
 	// Initialize event tracking
 	a.eventStats = make(map[string]*WatcherEventStats)
 	a.eventWindowStart = time.Now().UnixMilli()
-	// Set context on terminal manager for event emission
+	// Set event emitter on terminal manager
 	if a.terminalManager != nil {
 		a.terminalManager.SetContext(ctx)
+		a.terminalManager.SetEmitter(a.emitter)
 	}
 
 	// Log K8s client status
@@ -455,6 +462,64 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	crashlog.Log("App startup complete")
+}
+
+// SetEmitter sets the event emitter (used for server mode)
+func (a *App) SetEmitter(emitter events.Emitter) {
+	a.emitter = emitter
+}
+
+// startupServerMode initializes the app for server mode (no Wails context).
+// The emitter must be set via SetEmitter before calling this.
+func (a *App) startupServerMode(ctx context.Context) {
+	crashlog.Log("App startup initiated (server mode)")
+
+	a.ctx = ctx
+	a.watcherManager = NewResourceWatcherManager(ctx, a)
+	a.portForwardManager = NewPortForwardManager(a)
+	a.ingressForwardManager = NewIngressForwardManager(a)
+	a.eventCoalescer = NewEventCoalescer(a, 16*time.Millisecond)
+	a.logCoalescer = NewLogCoalescer(a, 16*time.Millisecond)
+	a.loadPrometheusConfigs()
+
+	// Initialize theme manager
+	configDir, _ := os.UserConfigDir()
+	appDir := filepath.Join(configDir, "kubikles")
+	a.themeManager = NewThemeManager(a, appDir)
+
+	// Initialize event tracking
+	a.eventStats = make(map[string]*WatcherEventStats)
+	a.eventWindowStart = time.Now().UnixMilli()
+
+	// Set emitter on terminal manager
+	if a.terminalManager != nil {
+		a.terminalManager.SetContext(ctx)
+		a.terminalManager.SetEmitter(a.emitter)
+	}
+
+	if a.k8sInitError != nil {
+		crashlog.LogError("K8s client initialization failed: %v", a.k8sInitError)
+	} else {
+		crashlog.Log("K8s client initialized successfully")
+	}
+
+	crashlog.Log("App startup complete (server mode)")
+}
+
+// emitEvent sends an event to the frontend via the configured emitter.
+func (a *App) emitEvent(name string, data ...interface{}) {
+	if a.emitter != nil {
+		a.emitter.Emit(name, data...)
+	}
+}
+
+// openBrowserURL opens a URL in the system browser (desktop mode only).
+// In server mode, this is a no-op - the frontend handles URLs.
+func (a *App) openBrowserURL(url string) {
+	// Only works with WailsEmitter (desktop mode)
+	if wailsEmitter, ok := a.emitter.(*events.WailsEmitter); ok && wailsEmitter != nil {
+		runtime.BrowserOpenURL(a.ctx, url)
+	}
 }
 
 // shutdown is called when the app is closing
@@ -1731,7 +1796,7 @@ func (a *App) LogDebug(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	fmt.Println("DEBUG:", msg)
 	if a.ctx != nil {
-		runtime.EventsEmit(a.ctx, "debug-log", msg)
+		a.emitEvent( "debug-log", msg)
 	}
 }
 
@@ -1912,7 +1977,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 				resourceType, namespace, r, string(debug.Stack()))
 		}
 		a.LogDebug("Resource watcher stopped: type=%s, namespace=%s", resourceType, namespace)
-		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
+		a.emitEvent( "watcher-status", WatcherStatusEvent{
 			ResourceType: resourceType,
 			Namespace:    namespace,
 			Status:       "stopped",
@@ -1981,7 +2046,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 			}
 
 			// Emit error event (always recoverable with infinite retries)
-			runtime.EventsEmit(a.ctx, "watcher-error", WatcherErrorEvent{
+			a.emitEvent( "watcher-error", WatcherErrorEvent{
 				ResourceType: resourceType,
 				Namespace:    namespace,
 				Error:        err.Error(),
@@ -1995,7 +2060,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 				delay = maxDelay
 			}
 
-			runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
+			a.emitEvent( "watcher-status", WatcherStatusEvent{
 				ResourceType: resourceType,
 				Namespace:    namespace,
 				Status:       "reconnecting",
@@ -2012,7 +2077,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 
 		// Successfully connected
 		consecutiveFailures = 0
-		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
+		a.emitEvent( "watcher-status", WatcherStatusEvent{
 			ResourceType: resourceType,
 			Namespace:    namespace,
 			Status:       "connected",
@@ -2092,7 +2157,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 				group, version, resource, namespace, r, string(debug.Stack()))
 		}
 		a.LogDebug("CRD watcher stopped: gvr=%s/%s/%s, namespace=%s", group, version, resource, namespace)
-		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
+		a.emitEvent( "watcher-status", WatcherStatusEvent{
 			ResourceType: crdResourceType,
 			Namespace:    namespace,
 			Status:       "stopped",
@@ -2161,7 +2226,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 			}
 
 			// Emit error event (always recoverable with infinite retries)
-			runtime.EventsEmit(a.ctx, "watcher-error", WatcherErrorEvent{
+			a.emitEvent( "watcher-error", WatcherErrorEvent{
 				ResourceType: crdResourceType,
 				Namespace:    namespace,
 				Error:        err.Error(),
@@ -2175,7 +2240,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 				delay = maxDelay
 			}
 
-			runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
+			a.emitEvent( "watcher-status", WatcherStatusEvent{
 				ResourceType: crdResourceType,
 				Namespace:    namespace,
 				Status:       "reconnecting",
@@ -2192,7 +2257,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 
 		// Successfully connected
 		consecutiveFailures = 0
-		runtime.EventsEmit(a.ctx, "watcher-status", WatcherStatusEvent{
+		a.emitEvent( "watcher-status", WatcherStatusEvent{
 			ResourceType: crdResourceType,
 			Namespace:    namespace,
 			Status:       "connected",
@@ -2727,7 +2792,7 @@ func (a *App) DownloadPodFile(namespace, pod, container, remotePath string) erro
 	size, _ := a.k8sClient.GetFileSize(context.Background(), namespace, pod, container, remotePath)
 
 	// Emit initial progress
-	runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+	a.emitEvent("file:progress", map[string]interface{}{
 		"operation":        "download",
 		"fileName":         filename,
 		"bytesTransferred": 0,
@@ -2737,7 +2802,7 @@ func (a *App) DownloadPodFile(namespace, pod, container, remotePath string) erro
 
 	// Download with progress callback
 	err = a.k8sClient.DownloadFile(context.Background(), namespace, pod, container, remotePath, localPath, func(p k8s.FileProgress) {
-		runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+		a.emitEvent("file:progress", map[string]interface{}{
 			"operation":        p.Operation,
 			"fileName":         p.FileName,
 			"bytesTransferred": p.BytesTransferred,
@@ -2748,7 +2813,7 @@ func (a *App) DownloadPodFile(namespace, pod, container, remotePath string) erro
 	})
 
 	if err != nil {
-		runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+		a.emitEvent("file:progress", map[string]interface{}{
 			"operation": "download",
 			"fileName":  filename,
 			"done":      true,
@@ -2799,7 +2864,7 @@ func (a *App) DownloadPodFolder(namespace, pod, container, remotePath string) er
 	}
 
 	// Emit initial progress
-	runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+	a.emitEvent("file:progress", map[string]interface{}{
 		"operation":        "download",
 		"fileName":         folderName + ".tar.gz",
 		"bytesTransferred": 0,
@@ -2809,7 +2874,7 @@ func (a *App) DownloadPodFolder(namespace, pod, container, remotePath string) er
 
 	// Download with progress callback
 	err = a.k8sClient.DownloadFolder(context.Background(), namespace, pod, container, remotePath, localPath, func(p k8s.FileProgress) {
-		runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+		a.emitEvent("file:progress", map[string]interface{}{
 			"operation":        p.Operation,
 			"fileName":         p.FileName,
 			"bytesTransferred": p.BytesTransferred,
@@ -2820,7 +2885,7 @@ func (a *App) DownloadPodFolder(namespace, pod, container, remotePath string) er
 	})
 
 	if err != nil {
-		runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+		a.emitEvent("file:progress", map[string]interface{}{
 			"operation": "download",
 			"fileName":  folderName + ".tar.gz",
 			"done":      true,
@@ -2855,7 +2920,7 @@ func (a *App) DownloadPodFiles(namespace, pod, container, basePath string, names
 	}
 
 	// Emit initial progress
-	runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+	a.emitEvent("file:progress", map[string]interface{}{
 		"operation":        "download",
 		"fileName":         archiveName,
 		"bytesTransferred": 0,
@@ -2865,7 +2930,7 @@ func (a *App) DownloadPodFiles(namespace, pod, container, basePath string, names
 
 	// Download with progress callback
 	err = a.k8sClient.DownloadFiles(context.Background(), namespace, pod, container, basePath, names, localPath, func(p k8s.FileProgress) {
-		runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+		a.emitEvent("file:progress", map[string]interface{}{
 			"operation":        p.Operation,
 			"fileName":         p.FileName,
 			"bytesTransferred": p.BytesTransferred,
@@ -2876,7 +2941,7 @@ func (a *App) DownloadPodFiles(namespace, pod, container, basePath string, names
 	})
 
 	if err != nil {
-		runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+		a.emitEvent("file:progress", map[string]interface{}{
 			"operation": "download",
 			"fileName":  archiveName,
 			"done":      true,
@@ -2934,7 +2999,7 @@ func (a *App) uploadFileInternal(namespace, pod, container, localPath, remotePat
 	}
 
 	// Emit initial progress
-	runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+	a.emitEvent("file:progress", map[string]interface{}{
 		"operation":        "upload",
 		"fileName":         filename,
 		"bytesTransferred": 0,
@@ -2945,7 +3010,7 @@ func (a *App) uploadFileInternal(namespace, pod, container, localPath, remotePat
 	var uploadErr error
 	if stat.IsDir() {
 		uploadErr = a.k8sClient.UploadFolder(context.Background(), namespace, pod, container, localPath, remotePath, func(p k8s.FileProgress) {
-			runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+			a.emitEvent("file:progress", map[string]interface{}{
 				"operation":        p.Operation,
 				"fileName":         p.FileName,
 				"bytesTransferred": p.BytesTransferred,
@@ -2956,7 +3021,7 @@ func (a *App) uploadFileInternal(namespace, pod, container, localPath, remotePat
 		})
 	} else {
 		uploadErr = a.k8sClient.UploadFile(context.Background(), namespace, pod, container, localPath, targetPath, func(p k8s.FileProgress) {
-			runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+			a.emitEvent("file:progress", map[string]interface{}{
 				"operation":        p.Operation,
 				"fileName":         p.FileName,
 				"bytesTransferred": p.BytesTransferred,
@@ -2968,7 +3033,7 @@ func (a *App) uploadFileInternal(namespace, pod, container, localPath, remotePat
 	}
 
 	if uploadErr != nil {
-		runtime.EventsEmit(a.ctx, "file:progress", map[string]interface{}{
+		a.emitEvent("file:progress", map[string]interface{}{
 			"operation": "upload",
 			"fileName":  filename,
 			"done":      true,

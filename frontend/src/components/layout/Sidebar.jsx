@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Environment } from '../../../wailsjs/runtime/runtime';
+import { Environment, isInServerMode } from '../../../wailsjs/runtime/runtime';
 import appIcon from '../../assets/images/logo-universal.png';
 import {
     CubeIcon,
@@ -57,6 +57,7 @@ export default function Sidebar({
     const { openConfigEditor } = useConfig();
     const { openPerformancePanel } = usePerformancePanel();
     const { toggleDebug } = useDebugLogs();
+    const isServerMode = isInServerMode();
     // Settings menu state
     const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
 
@@ -315,8 +316,8 @@ export default function Sidebar({
 
     return (
         <div className="w-64 bg-surface border-r border-border flex flex-col h-full relative">
-            {/* Header - pl-20 on macOS for traffic light buttons, pl-4 otherwise */}
-            <div className={`h-14 shrink-0 flex items-center ${isMac ? 'pl-20' : 'pl-4'} border-b border-border titlebar-drag`}>
+            {/* Header - pl-20 on macOS for traffic light buttons, pl-4 for server mode or non-macOS */}
+            <div className={`h-14 shrink-0 flex items-center border-b border-border ${isServerMode ? 'pl-4' : `${isMac ? 'pl-20' : 'pl-4'} titlebar-drag`}`}>
                 <div className="flex items-center gap-2 text-primary font-bold text-lg select-none">
                     <img src={appIcon} alt="" className="h-6 w-6 rounded-full" />
                     <span>Kubikles</span>

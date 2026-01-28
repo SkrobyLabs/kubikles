@@ -3,17 +3,18 @@ package terminal
 import (
 	"context"
 	"fmt"
+	"kubikles/pkg/events"
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// Manager manages terminal sessions using Wails events for IPC
+// Manager manages terminal sessions using events for IPC
 type Manager struct {
 	ctx      context.Context
 	sessions map[string]*Session
 	mu       sync.RWMutex
+	emitter  events.Emitter
 }
 
 // SessionOptions contains options for starting a terminal session
@@ -40,11 +41,29 @@ func NewManager() *Manager {
 	}
 }
 
-// SetContext sets the Wails app context for event emission
+// SetContext sets the app context (used for lifecycle management)
 func (m *Manager) SetContext(ctx context.Context) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.ctx = ctx
+}
+
+// SetEmitter sets the event emitter for terminal output
+func (m *Manager) SetEmitter(emitter events.Emitter) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.emitter = emitter
+}
+
+// emitEvent emits an event using the configured emitter
+func (m *Manager) emitEvent(name string, data interface{}) {
+	m.mu.RLock()
+	emitter := m.emitter
+	m.mu.RUnlock()
+
+	if emitter != nil {
+		emitter.Emit(name, data)
+	}
 }
 
 // StartSession starts a new terminal session and returns the session ID
@@ -55,21 +74,16 @@ func (m *Manager) StartSession(opts SessionOptions) (string, error) {
 
 	sessionID := uuid.New().String()
 
-	m.mu.Lock()
-	ctx := m.ctx
-	m.mu.Unlock()
+	m.mu.RLock()
+	emitter := m.emitter
+	m.mu.RUnlock()
 
-	if ctx == nil {
-		return "", fmt.Errorf("manager context not initialized")
+	if emitter == nil {
+		return "", fmt.Errorf("manager emitter not initialized")
 	}
 
 	session, err := newSession(sessionID, opts, func(event TerminalEvent) {
-		m.mu.RLock()
-		c := m.ctx
-		m.mu.RUnlock()
-		if c != nil {
-			runtime.EventsEmit(c, "terminal:output", event)
-		}
+		m.emitEvent("terminal:output", event)
 	})
 	if err != nil {
 		return "", err

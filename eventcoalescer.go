@@ -3,8 +3,6 @@ package main
 import (
 	"sync"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // EventCoalescer batches and coalesces resource events within a frame window.
@@ -130,23 +128,19 @@ func (c *EventCoalescer) flush() {
 	c.mu.Unlock()
 
 	// Emit batch outside lock
-	if c.app.ctx != nil {
-		if len(batch) == 1 {
-			// Single event - emit directly for backward compatibility
-			runtime.EventsEmit(c.app.ctx, "resource-event", batch[0])
-		} else {
-			// Multiple events - emit as batch
-			runtime.EventsEmit(c.app.ctx, "resource-events-batch", batch)
-		}
+	if len(batch) == 1 {
+		// Single event - emit directly for backward compatibility
+		c.app.emitEvent("resource-event", batch[0])
+	} else {
+		// Multiple events - emit as batch
+		c.app.emitEvent("resource-events-batch", batch)
 	}
 }
 
 // emitDirect bypasses coalescing and emits immediately.
 // Used when coalescing is disabled or for critical events.
 func (c *EventCoalescer) emitDirect(event ResourceEvent) {
-	if c.app.ctx != nil {
-		runtime.EventsEmit(c.app.ctx, "resource-event", event)
-	}
+	c.app.emitEvent("resource-event", event)
 }
 
 // FlushNow forces immediate emission of any pending events.

@@ -3,8 +3,6 @@ package main
 import (
 	"sync"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // LogCoalescer batches log stream lines within a frame window.
@@ -91,24 +89,20 @@ func (c *LogCoalescer) EmitDone(streamID string) {
 		}
 
 		// Emit done
-		if c.app.ctx != nil {
-			runtime.EventsEmit(c.app.ctx, "log-stream", LogStreamEvent{
-				StreamID: streamID,
-				Done:     true,
-			})
-		}
+		c.app.emitEvent("log-stream", LogStreamEvent{
+			StreamID: streamID,
+			Done:     true,
+		})
 		return
 	}
 
 	c.mu.Unlock()
 
 	// No buffer existed, just emit done
-	if c.app.ctx != nil {
-		runtime.EventsEmit(c.app.ctx, "log-stream", LogStreamEvent{
-			StreamID: streamID,
-			Done:     true,
-		})
-	}
+	c.app.emitEvent("log-stream", LogStreamEvent{
+		StreamID: streamID,
+		Done:     true,
+	})
 }
 
 // EmitError emits an error event for a stream.
@@ -116,12 +110,10 @@ func (c *LogCoalescer) EmitError(streamID, errMsg string) {
 	// Flush pending lines first
 	c.FlushStream(streamID)
 
-	if c.app.ctx != nil {
-		runtime.EventsEmit(c.app.ctx, "log-stream", LogStreamEvent{
-			StreamID: streamID,
-			Error:    errMsg,
-		})
-	}
+	c.app.emitEvent("log-stream", LogStreamEvent{
+		StreamID: streamID,
+		Error:    errMsg,
+	})
 }
 
 // flushStream flushes pending lines for a specific stream.
@@ -163,19 +155,19 @@ func (c *LogCoalescer) FlushStream(streamID string) {
 
 // emitBatch emits a batch of log lines.
 func (c *LogCoalescer) emitBatch(streamID string, lines []string) {
-	if c.app.ctx == nil || len(lines) == 0 {
+	if len(lines) == 0 {
 		return
 	}
 
 	if len(lines) == 1 {
 		// Single line - emit directly for minimal overhead
-		runtime.EventsEmit(c.app.ctx, "log-stream", LogStreamEvent{
+		c.app.emitEvent("log-stream", LogStreamEvent{
 			StreamID: streamID,
 			Line:     lines[0],
 		})
 	} else {
 		// Multiple lines - emit as batch
-		runtime.EventsEmit(c.app.ctx, "log-stream-batch", LogStreamBatchEvent{
+		c.app.emitEvent("log-stream-batch", LogStreamBatchEvent{
 			StreamID: streamID,
 			Lines:    lines,
 		})

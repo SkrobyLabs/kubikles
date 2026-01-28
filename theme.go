@@ -9,8 +9,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // ThemeColors represents theme color definitions
@@ -379,8 +377,8 @@ func (m *ThemeManager) SetTheme(themeID string) error {
 	}
 
 	// Emit event to frontend
-	if m.app != nil && m.app.ctx != nil {
-		runtime.EventsEmit(m.app.ctx, "theme:changed", theme)
+	if m.app != nil {
+		m.app.emitEvent("theme:changed", theme)
 	}
 
 	return nil
@@ -402,8 +400,8 @@ func (m *ThemeManager) ReloadUserThemes() []Theme {
 	themes := m.GetThemes()
 
 	// Emit event to frontend
-	if m.app != nil && m.app.ctx != nil {
-		runtime.EventsEmit(m.app.ctx, "theme:list-changed", themes)
+	if m.app != nil {
+		m.app.emitEvent("theme:list-changed", themes)
 	}
 
 	return themes
@@ -425,6 +423,6 @@ func (m *ThemeManager) OpenThemesDir() error {
 	} else {
 		url = "file://" + m.themesDir
 	}
-	runtime.BrowserOpenURL(m.app.ctx, url)
+	m.app.openBrowserURL(url)
 	return nil
 }

@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"kubikles/pkg/hosts"
 )
 
@@ -499,16 +498,14 @@ func (m *IngressForwardManager) setError(errMsg string) {
 
 // emitEvent emits an ingress forward event to the frontend
 func (m *IngressForwardManager) emitEvent(eventType string) {
-	if m.app.ctx != nil {
-		m.mutex.RLock()
-		state := m.state
-		m.mutex.RUnlock()
+	m.mutex.RLock()
+	state := m.state
+	m.mutex.RUnlock()
 
-		runtime.EventsEmit(m.app.ctx, "ingress-forward-event", IngressForwardEvent{
-			Type:  eventType,
-			State: state,
-		})
-	}
+	m.app.emitEvent("ingress-forward-event", IngressForwardEvent{
+		Type:  eventType,
+		State: state,
+	})
 }
 
 // Cleanup should be called on app shutdown

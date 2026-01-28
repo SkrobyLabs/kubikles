@@ -910,6 +910,10 @@ export function SetClientPoolSize(arg1) {
   return window['go']['main']['App']['SetClientPoolSize'](arg1);
 }
 
+export function SetEmitter(arg1) {
+  return window['go']['main']['App']['SetEmitter'](arg1);
+}
+
 export function SetEventCoalescerFrameInterval(arg1) {
   return window['go']['main']['App']['SetEventCoalescerFrameInterval'](arg1);
 }

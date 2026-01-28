@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo } from 'react';
 import { SubscribeResourceWatcher, SubscribeCRDWatcher, UnsubscribeWatcher } from '../../wailsjs/go/main/App';
+import { EventsOn, EventsOff, isInServerMode } from '../../wailsjs/runtime/runtime';
 
 /**
  * Creates a stable key from namespaces array that doesn't change on array reordering.
@@ -34,7 +35,7 @@ export const useResourceWatcher = (resourceType, namespaces, onEvent, enabled = 
     }, [onEvent]);
 
     useEffect(() => {
-        if (!enabled || !window.runtime) return;
+        if (!enabled) return;
 
         const namespacesToWatch = Array.isArray(namespaces) ? namespaces : [namespaces];
 
@@ -79,14 +80,14 @@ export const useResourceWatcher = (resourceType, namespaces, onEvent, enabled = 
             }
         };
 
-        window.runtime.EventsOn("resource-event", handleEvent);
-        window.runtime.EventsOn("resource-events-batch", handleBatchEvents);
+        EventsOn("resource-event", handleEvent);
+        EventsOn("resource-events-batch", handleBatchEvents);
 
         // Cleanup: unsubscribe all watchers
         return () => {
             isMounted = false;
-            window.runtime.EventsOff("resource-event", handleEvent);
-            window.runtime.EventsOff("resource-events-batch", handleBatchEvents);
+            EventsOff("resource-event", handleEvent);
+            EventsOff("resource-events-batch", handleBatchEvents);
 
             // Unsubscribe all keys that were subscribed during this effect
             subscribedKeys.forEach(key => {
@@ -123,7 +124,7 @@ export const useCRDWatcher = (group, version, resource, namespaces, onEvent, ena
     const crdResourceType = `crd:${group}/${version}/${resource}`;
 
     useEffect(() => {
-        if (!enabled || !window.runtime) return;
+        if (!enabled) return;
 
         const namespacesToWatch = Array.isArray(namespaces) ? namespaces : [namespaces];
 
@@ -167,14 +168,14 @@ export const useCRDWatcher = (group, version, resource, namespaces, onEvent, ena
             }
         };
 
-        window.runtime.EventsOn("resource-event", handleEvent);
-        window.runtime.EventsOn("resource-events-batch", handleBatchEvents);
+        EventsOn("resource-event", handleEvent);
+        EventsOn("resource-events-batch", handleBatchEvents);
 
         // Cleanup
         return () => {
             isMounted = false;
-            window.runtime.EventsOff("resource-event", handleEvent);
-            window.runtime.EventsOff("resource-events-batch", handleBatchEvents);
+            EventsOff("resource-event", handleEvent);
+            EventsOff("resource-events-batch", handleBatchEvents);
 
             subscribedKeys.forEach(key => {
                 UnsubscribeWatcher(key).catch(err => {

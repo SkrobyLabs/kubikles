@@ -4,6 +4,7 @@ import { useDebug } from '../context/DebugContext';
 import { useNotification } from '../context/NotificationContext';
 import DebugLogViewer from '../components/shared/DebugLogViewer';
 import { SaveLogFile } from '../../wailsjs/go/main/App';
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 
 export const useDebugLogs = () => {
     const [debugLogs, setDebugLogs] = useState([]);
@@ -13,9 +14,9 @@ export const useDebugLogs = () => {
     const { addNotification } = useNotification();
 
     useEffect(() => {
-        if (window.runtime && !isListenerRegistered.current) {
+        if (!isListenerRegistered.current) {
             console.log("Registering debug-log listener");
-            window.runtime.EventsOn("debug-log", (msg) => {
+            EventsOn("debug-log", (msg) => {
                 setDebugLogs(prev => {
                     const newLogs = [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`];
                     if (newLogs.length > 1000) {
@@ -28,8 +29,8 @@ export const useDebugLogs = () => {
         }
 
         return () => {
-            if (window.runtime && isListenerRegistered.current) {
-                window.runtime.EventsOff("debug-log");
+            if (isListenerRegistered.current) {
+                EventsOff("debug-log");
                 isListenerRegistered.current = false;
             }
         };

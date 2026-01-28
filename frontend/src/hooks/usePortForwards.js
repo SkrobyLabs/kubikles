@@ -9,6 +9,7 @@ import {
     StopPortForward,
     GetAvailablePort
 } from '../../wailsjs/go/main/App';
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 
 // Global event listener - only one instance to avoid Wails EventsOff issues
 let globalEventHandler = null;
@@ -135,14 +136,14 @@ export const usePortForwards = (contextFilter = '', isVisible = true) => {
                 console.log('Port forward event:', event);
                 subscribers.forEach(sub => sub(event));
             };
-            window.runtime.EventsOn('port-forward-event', globalEventHandler);
+            EventsOn('port-forward-event', globalEventHandler);
         }
 
         return () => {
             subscribers.delete(subscriber);
             // Only remove global handler when no more subscribers
             if (subscribers.size === 0 && globalEventHandler) {
-                window.runtime.EventsOff('port-forward-event');
+                EventsOff('port-forward-event');
                 globalEventHandler = null;
             }
         };

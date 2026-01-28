@@ -5,6 +5,7 @@ import {k8s} from '../models';
 import {helm} from '../models';
 import {v1} from '../models';
 import {v2} from '../models';
+import {events} from '../models';
 import {terminal} from '../models';
 
 export function AddHelmRepository(arg1:string,arg2:string,arg3:number):Promise<void>;
@@ -460,6 +461,8 @@ export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;
 export function SendTerminalInput(arg1:string,arg2:string):Promise<void>;
 
 export function SetClientPoolSize(arg1:number):Promise<void>;
+
+export function SetEmitter(arg1:events.Emitter):Promise<void>;
 
 export function SetEventCoalescerFrameInterval(arg1:number):Promise<void>;
 

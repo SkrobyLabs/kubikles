@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 )
@@ -659,9 +658,7 @@ func (m *PortForwardManager) updateStatus(configID, status, errMsg string) {
 
 // emitEvent emits a port forward event to the frontend
 func (m *PortForwardManager) emitEvent(event PortForwardEvent) {
-	if m.app.ctx != nil {
-		runtime.EventsEmit(m.app.ctx, "port-forward-event", event)
-	}
+	m.app.emitEvent("port-forward-event", event)
 }
 
 // SaveRunningState saves which port forwards are currently running (called before shutdown)

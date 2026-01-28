@@ -8,6 +8,7 @@ import {
     RefreshIngressHostnames,
     GetManagedHosts
 } from '../../wailsjs/go/main/App';
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 
 // Global event listener - only one instance to avoid Wails EventsOff issues
 let globalEventHandler = null;
@@ -95,14 +96,14 @@ export const useIngressForward = () => {
                 console.log('Ingress forward event:', event);
                 subscribers.forEach(sub => sub(event));
             };
-            window.runtime.EventsOn('ingress-forward-event', globalEventHandler);
+            EventsOn('ingress-forward-event', globalEventHandler);
         }
 
         return () => {
             subscribers.delete(subscriber);
             // Only remove global handler when no more subscribers
             if (subscribers.size === 0 && globalEventHandler) {
-                window.runtime.EventsOff('ingress-forward-event');
+                EventsOff('ingress-forward-event');
                 globalEventHandler = null;
             }
         };

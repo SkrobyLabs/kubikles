@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespaces, StartPortForwardsWithMode, ListCRDs, GetK8sInitError } from '../../wailsjs/go/main/App';
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
 
 // Helper to get port forward auto-start mode from settings
@@ -536,12 +537,12 @@ export const K8sProvider = ({ children }) => {
             }
         };
 
-        window.runtime.EventsOn("watcher-error", handleWatcherError);
-        window.runtime.EventsOn("watcher-status", handleWatcherStatus);
+        EventsOn("watcher-error", handleWatcherError);
+        EventsOn("watcher-status", handleWatcherStatus);
 
         return () => {
-            window.runtime.EventsOff("watcher-error", handleWatcherError);
-            window.runtime.EventsOff("watcher-status", handleWatcherStatus);
+            EventsOff("watcher-error", handleWatcherError);
+            EventsOff("watcher-status", handleWatcherStatus);
         };
     }, []);
 
