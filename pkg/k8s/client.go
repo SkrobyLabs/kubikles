@@ -687,13 +687,18 @@ func (c *Client) SetNodeSchedulable(contextName, name string, schedulable bool) 
 	return nil
 }
 
-func (c *Client) CreateNodeDebugPod(contextName, nodeName string) (*v1.Pod, error) {
+func (c *Client) CreateNodeDebugPod(contextName, nodeName, image string) (*v1.Pod, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
+
+	// Default to alpine:latest if no image specified
+	if image == "" {
+		image = "alpine:latest"
+	}
 
 	privileged := true
 	debugPod := &v1.Pod{
@@ -710,7 +715,7 @@ func (c *Client) CreateNodeDebugPod(contextName, nodeName string) (*v1.Pod, erro
 			Containers: []v1.Container{
 				{
 					Name:  "shell",
-					Image: "alpine:latest",
+					Image: image,
 					Command: []string{
 						"sleep", "infinity",
 					},

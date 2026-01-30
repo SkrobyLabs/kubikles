@@ -58,8 +58,8 @@ export function ConfirmDialog(arg1, arg2) {
   return window['go']['main']['App']['ConfirmDialog'](arg1, arg2);
 }
 
-export function CreateNodeDebugPod(arg1) {
-  return window['go']['main']['App']['CreateNodeDebugPod'](arg1);
+export function CreateNodeDebugPod(arg1, arg2) {
+  return window['go']['main']['App']['CreateNodeDebugPod'](arg1, arg2);
 }
 
 export function CreatePodDirectory(arg1, arg2, arg3, arg4) {

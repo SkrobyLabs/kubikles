@@ -4,7 +4,8 @@ import { useK8s } from '../../../context/K8sContext';
 import { useNotification } from '../../../context/NotificationContext';
 import { DeletePod, ForceDeletePod } from '../../../../wailsjs/go/main/App';
 import LogViewer from '../../../components/shared/log-viewer';
-import { LazyTerminal as Terminal, LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph, LazyPodFileBrowser as PodFileBrowser } from '../../../components/lazy';
+import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph, LazyPodFileBrowser as PodFileBrowser } from '../../../components/lazy';
+import PodShellTab from './PodShellTab';
 import PodDetails from '../../../components/shared/PodDetails';
 import Logger from '../../../utils/Logger';
 import { CubeIcon } from '@heroicons/react/24/outline';
@@ -28,8 +29,50 @@ export const usePodActions = () => {
         });
     };
 
-    const handleShell = (namespace, podName) => {
+    // Helper to build container objects with status
+    const getContainersWithStatus = (pod) => {
+        const initStatuses = pod.status?.initContainerStatuses || [];
+        const containerStatuses = pod.status?.containerStatuses || [];
+
+        // Build containers with status info
+        const containers = [];
+
+        // Add init containers
+        for (const spec of (pod.spec?.initContainers || [])) {
+            const status = initStatuses.find(s => s.name === spec.name);
+            if (status?.state?.running || status?.state?.waiting) {
+                containers.push({ name: spec.name, status, isInit: true });
+            }
+        }
+
+        // Add regular containers
+        for (const spec of (pod.spec?.containers || [])) {
+            const status = containerStatuses.find(s => s.name === spec.name);
+            if (status?.state?.running || status?.state?.waiting) {
+                containers.push({ name: spec.name, status, isInit: false });
+            }
+        }
+
+        // Fallback: if no running/waiting containers, use spec names without status
+        if (containers.length === 0) {
+            for (const spec of (pod.spec?.initContainers || [])) {
+                containers.push({ name: spec.name, status: null, isInit: true });
+            }
+            for (const spec of (pod.spec?.containers || [])) {
+                containers.push({ name: spec.name, status: null, isInit: false });
+            }
+        }
+
+        return containers;
+    };
+
+    const handleShell = (pod) => {
+        const namespace = pod.metadata?.namespace;
+        const podName = pod.metadata?.name;
         Logger.info("Opening shell", { namespace, pod: podName });
+
+        const containers = getContainersWithStatus(pod);
+
         const tabId = `terminal-pod-${podName}`;
         openTab({
             id: tabId,
@@ -38,10 +81,10 @@ export const usePodActions = () => {
             actionLabel: 'Shell',
             keepAlive: true,
             content: (
-                <Terminal
+                <PodShellTab
                     namespace={namespace}
                     pod={podName}
-                    container=""
+                    containers={containers}
                     context={currentContext}
                 />
             ),
@@ -50,7 +93,14 @@ export const usePodActions = () => {
         Logger.info("Shell opened successfully", { namespace, pod: podName });
     };
 
-    const openFileBrowserTab = (namespace, podName, containers) => {
+    const handleFiles = (pod) => {
+        const namespace = pod.metadata?.namespace;
+        const podName = pod.metadata?.name;
+        Logger.info("Opening file browser", { namespace, pod: podName });
+
+        const containers = getContainersWithStatus(pod);
+
+        // Always open tab - PodFileBrowser handles container selection inline
         const tabId = `files-${podName}`;
         openTab({
             id: tabId,
@@ -68,53 +118,6 @@ export const usePodActions = () => {
             ),
             resourceMeta: { kind: 'Pod', name: podName, namespace },
         });
-    };
-
-    const handleFiles = (pod) => {
-        const namespace = pod.metadata?.namespace;
-        const podName = pod.metadata?.name;
-        Logger.info("Opening file browser", { namespace, pod: podName });
-
-        // Collect containers with running status
-        const allStatuses = [
-            ...(pod.status?.initContainerStatuses || []),
-            ...(pod.status?.containerStatuses || [])
-        ];
-        const runningContainers = allStatuses
-            .filter(s => s.state?.running || s.state?.waiting)
-            .map(s => s.name);
-
-        // Fallback: if no status info available, use spec names
-        const containers = runningContainers.length > 0
-            ? runningContainers
-            : [
-                ...(pod.spec?.initContainers || []).map(c => c.name),
-                ...(pod.spec?.containers || []).map(c => c.name)
-            ];
-
-        if (containers.length <= 1) {
-            openFileBrowserTab(namespace, podName, containers);
-        } else {
-            openModal({
-                title: 'Select Container',
-                content: (
-                    <div className="flex flex-col gap-2 mt-1">
-                        {containers.map(name => (
-                            <button
-                                key={name}
-                                onClick={() => {
-                                    closeModal();
-                                    openFileBrowserTab(namespace, podName, [name]);
-                                }}
-                                className="w-full text-left px-3 py-2 text-sm text-gray-200 bg-surface hover:bg-white/10 border border-border rounded-md transition-colors"
-                            >
-                                {name}
-                            </button>
-                        ))}
-                    </div>
-                )
-            });
-        }
     };
 
     const handleEditYaml = (pod) => {

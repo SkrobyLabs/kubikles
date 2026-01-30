@@ -1,6 +1,7 @@
 # Wails
 build/
 bin/
+frontend/wailsjs/runtime/
 
 # Frontend
 frontend/dist/

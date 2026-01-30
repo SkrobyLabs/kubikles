@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Environment, isInServerMode } from '../../../wailsjs/runtime/runtime';
+import { Environment } from '../../../wailsjs/runtime/runtime';
+import { isInServerMode } from '../../lib/wailsjs-adapter/runtime/runtime';
 import appIcon from '../../assets/images/logo-universal.png';
 import {
     CubeIcon,

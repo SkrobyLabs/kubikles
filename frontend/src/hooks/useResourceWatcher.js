@@ -1,6 +1,6 @@
 import { useEffect, useRef, useMemo } from 'react';
 import { SubscribeResourceWatcher, SubscribeCRDWatcher, UnsubscribeWatcher } from '../../wailsjs/go/main/App';
-import { EventsOn, EventsOff, isInServerMode } from '../../wailsjs/runtime/runtime';
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 
 /**
  * Creates a stable key from namespaces array that doesn't change on array reordering.

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PencilSquareIcon, EllipsisVerticalIcon, ShareIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, EllipsisVerticalIcon, ShareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
-export default function ServiceActionsMenu({ service, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies }) {
+export default function ServiceActionsMenu({ service, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onDelete }) {
     const buttonRef = useRef(null);
     const menuRef = useRef(null);
 
@@ -60,6 +60,14 @@ export default function ServiceActionsMenu({ service, isOpen, menuPosition, onOp
             >
                 <ShareIcon className="h-4 w-4" />
                 Dependencies
+            </button>
+            <div className="h-px bg-surface-hover my-1" />
+            <button
+                onClick={(e) => { e.stopPropagation(); handleAction(() => onDelete(service)); }}
+                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-surface-hover flex items-center gap-2"
+            >
+                <TrashIcon className="h-4 w-4" />
+                Delete
             </button>
         </div>
     );

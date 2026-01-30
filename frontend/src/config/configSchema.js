@@ -119,6 +119,13 @@ export const configSchema = {
             step: 1,
             unit: 's',
             default: 5
+        },
+        nodeDebugImage: {
+            type: 'string',
+            label: 'Node Debug Shell Image',
+            description: 'Default container image for node debug shell sessions',
+            placeholder: 'e.g., alpine:latest, nicolaka/netshoot:latest',
+            default: 'alpine:latest'
         }
     },
     performance: {

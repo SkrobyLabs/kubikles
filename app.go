@@ -1162,13 +1162,13 @@ type NodeDebugPodResult struct {
 	Namespace string `json:"namespace"`
 }
 
-func (a *App) CreateNodeDebugPod(nodeName string) (*NodeDebugPodResult, error) {
+func (a *App) CreateNodeDebugPod(nodeName, image string) (*NodeDebugPodResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("CreateNodeDebugPod called: context=%s, nodeName=%s", currentContext, nodeName)
+	a.logDebug("CreateNodeDebugPod called: context=%s, nodeName=%s, image=%s", currentContext, nodeName, image)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
-	pod, err := a.k8sClient.CreateNodeDebugPod(currentContext, nodeName)
+	pod, err := a.k8sClient.CreateNodeDebugPod(currentContext, nodeName, image)
 	if err != nil {
 		return nil, err
 	}

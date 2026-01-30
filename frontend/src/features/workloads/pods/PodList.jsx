@@ -204,7 +204,7 @@ export default function PodList({ isVisible }) {
 
                         openLogs(item.metadata.namespace, item.metadata.name, containers, siblingPods, {}, '', item.metadata.creationTimestamp);
                     }}
-                    onShell={() => handleShell(item.metadata.namespace, item.metadata.name)}
+                    onShell={() => handleShell(item)}
                     onFiles={() => handleFiles(item)}
                     onDelete={() => openBulkDelete([item])}
                     onForceDelete={() => openBulkDelete([item])}

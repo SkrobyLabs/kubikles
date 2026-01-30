@@ -57,6 +57,7 @@ export default function ServiceList({ isVisible }) {
                     onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `service-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
+                    onDelete={() => openBulkDelete([item])}
                 />
             ),
             getValue: () => '',

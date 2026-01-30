@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Terminal as XTerm } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
-import { EventsOn, EventsOff, getClientId } from '../../../wailsjs/runtime/runtime';
+import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
+import { getClientId } from '../../lib/wailsjs-adapter/runtime/runtime';
 import { StartTerminalSession, SendTerminalInput, ResizeTerminal, CloseTerminalSession } from '../../../wailsjs/go/main/App';
 import 'xterm/css/xterm.css';
 

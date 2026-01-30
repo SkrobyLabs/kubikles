@@ -37,7 +37,7 @@ export function CollectIngressHostnames(arg1:Array<string>):Promise<Array<string
 
 export function ConfirmDialog(arg1:string,arg2:string):Promise<boolean>;
 
-export function CreateNodeDebugPod(arg1:string):Promise<main.NodeDebugPodResult>;
+export function CreateNodeDebugPod(arg1:string,arg2:string):Promise<main.NodeDebugPodResult>;
 
 export function CreatePodDirectory(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 

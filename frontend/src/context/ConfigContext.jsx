@@ -52,7 +52,9 @@ const defaultConfig = {
         // Connection test timeout (seconds). When switching contexts, a quick
         // connectivity check is performed to fail fast if the cluster is unreachable.
         // Increase if you have high-latency clusters that need more time.
-        connectionTestTimeoutSeconds: 5
+        connectionTestTimeoutSeconds: 5,
+        // Default container image for node debug shell sessions
+        nodeDebugImage: 'alpine:latest'
     },
     metrics: {
         // Preferred metrics source: "auto" (try K8s first, fallback to Prometheus),

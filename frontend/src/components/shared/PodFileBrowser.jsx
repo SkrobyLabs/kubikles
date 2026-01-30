@@ -12,6 +12,7 @@ import {
 import { EventsOn, EventsOff, OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime/runtime';
 import { useK8s } from '../../context/K8sContext';
 import { useUI } from '../../context/UIContext';
+import ContainerSelector from './ContainerSelector';
 import SearchSelect from './SearchSelect';
 import Tooltip from './Tooltip';
 import {
@@ -75,6 +76,11 @@ function ProgressBar({ progress }) {
     );
 }
 
+// Helper to get container name from container (supports both string and object format)
+const getContainerName = (container) => {
+    return typeof container === 'object' ? container.name : container;
+};
+
 export default function PodFileBrowser({
     namespace,
     pod,
@@ -83,11 +89,15 @@ export default function PodFileBrowser({
 }) {
     const { currentContext } = useK8s();
     const { openModal, closeModal } = useUI();
+    // Show container selector initially if multiple containers available
+    const [state, setState] = useState(containers.length > 1 ? 'selecting' : 'browsing');
     const [currentPath, setCurrentPath] = useState('/');
     const [files, setFiles] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [selectedContainer, setSelectedContainer] = useState(containers[0] || '');
+    const [selectedContainer, setSelectedContainer] = useState(
+        containers.length === 1 ? getContainerName(containers[0]) : ''
+    );
     const [selectedFiles, setSelectedFiles] = useState(new Set());
     const [progress, setProgress] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -102,7 +112,7 @@ export default function PodFileBrowser({
 
     // Load files when path or container changes
     const loadFiles = useCallback(async () => {
-        if (!namespace || !pod || !selectedContainer) return;
+        if (!namespace || !pod || !selectedContainer || state !== 'browsing') return;
 
         setLoading(true);
         setError(null);
@@ -118,11 +128,19 @@ export default function PodFileBrowser({
         } finally {
             setLoading(false);
         }
-    }, [namespace, pod, selectedContainer, currentPath]);
+    }, [namespace, pod, selectedContainer, currentPath, state]);
 
     useEffect(() => {
-        loadFiles();
-    }, [loadFiles]);
+        if (state === 'browsing') {
+            loadFiles();
+        }
+    }, [loadFiles, state]);
+
+    // Handle container selection and start browsing
+    const handleContainerSelect = (container) => {
+        setSelectedContainer(container);
+        setState('browsing');
+    };
 
     // Listen for progress events
     useEffect(() => {
@@ -403,8 +421,19 @@ export default function PodFileBrowser({
             onDrop={handleDrop}
             ref={dropZoneRef}
         >
+            {/* Container Selection View */}
+            {state === 'selecting' && (
+                <ContainerSelector
+                    containers={containers}
+                    podName={pod}
+                    title="Select Container"
+                    description={<>Choose a container to browse files in <span className="font-medium text-foreground">{pod}</span></>}
+                    onSelect={handleContainerSelect}
+                />
+            )}
+
             {/* Stale Tab Banner */}
-            {isStale && (
+            {state === 'browsing' && isStale && (
                 <div className="flex items-center gap-2 px-4 py-2 bg-red-900/30 border-b border-red-500/50 text-red-400 shrink-0">
                     <ExclamationTriangleIcon className="h-5 w-5" />
                     <span className="text-sm">
@@ -413,7 +442,8 @@ export default function PodFileBrowser({
                 </div>
             )}
 
-            {/* Header */}
+            {/* Header - only show when browsing */}
+            {state === 'browsing' && (
             <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
                     {/* Container selector */}
@@ -427,6 +457,8 @@ export default function PodFileBrowser({
                                     onChange={setSelectedContainer}
                                     placeholder="Select..."
                                     className="text-xs"
+                                    getOptionValue={(c) => typeof c === 'object' ? c.name : c}
+                                    getOptionLabel={(c) => typeof c === 'object' ? c.name : c}
                                 />
                             </div>
                         </div>
@@ -527,9 +559,10 @@ export default function PodFileBrowser({
                     </Tooltip>
                 </div>
             </div>
+            )}
 
             {/* New folder input */}
-            {showNewFolderInput && (
+            {state === 'browsing' && showNewFolderInput && (
                 <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-surface/50">
                     <FolderPlusIcon className="h-4 w-4 text-gray-500" />
                     <input
@@ -567,6 +600,7 @@ export default function PodFileBrowser({
             )}
 
             {/* File list */}
+            {state === 'browsing' && (
             <div className="flex-1 overflow-auto">
                 {loading ? (
                     <div className="flex items-center justify-center h-full">
@@ -661,8 +695,10 @@ export default function PodFileBrowser({
                     </table>
                 )}
             </div>
+            )}
 
-            {/* Drag overlay - always rendered, visibility controlled by opacity for smooth transitions */}
+            {/* Drag overlay - only show when browsing */}
+            {state === 'browsing' && (
             <div
                 className={`absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center z-10 pointer-events-none transition-opacity duration-150 ${
                     isDragging && !isStale ? 'opacity-100' : 'opacity-0 invisible'
@@ -673,9 +709,10 @@ export default function PodFileBrowser({
                     <span className="text-primary font-medium">Drop files to upload to {currentPath}</span>
                 </div>
             </div>
+            )}
 
             {/* Progress bar */}
-            <ProgressBar progress={progress} />
+            {state === 'browsing' && <ProgressBar progress={progress} />}
         </div>
     );
 }

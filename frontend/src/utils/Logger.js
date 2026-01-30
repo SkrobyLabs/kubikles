@@ -35,9 +35,15 @@ const Logger = {
     debug: (message, data = null) => {
         const formatted = formatMessage(message, data);
         console.debug(`[DEBUG] ${formatted}`);
-        // Optional: only send debug logs to backend if verbose mode is on? 
+        // Optional: only send debug logs to backend if verbose mode is on?
         // For now, let's send them as LogDebug is intended for debug.
         LogDebug(`[DEBUG] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
+    },
+
+    warn: (message, data = null) => {
+        const formatted = formatMessage(message, data);
+        console.warn(`[WARN] ${formatted}`);
+        LogDebug(`[WARN] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
     }
 };
 
