@@ -349,13 +349,19 @@ export default function ResourceList({
         });
     }, []);
 
+    // Track whether to auto-open details for the first matching row
+    const autoOpenDetailsRef = useRef(false);
+
     // Consume pending search when navigating to this view
     useEffect(() => {
         if (pendingSearch) {
-            const search = consumePendingSearch();
+            const { search, autoOpen } = consumePendingSearch();
             if (search) {
                 setSearchInput(search);
                 setSearchTerm(search); // Skip debounce for programmatic search
+                if (autoOpen) {
+                    autoOpenDetailsRef.current = true;
+                }
             }
         }
     }, [pendingSearch, consumePendingSearch]);
@@ -443,6 +449,15 @@ export default function ResourceList({
             return 0;
         });
     }, [filteredData, sortConfig, columns]);
+
+    // Auto-open details for the first matching row after search + filter settles
+    useEffect(() => {
+        if (autoOpenDetailsRef.current && sortedData.length > 0 && onRowClick) {
+            autoOpenDetailsRef.current = false;
+            // Defer to let the UI render the list first
+            requestAnimationFrame(() => onRowClick(sortedData[0]));
+        }
+    }, [sortedData, onRowClick]);
 
     // Add selection checkbox column if selection is enabled
     const visibleColumns = useMemo(() => {

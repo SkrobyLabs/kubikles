@@ -3,18 +3,20 @@ package terminal
 import (
 	"context"
 	"fmt"
-	"kubikles/pkg/events"
 	"sync"
+
+	"kubikles/pkg/events"
 
 	"github.com/google/uuid"
 )
 
 // Manager manages terminal sessions using events for IPC
 type Manager struct {
-	ctx      context.Context
-	sessions map[string]*Session
-	mu       sync.RWMutex
-	emitter  events.Emitter
+	ctx           context.Context
+	sessions      map[string]*Session
+	sessionClient map[string]string // sessionID -> clientID for cleanup on disconnect
+	mu            sync.RWMutex
+	emitter       events.Emitter
 }
 
 // SessionOptions contains options for starting a terminal session
@@ -23,7 +25,8 @@ type SessionOptions struct {
 	Pod       string `json:"pod"`
 	Container string `json:"container"`
 	Context   string `json:"context"`
-	Command   string `json:"command"` // Optional custom command (e.g., "nsenter")
+	Command   string `json:"command"`  // Optional custom command (e.g., "nsenter")
+	ClientID  string `json:"clientId"` // WebSocket client ID for server mode cleanup
 }
 
 // TerminalEvent is emitted to the frontend for terminal output
@@ -37,7 +40,8 @@ type TerminalEvent struct {
 // NewManager creates a new terminal manager
 func NewManager() *Manager {
 	return &Manager{
-		sessions: make(map[string]*Session),
+		sessions:      make(map[string]*Session),
+		sessionClient: make(map[string]string),
 	}
 }
 
@@ -91,6 +95,9 @@ func (m *Manager) StartSession(opts SessionOptions) (string, error) {
 
 	m.mu.Lock()
 	m.sessions[sessionID] = session
+	if opts.ClientID != "" {
+		m.sessionClient[sessionID] = opts.ClientID
+	}
 	m.mu.Unlock()
 
 	return sessionID, nil
@@ -128,6 +135,7 @@ func (m *Manager) CloseSession(sessionID string) error {
 	session, exists := m.sessions[sessionID]
 	if exists {
 		delete(m.sessions, sessionID)
+		delete(m.sessionClient, sessionID)
 	}
 	m.mu.Unlock()
 
@@ -147,9 +155,41 @@ func (m *Manager) CloseAllSessions() {
 		sessions = append(sessions, s)
 	}
 	m.sessions = make(map[string]*Session)
+	m.sessionClient = make(map[string]string)
 	m.mu.Unlock()
 
 	for _, s := range sessions {
 		s.Close()
+	}
+}
+
+// OnClientDisconnect implements server.DisconnectListener.
+// Cleans up all terminal sessions owned by the disconnected client.
+func (m *Manager) OnClientDisconnect(clientID string) {
+	m.mu.Lock()
+	var toClose []*Session
+	var toDelete []string
+
+	for sessionID, client := range m.sessionClient {
+		if client == clientID {
+			if session, exists := m.sessions[sessionID]; exists {
+				toClose = append(toClose, session)
+			}
+			toDelete = append(toDelete, sessionID)
+		}
+	}
+
+	for _, id := range toDelete {
+		delete(m.sessions, id)
+		delete(m.sessionClient, id)
+	}
+	m.mu.Unlock()
+
+	for _, session := range toClose {
+		session.Close()
+	}
+
+	if len(toDelete) > 0 {
+		fmt.Printf("Terminal Manager: cleaned up %d session(s) for disconnected client %s\n", len(toDelete), clientID)
 	}
 }

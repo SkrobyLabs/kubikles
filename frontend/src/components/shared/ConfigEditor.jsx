@@ -3,31 +3,26 @@ import Editor from '@monaco-editor/react';
 import { useConfig } from '../../context/ConfigContext';
 import { XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import ConfigEditorUI from './config-editor/ConfigEditorUI';
+import { configSchema } from '../../config/configSchema';
 
-// Descriptions for config keys (used in flat mode comments)
-const configDescriptions = {
-    'logs.lineWrap': 'If true, wrap long lines in log viewer',
-    'logs.showTimestamps': 'If true, show timestamps in log viewer',
-    'logs.position': 'Initial log position: "start", "end", or "all"',
-    'logs.search.debounceMs': 'Debounce delay in milliseconds for search-as-you-type mode',
-    'logs.search.searchOnEnter': 'If true, search only triggers on Enter key. If false, search as you type.',
-    'logs.search.useRegex': 'If true, search uses regex matching by default',
-    'logs.search.filterOnly': 'If true, show only matching lines by default',
-    'logs.search.contextLinesBefore': 'Number of context lines to show before matches when filtering',
-    'logs.search.contextLinesAfter': 'Number of context lines to show after matches when filtering',
-    'portForwards.autoStartMode': 'Auto-start mode: "all" (start all that were running), "favorites" (only favorites), "none" (disabled)',
-    'ui.searchDebounceMs': 'Debounce delay in milliseconds for resource list search',
-    'ui.copyFeedbackMs': 'How long "Copied!" feedback shows in milliseconds',
-    'ui.scrollZoomEnabled': 'Enable Cmd/Ctrl+Scroll to zoom in/out',
-    'ui.showTabIcons': 'Display resource type icons in tab titles',
-    'kubernetes.apiTimeoutMs': 'API request timeout in milliseconds. Increase for slow clusters (default: 60000)',
-    'kubernetes.metricsPollIntervalMs': 'Poll interval in milliseconds for Kubernetes CPU/Memory metrics (default: 30000)',
-    'performance.pollIntervalMs': 'Poll interval in milliseconds for performance panel (default: 1500)',
-    'performance.eventCoalescerMs': 'Frame interval in milliseconds for resource event batching (1-100, default: 16)',
-    'performance.enableRequestCancellation': 'Cancel in-flight API requests when navigating. Disable if experiencing slow navigation (Go HTTP/2 bug workaround).',
-    'performance.forceHttp1': 'Use HTTP/1.1 instead of HTTP/2. Opens multiple connections for parallel requests. Requires context switch.',
-    'performance.clientPoolSize': 'Additional K8s client connections for parallelism (0 = just main connection). Requires context switch.'
-};
+// Build flat description map from configSchema (single source of truth).
+// Walks the schema tree and collects "path → description" for every typed field.
+function buildDescriptions(schema, prefix = '') {
+    const map = {};
+    for (const [key, value] of Object.entries(schema)) {
+        if (key === '_meta') continue;
+        const fullKey = prefix ? `${prefix}.${key}` : key;
+        if (value._meta?.isNested) {
+            Object.assign(map, buildDescriptions(value, fullKey));
+        } else if (value.type && value.description) {
+            map[fullKey] = value.description;
+        } else if (!value.type && typeof value === 'object') {
+            Object.assign(map, buildDescriptions(value, fullKey));
+        }
+    }
+    return map;
+}
+const configDescriptions = buildDescriptions(configSchema);
 
 // Convert nested object to flat key=value format with comments
 const flattenConfig = (obj, prefix = '') => {

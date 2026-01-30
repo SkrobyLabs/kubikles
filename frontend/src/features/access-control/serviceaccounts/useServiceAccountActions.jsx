@@ -25,7 +25,8 @@ export const useServiceAccountActions = () => {
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'ServiceAccount', name: serviceAccount.metadata.name, namespace: serviceAccount.metadata.namespace },
         });
     };
 

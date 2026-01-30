@@ -25,6 +25,15 @@ const defaultConfig = {
         // - "none": Don't auto-start any port forwards
         autoStartMode: "favorites"
     },
+    ai: {
+        model: 'sonnet',
+        panelWidth: 384,
+        allowedTools: [
+            'get_pod_logs', 'get_resource_yaml', 'list_resources',
+            'get_events', 'describe_resource', 'list_crds',
+            'list_custom_resources', 'get_custom_resource_yaml'
+        ]
+    },
     ui: {
         // Debounce delay for resource list search (ms)
         searchDebounceMs: 150,
@@ -114,6 +123,10 @@ const getDiff = (current, defaults) => {
             const nestedDiff = getDiff(currentVal, defaultVal || {});
             if (Object.keys(nestedDiff).length > 0) {
                 diff[key] = nestedDiff;
+            }
+        } else if (Array.isArray(currentVal)) {
+            if (JSON.stringify([...(currentVal)].sort()) !== JSON.stringify([...(defaultVal || [])].sort())) {
+                diff[key] = currentVal;
             }
         } else if (currentVal !== defaultVal) {
             diff[key] = currentVal;

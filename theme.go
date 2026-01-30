@@ -258,7 +258,7 @@ func (m *ThemeManager) loadUserThemes() {
 		data, err := os.ReadFile(themePath)
 		if err != nil {
 			if m.app != nil {
-				m.app.LogDebug("Theme: Failed to read theme file %s: %v", themePath, err)
+				m.app.logDebug("Theme: Failed to read theme file %s: %v", themePath, err)
 			}
 			continue
 		}
@@ -266,7 +266,7 @@ func (m *ThemeManager) loadUserThemes() {
 		var theme Theme
 		if err := json.Unmarshal(data, &theme); err != nil {
 			if m.app != nil {
-				m.app.LogDebug("Theme: Failed to parse theme file %s: %v", themePath, err)
+				m.app.logDebug("Theme: Failed to parse theme file %s: %v", themePath, err)
 			}
 			continue
 		}
@@ -274,7 +274,7 @@ func (m *ThemeManager) loadUserThemes() {
 		// Validate required fields
 		if theme.ID == "" || theme.Name == "" {
 			if m.app != nil {
-				m.app.LogDebug("Theme: Invalid theme file %s: missing id or name", themePath)
+				m.app.logDebug("Theme: Invalid theme file %s: missing id or name", themePath)
 			}
 			continue
 		}
@@ -284,7 +284,7 @@ func (m *ThemeManager) loadUserThemes() {
 		m.themes[theme.ID] = &theme
 
 		if m.app != nil {
-			m.app.LogDebug("Theme: Loaded user theme '%s' from %s", theme.Name, themePath)
+			m.app.logDebug("Theme: Loaded user theme '%s' from %s", theme.Name, themePath)
 		}
 	}
 }
@@ -372,7 +372,7 @@ func (m *ThemeManager) SetTheme(themeID string) error {
 	m.currentThemeID = themeID
 	if err := m.saveConfig(); err != nil {
 		if m.app != nil {
-			m.app.LogDebug("Theme: Failed to save config: %v", err)
+			m.app.logDebug("Theme: Failed to save config: %v", err)
 		}
 	}
 

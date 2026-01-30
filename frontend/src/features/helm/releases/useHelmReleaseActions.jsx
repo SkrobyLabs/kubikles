@@ -24,7 +24,8 @@ export const useHelmReleaseActions = () => {
                     tabContext={currentContext}
                     initialTab={initialTab}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'HelmRelease', name: release.name, namespace: release.namespace },
         });
     }, [openTab, currentContext]);
 

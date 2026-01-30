@@ -24,7 +24,8 @@ export const useCRDActions = () => {
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'CustomResourceDefinition', name: crd.metadata.name },
         });
     };
 

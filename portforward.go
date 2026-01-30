@@ -98,14 +98,14 @@ func (m *PortForwardManager) loadConfigs() {
 	data, err := os.ReadFile(m.configPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			m.app.LogDebug("PortForward: Failed to read config file: %v", err)
+			m.app.logDebug("PortForward: Failed to read config file: %v", err)
 		}
 		return
 	}
 
 	var storage PortForwardStorage
 	if err := json.Unmarshal(data, &storage); err != nil {
-		m.app.LogDebug("PortForward: Failed to parse config file: %v", err)
+		m.app.logDebug("PortForward: Failed to parse config file: %v", err)
 		return
 	}
 
@@ -115,7 +115,7 @@ func (m *PortForwardManager) loadConfigs() {
 		m.usedPorts[cfg.LocalPort] = cfg.ID
 	}
 
-	m.app.LogDebug("PortForward: Loaded %d configurations", len(m.configs))
+	m.app.logDebug("PortForward: Loaded %d configurations", len(m.configs))
 }
 
 // saveConfigs persists configurations to disk
@@ -191,7 +191,7 @@ func (m *PortForwardManager) AddConfig(cfg PortForwardConfig) (*PortForwardConfi
 	m.usedPorts[cfg.LocalPort] = cfg.ID
 
 	if err := m.saveConfigs(); err != nil {
-		m.app.LogDebug("PortForward: Failed to save configs: %v", err)
+		m.app.logDebug("PortForward: Failed to save configs: %v", err)
 	}
 
 	m.emitEvent(PortForwardEvent{
@@ -227,7 +227,7 @@ func (m *PortForwardManager) UpdateConfig(cfg PortForwardConfig) error {
 	m.configs[cfg.ID] = &cfg
 
 	if err := m.saveConfigs(); err != nil {
-		m.app.LogDebug("PortForward: Failed to save configs: %v", err)
+		m.app.logDebug("PortForward: Failed to save configs: %v", err)
 	}
 
 	m.emitEvent(PortForwardEvent{
@@ -261,7 +261,7 @@ func (m *PortForwardManager) DeleteConfig(configID string) error {
 	delete(m.configs, configID)
 
 	if err := m.saveConfigs(); err != nil {
-		m.app.LogDebug("PortForward: Failed to save configs: %v", err)
+		m.app.logDebug("PortForward: Failed to save configs: %v", err)
 	}
 
 	m.mutex.Unlock()
@@ -299,7 +299,7 @@ func (m *PortForwardManager) Start(configID string) error {
 	// Mark as running and persist (so state survives unexpected shutdown)
 	cfg.WasRunning = true
 	if err := m.saveConfigs(); err != nil {
-		m.app.LogDebug("PortForward: Failed to save running state on start: %v", err)
+		m.app.logDebug("PortForward: Failed to save running state on start: %v", err)
 	}
 
 	af := &ActivePortForward{
@@ -347,7 +347,7 @@ func (m *PortForwardManager) stopInternal(configID string, updateWasRunning bool
 		if cfg, cfgExists := m.configs[configID]; cfgExists {
 			cfg.WasRunning = false
 			if err := m.saveConfigs(); err != nil {
-				m.app.LogDebug("PortForward: Failed to save running state on stop: %v", err)
+				m.app.logDebug("PortForward: Failed to save running state on stop: %v", err)
 			}
 		}
 	}
@@ -363,7 +363,7 @@ func (m *PortForwardManager) stopInternal(configID string, updateWasRunning bool
 	select {
 	case <-af.doneChan:
 	case <-time.After(5 * time.Second):
-		m.app.LogDebug("PortForward: Timeout waiting for port forward to stop: %s", configID)
+		m.app.logDebug("PortForward: Timeout waiting for port forward to stop: %s", configID)
 	}
 
 	m.mutex.Lock()
@@ -408,7 +408,7 @@ func (m *PortForwardManager) CleanupIngressConfigs(contextName string) {
 
 	// Delete outside lock to avoid deadlock (DeleteConfig acquires lock)
 	for _, id := range toDelete {
-		m.app.LogDebug("PortForward: Cleaning up orphaned ingress config: %s", id)
+		m.app.logDebug("PortForward: Cleaning up orphaned ingress config: %s", id)
 		m.DeleteConfig(id)
 	}
 }
@@ -540,7 +540,7 @@ func (m *PortForwardManager) runPortForward(af *ActivePortForward) {
 			m.updateStatus(cfg.ID, "error", fmt.Sprintf("Failed to find pod for service: %v", err))
 			return
 		}
-		m.app.LogDebug("PortForward: Service %s resolved to pod %s", cfg.ResourceName, podName)
+		m.app.logDebug("PortForward: Service %s resolved to pod %s", cfg.ResourceName, podName)
 	}
 
 	// Get REST config for the specific context
@@ -597,7 +597,7 @@ func (m *PortForwardManager) runPortForward(af *ActivePortForward) {
 	select {
 	case <-readyChan:
 		m.updateStatus(cfg.ID, "running", "")
-		m.app.LogDebug("PortForward: Started %s localhost:%d -> %s:%d", cfg.ID, cfg.LocalPort, podName, cfg.RemotePort)
+		m.app.logDebug("PortForward: Started %s localhost:%d -> %s:%d", cfg.ID, cfg.LocalPort, podName, cfg.RemotePort)
 	case err := <-errChan:
 		m.updateStatus(cfg.ID, "error", fmt.Sprintf("Port forward failed: %v", err))
 		return
@@ -640,7 +640,7 @@ func (m *PortForwardManager) updateStatus(configID, status, errMsg string) {
 
 	// Log errors to debug
 	if status == "error" && errMsg != "" {
-		m.app.LogDebug("PortForward: Error for %s: %s", configID, errMsg)
+		m.app.logDebug("PortForward: Error for %s: %s", configID, errMsg)
 	}
 
 	eventType := status
@@ -673,9 +673,9 @@ func (m *PortForwardManager) SaveRunningState() {
 	}
 
 	if err := m.saveConfigs(); err != nil {
-		m.app.LogDebug("PortForward: Failed to save running state: %v", err)
+		m.app.logDebug("PortForward: Failed to save running state: %v", err)
 	} else {
-		m.app.LogDebug("PortForward: Saved running state for %d configs", len(m.configs))
+		m.app.logDebug("PortForward: Saved running state for %d configs", len(m.configs))
 	}
 }
 
@@ -684,7 +684,7 @@ func (m *PortForwardManager) SaveRunningState() {
 // Only starts forwards that were running when the app was closed (wasRunning=true)
 func (m *PortForwardManager) StartWithMode(contextName, mode string) {
 	if mode == "none" {
-		m.app.LogDebug("PortForward: Auto-start mode is 'none', not starting any forwards")
+		m.app.logDebug("PortForward: Auto-start mode is 'none', not starting any forwards")
 		return
 	}
 
@@ -719,12 +719,12 @@ func (m *PortForwardManager) StartWithMode(contextName, mode string) {
 	}
 	m.mutex.RUnlock()
 
-	m.app.LogDebug("PortForward: Starting %d port forwards with mode '%s' for context '%s' (skipped: %d not running, %d not favorite, %d wrong context, %d already active)",
+	m.app.logDebug("PortForward: Starting %d port forwards with mode '%s' for context '%s' (skipped: %d not running, %d not favorite, %d wrong context, %d already active)",
 		len(toStart), mode, contextName, skippedNotRunning, skippedNotFavorite, skippedWrongContext, skippedAlreadyActive)
 
 	for _, id := range toStart {
 		if err := m.Start(id); err != nil {
-			m.app.LogDebug("PortForward: Failed to start %s: %v", id, err)
+			m.app.logDebug("PortForward: Failed to start %s: %v", id, err)
 		}
 	}
 }
@@ -744,7 +744,7 @@ func (m *PortForwardManager) StartFavorites(contextName string) {
 
 	for _, id := range toStart {
 		if err := m.Start(id); err != nil {
-			m.app.LogDebug("PortForward: Failed to start favorite %s: %v", id, err)
+			m.app.logDebug("PortForward: Failed to start favorite %s: %v", id, err)
 		}
 	}
 }

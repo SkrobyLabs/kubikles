@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Terminal as XTerm } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
-import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
+import { EventsOn, EventsOff, getClientId } from '../../../wailsjs/runtime/runtime';
 import { StartTerminalSession, SendTerminalInput, ResizeTerminal, CloseTerminalSession } from '../../../wailsjs/go/main/App';
 import 'xterm/css/xterm.css';
 
@@ -83,7 +83,9 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }) => {
         xtermRef.current = term;
 
         // Start terminal session via Wails
-        StartTerminalSession({ namespace, pod, container, context, command })
+        // Pass clientId for server mode session cleanup on disconnect
+        const clientId = getClientId() || '';
+        StartTerminalSession({ namespace, pod, container, context, command, clientId })
             .then(sessionId => {
                 sessionIdRef.current = sessionId;
                 term.write('\r\n\x1b[32mConnected to terminal...\x1b[0m\r\n');

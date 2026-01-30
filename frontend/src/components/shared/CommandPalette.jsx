@@ -15,7 +15,7 @@ import { useDebugLogs } from '../../hooks/useDebugLogs';
  * Allows searching and navigating to any resource view including CRDs
  * Also supports actions like "Create Resource"
  */
-export default function CommandPalette({ isOpen, onClose, onCreateResource }) {
+export default function CommandPalette({ isOpen, onClose, onCreateResource, onToggleAI }) {
     const { setActiveView } = useUI();
     const { openConfigEditor } = useConfig();
     const { openPerformancePanel } = usePerformancePanel();
@@ -35,6 +35,7 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource }) {
         }
         // App utilities at the bottom
         const appActions = [
+            { id: 'action:ai-assistant', label: 'AI Assistant', path: 'Kubikles > AI Assistant', type: 'action', action: 'ai-assistant' },
             { id: 'action:settings', label: 'Settings', path: 'Kubikles > Settings', type: 'action', action: 'settings' },
             { id: 'action:performance', label: 'Performance', path: 'Kubikles > Performance', type: 'action', action: 'performance' },
             { id: 'action:debug', label: 'Debug', path: 'Kubikles > Debug', type: 'action', action: 'debug' },
@@ -122,6 +123,7 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource }) {
         if (item.type === 'action') {
             switch (item.action) {
                 case 'create-resource': onCreateResource?.(); break;
+                case 'ai-assistant': onToggleAI?.(); break;
                 case 'settings': openConfigEditor(); break;
                 case 'performance': openPerformancePanel(); break;
                 case 'debug': toggleDebug(); break;
@@ -131,7 +133,7 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource }) {
             setActiveView(item.viewId);
         }
         onClose();
-    }, [setActiveView, onClose, onCreateResource, openConfigEditor, openPerformancePanel, toggleDebug]);
+    }, [setActiveView, onClose, onCreateResource, onToggleAI, openConfigEditor, openPerformancePanel, toggleDebug]);
 
     // Handle keyboard navigation
     const handleKeyDown = useCallback((e) => {

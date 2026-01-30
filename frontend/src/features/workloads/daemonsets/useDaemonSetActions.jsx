@@ -85,7 +85,8 @@ export const useDaemonSetActions = () => {
                         ownerName={daemonSet.metadata.name}
                         tabContext={currentContext}
                     />
-                )
+                ),
+                resourceMeta: { kind: 'DaemonSet', name: daemonSet.metadata.name, namespace },
             });
         } catch (err) {
             Logger.error("Failed to get pods for DaemonSet", err);

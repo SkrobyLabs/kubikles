@@ -74,7 +74,8 @@ export const useReplicaSetActions = () => {
                         ownerName={replicaSet.metadata.name}
                         tabContext={currentContext}
                     />
-                )
+                ),
+                resourceMeta: { kind: 'ReplicaSet', name: replicaSet.metadata.name, namespace },
             });
         } catch (err) {
             Logger.error("Failed to get pods for ReplicaSet", err);

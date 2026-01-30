@@ -24,7 +24,8 @@ export const useClusterRoleBindingActions = () => {
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'ClusterRoleBinding', name: clusterRoleBinding.metadata.name },
         });
     };
 

@@ -14,6 +14,10 @@ export function ApplyYAML(arg1) {
   return window['go']['main']['App']['ApplyYAML'](arg1);
 }
 
+export function CancelAIRequest(arg1) {
+  return window['go']['main']['App']['CancelAIRequest'](arg1);
+}
+
 export function CancelConnectionTest() {
   return window['go']['main']['App']['CancelConnectionTest']();
 }
@@ -26,8 +30,20 @@ export function CancelMetricsRequest(arg1) {
   return window['go']['main']['App']['CancelMetricsRequest'](arg1);
 }
 
+export function CheckAIProvider() {
+  return window['go']['main']['App']['CheckAIProvider']();
+}
+
+export function ClearAISession(arg1) {
+  return window['go']['main']['App']['ClearAISession'](arg1);
+}
+
 export function ClearPrometheusConfig() {
   return window['go']['main']['App']['ClearPrometheusConfig']();
+}
+
+export function CloseAISession(arg1) {
+  return window['go']['main']['App']['CloseAISession'](arg1);
 }
 
 export function CloseTerminalSession(arg1) {
@@ -610,6 +626,10 @@ export function GetThemesDir() {
   return window['go']['main']['App']['GetThemesDir']();
 }
 
+export function GetToolDiscovery() {
+  return window['go']['main']['App']['GetToolDiscovery']();
+}
+
 export function GetValidatingWebhookConfigurationYaml(arg1) {
   return window['go']['main']['App']['GetValidatingWebhookConfigurationYaml'](arg1);
 }
@@ -810,8 +830,8 @@ export function ListValidatingWebhookConfigurations() {
   return window['go']['main']['App']['ListValidatingWebhookConfigurations']();
 }
 
-export function LogDebug(arg1, arg2) {
-  return window['go']['main']['App']['LogDebug'](arg1, arg2);
+export function LogDebug(arg1) {
+  return window['go']['main']['App']['LogDebug'](arg1);
 }
 
 export function LoginACRWithAzureCLI(arg1) {
@@ -902,6 +922,10 @@ export function SearchHelmChart(arg1) {
   return window['go']['main']['App']['SearchHelmChart'](arg1);
 }
 
+export function SendAIMessage(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['SendAIMessage'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
 export function SendTerminalInput(arg1, arg2) {
   return window['go']['main']['App']['SendTerminalInput'](arg1, arg2);
 }
@@ -944,6 +968,10 @@ export function SetRequestCancellationEnabled(arg1) {
 
 export function SetTheme(arg1) {
   return window['go']['main']['App']['SetTheme'](arg1);
+}
+
+export function StartAISession(arg1) {
+  return window['go']['main']['App']['StartAISession'](arg1);
 }
 
 export function StartAllContainersLogStream(arg1, arg2, arg3, arg4) {

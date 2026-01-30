@@ -28,7 +28,8 @@ export const useSecretActions = () => {
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'Secret', name: secret.metadata.name, namespace: secret.metadata.namespace },
         });
     };
 
@@ -48,7 +49,8 @@ export const useSecretActions = () => {
                     tabContext={currentContext}
                     initialMode="keyvalue"
                 />
-            )
+            ),
+            resourceMeta: { kind: 'Secret', name: secret.metadata.name, namespace: secret.metadata.namespace },
         });
     };
 
@@ -66,7 +68,8 @@ export const useSecretActions = () => {
                     resourceName={secret.metadata.name}
                     onClose={() => closeTab(tabId)}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'Secret', name: secret.metadata.name, namespace: secret.metadata.namespace },
         });
     };
 

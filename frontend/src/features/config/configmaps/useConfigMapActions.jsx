@@ -28,7 +28,8 @@ export const useConfigMapActions = () => {
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'ConfigMap', name: configMap.metadata.name, namespace: configMap.metadata.namespace },
         });
     };
 
@@ -48,7 +49,8 @@ export const useConfigMapActions = () => {
                     tabContext={currentContext}
                     initialMode="keyvalue"
                 />
-            )
+            ),
+            resourceMeta: { kind: 'ConfigMap', name: configMap.metadata.name, namespace: configMap.metadata.namespace },
         });
     };
 
@@ -66,7 +68,8 @@ export const useConfigMapActions = () => {
                     resourceName={configMap.metadata.name}
                     onClose={() => closeTab(tabId)}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'ConfigMap', name: configMap.metadata.name, namespace: configMap.metadata.namespace },
         });
     };
 

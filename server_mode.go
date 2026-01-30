@@ -50,6 +50,11 @@ func RunServer(assets embed.FS, port int, label string) {
 	// Initialize app
 	app.startupServerMode(ctx)
 
+	// Register disconnect listeners for session cleanup
+	for _, listener := range app.getDisconnectListeners() {
+		srv.AddDisconnectListener(listener)
+	}
+
 	// Run server (blocks until context is cancelled)
 	if err := srv.Run(ctx); err != nil {
 		crashlog.LogFatal("Server error: %v", err)

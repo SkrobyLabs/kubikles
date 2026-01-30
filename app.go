@@ -5,11 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"kubikles/pkg/ai"
 	"kubikles/pkg/certviewer"
+	"kubikles/pkg/tools"
 	"kubikles/pkg/crashlog"
 	"kubikles/pkg/events"
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
+	"kubikles/pkg/server"
 	"kubikles/pkg/terminal"
 	"os"
 	"os/exec"
@@ -47,6 +50,7 @@ type App struct {
 	k8sInitError          error // Stores K8s client initialization error for frontend display
 	helmClient            *helm.Client
 	terminalManager       *terminal.Manager
+	aiManager             *ai.Manager
 	watcherManager        *ResourceWatcherManager
 	portForwardManager    *PortForwardManager
 	ingressForwardManager *IngressForwardManager
@@ -243,7 +247,7 @@ func (m *ResourceWatcherManager) Subscribe(resourceType, namespace string) strin
 		}
 		// Increment ref count
 		atomic.AddInt32(&watcher.RefCount, 1)
-		m.app.LogDebug("ResourceWatcher: Reusing existing watcher for %s (refCount=%d)", key, atomic.LoadInt32(&watcher.RefCount))
+		m.app.logDebug("ResourceWatcher: Reusing existing watcher for %s (refCount=%d)", key, atomic.LoadInt32(&watcher.RefCount))
 		return key
 	}
 
@@ -264,7 +268,7 @@ func (m *ResourceWatcherManager) Subscribe(resourceType, namespace string) strin
 	m.app.totalWatchersCreated++
 	m.app.perfMutex.Unlock()
 
-	m.app.LogDebug("ResourceWatcher: Starting new watcher for %s", key)
+	m.app.logDebug("ResourceWatcher: Starting new watcher for %s", key)
 
 	// Start watch loop in goroutine
 	go m.app.watchResourceLoop(ctx, resourceType, namespace)
@@ -287,7 +291,7 @@ func (m *ResourceWatcherManager) SubscribeCRD(group, version, resource, namespac
 		}
 		// Increment ref count
 		atomic.AddInt32(&watcher.RefCount, 1)
-		m.app.LogDebug("ResourceWatcher: Reusing existing CRD watcher for %s (refCount=%d)", key, atomic.LoadInt32(&watcher.RefCount))
+		m.app.logDebug("ResourceWatcher: Reusing existing CRD watcher for %s (refCount=%d)", key, atomic.LoadInt32(&watcher.RefCount))
 		return key
 	}
 
@@ -311,7 +315,7 @@ func (m *ResourceWatcherManager) SubscribeCRD(group, version, resource, namespac
 	m.app.totalWatchersCreated++
 	m.app.perfMutex.Unlock()
 
-	m.app.LogDebug("ResourceWatcher: Starting new CRD watcher for %s", key)
+	m.app.logDebug("ResourceWatcher: Starting new CRD watcher for %s", key)
 
 	// Start watch loop in goroutine
 	go m.app.watchCRDLoop(ctx, group, version, resource, namespace)
@@ -326,19 +330,19 @@ func (m *ResourceWatcherManager) Unsubscribe(watcherKey string) {
 
 	watcher, exists := m.watchers[watcherKey]
 	if !exists {
-		m.app.LogDebug("ResourceWatcher: Unsubscribe called for non-existent watcher %s", watcherKey)
+		m.app.logDebug("ResourceWatcher: Unsubscribe called for non-existent watcher %s", watcherKey)
 		return
 	}
 
 	newCount := atomic.AddInt32(&watcher.RefCount, -1)
-	m.app.LogDebug("ResourceWatcher: Unsubscribe from %s (refCount=%d)", watcherKey, newCount)
+	m.app.logDebug("ResourceWatcher: Unsubscribe from %s (refCount=%d)", watcherKey, newCount)
 
 	if newCount <= 0 {
 		// Schedule cleanup after delay
 		watcher.CleanupTimer = time.AfterFunc(WatcherCleanupDelay, func() {
 			m.cleanup(watcherKey)
 		})
-		m.app.LogDebug("ResourceWatcher: Scheduled cleanup for %s in %v", watcherKey, WatcherCleanupDelay)
+		m.app.logDebug("ResourceWatcher: Scheduled cleanup for %s in %v", watcherKey, WatcherCleanupDelay)
 	}
 }
 
@@ -354,7 +358,7 @@ func (m *ResourceWatcherManager) cleanup(watcherKey string) {
 
 	// Check if refCount is still 0 (someone might have subscribed during the delay)
 	if atomic.LoadInt32(&watcher.RefCount) > 0 {
-		m.app.LogDebug("ResourceWatcher: Cleanup cancelled for %s - new subscribers", watcherKey)
+		m.app.logDebug("ResourceWatcher: Cleanup cancelled for %s - new subscribers", watcherKey)
 		return
 	}
 
@@ -372,7 +376,7 @@ func (m *ResourceWatcherManager) cleanup(watcherKey string) {
 	m.app.totalWatchersCleaned++
 	m.app.perfMutex.Unlock()
 
-	m.app.LogDebug("ResourceWatcher: Cleaned up watcher %s", watcherKey)
+	m.app.logDebug("ResourceWatcher: Cleaned up watcher %s", watcherKey)
 }
 
 // StopAll stops all active watchers immediately (called on context switch)
@@ -380,7 +384,7 @@ func (m *ResourceWatcherManager) StopAll() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	m.app.LogDebug("ResourceWatcher: Stopping all watchers (%d active)", len(m.watchers))
+	m.app.logDebug("ResourceWatcher: Stopping all watchers (%d active)", len(m.watchers))
 
 	for key, watcher := range m.watchers {
 		// Cancel any pending cleanup timers
@@ -393,7 +397,7 @@ func (m *ResourceWatcherManager) StopAll() {
 		}
 		// Clean up event statistics (prevents memory leak)
 		m.app.clearEventStats(key)
-		m.app.LogDebug("ResourceWatcher: Stopped watcher %s", key)
+		m.app.logDebug("ResourceWatcher: Stopped watcher %s", key)
 	}
 
 	// Clear all watchers
@@ -418,6 +422,7 @@ func NewApp() *App {
 		k8sInitError:          err,
 		helmClient:            helm.NewClient(),
 		terminalManager:       terminal.NewManager(),
+		aiManager:             ai.NewManager(ai.NewClaudeCLIProvider()),
 		logStreams:            make(map[string]context.CancelFunc),
 		prometheusConfigs:     make(map[string]*k8s.PrometheusInfo),
 		prometheusConfigPath:  filepath.Join(appDir, "prometheus_config.json"),
@@ -452,6 +457,10 @@ func (a *App) startup(ctx context.Context) {
 	if a.terminalManager != nil {
 		a.terminalManager.SetContext(ctx)
 		a.terminalManager.SetEmitter(a.emitter)
+	}
+	// Set context on AI manager for event emission
+	if a.aiManager != nil {
+		a.aiManager.SetContext(ctx)
 	}
 
 	// Log K8s client status
@@ -497,6 +506,11 @@ func (a *App) startupServerMode(ctx context.Context) {
 		a.terminalManager.SetEmitter(a.emitter)
 	}
 
+	// Set emitter on AI manager (server mode uses custom emitter via app.emitter)
+	if a.aiManager != nil {
+		a.aiManager.SetEmitter(a.emitter, ctx)
+	}
+
 	if a.k8sInitError != nil {
 		crashlog.LogError("K8s client initialization failed: %v", a.k8sInitError)
 	} else {
@@ -504,6 +518,19 @@ func (a *App) startupServerMode(ctx context.Context) {
 	}
 
 	crashlog.Log("App startup complete (server mode)")
+}
+
+// getDisconnectListeners returns components that need to clean up when a WebSocket client disconnects.
+// Used by server mode to register listeners for session cleanup.
+func (a *App) getDisconnectListeners() []server.DisconnectListener {
+	var listeners []server.DisconnectListener
+	if a.aiManager != nil {
+		listeners = append(listeners, a.aiManager)
+	}
+	if a.terminalManager != nil {
+		listeners = append(listeners, a.terminalManager)
+	}
+	return listeners
 }
 
 // emitEvent sends an event to the frontend via the configured emitter.
@@ -524,7 +551,7 @@ func (a *App) openBrowserURL(url string) {
 
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
-	a.LogDebug("App shutdown initiated")
+	a.logDebug("App shutdown initiated")
 
 	// Flush any pending coalesced events
 	if a.eventCoalescer != nil {
@@ -551,7 +578,84 @@ func (a *App) shutdown(ctx context.Context) {
 		a.terminalManager.CloseAllSessions()
 	}
 
-	a.LogDebug("App shutdown complete")
+	// Close all AI sessions
+	if a.aiManager != nil {
+		a.aiManager.CloseAllSessions()
+	}
+
+	a.logDebug("App shutdown complete")
+}
+
+// --- AI Assistant Methods ---
+
+// AIProviderStatus represents the availability status of the AI provider
+type AIProviderStatus struct {
+	Available bool   `json:"available"`
+	Status    string `json:"status"`
+	Provider  string `json:"provider"`
+}
+
+// CheckAIProvider checks if an AI provider (Claude CLI) is available
+func (a *App) CheckAIProvider() AIProviderStatus {
+	if a.aiManager == nil {
+		return AIProviderStatus{Available: false, Status: "AI manager not initialized"}
+	}
+	available, status := a.aiManager.CheckProvider()
+	return AIProviderStatus{Available: available, Status: status, Provider: a.aiManager.ProviderName()}
+}
+
+// GetToolDiscovery returns tool definitions and view/action mappings for the frontend.
+// This allows the frontend to dynamically determine which tools are relevant for each view.
+func (a *App) GetToolDiscovery() tools.ToolDiscoveryResponse {
+	return tools.DefaultToolRegistry.GetDiscoveryResponse()
+}
+
+// StartAISession creates a new AI chat session and returns the session ID.
+// clientID is the WebSocket client ID for server mode (pass empty string for desktop mode).
+func (a *App) StartAISession(clientID string) string {
+	if a.aiManager == nil {
+		return ""
+	}
+	return a.aiManager.StartSession(clientID)
+}
+
+// SendAIMessage sends a message in an AI session. Streams response via ai:response events.
+func (a *App) SendAIMessage(sessionID, message, systemPrompt, model string, allowedTools []string, timeoutSeconds int) {
+	if a.aiManager == nil {
+		a.emitEvent("ai:response", ai.AIResponseEvent{
+			SessionID: sessionID, Error: "AI is not configured", Done: true,
+		})
+		return
+	}
+	k8sCtx := ""
+	if a.k8sClient != nil {
+		k8sCtx = a.k8sClient.GetCurrentContext()
+	}
+	a.aiManager.SendMessage(sessionID, message, systemPrompt, model, k8sCtx, allowedTools, timeoutSeconds)
+}
+
+// CancelAIRequest cancels the in-progress AI request for a session
+func (a *App) CancelAIRequest(sessionID string) {
+	if a.aiManager == nil {
+		return
+	}
+	a.aiManager.CancelRequest(sessionID)
+}
+
+// ClearAISession resets an AI session (new session for fresh conversation). Returns new session ID.
+func (a *App) ClearAISession(sessionID string) string {
+	if a.aiManager == nil {
+		return ""
+	}
+	return a.aiManager.ClearSession(sessionID)
+}
+
+// CloseAISession closes and cleans up an AI session
+func (a *App) CloseAISession(sessionID string) {
+	if a.aiManager == nil {
+		return
+	}
+	a.aiManager.CloseSession(sessionID)
 }
 
 // recordWatcherEvent records an event for a watcher key (called from watch loops)
@@ -765,7 +869,7 @@ func (a *App) SetK8sAPITimeout(ms int) {
 func (a *App) SetForceHTTP1(enabled bool) {
 	if a.k8sClient != nil {
 		a.k8sClient.SetForceHTTP1(enabled)
-		a.LogDebug("Force HTTP/1.1: %v", enabled)
+		a.logDebug("Force HTTP/1.1: %v", enabled)
 	}
 }
 
@@ -775,7 +879,7 @@ func (a *App) SetForceHTTP1(enabled bool) {
 func (a *App) SetClientPoolSize(size int) {
 	if a.k8sClient != nil {
 		a.k8sClient.SetClientPoolSize(size)
-		a.LogDebug("Client pool size: %d", size)
+		a.logDebug("Client pool size: %d", size)
 	}
 }
 
@@ -786,7 +890,7 @@ func (a *App) Greet(name string) string {
 
 // TestEmit emits a test debug log event
 func (a *App) TestEmit() {
-	a.LogDebug("TestEmit called from frontend")
+	a.logDebug("TestEmit called from frontend")
 }
 
 // --- K8s Methods Exposed to Frontend ---
@@ -825,7 +929,7 @@ func (a *App) SwitchContext(name string) error {
 	// Stop all existing watchers before switching context
 	// This prevents stale events from the old context being processed
 	if a.watcherManager != nil {
-		a.LogDebug("SwitchContext: Stopping all watchers before context switch")
+		a.logDebug("SwitchContext: Stopping all watchers before context switch")
 		a.watcherManager.StopAll()
 	}
 
@@ -971,9 +1075,9 @@ func (a *App) GetPodMetrics() (*k8s.PodMetricsResult, error) {
 // GetNodeMetricsFromPrometheus fetches node metrics from Prometheus (fallback when metrics-server unavailable)
 func (a *App) GetNodeMetricsFromPrometheus(prometheusNamespace, prometheusService string, prometheusPort int) (*k8s.NodeMetricsResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetNodeMetricsFromPrometheus called: context=%s, prometheus=%s/%s:%d", currentContext, prometheusNamespace, prometheusService, prometheusPort)
+	a.logDebug("GetNodeMetricsFromPrometheus called: context=%s, prometheus=%s/%s:%d", currentContext, prometheusNamespace, prometheusService, prometheusPort)
 	if a.k8sClient == nil {
-		a.LogDebug("GetNodeMetricsFromPrometheus: k8s client not initialized")
+		a.logDebug("GetNodeMetricsFromPrometheus: k8s client not initialized")
 		return &k8s.NodeMetricsResult{Available: false}, nil
 	}
 
@@ -986,9 +1090,9 @@ func (a *App) GetNodeMetricsFromPrometheus(prometheusNamespace, prometheusServic
 
 	result, err := a.k8sClient.GetNodeMetricsFromPrometheus(currentContext, info)
 	if err != nil {
-		a.LogDebug("GetNodeMetricsFromPrometheus error: %v", err)
+		a.logDebug("GetNodeMetricsFromPrometheus error: %v", err)
 	} else {
-		a.LogDebug("GetNodeMetricsFromPrometheus result: available=%v, metrics_count=%d, error=%s", result.Available, len(result.Metrics), result.Error)
+		a.logDebug("GetNodeMetricsFromPrometheus result: available=%v, metrics_count=%d, error=%s", result.Available, len(result.Metrics), result.Error)
 	}
 	return result, err
 }
@@ -996,9 +1100,9 @@ func (a *App) GetNodeMetricsFromPrometheus(prometheusNamespace, prometheusServic
 // GetPodMetricsFromPrometheus fetches pod metrics from Prometheus (fallback when metrics-server unavailable)
 func (a *App) GetPodMetricsFromPrometheus(prometheusNamespace, prometheusService string, prometheusPort int) (*k8s.PodMetricsResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetPodMetricsFromPrometheus called: context=%s, prometheus=%s/%s:%d", currentContext, prometheusNamespace, prometheusService, prometheusPort)
+	a.logDebug("GetPodMetricsFromPrometheus called: context=%s, prometheus=%s/%s:%d", currentContext, prometheusNamespace, prometheusService, prometheusPort)
 	if a.k8sClient == nil {
-		a.LogDebug("GetPodMetricsFromPrometheus: k8s client not initialized")
+		a.logDebug("GetPodMetricsFromPrometheus: k8s client not initialized")
 		return &k8s.PodMetricsResult{Available: false}, nil
 	}
 
@@ -1011,15 +1115,15 @@ func (a *App) GetPodMetricsFromPrometheus(prometheusNamespace, prometheusService
 
 	result, err := a.k8sClient.GetPodMetricsFromPrometheus(currentContext, info)
 	if err != nil {
-		a.LogDebug("GetPodMetricsFromPrometheus error: %v", err)
+		a.logDebug("GetPodMetricsFromPrometheus error: %v", err)
 	} else {
-		a.LogDebug("GetPodMetricsFromPrometheus result: available=%v, metrics_count=%d, error=%s", result.Available, len(result.Metrics), result.Error)
+		a.logDebug("GetPodMetricsFromPrometheus result: available=%v, metrics_count=%d, error=%s", result.Available, len(result.Metrics), result.Error)
 	}
 	return result, err
 }
 
 func (a *App) GetNodeYaml(name string) (string, error) {
-	a.LogDebug("GetNodeYaml called: name=%s", name)
+	a.logDebug("GetNodeYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1027,7 +1131,7 @@ func (a *App) GetNodeYaml(name string) (string, error) {
 }
 
 func (a *App) UpdateNodeYaml(name, yamlContent string) error {
-	a.LogDebug("UpdateNodeYaml called: name=%s", name)
+	a.logDebug("UpdateNodeYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1036,7 +1140,7 @@ func (a *App) UpdateNodeYaml(name, yamlContent string) error {
 
 func (a *App) DeleteNode(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteNode called: context=%s, name=%s", currentContext, name)
+	a.logDebug("DeleteNode called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1045,7 +1149,7 @@ func (a *App) DeleteNode(name string) error {
 
 func (a *App) SetNodeSchedulable(name string, schedulable bool) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("SetNodeSchedulable called: context=%s, name=%s, schedulable=%v", currentContext, name, schedulable)
+	a.logDebug("SetNodeSchedulable called: context=%s, name=%s, schedulable=%v", currentContext, name, schedulable)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1060,7 +1164,7 @@ type NodeDebugPodResult struct {
 
 func (a *App) CreateNodeDebugPod(nodeName string) (*NodeDebugPodResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("CreateNodeDebugPod called: context=%s, nodeName=%s", currentContext, nodeName)
+	a.logDebug("CreateNodeDebugPod called: context=%s, nodeName=%s", currentContext, nodeName)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -1092,7 +1196,7 @@ func (a *App) ListNamespaces(requestId string) ([]v1.Namespace, error) {
 }
 
 func (a *App) GetNamespaceResourceCounts(namespace string) (*k8s.NamespaceResourceCounts, error) {
-	a.LogDebug("GetNamespaceResourceCounts called: namespace=%s", namespace)
+	a.logDebug("GetNamespaceResourceCounts called: namespace=%s", namespace)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -1100,7 +1204,7 @@ func (a *App) GetNamespaceResourceCounts(namespace string) (*k8s.NamespaceResour
 }
 
 func (a *App) DeleteNamespace(name string) error {
-	a.LogDebug("DeleteNamespace called: name=%s", name)
+	a.logDebug("DeleteNamespace called: name=%s", name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1108,7 +1212,7 @@ func (a *App) DeleteNamespace(name string) error {
 }
 
 func (a *App) GetNamespaceYAML(name string) (string, error) {
-	a.LogDebug("GetNamespaceYAML called: name=%s", name)
+	a.logDebug("GetNamespaceYAML called: name=%s", name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1116,7 +1220,7 @@ func (a *App) GetNamespaceYAML(name string) (string, error) {
 }
 
 func (a *App) UpdateNamespaceYAML(name string, yamlContent string) error {
-	a.LogDebug("UpdateNamespaceYAML called: name=%s", name)
+	a.logDebug("UpdateNamespaceYAML called: name=%s", name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1131,7 +1235,7 @@ func (a *App) ListEvents(namespace string) ([]v1.Event, error) {
 }
 
 func (a *App) GetEventYAML(namespace, name string) (string, error) {
-	a.LogDebug("GetEventYAML called: namespace=%s, name=%s", namespace, name)
+	a.logDebug("GetEventYAML called: namespace=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1139,7 +1243,7 @@ func (a *App) GetEventYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateEventYAML(namespace, name string, yamlContent string) error {
-	a.LogDebug("UpdateEventYAML called: namespace=%s, name=%s", namespace, name)
+	a.logDebug("UpdateEventYAML called: namespace=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1147,7 +1251,7 @@ func (a *App) UpdateEventYAML(namespace, name string, yamlContent string) error 
 }
 
 func (a *App) DeleteEvent(namespace, name string) error {
-	a.LogDebug("DeleteEvent called: namespace=%s, name=%s", namespace, name)
+	a.logDebug("DeleteEvent called: namespace=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1172,7 +1276,7 @@ func (a *App) ListServices(requestId, namespace string) ([]v1.Service, error) {
 }
 
 func (a *App) GetServiceYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetServiceYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetServiceYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1180,7 +1284,7 @@ func (a *App) GetServiceYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateServiceYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateServiceYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateServiceYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1189,7 +1293,7 @@ func (a *App) UpdateServiceYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteService(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteService called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteService called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1205,7 +1309,7 @@ func (a *App) ListIngresses(namespace string) ([]networkingv1.Ingress, error) {
 }
 
 func (a *App) GetIngressYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetIngressYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetIngressYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1213,7 +1317,7 @@ func (a *App) GetIngressYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateIngressYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateIngressYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateIngressYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1222,7 +1326,7 @@ func (a *App) UpdateIngressYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteIngress(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteIngress called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteIngress called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1232,7 +1336,7 @@ func (a *App) DeleteIngress(namespace, name string) error {
 // IngressClass operations (cluster-scoped)
 func (a *App) ListIngressClasses() ([]networkingv1.IngressClass, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ListIngressClasses called: context=%s", currentContext)
+	a.logDebug("ListIngressClasses called: context=%s", currentContext)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -1240,7 +1344,7 @@ func (a *App) ListIngressClasses() ([]networkingv1.IngressClass, error) {
 }
 
 func (a *App) GetIngressClassYaml(name string) (string, error) {
-	a.LogDebug("GetIngressClassYaml called: name=%s", name)
+	a.logDebug("GetIngressClassYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1248,7 +1352,7 @@ func (a *App) GetIngressClassYaml(name string) (string, error) {
 }
 
 func (a *App) UpdateIngressClassYaml(name, yamlContent string) error {
-	a.LogDebug("UpdateIngressClassYaml called: name=%s", name)
+	a.logDebug("UpdateIngressClassYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1257,7 +1361,7 @@ func (a *App) UpdateIngressClassYaml(name, yamlContent string) error {
 
 func (a *App) DeleteIngressClass(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteIngressClass called: context=%s, name=%s", currentContext, name)
+	a.logDebug("DeleteIngressClass called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1322,7 +1426,7 @@ func (a *App) ListSecretsMetadata(requestId, namespace string) ([]k8s.SecretList
 
 // ConfigMap YAML operations
 func (a *App) GetConfigMapYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetConfigMapYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetConfigMapYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1330,7 +1434,7 @@ func (a *App) GetConfigMapYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateConfigMapYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateConfigMapYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateConfigMapYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1338,7 +1442,7 @@ func (a *App) UpdateConfigMapYaml(namespace, name, yamlContent string) error {
 }
 
 func (a *App) DeleteConfigMap(namespace, name string) error {
-	a.LogDebug("DeleteConfigMap called: ns=%s, name=%s", namespace, name)
+	a.logDebug("DeleteConfigMap called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1346,7 +1450,7 @@ func (a *App) DeleteConfigMap(namespace, name string) error {
 }
 
 func (a *App) GetConfigMapData(namespace, name string) (map[string]string, error) {
-	a.LogDebug("GetConfigMapData called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetConfigMapData called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -1354,7 +1458,7 @@ func (a *App) GetConfigMapData(namespace, name string) (map[string]string, error
 }
 
 func (a *App) UpdateConfigMapData(namespace, name string, data map[string]string) error {
-	a.LogDebug("UpdateConfigMapData called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateConfigMapData called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1363,7 +1467,7 @@ func (a *App) UpdateConfigMapData(namespace, name string, data map[string]string
 
 // Secret YAML operations
 func (a *App) GetSecretYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetSecretYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetSecretYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1371,7 +1475,7 @@ func (a *App) GetSecretYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateSecretYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateSecretYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateSecretYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1379,7 +1483,7 @@ func (a *App) UpdateSecretYaml(namespace, name, yamlContent string) error {
 }
 
 func (a *App) DeleteSecret(namespace, name string) error {
-	a.LogDebug("DeleteSecret called: ns=%s, name=%s", namespace, name)
+	a.logDebug("DeleteSecret called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1387,7 +1491,7 @@ func (a *App) DeleteSecret(namespace, name string) error {
 }
 
 func (a *App) GetSecretData(namespace, name string) (map[string]string, error) {
-	a.LogDebug("GetSecretData called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetSecretData called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -1395,7 +1499,7 @@ func (a *App) GetSecretData(namespace, name string) (map[string]string, error) {
 }
 
 func (a *App) UpdateSecretData(namespace, name string, data map[string]string) error {
-	a.LogDebug("UpdateSecretData called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateSecretData called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1421,7 +1525,7 @@ func (a *App) ListDeployments(requestId, namespace string) ([]appsv1.Deployment,
 
 func (a *App) GetPodLogs(namespace, podName, containerName string, timestamps bool, previous bool, sinceTime string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetPodLogs called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v, previous=%v, sinceTime=%s", currentContext, namespace, podName, containerName, timestamps, previous, sinceTime)
+	a.logDebug("GetPodLogs called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v, previous=%v, sinceTime=%s", currentContext, namespace, podName, containerName, timestamps, previous, sinceTime)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1430,7 +1534,7 @@ func (a *App) GetPodLogs(namespace, podName, containerName string, timestamps bo
 
 func (a *App) GetAllPodLogs(namespace, podName, containerName string, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetAllPodLogs called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v, previous=%v", currentContext, namespace, podName, containerName, timestamps, previous)
+	a.logDebug("GetAllPodLogs called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v, previous=%v", currentContext, namespace, podName, containerName, timestamps, previous)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1439,7 +1543,7 @@ func (a *App) GetAllPodLogs(namespace, podName, containerName string, timestamps
 
 func (a *App) GetPodLogsFromStart(namespace, podName, containerName string, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetPodLogsFromStart called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v, previous=%v", currentContext, namespace, podName, containerName, timestamps, previous)
+	a.logDebug("GetPodLogsFromStart called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v, previous=%v", currentContext, namespace, podName, containerName, timestamps, previous)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1454,7 +1558,7 @@ type LogChunkResult struct {
 
 func (a *App) GetPodLogsBefore(namespace, podName, containerName string, timestamps bool, previous bool, beforeTime string, limit int) (*LogChunkResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetPodLogsBefore called: context=%s, ns=%s, pod=%s, container=%s, beforeTime=%s, limit=%d", currentContext, namespace, podName, containerName, beforeTime, limit)
+	a.logDebug("GetPodLogsBefore called: context=%s, ns=%s, pod=%s, container=%s, beforeTime=%s, limit=%d", currentContext, namespace, podName, containerName, beforeTime, limit)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -1467,7 +1571,7 @@ func (a *App) GetPodLogsBefore(namespace, podName, containerName string, timesta
 
 func (a *App) GetPodLogsAfter(namespace, podName, containerName string, timestamps bool, previous bool, afterTime string, limit int) (*LogChunkResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetPodLogsAfter called: context=%s, ns=%s, pod=%s, container=%s, afterTime=%s, limit=%d", currentContext, namespace, podName, containerName, afterTime, limit)
+	a.logDebug("GetPodLogsAfter called: context=%s, ns=%s, pod=%s, container=%s, afterTime=%s, limit=%d", currentContext, namespace, podName, containerName, afterTime, limit)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -1481,7 +1585,7 @@ func (a *App) GetPodLogsAfter(namespace, podName, containerName string, timestam
 // GetAllContainersLogs fetches logs from all containers in a pod, merged by timestamp
 func (a *App) GetAllContainersLogs(namespace, podName string, containerNames []string, timestamps bool, previous bool, sinceTime string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetAllContainersLogs called: context=%s, ns=%s, pod=%s, containers=%v, timestamps=%v, previous=%v, sinceTime=%s", currentContext, namespace, podName, containerNames, timestamps, previous, sinceTime)
+	a.logDebug("GetAllContainersLogs called: context=%s, ns=%s, pod=%s, containers=%v, timestamps=%v, previous=%v, sinceTime=%s", currentContext, namespace, podName, containerNames, timestamps, previous, sinceTime)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1491,7 +1595,7 @@ func (a *App) GetAllContainersLogs(namespace, podName string, containerNames []s
 // GetAllContainersLogsAll fetches all logs from all containers, merged by timestamp
 func (a *App) GetAllContainersLogsAll(namespace, podName string, containerNames []string, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetAllContainersLogsAll called: context=%s, ns=%s, pod=%s, containers=%v, timestamps=%v, previous=%v", currentContext, namespace, podName, containerNames, timestamps, previous)
+	a.logDebug("GetAllContainersLogsAll called: context=%s, ns=%s, pod=%s, containers=%v, timestamps=%v, previous=%v", currentContext, namespace, podName, containerNames, timestamps, previous)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1501,7 +1605,7 @@ func (a *App) GetAllContainersLogsAll(namespace, podName string, containerNames 
 // GetAllContainersLogsFromStart fetches the first N lines from all containers, merged by timestamp
 func (a *App) GetAllContainersLogsFromStart(namespace, podName string, containerNames []string, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetAllContainersLogsFromStart called: context=%s, ns=%s, pod=%s, containers=%v, timestamps=%v, previous=%v", currentContext, namespace, podName, containerNames, timestamps, previous)
+	a.logDebug("GetAllContainersLogsFromStart called: context=%s, ns=%s, pod=%s, containers=%v, timestamps=%v, previous=%v", currentContext, namespace, podName, containerNames, timestamps, previous)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1511,7 +1615,7 @@ func (a *App) GetAllContainersLogsFromStart(namespace, podName string, container
 // GetAllContainersLogsBefore fetches logs before a given timestamp from all containers
 func (a *App) GetAllContainersLogsBefore(namespace, podName string, containerNames []string, timestamps bool, previous bool, beforeTime string, limit int) (*LogChunkResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetAllContainersLogsBefore called: context=%s, ns=%s, pod=%s, containers=%v, beforeTime=%s, limit=%d", currentContext, namespace, podName, containerNames, beforeTime, limit)
+	a.logDebug("GetAllContainersLogsBefore called: context=%s, ns=%s, pod=%s, containers=%v, beforeTime=%s, limit=%d", currentContext, namespace, podName, containerNames, beforeTime, limit)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -1525,7 +1629,7 @@ func (a *App) GetAllContainersLogsBefore(namespace, podName string, containerNam
 // GetAllContainersLogsAfter fetches logs after a given timestamp from all containers
 func (a *App) GetAllContainersLogsAfter(namespace, podName string, containerNames []string, timestamps bool, previous bool, afterTime string, limit int) (*LogChunkResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetAllContainersLogsAfter called: context=%s, ns=%s, pod=%s, containers=%v, afterTime=%s, limit=%d", currentContext, namespace, podName, containerNames, afterTime, limit)
+	a.logDebug("GetAllContainersLogsAfter called: context=%s, ns=%s, pod=%s, containers=%v, afterTime=%s, limit=%d", currentContext, namespace, podName, containerNames, afterTime, limit)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -1551,7 +1655,7 @@ func (a *App) StartAllContainersLogStream(namespace, podName string, containerNa
 	sb.WriteString("/__ALL__-")
 	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
 	streamID := sb.String()
-	a.LogDebug("StartAllContainersLogStream: streamID=%s, containers=%v", streamID, containerNames)
+	a.logDebug("StartAllContainersLogStream: streamID=%s, containers=%v", streamID, containerNames)
 
 	// Create a cancellable context for this stream
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1578,7 +1682,7 @@ func (a *App) StartAllContainersLogStream(namespace, podName string, containerNa
 		})
 
 		if err != nil && err != context.Canceled {
-			a.LogDebug("All containers log stream error: %v", err)
+			a.logDebug("All containers log stream error: %v", err)
 			a.logCoalescer.EmitError(streamID, err.Error())
 		}
 	}()
@@ -1595,7 +1699,7 @@ type PodContainerPair struct {
 // GetAllPodsLogs fetches logs from multiple pods, merged by timestamp
 func (a *App) GetAllPodsLogs(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, sinceTime string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetAllPodsLogs called: context=%s, ns=%s, pods=%d, allContainers=%v, timestamps=%v, previous=%v", currentContext, namespace, len(pods), allContainers, timestamps, previous)
+	a.logDebug("GetAllPodsLogs called: context=%s, ns=%s, pods=%d, allContainers=%v, timestamps=%v, previous=%v", currentContext, namespace, len(pods), allContainers, timestamps, previous)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1610,7 +1714,7 @@ func (a *App) GetAllPodsLogs(namespace string, pods []PodContainerPair, allConta
 // GetAllPodsLogsAll fetches all logs from multiple pods, merged by timestamp
 func (a *App) GetAllPodsLogsAll(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetAllPodsLogsAll called: context=%s, ns=%s, pods=%d, allContainers=%v", currentContext, namespace, len(pods), allContainers)
+	a.logDebug("GetAllPodsLogsAll called: context=%s, ns=%s, pods=%d, allContainers=%v", currentContext, namespace, len(pods), allContainers)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1624,7 +1728,7 @@ func (a *App) GetAllPodsLogsAll(namespace string, pods []PodContainerPair, allCo
 // GetAllPodsLogsFromStart fetches the first N lines from multiple pods, merged by timestamp
 func (a *App) GetAllPodsLogsFromStart(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetAllPodsLogsFromStart called: context=%s, ns=%s, pods=%d, allContainers=%v", currentContext, namespace, len(pods), allContainers)
+	a.logDebug("GetAllPodsLogsFromStart called: context=%s, ns=%s, pods=%d, allContainers=%v", currentContext, namespace, len(pods), allContainers)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1638,7 +1742,7 @@ func (a *App) GetAllPodsLogsFromStart(namespace string, pods []PodContainerPair,
 // GetAllPodsLogsBefore fetches logs before a given timestamp from multiple pods
 func (a *App) GetAllPodsLogsBefore(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, beforeTime string, limit int) (*LogChunkResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetAllPodsLogsBefore called: context=%s, ns=%s, pods=%d, allContainers=%v, beforeTime=%s", currentContext, namespace, len(pods), allContainers, beforeTime)
+	a.logDebug("GetAllPodsLogsBefore called: context=%s, ns=%s, pods=%d, allContainers=%v, beforeTime=%s", currentContext, namespace, len(pods), allContainers, beforeTime)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -1656,7 +1760,7 @@ func (a *App) GetAllPodsLogsBefore(namespace string, pods []PodContainerPair, al
 // GetAllPodsLogsAfter fetches logs after a given timestamp from multiple pods
 func (a *App) GetAllPodsLogsAfter(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, afterTime string, limit int) (*LogChunkResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetAllPodsLogsAfter called: context=%s, ns=%s, pods=%d, allContainers=%v, afterTime=%s", currentContext, namespace, len(pods), allContainers, afterTime)
+	a.logDebug("GetAllPodsLogsAfter called: context=%s, ns=%s, pods=%d, allContainers=%v, afterTime=%s", currentContext, namespace, len(pods), allContainers, afterTime)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -1683,7 +1787,7 @@ func (a *App) StartAllPodsLogStream(namespace string, pods []PodContainerPair, a
 	sb.WriteString("/__ALL_PODS__-")
 	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
 	streamID := sb.String()
-	a.LogDebug("StartAllPodsLogStream: streamID=%s, pods=%d, allContainers=%v", streamID, len(pods), allContainers)
+	a.logDebug("StartAllPodsLogStream: streamID=%s, pods=%d, allContainers=%v", streamID, len(pods), allContainers)
 
 	k8sPods := make([]k8s.PodContainerPair, len(pods))
 	for i, p := range pods {
@@ -1709,7 +1813,7 @@ func (a *App) StartAllPodsLogStream(namespace string, pods []PodContainerPair, a
 		})
 
 		if err != nil && err != context.Canceled {
-			a.LogDebug("All pods log stream error: %v", err)
+			a.logDebug("All pods log stream error: %v", err)
 			a.logCoalescer.EmitError(streamID, err.Error())
 		}
 	}()
@@ -1743,7 +1847,7 @@ func (a *App) StartLogStream(namespace, podName, containerName string, timestamp
 	sb.WriteByte('-')
 	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
 	streamID := sb.String()
-	a.LogDebug("StartLogStream: streamID=%s", streamID)
+	a.logDebug("StartLogStream: streamID=%s", streamID)
 
 	// Create a cancellable context for this stream
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1771,7 +1875,7 @@ func (a *App) StartLogStream(namespace, podName, containerName string, timestamp
 		})
 
 		if err != nil && err != context.Canceled {
-			a.LogDebug("Log stream error: %v", err)
+			a.logDebug("Log stream error: %v", err)
 			a.logCoalescer.EmitError(streamID, err.Error())
 		}
 	}()
@@ -1781,7 +1885,7 @@ func (a *App) StartLogStream(namespace, podName, containerName string, timestamp
 
 // StopLogStream stops an active log stream
 func (a *App) StopLogStream(streamID string) {
-	a.LogDebug("StopLogStream: streamID=%s", streamID)
+	a.logDebug("StopLogStream: streamID=%s", streamID)
 	a.logStreamsMutex.Lock()
 	defer a.logStreamsMutex.Unlock()
 
@@ -1791,13 +1895,18 @@ func (a *App) StopLogStream(streamID string) {
 	}
 }
 
-// LogDebug sends a debug message to the frontend
-func (a *App) LogDebug(format string, args ...interface{}) {
+// logDebug is an internal helper for formatted debug logging (not exported to frontend)
+func (a *App) logDebug(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	fmt.Println("DEBUG:", msg)
 	if a.ctx != nil {
-		a.emitEvent( "debug-log", msg)
+		a.emitEvent("debug-log", msg)
 	}
+}
+
+// LogDebug sends a debug message to the frontend (exported as single-arg for Wails binding compatibility)
+func (a *App) LogDebug(msg string) {
+	a.logDebug("%s", msg)
 }
 
 // GetCrashLogPath returns the path to the crash log file
@@ -1848,36 +1957,36 @@ func (a *App) OpenCrashLogDir() error {
 
 func (a *App) DeletePod(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.LogDebug("DeletePod called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	a.logDebug("DeletePod called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	err := a.k8sClient.DeletePod(contextName, namespace, name)
 	if err != nil {
-		a.LogDebug("DeletePod error: %v", err)
+		a.logDebug("DeletePod error: %v", err)
 	} else {
-		a.LogDebug("DeletePod success")
+		a.logDebug("DeletePod success")
 	}
 	return err
 }
 
 func (a *App) ForceDeletePod(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.LogDebug("ForceDeletePod called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	a.logDebug("ForceDeletePod called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	err := a.k8sClient.ForceDeletePod(contextName, namespace, name)
 	if err != nil {
-		a.LogDebug("ForceDeletePod error: %v", err)
+		a.logDebug("ForceDeletePod error: %v", err)
 	} else {
-		a.LogDebug("ForceDeletePod success")
+		a.logDebug("ForceDeletePod success")
 	}
 	return err
 }
 
 func (a *App) GetPodYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetPodYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetPodYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -1885,7 +1994,7 @@ func (a *App) GetPodYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdatePodYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdatePodYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdatePodYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -1894,7 +2003,7 @@ func (a *App) UpdatePodYaml(namespace, name, yamlContent string) error {
 
 // StartTerminalSession starts a new terminal session and returns the session ID
 func (a *App) StartTerminalSession(opts terminal.SessionOptions) (string, error) {
-	a.LogDebug("StartTerminalSession called: context=%s, ns=%s, pod=%s, container=%s, cmd=%s",
+	a.logDebug("StartTerminalSession called: context=%s, ns=%s, pod=%s, container=%s, cmd=%s",
 		opts.Context, opts.Namespace, opts.Pod, opts.Container, opts.Command)
 	if a.terminalManager == nil {
 		return "", fmt.Errorf("terminal manager not initialized")
@@ -1920,7 +2029,7 @@ func (a *App) ResizeTerminal(sessionID string, cols, rows int) error {
 
 // CloseTerminalSession closes a terminal session
 func (a *App) CloseTerminalSession(sessionID string) error {
-	a.LogDebug("CloseTerminalSession called: sessionID=%s", sessionID)
+	a.logDebug("CloseTerminalSession called: sessionID=%s", sessionID)
 	if a.terminalManager == nil {
 		return fmt.Errorf("terminal manager not initialized")
 	}
@@ -1932,7 +2041,7 @@ func (a *App) CloseTerminalSession(sessionID string) error {
 // SubscribeResourceWatcher subscribes to a resource watcher, returning the watcher key
 func (a *App) SubscribeResourceWatcher(resourceType, namespace string) string {
 	if a.watcherManager == nil {
-		a.LogDebug("SubscribeResourceWatcher: watcher manager not initialized")
+		a.logDebug("SubscribeResourceWatcher: watcher manager not initialized")
 		return ""
 	}
 	return a.watcherManager.Subscribe(resourceType, namespace)
@@ -1941,7 +2050,7 @@ func (a *App) SubscribeResourceWatcher(resourceType, namespace string) string {
 // SubscribeCRDWatcher subscribes to a CRD watcher using GVR, returning the watcher key
 func (a *App) SubscribeCRDWatcher(group, version, resource, namespace string) string {
 	if a.watcherManager == nil {
-		a.LogDebug("SubscribeCRDWatcher: watcher manager not initialized")
+		a.logDebug("SubscribeCRDWatcher: watcher manager not initialized")
 		return ""
 	}
 	return a.watcherManager.SubscribeCRD(group, version, resource, namespace)
@@ -1950,7 +2059,7 @@ func (a *App) SubscribeCRDWatcher(group, version, resource, namespace string) st
 // UnsubscribeWatcher unsubscribes from a watcher by key
 func (a *App) UnsubscribeWatcher(watcherKey string) {
 	if a.watcherManager == nil {
-		a.LogDebug("UnsubscribeWatcher: watcher manager not initialized")
+		a.logDebug("UnsubscribeWatcher: watcher manager not initialized")
 		return
 	}
 	a.watcherManager.Unsubscribe(watcherKey)
@@ -1959,7 +2068,7 @@ func (a *App) UnsubscribeWatcher(watcherKey string) {
 // StopAllWatchers stops all active watchers (called on context switch)
 func (a *App) StopAllWatchers() {
 	if a.watcherManager == nil {
-		a.LogDebug("StopAllWatchers: watcher manager not initialized")
+		a.logDebug("StopAllWatchers: watcher manager not initialized")
 		return
 	}
 	a.watcherManager.StopAll()
@@ -1976,7 +2085,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 			crashlog.LogError("PANIC in watchResourceLoop: type=%s, namespace=%s, panic=%v\nStack: %s",
 				resourceType, namespace, r, string(debug.Stack()))
 		}
-		a.LogDebug("Resource watcher stopped: type=%s, namespace=%s", resourceType, namespace)
+		a.logDebug("Resource watcher stopped: type=%s, namespace=%s", resourceType, namespace)
 		a.emitEvent( "watcher-status", WatcherStatusEvent{
 			ResourceType: resourceType,
 			Namespace:    namespace,
@@ -1986,7 +2095,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 	}()
 
 	if a.k8sClient == nil {
-		a.LogDebug("watchResourceLoop: k8s client not initialized")
+		a.logDebug("watchResourceLoop: k8s client not initialized")
 		return
 	}
 
@@ -2037,11 +2146,11 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 		watcher, err := a.k8sClient.WatchResource(ctx, resourceType, namespace, resourceVersion)
 		if err != nil {
 			consecutiveFailures++
-			a.LogDebug("Failed to start resource watcher: type=%s, err=%v, failures=%d", resourceType, err, consecutiveFailures)
+			a.logDebug("Failed to start resource watcher: type=%s, err=%v, failures=%d", resourceType, err, consecutiveFailures)
 
 			// If we have a stale resourceVersion, clear it and retry fresh
 			if resourceVersion != "" && (strings.Contains(err.Error(), "too old") || strings.Contains(err.Error(), "expired")) {
-				a.LogDebug("ResourceVersion too old, resetting: type=%s", resourceType)
+				a.logDebug("ResourceVersion too old, resetting: type=%s", resourceType)
 				setResourceVersion("")
 			}
 
@@ -2093,7 +2202,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 				return
 			case event, ok := <-watcher.ResultChan():
 				if !ok {
-					a.LogDebug("Resource watcher channel closed: type=%s, will reconnect", resourceType)
+					a.logDebug("Resource watcher channel closed: type=%s, will reconnect", resourceType)
 					watcher.Stop()
 					watcherDone = true
 					break
@@ -2102,7 +2211,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 				// Convert to unstructured map to extract resourceVersion
 				resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
 				if err != nil {
-					a.LogDebug("Failed to convert resource to map: %v", err)
+					a.logDebug("Failed to convert resource to map: %v", err)
 					continue
 				}
 
@@ -2156,7 +2265,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 			crashlog.LogError("PANIC in watchCRDLoop: gvr=%s/%s/%s, namespace=%s, panic=%v\nStack: %s",
 				group, version, resource, namespace, r, string(debug.Stack()))
 		}
-		a.LogDebug("CRD watcher stopped: gvr=%s/%s/%s, namespace=%s", group, version, resource, namespace)
+		a.logDebug("CRD watcher stopped: gvr=%s/%s/%s, namespace=%s", group, version, resource, namespace)
 		a.emitEvent( "watcher-status", WatcherStatusEvent{
 			ResourceType: crdResourceType,
 			Namespace:    namespace,
@@ -2166,7 +2275,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 	}()
 
 	if a.k8sClient == nil {
-		a.LogDebug("watchCRDLoop: k8s client not initialized")
+		a.logDebug("watchCRDLoop: k8s client not initialized")
 		return
 	}
 
@@ -2217,11 +2326,11 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 		watcher, err := a.k8sClient.WatchCRD(ctx, group, version, resource, namespace, resourceVersion)
 		if err != nil {
 			consecutiveFailures++
-			a.LogDebug("Failed to start CRD watcher: gvr=%s/%s/%s, err=%v, failures=%d", group, version, resource, err, consecutiveFailures)
+			a.logDebug("Failed to start CRD watcher: gvr=%s/%s/%s, err=%v, failures=%d", group, version, resource, err, consecutiveFailures)
 
 			// If we have a stale resourceVersion, clear it and retry fresh
 			if resourceVersion != "" && (strings.Contains(err.Error(), "too old") || strings.Contains(err.Error(), "expired")) {
-				a.LogDebug("CRD ResourceVersion too old, resetting: gvr=%s/%s/%s", group, version, resource)
+				a.logDebug("CRD ResourceVersion too old, resetting: gvr=%s/%s/%s", group, version, resource)
 				setResourceVersion("")
 			}
 
@@ -2273,7 +2382,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 				return
 			case event, ok := <-watcher.ResultChan():
 				if !ok {
-					a.LogDebug("CRD watcher channel closed: gvr=%s/%s/%s, will reconnect", group, version, resource)
+					a.logDebug("CRD watcher channel closed: gvr=%s/%s/%s, will reconnect", group, version, resource)
 					watcher.Stop()
 					watcherDone = true
 					break
@@ -2282,7 +2391,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 				// Convert to unstructured map to extract resourceVersion
 				resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
 				if err != nil {
-					a.LogDebug("Failed to convert CRD to map: %v", err)
+					a.logDebug("Failed to convert CRD to map: %v", err)
 					continue
 				}
 
@@ -2325,7 +2434,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 }
 
 func (a *App) GetDeploymentYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetDeploymentYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetDeploymentYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -2333,7 +2442,7 @@ func (a *App) GetDeploymentYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateDeploymentYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateDeploymentYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateDeploymentYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -2342,30 +2451,30 @@ func (a *App) UpdateDeploymentYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteDeployment(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.LogDebug("DeleteDeployment called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	a.logDebug("DeleteDeployment called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	err := a.k8sClient.DeleteDeployment(contextName, namespace, name)
 	if err != nil {
-		a.LogDebug("DeleteDeployment error: %v", err)
+		a.logDebug("DeleteDeployment error: %v", err)
 	} else {
-		a.LogDebug("DeleteDeployment success")
+		a.logDebug("DeleteDeployment success")
 	}
 	return err
 }
 
 func (a *App) RestartDeployment(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.LogDebug("RestartDeployment called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	a.logDebug("RestartDeployment called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	err := a.k8sClient.RestartDeployment(contextName, namespace, name)
 	if err != nil {
-		a.LogDebug("RestartDeployment error: %v", err)
+		a.logDebug("RestartDeployment error: %v", err)
 	} else {
-		a.LogDebug("RestartDeployment success")
+		a.logDebug("RestartDeployment success")
 	}
 	return err
 }
@@ -2389,7 +2498,7 @@ func (a *App) ListStatefulSets(requestId, contextName, namespace string) ([]apps
 }
 
 func (a *App) GetStatefulSetYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetStatefulSetYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetStatefulSetYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -2397,7 +2506,7 @@ func (a *App) GetStatefulSetYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateStatefulSetYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateStatefulSetYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateStatefulSetYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -2407,7 +2516,7 @@ func (a *App) UpdateStatefulSetYaml(namespace, name, yamlContent string) error {
 // DaemonSet wrappers
 func (a *App) ListDaemonSets(requestId, namespace string) ([]appsv1.DaemonSet, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ListDaemonSets called: context=%s, ns=%s", currentContext, namespace)
+	a.logDebug("ListDaemonSets called: context=%s, ns=%s", currentContext, namespace)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -2425,7 +2534,7 @@ func (a *App) ListDaemonSets(requestId, namespace string) ([]appsv1.DaemonSet, e
 }
 
 func (a *App) GetDaemonSetYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetDaemonSetYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetDaemonSetYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -2433,7 +2542,7 @@ func (a *App) GetDaemonSetYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateDaemonSetYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateDaemonSetYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateDaemonSetYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -2442,7 +2551,7 @@ func (a *App) UpdateDaemonSetYaml(namespace, name, yamlContent string) error {
 
 func (a *App) RestartDaemonSet(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("RestartDaemonSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("RestartDaemonSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -2451,7 +2560,7 @@ func (a *App) RestartDaemonSet(namespace, name string) error {
 
 func (a *App) DeleteDaemonSet(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteDaemonSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteDaemonSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -2461,7 +2570,7 @@ func (a *App) DeleteDaemonSet(namespace, name string) error {
 // ReplicaSet wrappers
 func (a *App) ListReplicaSets(requestId, namespace string) ([]appsv1.ReplicaSet, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ListReplicaSets called: context=%s, ns=%s", currentContext, namespace)
+	a.logDebug("ListReplicaSets called: context=%s, ns=%s", currentContext, namespace)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -2479,7 +2588,7 @@ func (a *App) ListReplicaSets(requestId, namespace string) ([]appsv1.ReplicaSet,
 }
 
 func (a *App) GetReplicaSetYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetReplicaSetYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetReplicaSetYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -2487,7 +2596,7 @@ func (a *App) GetReplicaSetYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateReplicaSetYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateReplicaSetYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateReplicaSetYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -2496,7 +2605,7 @@ func (a *App) UpdateReplicaSetYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteReplicaSet(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteReplicaSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteReplicaSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -2505,30 +2614,30 @@ func (a *App) DeleteReplicaSet(namespace, name string) error {
 
 func (a *App) RestartStatefulSet(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.LogDebug("RestartStatefulSet called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	a.logDebug("RestartStatefulSet called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	err := a.k8sClient.RestartStatefulSet(contextName, namespace, name)
 	if err != nil {
-		a.LogDebug("RestartStatefulSet error: %v", err)
+		a.logDebug("RestartStatefulSet error: %v", err)
 	} else {
-		a.LogDebug("RestartStatefulSet success")
+		a.logDebug("RestartStatefulSet success")
 	}
 	return err
 }
 
 func (a *App) DeleteStatefulSet(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.LogDebug("DeleteStatefulSet called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	a.logDebug("DeleteStatefulSet called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	err := a.k8sClient.DeleteStatefulSet(contextName, namespace, name)
 	if err != nil {
-		a.LogDebug("DeleteStatefulSet error: %v", err)
+		a.logDebug("DeleteStatefulSet error: %v", err)
 	} else {
-		a.LogDebug("DeleteStatefulSet success")
+		a.logDebug("DeleteStatefulSet success")
 	}
 	return err
 }
@@ -2544,7 +2653,7 @@ func (a *App) ConfirmDialog(title, message string) bool {
 		CancelButton:  "Cancel",
 	})
 	if err != nil {
-		a.LogDebug("ConfirmDialog error: %v", err)
+		a.logDebug("ConfirmDialog error: %v", err)
 		return false
 	}
 	return result == "Delete"
@@ -2731,7 +2840,7 @@ type PodFileInfo struct {
 
 // ListPodFiles lists files in a directory inside a pod
 func (a *App) ListPodFiles(namespace, pod, container, path string) ([]PodFileInfo, error) {
-	a.LogDebug("ListPodFiles called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, path)
+	a.logDebug("ListPodFiles called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, path)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -2760,7 +2869,7 @@ func (a *App) ListPodFiles(namespace, pod, container, path string) ([]PodFileInf
 
 // DownloadPodFile downloads a file from a pod to local filesystem with save dialog
 func (a *App) DownloadPodFile(namespace, pod, container, remotePath string) error {
-	a.LogDebug("DownloadPodFile called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, remotePath)
+	a.logDebug("DownloadPodFile called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, remotePath)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -2827,7 +2936,7 @@ func (a *App) DownloadPodFile(namespace, pod, container, remotePath string) erro
 
 // DownloadPodFolder downloads a folder from a pod as a tar.gz file
 func (a *App) DownloadPodFolder(namespace, pod, container, remotePath string) error {
-	a.LogDebug("DownloadPodFolder called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, remotePath)
+	a.logDebug("DownloadPodFolder called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, remotePath)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -2845,7 +2954,7 @@ func (a *App) DownloadPodFolder(namespace, pod, container, remotePath string) er
 	for _, ext := range []string{".app", ".bundle", ".framework", ".plugin", ".kext"} {
 		if strings.HasSuffix(strings.ToLower(safeFilename), ext) {
 			safeFilename = safeFilename[:len(safeFilename)-len(ext)] + strings.ReplaceAll(ext, ".", "_")
-			a.LogDebug("DownloadPodFolder: renamed %s to %s to avoid macOS save dialog crash", folderName, safeFilename)
+			a.logDebug("DownloadPodFolder: renamed %s to %s to avoid macOS save dialog crash", folderName, safeFilename)
 		}
 	}
 
@@ -2899,7 +3008,7 @@ func (a *App) DownloadPodFolder(namespace, pod, container, remotePath string) er
 
 // DownloadPodFiles downloads multiple files/folders from a pod as a single tar.gz archive
 func (a *App) DownloadPodFiles(namespace, pod, container, basePath string, names []string) error {
-	a.LogDebug("DownloadPodFiles called: ns=%s, pod=%s, container=%s, basePath=%s, count=%d", namespace, pod, container, basePath, len(names))
+	a.logDebug("DownloadPodFiles called: ns=%s, pod=%s, container=%s, basePath=%s, count=%d", namespace, pod, container, basePath, len(names))
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -2955,7 +3064,7 @@ func (a *App) DownloadPodFiles(namespace, pod, container, basePath string, names
 
 // UploadToPod uploads a file to a pod using file picker dialog
 func (a *App) UploadToPod(namespace, pod, container, remotePath string) error {
-	a.LogDebug("UploadToPod called: ns=%s, pod=%s, container=%s, remotePath=%s", namespace, pod, container, remotePath)
+	a.logDebug("UploadToPod called: ns=%s, pod=%s, container=%s, remotePath=%s", namespace, pod, container, remotePath)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -2976,7 +3085,7 @@ func (a *App) UploadToPod(namespace, pod, container, remotePath string) error {
 
 // UploadFileToPod uploads a file from a specific local path (for drag & drop)
 func (a *App) UploadFileToPod(namespace, pod, container, localPath, remotePath string) error {
-	a.LogDebug("UploadFileToPod called: ns=%s, pod=%s, container=%s, local=%s, remote=%s", namespace, pod, container, localPath, remotePath)
+	a.logDebug("UploadFileToPod called: ns=%s, pod=%s, container=%s, local=%s, remote=%s", namespace, pod, container, localPath, remotePath)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3047,7 +3156,7 @@ func (a *App) uploadFileInternal(namespace, pod, container, localPath, remotePat
 
 // CreatePodDirectory creates a directory in a pod
 func (a *App) CreatePodDirectory(namespace, pod, container, dirPath string) error {
-	a.LogDebug("CreatePodDirectory called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, dirPath)
+	a.logDebug("CreatePodDirectory called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, dirPath)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3056,7 +3165,7 @@ func (a *App) CreatePodDirectory(namespace, pod, container, dirPath string) erro
 
 // DeletePodFile deletes a file or directory in a pod
 func (a *App) DeletePodFile(namespace, pod, container, filePath string) error {
-	a.LogDebug("DeletePodFile called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, filePath)
+	a.logDebug("DeletePodFile called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, filePath)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3066,7 +3175,7 @@ func (a *App) DeletePodFile(namespace, pod, container, filePath string) error {
 // Job operations
 func (a *App) ListJobs(requestId, namespace string) ([]batchv1.Job, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ListJobs called: context=%s, ns=%s", currentContext, namespace)
+	a.logDebug("ListJobs called: context=%s, ns=%s", currentContext, namespace)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3084,7 +3193,7 @@ func (a *App) ListJobs(requestId, namespace string) ([]batchv1.Job, error) {
 }
 
 func (a *App) GetJobYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetJobYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetJobYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -3092,7 +3201,7 @@ func (a *App) GetJobYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateJobYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateJobYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateJobYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3101,7 +3210,7 @@ func (a *App) UpdateJobYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteJob(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteJob called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteJob called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3111,7 +3220,7 @@ func (a *App) DeleteJob(namespace, name string) error {
 // CronJob operations
 func (a *App) ListCronJobs(requestId, namespace string) ([]batchv1.CronJob, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ListCronJobs called: context=%s, ns=%s", currentContext, namespace)
+	a.logDebug("ListCronJobs called: context=%s, ns=%s", currentContext, namespace)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3129,7 +3238,7 @@ func (a *App) ListCronJobs(requestId, namespace string) ([]batchv1.CronJob, erro
 }
 
 func (a *App) GetCronJobYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetCronJobYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetCronJobYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -3137,7 +3246,7 @@ func (a *App) GetCronJobYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateCronJobYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateCronJobYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateCronJobYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3146,7 +3255,7 @@ func (a *App) UpdateCronJobYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteCronJob(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteCronJob called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteCronJob called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3155,7 +3264,7 @@ func (a *App) DeleteCronJob(namespace, name string) error {
 
 func (a *App) TriggerCronJob(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("TriggerCronJob called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("TriggerCronJob called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3164,7 +3273,7 @@ func (a *App) TriggerCronJob(namespace, name string) error {
 
 func (a *App) SuspendCronJob(namespace, name string, suspend bool) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("SuspendCronJob called: context=%s, ns=%s, name=%s, suspend=%v", currentContext, namespace, name, suspend)
+	a.logDebug("SuspendCronJob called: context=%s, ns=%s, name=%s, suspend=%v", currentContext, namespace, name, suspend)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3174,7 +3283,7 @@ func (a *App) SuspendCronJob(namespace, name string, suspend bool) error {
 // PersistentVolumeClaim operations
 func (a *App) ListPVCs(namespace string) ([]v1.PersistentVolumeClaim, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ListPVCs called: context=%s, ns=%s", currentContext, namespace)
+	a.logDebug("ListPVCs called: context=%s, ns=%s", currentContext, namespace)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3182,7 +3291,7 @@ func (a *App) ListPVCs(namespace string) ([]v1.PersistentVolumeClaim, error) {
 }
 
 func (a *App) GetPVCYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetPVCYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetPVCYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -3190,7 +3299,7 @@ func (a *App) GetPVCYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdatePVCYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdatePVCYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdatePVCYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3199,7 +3308,7 @@ func (a *App) UpdatePVCYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeletePVC(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeletePVC called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeletePVC called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3208,7 +3317,7 @@ func (a *App) DeletePVC(namespace, name string) error {
 
 func (a *App) ResizePVC(namespace, name, newSize string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ResizePVC called: context=%s, ns=%s, name=%s, newSize=%s", currentContext, namespace, name, newSize)
+	a.logDebug("ResizePVC called: context=%s, ns=%s, name=%s, newSize=%s", currentContext, namespace, name, newSize)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3218,7 +3327,7 @@ func (a *App) ResizePVC(namespace, name, newSize string) error {
 // PersistentVolume operations (cluster-scoped)
 func (a *App) ListPVs() ([]v1.PersistentVolume, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ListPVs called: context=%s", currentContext)
+	a.logDebug("ListPVs called: context=%s", currentContext)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3226,7 +3335,7 @@ func (a *App) ListPVs() ([]v1.PersistentVolume, error) {
 }
 
 func (a *App) GetPVYaml(name string) (string, error) {
-	a.LogDebug("GetPVYaml called: name=%s", name)
+	a.logDebug("GetPVYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -3234,7 +3343,7 @@ func (a *App) GetPVYaml(name string) (string, error) {
 }
 
 func (a *App) UpdatePVYaml(name, yamlContent string) error {
-	a.LogDebug("UpdatePVYaml called: name=%s", name)
+	a.logDebug("UpdatePVYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3243,7 +3352,7 @@ func (a *App) UpdatePVYaml(name, yamlContent string) error {
 
 func (a *App) DeletePV(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeletePV called: context=%s, name=%s", currentContext, name)
+	a.logDebug("DeletePV called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3253,7 +3362,7 @@ func (a *App) DeletePV(name string) error {
 // StorageClass operations (cluster-scoped)
 func (a *App) ListStorageClasses() ([]storagev1.StorageClass, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ListStorageClasses called: context=%s", currentContext)
+	a.logDebug("ListStorageClasses called: context=%s", currentContext)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3262,7 +3371,7 @@ func (a *App) ListStorageClasses() ([]storagev1.StorageClass, error) {
 
 func (a *App) GetStorageClass(name string) (*storagev1.StorageClass, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetStorageClass called: context=%s, name=%s", currentContext, name)
+	a.logDebug("GetStorageClass called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3270,7 +3379,7 @@ func (a *App) GetStorageClass(name string) (*storagev1.StorageClass, error) {
 }
 
 func (a *App) GetStorageClassYaml(name string) (string, error) {
-	a.LogDebug("GetStorageClassYaml called: name=%s", name)
+	a.logDebug("GetStorageClassYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -3278,7 +3387,7 @@ func (a *App) GetStorageClassYaml(name string) (string, error) {
 }
 
 func (a *App) UpdateStorageClassYaml(name, yamlContent string) error {
-	a.LogDebug("UpdateStorageClassYaml called: name=%s", name)
+	a.logDebug("UpdateStorageClassYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3287,7 +3396,7 @@ func (a *App) UpdateStorageClassYaml(name, yamlContent string) error {
 
 func (a *App) DeleteStorageClass(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteStorageClass called: context=%s, name=%s", currentContext, name)
+	a.logDebug("DeleteStorageClass called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3297,7 +3406,7 @@ func (a *App) DeleteStorageClass(name string) error {
 // GetResourceDependencies returns the dependency graph for a given resource
 func (a *App) GetResourceDependencies(resourceType, namespace, name string) (*k8s.DependencyGraph, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetResourceDependencies called: context=%s, type=%s, ns=%s, name=%s", currentContext, resourceType, namespace, name)
+	a.logDebug("GetResourceDependencies called: context=%s, type=%s, ns=%s, name=%s", currentContext, resourceType, namespace, name)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3307,7 +3416,7 @@ func (a *App) GetResourceDependencies(resourceType, namespace, name string) (*k8
 // ExpandDependencyNode returns additional nodes when a summary node is expanded
 func (a *App) ExpandDependencyNode(resourceType, namespace, name, summaryNodeID string, offset int) (*k8s.DependencyGraph, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ExpandDependencyNode called: context=%s, type=%s, ns=%s, name=%s, summaryID=%s, offset=%d",
+	a.logDebug("ExpandDependencyNode called: context=%s, type=%s, ns=%s, name=%s, summaryID=%s, offset=%d",
 		currentContext, resourceType, namespace, name, summaryNodeID, offset)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
@@ -3318,7 +3427,7 @@ func (a *App) ExpandDependencyNode(resourceType, namespace, name, summaryNodeID 
 // CustomResourceDefinition operations (cluster-scoped)
 func (a *App) ListCRDs() ([]apiextensionsv1.CustomResourceDefinition, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ListCRDs called: context=%s", currentContext)
+	a.logDebug("ListCRDs called: context=%s", currentContext)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3327,7 +3436,7 @@ func (a *App) ListCRDs() ([]apiextensionsv1.CustomResourceDefinition, error) {
 
 func (a *App) GetCRDYaml(name string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetCRDYaml called: name=%s", name)
+	a.logDebug("GetCRDYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -3336,7 +3445,7 @@ func (a *App) GetCRDYaml(name string) (string, error) {
 
 func (a *App) UpdateCRDYaml(name, yamlContent string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("UpdateCRDYaml called: name=%s", name)
+	a.logDebug("UpdateCRDYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3345,7 +3454,7 @@ func (a *App) UpdateCRDYaml(name, yamlContent string) error {
 
 func (a *App) DeleteCRD(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteCRD called: context=%s, name=%s", currentContext, name)
+	a.logDebug("DeleteCRD called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3355,7 +3464,7 @@ func (a *App) DeleteCRD(name string) error {
 // GetCRDPrinterColumns returns the additional printer columns for a CRD
 func (a *App) GetCRDPrinterColumns(crdName string) ([]k8s.PrinterColumn, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetCRDPrinterColumns called: context=%s, crdName=%s", currentContext, crdName)
+	a.logDebug("GetCRDPrinterColumns called: context=%s, crdName=%s", currentContext, crdName)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3365,7 +3474,7 @@ func (a *App) GetCRDPrinterColumns(crdName string) ([]k8s.PrinterColumn, error) 
 // Custom Resource instance operations (dynamic)
 func (a *App) ListCustomResources(group, version, resource, namespace string) ([]map[string]interface{}, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ListCustomResources called: context=%s, gvr=%s/%s/%s, ns=%s", currentContext, group, version, resource, namespace)
+	a.logDebug("ListCustomResources called: context=%s, gvr=%s/%s/%s, ns=%s", currentContext, group, version, resource, namespace)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3374,7 +3483,7 @@ func (a *App) ListCustomResources(group, version, resource, namespace string) ([
 
 func (a *App) GetCustomResourceYaml(group, version, resource, namespace, name string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetCustomResourceYaml called: gvr=%s/%s/%s, ns=%s, name=%s", group, version, resource, namespace, name)
+	a.logDebug("GetCustomResourceYaml called: gvr=%s/%s/%s, ns=%s, name=%s", group, version, resource, namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -3383,7 +3492,7 @@ func (a *App) GetCustomResourceYaml(group, version, resource, namespace, name st
 
 func (a *App) UpdateCustomResourceYaml(group, version, resource, namespace, name, yamlContent string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("UpdateCustomResourceYaml called: gvr=%s/%s/%s, ns=%s, name=%s", group, version, resource, namespace, name)
+	a.logDebug("UpdateCustomResourceYaml called: gvr=%s/%s/%s, ns=%s, name=%s", group, version, resource, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3392,7 +3501,7 @@ func (a *App) UpdateCustomResourceYaml(group, version, resource, namespace, name
 
 func (a *App) DeleteCustomResource(group, version, resource, namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteCustomResource called: context=%s, gvr=%s/%s/%s, ns=%s, name=%s", currentContext, group, version, resource, namespace, name)
+	a.logDebug("DeleteCustomResource called: context=%s, gvr=%s/%s/%s, ns=%s, name=%s", currentContext, group, version, resource, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3403,7 +3512,7 @@ func (a *App) DeleteCustomResource(group, version, resource, namespace, name str
 
 // GetPortForwardConfigs returns all port forward configurations, optionally filtered by context
 func (a *App) GetPortForwardConfigs(contextFilter string) []PortForwardConfig {
-	a.LogDebug("GetPortForwardConfigs called: contextFilter=%s", contextFilter)
+	a.logDebug("GetPortForwardConfigs called: contextFilter=%s", contextFilter)
 	if a.portForwardManager == nil {
 		return []PortForwardConfig{}
 	}
@@ -3412,7 +3521,7 @@ func (a *App) GetPortForwardConfigs(contextFilter string) []PortForwardConfig {
 
 // GetActivePortForwards returns all active port forwards
 func (a *App) GetActivePortForwards() []ActivePortForward {
-	a.LogDebug("GetActivePortForwards called")
+	a.logDebug("GetActivePortForwards called")
 	if a.portForwardManager == nil {
 		return []ActivePortForward{}
 	}
@@ -3421,7 +3530,7 @@ func (a *App) GetActivePortForwards() []ActivePortForward {
 
 // AddPortForwardConfig adds a new port forward configuration
 func (a *App) AddPortForwardConfig(cfg PortForwardConfig) (*PortForwardConfig, error) {
-	a.LogDebug("AddPortForwardConfig called: context=%s, ns=%s, type=%s, name=%s, ports=%d:%d",
+	a.logDebug("AddPortForwardConfig called: context=%s, ns=%s, type=%s, name=%s, ports=%d:%d",
 		cfg.Context, cfg.Namespace, cfg.ResourceType, cfg.ResourceName, cfg.LocalPort, cfg.RemotePort)
 	if a.portForwardManager == nil {
 		return nil, fmt.Errorf("port forward manager not initialized")
@@ -3431,7 +3540,7 @@ func (a *App) AddPortForwardConfig(cfg PortForwardConfig) (*PortForwardConfig, e
 
 // UpdatePortForwardConfig updates an existing port forward configuration
 func (a *App) UpdatePortForwardConfig(cfg PortForwardConfig) error {
-	a.LogDebug("UpdatePortForwardConfig called: id=%s", cfg.ID)
+	a.logDebug("UpdatePortForwardConfig called: id=%s", cfg.ID)
 	if a.portForwardManager == nil {
 		return fmt.Errorf("port forward manager not initialized")
 	}
@@ -3440,7 +3549,7 @@ func (a *App) UpdatePortForwardConfig(cfg PortForwardConfig) error {
 
 // DeletePortForwardConfig deletes a port forward configuration
 func (a *App) DeletePortForwardConfig(configID string) error {
-	a.LogDebug("DeletePortForwardConfig called: id=%s", configID)
+	a.logDebug("DeletePortForwardConfig called: id=%s", configID)
 	if a.portForwardManager == nil {
 		return fmt.Errorf("port forward manager not initialized")
 	}
@@ -3449,7 +3558,7 @@ func (a *App) DeletePortForwardConfig(configID string) error {
 
 // StartPortForward starts a port forward
 func (a *App) StartPortForward(configID string) error {
-	a.LogDebug("StartPortForward called: id=%s", configID)
+	a.logDebug("StartPortForward called: id=%s", configID)
 	if a.portForwardManager == nil {
 		return fmt.Errorf("port forward manager not initialized")
 	}
@@ -3458,7 +3567,7 @@ func (a *App) StartPortForward(configID string) error {
 
 // StopPortForward stops a port forward
 func (a *App) StopPortForward(configID string) error {
-	a.LogDebug("StopPortForward called: id=%s", configID)
+	a.logDebug("StopPortForward called: id=%s", configID)
 	if a.portForwardManager == nil {
 		return fmt.Errorf("port forward manager not initialized")
 	}
@@ -3467,7 +3576,7 @@ func (a *App) StopPortForward(configID string) error {
 
 // StopAllPortForwards stops all active port forwards
 func (a *App) StopAllPortForwards() {
-	a.LogDebug("StopAllPortForwards called")
+	a.logDebug("StopAllPortForwards called")
 	if a.portForwardManager == nil {
 		return
 	}
@@ -3476,7 +3585,7 @@ func (a *App) StopAllPortForwards() {
 
 // GetAvailablePort finds an available local port
 func (a *App) GetAvailablePort(preferred int) int {
-	a.LogDebug("GetAvailablePort called: preferred=%d", preferred)
+	a.logDebug("GetAvailablePort called: preferred=%d", preferred)
 	if a.portForwardManager == nil {
 		return 0
 	}
@@ -3485,7 +3594,7 @@ func (a *App) GetAvailablePort(preferred int) int {
 
 // GetRandomAvailablePort gets a random available port avoiding well-known and configured ports
 func (a *App) GetRandomAvailablePort() int {
-	a.LogDebug("GetRandomAvailablePort called")
+	a.logDebug("GetRandomAvailablePort called")
 	if a.portForwardManager == nil {
 		return 0
 	}
@@ -3494,7 +3603,7 @@ func (a *App) GetRandomAvailablePort() int {
 
 // StartFavoritePortForwards starts all favorite port forwards for a context
 func (a *App) StartFavoritePortForwards(contextName string) {
-	a.LogDebug("StartFavoritePortForwards called: context=%s", contextName)
+	a.logDebug("StartFavoritePortForwards called: context=%s", contextName)
 	if a.portForwardManager == nil {
 		return
 	}
@@ -3505,7 +3614,7 @@ func (a *App) StartFavoritePortForwards(contextName string) {
 // mode can be: "all", "favorites", "none"
 // Only starts forwards that were running when the app was closed
 func (a *App) StartPortForwardsWithMode(contextName, mode string) {
-	a.LogDebug("StartPortForwardsWithMode called: context=%s, mode=%s", contextName, mode)
+	a.logDebug("StartPortForwardsWithMode called: context=%s, mode=%s", contextName, mode)
 	if a.portForwardManager == nil {
 		return
 	}
@@ -3516,7 +3625,7 @@ func (a *App) StartPortForwardsWithMode(contextName, mode string) {
 
 // GetIngressForwardState returns the current ingress forward state
 func (a *App) GetIngressForwardState() IngressForwardState {
-	a.LogDebug("GetIngressForwardState called")
+	a.logDebug("GetIngressForwardState called")
 	if a.ingressForwardManager == nil {
 		return IngressForwardState{Active: false, Status: "stopped"}
 	}
@@ -3525,7 +3634,7 @@ func (a *App) GetIngressForwardState() IngressForwardState {
 
 // DetectIngressController finds the ingress controller in the cluster
 func (a *App) DetectIngressController() (*IngressController, error) {
-	a.LogDebug("DetectIngressController called")
+	a.logDebug("DetectIngressController called")
 	if a.ingressForwardManager == nil {
 		return nil, fmt.Errorf("ingress forward manager not initialized")
 	}
@@ -3534,7 +3643,7 @@ func (a *App) DetectIngressController() (*IngressController, error) {
 
 // CollectIngressHostnames collects all unique hostnames from ingresses
 func (a *App) CollectIngressHostnames(namespaces []string) ([]string, error) {
-	a.LogDebug("CollectIngressHostnames called: namespaces=%v", namespaces)
+	a.logDebug("CollectIngressHostnames called: namespaces=%v", namespaces)
 	if a.ingressForwardManager == nil {
 		return nil, fmt.Errorf("ingress forward manager not initialized")
 	}
@@ -3543,7 +3652,7 @@ func (a *App) CollectIngressHostnames(namespaces []string) ([]string, error) {
 
 // StartIngressForward starts ingress forwarding with the given controller
 func (a *App) StartIngressForward(controller IngressController, namespaces []string) error {
-	a.LogDebug("StartIngressForward called: controller=%s/%s, namespaces=%v",
+	a.logDebug("StartIngressForward called: controller=%s/%s, namespaces=%v",
 		controller.Namespace, controller.Name, namespaces)
 	if a.ingressForwardManager == nil {
 		return fmt.Errorf("ingress forward manager not initialized")
@@ -3553,7 +3662,7 @@ func (a *App) StartIngressForward(controller IngressController, namespaces []str
 
 // StopIngressForward stops ingress forwarding and cleans up hosts file
 func (a *App) StopIngressForward() error {
-	a.LogDebug("StopIngressForward called")
+	a.logDebug("StopIngressForward called")
 	if a.ingressForwardManager == nil {
 		return fmt.Errorf("ingress forward manager not initialized")
 	}
@@ -3562,7 +3671,7 @@ func (a *App) StopIngressForward() error {
 
 // RefreshIngressHostnames re-collects hostnames and updates the hosts file
 func (a *App) RefreshIngressHostnames(namespaces []string) error {
-	a.LogDebug("RefreshIngressHostnames called: namespaces=%v", namespaces)
+	a.logDebug("RefreshIngressHostnames called: namespaces=%v", namespaces)
 	if a.ingressForwardManager == nil {
 		return fmt.Errorf("ingress forward manager not initialized")
 	}
@@ -3571,7 +3680,7 @@ func (a *App) RefreshIngressHostnames(namespaces []string) error {
 
 // GetManagedHosts returns the currently managed hosts file entries
 func (a *App) GetManagedHosts() ([]string, error) {
-	a.LogDebug("GetManagedHosts called")
+	a.logDebug("GetManagedHosts called")
 	if a.ingressForwardManager == nil {
 		return nil, fmt.Errorf("ingress forward manager not initialized")
 	}
@@ -3589,7 +3698,7 @@ func (a *App) GetManagedHosts() ([]string, error) {
 // GetPodPorts returns the container ports for a pod
 func (a *App) GetPodPorts(namespace, podName string) ([]int32, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetPodPorts called: context=%s, ns=%s, pod=%s", currentContext, namespace, podName)
+	a.logDebug("GetPodPorts called: context=%s, ns=%s, pod=%s", currentContext, namespace, podName)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3599,7 +3708,7 @@ func (a *App) GetPodPorts(namespace, podName string) ([]int32, error) {
 // GetServicePorts returns the ports exposed by a service
 func (a *App) GetServicePorts(namespace, serviceName string) ([]int32, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetServicePorts called: context=%s, ns=%s, svc=%s", currentContext, namespace, serviceName)
+	a.logDebug("GetServicePorts called: context=%s, ns=%s, svc=%s", currentContext, namespace, serviceName)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -3613,7 +3722,7 @@ func (a *App) GetServicePorts(namespace, serviceName string) ([]int32, error) {
 // ListHelmReleases returns all Helm releases across the specified namespaces
 func (a *App) ListHelmReleases(namespaces []string) ([]helm.Release, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ListHelmReleases called: context=%s, namespaces=%v", currentContext, namespaces)
+	a.logDebug("ListHelmReleases called: context=%s, namespaces=%v", currentContext, namespaces)
 	if a.helmClient == nil {
 		return nil, fmt.Errorf("helm client not initialized")
 	}
@@ -3623,7 +3732,7 @@ func (a *App) ListHelmReleases(namespaces []string) ([]helm.Release, error) {
 // GetHelmRelease returns detailed information about a specific release
 func (a *App) GetHelmRelease(namespace, name string) (*helm.ReleaseDetail, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetHelmRelease called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("GetHelmRelease called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.helmClient == nil {
 		return nil, fmt.Errorf("helm client not initialized")
 	}
@@ -3633,7 +3742,7 @@ func (a *App) GetHelmRelease(namespace, name string) (*helm.ReleaseDetail, error
 // GetHelmReleaseValues returns the user-supplied values for a release
 func (a *App) GetHelmReleaseValues(namespace, name string) (map[string]interface{}, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetHelmReleaseValues called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("GetHelmReleaseValues called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.helmClient == nil {
 		return nil, fmt.Errorf("helm client not initialized")
 	}
@@ -3643,7 +3752,7 @@ func (a *App) GetHelmReleaseValues(namespace, name string) (map[string]interface
 // GetHelmReleaseAllValues returns all computed values for a release
 func (a *App) GetHelmReleaseAllValues(namespace, name string) (map[string]interface{}, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetHelmReleaseAllValues called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("GetHelmReleaseAllValues called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.helmClient == nil {
 		return nil, fmt.Errorf("helm client not initialized")
 	}
@@ -3653,7 +3762,7 @@ func (a *App) GetHelmReleaseAllValues(namespace, name string) (map[string]interf
 // GetHelmReleaseHistory returns the revision history for a release
 func (a *App) GetHelmReleaseHistory(namespace, name string) ([]helm.ReleaseHistory, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetHelmReleaseHistory called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("GetHelmReleaseHistory called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.helmClient == nil {
 		return nil, fmt.Errorf("helm client not initialized")
 	}
@@ -3663,7 +3772,7 @@ func (a *App) GetHelmReleaseHistory(namespace, name string) ([]helm.ReleaseHisto
 // UninstallHelmRelease removes a Helm release
 func (a *App) UninstallHelmRelease(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("UninstallHelmRelease called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("UninstallHelmRelease called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
@@ -3673,7 +3782,7 @@ func (a *App) UninstallHelmRelease(namespace, name string) error {
 // RollbackHelmRelease rolls back a release to a specific revision
 func (a *App) RollbackHelmRelease(namespace, name string, revision int) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("RollbackHelmRelease called: context=%s, ns=%s, name=%s, revision=%d", currentContext, namespace, name, revision)
+	a.logDebug("RollbackHelmRelease called: context=%s, ns=%s, name=%s, revision=%d", currentContext, namespace, name, revision)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
@@ -3683,7 +3792,7 @@ func (a *App) RollbackHelmRelease(namespace, name string, revision int) error {
 // GetHelmReleaseResources returns the Kubernetes resources managed by a Helm release
 func (a *App) GetHelmReleaseResources(namespace, name string) ([]helm.ResourceReference, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetHelmReleaseResources called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("GetHelmReleaseResources called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.helmClient == nil {
 		return nil, fmt.Errorf("helm client not initialized")
 	}
@@ -3696,7 +3805,7 @@ func (a *App) GetHelmReleaseResources(namespace, name string) ([]helm.ResourceRe
 
 // ListHelmRepositories returns all configured Helm repositories with priorities
 func (a *App) ListHelmRepositories() ([]helm.Repository, error) {
-	a.LogDebug("ListHelmRepositories called")
+	a.logDebug("ListHelmRepositories called")
 	if a.helmClient == nil {
 		return nil, fmt.Errorf("helm client not initialized")
 	}
@@ -3705,7 +3814,7 @@ func (a *App) ListHelmRepositories() ([]helm.Repository, error) {
 
 // AddHelmRepository adds a new Helm repository
 func (a *App) AddHelmRepository(name, url string, priority int) error {
-	a.LogDebug("AddHelmRepository called: name=%s, url=%s, priority=%d", name, url, priority)
+	a.logDebug("AddHelmRepository called: name=%s, url=%s, priority=%d", name, url, priority)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
@@ -3714,7 +3823,7 @@ func (a *App) AddHelmRepository(name, url string, priority int) error {
 
 // RemoveHelmRepository removes a Helm repository
 func (a *App) RemoveHelmRepository(name string) error {
-	a.LogDebug("RemoveHelmRepository called: name=%s", name)
+	a.logDebug("RemoveHelmRepository called: name=%s", name)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
@@ -3723,7 +3832,7 @@ func (a *App) RemoveHelmRepository(name string) error {
 
 // UpdateHelmRepository updates the index for a repository
 func (a *App) UpdateHelmRepository(name string) error {
-	a.LogDebug("UpdateHelmRepository called: name=%s", name)
+	a.logDebug("UpdateHelmRepository called: name=%s", name)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
@@ -3733,7 +3842,7 @@ func (a *App) UpdateHelmRepository(name string) error {
 // UpdateAllHelmRepositories updates the index for all repositories
 func (a *App) UpdateAllHelmRepositories() error {
 	fmt.Println(">>> UpdateAllHelmRepositories called <<<")
-	a.LogDebug("UpdateAllHelmRepositories called")
+	a.logDebug("UpdateAllHelmRepositories called")
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
@@ -3742,7 +3851,7 @@ func (a *App) UpdateAllHelmRepositories() error {
 
 // SetHelmRepositoryPriority sets the priority for a repository
 func (a *App) SetHelmRepositoryPriority(name string, priority int) error {
-	a.LogDebug("SetHelmRepositoryPriority called: name=%s, priority=%d", name, priority)
+	a.logDebug("SetHelmRepositoryPriority called: name=%s, priority=%d", name, priority)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
@@ -3751,7 +3860,7 @@ func (a *App) SetHelmRepositoryPriority(name string, priority int) error {
 
 // SearchHelmChart searches for a chart across all repositories
 func (a *App) SearchHelmChart(chartName string) ([]helm.ChartSource, error) {
-	a.LogDebug("SearchHelmChart called: chartName=%s", chartName)
+	a.logDebug("SearchHelmChart called: chartName=%s", chartName)
 	if a.helmClient == nil {
 		return nil, fmt.Errorf("helm client not initialized")
 	}
@@ -3760,7 +3869,7 @@ func (a *App) SearchHelmChart(chartName string) ([]helm.ChartSource, error) {
 
 // GetHelmChartVersions returns available versions for a chart from a specific repo
 func (a *App) GetHelmChartVersions(repoName, chartName string) ([]helm.ChartVersion, error) {
-	a.LogDebug("GetHelmChartVersions called: repo=%s, chart=%s", repoName, chartName)
+	a.logDebug("GetHelmChartVersions called: repo=%s, chart=%s", repoName, chartName)
 	if a.helmClient == nil {
 		return nil, fmt.Errorf("helm client not initialized")
 	}
@@ -3770,7 +3879,7 @@ func (a *App) GetHelmChartVersions(repoName, chartName string) ([]helm.ChartVers
 // UpgradeHelmRelease upgrades or reinstalls a release
 func (a *App) UpgradeHelmRelease(namespace, name string, opts helm.UpgradeOptions) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("UpgradeHelmRelease called: context=%s, ns=%s, name=%s, repo=%s, chart=%s, version=%s",
+	a.logDebug("UpgradeHelmRelease called: context=%s, ns=%s, name=%s, repo=%s, chart=%s, version=%s",
 		currentContext, namespace, name, opts.RepoName, opts.ChartName, opts.Version)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
@@ -3781,7 +3890,7 @@ func (a *App) UpgradeHelmRelease(namespace, name string, opts helm.UpgradeOption
 // ForceHelmReleaseStatus forces a release to a specific status (e.g., "deployed")
 func (a *App) ForceHelmReleaseStatus(namespace, name, status string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ForceHelmReleaseStatus called: context=%s, ns=%s, name=%s, status=%s",
+	a.logDebug("ForceHelmReleaseStatus called: context=%s, ns=%s, name=%s, status=%s",
 		currentContext, namespace, name, status)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
@@ -3791,7 +3900,7 @@ func (a *App) ForceHelmReleaseStatus(namespace, name, status string) error {
 
 // ListOCIRegistries returns a list of OCI registries with authentication status
 func (a *App) ListOCIRegistries() ([]helm.OCIRegistry, error) {
-	a.LogDebug("ListOCIRegistries called")
+	a.logDebug("ListOCIRegistries called")
 	if a.helmClient == nil {
 		return nil, fmt.Errorf("helm client not initialized")
 	}
@@ -3800,7 +3909,7 @@ func (a *App) ListOCIRegistries() ([]helm.OCIRegistry, error) {
 
 // LoginOCIRegistry authenticates to an OCI registry with username/password
 func (a *App) LoginOCIRegistry(registry, username, password string) error {
-	a.LogDebug("LoginOCIRegistry called: registry=%s, username=%s", registry, username)
+	a.logDebug("LoginOCIRegistry called: registry=%s, username=%s", registry, username)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
@@ -3809,7 +3918,7 @@ func (a *App) LoginOCIRegistry(registry, username, password string) error {
 
 // LoginACRWithAzureCLI logs into an Azure Container Registry using Azure CLI
 func (a *App) LoginACRWithAzureCLI(registry string) error {
-	a.LogDebug("LoginACRWithAzureCLI called: registry=%s", registry)
+	a.logDebug("LoginACRWithAzureCLI called: registry=%s", registry)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
@@ -3818,7 +3927,7 @@ func (a *App) LoginACRWithAzureCLI(registry string) error {
 
 // LogoutOCIRegistry logs out from an OCI registry
 func (a *App) LogoutOCIRegistry(registry string) error {
-	a.LogDebug("LogoutOCIRegistry called: registry=%s", registry)
+	a.logDebug("LogoutOCIRegistry called: registry=%s", registry)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
@@ -3827,7 +3936,7 @@ func (a *App) LogoutOCIRegistry(registry string) error {
 
 // SetOCIRegistryPriority sets the priority for an OCI registry
 func (a *App) SetOCIRegistryPriority(registryURL string, priority int) error {
-	a.LogDebug("SetOCIRegistryPriority called: registry=%s, priority=%d", registryURL, priority)
+	a.logDebug("SetOCIRegistryPriority called: registry=%s, priority=%d", registryURL, priority)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
@@ -3836,7 +3945,7 @@ func (a *App) SetOCIRegistryPriority(registryURL string, priority int) error {
 
 // RemoveOCIRegistry removes an OCI registry (logout and remove priority)
 func (a *App) RemoveOCIRegistry(registry string) error {
-	a.LogDebug("RemoveOCIRegistry called: registry=%s", registry)
+	a.logDebug("RemoveOCIRegistry called: registry=%s", registry)
 	if a.helmClient == nil {
 		return fmt.Errorf("helm client not initialized")
 	}
@@ -3845,7 +3954,7 @@ func (a *App) RemoveOCIRegistry(registry string) error {
 
 // ListChartSources returns all available chart sources (HTTP repos + OCI registries)
 func (a *App) ListChartSources() ([]helm.ChartSourceInfo, error) {
-	a.LogDebug("ListChartSources called")
+	a.logDebug("ListChartSources called")
 	if a.helmClient == nil {
 		return nil, fmt.Errorf("helm client not initialized")
 	}
@@ -3854,7 +3963,7 @@ func (a *App) ListChartSources() ([]helm.ChartSourceInfo, error) {
 
 // SearchChartInSource searches for a chart in a specific source
 func (a *App) SearchChartInSource(sourceName, chartName string) (*helm.ChartSearchResult, error) {
-	a.LogDebug("SearchChartInSource called: source=%s, chart=%s", sourceName, chartName)
+	a.logDebug("SearchChartInSource called: source=%s, chart=%s", sourceName, chartName)
 	if a.helmClient == nil {
 		return nil, fmt.Errorf("helm client not initialized")
 	}
@@ -3872,7 +3981,7 @@ func (a *App) ListServiceAccounts(namespace string) ([]v1.ServiceAccount, error)
 }
 
 func (a *App) GetServiceAccountYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetServiceAccountYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetServiceAccountYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -3880,7 +3989,7 @@ func (a *App) GetServiceAccountYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateServiceAccountYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateServiceAccountYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateServiceAccountYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3889,7 +3998,7 @@ func (a *App) UpdateServiceAccountYaml(namespace, name, yamlContent string) erro
 
 func (a *App) DeleteServiceAccount(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteServiceAccount called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteServiceAccount called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3905,7 +4014,7 @@ func (a *App) ListRoles(namespace string) ([]rbacv1.Role, error) {
 }
 
 func (a *App) GetRoleYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetRoleYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetRoleYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -3913,7 +4022,7 @@ func (a *App) GetRoleYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateRoleYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateRoleYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateRoleYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3922,7 +4031,7 @@ func (a *App) UpdateRoleYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteRole(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteRole called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteRole called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3938,7 +4047,7 @@ func (a *App) ListClusterRoles() ([]rbacv1.ClusterRole, error) {
 }
 
 func (a *App) GetClusterRoleYaml(name string) (string, error) {
-	a.LogDebug("GetClusterRoleYaml called: name=%s", name)
+	a.logDebug("GetClusterRoleYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -3946,7 +4055,7 @@ func (a *App) GetClusterRoleYaml(name string) (string, error) {
 }
 
 func (a *App) UpdateClusterRoleYaml(name, yamlContent string) error {
-	a.LogDebug("UpdateClusterRoleYaml called: name=%s", name)
+	a.logDebug("UpdateClusterRoleYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3955,7 +4064,7 @@ func (a *App) UpdateClusterRoleYaml(name, yamlContent string) error {
 
 func (a *App) DeleteClusterRole(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteClusterRole called: context=%s, name=%s", currentContext, name)
+	a.logDebug("DeleteClusterRole called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3971,7 +4080,7 @@ func (a *App) ListRoleBindings(namespace string) ([]rbacv1.RoleBinding, error) {
 }
 
 func (a *App) GetRoleBindingYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetRoleBindingYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetRoleBindingYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -3979,7 +4088,7 @@ func (a *App) GetRoleBindingYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateRoleBindingYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateRoleBindingYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateRoleBindingYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -3988,7 +4097,7 @@ func (a *App) UpdateRoleBindingYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteRoleBinding(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteRoleBinding called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteRoleBinding called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4004,7 +4113,7 @@ func (a *App) ListClusterRoleBindings() ([]rbacv1.ClusterRoleBinding, error) {
 }
 
 func (a *App) GetClusterRoleBindingYaml(name string) (string, error) {
-	a.LogDebug("GetClusterRoleBindingYaml called: name=%s", name)
+	a.logDebug("GetClusterRoleBindingYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4012,7 +4121,7 @@ func (a *App) GetClusterRoleBindingYaml(name string) (string, error) {
 }
 
 func (a *App) UpdateClusterRoleBindingYaml(name, yamlContent string) error {
-	a.LogDebug("UpdateClusterRoleBindingYaml called: name=%s", name)
+	a.logDebug("UpdateClusterRoleBindingYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4021,7 +4130,7 @@ func (a *App) UpdateClusterRoleBindingYaml(name, yamlContent string) error {
 
 func (a *App) DeleteClusterRoleBinding(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteClusterRoleBinding called: context=%s, name=%s", currentContext, name)
+	a.logDebug("DeleteClusterRoleBinding called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4037,7 +4146,7 @@ func (a *App) ListNetworkPolicies(namespace string) ([]networkingv1.NetworkPolic
 }
 
 func (a *App) GetNetworkPolicyYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetNetworkPolicyYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetNetworkPolicyYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4045,7 +4154,7 @@ func (a *App) GetNetworkPolicyYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateNetworkPolicyYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateNetworkPolicyYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateNetworkPolicyYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4054,7 +4163,7 @@ func (a *App) UpdateNetworkPolicyYaml(namespace, name, yamlContent string) error
 
 func (a *App) DeleteNetworkPolicy(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteNetworkPolicy called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteNetworkPolicy called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4070,7 +4179,7 @@ func (a *App) ListHPAs(namespace string) ([]autoscalingv2.HorizontalPodAutoscale
 }
 
 func (a *App) GetHPAYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetHPAYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetHPAYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4078,7 +4187,7 @@ func (a *App) GetHPAYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateHPAYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateHPAYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateHPAYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4087,7 +4196,7 @@ func (a *App) UpdateHPAYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteHPA(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteHPA called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteHPA called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4103,7 +4212,7 @@ func (a *App) ListPDBs(namespace string) ([]policyv1.PodDisruptionBudget, error)
 }
 
 func (a *App) GetPDBYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetPDBYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetPDBYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4111,7 +4220,7 @@ func (a *App) GetPDBYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdatePDBYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdatePDBYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdatePDBYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4120,7 +4229,7 @@ func (a *App) UpdatePDBYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeletePDB(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeletePDB called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeletePDB called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4136,7 +4245,7 @@ func (a *App) ListResourceQuotas(namespace string) ([]v1.ResourceQuota, error) {
 }
 
 func (a *App) GetResourceQuotaYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetResourceQuotaYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetResourceQuotaYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4144,7 +4253,7 @@ func (a *App) GetResourceQuotaYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateResourceQuotaYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateResourceQuotaYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateResourceQuotaYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4153,7 +4262,7 @@ func (a *App) UpdateResourceQuotaYaml(namespace, name, yamlContent string) error
 
 func (a *App) DeleteResourceQuota(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteResourceQuota called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteResourceQuota called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4169,7 +4278,7 @@ func (a *App) ListLimitRanges(namespace string) ([]v1.LimitRange, error) {
 }
 
 func (a *App) GetLimitRangeYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetLimitRangeYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetLimitRangeYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4177,7 +4286,7 @@ func (a *App) GetLimitRangeYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateLimitRangeYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateLimitRangeYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateLimitRangeYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4186,7 +4295,7 @@ func (a *App) UpdateLimitRangeYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteLimitRange(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteLimitRange called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteLimitRange called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4202,7 +4311,7 @@ func (a *App) ListEndpoints(namespace string) ([]v1.Endpoints, error) {
 }
 
 func (a *App) GetEndpointsYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetEndpointsYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetEndpointsYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4210,7 +4319,7 @@ func (a *App) GetEndpointsYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateEndpointsYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateEndpointsYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateEndpointsYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4219,7 +4328,7 @@ func (a *App) UpdateEndpointsYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteEndpoints(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteEndpoints called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteEndpoints called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4235,7 +4344,7 @@ func (a *App) ListEndpointSlices(namespace string) ([]discoveryv1.EndpointSlice,
 }
 
 func (a *App) GetEndpointSliceYaml(namespace, name string) (string, error) {
-	a.LogDebug("GetEndpointSliceYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("GetEndpointSliceYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4243,7 +4352,7 @@ func (a *App) GetEndpointSliceYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateEndpointSliceYaml(namespace, name, yamlContent string) error {
-	a.LogDebug("UpdateEndpointSliceYaml called: ns=%s, name=%s", namespace, name)
+	a.logDebug("UpdateEndpointSliceYaml called: ns=%s, name=%s", namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4252,7 +4361,7 @@ func (a *App) UpdateEndpointSliceYaml(namespace, name, yamlContent string) error
 
 func (a *App) DeleteEndpointSlice(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteEndpointSlice called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteEndpointSlice called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4268,7 +4377,7 @@ func (a *App) ListValidatingWebhookConfigurations() ([]admissionregistrationv1.V
 }
 
 func (a *App) GetValidatingWebhookConfigurationYaml(name string) (string, error) {
-	a.LogDebug("GetValidatingWebhookConfigurationYaml called: name=%s", name)
+	a.logDebug("GetValidatingWebhookConfigurationYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4276,7 +4385,7 @@ func (a *App) GetValidatingWebhookConfigurationYaml(name string) (string, error)
 }
 
 func (a *App) UpdateValidatingWebhookConfigurationYaml(name, yamlContent string) error {
-	a.LogDebug("UpdateValidatingWebhookConfigurationYaml called: name=%s", name)
+	a.logDebug("UpdateValidatingWebhookConfigurationYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4285,7 +4394,7 @@ func (a *App) UpdateValidatingWebhookConfigurationYaml(name, yamlContent string)
 
 func (a *App) DeleteValidatingWebhookConfiguration(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteValidatingWebhookConfiguration called: context=%s, name=%s", currentContext, name)
+	a.logDebug("DeleteValidatingWebhookConfiguration called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4301,7 +4410,7 @@ func (a *App) ListMutatingWebhookConfigurations() ([]admissionregistrationv1.Mut
 }
 
 func (a *App) GetMutatingWebhookConfigurationYaml(name string) (string, error) {
-	a.LogDebug("GetMutatingWebhookConfigurationYaml called: name=%s", name)
+	a.logDebug("GetMutatingWebhookConfigurationYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4309,7 +4418,7 @@ func (a *App) GetMutatingWebhookConfigurationYaml(name string) (string, error) {
 }
 
 func (a *App) UpdateMutatingWebhookConfigurationYaml(name, yamlContent string) error {
-	a.LogDebug("UpdateMutatingWebhookConfigurationYaml called: name=%s", name)
+	a.logDebug("UpdateMutatingWebhookConfigurationYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4318,7 +4427,7 @@ func (a *App) UpdateMutatingWebhookConfigurationYaml(name, yamlContent string) e
 
 func (a *App) DeleteMutatingWebhookConfiguration(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteMutatingWebhookConfiguration called: context=%s, name=%s", currentContext, name)
+	a.logDebug("DeleteMutatingWebhookConfiguration called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4334,7 +4443,7 @@ func (a *App) ListPriorityClasses() ([]schedulingv1.PriorityClass, error) {
 }
 
 func (a *App) GetPriorityClassYaml(name string) (string, error) {
-	a.LogDebug("GetPriorityClassYaml called: name=%s", name)
+	a.logDebug("GetPriorityClassYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4342,7 +4451,7 @@ func (a *App) GetPriorityClassYaml(name string) (string, error) {
 }
 
 func (a *App) UpdatePriorityClassYaml(name, yamlContent string) error {
-	a.LogDebug("UpdatePriorityClassYaml called: name=%s", name)
+	a.logDebug("UpdatePriorityClassYaml called: name=%s", name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4351,7 +4460,7 @@ func (a *App) UpdatePriorityClassYaml(name, yamlContent string) error {
 
 func (a *App) DeletePriorityClass(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeletePriorityClass called: context=%s, name=%s", currentContext, name)
+	a.logDebug("DeletePriorityClass called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4369,7 +4478,7 @@ func (a *App) ListLeases(namespace string) ([]coordinationv1.Lease, error) {
 
 func (a *App) GetLeaseYaml(namespace, name string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetLeaseYaml called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("GetLeaseYaml called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4378,7 +4487,7 @@ func (a *App) GetLeaseYaml(namespace, name string) (string, error) {
 
 func (a *App) UpdateLeaseYaml(namespace, name, yamlContent string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("UpdateLeaseYaml called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("UpdateLeaseYaml called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4387,7 +4496,7 @@ func (a *App) UpdateLeaseYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteLease(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteLease called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	a.logDebug("DeleteLease called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4405,7 +4514,7 @@ func (a *App) ListCSIDrivers() ([]storagev1.CSIDriver, error) {
 
 func (a *App) GetCSIDriverYaml(name string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetCSIDriverYaml called: context=%s, name=%s", currentContext, name)
+	a.logDebug("GetCSIDriverYaml called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4414,7 +4523,7 @@ func (a *App) GetCSIDriverYaml(name string) (string, error) {
 
 func (a *App) UpdateCSIDriverYaml(name, yamlContent string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("UpdateCSIDriverYaml called: context=%s, name=%s", currentContext, name)
+	a.logDebug("UpdateCSIDriverYaml called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4423,7 +4532,7 @@ func (a *App) UpdateCSIDriverYaml(name, yamlContent string) error {
 
 func (a *App) DeleteCSIDriver(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteCSIDriver called: context=%s, name=%s", currentContext, name)
+	a.logDebug("DeleteCSIDriver called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4441,7 +4550,7 @@ func (a *App) ListCSINodes() ([]storagev1.CSINode, error) {
 
 func (a *App) GetCSINodeYaml(name string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetCSINodeYaml called: context=%s, name=%s", currentContext, name)
+	a.logDebug("GetCSINodeYaml called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -4450,7 +4559,7 @@ func (a *App) GetCSINodeYaml(name string) (string, error) {
 
 func (a *App) UpdateCSINodeYaml(name, yamlContent string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("UpdateCSINodeYaml called: context=%s, name=%s", currentContext, name)
+	a.logDebug("UpdateCSINodeYaml called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4459,7 +4568,7 @@ func (a *App) UpdateCSINodeYaml(name, yamlContent string) error {
 
 func (a *App) DeleteCSINode(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DeleteCSINode called: context=%s, name=%s", currentContext, name)
+	a.logDebug("DeleteCSINode called: context=%s, name=%s", currentContext, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4469,7 +4578,7 @@ func (a *App) DeleteCSINode(name string) error {
 // ApplyYAML creates a resource from YAML content
 func (a *App) ApplyYAML(yamlContent string) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ApplyYAML called: context=%s", currentContext)
+	a.logDebug("ApplyYAML called: context=%s", currentContext)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4488,19 +4597,19 @@ func (a *App) loadPrometheusConfigs() {
 	data, err := os.ReadFile(a.prometheusConfigPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			a.LogDebug("Prometheus: Failed to read config file: %v", err)
+			a.logDebug("Prometheus: Failed to read config file: %v", err)
 		}
 		return
 	}
 
 	var configs map[string]*k8s.PrometheusInfo
 	if err := json.Unmarshal(data, &configs); err != nil {
-		a.LogDebug("Prometheus: Failed to parse config file: %v", err)
+		a.logDebug("Prometheus: Failed to parse config file: %v", err)
 		return
 	}
 
 	a.prometheusConfigs = configs
-	a.LogDebug("Prometheus: Loaded %d saved configurations", len(configs))
+	a.logDebug("Prometheus: Loaded %d saved configurations", len(configs))
 }
 
 // savePrometheusConfigs saves Prometheus configurations to disk
@@ -4535,7 +4644,7 @@ func (a *App) GetCachedPrometheusConfig() *k8s.PrometheusInfo {
 // SavePrometheusConfig saves a Prometheus configuration for the current context
 func (a *App) SavePrometheusConfig(namespace, service string, port int) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("SavePrometheusConfig called: context=%s, endpoint=%s/%s:%d", currentContext, namespace, service, port)
+	a.logDebug("SavePrometheusConfig called: context=%s, endpoint=%s/%s:%d", currentContext, namespace, service, port)
 
 	config := &k8s.PrometheusInfo{
 		Available:       true,
@@ -4550,18 +4659,18 @@ func (a *App) SavePrometheusConfig(namespace, service string, port int) error {
 	a.prometheusConfigMutex.Unlock()
 
 	if err := a.savePrometheusConfigs(); err != nil {
-		a.LogDebug("Prometheus: Failed to save config: %v", err)
+		a.logDebug("Prometheus: Failed to save config: %v", err)
 		return err
 	}
 
-	a.LogDebug("Prometheus: Saved config for context %s", currentContext)
+	a.logDebug("Prometheus: Saved config for context %s", currentContext)
 	return nil
 }
 
 // ClearPrometheusConfig clears the cached Prometheus config for the current context
 func (a *App) ClearPrometheusConfig() error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ClearPrometheusConfig called: context=%s", currentContext)
+	a.logDebug("ClearPrometheusConfig called: context=%s", currentContext)
 
 	a.prometheusConfigMutex.Lock()
 	delete(a.prometheusConfigs, currentContext)
@@ -4574,11 +4683,11 @@ func (a *App) ClearPrometheusConfig() error {
 // First checks for cached config, then falls back to auto-detection
 func (a *App) DetectPrometheus() (*k8s.PrometheusInfo, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("DetectPrometheus called: context=%s", currentContext)
+	a.logDebug("DetectPrometheus called: context=%s", currentContext)
 
 	// Check cached config first
 	if cached := a.GetCachedPrometheusConfig(); cached != nil {
-		a.LogDebug("DetectPrometheus: Using cached config for context %s", currentContext)
+		a.logDebug("DetectPrometheus: Using cached config for context %s", currentContext)
 		// Verify it's still reachable
 		if a.k8sClient != nil {
 			err := a.k8sClient.TestPrometheusEndpoint(currentContext, k8s.PrometheusEndpoint{
@@ -4589,7 +4698,7 @@ func (a *App) DetectPrometheus() (*k8s.PrometheusInfo, error) {
 			if err == nil {
 				return cached, nil
 			}
-			a.LogDebug("DetectPrometheus: Cached config no longer reachable, will re-detect")
+			a.logDebug("DetectPrometheus: Cached config no longer reachable, will re-detect")
 		}
 	}
 
@@ -4617,7 +4726,7 @@ func (a *App) DetectPrometheus() (*k8s.PrometheusInfo, error) {
 // ListPrometheusInstalls returns all Prometheus installations found in the cluster
 func (a *App) ListPrometheusInstalls() ([]k8s.PrometheusInstall, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("ListPrometheusInstalls called: context=%s", currentContext)
+	a.logDebug("ListPrometheusInstalls called: context=%s", currentContext)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -4627,7 +4736,7 @@ func (a *App) ListPrometheusInstalls() ([]k8s.PrometheusInstall, error) {
 // TestPrometheusEndpoint tests a custom Prometheus endpoint
 func (a *App) TestPrometheusEndpoint(namespace, service string, port int) error {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("TestPrometheusEndpoint called: context=%s, endpoint=%s/%s:%d", currentContext, namespace, service, port)
+	a.logDebug("TestPrometheusEndpoint called: context=%s, endpoint=%s/%s:%d", currentContext, namespace, service, port)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -4641,7 +4750,7 @@ func (a *App) TestPrometheusEndpoint(namespace, service string, port int) error 
 // GetPodMetricsHistory retrieves historical metrics for a pod from Prometheus
 func (a *App) GetPodMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, pod, container, duration string) (*k8s.PodMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetPodMetricsHistory called: context=%s, pod=%s/%s, duration=%s, requestId=%s", currentContext, namespace, pod, duration, requestId)
+	a.logDebug("GetPodMetricsHistory called: context=%s, pod=%s/%s, duration=%s, requestId=%s", currentContext, namespace, pod, duration, requestId)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -4683,7 +4792,7 @@ func (a *App) GetPodMetricsHistory(requestId, prometheusNamespace, prometheusSer
 // GetControllerMetricsHistory retrieves historical metrics for a controller (deployment, statefulset, etc.)
 func (a *App) GetControllerMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, name, controllerType, duration string) (*k8s.ControllerMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetControllerMetricsHistory called: context=%s, controller=%s/%s, type=%s, duration=%s, requestId=%s", currentContext, namespace, name, controllerType, duration, requestId)
+	a.logDebug("GetControllerMetricsHistory called: context=%s, controller=%s/%s, type=%s, duration=%s, requestId=%s", currentContext, namespace, name, controllerType, duration, requestId)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -4724,7 +4833,7 @@ func (a *App) GetControllerMetricsHistory(requestId, prometheusNamespace, promet
 // GetNodeMetricsHistory retrieves historical metrics for a node
 func (a *App) GetNodeMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, nodeName, duration string) (*k8s.NodeMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetNodeMetricsHistory called: context=%s, node=%s, duration=%s, requestId=%s", currentContext, nodeName, duration, requestId)
+	a.logDebug("GetNodeMetricsHistory called: context=%s, node=%s, duration=%s, requestId=%s", currentContext, nodeName, duration, requestId)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -4765,7 +4874,7 @@ func (a *App) GetNodeMetricsHistory(requestId, prometheusNamespace, prometheusSe
 // GetNamespaceMetricsHistory retrieves historical metrics for a namespace
 func (a *App) GetNamespaceMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, duration string) (*k8s.NamespaceMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
-	a.LogDebug("GetNamespaceMetricsHistory called: context=%s, namespace=%s, duration=%s, requestId=%s", currentContext, namespace, duration, requestId)
+	a.logDebug("GetNamespaceMetricsHistory called: context=%s, namespace=%s, duration=%s, requestId=%s", currentContext, namespace, duration, requestId)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -4829,7 +4938,7 @@ func (a *App) GetListRequestStats() ListRequestStats {
 // but stale results are ignored via sequence tracking.
 func (a *App) SetRequestCancellationEnabled(enabled bool) {
 	a.listRequestManager.SetCancellationEnabled(enabled)
-	a.LogDebug("Request cancellation enabled: %v", enabled)
+	a.logDebug("Request cancellation enabled: %v", enabled)
 }
 
 // IsRequestCancellationEnabled returns whether HTTP request cancellation is enabled.

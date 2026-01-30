@@ -85,7 +85,8 @@ export const useStatefulSetActions = () => {
                         ownerName={statefulSet.metadata.name}
                         tabContext={currentContext}
                     />
-                )
+                ),
+                resourceMeta: { kind: 'StatefulSet', name: statefulSet.metadata.name, namespace },
             });
         } catch (err) {
             Logger.error("Failed to get pods for StatefulSet", err);

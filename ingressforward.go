@@ -93,7 +93,7 @@ func (m *IngressForwardManager) DetectIngressController() (*IngressController, e
 	for _, p := range patterns {
 		services, err := m.app.k8sClient.ListServices(p.namespace)
 		if err != nil {
-			m.app.LogDebug("IngressForward: Failed to list services in namespace %s: %v", p.namespace, err)
+			m.app.logDebug("IngressForward: Failed to list services in namespace %s: %v", p.namespace, err)
 			continue // Namespace might not exist
 		}
 
@@ -124,7 +124,7 @@ func (m *IngressForwardManager) DetectIngressController() (*IngressController, e
 					controller.HTTPSPort = 443
 				}
 
-				m.app.LogDebug("IngressForward: Detected %s controller at %s/%s (HTTP:%d, HTTPS:%d)",
+				m.app.logDebug("IngressForward: Detected %s controller at %s/%s (HTTP:%d, HTTPS:%d)",
 					controller.Type, controller.Namespace, controller.Name, controller.HTTPPort, controller.HTTPSPort)
 				return controller, nil
 			}
@@ -132,7 +132,7 @@ func (m *IngressForwardManager) DetectIngressController() (*IngressController, e
 	}
 
 	// Fallback: search all namespaces for services with traefik/ingress in name or labels
-	m.app.LogDebug("IngressForward: Pattern matching failed, trying fallback search")
+	m.app.logDebug("IngressForward: Pattern matching failed, trying fallback search")
 	allServices, err := m.app.k8sClient.ListServices("")
 	if err == nil {
 		for _, svc := range allServices {
@@ -184,7 +184,7 @@ func (m *IngressForwardManager) DetectIngressController() (*IngressController, e
 					controller.HTTPSPort = 443
 				}
 
-				m.app.LogDebug("IngressForward: Fallback detected %s controller at %s/%s (HTTP:%d, HTTPS:%d)",
+				m.app.logDebug("IngressForward: Fallback detected %s controller at %s/%s (HTTP:%d, HTTPS:%d)",
 					controller.Type, controller.Namespace, controller.Name, controller.HTTPPort, controller.HTTPSPort)
 				return controller, nil
 			}
@@ -206,7 +206,7 @@ func (m *IngressForwardManager) CollectIngressHostnames(namespaces []string) ([]
 	for _, ns := range namespaces {
 		ingresses, err := m.app.k8sClient.ListIngresses(ns)
 		if err != nil {
-			m.app.LogDebug("IngressForward: Failed to list ingresses in namespace %s: %v", ns, err)
+			m.app.logDebug("IngressForward: Failed to list ingresses in namespace %s: %v", ns, err)
 			continue
 		}
 
@@ -279,14 +279,14 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 	// HTTPS port - use 8443 (or find available)
 	if !hosts.CheckPortAvailable(8443) {
 		localHTTPSPort = m.app.portForwardManager.GetAvailablePort(8443)
-		m.app.LogDebug("IngressForward: Port 8443 not available, using %d", localHTTPSPort)
+		m.app.logDebug("IngressForward: Port 8443 not available, using %d", localHTTPSPort)
 	}
 
 	// HTTP port - use 8080 if available (optional)
 	if hosts.CheckPortAvailable(8080) {
 		localHTTPPort = 8080
 	} else {
-		m.app.LogDebug("IngressForward: Port 8080 not available, skipping HTTP forwarding")
+		m.app.logDebug("IngressForward: Port 8080 not available, skipping HTTP forwarding")
 	}
 
 	m.mutex.Lock()
@@ -334,7 +334,7 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 
 		addedHTTPConfig, err := m.app.portForwardManager.AddConfig(httpConfig)
 		if err != nil {
-			m.app.LogDebug("IngressForward: Failed to create HTTP port forward (non-fatal): %v", err)
+			m.app.logDebug("IngressForward: Failed to create HTTP port forward (non-fatal): %v", err)
 			// Don't fail - HTTP is optional
 		} else {
 			portForwardIDs = append(portForwardIDs, addedHTTPConfig.ID)
@@ -371,7 +371,7 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 	}
 
 	if err := m.hostsManager.AddEntriesWithPortRedirect(entries, localHTTPSPort, localHTTPPort); err != nil {
-		m.app.LogDebug("IngressForward: Failed to update hosts file: %v", err)
+		m.app.logDebug("IngressForward: Failed to update hosts file: %v", err)
 		// Don't fail completely - port forwarding is still useful
 		m.mutex.Lock()
 		m.state.HostsFileUpdated = false
@@ -386,7 +386,7 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 			m.state.LocalHTTPPort = 80
 		}
 		m.mutex.Unlock()
-		m.app.LogDebug("IngressForward: Added %d hostnames to hosts file with port redirection", len(hostnames))
+		m.app.logDebug("IngressForward: Added %d hostnames to hosts file with port redirection", len(hostnames))
 	}
 
 	m.mutex.Lock()
@@ -395,7 +395,7 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 
 	m.emitEvent("started")
 
-	m.app.LogDebug("IngressForward: Started forwarding to %s/%s with %d hostnames",
+	m.app.logDebug("IngressForward: Started forwarding to %s/%s with %d hostnames",
 		controller.Namespace, controller.Name, len(hostnames))
 
 	return nil
@@ -416,7 +416,7 @@ func (m *IngressForwardManager) Stop() error {
 	// Stop port forwards
 	for _, id := range portForwardIDs {
 		if err := m.app.portForwardManager.Stop(id); err != nil {
-			m.app.LogDebug("IngressForward: Failed to stop port forward %s: %v", id, err)
+			m.app.logDebug("IngressForward: Failed to stop port forward %s: %v", id, err)
 		}
 		// Delete the config too
 		m.app.portForwardManager.DeleteConfig(id)
@@ -425,9 +425,9 @@ func (m *IngressForwardManager) Stop() error {
 	// Clean up hosts file
 	if hostsFileUpdated {
 		if err := m.hostsManager.RemoveEntries(); err != nil {
-			m.app.LogDebug("IngressForward: Failed to clean hosts file: %v", err)
+			m.app.logDebug("IngressForward: Failed to clean hosts file: %v", err)
 		} else {
-			m.app.LogDebug("IngressForward: Cleaned up hosts file entries")
+			m.app.logDebug("IngressForward: Cleaned up hosts file entries")
 		}
 	}
 

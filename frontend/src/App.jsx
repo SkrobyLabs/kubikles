@@ -8,6 +8,8 @@ import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Sidebar from './components/layout/Sidebar';
 import BottomPanel from './components/layout/BottomPanel';
+import AIPanel from './components/layout/AIPanel';
+import { AIChatProvider, useAIChat } from './context/AIChatContext';
 import ToastContainer from './components/shared/ToastContainer';
 import PodList from './features/workloads/pods/PodList';
 import DeploymentList from './features/workloads/deployments/DeploymentList';
@@ -448,6 +450,7 @@ function MainLayout() {
 
     const { showConfigEditor, closeConfigEditor, getConfig } = useConfig();
     const { openPerformancePanel } = usePerformancePanel();
+    const { isOpen: aiIsOpen, togglePanel: toggleAI } = useAIChat();
     const isDragging = useRef(false);
     const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
     const [showGenericCreateModal, setShowGenericCreateModal] = useState(false);
@@ -725,12 +728,14 @@ function MainLayout() {
                         </div>
                     )}
                 </main>
+                {aiIsOpen && <AIPanel />}
             </div>
             <ConfirmModal />
             <CommandPalette
                 isOpen={commandPaletteOpen}
                 onClose={() => setCommandPaletteOpen(false)}
                 onCreateResource={() => setShowGenericCreateModal(true)}
+                onToggleAI={toggleAI}
             />
             <CreateResourceModal
                 isOpen={showGenericCreateModal}
@@ -751,10 +756,12 @@ function App() {
                     <NotificationProvider>
                         <K8sProvider>
                             <UIProvider>
-                                <MenuProvider>
-                                    <MainLayout />
-                                    <ToastContainer />
-                                </MenuProvider>
+                                <AIChatProvider>
+                                    <MenuProvider>
+                                        <MainLayout />
+                                        <ToastContainer />
+                                    </MenuProvider>
+                                </AIChatProvider>
                             </UIProvider>
                         </K8sProvider>
                     </NotificationProvider>

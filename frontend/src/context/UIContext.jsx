@@ -31,10 +31,13 @@ export const UIProvider = ({ children }) => {
     // Use ref to store pending search for reliable consumption
     // This avoids timing issues with React 18's batching
     const pendingSearchRef = useRef(null);
+    const pendingAutoOpenRef = useRef(false);
 
     // Navigate to a view with a pre-filled search term
-    const navigateWithSearch = useCallback((view, searchTerm) => {
+    // If autoOpenDetails is true, the first matching row will be auto-clicked
+    const navigateWithSearch = useCallback((view, searchTerm, autoOpenDetails = false) => {
         pendingSearchRef.current = searchTerm;
+        pendingAutoOpenRef.current = autoOpenDetails;
         setPendingSearch(searchTerm); // Trigger re-render
         setActiveView(view);
     }, []);
@@ -42,9 +45,11 @@ export const UIProvider = ({ children }) => {
     // Consume pending search (called by ResourceList when it mounts/updates)
     const consumePendingSearch = useCallback(() => {
         const result = pendingSearchRef.current;
+        const autoOpen = pendingAutoOpenRef.current;
         pendingSearchRef.current = null;
+        pendingAutoOpenRef.current = false;
         setPendingSearch(null);
-        return result;
+        return { search: result, autoOpen };
     }, []);
 
     // Handle context switches - save/restore active tab per context

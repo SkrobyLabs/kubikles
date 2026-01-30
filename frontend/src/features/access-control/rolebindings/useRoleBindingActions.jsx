@@ -25,7 +25,8 @@ export const useRoleBindingActions = () => {
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'RoleBinding', name: roleBinding.metadata.name, namespace: roleBinding.metadata.namespace },
         });
     };
 

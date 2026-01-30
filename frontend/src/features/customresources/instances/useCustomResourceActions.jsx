@@ -34,7 +34,8 @@ export const useCustomResourceActions = (crdInfo) => {
                     updateYamlFn={(content) => UpdateCustomResourceYaml(crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name, content)}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: crdInfo.kind, name, namespace: namespace || undefined },
         });
     };
 

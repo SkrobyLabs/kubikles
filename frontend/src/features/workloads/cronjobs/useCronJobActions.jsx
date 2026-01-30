@@ -85,7 +85,8 @@ export const useCronJobActions = () => {
                         ownerName={cronJob.metadata.name}
                         tabContext={currentContext}
                     />
-                )
+                ),
+                resourceMeta: { kind: 'CronJob', name: cronJob.metadata.name, namespace },
             });
         } catch (err) {
             Logger.error("Failed to get logs for CronJob", err);

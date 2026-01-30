@@ -26,7 +26,8 @@ export const useServiceActions = () => {
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'Service', name: service.metadata.name, namespace: service.metadata.namespace },
         });
     };
 
@@ -44,7 +45,8 @@ export const useServiceActions = () => {
                     resourceName={service.metadata.name}
                     onClose={() => closeTab(tabId)}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'Service', name: service.metadata.name, namespace: service.metadata.namespace },
         });
     };
 
@@ -60,7 +62,8 @@ export const useServiceActions = () => {
                     service={service}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'Service', name: service.metadata.name, namespace: service.metadata.namespace },
         });
     };
 

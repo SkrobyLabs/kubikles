@@ -31,7 +31,13 @@ export function isInServerMode() {
 let ws = null;
 let wsConnecting = false;
 let wsReconnectTimer = null;
+let currentClientId = null; // Server-assigned client ID for session tracking
 const eventListeners = new Map(); // eventName -> Set of callbacks
+
+// Get the current WebSocket client ID (server mode only, used for session ownership)
+export function getClientId() {
+    return currentClientId;
+}
 
 function connectWebSocket() {
     if (!isServerMode()) return;
@@ -58,6 +64,11 @@ function connectWebSocket() {
                 const msg = JSON.parse(event.data);
                 const eventName = msg.name;
                 if (eventName && (msg.type === 'event' || !msg.type)) {
+                    // Capture client ID from connected event for session ownership
+                    if (eventName === 'connected' && msg.data?.clientId) {
+                        currentClientId = msg.data.clientId;
+                        console.log('[WS] Client ID:', currentClientId);
+                    }
                     const listeners = eventListeners.get(eventName);
                     if (listeners) {
                         listeners.forEach(callback => {

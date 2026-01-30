@@ -37,9 +37,11 @@ import {
     QueueListIcon,
     FingerPrintIcon,
     BoltIcon,
-    BugAntIcon
+    BugAntIcon,
+    SparklesIcon
 } from '@heroicons/react/24/outline';
 import { useConfig } from '../../context/ConfigContext';
+import { useAIChat } from '../../context/AIChatContext';
 import { usePerformancePanel } from '../../hooks/usePerformancePanel.jsx';
 import { useDebugLogs } from '../../hooks/useDebugLogs.jsx';
 import SearchSelect from '../shared/SearchSelect';
@@ -55,6 +57,7 @@ export default function Sidebar({
     onContextSelectorOpen
 }) {
     const { openConfigEditor } = useConfig();
+    const { isOpen: aiOpen, togglePanel: toggleAI, providerAvailable } = useAIChat();
     const { openPerformancePanel } = usePerformancePanel();
     const { toggleDebug } = useDebugLogs();
     const isServerMode = isInServerMode();
@@ -490,6 +493,19 @@ export default function Sidebar({
                     >
                         <Cog6ToothIcon className="w-4 h-4" />
                     </button>
+                    {providerAvailable && (
+                        <button
+                            onClick={toggleAI}
+                            className={`absolute right-0 p-1 rounded transition-colors ${
+                                aiOpen
+                                    ? 'text-purple-400 bg-purple-500/15'
+                                    : 'text-gray-500 hover:text-purple-400 hover:bg-white/10'
+                            }`}
+                            title="AI Assistant"
+                        >
+                            <SparklesIcon className="w-4 h-4" />
+                        </button>
+                    )}
 
                     {/* Settings Dropdown Menu */}
                     {settingsMenuOpen && createPortal(

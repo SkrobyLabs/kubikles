@@ -4,6 +4,7 @@ import NumberField from './NumberField';
 import EnumField from './EnumField';
 import TextField from './TextField';
 import ReadonlyField from './ReadonlyField';
+import CheckboxGroupField from './CheckboxGroupField';
 
 export default function ConfigField({ schema, value, onChange, isModified, asyncValue, onAction }) {
     const { type, label, description } = schema;
@@ -39,6 +40,18 @@ export default function ConfigField({ schema, value, onChange, isModified, async
         case 'enum':
             return (
                 <EnumField
+                    label={label}
+                    description={description}
+                    value={value}
+                    onChange={onChange}
+                    isModified={isModified}
+                    options={schema.options}
+                />
+            );
+
+        case 'checkboxGroup':
+            return (
+                <CheckboxGroupField
                     label={label}
                     description={description}
                     value={value}

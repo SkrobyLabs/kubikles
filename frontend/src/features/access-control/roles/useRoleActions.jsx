@@ -25,7 +25,8 @@ export const useRoleActions = () => {
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'Role', name: role.metadata.name, namespace: role.metadata.namespace },
         });
     };
 

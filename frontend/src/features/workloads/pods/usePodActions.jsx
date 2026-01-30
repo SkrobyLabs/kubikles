@@ -23,7 +23,8 @@ export const usePodActions = () => {
             icon: CubeIcon,
             actionLabel: 'Logs',
             keepAlive: true,
-            content: <LogViewer namespace={namespace} pod={podName} containers={containers} siblingPods={siblingPods} podContainerMap={podContainerMap} ownerName={ownerName} podCreationTime={podCreationTime} tabContext={currentContext} />
+            content: <LogViewer namespace={namespace} pod={podName} containers={containers} siblingPods={siblingPods} podContainerMap={podContainerMap} ownerName={ownerName} podCreationTime={podCreationTime} tabContext={currentContext} />,
+            resourceMeta: { kind: 'Pod', name: podName, namespace },
         });
     };
 
@@ -43,7 +44,8 @@ export const usePodActions = () => {
                     container=""
                     context={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'Pod', name: podName, namespace },
         });
         Logger.info("Shell opened successfully", { namespace, pod: podName });
     };
@@ -63,7 +65,8 @@ export const usePodActions = () => {
                     containers={containers}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'Pod', name: podName, namespace },
         });
     };
 
@@ -130,7 +133,8 @@ export const usePodActions = () => {
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'Pod', name: pod.metadata.name, namespace: pod.metadata.namespace },
         });
     };
 
@@ -149,7 +153,8 @@ export const usePodActions = () => {
                     resourceName={pod.metadata.name}
                     onClose={() => closeTab(tabId)}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'Pod', name: pod.metadata.name, namespace: pod.metadata.namespace },
         });
     };
 
@@ -165,7 +170,8 @@ export const usePodActions = () => {
                     pod={pod}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'Pod', name: pod.metadata.name, namespace: pod.metadata.namespace },
         });
     };
 

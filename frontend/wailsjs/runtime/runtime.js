@@ -240,3 +240,8 @@ export function CanResolveFilePaths() {
 export function ResolveFilePaths(files) {
     return window.runtime.ResolveFilePaths(files);
 }
+
+// Get the current WebSocket client ID (server mode only, returns null in desktop mode)
+export function getClientId() {
+    return null;
+}

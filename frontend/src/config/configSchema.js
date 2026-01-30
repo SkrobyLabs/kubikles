@@ -181,6 +181,70 @@ export const configSchema = {
             default: 'favorites'
         }
     },
+    ai: {
+        _meta: { label: 'AI', description: 'AI assistant settings' },
+        model: {
+            type: 'enum',
+            label: 'Model',
+            description: 'AI model to use for chat responses',
+            options: [
+                { value: 'sonnet', label: 'Sonnet (Fast)' },
+                { value: 'opus', label: 'Opus (Smart)' },
+                { value: 'haiku', label: 'Haiku (Fastest)' },
+            ],
+            default: 'sonnet'
+        },
+        requestTimeout: {
+            type: 'number',
+            label: 'Request Timeout',
+            description: 'Maximum time for an AI request before it is cancelled',
+            min: 1,
+            max: 60,
+            step: 1,
+            unit: 'min',
+            default: 10
+        },
+        panelWidth: {
+            type: 'number',
+            label: 'Panel Width',
+            description: 'Width of the AI assistant panel',
+            min: 280,
+            max: 800,
+            step: 20,
+            unit: 'px',
+            default: 384
+        },
+        allowedTools: {
+            type: 'checkboxGroup',
+            label: 'Allowed Tools',
+            description: 'Tools the AI can use. Cluster read tools are enabled by default. Dangerous tools (Bash, WebSearch) are disabled by default. Add external MCP tool names in the input below.',
+            options: [
+                { value: 'get_pod_logs', label: 'Get Pod Logs' },
+                { value: 'get_resource_yaml', label: 'Get Resource YAML' },
+                { value: 'list_resources', label: 'List Resources' },
+                { value: 'get_events', label: 'Get Events' },
+                { value: 'describe_resource', label: 'Describe Resource' },
+                { value: 'list_crds', label: 'List CRDs' },
+                { value: 'list_custom_resources', label: 'List Custom Resources' },
+                { value: 'get_custom_resource_yaml', label: 'Get Custom Resource YAML' },
+                { value: 'get_cluster_metrics', label: 'Get Cluster Metrics' },
+                { value: 'get_pod_metrics', label: 'Get Pod Metrics' },
+                { value: 'get_namespace_summary', label: 'Get Namespace Summary' },
+                { value: 'get_resource_dependencies', label: 'Get Resource Dependencies' },
+                { value: 'Bash', label: 'Bash (run shell commands)', warn: true },
+                { value: 'WebSearch', label: 'Web Search', warn: true },
+                { value: 'Read', label: 'Read Files', warn: true },
+                { value: 'Write', label: 'Write Files', warn: true },
+            ],
+            default: [
+                'get_pod_logs', 'get_resource_yaml', 'list_resources',
+                'get_events', 'describe_resource', 'list_crds',
+                'list_custom_resources', 'get_custom_resource_yaml',
+                'get_cluster_metrics', 'get_pod_metrics',
+                'get_namespace_summary', 'get_resource_dependencies'
+            ]
+        }
+    },
     ui: {
         _meta: { label: 'UI', description: 'User interface settings' },
         fonts: {
@@ -256,6 +320,9 @@ export const getFieldSchema = (path) => {
 export const isModified = (path, value) => {
     const schema = getFieldSchema(path);
     if (!schema || schema.default === undefined) return false;
+    if (Array.isArray(schema.default)) {
+        return JSON.stringify([...(value || [])].sort()) !== JSON.stringify([...schema.default].sort());
+    }
     return value !== schema.default;
 };
 
@@ -278,7 +345,14 @@ export const getModifiedFields = (config) => {
 
             // Check if field has a type (is a real field)
             if (fieldSchema.type && fieldSchema.default !== undefined) {
-                if (currentValue !== undefined && currentValue !== fieldSchema.default) {
+                let isDifferent;
+                if (Array.isArray(fieldSchema.default)) {
+                    isDifferent = currentValue !== undefined &&
+                        JSON.stringify([...(currentValue || [])].sort()) !== JSON.stringify([...fieldSchema.default].sort());
+                } else {
+                    isDifferent = currentValue !== undefined && currentValue !== fieldSchema.default;
+                }
+                if (isDifferent) {
                     modified.push({
                         path: currentPath,
                         label: fieldSchema.label || key,

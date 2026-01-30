@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -17,6 +18,7 @@ import (
 
 // wsClient wraps a WebSocket connection with a write mutex for thread-safe writes
 type wsClient struct {
+	id      string // unique client ID for session tracking
 	conn    *websocket.Conn
 	writeMu sync.Mutex
 }
@@ -31,16 +33,26 @@ func (c *wsClient) Close() error {
 	return c.conn.Close()
 }
 
+// DisconnectListener is notified when a WebSocket client disconnects.
+// Components that manage per-client resources (AI sessions, terminals, watchers)
+// can implement this to clean up when clients disconnect.
+type DisconnectListener interface {
+	OnClientDisconnect(clientID string)
+}
+
 // Server handles HTTP and WebSocket connections for server mode
 type Server struct {
-	caller    MethodCaller
-	assets    embed.FS
-	port      int
-	clients   map[*wsClient]bool
-	clientsMu sync.RWMutex
-	broadcast chan Event
-	done      chan struct{} // closed when server is shutting down
-	upgrader  websocket.Upgrader
+	caller              MethodCaller
+	assets              embed.FS
+	port                int
+	clients             map[*wsClient]bool
+	clientsMu           sync.RWMutex
+	broadcast           chan Event
+	done                chan struct{} // closed when server is shutting down
+	upgrader            websocket.Upgrader
+	disconnectListeners []DisconnectListener
+	listenersMu         sync.RWMutex
+	clientCounter       uint64 // for generating unique client IDs
 }
 
 // Event represents a WebSocket event to send to clients
@@ -138,6 +150,26 @@ func (s *Server) EmitEvent(name string, data interface{}) {
 	}
 }
 
+// AddDisconnectListener registers a listener to be notified when clients disconnect.
+// This allows components (AI manager, terminal manager, etc.) to clean up per-client resources.
+func (s *Server) AddDisconnectListener(listener DisconnectListener) {
+	s.listenersMu.Lock()
+	defer s.listenersMu.Unlock()
+	s.disconnectListeners = append(s.disconnectListeners, listener)
+}
+
+// notifyDisconnect notifies all registered listeners that a client has disconnected.
+func (s *Server) notifyDisconnect(clientID string) {
+	s.listenersMu.RLock()
+	listeners := make([]DisconnectListener, len(s.disconnectListeners))
+	copy(listeners, s.disconnectListeners)
+	s.listenersMu.RUnlock()
+
+	for _, listener := range listeners {
+		go listener.OnClientDisconnect(clientID)
+	}
+}
+
 func (s *Server) handleBroadcast() {
 	for event := range s.broadcast {
 		// Collect failed clients while holding read lock
@@ -170,17 +202,22 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := &wsClient{conn: conn}
+	// Generate unique client ID
+	clientNum := atomic.AddUint64(&s.clientCounter, 1)
+	clientID := fmt.Sprintf("ws-%d", clientNum)
+
+	client := &wsClient{id: clientID, conn: conn}
 
 	s.clientsMu.Lock()
 	s.clients[client] = true
 	s.clientsMu.Unlock()
 
-	log.Printf("WebSocket client connected (total: %d)", len(s.clients))
+	log.Printf("WebSocket client %s connected (total: %d)", clientID, len(s.clients))
 
-	// Send initial connection event (uses mutex-protected write)
+	// Send initial connection event with client ID
 	client.WriteJSON(Event{Type: "event", Name: "connected", Data: map[string]interface{}{
 		"serverMode": true,
+		"clientId":   clientID,
 	}})
 
 	// Handle incoming messages (for future bidirectional communication)
@@ -188,9 +225,13 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			s.clientsMu.Lock()
 			delete(s.clients, client)
+			clientCount := len(s.clients)
 			s.clientsMu.Unlock()
 			client.Close()
-			log.Printf("WebSocket client disconnected (total: %d)", len(s.clients))
+			log.Printf("WebSocket client %s disconnected (total: %d)", clientID, clientCount)
+
+			// Notify listeners so they can clean up per-client resources
+			s.notifyDisconnect(clientID)
 		}()
 
 		for {

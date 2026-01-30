@@ -86,7 +86,8 @@ export const useDeploymentActions = () => {
                         ownerName={deployment.metadata.name}
                         tabContext={currentContext}
                     />
-                )
+                ),
+                resourceMeta: { kind: 'Deployment', name: deployment.metadata.name, namespace },
             });
         } catch (err) {
             Logger.error("Failed to get pods for Deployment", err);

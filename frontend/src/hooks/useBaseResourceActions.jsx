@@ -53,7 +53,8 @@ export function useBaseResourceActions(config) {
             id: tabId,
             title: getTabTitle(resource),
             icon: getResourceIcon(resourceType),
-            content: <DetailsComponent {...props} />
+            content: <DetailsComponent {...props} />,
+            resourceMeta: { kind: resourceLabel, name, namespace },
         });
     };
 
@@ -79,7 +80,8 @@ export function useBaseResourceActions(config) {
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: resourceLabel, name, namespace },
         });
     };
 
@@ -104,7 +106,8 @@ export function useBaseResourceActions(config) {
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
                 />
-            )
+            ),
+            resourceMeta: { kind: resourceLabel, name, namespace },
         });
     } : undefined;
 

@@ -84,9 +84,13 @@ export function AddHelmRepository(...args) { return AppProxy.AddHelmRepository(.
 export function AddPortForwardConfig(...args) { return AppProxy.AddPortForwardConfig(...args); }
 export function ApplyYAML(...args) { return AppProxy.ApplyYAML(...args); }
 export function CancelConnectionTest(...args) { return AppProxy.CancelConnectionTest(...args); }
+export function CancelAIRequest(...args) { return AppProxy.CancelAIRequest(...args); }
 export function CancelListRequest(...args) { return AppProxy.CancelListRequest(...args); }
 export function CancelMetricsRequest(...args) { return AppProxy.CancelMetricsRequest(...args); }
+export function CheckAIProvider(...args) { return AppProxy.CheckAIProvider(...args); }
+export function ClearAISession(...args) { return AppProxy.ClearAISession(...args); }
 export function ClearPrometheusConfig(...args) { return AppProxy.ClearPrometheusConfig(...args); }
+export function CloseAISession(...args) { return AppProxy.CloseAISession(...args); }
 export function CloseTerminalSession(...args) { return AppProxy.CloseTerminalSession(...args); }
 export function CollectIngressHostnames(...args) { return AppProxy.CollectIngressHostnames(...args); }
 export function ConfirmDialog(...args) { return AppProxy.ConfirmDialog(...args); }
@@ -232,6 +236,7 @@ export function GetStorageClass(...args) { return AppProxy.GetStorageClass(...ar
 export function GetStorageClassYaml(...args) { return AppProxy.GetStorageClassYaml(...args); }
 export function GetThemes(...args) { return AppProxy.GetThemes(...args); }
 export function GetThemesDir(...args) { return AppProxy.GetThemesDir(...args); }
+export function GetToolDiscovery(...args) { return AppProxy.GetToolDiscovery(...args); }
 export function GetValidatingWebhookConfigurationYaml(...args) { return AppProxy.GetValidatingWebhookConfigurationYaml(...args); }
 export function GetVersionInfo(...args) { return AppProxy.GetVersionInfo(...args); }
 export function Greet(...args) { return AppProxy.Greet(...args); }
@@ -305,6 +310,7 @@ export function SavePrometheusConfig(...args) { return AppProxy.SavePrometheusCo
 export function SaveYamlBackup(...args) { return AppProxy.SaveYamlBackup(...args); }
 export function SearchChartInSource(...args) { return AppProxy.SearchChartInSource(...args); }
 export function SearchHelmChart(...args) { return AppProxy.SearchHelmChart(...args); }
+export function SendAIMessage(...args) { return AppProxy.SendAIMessage(...args); }
 export function SendTerminalInput(...args) { return AppProxy.SendTerminalInput(...args); }
 export function SetClientPoolSize(...args) { return AppProxy.SetClientPoolSize(...args); }
 export function SetEventCoalescerFrameInterval(...args) { return AppProxy.SetEventCoalescerFrameInterval(...args); }
@@ -316,6 +322,7 @@ export function SetNodeSchedulable(...args) { return AppProxy.SetNodeSchedulable
 export function SetOCIRegistryPriority(...args) { return AppProxy.SetOCIRegistryPriority(...args); }
 export function SetRequestCancellationEnabled(...args) { return AppProxy.SetRequestCancellationEnabled(...args); }
 export function SetTheme(...args) { return AppProxy.SetTheme(...args); }
+export function StartAISession(...args) { return AppProxy.StartAISession(...args); }
 export function StartAllContainersLogStream(...args) { return AppProxy.StartAllContainersLogStream(...args); }
 export function StartAllPodsLogStream(...args) { return AppProxy.StartAllPodsLogStream(...args); }
 export function StartFavoritePortForwards(...args) { return AppProxy.StartFavoritePortForwards(...args); }

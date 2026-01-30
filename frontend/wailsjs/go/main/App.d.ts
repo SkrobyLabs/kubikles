@@ -4,6 +4,7 @@ import {main} from '../models';
 import {k8s} from '../models';
 import {helm} from '../models';
 import {v1} from '../models';
+import {tools} from '../models';
 import {v2} from '../models';
 import {events} from '../models';
 import {terminal} from '../models';
@@ -14,13 +15,21 @@ export function AddPortForwardConfig(arg1:main.PortForwardConfig):Promise<main.P
 
 export function ApplyYAML(arg1:string):Promise<void>;
 
+export function CancelAIRequest(arg1:string):Promise<void>;
+
 export function CancelConnectionTest():Promise<void>;
 
 export function CancelListRequest(arg1:string):Promise<boolean>;
 
 export function CancelMetricsRequest(arg1:string):Promise<boolean>;
 
+export function CheckAIProvider():Promise<main.AIProviderStatus>;
+
+export function ClearAISession(arg1:string):Promise<string>;
+
 export function ClearPrometheusConfig():Promise<void>;
+
+export function CloseAISession(arg1:string):Promise<void>;
 
 export function CloseTerminalSession(arg1:string):Promise<void>;
 
@@ -312,6 +321,8 @@ export function GetThemes():Promise<Array<main.Theme>>;
 
 export function GetThemesDir():Promise<string>;
 
+export function GetToolDiscovery():Promise<tools.ToolDiscoveryResponse>;
+
 export function GetValidatingWebhookConfigurationYaml(arg1:string):Promise<string>;
 
 export function GetVersionInfo():Promise<main.VersionInfo>;
@@ -412,7 +423,7 @@ export function ListStorageClasses():Promise<Array<v1.StorageClass>>;
 
 export function ListValidatingWebhookConfigurations():Promise<Array<v1.ValidatingWebhookConfiguration>>;
 
-export function LogDebug(arg1:string,arg2:Array<any>):Promise<void>;
+export function LogDebug(arg1:string):Promise<void>;
 
 export function LoginACRWithAzureCLI(arg1:string):Promise<void>;
 
@@ -458,6 +469,8 @@ export function SearchChartInSource(arg1:string,arg2:string):Promise<helm.ChartS
 
 export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;
 
+export function SendAIMessage(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<string>,arg6:number):Promise<void>;
+
 export function SendTerminalInput(arg1:string,arg2:string):Promise<void>;
 
 export function SetClientPoolSize(arg1:number):Promise<void>;
@@ -479,6 +492,8 @@ export function SetOCIRegistryPriority(arg1:string,arg2:number):Promise<void>;
 export function SetRequestCancellationEnabled(arg1:boolean):Promise<void>;
 
 export function SetTheme(arg1:string):Promise<void>;
+
+export function StartAISession(arg1:string):Promise<string>;
 
 export function StartAllContainersLogStream(arg1:string,arg2:string,arg3:Array<string>,arg4:boolean):Promise<string>;
 

@@ -26,7 +26,8 @@ export const useIngressClassActions = () => {
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
                 />
-            )
+            ),
+            resourceMeta: { kind: 'IngressClass', name: ingressClass.metadata.name },
         });
     };
 

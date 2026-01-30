@@ -51,7 +51,8 @@ export const useNodeActions = (refetch) => {
             icon: ServerIcon,
             actionLabel: 'Shell',
             keepAlive: true,
-            content: <NodeShellTab nodeName={nodeName} context={currentContext} />
+            content: <NodeShellTab nodeName={nodeName} context={currentContext} />,
+            resourceMeta: { kind: 'Node', name: nodeName },
         });
     }, [currentContext, openTab]);
 

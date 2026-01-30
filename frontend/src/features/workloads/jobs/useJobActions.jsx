@@ -85,7 +85,8 @@ export const useJobActions = (onRefresh) => {
                         ownerName={job.metadata.name}
                         tabContext={currentContext}
                     />
-                )
+                ),
+                resourceMeta: { kind: 'Job', name: job.metadata.name, namespace },
             });
         } catch (err) {
             Logger.error("Failed to get pods for Job", err);
