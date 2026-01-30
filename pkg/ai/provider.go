@@ -50,4 +50,14 @@ type Request struct {
 type StreamEvent struct {
 	Type    string // "text", "done", "error"
 	Content string
+	Usage   *TokenUsage // token usage stats (may be nil)
+}
+
+// TokenUsage contains token usage statistics from the AI provider.
+type TokenUsage struct {
+	InputTokens         int     `json:"inputTokens"`
+	OutputTokens        int     `json:"outputTokens"`
+	CacheReadTokens     int     `json:"cacheReadTokens"`
+	CacheCreationTokens int     `json:"cacheCreationTokens"`
+	CostUSD             float64 `json:"costUSD"`
 }

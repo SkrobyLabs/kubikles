@@ -16,11 +16,12 @@ const defaultRequestTimeout = 10 * time.Minute
 
 // AIResponseEvent is emitted to the frontend via Wails events.
 type AIResponseEvent struct {
-	SessionID  string `json:"sessionId"`
-	Generation uint64 `json:"generation"`
-	Chunk      string `json:"chunk,omitempty"`
-	Done       bool   `json:"done,omitempty"`
-	Error      string `json:"error,omitempty"`
+	SessionID  string      `json:"sessionId"`
+	Generation uint64      `json:"generation"`
+	Chunk      string      `json:"chunk,omitempty"`
+	Done       bool        `json:"done,omitempty"`
+	Error      string      `json:"error,omitempty"`
+	Usage      *TokenUsage `json:"usage,omitempty"`
 }
 
 // session tracks a single AI chat session.
@@ -109,7 +110,8 @@ func (m *Manager) StartSession(clientID string) string {
 // SendMessage sends a message in a session asynchronously.
 // Streams response via ai:response Wails events.
 // timeoutSeconds overrides the default timeout when > 0.
-func (m *Manager) SendMessage(sessionID, message, systemPrompt, model, k8sContext string, allowedTools []string, timeoutSeconds int) {
+// Returns true if the request was successfully initiated, false if it failed validation.
+func (m *Manager) SendMessage(sessionID, message, systemPrompt, model, k8sContext string, allowedTools []string, timeoutSeconds int) bool {
 	m.mu.RLock()
 	sess, exists := m.sessions[sessionID]
 	appCtx := m.ctx
@@ -117,26 +119,27 @@ func (m *Manager) SendMessage(sessionID, message, systemPrompt, model, k8sContex
 
 	if !exists {
 		m.emit(AIResponseEvent{SessionID: sessionID, Error: "session not found", Done: true})
-		return
+		return false
 	}
 
 	if appCtx == nil {
 		m.emit(AIResponseEvent{SessionID: sessionID, Error: "app context not initialized", Done: true})
-		return
+		return false
 	}
 
 	// Check if provider supports persistent sessions
 	if m.provider.SupportsSession() {
-		m.sendMessagePersistent(sess, sessionID, message, systemPrompt, model, k8sContext, allowedTools, timeoutSeconds)
-		return
+		return m.sendMessagePersistent(sess, sessionID, message, systemPrompt, model, k8sContext, allowedTools, timeoutSeconds)
 	}
 
 	// Fallback to one-shot mode for providers that don't support sessions
 	m.sendMessageOneShot(sess, sessionID, message, systemPrompt, model, k8sContext, allowedTools, timeoutSeconds, appCtx)
+	return true
 }
 
 // sendMessagePersistent uses a persistent CLI session for fast message sending.
-func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, systemPrompt, model, k8sContext string, allowedTools []string, timeoutSeconds int) {
+// Returns true if the message was successfully queued for sending.
+func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, systemPrompt, model, k8sContext string, allowedTools []string, timeoutSeconds int) bool {
 	m.mu.Lock()
 	sess.generation++
 
@@ -165,9 +168,9 @@ func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, syste
 
 			switch event.Type {
 			case "text":
-				m.emit(AIResponseEvent{SessionID: sessionID, Generation: currentGen, Chunk: event.Content})
+				m.emit(AIResponseEvent{SessionID: sessionID, Generation: currentGen, Chunk: event.Content, Usage: event.Usage})
 			case "done":
-				m.emit(AIResponseEvent{SessionID: sessionID, Generation: currentGen, Done: true})
+				m.emit(AIResponseEvent{SessionID: sessionID, Generation: currentGen, Done: true, Usage: event.Usage})
 			case "error":
 				m.emit(AIResponseEvent{SessionID: sessionID, Generation: currentGen, Error: event.Content})
 			}
@@ -178,7 +181,7 @@ func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, syste
 			gen := sess.generation
 			m.mu.Unlock()
 			m.emit(AIResponseEvent{SessionID: sessionID, Generation: gen, Error: fmt.Sprintf("failed to start session: %v", err), Done: true})
-			return
+			return false
 		}
 		sess.cliSession = cliSession
 	}
@@ -200,6 +203,7 @@ func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, syste
 			m.mu.Unlock()
 		}
 	}()
+	return true
 }
 
 // sendMessageOneShot uses the traditional one-process-per-message approach.
@@ -243,9 +247,9 @@ func (m *Manager) sendMessageOneShot(sess *session, sessionID, message, systemPr
 			switch event.Type {
 			case "text":
 				responseText.WriteString(event.Content)
-				m.emit(AIResponseEvent{SessionID: sessionID, Generation: gen, Chunk: event.Content})
+				m.emit(AIResponseEvent{SessionID: sessionID, Generation: gen, Chunk: event.Content, Usage: event.Usage})
 			case "done":
-				m.emit(AIResponseEvent{SessionID: sessionID, Generation: gen, Done: true})
+				m.emit(AIResponseEvent{SessionID: sessionID, Generation: gen, Done: true, Usage: event.Usage})
 			case "error":
 				m.emit(AIResponseEvent{SessionID: sessionID, Generation: gen, Error: event.Content})
 			}

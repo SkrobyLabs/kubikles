@@ -76,7 +76,7 @@ export default function MessageBubble({ msg }) {
                 <div
                     className={`relative max-w-[90%] rounded-lg px-3 py-2 text-sm ${
                         msg.role === 'user'
-                            ? 'bg-accent/10 text-text'
+                            ? 'bg-[color-mix(in_srgb,var(--color-primary)_15%,transparent)] text-text'
                             : msg.isError
                                 ? 'bg-red-500/10 text-red-300'
                                 : 'bg-white/5 text-text'
@@ -87,6 +87,12 @@ export default function MessageBubble({ msg }) {
                             <SimpleMarkdown text={msg.content} />
                             {msg.streaming && !isThinking && (
                                 <span className="inline-block w-1.5 h-3.5 bg-primary ml-0.5 animate-pulse" />
+                            )}
+                            {!msg.streaming && msg.usage?.outputTokens > 0 && (
+                                <div className="mt-2 pt-1.5 border-t border-white/5 text-[10px] text-gray-500">
+                                    {msg.usage.outputTokens} tokens
+                                    {msg.usage.costUSD > 0 && ` · $${msg.usage.costUSD.toFixed(4)}`}
+                                </div>
                             )}
                         </div>
                     ) : (

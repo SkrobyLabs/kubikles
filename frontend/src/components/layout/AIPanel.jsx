@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { XMarkIcon, TrashIcon, StopIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PlusIcon, StopIcon, ClipboardDocumentIcon, CheckIcon, ClockIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useAIChat } from '../../context/AIChatContext';
 import { useK8s } from '../../context/K8sContext';
 import { useUI } from '../../context/UIContext';
@@ -18,7 +18,11 @@ export default function AIPanel() {
         sendMessage,
         isStreaming,
         cancelRequest,
-        clearChat,
+        startNewChat,
+        loadConversation,
+        deleteConversation,
+        conversationHistory,
+        conversationId,
         togglePanel,
         providerAvailable,
         providerStatus,
@@ -32,8 +36,10 @@ export default function AIPanel() {
 
     const [input, setInput] = useState('');
     const [copiedAll, setCopiedAll] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
     const messagesEndRef = useRef(null);
     const textareaRef = useRef(null);
+    const historyRef = useRef(null);
 
     const defaultWidth = getConfig('ai.panelWidth') || 384;
     const [width, setWidth] = useState(() => {
@@ -106,6 +112,18 @@ export default function AIPanel() {
     useEffect(() => {
         textareaRef.current?.focus();
     }, []);
+
+    // Close history dropdown on click outside
+    useEffect(() => {
+        if (!showHistory) return;
+        const handleClickOutside = (e) => {
+            if (historyRef.current && !historyRef.current.contains(e.target)) {
+                setShowHistory(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showHistory]);
 
     const handleSend = useCallback(() => {
         if (!input.trim() || isStreaming) return;
@@ -217,12 +235,65 @@ export default function AIPanel() {
                         </button>
                     )}
                     <button
-                        onClick={clearChat}
+                        onClick={startNewChat}
                         className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-text"
-                        title="Clear chat"
+                        title="New chat"
                     >
-                        <TrashIcon className="h-4 w-4" />
+                        <PlusIcon className="h-4 w-4" />
                     </button>
+                    <div className="relative" ref={historyRef}>
+                        <button
+                            onClick={() => setShowHistory(prev => !prev)}
+                            className={`p-1 rounded hover:bg-white/10 text-gray-400 hover:text-text ${showHistory ? 'bg-white/10 text-text' : ''}`}
+                            title="Chat history"
+                        >
+                            <ClockIcon className="h-4 w-4" />
+                        </button>
+                        {showHistory && (
+                            <div className="absolute right-0 top-full mt-1 w-64 bg-surface border border-border rounded-lg shadow-lg z-50 overflow-hidden">
+                                <div className="px-3 py-2 border-b border-border text-xs font-medium text-gray-400">
+                                    Recent conversations
+                                </div>
+                                <div className="max-h-64 overflow-y-auto">
+                                    {conversationHistory.length === 0 ? (
+                                        <div className="px-3 py-4 text-xs text-gray-500 text-center">
+                                            No conversation history
+                                        </div>
+                                    ) : (
+                                        conversationHistory.map(conv => (
+                                            <div
+                                                key={conv.id}
+                                                className={`group flex items-center gap-2 px-3 py-2 hover:bg-white/5 cursor-pointer ${conv.id === conversationId ? 'bg-white/10' : ''}`}
+                                            >
+                                                <button
+                                                    onClick={() => {
+                                                        loadConversation(conv.id);
+                                                        setShowHistory(false);
+                                                    }}
+                                                    className="flex-1 text-left min-w-0"
+                                                >
+                                                    <div className="text-xs text-text truncate">{conv.title}</div>
+                                                    <div className="text-[10px] text-gray-500">
+                                                        {new Date(conv.updatedAt).toLocaleDateString()} · {conv.messages.length} msgs
+                                                    </div>
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        deleteConversation(conv.id);
+                                                    }}
+                                                    className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    title="Delete conversation"
+                                                >
+                                                    <TrashIcon className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                     <button
                         onClick={togglePanel}
                         className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-text"

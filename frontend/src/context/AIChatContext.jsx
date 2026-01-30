@@ -53,6 +53,36 @@ const TAB_ACTION_TOOL_MAP = {
 
 const AIChatContext = createContext();
 
+const HISTORY_STORAGE_KEY = 'kubikles-ai-chat-history';
+const MAX_CONVERSATIONS = 10;
+
+// Load conversation history from localStorage
+function loadConversationHistory() {
+    try {
+        const data = localStorage.getItem(HISTORY_STORAGE_KEY);
+        return data ? JSON.parse(data) : [];
+    } catch {
+        return [];
+    }
+}
+
+// Save conversation history to localStorage
+function saveConversationHistory(conversations) {
+    try {
+        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(conversations));
+    } catch (e) {
+        console.error('Failed to save conversation history:', e);
+    }
+}
+
+// Generate a title from the first user message
+function generateTitle(messages) {
+    const firstUserMsg = messages.find(m => m.role === 'user');
+    if (!firstUserMsg) return 'New conversation';
+    const text = firstUserMsg.content;
+    return text.length > 50 ? text.slice(0, 50) + '…' : text;
+}
+
 export const useAIChat = () => {
     const context = useContext(AIChatContext);
     if (!context) {
@@ -75,12 +105,15 @@ export const AIChatProvider = ({ children }) => {
     const [providerStatus, setProviderStatus] = useState('');
     const [providerName, setProviderName] = useState('');
     const [sessionId, setSessionId] = useState(null);
+    const [conversationId, setConversationId] = useState(null);
+    const [conversationHistory, setConversationHistory] = useState(() => loadConversationHistory());
 
     const streamingMessageRef = useRef(null);
     const lastChunkTimeRef = useRef(null);
     const streamStartTimeRef = useRef(null);
     const autoExecutedNavRef = useRef(new Set());
     const generationRef = useRef(0);
+    const currentUsageRef = useRef(null); // track latest token usage
     const sessionIdRef = useRef(sessionId);
     sessionIdRef.current = sessionId;
     const THINKING_THRESHOLD = 500; // ms — pause longer than this inserts a thought bubble
@@ -148,6 +181,11 @@ export const AIChatProvider = ({ children }) => {
                 const lastTime = lastChunkTimeRef.current;
                 lastChunkTimeRef.current = now;
 
+                // Track usage for attaching to final message
+                if (event.usage) {
+                    currentUsageRef.current = event.usage;
+                }
+
                 setMessages(prev => {
                     if (streamingMessageRef.current) {
                         // Detect thinking pause — split into thought bubble + new message
@@ -192,11 +230,16 @@ export const AIChatProvider = ({ children }) => {
             }
 
             if (event.done) {
-                // Finalize streaming message
+                // Update final usage
+                if (event.usage) {
+                    currentUsageRef.current = event.usage;
+                }
+                // Finalize streaming message and attach final usage
                 if (streamingMessageRef.current) {
                     const msgId = streamingMessageRef.current;
+                    const finalUsage = event.usage || currentUsageRef.current;
                     setMessages(prev => prev.map(m =>
-                        m.id === msgId ? { ...m, streaming: false } : m
+                        m.id === msgId ? { ...m, streaming: false, usage: finalUsage } : m
                     ));
                 }
                 streamingMessageRef.current = null;
@@ -217,6 +260,48 @@ export const AIChatProvider = ({ children }) => {
             }
         };
     }, [sessionId]);
+
+    // Auto-save current conversation to history when messages change
+    useEffect(() => {
+        // Only save if there are user messages (not just empty or only thought bubbles)
+        const hasUserMessages = messages.some(m => m.role === 'user');
+        if (!hasUserMessages) return;
+
+        // Don't save while streaming
+        if (isStreaming) return;
+
+        setConversationHistory(prev => {
+            const id = conversationId || `conv-${Date.now()}`;
+            if (!conversationId) {
+                setConversationId(id);
+            }
+
+            const updatedConv = {
+                id,
+                title: generateTitle(messages),
+                messages: messages.filter(m => m.role !== 'thought'), // Don't persist thought bubbles
+                updatedAt: Date.now()
+            };
+
+            // Update existing or add new
+            const existingIdx = prev.findIndex(c => c.id === id);
+            let updated;
+            if (existingIdx >= 0) {
+                updated = [...prev];
+                updated[existingIdx] = updatedConv;
+            } else {
+                updated = [updatedConv, ...prev];
+            }
+
+            // Keep only last MAX_CONVERSATIONS
+            if (updated.length > MAX_CONVERSATIONS) {
+                updated = updated.slice(0, MAX_CONVERSATIONS);
+            }
+
+            saveConversationHistory(updated);
+            return updated;
+        });
+    }, [messages, isStreaming, conversationId]);
 
     // Build system prompt with K8s context info
     const buildSystemPrompt = useCallback(() => {
@@ -340,9 +425,8 @@ export const AIChatProvider = ({ children }) => {
             isError: false
         };
         setMessages(prev => [...prev, userMsg]);
-        setIsStreaming(true);
         generationRef.current++;
-        streamStartTimeRef.current = Date.now();
+        currentUsageRef.current = null;
 
         const model = getConfig('ai.model') || 'sonnet';
         const systemPrompt = buildSystemPrompt();
@@ -363,10 +447,18 @@ export const AIChatProvider = ({ children }) => {
 
         const timeoutSeconds = (getConfig('ai.requestTimeout') || 10) * 60;
 
-        SendAIMessage(sessionId, fullMessage, systemPrompt, model, allowedTools, timeoutSeconds).catch(err => {
-            console.error('Failed to send AI message:', err);
-            setIsStreaming(false);
-        });
+        // Only set isStreaming if request was successfully initiated
+        SendAIMessage(sessionId, fullMessage, systemPrompt, model, allowedTools, timeoutSeconds)
+            .then(success => {
+                if (success) {
+                    setIsStreaming(true);
+                    streamStartTimeRef.current = Date.now();
+                }
+                // If not successful, error event will be emitted by backend
+            })
+            .catch(err => {
+                console.error('Failed to send AI message:', err);
+            });
     }, [sessionId, isStreaming, buildSystemPrompt, buildMessageContext, getConfig]);
 
     const cancelRequest = useCallback(() => {
@@ -383,30 +475,82 @@ export const AIChatProvider = ({ children }) => {
         }
     }, [sessionId]);
 
-    const clearChat = useCallback(() => {
+    // Reset UI state for a new/loaded conversation
+    const resetChatState = useCallback(() => {
+        setMessages([]);
+        setIsStreaming(false);
+        streamingMessageRef.current = null;
+        lastChunkTimeRef.current = null;
+        streamStartTimeRef.current = null;
+        generationRef.current = 0;
+        autoExecutedNavRef.current.clear();
+        setConversationId(null);
+    }, []);
+
+    // Start a new chat (current conversation is auto-saved by the effect)
+    const startNewChat = useCallback(() => {
         if (sessionId) {
-            // Reset state only after backend confirms the new session to avoid
-            // a window where sends target the destroyed old session ID.
+            // Clear backend session and get new ID
             ClearAISession(sessionId).then(newId => {
-                setMessages([]);
-                setIsStreaming(false);
-                streamingMessageRef.current = null;
-                autoExecutedNavRef.current.clear();
+                resetChatState();
                 if (newId) setSessionId(newId);
             }).catch(() => {
-                // Still reset UI even if backend fails
-                setMessages([]);
-                setIsStreaming(false);
-                streamingMessageRef.current = null;
-                autoExecutedNavRef.current.clear();
+                resetChatState();
             });
         } else {
-            setMessages([]);
+            resetChatState();
+        }
+    }, [sessionId, resetChatState]);
+
+    // Load a conversation from history
+    const loadConversation = useCallback((convId) => {
+        const conv = conversationHistory.find(c => c.id === convId);
+        if (!conv) return;
+
+        // Reset message counter to avoid ID collisions
+        const maxMsgId = conv.messages.reduce((max, m) => {
+            const num = parseInt(m.id?.replace('msg-', '') || '0', 10);
+            return num > max ? num : max;
+        }, 0);
+        messageCounter = Math.max(messageCounter, maxMsgId);
+
+        // Helper to load the conversation state
+        const loadState = () => {
+            setMessages(conv.messages);
+            setConversationId(convId);
             setIsStreaming(false);
             streamingMessageRef.current = null;
+            lastChunkTimeRef.current = null;
+            streamStartTimeRef.current = null;
+            generationRef.current = 0;
             autoExecutedNavRef.current.clear();
+        };
+
+        if (sessionId) {
+            // ClearAISession cancels any pending request and creates fresh session
+            ClearAISession(sessionId).then(newId => {
+                loadState();
+                if (newId) setSessionId(newId);
+            }).catch(() => {
+                loadState();
+            });
+        } else {
+            loadState();
         }
-    }, [sessionId]);
+    }, [sessionId, conversationHistory]);
+
+    // Delete a conversation from history
+    const deleteConversation = useCallback((convId) => {
+        setConversationHistory(prev => {
+            const updated = prev.filter(c => c.id !== convId);
+            saveConversationHistory(updated);
+            return updated;
+        });
+        // If deleting current conversation, start fresh
+        if (convId === conversationId) {
+            resetChatState();
+        }
+    }, [conversationId, resetChatState]);
 
     const value = useMemo(() => ({
         isOpen,
@@ -415,12 +559,16 @@ export const AIChatProvider = ({ children }) => {
         sendMessage,
         isStreaming,
         cancelRequest,
-        clearChat,
+        startNewChat,
+        loadConversation,
+        deleteConversation,
+        conversationHistory,
+        conversationId,
         providerAvailable,
         providerStatus,
         providerName,
         autoExecutedNavRef
-    }), [isOpen, togglePanel, messages, sendMessage, isStreaming, cancelRequest, clearChat, providerAvailable, providerStatus, providerName]);
+    }), [isOpen, togglePanel, messages, sendMessage, isStreaming, cancelRequest, startNewChat, loadConversation, deleteConversation, conversationHistory, conversationId, providerAvailable, providerStatus, providerName]);
 
     return (
         <AIChatContext.Provider value={value}>

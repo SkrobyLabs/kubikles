@@ -469,7 +469,7 @@ export function SearchChartInSource(arg1:string,arg2:string):Promise<helm.ChartS
 
 export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;
 
-export function SendAIMessage(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<string>,arg6:number):Promise<void>;
+export function SendAIMessage(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<string>,arg6:number):Promise<boolean>;
 
 export function SendTerminalInput(arg1:string,arg2:string):Promise<void>;
 

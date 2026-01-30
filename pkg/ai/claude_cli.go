@@ -187,12 +187,24 @@ type cliStreamMessage struct {
 			Type string `json:"type"`
 			Text string `json:"text"`
 		} `json:"content"`
+		Usage *cliUsage `json:"usage,omitempty"`
 	} `json:"message"`
 	// For content_block_delta
 	Delta struct {
 		Type string `json:"type"`
 		Text string `json:"text"`
 	} `json:"delta"`
+	// For result messages
+	TotalCostUSD float64   `json:"total_cost_usd,omitempty"`
+	Usage        *cliUsage `json:"usage,omitempty"`
+}
+
+// cliUsage represents token usage from Claude CLI JSON output
+type cliUsage struct {
+	InputTokens              int `json:"input_tokens"`
+	OutputTokens             int `json:"output_tokens"`
+	CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+	CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
 }
 
 // streamParser tracks state across streaming JSON lines to avoid duplicate content.
@@ -203,6 +215,7 @@ type cliStreamMessage struct {
 type streamParser struct {
 	receivedText bool
 	sentDone     bool
+	lastUsage    *TokenUsage // track latest usage for done event
 }
 
 func (p *streamParser) parseLine(line string) StreamEvent {
@@ -215,6 +228,17 @@ func (p *streamParser) parseLine(line string) StreamEvent {
 	case "assistant":
 		// Reset for each new assistant turn so text after tool calls is captured
 		p.receivedText = false
+		// Extract usage from assistant message
+		var usage *TokenUsage
+		if msg.Message.Usage != nil {
+			usage = &TokenUsage{
+				InputTokens:         msg.Message.Usage.InputTokens,
+				OutputTokens:        msg.Message.Usage.OutputTokens,
+				CacheReadTokens:     msg.Message.Usage.CacheReadInputTokens,
+				CacheCreationTokens: msg.Message.Usage.CacheCreationInputTokens,
+			}
+			p.lastUsage = usage
+		}
 		// Full assistant message — primary content source
 		var texts []string
 		for _, c := range msg.Message.Content {
@@ -224,7 +248,7 @@ func (p *streamParser) parseLine(line string) StreamEvent {
 		}
 		if len(texts) > 0 {
 			p.receivedText = true
-			return StreamEvent{Type: "text", Content: strings.Join(texts, "")}
+			return StreamEvent{Type: "text", Content: strings.Join(texts, ""), Usage: usage}
 		}
 	case "content_block_delta":
 		// Incremental streaming (may be used in future CLI versions)
@@ -233,12 +257,24 @@ func (p *streamParser) parseLine(line string) StreamEvent {
 			return StreamEvent{Type: "text", Content: msg.Delta.Text}
 		}
 	case "result":
+		// Extract final usage from result (includes cost)
+		var usage *TokenUsage
+		if msg.Usage != nil {
+			usage = &TokenUsage{
+				InputTokens:         msg.Usage.InputTokens,
+				OutputTokens:        msg.Usage.OutputTokens,
+				CacheReadTokens:     msg.Usage.CacheReadInputTokens,
+				CacheCreationTokens: msg.Usage.CacheCreationInputTokens,
+				CostUSD:             msg.TotalCostUSD,
+			}
+			p.lastUsage = usage
+		}
 		// Result duplicates the full text — only use as fallback if we got nothing else
 		if !p.receivedText && msg.Result != "" {
-			return StreamEvent{Type: "text", Content: msg.Result}
+			return StreamEvent{Type: "text", Content: msg.Result, Usage: usage}
 		}
 		p.sentDone = true
-		return StreamEvent{Type: "done"}
+		return StreamEvent{Type: "done", Usage: usage}
 	}
 
 	return StreamEvent{}
