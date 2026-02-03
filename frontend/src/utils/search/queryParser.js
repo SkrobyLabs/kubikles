@@ -8,32 +8,52 @@
  * - Field-specific: name:"my-pod", nodeName:"node1"
  * - Regex: name:/^prefix/, status:/running/i
  * - Multiple conditions: name:"api" status:"Running" (AND-ed)
+ * - OR groups: name:/^web-/ OR name:/^api-/ (OR-ed groups)
  */
 
 /**
- * Parse a search query string into an array of conditions.
+ * Parse a search query string into groups of conditions.
+ * Groups are OR-ed together, conditions within a group are AND-ed.
  *
  * @param {string} queryString - The search query string
- * @returns {Array<{type: string, field?: string, value: string|RegExp, isRegex: boolean}>}
+ * @returns {{groups: Array<Array<{type: string, field?: string, value: string|RegExp, isRegex: boolean}>>}}
  *
  * @example
- * parseQuery('name:"nginx" status:/Running|Pending/')
- * // Returns:
- * // [
- * //   { type: 'field', field: 'name', value: 'nginx', isRegex: false },
- * //   { type: 'field', field: 'status', value: /Running|Pending/i, isRegex: true }
- * // ]
+ * parseQuery('name:"nginx" status:Running')
+ * // Returns: { groups: [[cond1, cond2]] }  // Single group, AND-ed
+ *
+ * parseQuery('name:/^web-/ OR name:/^api-/')
+ * // Returns: { groups: [[cond1], [cond2]] }  // Two groups, OR-ed
  */
 export function parseQuery(queryString) {
     if (!queryString || typeof queryString !== 'string') {
-        return [];
+        return { groups: [] };
     }
 
     const query = queryString.trim();
-    if (!query) return [];
+    if (!query) return { groups: [] };
+
+    // Split by OR (case-insensitive, surrounded by whitespace)
+    const orSegments = query.split(/\s+OR\s+/i);
+
+    const groups = orSegments
+        .map(segment => parseSegment(segment.trim()))
+        .filter(conditions => conditions.length > 0);
+
+    return { groups };
+}
+
+/**
+ * Parse a single segment (no OR) into an array of AND-ed conditions.
+ *
+ * @param {string} segment - Query segment without OR
+ * @returns {Array<{type: string, field?: string, value: string|RegExp, isRegex: boolean}>}
+ */
+function parseSegment(segment) {
+    if (!segment) return [];
 
     const conditions = [];
-    let remaining = query;
+    let remaining = segment;
 
     while (remaining.length > 0) {
         remaining = remaining.trimStart();

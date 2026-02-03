@@ -66,6 +66,57 @@ export default function DaemonSetList({ isVisible }) {
             getValue: (item) => item.status?.numberAvailable || 0
         },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        // Hidden by default columns
+        {
+            key: 'upToDate',
+            label: 'Up-to-date',
+            defaultHidden: true,
+            render: (item) => item.status?.updatedNumberScheduled || 0,
+            getValue: (item) => item.status?.updatedNumberScheduled || 0,
+        },
+        {
+            key: 'updateStrategy',
+            label: 'Update Strategy',
+            defaultHidden: true,
+            render: (item) => item.spec?.updateStrategy?.type || 'RollingUpdate',
+            getValue: (item) => item.spec?.updateStrategy?.type || 'RollingUpdate',
+        },
+        {
+            key: 'image',
+            label: 'Image',
+            defaultHidden: true,
+            render: (item) => {
+                const containers = item.spec?.template?.spec?.containers || [];
+                if (containers.length === 0) return '-';
+                if (containers.length === 1) return <span title={containers[0].image}>{containers[0].image?.split('/').pop()}</span>;
+                return <span title={containers.map(c => c.image).join('\n')}>{containers.length} images</span>;
+            },
+            getValue: (item) => item.spec?.template?.spec?.containers?.[0]?.image || '',
+        },
+        {
+            key: 'selector',
+            label: 'Selector',
+            defaultHidden: true,
+            render: (item) => {
+                const labels = item.spec?.selector?.matchLabels || {};
+                const entries = Object.entries(labels);
+                if (entries.length === 0) return '-';
+                return <span title={entries.map(([k, v]) => `${k}=${v}`).join('\n')}>{entries.length} label{entries.length > 1 ? 's' : ''}</span>;
+            },
+            getValue: (item) => Object.entries(item.spec?.selector?.matchLabels || {}).map(([k, v]) => `${k}=${v}`).join(','),
+        },
+        {
+            key: 'nodeSelector',
+            label: 'Node Selector',
+            defaultHidden: true,
+            render: (item) => {
+                const selector = item.spec?.template?.spec?.nodeSelector || {};
+                const entries = Object.entries(selector);
+                if (entries.length === 0) return <span className="text-gray-500">-</span>;
+                return <span title={entries.map(([k, v]) => `${k}=${v}`).join('\n')}>{entries.length} label{entries.length > 1 ? 's' : ''}</span>;
+            },
+            getValue: (item) => Object.entries(item.spec?.template?.spec?.nodeSelector || {}).map(([k, v]) => `${k}=${v}`).join(','),
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

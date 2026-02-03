@@ -49,6 +49,31 @@ export default function SecretList({ isVisible }) {
         { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
         { key: 'type', label: 'Type', render: (item) => item.type, getValue: (item) => item.type },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        // Hidden by default columns
+        {
+            key: 'keys',
+            label: 'Keys',
+            defaultHidden: true,
+            render: (item) => {
+                const keys = Object.keys(item.data || {});
+                if (keys.length === 0) return <span className="text-gray-500">-</span>;
+                return <span title={keys.join('\n')}>{keys.length} key{keys.length > 1 ? 's' : ''}</span>;
+            },
+            getValue: (item) => Object.keys(item.data || {}).join(','),
+        },
+        {
+            key: 'size',
+            label: 'Size',
+            defaultHidden: true,
+            render: (item) => {
+                // Secrets data is base64 encoded, so actual size is ~75% of stored size
+                const total = Object.values(item.data || {}).reduce((sum, v) => sum + (v?.length || 0), 0);
+                const decoded = Math.floor(total * 0.75);
+                if (decoded < 1024) return `~${decoded} B`;
+                return `~${(decoded / 1024).toFixed(1)} KB`;
+            },
+            getValue: (item) => Object.values(item.data || {}).reduce((sum, v) => sum + (v?.length || 0), 0),
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

@@ -10,22 +10,33 @@ import { getFieldByName } from './fieldMappings';
 
 /**
  * Create a filter function for the given resource type and query string.
+ * Supports OR groups: groups are OR-ed together, conditions within a group are AND-ed.
  *
  * @param {string} resourceType - The resource type (e.g., 'pods')
  * @param {string} queryString - The search query string
  * @returns {function(item): boolean} Filter function
+ *
+ * @example
+ * // Simple AND query
+ * createFilter('pods', 'name:"nginx" status:Running')
+ *
+ * // OR query - match either pattern
+ * createFilter('pods', 'name:/^web-/ OR name:/^api-/')
  */
 export function createFilter(resourceType, queryString) {
-    const conditions = parseQuery(queryString);
+    const parsed = parseQuery(queryString);
 
-    // No conditions = match everything
-    if (conditions.length === 0) {
+    // No groups = match everything
+    if (!parsed.groups || parsed.groups.length === 0) {
         return () => true;
     }
 
     return (item) => {
-        // ALL conditions must match (AND logic)
-        return conditions.every(condition => matchCondition(item, condition, resourceType));
+        // Groups are OR-ed: if ANY group matches, the item passes
+        return parsed.groups.some(group => {
+            // Conditions within a group are AND-ed: ALL must match
+            return group.every(condition => matchCondition(item, condition, resourceType));
+        });
     };
 }
 

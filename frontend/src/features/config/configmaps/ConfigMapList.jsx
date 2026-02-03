@@ -100,6 +100,37 @@ export default function ConfigMapList({ isVisible }) {
         { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
         { key: 'keys', label: 'Keys', render: (item) => Object.keys(item.data || {}).join(', '), getValue: (item) => Object.keys(item.data || {}).join(', ') },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        // Hidden by default columns
+        {
+            key: 'keyCount',
+            label: 'Key Count',
+            defaultHidden: true,
+            render: (item) => Object.keys(item.data || {}).length,
+            getValue: (item) => Object.keys(item.data || {}).length,
+        },
+        {
+            key: 'binaryKeys',
+            label: 'Binary Keys',
+            defaultHidden: true,
+            render: (item) => {
+                const count = Object.keys(item.binaryData || {}).length;
+                return count > 0 ? count : <span className="text-gray-500">-</span>;
+            },
+            getValue: (item) => Object.keys(item.binaryData || {}).length,
+        },
+        {
+            key: 'size',
+            label: 'Size',
+            defaultHidden: true,
+            render: (item) => {
+                const dataSize = JSON.stringify(item.data || {}).length;
+                const binarySize = JSON.stringify(item.binaryData || {}).length;
+                const total = dataSize + binarySize;
+                if (total < 1024) return `${total} B`;
+                return `${(total / 1024).toFixed(1)} KB`;
+            },
+            getValue: (item) => JSON.stringify(item.data || {}).length + JSON.stringify(item.binaryData || {}).length,
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

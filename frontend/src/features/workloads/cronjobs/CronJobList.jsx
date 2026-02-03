@@ -143,6 +143,47 @@ export default function CronJobList({ isVisible }) {
             render: (item) => formatAge(item.metadata?.creationTimestamp),
             getValue: (item) => item.metadata?.creationTimestamp
         },
+        // Hidden by default columns
+        {
+            key: 'activeJobs',
+            label: 'Active Jobs',
+            defaultHidden: true,
+            render: (item) => (item.status?.active || []).length,
+            getValue: (item) => (item.status?.active || []).length,
+        },
+        {
+            key: 'concurrencyPolicy',
+            label: 'Concurrency',
+            defaultHidden: true,
+            render: (item) => item.spec?.concurrencyPolicy || 'Allow',
+            getValue: (item) => item.spec?.concurrencyPolicy || 'Allow',
+        },
+        {
+            key: 'successfulJobsLimit',
+            label: 'Keep Success',
+            defaultHidden: true,
+            render: (item) => item.spec?.successfulJobsHistoryLimit ?? 3,
+            getValue: (item) => item.spec?.successfulJobsHistoryLimit ?? 3,
+        },
+        {
+            key: 'failedJobsLimit',
+            label: 'Keep Failed',
+            defaultHidden: true,
+            render: (item) => item.spec?.failedJobsHistoryLimit ?? 1,
+            getValue: (item) => item.spec?.failedJobsHistoryLimit ?? 1,
+        },
+        {
+            key: 'image',
+            label: 'Image',
+            defaultHidden: true,
+            render: (item) => {
+                const containers = item.spec?.jobTemplate?.spec?.template?.spec?.containers || [];
+                if (containers.length === 0) return '-';
+                if (containers.length === 1) return <span title={containers[0].image}>{containers[0].image?.split('/').pop()}</span>;
+                return <span title={containers.map(c => c.image).join('\n')}>{containers.length} images</span>;
+            },
+            getValue: (item) => item.spec?.jobTemplate?.spec?.template?.spec?.containers?.[0]?.image || '',
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

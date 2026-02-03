@@ -114,6 +114,9 @@ export default function NodeList({ isVisible }) {
         {
             key: 'cpu',
             label: 'CPU',
+            filterType: 'numeric',
+            numericHint: 'CPU usage % (0-100)',
+            numericUnit: '%',
             render: (item) => {
                 const m = metrics[item.metadata?.name];
                 if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
@@ -133,11 +136,15 @@ export default function NodeList({ isVisible }) {
                     />
                 );
             },
-            getValue: (item) => metrics[item.metadata?.name]?.cpuCommittedPercent ?? -1
+            getValue: (item) => metrics[item.metadata?.name]?.cpuCommittedPercent ?? -1,
+            getNumericValue: (item) => metrics[item.metadata?.name]?.cpuPercent ?? NaN
         },
         {
             key: 'memory',
             label: 'Memory',
+            filterType: 'numeric',
+            numericHint: 'Memory usage % (0-100)',
+            numericUnit: '%',
             render: (item) => {
                 const m = metrics[item.metadata?.name];
                 if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
@@ -157,7 +164,8 @@ export default function NodeList({ isVisible }) {
                     />
                 );
             },
-            getValue: (item) => metrics[item.metadata?.name]?.memCommittedPercent ?? -1
+            getValue: (item) => metrics[item.metadata?.name]?.memCommittedPercent ?? -1,
+            getNumericValue: (item) => metrics[item.metadata?.name]?.memPercent ?? NaN
         },
         {
             key: 'pods',
@@ -183,11 +191,99 @@ export default function NodeList({ isVisible }) {
             key: 'taints',
             label: 'Taints',
             align: 'center',
+            filterable: false,
             render: (item) => <TaintsCell node={item} />,
             getValue: (item) => (item.spec?.taints || []).length
         },
         { key: 'version', label: 'Version', render: (item) => item.status?.nodeInfo?.kubeletVersion, getValue: (item) => item.status?.nodeInfo?.kubeletVersion },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        // Hidden by default columns
+        {
+            key: 'roles',
+            label: 'Roles',
+            defaultHidden: true,
+            render: (item) => {
+                const labels = item.metadata?.labels || {};
+                const roles = Object.keys(labels)
+                    .filter(k => k.startsWith('node-role.kubernetes.io/'))
+                    .map(k => k.replace('node-role.kubernetes.io/', ''));
+                return roles.length > 0 ? roles.join(', ') : <span className="text-gray-500">-</span>;
+            },
+            getValue: (item) => {
+                const labels = item.metadata?.labels || {};
+                return Object.keys(labels)
+                    .filter(k => k.startsWith('node-role.kubernetes.io/'))
+                    .map(k => k.replace('node-role.kubernetes.io/', ''))
+                    .join(', ');
+            },
+        },
+        {
+            key: 'internalIP',
+            label: 'Internal IP',
+            defaultHidden: true,
+            render: (item) => {
+                const addr = (item.status?.addresses || []).find(a => a.type === 'InternalIP');
+                return addr?.address || <span className="text-gray-500">-</span>;
+            },
+            getValue: (item) => (item.status?.addresses || []).find(a => a.type === 'InternalIP')?.address || '',
+        },
+        {
+            key: 'externalIP',
+            label: 'External IP',
+            defaultHidden: true,
+            render: (item) => {
+                const addr = (item.status?.addresses || []).find(a => a.type === 'ExternalIP');
+                return addr?.address || <span className="text-gray-500">-</span>;
+            },
+            getValue: (item) => (item.status?.addresses || []).find(a => a.type === 'ExternalIP')?.address || '',
+        },
+        {
+            key: 'osImage',
+            label: 'OS Image',
+            defaultHidden: true,
+            render: (item) => item.status?.nodeInfo?.osImage || '-',
+            getValue: (item) => item.status?.nodeInfo?.osImage || '',
+        },
+        {
+            key: 'kernelVersion',
+            label: 'Kernel',
+            defaultHidden: true,
+            render: (item) => item.status?.nodeInfo?.kernelVersion || '-',
+            getValue: (item) => item.status?.nodeInfo?.kernelVersion || '',
+        },
+        {
+            key: 'containerRuntime',
+            label: 'Container Runtime',
+            defaultHidden: true,
+            render: (item) => item.status?.nodeInfo?.containerRuntimeVersion || '-',
+            getValue: (item) => item.status?.nodeInfo?.containerRuntimeVersion || '',
+        },
+        {
+            key: 'architecture',
+            label: 'Arch',
+            defaultHidden: true,
+            render: (item) => item.status?.nodeInfo?.architecture || '-',
+            getValue: (item) => item.status?.nodeInfo?.architecture || '',
+        },
+        {
+            key: 'os',
+            label: 'OS',
+            defaultHidden: true,
+            render: (item) => item.status?.nodeInfo?.operatingSystem || '-',
+            getValue: (item) => item.status?.nodeInfo?.operatingSystem || '',
+        },
+        {
+            key: 'age',
+            label: 'Age',
+            filterType: 'numeric',
+            numericHint: 'Age in hours',
+            numericUnit: 'h',
+            render: (item) => formatAge(item.metadata?.creationTimestamp),
+            getValue: (item) => item.metadata?.creationTimestamp,
+            getNumericValue: (item) => {
+                if (!item.metadata?.creationTimestamp) return NaN;
+                return (Date.now() - new Date(item.metadata.creationTimestamp).getTime()) / 3600000;
+            }
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

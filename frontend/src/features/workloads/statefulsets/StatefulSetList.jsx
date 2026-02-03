@@ -48,6 +48,7 @@ export default function StatefulSetList({ isVisible }) {
         {
             key: 'pods',
             label: 'Pods',
+            filterable: false,
             render: (item) => {
                 if (podsLoading && allPods.length === 0) {
                     const count = item.spec?.replicas ?? 1;
@@ -85,6 +86,50 @@ export default function StatefulSetList({ isVisible }) {
         },
         { key: 'ready', label: 'Ready', render: (item) => `${item.status?.readyReplicas || 0}/${item.status?.replicas || 0}`, getValue: (item) => item.status?.readyReplicas || 0 },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        // Hidden by default columns
+        {
+            key: 'replicas',
+            label: 'Replicas',
+            defaultHidden: true,
+            render: (item) => item.spec?.replicas ?? 1,
+            getValue: (item) => item.spec?.replicas ?? 1,
+        },
+        {
+            key: 'serviceName',
+            label: 'Service Name',
+            defaultHidden: true,
+            render: (item) => item.spec?.serviceName || <span className="text-gray-500">-</span>,
+            getValue: (item) => item.spec?.serviceName || '',
+        },
+        {
+            key: 'updateStrategy',
+            label: 'Update Strategy',
+            defaultHidden: true,
+            render: (item) => item.spec?.updateStrategy?.type || 'RollingUpdate',
+            getValue: (item) => item.spec?.updateStrategy?.type || 'RollingUpdate',
+        },
+        {
+            key: 'image',
+            label: 'Image',
+            defaultHidden: true,
+            render: (item) => {
+                const containers = item.spec?.template?.spec?.containers || [];
+                if (containers.length === 0) return '-';
+                if (containers.length === 1) return <span title={containers[0].image}>{containers[0].image?.split('/').pop()}</span>;
+                return <span title={containers.map(c => c.image).join('\n')}>{containers.length} images</span>;
+            },
+            getValue: (item) => item.spec?.template?.spec?.containers?.[0]?.image || '',
+        },
+        {
+            key: 'volumeClaims',
+            label: 'Volume Claims',
+            defaultHidden: true,
+            render: (item) => {
+                const claims = item.spec?.volumeClaimTemplates || [];
+                return claims.length > 0 ? claims.length : <span className="text-gray-500">-</span>;
+            },
+            getValue: (item) => (item.spec?.volumeClaimTemplates || []).length,
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

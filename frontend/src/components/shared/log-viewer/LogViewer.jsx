@@ -22,7 +22,9 @@ import {
     FunnelIcon,
     MinusIcon,
     PlusIcon,
-    ArrowsPointingOutIcon
+    ArrowsPointingOutIcon,
+    LockClosedIcon,
+    LockOpenIcon
 } from '@heroicons/react/24/outline';
 
 import SearchSelect from '../SearchSelect';
@@ -73,6 +75,7 @@ export default function LogViewer({
     const [wrapLines, setWrapLines] = useState(() => getSafeConfig('logs.lineWrap', true, v => typeof v === 'boolean'));
     const [showTimestamps, setShowTimestamps] = useState(() => getSafeConfig('logs.showTimestamps', false, v => typeof v === 'boolean'));
     const [showPrevious, setShowPrevious] = useState(false);
+    const [pinPreviousLogs, setPinPreviousLogs] = useState(false);
     const [showTimeModal, setShowTimeModal] = useState(false);
     const [sinceTime, setSinceTime] = useState('');
     const initialPosition = getSafeConfig('logs.position', 'end', v => ['start', 'end', 'all'].includes(v));
@@ -101,6 +104,7 @@ export default function LogViewer({
         siblingPods, // Pass sibling pods for "All Pods" mode
         podContainerMap, // Pass pod-container map for "All Pods" mode
         showPrevious,
+        pinPreviousLogs,
         sinceTime,
         viewMode,
         initialPosition,
@@ -352,6 +356,14 @@ export default function LogViewer({
                 </div>
             )}
 
+            {/* Pinned Previous Logs Banner */}
+            {stream.isPinned && (
+                <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-900/20 border-b border-amber-500/30 text-amber-400 shrink-0">
+                    <LockClosedIcon className="h-4 w-4" />
+                    <span className="text-xs">Showing pinned previous logs (container no longer available)</span>
+                </div>
+            )}
+
             {/* Header Bar */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
@@ -430,6 +442,16 @@ export default function LogViewer({
                             className={`p-1.5 rounded transition-colors ${showPrevious ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                         >
                             <BackwardIcon className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
+
+                    {/* Pin Logs Toggle — always visible, preserves logs if container crashes/restarts */}
+                    <Tooltip content={pinPreviousLogs ? 'Logs pinned — preserved if container becomes unavailable' : 'Pin logs — keep them if container becomes unavailable'}>
+                        <button
+                            onClick={() => setPinPreviousLogs(!pinPreviousLogs)}
+                            className={`p-1.5 rounded transition-colors ${pinPreviousLogs ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            {pinPreviousLogs ? <LockClosedIcon className="w-4 h-4" /> : <LockOpenIcon className="w-4 h-4" />}
                         </button>
                     </Tooltip>
 

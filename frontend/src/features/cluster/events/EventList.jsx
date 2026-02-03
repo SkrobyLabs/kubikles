@@ -133,6 +133,34 @@ export default function EventList({ isVisible }) {
             render: (item) => formatAge(item.lastTimestamp || item.metadata?.creationTimestamp),
             getValue: (item) => item.lastTimestamp || item.metadata?.creationTimestamp
         },
+        // Hidden by default columns
+        {
+            key: 'reason',
+            label: 'Reason',
+            defaultHidden: true,
+            render: (item) => item.reason || '-',
+            getValue: (item) => item.reason || '',
+        },
+        {
+            key: 'source',
+            label: 'Source',
+            defaultHidden: true,
+            render: (item) => {
+                const source = item.source || item.reportingController;
+                if (!source) return <span className="text-gray-500">-</span>;
+                const component = source.component || source;
+                const host = source.host;
+                return host ? `${component} (${host})` : component;
+            },
+            getValue: (item) => item.source?.component || item.reportingController || '',
+        },
+        {
+            key: 'objectKind',
+            label: 'Object Kind',
+            defaultHidden: true,
+            render: (item) => item.involvedObject?.kind || '-',
+            getValue: (item) => item.involvedObject?.kind || '',
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

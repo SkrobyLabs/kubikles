@@ -1,9 +1,10 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
     LockClosedIcon,
     DocumentTextIcon,
     PencilSquareIcon,
     ShareIcon,
+    SignalIcon,
     FolderIcon,
     CommandLineIcon,
     ClockIcon,
@@ -21,6 +22,7 @@ import PodVolumesTab from './PodVolumesTab';
 import PodContainersTab from './PodContainersTab';
 import PodEventsTab from './PodEventsTab';
 import PodMetricsTab from './PodMetricsTab';
+import PodPortForwardDialog from './PodPortForwardDialog';
 
 const TAB_BASIC = 'basic';
 const TAB_VOLUMES = 'volumes';
@@ -167,6 +169,62 @@ export default function PodDetails({ pod, tabContext = '' }) {
         { id: TAB_METRICS, label: 'Metrics' },
     ], []);
 
+    // Port forward state
+    const [portForwardDialog, setPortForwardDialog] = useState({ open: false, port: null });
+    const [portMenuOpen, setPortMenuOpen] = useState(false);
+    const portMenuRef = useRef(null);
+
+    // Get all ports from all containers
+    const allPorts = useMemo(() => {
+        const ports = [];
+        const allContainers = [
+            ...(pod.spec?.initContainers || []),
+            ...(pod.spec?.containers || [])
+        ];
+        for (const container of allContainers) {
+            for (const port of container.ports || []) {
+                ports.push({
+                    ...port,
+                    containerName: container.name
+                });
+            }
+        }
+        return ports;
+    }, [pod]);
+
+    // Close port menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (portMenuRef.current && !portMenuRef.current.contains(e.target)) {
+                setPortMenuOpen(false);
+            }
+        };
+        if (portMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [portMenuOpen]);
+
+    const handlePortForwardClick = useCallback(() => {
+        if (allPorts.length === 0) return;
+        if (allPorts.length === 1) {
+            // Single port - open dialog directly
+            setPortForwardDialog({ open: true, port: allPorts[0] });
+        } else {
+            // Multiple ports - show menu
+            setPortMenuOpen(prev => !prev);
+        }
+    }, [allPorts]);
+
+    const handleSelectPort = useCallback((port) => {
+        setPortMenuOpen(false);
+        setPortForwardDialog({ open: true, port });
+    }, []);
+
+    const handleClosePortForward = useCallback(() => {
+        setPortForwardDialog({ open: false, port: null });
+    }, []);
+
     const renderTabContent = () => {
         switch (activeTab) {
             case TAB_BASIC:
@@ -243,6 +301,43 @@ export default function PodDetails({ pod, tabContext = '' }) {
                     </div>
                     {/* Action Icons */}
                     <div className="flex items-center gap-1 ml-2">
+                        {/* Port Forward Button */}
+                        <Tooltip content={allPorts.length === 0 ? 'No ports to forward' : 'Port Forward'}>
+                            <div className="relative" ref={portMenuRef}>
+                                <button
+                                    onClick={handlePortForwardClick}
+                                    className={`p-1.5 rounded transition-colors ${
+                                        allPorts.length === 0
+                                            ? 'text-gray-600 cursor-not-allowed'
+                                            : 'text-gray-400 hover:text-white hover:bg-white/10'
+                                    }`}
+                                    disabled={allPorts.length === 0}
+                                >
+                                    <SignalIcon className="w-4 h-4" />
+                                </button>
+                                {/* Port Selection Menu */}
+                                {portMenuOpen && allPorts.length > 1 && (
+                                    <div className="absolute top-full right-0 mt-1 bg-surface border border-border rounded-lg shadow-lg z-50 py-1 min-w-[180px]">
+                                        <div className="px-3 py-1.5 text-xs text-gray-500 border-b border-border">
+                                            Select port to forward
+                                        </div>
+                                        {allPorts.map((port, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleSelectPort(port)}
+                                                className="w-full px-3 py-2 text-left text-sm hover:bg-white/5 text-gray-300 flex items-center justify-between"
+                                            >
+                                                <span>
+                                                    {port.containerPort}
+                                                    {port.name && <span className="text-gray-500 ml-1">({port.name})</span>}
+                                                </span>
+                                                <span className="text-xs text-gray-500">{port.containerName}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </Tooltip>
                         <Tooltip content="View Logs">
                             <button
                                 onClick={handleOpenLogs}
@@ -317,6 +412,15 @@ export default function PodDetails({ pod, tabContext = '' }) {
             <div className="flex-1 overflow-hidden">
                 {renderTabContent()}
             </div>
+
+            {/* Port Forward Dialog */}
+            <PodPortForwardDialog
+                open={portForwardDialog.open}
+                onOpenChange={handleClosePortForward}
+                pod={pod}
+                containerPort={portForwardDialog.port}
+                currentContext={currentContext}
+            />
         </div>
     );
 }

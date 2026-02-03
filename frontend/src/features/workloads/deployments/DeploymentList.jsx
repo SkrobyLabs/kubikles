@@ -81,6 +81,7 @@ export default function DeploymentList({ isVisible }) {
         {
             key: 'pods',
             label: 'Pods',
+            filterable: false,
             render: (item) => {
                 if (podsLoading && allPods.length === 0) { // Only show loading if we have no pods yet
                     // Show placeholders based on replicas count
@@ -119,6 +120,59 @@ export default function DeploymentList({ isVisible }) {
         },
         { key: 'ready', label: 'Ready', render: (item) => `${item.status?.readyReplicas || 0}/${item.status?.replicas || 0}`, getValue: (item) => item.status?.readyReplicas || 0 },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        // Hidden by default columns
+        {
+            key: 'strategy',
+            label: 'Strategy',
+            defaultHidden: true,
+            render: (item) => item.spec?.strategy?.type || 'RollingUpdate',
+            getValue: (item) => item.spec?.strategy?.type || 'RollingUpdate',
+        },
+        {
+            key: 'replicas',
+            label: 'Replicas',
+            defaultHidden: true,
+            render: (item) => item.spec?.replicas ?? 1,
+            getValue: (item) => item.spec?.replicas ?? 1,
+        },
+        {
+            key: 'updatedReplicas',
+            label: 'Updated',
+            defaultHidden: true,
+            render: (item) => item.status?.updatedReplicas ?? 0,
+            getValue: (item) => item.status?.updatedReplicas ?? 0,
+        },
+        {
+            key: 'availableReplicas',
+            label: 'Available',
+            defaultHidden: true,
+            render: (item) => item.status?.availableReplicas ?? 0,
+            getValue: (item) => item.status?.availableReplicas ?? 0,
+        },
+        {
+            key: 'image',
+            label: 'Image',
+            defaultHidden: true,
+            render: (item) => {
+                const containers = item.spec?.template?.spec?.containers || [];
+                if (containers.length === 0) return '-';
+                if (containers.length === 1) return <span title={containers[0].image}>{containers[0].image?.split('/').pop()}</span>;
+                return <span title={containers.map(c => c.image).join('\n')}>{containers.length} images</span>;
+            },
+            getValue: (item) => item.spec?.template?.spec?.containers?.[0]?.image || '',
+        },
+        {
+            key: 'selector',
+            label: 'Selector',
+            defaultHidden: true,
+            render: (item) => {
+                const labels = item.spec?.selector?.matchLabels || {};
+                const entries = Object.entries(labels);
+                if (entries.length === 0) return '-';
+                return <span title={entries.map(([k, v]) => `${k}=${v}`).join('\n')}>{entries.length} label{entries.length > 1 ? 's' : ''}</span>;
+            },
+            getValue: (item) => Object.entries(item.spec?.selector?.matchLabels || {}).map(([k, v]) => `${k}=${v}`).join(','),
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

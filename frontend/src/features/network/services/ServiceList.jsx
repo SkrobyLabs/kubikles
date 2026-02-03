@@ -45,6 +45,43 @@ export default function ServiceList({ isVisible }) {
         { key: 'clusterIP', label: 'Cluster IP', render: (item) => item.spec?.clusterIP, getValue: (item) => item.spec?.clusterIP },
         { key: 'ports', label: 'Ports', render: getPortsDisplay, getValue: getPortsDisplay },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        // Hidden by default columns
+        {
+            key: 'externalIP',
+            label: 'External IP',
+            defaultHidden: true,
+            render: (item) => {
+                const ips = item.status?.loadBalancer?.ingress?.map(i => i.ip || i.hostname).filter(Boolean) || [];
+                return ips.length > 0 ? ips.join(', ') : <span className="text-gray-500">-</span>;
+            },
+            getValue: (item) => item.status?.loadBalancer?.ingress?.[0]?.ip || '',
+        },
+        {
+            key: 'selector',
+            label: 'Selector',
+            defaultHidden: true,
+            render: (item) => {
+                const selector = item.spec?.selector || {};
+                const entries = Object.entries(selector);
+                if (entries.length === 0) return '-';
+                return <span title={entries.map(([k, v]) => `${k}=${v}`).join('\n')}>{entries.length} label{entries.length > 1 ? 's' : ''}</span>;
+            },
+            getValue: (item) => Object.entries(item.spec?.selector || {}).map(([k, v]) => `${k}=${v}`).join(','),
+        },
+        {
+            key: 'sessionAffinity',
+            label: 'Session Affinity',
+            defaultHidden: true,
+            render: (item) => item.spec?.sessionAffinity || 'None',
+            getValue: (item) => item.spec?.sessionAffinity || 'None',
+        },
+        {
+            key: 'externalName',
+            label: 'External Name',
+            defaultHidden: true,
+            render: (item) => item.spec?.externalName || <span className="text-gray-500">-</span>,
+            getValue: (item) => item.spec?.externalName || '',
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

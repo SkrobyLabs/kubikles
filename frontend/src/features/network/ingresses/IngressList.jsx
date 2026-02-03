@@ -159,6 +159,45 @@ export default function IngressList({ isVisible }) {
         { key: 'hosts', label: 'Hosts', render: (item) => getHosts(item), getValue: (item) => getHosts(item) },
         { key: 'address', label: 'Address', render: (item) => getAddress(item), getValue: (item) => getAddress(item) },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        // Hidden by default columns
+        {
+            key: 'paths',
+            label: 'Paths',
+            defaultHidden: true,
+            render: (item) => getPaths(item),
+            getValue: (item) => getPaths(item),
+        },
+        {
+            key: 'tls',
+            label: 'TLS',
+            defaultHidden: true,
+            render: (item) => {
+                const tls = item.spec?.tls || [];
+                if (tls.length === 0) return <span className="text-gray-500">No</span>;
+                return <span className="text-green-400">Yes ({tls.length})</span>;
+            },
+            getValue: (item) => (item.spec?.tls || []).length > 0 ? 'Yes' : 'No',
+        },
+        {
+            key: 'defaultBackend',
+            label: 'Default Backend',
+            defaultHidden: true,
+            render: (item) => {
+                const backend = item.spec?.defaultBackend;
+                if (!backend) return <span className="text-gray-500">-</span>;
+                const svc = backend.service;
+                if (svc) return `${svc.name}:${svc.port?.number || svc.port?.name}`;
+                return '-';
+            },
+            getValue: (item) => item.spec?.defaultBackend?.service?.name || '',
+        },
+        {
+            key: 'rules',
+            label: 'Rules',
+            defaultHidden: true,
+            render: (item) => (item.spec?.rules || []).length,
+            getValue: (item) => (item.spec?.rules || []).length,
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

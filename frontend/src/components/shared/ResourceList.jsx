@@ -1,9 +1,13 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback, forwardRef } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback, forwardRef } from 'react';
+import { createPortal } from 'react-dom';
 import { TableVirtuoso } from 'react-virtuoso';
-import { MagnifyingGlassIcon, EllipsisVerticalIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, InformationCircleIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import SearchSelect from './SearchSelect';
 import BulkActionBar from './BulkActionBar';
+import ColumnConfigurator from './ColumnConfigurator';
+import SavedViewsDropdown from './SavedViewsDropdown';
 import { createFilter, getFieldsMetadata } from '../../utils/search';
+import { useSavedViews } from '../../hooks/useSavedViews';
 import { useUI } from '../../context/UIContext';
 import { useConfig } from '../../context/ConfigContext';
 
@@ -227,13 +231,21 @@ export default function ResourceList({
     onBulkDelete = null,
     onBulkRestart = null,
     onBulkExportYaml = null,
+    onFilteredUidsChange = null,
 }) {
     const { pendingSearch, consumePendingSearch } = useUI();
     const { getConfig } = useConfig();
     const [sortConfig, setSortConfig] = useState(initialSort || { key: null, direction: 'asc' });
     const [searchInput, setSearchInput] = useState(''); // Immediate input value
     const [searchTerm, setSearchTerm] = useState('');   // Debounced value for filtering
-    const [hiddenColumns, setHiddenColumns] = useState(new Set());
+    const [hiddenColumns, setHiddenColumns] = useState(() => {
+        // Initialize with columns marked as defaultHidden
+        return new Set(columns.filter(col => col.defaultHidden).map(col => col.key));
+    });
+    const [activeViewId, setActiveViewId] = useState(null);
+
+    // Saved views
+    const { views, saveView, loadView, updateView, deleteView, renameView, duplicateView, setDefaultView, getDefaultView } = useSavedViews(resourceType);
 
     // Debounce search input to avoid filtering on every keystroke
     const searchDebounceMs = getConfig('ui.searchDebounceMs') ?? 150;
@@ -241,11 +253,120 @@ export default function ResourceList({
         const timer = setTimeout(() => setSearchTerm(searchInput), searchDebounceMs);
         return () => clearTimeout(timer);
     }, [searchInput, searchDebounceMs]);
-    const [showColumnMenu, setShowColumnMenu] = useState(false);
+    const [columnFilters, setColumnFilters] = useState({}); // { [columnKey]: { type, values|pattern } }
+    const [openColumnFilter, setOpenColumnFilter] = useState(null); // column key of open filter dropdown
+    const [columnFilterSearch, setColumnFilterSearch] = useState(''); // search within filter dropdown
+    const [regexDraft, setRegexDraft] = useState(''); // draft regex pattern (applied on Enter)
+    const [numericDraft, setNumericDraft] = useState({ operator: '>', value: '', unit: 'h' }); // draft numeric filter
+    const [columnFilterPos, setColumnFilterPos] = useState(null); // { top, left } for fixed-position dropdown
+    const columnFilterRef = useRef(null); // ref for the filter button wrapper
+    const columnFilterDropdownRef = useRef(null); // ref for the fixed-position dropdown
     const [showSearchHelp, setShowSearchHelp] = useState(false);
-    const columnMenuRef = useRef(null);
     const searchHelpRef = useRef(null);
     const tableRef = useRef(null);
+
+    // Get current view config for saving (defined after columnFilters state)
+    const getCurrentViewConfig = useCallback(() => {
+        // Serialize columnFilters — convert Sets to arrays for JSON storage
+        const serializedFilters = {};
+        for (const [key, filter] of Object.entries(columnFilters)) {
+            if (filter.type === 'select') {
+                serializedFilters[key] = { ...filter, values: Array.from(filter.values) };
+            } else {
+                serializedFilters[key] = filter;
+            }
+        }
+        return {
+            query: searchInput,
+            namespace: currentNamespace,
+            hiddenColumns: Array.from(hiddenColumns),
+            sortConfig,
+            columnFilters: serializedFilters,
+            resourceType,
+        };
+    }, [searchInput, currentNamespace, hiddenColumns, sortConfig, columnFilters, resourceType]);
+
+    // Load a saved view (or reset to defaults if viewId is null)
+    const handleLoadView = useCallback((viewId) => {
+        if (!viewId) {
+            // Reset to application defaults
+            setActiveViewId(null);
+            setSearchInput('');
+            setSearchTerm('');
+            setHiddenColumns(new Set(columns.filter(col => col.defaultHidden).map(col => col.key)));
+            setSortConfig(initialSort || { key: null, direction: 'asc' });
+            setColumnFilters({});
+            return;
+        }
+        const view = loadView(viewId);
+        if (!view) return;
+
+        setActiveViewId(viewId);
+        setSearchInput(view.query || '');
+        setSearchTerm(view.query || '');
+        if (view.hiddenColumns?.length > 0) {
+            setHiddenColumns(new Set(view.hiddenColumns));
+        } else {
+            setHiddenColumns(new Set());
+        }
+        setSortConfig(view.sortConfig || { key: null, direction: 'asc' });
+        // Restore column filters — deserialize arrays back to Sets
+        if (view.columnFilters && Object.keys(view.columnFilters).length > 0) {
+            const restored = {};
+            for (const [key, filter] of Object.entries(view.columnFilters)) {
+                if (filter.type === 'select' && Array.isArray(filter.values)) {
+                    restored[key] = { ...filter, values: new Set(filter.values) };
+                } else {
+                    restored[key] = filter;
+                }
+            }
+            setColumnFilters(restored);
+        } else {
+            setColumnFilters({});
+        }
+        if (view.namespace && onNamespaceChange) {
+            onNamespaceChange(view.namespace);
+        }
+    }, [loadView, onNamespaceChange, columns, initialSort]);
+
+    // Handle updating an existing view with current config
+    const handleUpdateView = useCallback((viewId, config) => {
+        // Serialize Sets to arrays for storage
+        const serializedFilters = {};
+        for (const [key, filter] of Object.entries(config.columnFilters || {})) {
+            if (filter.type === 'select' && filter.values instanceof Set) {
+                serializedFilters[key] = { ...filter, values: Array.from(filter.values) };
+            } else {
+                serializedFilters[key] = filter;
+            }
+        }
+        updateView(viewId, {
+            query: config.query,
+            namespace: config.namespace,
+            hiddenColumns: config.hiddenColumns,
+            sortConfig: config.sortConfig,
+            columnFilters: serializedFilters,
+        });
+    }, [updateView]);
+
+    // Handle deleting a view - reset to defaults if deleting the active view
+    const handleDeleteView = useCallback((viewId) => {
+        deleteView(viewId);
+        if (viewId === activeViewId) {
+            handleLoadView(null);
+        }
+    }, [deleteView, activeViewId, handleLoadView]);
+
+    // Auto-load default view on mount
+    const defaultViewLoadedRef = useRef(false);
+    useEffect(() => {
+        if (defaultViewLoadedRef.current || !resourceType) return;
+        const defaultView = getDefaultView();
+        if (defaultView) {
+            defaultViewLoadedRef.current = true;
+            handleLoadView(defaultView.id);
+        }
+    }, [resourceType, getDefaultView, handleLoadView]);
 
     // Column resizing state (user-saved widths)
     const [savedColumnWidths, setSavedColumnWidths] = useState(() => {
@@ -357,11 +478,13 @@ export default function ResourceList({
 
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (columnMenuRef.current && !columnMenuRef.current.contains(event.target)) {
-                setShowColumnMenu(false);
-            }
             if (searchHelpRef.current && !searchHelpRef.current.contains(event.target)) {
                 setShowSearchHelp(false);
+            }
+            if (columnFilterRef.current && !columnFilterRef.current.contains(event.target) &&
+                (!columnFilterDropdownRef.current || !columnFilterDropdownRef.current.contains(event.target))) {
+                setOpenColumnFilter(null);
+                setColumnFilterSearch('');
             }
         };
 
@@ -370,6 +493,226 @@ export default function ResourceList({
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
+
+    // Reposition the column filter dropdown after render to prevent viewport overflow
+    useLayoutEffect(() => {
+        if (!openColumnFilter || !columnFilterDropdownRef.current || !columnFilterPos) return;
+        const dropdown = columnFilterDropdownRef.current;
+        const dropdownRect = dropdown.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        let { top, left, anchorTop, anchorBottom } = columnFilterPos;
+        // Clamp right edge
+        if (left + dropdownRect.width > vw - 8) {
+            left = vw - dropdownRect.width - 8;
+        }
+        if (left < 8) left = 8;
+        // If dropdown overflows bottom, flip above the anchor button
+        if (top + dropdownRect.height > vh - 8 && anchorTop !== undefined) {
+            const flippedTop = anchorTop - dropdownRect.height - 4;
+            top = flippedTop < 8 ? 8 : flippedTop;
+        }
+        if (top !== columnFilterPos.top || left !== columnFilterPos.left) {
+            setColumnFilterPos(prev => ({ ...prev, top, left }));
+        }
+    }, [openColumnFilter, columnFilterPos]);
+
+    // Extract numeric value for numeric filters
+    const getNumericValue = useCallback((col, item) => {
+        if (col.getNumericValue) return col.getNumericValue(item);
+        // Auto-detect age column: convert creationTimestamp to hours
+        if (col.key === 'age') {
+            const ts = item.metadata?.creationTimestamp;
+            if (!ts) return NaN;
+            return (Date.now() - new Date(ts).getTime()) / 3600000;
+        }
+        if (col.getValue) {
+            const v = col.getValue(item);
+            return typeof v === 'number' ? v : NaN;
+        }
+        return NaN;
+    }, []);
+
+    // Extract column value for filtering (prefers getFilterValue over getValue)
+    const getColumnValue = useCallback((col, item) => {
+        if (col.getFilterValue) return String(col.getFilterValue(item) ?? '');
+        if (col.key === 'name') return item.metadata?.name || '';
+        if (col.key === 'namespace') return item.metadata?.namespace || '';
+        if (col.getValue) {
+            const v = col.getValue(item);
+            return typeof v === 'string' ? v : '';
+        }
+        return String(item[col.key] ?? '');
+    }, []);
+
+    // Determine filter type per column: 'regex' | 'select' | 'numeric' | false
+    const columnFilterTypes = useMemo(() => {
+        const types = {};
+        for (const col of columns) {
+            if (col.filterable === false || col.isColumnSelector || col.isSelectionColumn) {
+                types[col.key] = false;
+                continue;
+            }
+            if (col.filterType) { types[col.key] = col.filterType; continue; }
+            // Auto-detect
+            if (col.key === 'name' || col.key === 'namespace') { types[col.key] = 'regex'; continue; }
+            if (col.key === 'age') { types[col.key] = 'numeric'; continue; }
+            types[col.key] = 'select';
+        }
+        return types;
+    }, [columns]);
+
+    // Predefined values for select-type columns by resource type
+    const PREDEFINED_COLUMN_VALUES = useMemo(() => ({
+        pods: {
+            status: [
+                'Running', 'Pending', 'Failed', 'Succeeded', 'CrashLoopBackOff', 'Terminating',
+                'Unknown', 'ErrImagePull', 'ImagePullBackOff', 'ContainerCreating', 'PodInitializing',
+                'Init:Error', 'Init:CrashLoopBackOff', 'Init:Running',
+            ],
+        },
+        deployments: {
+            status: ['Available', 'Progressing', 'Unavailable'],
+        },
+        services: {
+            type: ['ClusterIP', 'NodePort', 'LoadBalancer', 'ExternalName'],
+        },
+        jobs: {
+            status: ['Complete', 'Failed', 'Running', 'Suspended'],
+        },
+        cronjobs: {
+            suspend: ['true', 'false'],
+        },
+        nodes: {
+            status: ['Ready', 'NotReady', 'SchedulingDisabled'],
+        },
+        events: {
+            type: ['Normal', 'Warning'],
+        },
+    }), []);
+
+    // Compute unique values + counts for select-type filter columns from data, merged with predefined
+    const columnUniqueValues = useMemo(() => {
+        const result = {};
+        const selectCols = columns.filter(c => columnFilterTypes[c.key] === 'select');
+
+        for (const col of selectCols) {
+            const counts = {};
+            // Seed with predefined values (count = 0)
+            const predefined = PREDEFINED_COLUMN_VALUES[resourceType]?.[col.key] || [];
+            for (const v of predefined) counts[v] = 0;
+            // Count actual data values
+            for (const item of data) {
+                const val = getColumnValue(col, item);
+                if (val) counts[val] = (counts[val] || 0) + 1;
+            }
+            const allValues = Object.keys(counts);
+            if (allValues.length > 0 && allValues.length <= 200) {
+                // Sort: predefined first (in order), then dynamic values alphabetically
+                const predefinedSet = new Set(predefined);
+                const dynamic = allValues.filter(v => !predefinedSet.has(v)).sort((a, b) => a.localeCompare(b));
+                result[col.key] = { values: [...predefined, ...dynamic], counts };
+            }
+        }
+        return result;
+    }, [data, columns, getColumnValue, columnFilterTypes, resourceType, PREDEFINED_COLUMN_VALUES]);
+
+    // Toggle a value in a select-type column filter
+    const toggleColumnFilter = useCallback((colKey, value) => {
+        setColumnFilters(prev => {
+            const current = prev[colKey]?.type === 'select' ? new Set(prev[colKey].values) : new Set();
+            if (current.has(value)) {
+                current.delete(value);
+            } else {
+                current.add(value);
+            }
+            const next = { ...prev };
+            if (current.size === 0) {
+                delete next[colKey];
+            } else {
+                next[colKey] = { type: 'select', values: current };
+            }
+            return next;
+        });
+    }, []);
+
+    // Add a regex pattern condition to a column filter
+    const addRegexCondition = useCallback((colKey, pattern) => {
+        if (!pattern) return;
+        setColumnFilters(prev => {
+            const existing = prev[colKey];
+            const conditions = existing?.type === 'regex' ? [...existing.conditions] : [];
+            conditions.push(pattern);
+            return { ...prev, [colKey]: { type: 'regex', conditions, logic: existing?.logic || 'and' } };
+        });
+    }, []);
+
+    // Remove a regex condition by index
+    const removeRegexCondition = useCallback((colKey, index) => {
+        setColumnFilters(prev => {
+            const existing = prev[colKey];
+            if (!existing || existing.type !== 'regex') return prev;
+            const conditions = existing.conditions.filter((_, i) => i !== index);
+            if (conditions.length === 0) {
+                const next = { ...prev };
+                delete next[colKey];
+                return next;
+            }
+            return { ...prev, [colKey]: { ...existing, conditions } };
+        });
+    }, []);
+
+    // Add a numeric condition to a column filter
+    const addNumericCondition = useCallback((colKey, operator, value) => {
+        if (value === '' || value === null || isNaN(Number(value))) return;
+        setColumnFilters(prev => {
+            const existing = prev[colKey];
+            const conditions = existing?.type === 'numeric' ? [...existing.conditions] : [];
+            conditions.push({ operator, value: Number(value) });
+            return { ...prev, [colKey]: { type: 'numeric', conditions, logic: existing?.logic || 'and' } };
+        });
+    }, []);
+
+    // Remove a numeric condition by index
+    const removeNumericCondition = useCallback((colKey, index) => {
+        setColumnFilters(prev => {
+            const existing = prev[colKey];
+            if (!existing || existing.type !== 'numeric') return prev;
+            const conditions = existing.conditions.filter((_, i) => i !== index);
+            if (conditions.length === 0) {
+                const next = { ...prev };
+                delete next[colKey];
+                return next;
+            }
+            return { ...prev, [colKey]: { ...existing, conditions } };
+        });
+    }, []);
+
+    // Toggle AND/OR logic for a column filter
+    const toggleFilterLogic = useCallback((colKey) => {
+        setColumnFilters(prev => {
+            const existing = prev[colKey];
+            if (!existing) return prev;
+            return { ...prev, [colKey]: { ...existing, logic: existing.logic === 'and' ? 'or' : 'and' } };
+        });
+    }, []);
+
+    // Clear all filters for a column
+    const clearColumnFilter = useCallback((colKey) => {
+        setColumnFilters(prev => {
+            const next = { ...prev };
+            delete next[colKey];
+            return next;
+        });
+    }, []);
+
+    // Clear all column filters
+    const clearAllColumnFilters = useCallback(() => {
+        setColumnFilters({});
+    }, []);
+
+    // Check if any column has active filters
+    const hasActiveColumnFilters = Object.keys(columnFilters).length > 0;
 
     const toggleColumn = (key) => {
         const newHidden = new Set(hiddenColumns);
@@ -380,6 +723,24 @@ export default function ResourceList({
         }
         setHiddenColumns(newHidden);
     };
+
+    // Show all columns
+    const showAllColumns = useCallback(() => {
+        setHiddenColumns(new Set());
+    }, []);
+
+    // Reset columns to default visibility (determined by column.defaultHidden property)
+    const resetColumnDefaults = useCallback(() => {
+        const defaultHidden = new Set(
+            columns.filter(col => col.defaultHidden).map(col => col.key)
+        );
+        setHiddenColumns(defaultHidden);
+    }, [columns]);
+
+    // Compute default hidden columns set for ColumnConfigurator
+    const defaultHiddenColumns = useMemo(() => {
+        return new Set(columns.filter(col => col.defaultHidden).map(col => col.key));
+    }, [columns]);
 
     const baseVisibleColumns = columns.filter(col => !hiddenColumns.has(col.key));
 
@@ -392,10 +753,75 @@ export default function ResourceList({
     };
 
     const filteredData = useMemo(() => {
-        if (!searchTerm) return data;
-        const filterFn = createFilter(resourceType, searchTerm);
-        return data.filter(filterFn);
-    }, [data, searchTerm, resourceType]);
+        let result = data;
+
+        // Apply search term filter
+        if (searchTerm) {
+            const filterFn = createFilter(resourceType, searchTerm);
+            result = result.filter(filterFn);
+        }
+
+        // Apply per-column filters (select and regex)
+        if (hasActiveColumnFilters) {
+            result = result.filter(item => {
+                for (const [colKey, filter] of Object.entries(columnFilters)) {
+                    const col = columns.find(c => c.key === colKey);
+                    if (!col) continue;
+                    const val = getColumnValue(col, item);
+                    if (filter.type === 'select') {
+                        if (!filter.values.has(val)) return false;
+                    } else if (filter.type === 'regex') {
+                        const conditions = filter.conditions || [filter.pattern];
+                        const isAnd = filter.logic !== 'or';
+                        const results = conditions.map(pattern => {
+                            try {
+                                return new RegExp(pattern, 'i').test(val);
+                            } catch { return true; }
+                        });
+                        if (isAnd ? results.some(r => !r) : !results.some(r => r)) return false;
+                    } else if (filter.type === 'numeric') {
+                        const numVal = getNumericValue(col, item);
+                        if (isNaN(numVal)) return false;
+                        const conditions = filter.conditions || [{ operator: filter.operator, value: filter.value }];
+                        const isAnd = filter.logic !== 'or';
+                        const checkCondition = (cond) => {
+                            const target = cond.value;
+                            switch (cond.operator) {
+                                case '>': return numVal > target;
+                                case '>=': return numVal >= target;
+                                case '<': return numVal < target;
+                                case '<=': return numVal <= target;
+                                case '=': return numVal === target;
+                                case '!=': return numVal !== target;
+                                default: return true;
+                            }
+                        };
+                        const results = conditions.map(checkCondition);
+                        if (isAnd ? results.some(r => !r) : !results.some(r => r)) return false;
+                    }
+                }
+                return true;
+            });
+        }
+
+        return result;
+    }, [data, searchTerm, resourceType, columnFilters, hasActiveColumnFilters, columns, getColumnValue, getNumericValue]);
+
+    // Report filtered UIDs to parent (for notifications scoping, etc.)
+    // Use a ref to avoid re-calling when the actual UIDs haven't changed
+    const prevFilteredUidsRef = useRef(null);
+    useEffect(() => {
+        if (!onFilteredUidsChange) return;
+        const uidArray = filteredData.map(item => item.metadata?.uid).filter(Boolean);
+        // Quick check: same length and same UIDs as last time?
+        const prev = prevFilteredUidsRef.current;
+        if (prev && prev.size === uidArray.length && uidArray.every(uid => prev.has(uid))) {
+            return; // No change
+        }
+        const uids = new Set(uidArray);
+        prevFilteredUidsRef.current = uids;
+        onFilteredUidsChange(uids);
+    }, [filteredData, onFilteredUidsChange]);
 
     const sortedData = React.useMemo(() => {
         if (!sortConfig.key) return filteredData;
@@ -544,13 +970,14 @@ export default function ResourceList({
 
     return (
         <div className="flex flex-col h-full bg-background relative">
-            {/* Header */}
-            <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-surface shrink-0 gap-4 titlebar-drag">
-                <div className="flex items-center gap-4 flex-1">
-                    <h1 className="text-lg font-semibold text-text shrink-0 no-drag">{title}</h1>
+            {/* Header - split into draggable and non-draggable regions as siblings */}
+            <div className="h-14 border-b border-border flex items-center bg-surface shrink-0">
+                {/* Left side - draggable titlebar region */}
+                <div className="flex items-center gap-4 flex-1 px-4 titlebar-drag h-full">
+                    <h1 className="text-lg font-semibold text-text shrink-0">{title}</h1>
 
                     {/* Search Bar */}
-                    <div className="relative max-w-md w-full flex items-center gap-1">
+                    <div className="relative max-w-md w-full flex items-center gap-1 no-drag">
                         <div className="relative flex-1">
                             <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                             <input
@@ -565,7 +992,7 @@ export default function ResourceList({
                             />
                         </div>
                         {resourceType && (
-                            <div className="relative no-drag" ref={searchHelpRef}>
+                            <div className="relative" ref={searchHelpRef}>
                                 <button
                                     onClick={() => setShowSearchHelp(!showSearchHelp)}
                                     className="p-1 text-gray-400 hover:text-gray-300 transition-colors"
@@ -589,6 +1016,10 @@ export default function ResourceList({
                                                 <span className="text-gray-300">Regex:</span> field:/pattern/
                                                 <div className="text-xs text-gray-500 ml-2">name:/^nginx-/ name:/end$/</div>
                                             </div>
+                                            <div>
+                                                <span className="text-gray-300">OR groups:</span> condition OR condition
+                                                <div className="text-xs text-gray-500 ml-2">name:/^web-/ OR name:/^api-/</div>
+                                            </div>
                                             <div className="border-t border-border pt-2 mt-2">
                                                 <span className="text-gray-300">Available fields:</span>
                                                 <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-1">
@@ -607,10 +1038,26 @@ export default function ResourceList({
                     </div>
                 </div>
 
-                {/* Right side controls */}
-                <div className="flex items-center gap-3 shrink-0">
+                {/* Right side controls - NOT a child of titlebar-drag, so right-click works */}
+                <div className="flex items-center gap-3 shrink-0 px-4">
                     {/* Custom Header Actions */}
                     {customHeaderActions}
+
+                    {/* Saved Views */}
+                    {resourceType && (
+                        <SavedViewsDropdown
+                            views={views}
+                            activeViewId={activeViewId}
+                            onSave={saveView}
+                            onLoad={handleLoadView}
+                            onUpdate={handleUpdateView}
+                            onDelete={handleDeleteView}
+                            onRename={renameView}
+                            onDuplicate={duplicateView}
+                            onSetDefault={setDefaultView}
+                            getCurrentConfig={getCurrentViewConfig}
+                        />
+                    )}
 
                     {/* Namespace Selector */}
                     {showNamespaceSelector && (
@@ -626,6 +1073,45 @@ export default function ResourceList({
                     )}
                 </div>
             </div>
+
+            {/* Active Filter Chips */}
+            {resourceType && hasActiveColumnFilters && (
+                <div className="px-4 py-1.5 border-b border-border bg-surface shrink-0 flex items-center gap-2 flex-wrap">
+                    <FunnelIcon className="w-4 h-4 text-gray-500 shrink-0" />
+                    {Object.entries(columnFilters).map(([colKey, filter]) => {
+                        const col = columns.find(c => c.key === colKey);
+                        return (
+                            <span key={colKey} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-primary/10 text-primary border border-primary/15 rounded">
+                                <span className="text-gray-400">{col?.label || colKey}:</span>
+                                <span>
+                                    {filter.type === 'regex'
+                                        ? <span className="font-mono">{(filter.conditions || [filter.pattern]).map((p, i) => (
+                                            <span key={i}>{i > 0 && <span className="text-gray-500 mx-0.5">{filter.logic === 'or' ? '|' : '&'}</span>}/{p}/</span>
+                                        ))}</span>
+                                        : filter.type === 'numeric'
+                                            ? <span className="font-mono">{(filter.conditions || [{ operator: filter.operator, value: filter.value }]).map((c, i) => (
+                                                <span key={i}>{i > 0 && <span className="text-gray-500 mx-0.5">{filter.logic === 'or' ? '|' : '&'}</span>}{c.operator} {c.value}</span>
+                                            ))}</span>
+                                            : `${filter.values.size} selected`
+                                    }
+                                </span>
+                                <button
+                                    onClick={() => clearColumnFilter(colKey)}
+                                    className="hover:text-white transition-colors ml-0.5"
+                                >
+                                    ×
+                                </button>
+                            </span>
+                        );
+                    })}
+                    <button
+                        onClick={clearAllColumnFilters}
+                        className="text-xs text-gray-500 hover:text-gray-300 transition-colors ml-2"
+                    >
+                        Clear all
+                    </button>
+                </div>
+            )}
 
             {/* Table Content */}
             <div className="flex-1 overflow-hidden">
@@ -727,40 +1213,20 @@ export default function ResourceList({
                                     return (
                                         <th
                                             key={col.key}
-                                            className={`p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none relative whitespace-nowrap ${col.isColumnSelector ? 'sticky right-0 bg-surface z-20' : 'cursor-pointer hover:text-text'}`}
+                                            className={`p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none relative whitespace-nowrap group ${col.isColumnSelector ? 'sticky right-0 bg-surface z-20' : 'cursor-pointer hover:text-text'}`}
                                             style={{ width: `${width}px`, minWidth: `${width}px` }}
                                             onClick={() => !col.isColumnSelector && handleSort(col.key)}
                                         >
                                             {col.isColumnSelector ? (
-                                                <div className={`relative flex ${col.align === 'center' ? 'justify-center' : 'justify-end'}`} ref={columnMenuRef}>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setShowColumnMenu(!showColumnMenu);
-                                                        }}
-                                                        className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                                                    >
-                                                        <EllipsisVerticalIcon className="h-5 w-5" />
-                                                    </button>
-                                                    {showColumnMenu && (
-                                                        <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-md shadow-lg z-50 py-1">
-                                                            {columns.filter(c => !c.isColumnSelector).map(c => (
-                                                                <label
-                                                                    key={c.key}
-                                                                    className="flex items-center px-4 py-2 text-sm text-text hover:bg-white/5 cursor-pointer"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                >
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={!hiddenColumns.has(c.key)}
-                                                                        onChange={() => toggleColumn(c.key)}
-                                                                        className="mr-2"
-                                                                    />
-                                                                    {c.label}
-                                                                </label>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                <div className="flex justify-center">
+                                                    <ColumnConfigurator
+                                                        columns={columns}
+                                                        hiddenColumns={hiddenColumns}
+                                                        onToggleColumn={toggleColumn}
+                                                        onShowAll={showAllColumns}
+                                                        onResetDefaults={resetColumnDefaults}
+                                                        defaultHiddenColumns={defaultHiddenColumns}
+                                                    />
                                                 </div>
                                             ) : (
                                                 <div className={`flex items-center gap-1 ${col.align === 'center' ? 'justify-center' : ''}`}>
@@ -769,6 +1235,47 @@ export default function ResourceList({
                                                         <span className="text-primary">
                                                             {sortConfig.direction === 'asc' ? '↑' : '↓'}
                                                         </span>
+                                                    )}
+                                                    {/* Column filter button */}
+                                                    {(columnFilterTypes[col.key] === 'regex' || columnFilterTypes[col.key] === 'numeric' || (columnFilterTypes[col.key] === 'select' && columnUniqueValues[col.key])) && (
+                                                        <div className="relative" ref={openColumnFilter === col.key ? columnFilterRef : undefined}>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const opening = openColumnFilter !== col.key;
+                                                                    setOpenColumnFilter(opening ? col.key : null);
+                                                                    setColumnFilterSearch('');
+                                                                    if (opening) {
+                                                                        const rect = e.currentTarget.getBoundingClientRect();
+                                                                        const dropdownWidth = 224; // w-56 = 14rem = 224px
+                                                                        const left = Math.max(8, Math.min(rect.left, window.innerWidth - dropdownWidth - 8));
+                                                                        // Place below the button initially; useLayoutEffect will correct if it overflows
+                                                                        setColumnFilterPos({ top: rect.bottom + 4, left, anchorTop: rect.top, anchorBottom: rect.bottom });
+                                                                        if (columnFilterTypes[col.key] === 'regex') {
+                                                                            setRegexDraft('');
+                                                                        } else if (columnFilterTypes[col.key] === 'numeric') {
+                                                                            setNumericDraft({ operator: '>', value: '', unit: 'h' });
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                className={`p-0.5 rounded transition-colors ${
+                                                                    columnFilters[col.key]
+                                                                        ? 'text-primary'
+                                                                        : 'text-gray-600 opacity-0 group-hover:opacity-100 hover:text-gray-400'
+                                                                }`}
+                                                                title={columnFilters[col.key]
+                                                                    ? columnFilters[col.key].type === 'regex'
+                                                                        ? `Filtering: ${(columnFilters[col.key].conditions || []).map(p => `/${p}/`).join(` ${columnFilters[col.key].logic || 'and'} `)}`
+                                                                        : columnFilters[col.key].type === 'numeric'
+                                                                            ? `Filtering: ${(columnFilters[col.key].conditions || []).map(c => `${c.operator} ${c.value}`).join(` ${columnFilters[col.key].logic || 'and'} `)}`
+                                                                            : `Filtering: ${columnFilters[col.key].values.size} value(s)`
+                                                                    : `Filter by ${col.label}`
+                                                                }
+                                                            >
+                                                                <FunnelIcon className="w-3 h-3" />
+                                                            </button>
+                                                            {/* Column filter dropdown rendered via portal below */}
+                                                        </div>
                                                     )}
                                                 </div>
                                             )}
@@ -856,6 +1363,196 @@ export default function ResourceList({
                     position="bottom"
                 />
             )}
+
+            {/* Column filter dropdown — rendered via portal to escape overflow:hidden ancestors */}
+            {openColumnFilter && columnFilterPos && (() => {
+                const col = visibleColumns.find(c => c.key === openColumnFilter);
+                if (!col) return null;
+                return createPortal(
+                    <div
+                        ref={columnFilterDropdownRef}
+                        className="fixed bg-surface border border-border rounded-lg shadow-xl z-[9999] w-56"
+                        style={{ top: columnFilterPos.top, left: columnFilterPos.left }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {columnFilterTypes[col.key] === 'regex' ? (
+                            <div className="p-2">
+                                {/* Existing regex conditions */}
+                                {columnFilters[col.key]?.conditions?.length > 0 && (
+                                    <div className="mb-2 space-y-1">
+                                        {columnFilters[col.key].conditions.map((pattern, idx) => (
+                                            <div key={idx} className="flex items-center gap-1">
+                                                {idx > 0 && (
+                                                    <button
+                                                        onClick={() => toggleFilterLogic(col.key)}
+                                                        className="text-[10px] font-medium px-1 py-0.5 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors shrink-0"
+                                                    >
+                                                        {columnFilters[col.key].logic === 'or' ? 'OR' : 'AND'}
+                                                    </button>
+                                                )}
+                                                <span className="flex-1 text-xs font-mono text-gray-300 truncate">/{pattern}/</span>
+                                                <button
+                                                    onClick={() => removeRegexCondition(col.key, idx)}
+                                                    className="text-gray-500 hover:text-red-400 transition-colors shrink-0"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <input
+                                    type="text"
+                                    value={regexDraft}
+                                    onChange={(e) => setRegexDraft(e.target.value)}
+                                    placeholder="Regex pattern... (e.g. ^nginx)"
+                                    className="w-full px-2 py-1.5 bg-background border border-border rounded text-xs font-mono focus:outline-none focus:border-primary"
+                                    autoFocus
+                                    autoComplete="off"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            addRegexCondition(col.key, regexDraft);
+                                            setRegexDraft('');
+                                        } else if (e.key === 'Escape') {
+                                            setOpenColumnFilter(null);
+                                        }
+                                    }}
+                                />
+                                <div className="text-[10px] text-gray-500 mt-1">Press Enter to add condition &middot; Escape to close</div>
+                            </div>
+                        ) : columnFilterTypes[col.key] === 'numeric' ? (
+                            <div className="p-2">
+                                {/* Existing numeric conditions */}
+                                {columnFilters[col.key]?.conditions?.length > 0 && (
+                                    <div className="mb-2 space-y-1">
+                                        {columnFilters[col.key].conditions.map((cond, idx) => (
+                                            <div key={idx} className="flex items-center gap-1">
+                                                {idx > 0 && (
+                                                    <button
+                                                        onClick={() => toggleFilterLogic(col.key)}
+                                                        className="text-[10px] font-medium px-1 py-0.5 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors shrink-0"
+                                                    >
+                                                        {columnFilters[col.key].logic === 'or' ? 'OR' : 'AND'}
+                                                    </button>
+                                                )}
+                                                <span className="flex-1 text-xs font-mono text-gray-300">{cond.operator} {cond.value}</span>
+                                                <button
+                                                    onClick={() => removeNumericCondition(col.key, idx)}
+                                                    className="text-gray-500 hover:text-red-400 transition-colors shrink-0"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="flex gap-1.5">
+                                    <select
+                                        value={numericDraft.operator}
+                                        onChange={(e) => setNumericDraft(d => ({ ...d, operator: e.target.value }))}
+                                        className="px-1.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:border-primary"
+                                    >
+                                        <option value=">">{'>'}</option>
+                                        <option value=">=">{'>='}</option>
+                                        <option value="<">{'<'}</option>
+                                        <option value="<=">{'<='}</option>
+                                        <option value="=">{'='}</option>
+                                        <option value="!=">{'!='}</option>
+                                    </select>
+                                    <input
+                                        type="number"
+                                        value={numericDraft.value}
+                                        onChange={(e) => setNumericDraft(d => ({ ...d, value: e.target.value }))}
+                                        placeholder="0"
+                                        className="flex-1 min-w-0 px-2 py-1.5 bg-background border border-border rounded text-xs font-mono focus:outline-none focus:border-primary"
+                                        autoFocus
+                                        autoComplete="off"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                let filterValue = numericDraft.value;
+                                                if (col.key === 'age' && filterValue !== '') {
+                                                    const multipliers = { s: 1/3600, m: 1/60, h: 1, d: 24 };
+                                                    filterValue = String(Number(filterValue) * (multipliers[numericDraft.unit] || 1));
+                                                }
+                                                addNumericCondition(col.key, numericDraft.operator, filterValue);
+                                                setNumericDraft(d => ({ ...d, value: '' }));
+                                            } else if (e.key === 'Escape') {
+                                                setOpenColumnFilter(null);
+                                            }
+                                        }}
+                                    />
+                                    {col.key === 'age' && (
+                                        <select
+                                            value={numericDraft.unit}
+                                            onChange={(e) => setNumericDraft(d => ({ ...d, unit: e.target.value }))}
+                                            className="px-1.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:border-primary"
+                                        >
+                                            <option value="s">sec</option>
+                                            <option value="m">min</option>
+                                            <option value="h">hours</option>
+                                            <option value="d">days</option>
+                                        </select>
+                                    )}
+                                </div>
+                                {col.numericHint && (
+                                    <div className="text-[10px] text-gray-500 mt-1">{col.numericHint}</div>
+                                )}
+                                <div className="text-[10px] text-gray-500 mt-0.5">Press Enter to add condition &middot; Escape to close</div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="p-2 border-b border-border">
+                                    <input
+                                        type="text"
+                                        value={columnFilterSearch}
+                                        onChange={(e) => setColumnFilterSearch(e.target.value)}
+                                        placeholder="Search values..."
+                                        className="w-full px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none focus:border-primary"
+                                        autoFocus
+                                        autoComplete="off"
+                                    />
+                                </div>
+                                <div className="max-h-48 overflow-auto py-1">
+                                    {columnUniqueValues[col.key]?.values
+                                        ?.filter(v => !columnFilterSearch || v.toLowerCase().includes(columnFilterSearch.toLowerCase()))
+                                        .map(value => {
+                                            const isChecked = columnFilters[col.key]?.values?.has(value);
+                                            const count = columnUniqueValues[col.key]?.counts?.[value] ?? 0;
+                                            const isZero = count === 0;
+                                            return (
+                                                <label
+                                                    key={value}
+                                                    className={`flex items-center gap-2 px-3 py-1 text-xs hover:bg-white/5 cursor-pointer ${isZero ? 'opacity-50' : ''}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!isChecked}
+                                                        onChange={() => toggleColumnFilter(col.key, value)}
+                                                        className="w-3 h-3 rounded border-gray-600 bg-background text-primary focus:ring-primary"
+                                                    />
+                                                    <span className="text-gray-300 truncate flex-1" title={value}>{value}</span>
+                                                    <span className={`tabular-nums text-xs ml-auto ${isChecked ? 'text-primary' : isZero ? 'text-gray-600' : 'text-gray-400'}`}>{count}</span>
+                                                </label>
+                                            );
+                                        })
+                                    }
+                                </div>
+                            </>
+                        )}
+                        {columnFilters[col.key] && (
+                            <div className="px-3 py-1.5 border-t border-border">
+                                <button
+                                    onClick={() => clearColumnFilter(col.key)}
+                                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                                >
+                                    Clear filter
+                                </button>
+                            </div>
+                        )}
+                    </div>,
+                    document.body
+                );
+            })()}
         </div>
     );
 }

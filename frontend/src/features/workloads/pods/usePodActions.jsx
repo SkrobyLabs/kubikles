@@ -17,10 +17,11 @@ export const usePodActions = () => {
 
     const openLogs = (namespace, podName, containers = [], siblingPods = [], podContainerMap = {}, ownerName = '', podCreationTime = '') => {
         Logger.info("Opening logs", { namespace, pod: podName });
-        const tabId = `logs-pod-${podName}`;
+        const isAllPods = podName === '__ALL_PODS__';
+        const tabId = isAllPods ? `logs-all-${ownerName || namespace}` : `logs-pod-${podName}`;
         openTab({
             id: tabId,
-            title: podName,
+            title: isAllPods ? (ownerName || 'All Pods') : podName,
             icon: CubeIcon,
             actionLabel: 'Logs',
             keepAlive: true,
@@ -90,7 +91,7 @@ export const usePodActions = () => {
             ),
             resourceMeta: { kind: 'Pod', name: podName, namespace },
         });
-        Logger.info("Shell opened successfully", { namespace, pod: podName });
+        Logger.info("Shell opened successfully", { namespace, pod: podName, container });
     };
 
     const handleFiles = (pod) => {

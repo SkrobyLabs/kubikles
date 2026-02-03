@@ -134,6 +134,68 @@ export default function JobList({ isVisible }) {
             },
             getValue: (item) => getController(item)?.kind || ''
         },
+        // Hidden by default columns
+        {
+            key: 'parallelism',
+            label: 'Parallelism',
+            defaultHidden: true,
+            render: (job) => job.spec?.parallelism ?? 1,
+            getValue: (job) => job.spec?.parallelism ?? 1,
+        },
+        {
+            key: 'backoffLimit',
+            label: 'Backoff Limit',
+            defaultHidden: true,
+            render: (job) => job.spec?.backoffLimit ?? 6,
+            getValue: (job) => job.spec?.backoffLimit ?? 6,
+        },
+        {
+            key: 'activeDeadline',
+            label: 'Deadline (s)',
+            defaultHidden: true,
+            render: (job) => job.spec?.activeDeadlineSeconds ?? <span className="text-gray-500">-</span>,
+            getValue: (job) => job.spec?.activeDeadlineSeconds ?? 0,
+        },
+        {
+            key: 'startTime',
+            label: 'Start Time',
+            defaultHidden: true,
+            render: (job) => job.status?.startTime ? formatAge(job.status.startTime) + ' ago' : <span className="text-gray-500">-</span>,
+            getValue: (job) => job.status?.startTime || '',
+        },
+        {
+            key: 'duration',
+            label: 'Duration',
+            defaultHidden: true,
+            render: (job) => {
+                const start = job.status?.startTime;
+                const end = job.status?.completionTime;
+                if (!start) return <span className="text-gray-500">-</span>;
+                const endTime = end ? new Date(end) : new Date();
+                const duration = Math.floor((endTime - new Date(start)) / 1000);
+                if (duration < 60) return `${duration}s`;
+                if (duration < 3600) return `${Math.floor(duration / 60)}m ${duration % 60}s`;
+                return `${Math.floor(duration / 3600)}h ${Math.floor((duration % 3600) / 60)}m`;
+            },
+            getValue: (job) => {
+                const start = job.status?.startTime;
+                const end = job.status?.completionTime;
+                if (!start) return 0;
+                return (end ? new Date(end) : new Date()) - new Date(start);
+            },
+        },
+        {
+            key: 'image',
+            label: 'Image',
+            defaultHidden: true,
+            render: (job) => {
+                const containers = job.spec?.template?.spec?.containers || [];
+                if (containers.length === 0) return '-';
+                if (containers.length === 1) return <span title={containers[0].image}>{containers[0].image?.split('/').pop()}</span>;
+                return <span title={containers.map(c => c.image).join('\n')}>{containers.length} images</span>;
+            },
+            getValue: (job) => job.spec?.template?.spec?.containers?.[0]?.image || '',
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

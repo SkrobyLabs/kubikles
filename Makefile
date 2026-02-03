@@ -1,4 +1,5 @@
 # Makefile for Kubikles
+# Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
 .PHONY: help dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch profile build-pgo
 
@@ -53,11 +54,16 @@ help:
 	@echo "  clean              Remove build artifacts"
 	@echo ""
 
-# Ensure GOPATH/bin is in PATH
-GOPATH := $(shell go env GOPATH)
-WAILS := $(GOPATH)/bin/wails
+# OS Detection - check for Windows (works in MSYS/Git Bash)
+ifeq ($(OS),Windows_NT)
+    DETECTED_OS := Windows
+else
+    DETECTED_OS := $(shell uname -s)
+endif
+
+# Use wails directly (should be in PATH after go install)
+WAILS := wails
 PGO_FILE := default.pgo
-UNAME_S := $(shell uname -s)
 
 # Version info from git
 GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "")
@@ -75,7 +81,7 @@ build:
 build-release:
 	$(WAILS) build $(BUILD_FLAGS)
 
-# Build portable Windows executables (requires mingw-w64: brew install mingw-w64)
+# Build portable Windows executables (requires mingw-w64 on non-Windows: brew install mingw-w64)
 build-windows-amd64:
 	$(WAILS) build -platform windows/amd64 $(BUILD_FLAGS) -o Kubikles-amd64.exe
 
@@ -97,9 +103,13 @@ build-linux-amd64:
 build-linux-arm64:
 	$(WAILS) build -platform linux/arm64 $(BUILD_FLAGS) -o Kubikles-linux-arm64
 
-# Build portable Linux AppImage (bundles into single executable)
+# Build portable Linux AppImage (bundles into single executable) - Unix only
 build-appimage:
+ifeq ($(DETECTED_OS),Windows)
+	@echo "AppImage builds are only supported on Linux"
+else
 	@./scripts/build-appimage.sh
+endif
 
 # Build all platforms
 build-all: clean build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64
@@ -145,11 +155,23 @@ install-deps: setup
 
 # Full setup: system deps, Go, Node, Wails, frontend, hooks
 setup:
+ifeq ($(DETECTED_OS),Windows)
+	@echo "On Windows, please ensure you have installed:"
+	@echo "  1. Go: https://go.dev/dl/"
+	@echo "  2. Node.js: https://nodejs.org/"
+	@echo "  3. Then run: make install-wails"
+	@echo "  4. Then run: make install-frontend"
+else
 	@./scripts/setup.sh
+endif
 
 # Setup without system dependencies (if you already have GTK/WebKit)
 setup-quick:
+ifeq ($(DETECTED_OS),Windows)
+	@echo "On Windows, run: make install-wails && make install-frontend"
+else
 	@./scripts/setup.sh --skip-system-deps
+endif
 
 # Install frontend dependencies only
 install-frontend:
@@ -158,8 +180,9 @@ install-frontend:
 # Install git hooks from tracked .githooks directory
 install-hooks:
 	@echo "Installing git hooks..."
+	@mkdir -p .git/hooks
 	@cp .githooks/* .git/hooks/
-	@chmod +x .git/hooks/*
+	@chmod +x .git/hooks/* 2>/dev/null || true
 	@echo "Git hooks installed successfully."
 
 clean:
@@ -199,8 +222,12 @@ profile:
 	@echo "   - View dependency graphs"
 	@echo "3. Press Ctrl+C when done"
 	@echo ""
+ifeq ($(DETECTED_OS),Windows)
+	@echo "Profile collection scripts are Unix-only. Run the app manually."
+else
 	@echo "Starting profile collection..."
 	@./scripts/collect-pgo-profile.sh
+endif
 
 # Build with PGO optimization (requires profile from 'make profile')
 build-pgo:
@@ -211,14 +238,18 @@ build-pgo:
 	@echo "Building with PGO optimization from $(PGO_FILE)..."
 	$(WAILS) build $(BUILD_FLAGS) -tags pgo
 
-# Build optimized release for Apple Silicon with PGO
+# Build optimized release for Apple Silicon with PGO (macOS only)
 build-mac-arm-pgo:
+ifeq ($(DETECTED_OS),Windows)
+	@echo "This target is only available on macOS"
+else
 	@if [ ! -f "$(PGO_FILE)" ]; then \
 		echo "Error: $(PGO_FILE) not found. Run 'make profile' first."; \
 		exit 1; \
 	fi
 	@echo "Building Apple Silicon release with PGO..."
 	GOFLAGS="-pgo=$(PGO_FILE)" $(WAILS) build -platform darwin/arm64 $(BUILD_FLAGS) -o Kubikles-arm64-pgo
+endif
 
 # Clean PGO profile
 clean-pgo:

@@ -30,6 +30,7 @@ export function useLogStream({
     siblingPods, // Array of sibling pod names (needed for "All Pods" mode)
     podContainerMap, // Map of podName -> containerNames (needed for "All Pods" mode)
     showPrevious,
+    pinPreviousLogs = false, // When true, preserve logs if container becomes unavailable
     sinceTime,
     viewMode,
     initialPosition,
@@ -61,6 +62,8 @@ export function useLogStream({
     const [streamDisconnected, setStreamDisconnected] = useState(false);
     const [disconnectReason, setDisconnectReason] = useState('');
     const [firstItemIndex, setFirstItemIndex] = useState(10000); // For virtuoso prepending
+
+    const [isPinned, setIsPinned] = useState(false); // True when showing pinned previous logs
 
     const streamIdRef = useRef(null);
     const loadingBeforeRef = useRef(false);
@@ -141,16 +144,28 @@ export function useLogStream({
                 setHasMoreBefore(true);
                 setHasMoreAfter(false);
             }
-            setLogs(parseLogLines(logData, 'initial'));
+            const parsed = parseLogLines(logData, 'initial');
+            if (parsed.length === 0 && pinPreviousLogs && logs.length > 0) {
+                // Container gone but we have pinned logs — keep them
+                setIsPinned(true);
+            } else {
+                setIsPinned(false);
+                setLogs(parsed);
+            }
         } catch (err) {
-            setLogs([{ timestamp: '', content: `Error fetching logs: ${err}`, source: 'error' }]);
+            if (pinPreviousLogs && logs.length > 0) {
+                // Container gone — keep pinned logs
+                setIsPinned(true);
+            } else {
+                setLogs([{ timestamp: '', content: `Error fetching logs: ${err}`, source: 'error' }]);
+            }
             setHasMoreBefore(false);
             setHasMoreAfter(false);
         } finally {
             setLoading(false);
             isFetchingRef.current = false;
         }
-    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, sinceTime, viewMode]);
+    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, pinPreviousLogs, logs.length, sinceTime, viewMode]);
 
     // Load all logs at once
     const loadAllLogs = useCallback(async () => {
@@ -482,6 +497,8 @@ export function useLogStream({
         hasMoreBefore,
         hasMoreAfter,
         isAllLoaded,
+        isPinned,
+        setIsPinned,
         streamDisconnected,
         disconnectReason,
         firstItemIndex,

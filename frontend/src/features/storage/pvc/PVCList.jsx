@@ -97,6 +97,33 @@ export default function PVCList({ isVisible }) {
         { key: 'accessModes', label: 'Access Modes', render: (item) => renderAccessModes(item.spec?.accessModes), getValue: (item) => item.spec?.accessModes?.join(', ') || '' },
         { key: 'storageClass', label: 'Storage Class', render: (item) => item.spec?.storageClassName || '-', getValue: (item) => item.spec?.storageClassName || '' },
         { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        // Hidden by default columns
+        {
+            key: 'volumeMode',
+            label: 'Volume Mode',
+            defaultHidden: true,
+            render: (item) => item.spec?.volumeMode || 'Filesystem',
+            getValue: (item) => item.spec?.volumeMode || 'Filesystem',
+        },
+        {
+            key: 'requested',
+            label: 'Requested',
+            defaultHidden: true,
+            render: (item) => item.spec?.resources?.requests?.storage || '-',
+            getValue: (item) => item.spec?.resources?.requests?.storage || '',
+        },
+        {
+            key: 'selector',
+            label: 'Selector',
+            defaultHidden: true,
+            render: (item) => {
+                const labels = item.spec?.selector?.matchLabels || {};
+                const entries = Object.entries(labels);
+                if (entries.length === 0) return <span className="text-gray-500">-</span>;
+                return <span title={entries.map(([k, v]) => `${k}=${v}`).join('\n')}>{entries.length} label{entries.length > 1 ? 's' : ''}</span>;
+            },
+            getValue: (item) => Object.entries(item.spec?.selector?.matchLabels || {}).map(([k, v]) => `${k}=${v}`).join(','),
+        },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,

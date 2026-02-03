@@ -173,6 +173,13 @@ export default function BottomPanel({
                             onDragLeave={handleDragLeave}
                             onDrop={(e) => handleDrop(e, index)}
                             onContextMenu={(e) => handleContextMenu(e, tab.id, index)}
+                            onAuxClick={(e) => {
+                                // Middle-click to close tab (button 1 is middle mouse button)
+                                if (e.button === 1 && !tab.pinned) {
+                                    e.preventDefault();
+                                    onTabClose(tab.id);
+                                }
+                            }}
                             className={`
                                 flex items-center px-4 py-2 text-xs font-medium cursor-pointer border-r border-border min-w-[150px] max-w-[250px]
                                 ${stale
