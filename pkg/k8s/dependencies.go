@@ -46,6 +46,7 @@ type resourceCache struct {
 	replicaSets  map[string][]appsv1.ReplicaSet    // namespace -> replicasets
 	jobs         map[string][]batchv1.Job          // namespace -> jobs
 	// Name-indexed maps for O(1) lookups by name
+	podsByName        map[string]map[string]*v1.Pod            // namespace -> name -> pod
 	replicaSetsByName map[string]map[string]*appsv1.ReplicaSet // namespace -> name -> replicaset
 	jobsByName        map[string]map[string]*batchv1.Job       // namespace -> name -> job
 	// Cluster-wide caches for cluster-scoped resource queries
@@ -64,6 +65,7 @@ func newResourceCache(ctx context.Context, cs kubernetes.Interface) *resourceCac
 		ingresses:         make(map[string][]networkingv1.Ingress),
 		replicaSets:       make(map[string][]appsv1.ReplicaSet),
 		jobs:              make(map[string][]batchv1.Job),
+		podsByName:        make(map[string]map[string]*v1.Pod),
 		replicaSetsByName: make(map[string]map[string]*appsv1.ReplicaSet),
 		jobsByName:        make(map[string]map[string]*batchv1.Job),
 		ctx:               ctx,
@@ -80,7 +82,28 @@ func (rc *resourceCache) getPods(namespace string) ([]v1.Pod, error) {
 		return nil, err
 	}
 	rc.pods[namespace] = list.Items
+	// Build name index for O(1) lookups
+	rc.podsByName[namespace] = make(map[string]*v1.Pod, len(list.Items))
+	for i := range list.Items {
+		rc.podsByName[namespace][list.Items[i].Name] = &list.Items[i]
+	}
 	return list.Items, nil
+}
+
+// getPodByName returns a pod by name using the cached pod list, or fetches the list if not cached.
+// Returns nil if pod not found (without error), error only if API call fails.
+func (rc *resourceCache) getPodByName(namespace, name string) (*v1.Pod, error) {
+	// Ensure cache is populated
+	if _, ok := rc.pods[namespace]; !ok {
+		if _, err := rc.getPods(namespace); err != nil {
+			return nil, err
+		}
+	}
+	// Lookup by name (O(1))
+	if nameIndex, ok := rc.podsByName[namespace]; ok {
+		return nameIndex[name], nil
+	}
+	return nil, nil
 }
 
 func (rc *resourceCache) getServices(namespace string) ([]v1.Service, error) {
@@ -1621,9 +1644,10 @@ func (c *Client) getEndpointsDependencies(cs kubernetes.Interface, cache *resour
 					podNamespace = addr.TargetRef.Namespace
 				}
 
-				pod, podErr := cs.CoreV1().Pods(podNamespace).Get(context.TODO(), podName, metav1.GetOptions{})
+				// Use cached pod lookup instead of individual API call
+				pod, _ := cache.getPodByName(podNamespace, podName)
 				status := "Unknown"
-				if podErr == nil {
+				if pod != nil {
 					status = string(pod.Status.Phase)
 				}
 
@@ -1638,7 +1662,7 @@ func (c *Client) getEndpointsDependencies(cs kubernetes.Interface, cache *resour
 				c.addEdge(graph, endpointsID, podID, "references")
 
 				// Resolve pod's owner refs
-				if podErr == nil {
+				if pod != nil {
 					c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, podNamespace, pod.OwnerReferences)
 				}
 			}
@@ -1653,9 +1677,10 @@ func (c *Client) getEndpointsDependencies(cs kubernetes.Interface, cache *resour
 					podNamespace = addr.TargetRef.Namespace
 				}
 
-				pod, podErr := cs.CoreV1().Pods(podNamespace).Get(context.TODO(), podName, metav1.GetOptions{})
+				// Use cached pod lookup instead of individual API call
+				pod, _ := cache.getPodByName(podNamespace, podName)
 				status := "NotReady"
-				if podErr == nil {
+				if pod != nil {
 					status = string(pod.Status.Phase)
 				}
 
@@ -1669,7 +1694,7 @@ func (c *Client) getEndpointsDependencies(cs kubernetes.Interface, cache *resour
 				})
 				c.addEdge(graph, endpointsID, podID, "references")
 
-				if podErr == nil {
+				if pod != nil {
 					c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, podNamespace, pod.OwnerReferences)
 				}
 			}

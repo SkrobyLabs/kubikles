@@ -8,6 +8,7 @@ export const usePerformancePanel = () => {
     const [backendMetrics, setBackendMetrics] = useState(null);
     const [metricsHistory, setMetricsHistory] = useState([]);
     const [isPolling, setIsPolling] = useState(false);
+    const [error, setError] = useState(null);
     const pollIntervalRef = useRef(null);
     const { openTab, bottomTabs, setBottomTabs } = useUI();
     const { getConfig } = useConfig();
@@ -18,6 +19,7 @@ export const usePerformancePanel = () => {
         try {
             const metrics = await GetPerformanceMetrics();
             setBackendMetrics(metrics);
+            setError(null);
 
             // Keep history for charts (last 60 data points = ~90 seconds at 1.5s interval)
             setMetricsHistory(prev => {
@@ -29,6 +31,7 @@ export const usePerformancePanel = () => {
             });
         } catch (err) {
             console.error('Failed to fetch performance metrics:', err);
+            setError(err);
         }
     }, []);
 
@@ -124,6 +127,7 @@ export const usePerformancePanel = () => {
 
     return {
         openPerformancePanel,
-        isPolling
+        isPolling,
+        error
     };
 };

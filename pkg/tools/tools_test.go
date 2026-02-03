@@ -8,9 +8,9 @@ import (
 func TestAllToolDefs_Count(t *testing.T) {
 	defs := AllToolDefs()
 
-	// Verify expected number of tools (12 based on current implementation)
-	if len(defs) != 12 {
-		t.Errorf("expected 12 tools, got %d", len(defs))
+	// Verify expected number of tools (16: 12 original + 4 diagnostic tools)
+	if len(defs) != 16 {
+		t.Errorf("expected 16 tools, got %d", len(defs))
 	}
 }
 
@@ -58,6 +58,11 @@ func TestAllToolDefs_ExpectedTools(t *testing.T) {
 		"get_pod_metrics",
 		"get_namespace_summary",
 		"get_resource_dependencies",
+		// Diagnostic tools
+		"get_flow_timeline",
+		"get_multi_pod_logs",
+		"diff_resources",
+		"check_rbac_access",
 	}
 
 	toolMap := make(map[string]bool)

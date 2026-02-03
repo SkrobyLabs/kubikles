@@ -668,7 +668,7 @@ func (c *Client) UpdateNodeYaml(name, yamlContent string) error {
 }
 
 func (c *Client) DeleteNode(contextName, name string) error {
-	fmt.Printf("Deleting node: context=%s, name=%s\n", contextName, name)
+	log.Printf("Deleting node: context=%s, name=%s", contextName, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -1691,10 +1691,11 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	return counts, nil
 }
 
-func (c *Client) DeleteNamespace(name string) error {
-	cs, err := c.getClientset()
+func (c *Client) DeleteNamespace(contextName, name string) error {
+	log.Printf("Deleting namespace: context=%s, name=%s", contextName, name)
+	cs, err := c.getClientForContext(contextName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
@@ -1762,6 +1763,21 @@ func (c *Client) ListEvents(namespace string) ([]v1.Event, error) {
 	return events.Items, nil
 }
 
+func (c *Client) ListEventsWithContext(ctx context.Context, namespace string) ([]v1.Event, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	events, err := cs.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return events.Items, nil
+}
+
 func (c *Client) GetEventYAML(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -1806,10 +1822,11 @@ func (c *Client) UpdateEventYAML(namespace, name string, yamlContent string) err
 	return err
 }
 
-func (c *Client) DeleteEvent(namespace, name string) error {
-	cs, err := c.getClientset()
+func (c *Client) DeleteEvent(contextName, namespace, name string) error {
+	log.Printf("Deleting event: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
@@ -1899,7 +1916,7 @@ func (c *Client) UpdateServiceYaml(namespace, name, yamlContent string) error {
 }
 
 func (c *Client) DeleteService(contextName, namespace, name string) error {
-	fmt.Printf("Deleting service: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting service: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -1977,7 +1994,7 @@ func (c *Client) UpdateIngressYaml(namespace, name, yamlContent string) error {
 }
 
 func (c *Client) DeleteIngress(contextName, namespace, name string) error {
-	fmt.Printf("Deleting ingress: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting ingress: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -2039,7 +2056,7 @@ func (c *Client) UpdateIngressClassYaml(name, yamlContent string) error {
 }
 
 func (c *Client) DeleteIngressClass(contextName, name string) error {
-	fmt.Printf("Deleting ingressclass: context=%s, name=%s\n", contextName, name)
+	log.Printf("Deleting ingressclass: context=%s, name=%s", contextName, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -2336,10 +2353,11 @@ func (c *Client) UpdateConfigMapYaml(namespace, name, yamlContent string) error 
 	return err
 }
 
-func (c *Client) DeleteConfigMap(namespace, name string) error {
-	cs, err := c.getClientset()
+func (c *Client) DeleteConfigMap(contextName, namespace, name string) error {
+	log.Printf("Deleting configmap: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
@@ -2419,10 +2437,11 @@ func (c *Client) UpdateSecretYaml(namespace, name, yamlContent string) error {
 	return err
 }
 
-func (c *Client) DeleteSecret(namespace, name string) error {
-	cs, err := c.getClientset()
+func (c *Client) DeleteSecret(contextName, namespace, name string) error {
+	log.Printf("Deleting secret: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	cs, err := c.getClientForContext(contextName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
@@ -3775,7 +3794,7 @@ func (c *Client) getClientForContext(contextName string) (kubernetes.Interface, 
 }
 
 func (c *Client) DeletePod(contextName, namespace, name string) error {
-	fmt.Printf("Deleting pod: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting pod: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -3786,7 +3805,7 @@ func (c *Client) DeletePod(contextName, namespace, name string) error {
 }
 
 func (c *Client) ForceDeletePod(contextName, namespace, name string) error {
-	fmt.Printf("Force deleting pod: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Force deleting pod: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -3888,7 +3907,7 @@ func (c *Client) UpdateDeploymentYaml(namespace, name, content string) error {
 }
 
 func (c *Client) DeleteDeployment(contextName, namespace, name string) error {
-	fmt.Printf("Deleting deployment: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting deployment: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -3998,7 +4017,7 @@ func (c *Client) RestartStatefulSet(contextName, namespace, name string) error {
 }
 
 func (c *Client) DeleteStatefulSet(contextName, namespace, name string) error {
-	fmt.Printf("Deleting statefulset: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting statefulset: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -4092,7 +4111,7 @@ func (c *Client) RestartDaemonSet(contextName, namespace, name string) error {
 }
 
 func (c *Client) DeleteDaemonSet(contextName, namespace, name string) error {
-	fmt.Printf("Deleting daemonset: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting daemonset: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -4171,7 +4190,7 @@ func (c *Client) UpdateReplicaSetYaml(namespace, name, yamlContent string) error
 }
 
 func (c *Client) DeleteReplicaSet(contextName, namespace, name string) error {
-	fmt.Printf("Deleting replicaset: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting replicaset: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -4246,7 +4265,7 @@ func (c *Client) UpdateJobYaml(namespace, name, yamlContent string) error {
 }
 
 func (c *Client) DeleteJob(contextName, namespace, name string) error {
-	fmt.Printf("Deleting job: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting job: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -4321,7 +4340,7 @@ func (c *Client) UpdateCronJobYaml(namespace, name, yamlContent string) error {
 }
 
 func (c *Client) DeleteCronJob(contextName, namespace, name string) error {
-	fmt.Printf("Deleting cronjob: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting cronjob: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -4443,7 +4462,7 @@ func (c *Client) UpdatePVCYaml(namespace, name, yamlContent string) error {
 }
 
 func (c *Client) DeletePVC(contextName, namespace, name string) error {
-	fmt.Printf("Deleting PVC: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting PVC: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -4542,7 +4561,7 @@ func (c *Client) UpdatePVYaml(name, yamlContent string) error {
 }
 
 func (c *Client) DeletePV(contextName, name string) error {
-	fmt.Printf("Deleting PV: context=%s, name=%s\n", contextName, name)
+	log.Printf("Deleting PV: context=%s, name=%s", contextName, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -4618,7 +4637,7 @@ func (c *Client) UpdateStorageClassYaml(name, yamlContent string) error {
 }
 
 func (c *Client) DeleteStorageClass(contextName, name string) error {
-	fmt.Printf("Deleting StorageClass: context=%s, name=%s\n", contextName, name)
+	log.Printf("Deleting StorageClass: context=%s, name=%s", contextName, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -4700,7 +4719,7 @@ func (c *Client) UpdateCRDYaml(contextName, name, yamlContent string) error {
 }
 
 func (c *Client) DeleteCRD(contextName, name string) error {
-	fmt.Printf("Deleting CRD: context=%s, name=%s\n", contextName, name)
+	log.Printf("Deleting CRD: context=%s, name=%s", contextName, name)
 	cs, err := c.getApiExtensionsClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get apiextensions client for context %s: %w", contextName, err)
@@ -4889,7 +4908,7 @@ func (c *Client) UpdateCustomResourceYaml(contextName, group, version, resource,
 
 // DeleteCustomResource deletes a custom resource instance
 func (c *Client) DeleteCustomResource(contextName, group, version, resource, namespace, name string) error {
-	fmt.Printf("Deleting custom resource: context=%s, gvr=%s/%s/%s, ns=%s, name=%s\n", contextName, group, version, resource, namespace, name)
+	log.Printf("Deleting custom resource: context=%s, gvr=%s/%s/%s, ns=%s, name=%s", contextName, group, version, resource, namespace, name)
 	dc, err := c.getDynamicClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get dynamic client for context %s: %w", contextName, err)
@@ -5089,7 +5108,7 @@ func (c *Client) UpdateServiceAccountYaml(namespace, name, yamlContent string) e
 }
 
 func (c *Client) DeleteServiceAccount(contextName, namespace, name string) error {
-	fmt.Printf("Deleting service account: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting service account: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5164,7 +5183,7 @@ func (c *Client) UpdateRoleYaml(namespace, name, yamlContent string) error {
 }
 
 func (c *Client) DeleteRole(contextName, namespace, name string) error {
-	fmt.Printf("Deleting role: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting role: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5199,6 +5218,21 @@ func (c *Client) ListClusterRolesForContext(contextName string) ([]rbacv1.Cluste
 	defer cancel()
 	list, err := cs.RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) ListClusterRolesWithContext(ctx context.Context) ([]rbacv1.ClusterRole, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return list.Items, nil
@@ -5239,7 +5273,7 @@ func (c *Client) UpdateClusterRoleYaml(name, yamlContent string) error {
 }
 
 func (c *Client) DeleteClusterRole(contextName, name string) error {
-	fmt.Printf("Deleting cluster role: context=%s, name=%s\n", contextName, name)
+	log.Printf("Deleting cluster role: context=%s, name=%s", contextName, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5314,7 +5348,7 @@ func (c *Client) UpdateRoleBindingYaml(namespace, name, yamlContent string) erro
 }
 
 func (c *Client) DeleteRoleBinding(contextName, namespace, name string) error {
-	fmt.Printf("Deleting role binding: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting role binding: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5349,6 +5383,21 @@ func (c *Client) ListClusterRoleBindingsForContext(contextName string) ([]rbacv1
 	defer cancel()
 	list, err := cs.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) ListClusterRoleBindingsWithContext(ctx context.Context) ([]rbacv1.ClusterRoleBinding, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return list.Items, nil
@@ -5389,7 +5438,7 @@ func (c *Client) UpdateClusterRoleBindingYaml(name, yamlContent string) error {
 }
 
 func (c *Client) DeleteClusterRoleBinding(contextName, name string) error {
-	fmt.Printf("Deleting cluster role binding: context=%s, name=%s\n", contextName, name)
+	log.Printf("Deleting cluster role binding: context=%s, name=%s", contextName, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5424,6 +5473,21 @@ func (c *Client) ListNetworkPoliciesForContext(contextName, namespace string) ([
 	defer cancel()
 	list, err := cs.NetworkingV1().NetworkPolicies(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) ListNetworkPoliciesWithContext(ctx context.Context, namespace string) ([]networkingv1.NetworkPolicy, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.NetworkingV1().NetworkPolicies(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return list.Items, nil
@@ -5464,7 +5528,7 @@ func (c *Client) UpdateNetworkPolicyYaml(namespace, name, yamlContent string) er
 }
 
 func (c *Client) DeleteNetworkPolicy(contextName, namespace, name string) error {
-	fmt.Printf("Deleting network policy: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting network policy: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5539,7 +5603,7 @@ func (c *Client) UpdateHPAYaml(namespace, name, yamlContent string) error {
 }
 
 func (c *Client) DeleteHPA(contextName, namespace, name string) error {
-	fmt.Printf("Deleting HPA: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting HPA: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5599,7 +5663,7 @@ func (c *Client) UpdatePDBYaml(namespace, name, yamlContent string) error {
 }
 
 func (c *Client) DeletePDB(contextName, namespace, name string) error {
-	fmt.Printf("Deleting PDB: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting PDB: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5659,7 +5723,7 @@ func (c *Client) UpdateResourceQuotaYaml(namespace, name, yamlContent string) er
 }
 
 func (c *Client) DeleteResourceQuota(contextName, namespace, name string) error {
-	fmt.Printf("Deleting resource quota: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting resource quota: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5719,7 +5783,7 @@ func (c *Client) UpdateLimitRangeYaml(namespace, name, yamlContent string) error
 }
 
 func (c *Client) DeleteLimitRange(contextName, namespace, name string) error {
-	fmt.Printf("Deleting limit range: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting limit range: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5779,7 +5843,7 @@ func (c *Client) UpdateEndpointsYaml(namespace, name, yamlContent string) error 
 }
 
 func (c *Client) DeleteEndpoints(contextName, namespace, name string) error {
-	fmt.Printf("Deleting endpoints: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting endpoints: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5839,7 +5903,7 @@ func (c *Client) UpdateEndpointSliceYaml(namespace, name, yamlContent string) er
 }
 
 func (c *Client) DeleteEndpointSlice(contextName, namespace, name string) error {
-	fmt.Printf("Deleting endpointslice: context=%s, ns=%s, name=%s\n", contextName, namespace, name)
+	log.Printf("Deleting endpointslice: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5899,7 +5963,7 @@ func (c *Client) UpdateValidatingWebhookConfigurationYaml(name, yamlContent stri
 }
 
 func (c *Client) DeleteValidatingWebhookConfiguration(contextName, name string) error {
-	fmt.Printf("Deleting validating webhook configuration: context=%s, name=%s\n", contextName, name)
+	log.Printf("Deleting validating webhook configuration: context=%s, name=%s", contextName, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -5959,7 +6023,7 @@ func (c *Client) UpdateMutatingWebhookConfigurationYaml(name, yamlContent string
 }
 
 func (c *Client) DeleteMutatingWebhookConfiguration(contextName, name string) error {
-	fmt.Printf("Deleting mutating webhook configuration: context=%s, name=%s\n", contextName, name)
+	log.Printf("Deleting mutating webhook configuration: context=%s, name=%s", contextName, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
@@ -6019,7 +6083,7 @@ func (c *Client) UpdatePriorityClassYaml(name, yamlContent string) error {
 }
 
 func (c *Client) DeletePriorityClass(contextName, name string) error {
-	fmt.Printf("Deleting priority class: context=%s, name=%s\n", contextName, name)
+	log.Printf("Deleting priority class: context=%s, name=%s", contextName, name)
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)

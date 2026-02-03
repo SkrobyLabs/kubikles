@@ -96,6 +96,7 @@ export const useCommandPaletteItems = () => {
     const { currentContext } = useK8s();
     const [crds, setCRDs] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     // Fetch CRDs when context is available
     useEffect(() => {
@@ -103,11 +104,13 @@ export const useCommandPaletteItems = () => {
 
         const fetchCRDs = async () => {
             setLoading(true);
+            setError(null);
             try {
                 const list = await ListCRDs();
                 setCRDs(list || []);
             } catch (err) {
                 console.error('Failed to fetch CRDs for command palette:', err);
+                setError(err);
                 setCRDs([]);
             } finally {
                 setLoading(false);
@@ -168,5 +171,5 @@ export const useCommandPaletteItems = () => {
         return result;
     }, [crds]);
 
-    return { items, loading };
+    return { items, loading, error };
 };

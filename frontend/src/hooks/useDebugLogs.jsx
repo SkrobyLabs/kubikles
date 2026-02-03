@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useUI } from '../context/UIContext';
 import { useDebug } from '../context/DebugContext';
 import { useNotification } from '../context/NotificationContext';
@@ -6,32 +6,55 @@ import DebugLogViewer from '../components/shared/DebugLogViewer';
 import { SaveLogFile } from '../../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 
+// Global event listener - only one instance to avoid Wails EventsOff issues
+let globalEventHandler = null;
+const subscribers = new Set();
+
 export const useDebugLogs = () => {
     const [debugLogs, setDebugLogs] = useState([]);
-    const isListenerRegistered = useRef(false);
-    const { openTab, bottomTabs, setBottomTabs } = useUI(); // We need setBottomTabs to update content
+    const { openTab, bottomTabs, setBottomTabs } = useUI();
     const { enableDebugMode } = useDebug();
     const { addNotification } = useNotification();
 
+    // Create a subscriber callback using ref to avoid stale closures
+    const subscriberRef = useRef(null);
+
+    subscriberRef.current = useCallback((msg) => {
+        setDebugLogs(prev => {
+            const newLogs = [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`];
+            if (newLogs.length > 1000) {
+                return newLogs.slice(newLogs.length - 1000);
+            }
+            return newLogs;
+        });
+    }, []);
+
+    // Subscribe to global event system
     useEffect(() => {
-        if (!isListenerRegistered.current) {
+        // Create wrapper that calls through ref (avoids stale closure)
+        const subscriber = (msg) => {
+            if (subscriberRef.current) {
+                subscriberRef.current(msg);
+            }
+        };
+
+        subscribers.add(subscriber);
+
+        // Set up global handler if not already done
+        if (!globalEventHandler) {
             console.log("Registering debug-log listener");
-            EventsOn("debug-log", (msg) => {
-                setDebugLogs(prev => {
-                    const newLogs = [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`];
-                    if (newLogs.length > 1000) {
-                        return newLogs.slice(newLogs.length - 1000);
-                    }
-                    return newLogs;
-                });
-            });
-            isListenerRegistered.current = true;
+            globalEventHandler = (msg) => {
+                subscribers.forEach(sub => sub(msg));
+            };
+            EventsOn("debug-log", globalEventHandler);
         }
 
         return () => {
-            if (isListenerRegistered.current) {
+            subscribers.delete(subscriber);
+            // Only remove global handler when no more subscribers
+            if (subscribers.size === 0 && globalEventHandler) {
                 EventsOff("debug-log");
-                isListenerRegistered.current = false;
+                globalEventHandler = null;
             }
         };
     }, []);

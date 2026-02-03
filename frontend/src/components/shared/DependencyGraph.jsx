@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     ReactFlow,
     Controls,
@@ -73,8 +73,8 @@ const resourceStyles = {
     PodDisruptionBudget: { icon: ShieldExclamationIcon, color: '#fbbf24', bgColor: '#fbbf2420' },
 };
 
-// Custom node component
-function ResourceNode({ data }) {
+// Custom node component - memoized to prevent unnecessary re-renders
+const ResourceNode = React.memo(function ResourceNode({ data }) {
     const style = resourceStyles[data.kind] || { icon: CubeIcon, color: '#6b7280', bgColor: '#6b728020' };
     const Icon = data.isSummary ? EllipsisHorizontalIcon : style.icon;
 
@@ -141,7 +141,7 @@ function ResourceNode({ data }) {
             <Handle type="source" position={Position.Bottom} className="!bg-gray-500" />
         </div>
     );
-}
+});
 
 const nodeTypes = {
     resource: ResourceNode,
@@ -211,6 +211,12 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
     const [error, setError] = useState(null);
     const [contextMenu, setContextMenu] = useState(null);
     const [expansionOffsets, setExpansionOffsets] = useState({}); // Track offset per summary node
+
+    // Refs to track current state for reading without triggering setState callbacks
+    const nodesRef = useRef(nodes);
+    const edgesRef = useRef(edges);
+    useEffect(() => { nodesRef.current = nodes; }, [nodes]);
+    useEffect(() => { edgesRef.current = edges; }, [edges]);
 
     // Map resource type to kind for context menu actions
     const getResourceTypeFromKind = (kind) => {
@@ -370,37 +376,28 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                 labelBgStyle: { fill: '#1f2937', fillOpacity: 0.8 },
             }));
 
-            // Merge new nodes and edges, then re-layout the entire graph
-            setNodes((currentNodes) => {
-                // Filter out the old summary node
-                const filteredNodes = currentNodes.filter(n => n.id !== summaryId);
-                // Add new nodes (avoiding duplicates)
-                const existingIds = new Set(filteredNodes.map(n => n.id));
-                const uniqueNewNodes = newFlowNodes.filter(n => !existingIds.has(n.id));
-                const allNodes = [...filteredNodes, ...uniqueNewNodes];
+            // Merge new nodes and edges using refs to read current state
+            const currentNodes = nodesRef.current;
+            const currentEdges = edgesRef.current;
 
-                // Get current edges to include in layout
-                setEdges((currentEdges) => {
-                    // Remove edges pointing to/from old summary node
-                    const filteredEdges = currentEdges.filter(e => e.target !== summaryId && e.source !== summaryId);
-                    // Add new edges (avoiding duplicates)
-                    const existingEdgeIds = new Set(filteredEdges.map(e => `${e.source}-${e.target}`));
-                    const uniqueNewEdges = newFlowEdges.filter(e => !existingEdgeIds.has(`${e.source}-${e.target}`));
-                    const allEdges = [...filteredEdges, ...uniqueNewEdges];
+            // Filter out the old summary node and add new nodes
+            const filteredNodes = currentNodes.filter(n => n.id !== summaryId);
+            const existingNodeIds = new Set(filteredNodes.map(n => n.id));
+            const uniqueNewNodes = newFlowNodes.filter(n => !existingNodeIds.has(n.id));
+            const allNodes = [...filteredNodes, ...uniqueNewNodes];
 
-                    // Re-layout the graph with dagre
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(allNodes, allEdges);
+            // Filter edges and add new edges
+            const filteredEdges = currentEdges.filter(e => e.target !== summaryId && e.source !== summaryId);
+            const existingEdgeIds = new Set(filteredEdges.map(e => `${e.source}-${e.target}`));
+            const uniqueNewEdges = newFlowEdges.filter(e => !existingEdgeIds.has(`${e.source}-${e.target}`));
+            const allEdges = [...filteredEdges, ...uniqueNewEdges];
 
-                    // Update nodes with new positions (need to do this via setTimeout to avoid setState in setState)
-                    setTimeout(() => {
-                        setNodes(layoutedNodes);
-                    }, 0);
+            // Compute layout once with all data
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(allNodes, allEdges);
 
-                    return layoutedEdges;
-                });
-
-                return allNodes;
-            });
+            // Single batch update - React 18 batches these automatically
+            setNodes(layoutedNodes);
+            setEdges(layoutedEdges);
 
             // Update offset for potential further expansion
             setExpansionOffsets(prev => ({

@@ -1509,11 +1509,12 @@ func (a *App) GetNamespaceResourceCounts(namespace string) (*k8s.NamespaceResour
 }
 
 func (a *App) DeleteNamespace(name string) error {
-	a.logDebug("DeleteNamespace called: name=%s", name)
+	contextName := a.GetCurrentContext()
+	a.logDebug("DeleteNamespace called: context=%s, name=%s", contextName, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.DeleteNamespace(name)
+	return a.k8sClient.DeleteNamespace(contextName, name)
 }
 
 func (a *App) GetNamespaceYAML(name string) (string, error) {
@@ -1556,11 +1557,12 @@ func (a *App) UpdateEventYAML(namespace, name string, yamlContent string) error 
 }
 
 func (a *App) DeleteEvent(namespace, name string) error {
-	a.logDebug("DeleteEvent called: namespace=%s, name=%s", namespace, name)
+	contextName := a.GetCurrentContext()
+	a.logDebug("DeleteEvent called: context=%s, namespace=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.DeleteEvent(namespace, name)
+	return a.k8sClient.DeleteEvent(contextName, namespace, name)
 }
 
 func (a *App) ListServices(requestId, namespace string) ([]v1.Service, error) {
@@ -1747,11 +1749,12 @@ func (a *App) UpdateConfigMapYaml(namespace, name, yamlContent string) error {
 }
 
 func (a *App) DeleteConfigMap(namespace, name string) error {
-	a.logDebug("DeleteConfigMap called: ns=%s, name=%s", namespace, name)
+	contextName := a.GetCurrentContext()
+	a.logDebug("DeleteConfigMap called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.DeleteConfigMap(namespace, name)
+	return a.k8sClient.DeleteConfigMap(contextName, namespace, name)
 }
 
 func (a *App) GetConfigMapData(namespace, name string) (map[string]string, error) {
@@ -1788,11 +1791,12 @@ func (a *App) UpdateSecretYaml(namespace, name, yamlContent string) error {
 }
 
 func (a *App) DeleteSecret(namespace, name string) error {
-	a.logDebug("DeleteSecret called: ns=%s, name=%s", namespace, name)
+	contextName := a.GetCurrentContext()
+	a.logDebug("DeleteSecret called: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.DeleteSecret(namespace, name)
+	return a.k8sClient.DeleteSecret(contextName, namespace, name)
 }
 
 func (a *App) GetSecretData(namespace, name string) (map[string]string, error) {

@@ -238,7 +238,7 @@ func TestDeleteNamespace(t *testing.T) {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "delete-me"}}
 	client := newTestClient(ns)
 
-	err := client.DeleteNamespace("delete-me")
+	err := client.DeleteNamespace("test-context", "delete-me")
 	if err != nil {
 		t.Fatalf("DeleteNamespace() error = %v", err)
 	}
@@ -467,7 +467,7 @@ func TestDeleteConfigMap(t *testing.T) {
 	cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "delete-me", Namespace: "default"}}
 	client := newTestClient(cm)
 
-	err := client.DeleteConfigMap("default", "delete-me")
+	err := client.DeleteConfigMap("test-context", "default", "delete-me")
 	if err != nil {
 		t.Fatalf("DeleteConfigMap() error = %v", err)
 	}
@@ -533,7 +533,7 @@ func TestDeleteSecret(t *testing.T) {
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "delete-me", Namespace: "default"}}
 	client := newTestClient(secret)
 
-	err := client.DeleteSecret("default", "delete-me")
+	err := client.DeleteSecret("test-context", "default", "delete-me")
 	if err != nil {
 		t.Fatalf("DeleteSecret() error = %v", err)
 	}
@@ -615,7 +615,7 @@ func TestDeleteEvent(t *testing.T) {
 	event := &corev1.Event{ObjectMeta: metav1.ObjectMeta{Name: "delete-me", Namespace: "default"}}
 	client := newTestClient(event)
 
-	err := client.DeleteEvent("default", "delete-me")
+	err := client.DeleteEvent("test-context", "default", "delete-me")
 	if err != nil {
 		t.Fatalf("DeleteEvent() error = %v", err)
 	}

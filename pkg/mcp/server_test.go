@@ -58,8 +58,8 @@ func TestServer_ToolsList_AllTools(t *testing.T) {
 		t.Error("expected allowedTools to be nil")
 	}
 
-	if len(allDefs) != 12 {
-		t.Errorf("expected 12 tools, got %d", len(allDefs))
+	if len(allDefs) != 16 {
+		t.Errorf("expected 16 tools, got %d", len(allDefs))
 	}
 }
 

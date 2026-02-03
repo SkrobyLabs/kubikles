@@ -134,16 +134,27 @@ export const usePortForwards = (contextFilter = '', isVisible = true) => {
         if (!globalEventHandler) {
             globalEventHandler = (event) => {
                 console.log('Port forward event:', event);
-                subscribers.forEach(sub => sub(event));
+                subscribers.forEach(sub => {
+                    try {
+                        sub(event);
+                    } catch (err) {
+                        console.error('Error in port forward subscriber:', err);
+                    }
+                });
             };
             EventsOn('port-forward-event', globalEventHandler);
         }
 
         return () => {
+            // Always remove subscriber, even if other cleanup fails
             subscribers.delete(subscriber);
             // Only remove global handler when no more subscribers
             if (subscribers.size === 0 && globalEventHandler) {
-                EventsOff('port-forward-event');
+                try {
+                    EventsOff('port-forward-event');
+                } catch (err) {
+                    console.error('Error removing port-forward-event listener:', err);
+                }
                 globalEventHandler = null;
             }
         };
