@@ -94,7 +94,7 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }) {
 
                     {/* Name */}
                     <div>
-                        <label htmlFor="repo-name" className="block text-sm font-medium text-gray-300 mb-1">
+                        <label htmlFor="repo-name" className="block font-medium text-gray-300 mb-1">
                             Repository Name
                         </label>
                         <input
@@ -103,14 +103,14 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }) {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g., my-repo"
-                            className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            className="w-full"
                             disabled={loading}
                         />
                     </div>
 
                     {/* URL */}
                     <div>
-                        <label htmlFor="repo-url" className="block text-sm font-medium text-gray-300 mb-1">
+                        <label htmlFor="repo-url" className="block font-medium text-gray-300 mb-1">
                             Repository URL
                         </label>
                         <input
@@ -119,14 +119,14 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }) {
                             value={url}
                             onChange={(e) => setUrl(e.target.value)}
                             placeholder="https://charts.example.com"
-                            className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            className="w-full"
                             disabled={loading}
                         />
                     </div>
 
                     {/* Priority */}
                     <div>
-                        <label htmlFor="repo-priority" className="block text-sm font-medium text-gray-300 mb-1">
+                        <label htmlFor="repo-priority" className="block font-medium text-gray-300 mb-1">
                             Priority
                             <span className="text-xs text-gray-500 ml-2">(Lower number = higher priority)</span>
                         </label>
@@ -136,7 +136,7 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }) {
                             min="0"
                             value={priority}
                             onChange={(e) => setPriority(parseInt(e.target.value) || 0)}
-                            className="w-24 px-3 py-2 bg-background border border-border rounded-md text-text focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            className="w-24"
                             disabled={loading}
                         />
                     </div>

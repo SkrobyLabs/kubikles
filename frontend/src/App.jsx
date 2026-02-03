@@ -461,10 +461,12 @@ function MainLayout() {
         return saved ? parseFloat(saved) : ZOOM_DEFAULT;
     });
 
-    // Apply zoom level to document body
+    // Apply zoom level to document body and emit event for settings sync
     useEffect(() => {
         document.body.style.zoom = zoomLevel;
         localStorage.setItem(ZOOM_STORAGE_KEY, zoomLevel.toString());
+        // Emit custom event for settings panel to sync
+        window.dispatchEvent(new CustomEvent('zoom:changed', { detail: zoomLevel }));
     }, [zoomLevel]);
 
     // Listen for zoom events from Go menu

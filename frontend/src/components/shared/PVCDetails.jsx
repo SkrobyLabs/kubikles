@@ -25,7 +25,7 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
     const storageClassName = spec.storageClassName;
     const accessModes = spec.accessModes || [];
     const volumeMode = spec.volumeMode || 'Filesystem';
-    const requestedStorage = spec.resources?.requests?.storage;
+    const requestedStorageFromSpec = spec.resources?.requests?.storage;
     const actualCapacity = status.capacity?.storage;
     const conditions = status.conditions || [];
 
@@ -35,6 +35,13 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
     const [newSize, setNewSize] = useState('');
     const [resizeError, setResizeError] = useState(null);
     const [resizing, setResizing] = useState(false);
+    // Track displayed requested storage for optimistic updates after resize
+    const [displayedRequestedStorage, setDisplayedRequestedStorage] = useState(requestedStorageFromSpec);
+
+    // Sync displayed storage with prop when it changes (e.g., from watcher update)
+    useEffect(() => {
+        setDisplayedRequestedStorage(requestedStorageFromSpec);
+    }, [requestedStorageFromSpec]);
 
     // Fetch storage class to check if expansion is allowed
     useEffect(() => {
@@ -56,7 +63,7 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
 
     const handleOpenResizeDialog = () => {
         if (!canResize) return;
-        setNewSize(requestedStorage || '');
+        setNewSize(displayedRequestedStorage || '');
         setResizeError(null);
         setShowResizeDialog(true);
     };
@@ -70,6 +77,8 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
         setResizeError(null);
         try {
             await ResizePVC(namespace, name, newSize.trim());
+            // Optimistic update - show the new size immediately
+            setDisplayedRequestedStorage(newSize.trim());
             setShowResizeDialog(false);
         } catch (err) {
             setResizeError(err.message || String(err));
@@ -179,7 +188,7 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
                                     Current Size
                                 </label>
                                 <div className="text-sm text-gray-400 bg-gray-700 px-3 py-2 rounded">
-                                    {requestedStorage || '-'}
+                                    {displayedRequestedStorage || '-'}
                                 </div>
                             </div>
                             <div>
@@ -242,7 +251,7 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
                             onClick={handleOpenResizeDialog}
                             title={canResize ? 'Click to resize' : allowVolumeExpansion === false ? 'Resize not supported by storage class' : ''}
                         >
-                            <div className="text-lg font-bold text-gray-200">{requestedStorage || '-'}</div>
+                            <div className="text-lg font-bold text-gray-200">{displayedRequestedStorage || '-'}</div>
                             <div className="text-xs text-gray-500 flex items-center justify-center gap-1">
                                 Requested
                                 {allowVolumeExpansion !== null && (

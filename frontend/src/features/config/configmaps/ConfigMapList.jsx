@@ -14,11 +14,15 @@ import { useConfigMapActions } from './useConfigMapActions';
 import Logger from '../../../utils/Logger';
 import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
+// System ConfigMaps auto-created by Kubernetes in every namespace
+const SYSTEM_CONFIGMAP_NAMES = ['kube-root-ca.crt'];
+
 export default function ConfigMapList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { addNotification } = useNotification();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
+    const [hideSystemConfigMaps, setHideSystemConfigMaps] = useState(true);
 
     const [bulkActionModal, setBulkActionModal] = useState({ isOpen: false, action: null, items: [] });
     const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, status: 'idle', results: [] });
@@ -85,6 +89,12 @@ export default function ConfigMapList({ isVisible }) {
     const { configMaps, loading } = useConfigMaps(currentContext, selectedNamespaces, isVisible);
     const { handleEditYaml, handleEditKeyValue, handleShowDependencies, handleDelete } = useConfigMapActions();
 
+    // Filter out system ConfigMaps if toggle is enabled
+    const filteredConfigMaps = useMemo(() => {
+        if (!hideSystemConfigMaps) return configMaps;
+        return configMaps.filter(cm => !SYSTEM_CONFIGMAP_NAMES.includes(cm.metadata?.name));
+    }, [configMaps, hideSystemConfigMaps]);
+
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
         { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
@@ -111,12 +121,26 @@ export default function ConfigMapList({ isVisible }) {
         }
     ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, handleDelete]);
 
+    const systemToggle = (
+        <label
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 cursor-pointer select-none no-drag"
+            title="Hide kube-root-ca.crt and other system-managed ConfigMaps"
+        >
+            <input
+                type="checkbox"
+                checked={hideSystemConfigMaps}
+                onChange={(e) => setHideSystemConfigMaps(e.target.checked)}
+            />
+            <span className="whitespace-nowrap">Hide system</span>
+        </label>
+    );
+
     return (
         <>
             <ResourceList
                 title="ConfigMaps"
                 columns={columns}
-                data={configMaps}
+                data={filteredConfigMaps}
                 isLoading={loading}
                 namespaces={namespaces}
                 currentNamespace={selectedNamespaces}
@@ -129,6 +153,7 @@ export default function ConfigMapList({ isVisible }) {
                 selectable={true}
                 selection={selection}
                 onBulkDelete={handleBulkDeleteClick}
+                customHeaderActions={systemToggle}
             />
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}

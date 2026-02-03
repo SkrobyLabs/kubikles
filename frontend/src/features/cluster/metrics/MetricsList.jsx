@@ -472,33 +472,33 @@ export default function MetricsList({ isVisible }) {
 
                         <div className="grid grid-cols-3 gap-4 mb-4">
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Namespace</label>
+                                <label className="block text-gray-400 mb-1">Namespace</label>
                                 <input
                                     type="text"
                                     value={customEndpoint.namespace}
                                     onChange={(e) => setCustomEndpoint(prev => ({ ...prev, namespace: e.target.value }))}
                                     placeholder="monitoring"
-                                    className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+                                    className="w-full"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Service</label>
+                                <label className="block text-gray-400 mb-1">Service</label>
                                 <input
                                     type="text"
                                     value={customEndpoint.service}
                                     onChange={(e) => setCustomEndpoint(prev => ({ ...prev, service: e.target.value }))}
                                     placeholder="prometheus"
-                                    className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+                                    className="w-full"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Port</label>
+                                <label className="block text-gray-400 mb-1">Port</label>
                                 <input
                                     type="number"
                                     value={customEndpoint.port}
                                     onChange={(e) => setCustomEndpoint(prev => ({ ...prev, port: parseInt(e.target.value) || 9090 }))}
                                     placeholder="9090"
-                                    className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+                                    className="w-full"
                                 />
                             </div>
                         </div>

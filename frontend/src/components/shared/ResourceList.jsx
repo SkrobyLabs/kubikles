@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback, forwardRef } from 'react';
 import { TableVirtuoso } from 'react-virtuoso';
-import { MagnifyingGlassIcon, EllipsisVerticalIcon, InformationCircleIcon, MinusIcon } from '@heroicons/react/24/outline';
-import { CheckIcon } from '@heroicons/react/24/solid';
+import { MagnifyingGlassIcon, EllipsisVerticalIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import SearchSelect from './SearchSelect';
 import BulkActionBar from './BulkActionBar';
 import { createFilter, getFieldsMetadata } from '../../utils/search';
@@ -10,48 +9,38 @@ import { useConfig } from '../../context/ConfigContext';
 
 // Tri-state checkbox component for header (memoized to prevent re-renders)
 const TriStateCheckbox = React.memo(({ state, onChange, disabled = false }) => {
-    const handleClick = (e) => {
+    const handleChange = (e) => {
         e.stopPropagation();
         if (!disabled) onChange();
     };
 
     return (
-        <button
-            onClick={handleClick}
+        <input
+            type="checkbox"
+            checked={state === 'all'}
+            ref={(el) => { if (el) el.indeterminate = state === 'some'; }}
+            onChange={handleChange}
             disabled={disabled}
-            className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                state === 'none'
-                    ? 'border-gray-500 bg-transparent hover:border-gray-400'
-                    : state === 'some'
-                    ? 'border-primary bg-primary/20 hover:bg-primary/30'
-                    : 'border-primary bg-primary hover:bg-primary/90'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-        >
-            {state === 'all' && <CheckIcon className="w-3 h-3 text-white" />}
-            {state === 'some' && <MinusIcon className="w-3 h-3 text-primary" />}
-        </button>
+            className={disabled ? 'opacity-50 cursor-not-allowed' : ''}
+        />
     );
 });
 
 // Row checkbox component (memoized to prevent re-renders on scroll)
 const RowCheckbox = React.memo(({ checked, onChange, disabled = false }) => {
-    const handleClick = (e) => {
+    const handleChange = (e) => {
         e.stopPropagation();
         if (!disabled) onChange(e);
     };
 
     return (
-        <button
-            onClick={handleClick}
+        <input
+            type="checkbox"
+            checked={checked}
+            onChange={handleChange}
             disabled={disabled}
-            className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                checked
-                    ? 'border-primary bg-primary hover:bg-primary/90'
-                    : 'border-gray-500 bg-transparent hover:border-gray-400'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-        >
-            {checked && <CheckIcon className="w-3 h-3 text-white" />}
-        </button>
+            className={disabled ? 'opacity-50 cursor-not-allowed' : ''}
+        />
     );
 });
 
@@ -618,21 +607,24 @@ export default function ResourceList({
                     </div>
                 </div>
 
-                {/* Namespace Selector */}
-                {showNamespaceSelector && (
-                    <div className="w-64 no-drag">
-                        <SearchSelect
-                            options={namespaces}
-                            value={currentNamespace}
-                            onChange={onNamespaceChange}
-                            placeholder="Select Namespace..."
-                            multiSelect={multiSelectNamespaces}
-                        />
-                    </div>
-                )}
+                {/* Right side controls */}
+                <div className="flex items-center gap-3 shrink-0">
+                    {/* Custom Header Actions */}
+                    {customHeaderActions}
 
-                {/* Custom Header Actions */}
-                {customHeaderActions}
+                    {/* Namespace Selector */}
+                    {showNamespaceSelector && (
+                        <div className="w-64 no-drag">
+                            <SearchSelect
+                                options={namespaces}
+                                value={currentNamespace}
+                                onChange={onNamespaceChange}
+                                placeholder="Select Namespace..."
+                                multiSelect={multiSelectNamespaces}
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Table Content */}
@@ -762,7 +754,7 @@ export default function ResourceList({
                                                                         type="checkbox"
                                                                         checked={!hiddenColumns.has(c.key)}
                                                                         onChange={() => toggleColumn(c.key)}
-                                                                        className="mr-2 rounded border-gray-600 bg-background text-primary focus:ring-primary"
+                                                                        className="mr-2"
                                                                     />
                                                                     {c.label}
                                                                 </label>

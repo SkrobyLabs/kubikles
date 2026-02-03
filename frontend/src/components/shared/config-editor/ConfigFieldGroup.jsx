@@ -4,12 +4,12 @@ import { isModified } from '../../../config/configSchema';
 import { useTheme } from '../../../context/ThemeContext';
 
 export default function ConfigFieldGroup({ title, fields, basePath, config, onFieldChange }) {
-    const { uiFont, monoFont, setUiFont, setMonoFont, uiFonts, monoFonts } = useTheme();
+    const { currentTheme, themes, switchTheme, uiFont, monoFont, setUiFont, setMonoFont, uiFonts, monoFonts } = useTheme();
 
     // Map for theme-sourced values and setters
-    const themeValues = { uiFont, monoFont };
-    const themeSetters = { uiFont: setUiFont, monoFont: setMonoFont };
-    const themeOptions = { uiFonts, monoFonts };
+    const themeValues = { theme: currentTheme?.id, uiFont, monoFont };
+    const themeSetters = { theme: switchTheme, uiFont: setUiFont, monoFont: setMonoFont };
+    const themeOptions = { themes: themes || [], uiFonts, monoFonts };
 
     return (
         <div className="border border-border rounded-lg p-4 space-y-4">
@@ -22,7 +22,7 @@ export default function ConfigFieldGroup({ title, fields, basePath, config, onFi
 
                 const path = `${basePath}.${key}`;
 
-                // Handle theme-sourced fields (fonts)
+                // Handle theme-sourced fields (theme, fonts)
                 if (schema.source === 'theme') {
                     const value = themeValues[key];
                     const setter = themeSetters[key];

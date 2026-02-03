@@ -641,7 +641,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                                 if (e.target.checked) setResetValues(false);
                                             }}
                                             disabled={upgrading || showValuesEditor}
-                                            className="mt-1 rounded border-border bg-background text-primary focus:ring-primary/50"
+                                            className="mt-1"
                                         />
                                         <div>
                                             <div className="text-sm">Reuse Values</div>
@@ -661,7 +661,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                                 if (e.target.checked) setReuseValues(false);
                                             }}
                                             disabled={upgrading}
-                                            className="mt-1 rounded border-border bg-background text-primary focus:ring-primary/50"
+                                            className="mt-1"
                                         />
                                         <div>
                                             <div className="text-sm">Reset Values</div>
@@ -675,7 +675,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                             checked={force}
                                             onChange={(e) => setForce(e.target.checked)}
                                             disabled={upgrading}
-                                            className="mt-1 rounded border-border bg-background text-primary focus:ring-primary/50"
+                                            className="mt-1"
                                         />
                                         <div>
                                             <div className="text-sm">Force</div>
@@ -689,7 +689,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                             checked={wait}
                                             onChange={(e) => setWait(e.target.checked)}
                                             disabled={upgrading}
-                                            className="mt-1 rounded border-border bg-background text-primary focus:ring-primary/50"
+                                            className="mt-1"
                                         />
                                         <div>
                                             <div className="text-sm">Wait</div>
@@ -724,12 +724,11 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                     <div className="border-t border-border">
                                         {/* Values Editor Toolbar */}
                                         <div className="flex items-center justify-between px-3 py-2 bg-surface border-b border-border">
-                                            <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+                                            <label className="flex items-center gap-2 text-xs text-gray-400">
                                                 <input
                                                     type="checkbox"
                                                     checked={showUserValuesOnly}
                                                     onChange={(e) => setShowUserValuesOnly(e.target.checked)}
-                                                    className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-700 text-primary focus:ring-primary focus:ring-offset-0"
                                                     disabled={loadingValues}
                                                 />
                                                 User values only

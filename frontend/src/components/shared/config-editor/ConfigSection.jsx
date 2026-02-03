@@ -3,6 +3,7 @@ import ConfigField from './fields/ConfigField';
 import ConfigFieldGroup from './ConfigFieldGroup';
 import { configSchema, isModified } from '../../../config/configSchema';
 import { GetCrashLogPath, OpenCrashLogDir } from '../../../../wailsjs/go/main/App';
+import { useTheme } from '../../../context/ThemeContext';
 
 // Async value sources
 const asyncSources = {
@@ -14,9 +15,45 @@ const actionHandlers = {
     openCrashLogDir: OpenCrashLogDir
 };
 
+// Zoom constants (must match App.jsx)
+const ZOOM_STORAGE_KEY = 'kubikles-zoom-level';
+const ZOOM_DEFAULT = 1.0;
+
 export default function ConfigSection({ section, config, onFieldChange, searchResults }) {
     const sectionSchema = configSchema[section];
     const [asyncValues, setAsyncValues] = useState({});
+    const { currentTheme, themes, switchTheme } = useTheme();
+
+    // Zoom level state (reads from localStorage, updates body style)
+    const [zoomLevel, setZoomLevelState] = useState(() => {
+        const saved = localStorage.getItem(ZOOM_STORAGE_KEY);
+        return saved ? parseFloat(saved) : ZOOM_DEFAULT;
+    });
+
+    const setZoomLevel = useCallback((value) => {
+        const numValue = parseFloat(value);
+        setZoomLevelState(numValue);
+        document.body.style.zoom = numValue;
+        localStorage.setItem(ZOOM_STORAGE_KEY, numValue.toString());
+    }, []);
+
+    // Listen for zoom changes from scroll/other sources
+    useEffect(() => {
+        const handleZoomChanged = (e) => {
+            setZoomLevelState(e.detail);
+        };
+        window.addEventListener('zoom:changed', handleZoomChanged);
+        return () => window.removeEventListener('zoom:changed', handleZoomChanged);
+    }, []);
+
+    // Map for theme-sourced values and setters (for top-level fields)
+    const themeValues = { theme: currentTheme?.id };
+    const themeSetters = { theme: switchTheme };
+    const themeOptions = { themes: themes || [] };
+
+    // Map for zoom-sourced values and setters
+    const zoomValues = { zoomLevel };
+    const zoomSetters = { zoomLevel: setZoomLevel };
 
     // Load async values for readonly fields
     useEffect(() => {
@@ -118,6 +155,43 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
                 <div className="space-y-1">
                     {visibleTopLevelFields.map(([key, schema]) => {
                         const path = `${section}.${key}`;
+
+                        // Handle theme-sourced fields (e.g., theme selector)
+                        if (schema.source === 'theme') {
+                            const value = themeValues[key];
+                            const setter = themeSetters[key];
+                            const options = themeOptions[schema.optionsSource]?.map(t => ({
+                                value: t.id,
+                                label: t.name
+                            }));
+
+                            return (
+                                <ConfigField
+                                    key={key}
+                                    schema={{ ...schema, options }}
+                                    value={value}
+                                    onChange={setter}
+                                    isModified={value !== schema.default}
+                                />
+                            );
+                        }
+
+                        // Handle zoom-sourced fields (e.g., zoom level)
+                        if (schema.source === 'zoom') {
+                            const value = zoomValues[key];
+                            const setter = zoomSetters[key];
+
+                            return (
+                                <ConfigField
+                                    key={key}
+                                    schema={schema}
+                                    value={value}
+                                    onChange={setter}
+                                    isModified={value !== schema.default}
+                                />
+                            );
+                        }
+
                         const value = config?.[section]?.[key];
 
                         return (

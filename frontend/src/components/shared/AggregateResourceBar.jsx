@@ -41,6 +41,10 @@ const AggregateResourceBar = memo(function AggregateResourceBar({
     // Calculate reserved excess (portion of reserved beyond usage)
     const reservedExcess = reserved != null ? Math.max(0, reserved - usage) : 0;
 
+    // Calculate committed excess (portion of committed beyond usage and reserved)
+    const baseForCommitted = reserved != null ? Math.max(usage, reserved) : usage;
+    const committedExcess = committed != null ? Math.max(0, Math.min(100, committed) - baseForCommitted) : 0;
+
     // Check if over-committed
     const isOverCommitted = committed != null && committed > 100;
 
@@ -86,11 +90,11 @@ const AggregateResourceBar = memo(function AggregateResourceBar({
                         style={{ width: `${Math.min(100 - usage, reservedExcess)}%` }}
                     />
                 )}
-                {/* Committed marker (red line) */}
-                {committed != null && (usage > 0 || (reserved != null && reserved > 0)) && (
+                {/* Committed excess (red) - shows committed beyond usage and reserved */}
+                {committedExcess > 0 && (
                     <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-red-500"
-                        style={{ left: `${Math.min(100, Math.max(usage, reserved || 0))}%` }}
+                        className="h-full bg-red-500 shrink-0"
+                        style={{ width: `${committedExcess}%` }}
                     />
                 )}
             </div>

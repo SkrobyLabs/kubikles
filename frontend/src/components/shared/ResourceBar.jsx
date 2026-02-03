@@ -26,11 +26,11 @@ const ResourceBar = memo(function ResourceBar({ percent, label, tooltipLabel, co
 
     return (
         <div
-            className="flex items-center gap-1"
+            className="flex items-center gap-1.5"
             title={titleText ? `${titleText}: ${clampedPercent}%` : `${clampedPercent}%`}
         >
             {label && <span className="text-[10px] text-gray-500 w-7">{label}</span>}
-            <div className="w-12 h-2 bg-gray-700 rounded-sm overflow-hidden">
+            <div className="w-16 h-3 bg-gray-700 rounded-sm overflow-hidden">
                 <div
                     className={`h-full ${barColor} transition-all duration-300`}
                     style={{ width: `${clampedPercent}%` }}

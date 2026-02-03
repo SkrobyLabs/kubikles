@@ -204,7 +204,7 @@ export default function PortForwardDialog({
 
                             {/* Label */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                <label className="block font-medium text-gray-300 mb-1">
                                     Label (optional)
                                 </label>
                                 <input
@@ -212,13 +212,13 @@ export default function PortForwardDialog({
                                     value={formData.label}
                                     onChange={(e) => handleChange('label', e.target.value)}
                                     placeholder="My Port Forward"
-                                    className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
+                                    className="w-full"
                                 />
                             </div>
 
                             {/* Local Port */}
                             <div>
-                                <label className="flex items-center gap-1 text-sm font-medium text-gray-300 mb-1">
+                                <label className="flex items-center gap-1 font-medium text-gray-300 mb-1">
                                     Local Port
                                     <button
                                         type="button"
@@ -236,7 +236,7 @@ export default function PortForwardDialog({
                                     placeholder="8080"
                                     min="1"
                                     max="65535"
-                                    className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
+                                    className="w-full"
                                 />
                             </div>
                         </>
@@ -245,7 +245,7 @@ export default function PortForwardDialog({
                         <>
                             {/* Label */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                <label className="block font-medium text-gray-300 mb-1">
                                     Label (optional)
                                 </label>
                                 <input
@@ -253,19 +253,19 @@ export default function PortForwardDialog({
                                     value={formData.label}
                                     onChange={(e) => handleChange('label', e.target.value)}
                                     placeholder="My Port Forward"
-                                    className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
+                                    className="w-full"
                                 />
                             </div>
 
                             {/* Context */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                <label className="block font-medium text-gray-300 mb-1">
                                     Context
                                 </label>
                                 <select
                                     value={formData.context}
                                     onChange={(e) => handleChange('context', e.target.value)}
-                                    className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
+                                    className="w-full"
                                 >
                                     <option value="">Select context...</option>
                                     {contexts.map(ctx => (
@@ -276,7 +276,7 @@ export default function PortForwardDialog({
 
                             {/* Namespace */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                <label className="block font-medium text-gray-300 mb-1">
                                     Namespace
                                 </label>
                                 <input
@@ -284,44 +284,42 @@ export default function PortForwardDialog({
                                     value={formData.namespace}
                                     onChange={(e) => handleChange('namespace', e.target.value)}
                                     placeholder="default"
-                                    className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
+                                    className="w-full"
                                 />
                             </div>
 
                             {/* Resource Type */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                <label className="block font-medium text-gray-300 mb-1">
                                     Resource Type
                                 </label>
                                 <div className="flex gap-4">
-                                    <label className="flex items-center gap-2 cursor-pointer">
+                                    <label className="flex items-center gap-2">
                                         <input
                                             type="radio"
                                             name="resourceType"
                                             value="pod"
                                             checked={formData.resourceType === 'pod'}
                                             onChange={(e) => handleChange('resourceType', e.target.value)}
-                                            className="w-4 h-4 text-primary focus:ring-primary bg-background border-border"
                                         />
-                                        <span className="text-sm">Pod</span>
+                                        <span>Pod</span>
                                     </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
+                                    <label className="flex items-center gap-2">
                                         <input
                                             type="radio"
                                             name="resourceType"
                                             value="service"
                                             checked={formData.resourceType === 'service'}
                                             onChange={(e) => handleChange('resourceType', e.target.value)}
-                                            className="w-4 h-4 text-primary focus:ring-primary bg-background border-border"
                                         />
-                                        <span className="text-sm">Service</span>
+                                        <span>Service</span>
                                     </label>
                                 </div>
                             </div>
 
                             {/* Resource Name */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                <label className="block font-medium text-gray-300 mb-1">
                                     {formData.resourceType === 'pod' ? 'Pod Name' : 'Service Name'}
                                 </label>
                                 <input
@@ -329,7 +327,7 @@ export default function PortForwardDialog({
                                     value={formData.resourceName}
                                     onChange={(e) => handleChange('resourceName', e.target.value)}
                                     placeholder={formData.resourceType === 'pod' ? 'my-pod-abc123' : 'my-service'}
-                                    className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
+                                    className="w-full"
                                 />
                             </div>
                         </>
@@ -339,7 +337,7 @@ export default function PortForwardDialog({
                     {!isEditing && (
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="flex items-center gap-1 text-sm font-medium text-gray-300 mb-1">
+                            <label className="flex items-center gap-1 font-medium text-gray-300 mb-1">
                                 Local Port
                                 <button
                                     type="button"
@@ -357,11 +355,11 @@ export default function PortForwardDialog({
                                 placeholder="8080"
                                 min="1"
                                 max="65535"
-                                className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
+                                className="w-full"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1">
+                            <label className="block font-medium text-gray-300 mb-1">
                                 Remote Port
                                 {loadingPorts && <span className="ml-2 text-xs text-gray-500">Loading...</span>}
                             </label>
@@ -369,7 +367,7 @@ export default function PortForwardDialog({
                                 <select
                                     value={formData.remotePort || ''}
                                     onChange={(e) => handleChange('remotePort', parseInt(e.target.value) || 0)}
-                                    className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
+                                    className="w-full"
                                 >
                                     <option value="">Select port...</option>
                                     {availablePorts.map(port => (
@@ -384,7 +382,7 @@ export default function PortForwardDialog({
                                     placeholder="80"
                                     min="1"
                                     max="65535"
-                                    className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
+                                    className="w-full"
                                 />
                             )}
                         </div>
@@ -395,45 +393,41 @@ export default function PortForwardDialog({
                     <div className="space-y-2">
                         {!isEditing && (
                             <>
-                                <label className="flex items-center gap-2 cursor-pointer">
+                                <label className="flex items-center gap-2">
                                     <input
                                         type="checkbox"
                                         checked={formData.autoStart}
                                         onChange={(e) => handleChange('autoStart', e.target.checked)}
-                                        className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                                     />
-                                    <span className="text-sm text-gray-300">Start immediately</span>
+                                    <span className="text-gray-300">Start immediately</span>
                                 </label>
-                                <label className={`flex items-center gap-2 ${formData.autoStart ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
+                                <label className={`flex items-center gap-2 ${!formData.autoStart && 'opacity-50'}`}>
                                     <input
                                         type="checkbox"
                                         checked={formData.openInBrowser}
                                         onChange={(e) => handleChange('openInBrowser', e.target.checked)}
                                         disabled={!formData.autoStart}
-                                        className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                                     />
-                                    <span className="text-sm text-gray-300">Open in browser</span>
+                                    <span className="text-gray-300">Open in browser</span>
                                 </label>
                             </>
                         )}
                         <div className="flex gap-6">
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-center gap-2">
                                 <input
                                     type="checkbox"
                                     checked={formData.https}
                                     onChange={(e) => handleChange('https', e.target.checked)}
-                                    className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                                 />
-                                <span className="text-sm text-gray-300">Use HTTPS</span>
+                                <span className="text-gray-300">Use HTTPS</span>
                             </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-center gap-2">
                                 <input
                                     type="checkbox"
                                     checked={formData.favorite}
                                     onChange={(e) => handleChange('favorite', e.target.checked)}
-                                    className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                                 />
-                                <span className="text-sm text-gray-300">Favorite</span>
+                                <span className="text-gray-300">Favorite</span>
                             </label>
                         </div>
                     </div>

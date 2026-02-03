@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import { useSecrets } from '../../../hooks/resources';
@@ -12,10 +12,19 @@ import SecretActionsMenu from './SecretActionsMenu';
 import { useSecretActions } from './useSecretActions';
 import { useMenuPosition } from '../../../hooks/useMenuPosition';
 
+const HELM_RELEASE_SECRET_TYPE = 'helm.sh/release.v1';
+
 export default function SecretList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { secrets, loading } = useSecrets(currentContext, selectedNamespaces, isVisible);
+    const [hideHelmSecrets, setHideHelmSecrets] = useState(true);
+
+    // Filter out Helm release secrets if toggle is enabled
+    const filteredSecrets = useMemo(() => {
+        if (!hideHelmSecrets) return secrets;
+        return secrets.filter(secret => secret.type !== HELM_RELEASE_SECRET_TYPE);
+    }, [secrets, hideHelmSecrets]);
     const { handleEditYaml, handleEditKeyValue, handleShowDependencies } = useSecretActions();
     const selection = useSelection();
 
@@ -61,12 +70,26 @@ export default function SecretList({ isVisible }) {
         }
     ], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleShowDependencies, openBulkDelete]);
 
+    const helmToggle = (
+        <label
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 cursor-pointer select-none no-drag"
+            title="Helm releases can be managed in the Helm Releases section"
+        >
+            <input
+                type="checkbox"
+                checked={hideHelmSecrets}
+                onChange={(e) => setHideHelmSecrets(e.target.checked)}
+            />
+            <span className="whitespace-nowrap">Hide Helm</span>
+        </label>
+    );
+
     return (
         <>
             <ResourceList
                 title="Secrets"
                 columns={columns}
-                data={secrets}
+                data={filteredSecrets}
                 isLoading={loading}
                 namespaces={namespaces}
                 currentNamespace={selectedNamespaces}
@@ -79,6 +102,7 @@ export default function SecretList({ isVisible }) {
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}
+                customHeaderActions={helmToggle}
             />
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}

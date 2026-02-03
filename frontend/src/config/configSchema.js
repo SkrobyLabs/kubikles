@@ -254,6 +254,30 @@ export const configSchema = {
     },
     ui: {
         _meta: { label: 'UI', description: 'User interface settings' },
+        theme: {
+            type: 'enum',
+            label: 'Theme',
+            description: 'Color theme for the application',
+            source: 'theme',
+            optionsSource: 'themes',
+            default: 'default-dark'
+        },
+        zoomLevel: {
+            type: 'number',
+            label: 'Zoom Level',
+            description: 'UI zoom level (1.0 = 100%)',
+            source: 'zoom',
+            min: 0.5,
+            max: 2.0,
+            step: 0.05,
+            default: 1.0
+        },
+        scrollZoomEnabled: {
+            type: 'boolean',
+            label: 'Scroll Zoom',
+            description: 'Enable Cmd/Ctrl+Scroll to zoom in/out',
+            default: false
+        },
         fonts: {
             _meta: { label: 'Fonts', isNested: true },
             uiFont: {
@@ -292,12 +316,6 @@ export const configSchema = {
             step: 250,
             unit: 'ms',
             default: 2000
-        },
-        scrollZoomEnabled: {
-            type: 'boolean',
-            label: 'Scroll Zoom',
-            description: 'Enable Cmd/Ctrl+Scroll to zoom in/out',
-            default: false
         },
         showTabIcons: {
             type: 'boolean',

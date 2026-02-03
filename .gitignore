@@ -19,6 +19,9 @@ Thumbs.db
 *.swp
 *.swo
 
+# Claude - track shared skills
+!.claude/skills/
+
 # Go
 go.work
 

@@ -2,6 +2,8 @@
 
 Quick-access reference for AI assistants. This document eliminates the need to re-scan the codebase.
 
+> **Maintenance Note**: If this document becomes outdated due to codebase changes, update it to reflect the current structure. This is the canonical reference for AI assistants.
+
 ## Identity
 
 **Kubikles** - Lightweight, high-performance desktop Kubernetes client. Go+React via Wails framework. Alternative to Lens.
@@ -22,7 +24,12 @@ Quick-access reference for AI assistants. This document eliminates the need to r
 ```
 kubikles/
 ├── main.go                 # Entry point, Wails setup, menus
+├── main_desktop.go         # Desktop mode entry
+├── main_headless.go        # Headless mode entry
+├── server_mode.go          # Server mode logic
 ├── app.go                  # Main App struct (~3200 lines) - all Wails bindings
+├── runtime_darwin_arm64.go # Apple Silicon runtime tuning
+├── runtime_other.go        # Other platform runtime
 ├── eventcoalescer.go       # 16ms event batching for IPC efficiency
 ├── logcoalescer.go         # Log streaming batching
 ├── portforward.go          # Port forward management
@@ -45,6 +52,20 @@ kubikles/
 │   │   ├── client.go       # Helm operations
 │   │   ├── oci.go          # OCI registry
 │   │   └── repo.go         # Repository management
+│   ├── ai/                 # AI integration
+│   │   ├── claude_cli.go   # Claude CLI integration
+│   │   ├── manager.go      # AI session manager
+│   │   └── provider.go     # Provider abstraction
+│   ├── mcp/                # MCP server
+│   │   └── server.go       # MCP protocol implementation
+│   ├── tools/              # Tool registry for AI
+│   │   ├── registry.go     # Tool registration
+│   │   └── tools.go        # Tool implementations
+│   ├── server/             # Server mode
+│   │   ├── api.go          # REST API handlers
+│   │   └── server.go       # HTTP server
+│   ├── events/             # Event system
+│   │   └── emitter.go      # Event emitter
 │   ├── hosts/              # Platform-specific hosts file
 │   ├── certviewer/         # Certificate inspection
 │   └── crashlog/           # Crash logging
@@ -59,7 +80,8 @@ kubikles/
 │   │   ├── ThemeContext.jsx    # Active theme
 │   │   ├── MenuContext.jsx     # Context menus
 │   │   ├── DebugContext.jsx    # Debug logging
-│   │   └── NotificationContext.jsx # Toast notifications
+│   │   ├── NotificationContext.jsx # Toast notifications
+│   │   └── AIChatContext.jsx   # AI chat integration
 │   ├── features/
 │   │   ├── workloads/      # pods/, deployments/, statefulsets/, daemonsets/,
 │   │   │                   # replicasets/, jobs/, cronjobs/
@@ -136,6 +158,9 @@ Platform-specific: PTY on Unix, conpty on Windows. WebSocket-based with resize s
 ### 6. HTTP Protocol Management
 Supports HTTP/1.1 vs HTTP/2 selection. Avoids HTTP/2 flow control bottlenecks. Connection warmup/cooldown for performance.
 
+### 7. AI Integration (`pkg/ai/`)
+Integrates AI assistants (Claude) for K8s operations. MCP server provides tools for AI interactions. Supports headless and server modes for programmatic access.
+
 ## Context Providers
 
 ```js
@@ -152,6 +177,9 @@ const { config, updateConfig, portForwards, savePortForward } = useConfig();
 
 // ThemeContext
 const { theme, setTheme, themes } = useTheme();
+
+// AIChatContext
+const { messages, sendMessage, isLoading } = useAIChat();
 ```
 
 ## Data Fetching Pattern
@@ -205,6 +233,8 @@ Each resource type (`features/[category]/[resource]/`):
 | Port forward logic | `portforward.go` + `hooks/usePortForwards.js` |
 | Terminal behavior | `pkg/terminal/` + `components/shared/Terminal.jsx` |
 | Dependency graph | `pkg/k8s/dependencies.go` + `DependencyGraph.jsx` |
+| AI integration | `pkg/ai/` + `AIChatContext.jsx` |
+| MCP server | `pkg/mcp/server.go` |
 
 ## Build Commands
 

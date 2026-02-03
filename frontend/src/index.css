@@ -9,6 +9,145 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===========================================
+   Default Form Element Styles
+   Uses :where() for zero specificity so utility classes always win
+   =========================================== */
+:where(input[type="text"]),
+:where(input[type="number"]),
+:where(input[type="password"]),
+:where(input[type="email"]),
+:where(input[type="url"]),
+:where(input[type="search"]),
+:where(textarea) {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  color: var(--color-text);
+}
+
+:where(input[type="text"]):focus,
+:where(input[type="number"]):focus,
+:where(input[type="password"]):focus,
+:where(input[type="email"]):focus,
+:where(input[type="url"]):focus,
+:where(input[type="search"]):focus,
+:where(textarea):focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+:where(input)::placeholder,
+:where(textarea)::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Hide default number input spinners */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Select dropdowns */
+:where(select) {
+  padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  color: var(--color-text);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23808080'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1.25rem;
+}
+
+:where(select):focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+:where(select option) {
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+/* Checkboxes - using SVG backgrounds for scalability */
+:where(input[type="checkbox"]) {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-background);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+:where(input[type="checkbox"]):checked {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
+}
+
+:where(input[type="checkbox"]):indeterminate {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='3' y='7' width='10' height='2' rx='1'/%3E%3C/svg%3E");
+}
+
+:where(input[type="checkbox"]):focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Radio buttons - using SVG background for scalability */
+:where(input[type="radio"]) {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-background);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+:where(input[type="radio"]):checked {
+  border-color: var(--color-primary);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='8' cy='8' r='4' fill='%23007acc'/%3E%3C/svg%3E");
+}
+
+:where(input[type="radio"]):focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Labels */
+:where(label) {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-text);
+}
+
 /* Theme CSS Variables - Default Dark theme (can be overridden at runtime) */
 :root {
   /* Core colors */

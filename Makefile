@@ -1,6 +1,57 @@
 # Makefile for Kubikles
 
-.PHONY: dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch profile build-pgo
+.PHONY: help dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch profile build-pgo
+
+.DEFAULT_GOAL := help
+
+help:
+	@echo ""
+	@echo "Kubikles - Kubernetes Desktop Client"
+	@echo ""
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Setup:"
+	@echo "  setup              Full setup (system deps, Go, Node, Wails, npm, hooks)"
+	@echo "  setup-quick        Setup without system dependencies"
+	@echo "  install-frontend   Install frontend npm dependencies only"
+	@echo "  install-wails      Install Wails CLI tool"
+	@echo "  install-hooks      Install git pre-commit hooks"
+	@echo ""
+	@echo "Development:"
+	@echo "  dev                Start development server with hot-reload"
+	@echo ""
+	@echo "Build:"
+	@echo "  build              Build for current platform"
+	@echo "  build-release      Build optimized portable executable"
+	@echo "  build-mac          Build for macOS (amd64)"
+	@echo "  build-mac-arm      Build for macOS (Apple Silicon)"
+	@echo "  build-windows-amd64  Build for Windows (amd64)"
+	@echo "  build-windows-arm64  Build for Windows (arm64)"
+	@echo "  build-linux-amd64  Build for Linux (amd64)"
+	@echo "  build-linux-arm64  Build for Linux (arm64)"
+	@echo "  build-appimage     Build Linux AppImage"
+	@echo "  build-all          Build for all platforms"
+	@echo ""
+	@echo "Headless Server (no GUI):"
+	@echo "  build-headless     Build headless server for current platform"
+	@echo "  build-headless-linux-amd64  Build headless for Linux amd64"
+	@echo "  build-headless-linux-arm64  Build headless for Linux arm64"
+	@echo "  build-headless-all Build headless for all Linux platforms"
+	@echo ""
+	@echo "Testing:"
+	@echo "  test               Run all tests"
+	@echo "  test-frontend      Run frontend tests"
+	@echo "  test-watch         Run frontend tests in watch mode"
+	@echo ""
+	@echo "Profile-Guided Optimization:"
+	@echo "  profile            Collect CPU profile for PGO optimization"
+	@echo "  build-pgo          Build with PGO optimization"
+	@echo "  build-mac-arm-pgo  Build Apple Silicon release with PGO"
+	@echo "  clean-pgo          Remove PGO profile files"
+	@echo ""
+	@echo "Utilities:"
+	@echo "  clean              Remove build artifacts"
+	@echo ""
 
 # Ensure GOPATH/bin is in PATH
 GOPATH := $(shell go env GOPATH)

@@ -41,6 +41,7 @@ import (
 	coordinationv1 "k8s.io/api/coordination/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // App struct
@@ -1899,7 +1900,8 @@ func (a *App) StopLogStream(streamID string) {
 // logDebug is an internal helper for formatted debug logging (not exported to frontend)
 func (a *App) logDebug(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
-	fmt.Println("DEBUG:", msg)
+	timestamp := time.Now().Format("15:04:05.000")
+	fmt.Printf("DEBUG [%s]: %s\n", timestamp, msg)
 	if a.ctx != nil {
 		a.emitEvent("debug-log", msg)
 	}
@@ -2127,6 +2129,15 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 		}
 	}
 
+	// Helper to clear resourceVersion (for expired/gone errors)
+	clearResourceVersion := func() {
+		if rw != nil {
+			rw.mu.Lock()
+			rw.ResourceVersion = ""
+			rw.mu.Unlock()
+		}
+	}
+
 	// Reconnection parameters - more resilient for high-latency environments
 	// Uses infinite retries with exponential backoff capped at 2 minutes
 	consecutiveFailures := 0
@@ -2152,7 +2163,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 			// If we have a stale resourceVersion, clear it and retry fresh
 			if resourceVersion != "" && (strings.Contains(err.Error(), "too old") || strings.Contains(err.Error(), "expired")) {
 				a.logDebug("ResourceVersion too old, resetting: type=%s", resourceType)
-				setResourceVersion("")
+				clearResourceVersion()
 			}
 
 			// Emit error event (always recoverable with infinite retries)
@@ -2206,6 +2217,29 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 					a.logDebug("Resource watcher channel closed: type=%s, will reconnect", resourceType)
 					watcher.Stop()
 					watcherDone = true
+					// Add a small delay before reconnecting to avoid tight loops
+					select {
+					case <-ctx.Done():
+						return
+					case <-time.After(1 * time.Second):
+					}
+					break
+				}
+
+				// Handle ERROR events from the watch stream
+				if event.Type == "ERROR" {
+					a.logDebug("Resource watcher received ERROR event: type=%s", resourceType)
+					// Check if it's a "too old" resourceVersion error
+					if status, ok := event.Object.(*metav1.Status); ok {
+						a.logDebug("Watch ERROR status: %s - %s", status.Reason, status.Message)
+						if status.Reason == metav1.StatusReasonExpired || status.Reason == metav1.StatusReasonGone {
+							// Clear the stale resourceVersion
+							clearResourceVersion()
+						}
+					}
+					watcher.Stop()
+					watcherDone = true
+					consecutiveFailures++
 					break
 				}
 
@@ -2307,6 +2341,15 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 		}
 	}
 
+	// Helper to clear resourceVersion (for expired/gone errors)
+	clearResourceVersion := func() {
+		if rw != nil {
+			rw.mu.Lock()
+			rw.ResourceVersion = ""
+			rw.mu.Unlock()
+		}
+	}
+
 	// Reconnection parameters - more resilient for high-latency environments
 	// Uses infinite retries with exponential backoff capped at 2 minutes
 	consecutiveFailures := 0
@@ -2332,7 +2375,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 			// If we have a stale resourceVersion, clear it and retry fresh
 			if resourceVersion != "" && (strings.Contains(err.Error(), "too old") || strings.Contains(err.Error(), "expired")) {
 				a.logDebug("CRD ResourceVersion too old, resetting: gvr=%s/%s/%s", group, version, resource)
-				setResourceVersion("")
+				clearResourceVersion()
 			}
 
 			// Emit error event (always recoverable with infinite retries)
@@ -2386,6 +2429,29 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 					a.logDebug("CRD watcher channel closed: gvr=%s/%s/%s, will reconnect", group, version, resource)
 					watcher.Stop()
 					watcherDone = true
+					// Add a small delay before reconnecting to avoid tight loops
+					select {
+					case <-ctx.Done():
+						return
+					case <-time.After(1 * time.Second):
+					}
+					break
+				}
+
+				// Handle ERROR events from the watch stream
+				if event.Type == "ERROR" {
+					a.logDebug("CRD watcher received ERROR event: gvr=%s/%s/%s", group, version, resource)
+					// Check if it's a "too old" resourceVersion error
+					if status, ok := event.Object.(*metav1.Status); ok {
+						a.logDebug("CRD Watch ERROR status: %s - %s", status.Reason, status.Message)
+						if status.Reason == metav1.StatusReasonExpired || status.Reason == metav1.StatusReasonGone {
+							// Clear the stale resourceVersion
+							clearResourceVersion()
+						}
+					}
+					watcher.Stop()
+					watcherDone = true
+					consecutiveFailures++
 					break
 				}
 

@@ -218,7 +218,7 @@ export default function SearchSelect({
                         </div>
                         {multiSelect && !searchTerm && (
                             <button
-                                className="w-full mt-2 px-3 py-2 text-sm bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors flex items-center gap-2"
+                                className="w-full mt-2 pl-1 pr-3 py-2 text-sm bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors flex items-center gap-2"
                                 onClick={() => {
                                     if (allSelectionState.allSelected) {
                                         onChange([]);
@@ -234,14 +234,13 @@ export default function SearchSelect({
                                     checked={allSelectionState.allSelected}
                                     ref={(el) => { if (el) el.indeterminate = allSelectionState.indeterminate; }}
                                     onChange={() => {}}
-                                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                                 />
                                 <span>All Namespaces ({allNamespaces.length})</span>
                             </button>
                         )}
                         {multiSelect && searchTerm && nonEmptyFilteredOptions.length > 0 && (
                             <button
-                                className="w-full mt-2 px-3 py-2 text-sm bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors flex items-center gap-2"
+                                className="w-full mt-2 pl-1 pr-3 py-2 text-sm bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors flex items-center gap-2"
                                 onClick={() => {
                                     const currentValue = Array.isArray(value) ? value : [];
                                     const { matchingNamespaces, allSelected, someSelected } = matchingSelectionState;
@@ -260,7 +259,6 @@ export default function SearchSelect({
                                     checked={matchingSelectionState.allSelected}
                                     ref={(el) => { if (el) el.indeterminate = matchingSelectionState.indeterminate; }}
                                     onChange={() => {}}
-                                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                                 />
                                 <span>Select all matching ({nonEmptyFilteredOptions.length})</span>
                             </button>
@@ -279,7 +277,6 @@ export default function SearchSelect({
                                             type="checkbox"
                                             checked={isOptionSelected(option)}
                                             onChange={() => {}}
-                                            className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                                         />
                                     )}
                                     {renderOption ? (
