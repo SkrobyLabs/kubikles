@@ -270,11 +270,20 @@ export default function Sidebar({
                 { id: 'validatingwebhooks', label: 'Validating Webhooks', icon: ShieldCheckIcon },
                 { id: 'mutatingwebhooks', label: 'Mutating Webhooks', icon: FingerPrintIcon },
             ]
+        },
+        {
+            title: 'Diagnostics',
+            items: [
+                { id: 'flow-timeline', label: 'Flow Timeline', icon: ClockIcon },
+                { id: 'multi-log-viewer', label: 'Multi-Pod Logs', icon: DocumentTextIcon },
+                { id: 'resource-diff', label: 'Resource Diff', icon: ArrowsRightLeftIcon },
+                { id: 'rbac-checker', label: 'RBAC Checker', icon: ShieldCheckIcon },
+            ]
         }
     ];
 
     // Collapsed categories state with localStorage persistence
-    // Custom Resources is collapsed by default
+    // Custom Resources and Diagnostics are collapsed by default
     const [collapsedGroups, setCollapsedGroups] = useState(() => {
         try {
             const saved = localStorage.getItem('kubikles_collapsed_groups');
@@ -284,11 +293,15 @@ export default function Sidebar({
                 if (parsed['Custom Resources'] === undefined) {
                     parsed['Custom Resources'] = true;
                 }
+                // Ensure Diagnostics defaults to collapsed if not set
+                if (parsed['Diagnostics'] === undefined) {
+                    parsed['Diagnostics'] = true;
+                }
                 return parsed;
             }
-            return { 'Custom Resources': true };
+            return { 'Custom Resources': true, 'Diagnostics': true };
         } catch {
-            return { 'Custom Resources': true };
+            return { 'Custom Resources': true, 'Diagnostics': true };
         }
     });
 

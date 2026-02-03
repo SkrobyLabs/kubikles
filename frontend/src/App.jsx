@@ -54,8 +54,9 @@ import PriorityClassList from './features/cluster/priorityclasses/PriorityClassL
 import LeaseList from './features/config/leases/LeaseList';
 import CSIDriverList from './features/storage/csidrivers/CSIDriverList';
 import CSINodeList from './features/storage/csinodes/CSINodeList';
+import { FlowTimeline, MultiLogViewer, ResourceDiff, RBACChecker } from './features/diagnostics';
 import { usePerformancePanel } from './hooks/usePerformancePanel.jsx';
-import { LogDebug, SetEventCoalescerFrameInterval, SetK8sAPITimeout } from '../wailsjs/go/main/App';
+import { LogMessage, SetEventCoalescerFrameInterval, SetK8sAPITimeout } from '../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
 import ConfirmModal from './components/shared/ConfirmModal';
 import ConfigEditor from './components/shared/ConfigEditor';
@@ -430,7 +431,9 @@ function MainLayout() {
         togglePinTab,
         isTabStale,
         panelHeight,
-        setPanelHeight
+        setPanelHeight,
+        diagnosticParams,
+        consumeDiagnosticParams
     } = useUI();
 
     const {
@@ -571,7 +574,7 @@ function MainLayout() {
                 e.preventDefault();
                 const msg = "Refresh triggered via shortcut";
                 console.log(msg);
-                LogDebug(msg).catch(err => console.error("Failed to log debug:", err));
+                LogMessage(msg).catch(err => console.error("Failed to log debug:", err));
 
                 refreshContexts();
                 refreshNamespaces();
@@ -630,6 +633,10 @@ function MainLayout() {
             case 'metrics': return <MetricsOverview isVisible={true} />; // backward compat
             case 'metrics-overview': return <MetricsOverview isVisible={true} />;
             case 'metrics-settings': return <MetricsList isVisible={true} />;
+            case 'flow-timeline': return <FlowTimeline {...(diagnosticParams || {})} />;
+            case 'multi-log-viewer': return <MultiLogViewer {...(diagnosticParams || {})} />;
+            case 'resource-diff': return <ResourceDiff {...(diagnosticParams || {})} />;
+            case 'rbac-checker': return <RBACChecker {...(diagnosticParams || {})} />;
             case 'services': return <ServiceList isVisible={true} />;
             case 'ingresses': return <IngressList isVisible={true} />;
             case 'ingressclasses': return <IngressClassList isVisible={true} />;

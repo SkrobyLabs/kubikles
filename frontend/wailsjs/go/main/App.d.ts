@@ -25,6 +25,8 @@ export function CancelMetricsRequest(arg1:string):Promise<boolean>;
 
 export function CheckAIProvider():Promise<main.AIProviderStatus>;
 
+export function CheckRBACAccess(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:string):Promise<k8s.RBACCheckResult>;
+
 export function ClearAISession(arg1:string):Promise<string>;
 
 export function ClearPrometheusConfig():Promise<void>;
@@ -125,6 +127,8 @@ export function DetectIngressController():Promise<main.IngressController>;
 
 export function DetectPrometheus():Promise<k8s.PrometheusInfo>;
 
+export function DiffResources(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:string,arg9:Array<string>):Promise<k8s.DiffResult>;
+
 export function DownloadPodFile(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
 export function DownloadPodFiles(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<string>):Promise<void>;
@@ -207,6 +211,8 @@ export function GetEndpointsYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetEventYAML(arg1:string,arg2:string):Promise<string>;
 
+export function GetFlowTimeline(arg1:string,arg2:string,arg3:string,arg4:number,arg5:boolean):Promise<Array<k8s.FlowTimelineEntry>>;
+
 export function GetHPAYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetHelmChartVersions(arg1:string,arg2:string):Promise<Array<helm.ChartVersion>>;
@@ -240,6 +246,8 @@ export function GetListRequestStats():Promise<main.ListRequestStats>;
 export function GetManagedHosts():Promise<Array<string>>;
 
 export function GetMetricsRequestStats():Promise<main.MetricsRequestStats>;
+
+export function GetMultiPodLogs(arg1:string,arg2:Record<string, string>,arg3:Array<string>,arg4:string,arg5:number,arg6:number):Promise<Array<k8s.MultiLogEntry>>;
 
 export function GetMutatingWebhookConfigurationYaml(arg1:string):Promise<string>;
 
@@ -355,6 +363,8 @@ export function ListDaemonSets(arg1:string,arg2:string):Promise<Array<v1.DaemonS
 
 export function ListDeployments(arg1:string,arg2:string):Promise<Array<v1.Deployment>>;
 
+export function ListDeploymentsForContext(arg1:string,arg2:string):Promise<Array<v1.Deployment>>;
+
 export function ListEndpointSlices(arg1:string):Promise<Array<v1.EndpointSlice>>;
 
 export function ListEndpoints(arg1:string):Promise<Array<v1.Endpoints>>;
@@ -381,6 +391,8 @@ export function ListMutatingWebhookConfigurations():Promise<Array<v1.MutatingWeb
 
 export function ListNamespaces(arg1:string):Promise<Array<v1.Namespace>>;
 
+export function ListNamespacesForContext(arg1:string):Promise<Array<v1.Namespace>>;
+
 export function ListNetworkPolicies(arg1:string):Promise<Array<v1.NetworkPolicy>>;
 
 export function ListNodes(arg1:string):Promise<Array<v1.Node>>;
@@ -397,11 +409,15 @@ export function ListPodFiles(arg1:string,arg2:string,arg3:string,arg4:string):Pr
 
 export function ListPods(arg1:string,arg2:string):Promise<Array<v1.Pod>>;
 
+export function ListPodsForContext(arg1:string,arg2:string):Promise<Array<v1.Pod>>;
+
 export function ListPriorityClasses():Promise<Array<v1.PriorityClass>>;
 
 export function ListPrometheusInstalls():Promise<Array<k8s.PrometheusInstall>>;
 
 export function ListReplicaSets(arg1:string,arg2:string):Promise<Array<v1.ReplicaSet>>;
+
+export function ListResourceNamesForContext(arg1:string,arg2:string,arg3:string):Promise<Array<main.ResourceNameItem>>;
 
 export function ListResourceQuotas(arg1:string):Promise<Array<v1.ResourceQuota>>;
 
@@ -424,6 +440,8 @@ export function ListStorageClasses():Promise<Array<v1.StorageClass>>;
 export function ListValidatingWebhookConfigurations():Promise<Array<v1.ValidatingWebhookConfiguration>>;
 
 export function LogDebug(arg1:string):Promise<void>;
+
+export function LogMessage(arg1:string):Promise<void>;
 
 export function LoginACRWithAzureCLI(arg1:string):Promise<void>;
 

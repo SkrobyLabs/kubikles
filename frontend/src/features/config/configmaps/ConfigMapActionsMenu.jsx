@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon, ShareIcon } from '@heroicons/react/24/outline';
+import ComparisonMenuItems from '../../../components/shared/ComparisonMenuItems';
 
 export default function ConfigMapActionsMenu({ configMap, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onDelete }) {
     const buttonRef = useRef(null);
@@ -60,6 +61,13 @@ export default function ConfigMapActionsMenu({ configMap, isOpen, menuPosition, 
                 <ShareIcon className="h-4 w-4" />
                 Dependencies
             </button>
+            <div className="h-px bg-surface-hover my-1" />
+            <ComparisonMenuItems
+                kind="configmap"
+                namespace={configMap.metadata?.namespace}
+                name={configMap.metadata?.name}
+                onAction={() => onOpenChange(false)}
+            />
             <div className="h-px bg-surface-hover my-1" />
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onDelete(configMap)); }}

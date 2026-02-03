@@ -88,6 +88,7 @@ export function CancelAIRequest(...args) { return AppProxy.CancelAIRequest(...ar
 export function CancelListRequest(...args) { return AppProxy.CancelListRequest(...args); }
 export function CancelMetricsRequest(...args) { return AppProxy.CancelMetricsRequest(...args); }
 export function CheckAIProvider(...args) { return AppProxy.CheckAIProvider(...args); }
+export function CheckRBACAccess(...args) { return AppProxy.CheckRBACAccess(...args); }
 export function ClearAISession(...args) { return AppProxy.ClearAISession(...args); }
 export function ClearPrometheusConfig(...args) { return AppProxy.ClearPrometheusConfig(...args); }
 export function CloseAISession(...args) { return AppProxy.CloseAISession(...args); }
@@ -138,6 +139,7 @@ export function DeleteStorageClass(...args) { return AppProxy.DeleteStorageClass
 export function DeleteValidatingWebhookConfiguration(...args) { return AppProxy.DeleteValidatingWebhookConfiguration(...args); }
 export function DetectIngressController(...args) { return AppProxy.DetectIngressController(...args); }
 export function DetectPrometheus(...args) { return AppProxy.DetectPrometheus(...args); }
+export function DiffResources(...args) { return AppProxy.DiffResources(...args); }
 export function DownloadPodFile(...args) { return AppProxy.DownloadPodFile(...args); }
 export function DownloadPodFiles(...args) { return AppProxy.DownloadPodFiles(...args); }
 export function DownloadPodFolder(...args) { return AppProxy.DownloadPodFolder(...args); }
@@ -179,6 +181,7 @@ export function GetDeploymentYaml(...args) { return AppProxy.GetDeploymentYaml(.
 export function GetEndpointSliceYaml(...args) { return AppProxy.GetEndpointSliceYaml(...args); }
 export function GetEndpointsYaml(...args) { return AppProxy.GetEndpointsYaml(...args); }
 export function GetEventYAML(...args) { return AppProxy.GetEventYAML(...args); }
+export function GetFlowTimeline(...args) { return AppProxy.GetFlowTimeline(...args); }
 export function GetHPAYaml(...args) { return AppProxy.GetHPAYaml(...args); }
 export function GetHelmChartVersions(...args) { return AppProxy.GetHelmChartVersions(...args); }
 export function GetHelmRelease(...args) { return AppProxy.GetHelmRelease(...args); }
@@ -197,6 +200,7 @@ export function GetListRequestStats(...args) { return AppProxy.GetListRequestSta
 export function GetManagedHosts(...args) { return AppProxy.GetManagedHosts(...args); }
 export function GetMetricsRequestStats(...args) { return AppProxy.GetMetricsRequestStats(...args); }
 export function GetMutatingWebhookConfigurationYaml(...args) { return AppProxy.GetMutatingWebhookConfigurationYaml(...args); }
+export function GetMultiPodLogs(...args) { return AppProxy.GetMultiPodLogs(...args); }
 export function GetNamespaceMetricsHistory(...args) { return AppProxy.GetNamespaceMetricsHistory(...args); }
 export function GetNamespaceResourceCounts(...args) { return AppProxy.GetNamespaceResourceCounts(...args); }
 export function GetNamespaceYAML(...args) { return AppProxy.GetNamespaceYAML(...args); }
@@ -266,7 +270,11 @@ export function ListLeases(...args) { return AppProxy.ListLeases(...args); }
 export function ListLimitRanges(...args) { return AppProxy.ListLimitRanges(...args); }
 export function ListMutatingWebhookConfigurations(...args) { return AppProxy.ListMutatingWebhookConfigurations(...args); }
 export function ListNamespaces(...args) { return AppProxy.ListNamespaces(...args); }
+export function ListNamespacesForContext(...args) { return AppProxy.ListNamespacesForContext(...args); }
 export function ListNetworkPolicies(...args) { return AppProxy.ListNetworkPolicies(...args); }
+export function ListPodsForContext(...args) { return AppProxy.ListPodsForContext(...args); }
+export function ListDeploymentsForContext(...args) { return AppProxy.ListDeploymentsForContext(...args); }
+export function ListResourceNamesForContext(...args) { return AppProxy.ListResourceNamesForContext(...args); }
 export function ListNodes(...args) { return AppProxy.ListNodes(...args); }
 export function ListOCIRegistries(...args) { return AppProxy.ListOCIRegistries(...args); }
 export function ListPDBs(...args) { return AppProxy.ListPDBs(...args); }
@@ -288,6 +296,7 @@ export function ListStatefulSets(...args) { return AppProxy.ListStatefulSets(...
 export function ListStorageClasses(...args) { return AppProxy.ListStorageClasses(...args); }
 export function ListValidatingWebhookConfigurations(...args) { return AppProxy.ListValidatingWebhookConfigurations(...args); }
 export function LogDebug(...args) { return AppProxy.LogDebug(...args); }
+export function LogMessage(...args) { return AppProxy.LogMessage(...args); }
 export function LoginACRWithAzureCLI(...args) { return AppProxy.LoginACRWithAzureCLI(...args); }
 export function LoginOCIRegistry(...args) { return AppProxy.LoginOCIRegistry(...args); }
 export function LogoutOCIRegistry(...args) { return AppProxy.LogoutOCIRegistry(...args); }

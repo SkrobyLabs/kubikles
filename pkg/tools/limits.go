@@ -27,4 +27,7 @@ const (
 
 	// MaxCustomResourceListChars is the maximum characters for custom resource list output.
 	MaxCustomResourceListChars = 12000
+
+	// MaxToolOutputChars is the default maximum characters for general tool output.
+	MaxToolOutputChars = 10000
 )

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
+import ComparisonMenuItems from '../../../components/shared/ComparisonMenuItems';
 
 export default function DeploymentActionsMenu({ deployment, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onRestart, onDelete, onViewLogs }) {
     const buttonRef = useRef(null);
@@ -74,6 +75,13 @@ export default function DeploymentActionsMenu({ deployment, isOpen, menuPosition
                 <ArrowPathIcon className="h-4 w-4" />
                 Restart
             </button>
+            <div className="h-px bg-surface-hover my-1" />
+            <ComparisonMenuItems
+                kind="deployment"
+                namespace={deployment.metadata?.namespace}
+                name={deployment.metadata?.name}
+                onAction={() => onOpenChange(false)}
+            />
             <div className="h-px bg-surface-hover my-1" />
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onDelete(deployment)); }}

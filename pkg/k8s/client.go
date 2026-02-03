@@ -412,6 +412,21 @@ func (c *Client) ListPodsWithContext(ctx context.Context, namespace string) ([]v
 	return pods.Items, nil
 }
 
+// ListPodsForContext lists pods for a specific kubeconfig context
+func (c *Client) ListPodsForContext(contextName, namespace string) ([]v1.Pod, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	pods, err := cs.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pods.Items, nil
+}
+
 func (c *Client) WatchPods(ctx context.Context, namespace string) (watch.Interface, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -1448,6 +1463,21 @@ func (c *Client) ListNamespacesWithContext(ctx context.Context) ([]v1.Namespace,
 	return namespaces.Items, nil
 }
 
+// ListNamespacesForContext lists namespaces for a specific kubeconfig context
+func (c *Client) ListNamespacesForContext(contextName string) ([]v1.Namespace, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	namespaces, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return namespaces.Items, nil
+}
+
 // NamespaceResourceCounts holds the count of various resource types in a namespace
 type NamespaceResourceCounts struct {
 	Pods         int `json:"pods"`
@@ -1816,6 +1846,21 @@ func (c *Client) ListServicesWithContext(ctx context.Context, namespace string) 
 	return services.Items, nil
 }
 
+// ListServicesForContext lists services for a specific kubeconfig context
+func (c *Client) ListServicesForContext(contextName, namespace string) ([]v1.Service, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	services, err := cs.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return services.Items, nil
+}
+
 func (c *Client) GetServiceYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -1869,6 +1914,21 @@ func (c *Client) ListIngresses(namespace string) ([]networkingv1.Ingress, error)
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	ingresses, err := cs.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return ingresses.Items, nil
+}
+
+// ListIngressesForContext lists ingresses for a specific kubeconfig context
+func (c *Client) ListIngressesForContext(contextName, namespace string) ([]networkingv1.Ingress, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
@@ -2039,6 +2099,21 @@ func (c *Client) ListConfigMapsWithContext(ctx context.Context, namespace string
 	return cms.Items, nil
 }
 
+// ListConfigMapsForContext lists configmaps for a specific kubeconfig context
+func (c *Client) ListConfigMapsForContext(contextName, namespace string) ([]v1.ConfigMap, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	cms, err := cs.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return cms.Items, nil
+}
+
 func (c *Client) ListSecrets(namespace string) ([]v1.Secret, error) {
 	start := time.Now()
 	cs, err := c.getClientset()
@@ -2071,6 +2146,21 @@ func (c *Client) ListSecretsWithContext(ctx context.Context, namespace string) (
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
+		return nil, err
+	}
+	return secrets.Items, nil
+}
+
+// ListSecretsForContext lists secrets for a specific kubeconfig context
+func (c *Client) ListSecretsForContext(contextName, namespace string) ([]v1.Secret, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	secrets, err := cs.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
 		return nil, err
 	}
 	return secrets.Items, nil
@@ -2403,6 +2493,21 @@ func (c *Client) ListDeploymentsWithContext(ctx context.Context, namespace strin
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
+		return nil, err
+	}
+	return deployments.Items, nil
+}
+
+// ListDeploymentsForContext lists deployments for a specific kubeconfig context
+func (c *Client) ListDeploymentsForContext(contextName, namespace string) ([]appsv1.Deployment, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	deployments, err := cs.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
 		return nil, err
 	}
 	return deployments.Items, nil
@@ -4651,6 +4756,13 @@ func (c *Client) GetCRDPrinterColumns(contextName, crdName string) ([]PrinterCol
 
 // getDynamicClientForContext returns a dynamic client for a given context
 func (c *Client) getDynamicClientForContext(contextName string) (dynamic.Interface, error) {
+	// If context is empty, use the client's current context (not kubeconfig's default)
+	if contextName == "" {
+		c.mu.RLock()
+		contextName = c.currentContext
+		c.mu.RUnlock()
+	}
+
 	home := homedir.HomeDir()
 	kubeconfigPath := filepath.Join(home, ".kube", "config")
 	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
@@ -4927,6 +5039,21 @@ func (c *Client) ListServiceAccounts(namespace string) ([]v1.ServiceAccount, err
 	return list.Items, nil
 }
 
+// ListServiceAccountsForContext lists service accounts for a specific kubeconfig context
+func (c *Client) ListServiceAccountsForContext(contextName, namespace string) ([]v1.ServiceAccount, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	list, err := cs.CoreV1().ServiceAccounts(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 func (c *Client) GetServiceAccountYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -4977,6 +5104,21 @@ func (c *Client) ListRoles(namespace string) ([]rbacv1.Role, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	list, err := cs.RbacV1().Roles(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+// ListRolesForContext lists roles for a specific kubeconfig context
+func (c *Client) ListRolesForContext(contextName, namespace string) ([]rbacv1.Role, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
@@ -5047,6 +5189,21 @@ func (c *Client) ListClusterRoles() ([]rbacv1.ClusterRole, error) {
 	return list.Items, nil
 }
 
+// ListClusterRolesForContext lists cluster roles for a specific kubeconfig context
+func (c *Client) ListClusterRolesForContext(contextName string) ([]rbacv1.ClusterRole, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	list, err := cs.RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 func (c *Client) GetClusterRoleYaml(name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -5097,6 +5254,21 @@ func (c *Client) ListRoleBindings(namespace string) ([]rbacv1.RoleBinding, error
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	list, err := cs.RbacV1().RoleBindings(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+// ListRoleBindingsForContext lists role bindings for a specific kubeconfig context
+func (c *Client) ListRoleBindingsForContext(contextName, namespace string) ([]rbacv1.RoleBinding, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
@@ -5167,6 +5339,21 @@ func (c *Client) ListClusterRoleBindings() ([]rbacv1.ClusterRoleBinding, error) 
 	return list.Items, nil
 }
 
+// ListClusterRoleBindingsForContext lists cluster role bindings for a specific kubeconfig context
+func (c *Client) ListClusterRoleBindingsForContext(contextName string) ([]rbacv1.ClusterRoleBinding, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	list, err := cs.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 func (c *Client) GetClusterRoleBindingYaml(name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -5227,6 +5414,21 @@ func (c *Client) ListNetworkPolicies(namespace string) ([]networkingv1.NetworkPo
 	return list.Items, nil
 }
 
+// ListNetworkPoliciesForContext lists network policies for a specific kubeconfig context
+func (c *Client) ListNetworkPoliciesForContext(contextName, namespace string) ([]networkingv1.NetworkPolicy, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	list, err := cs.NetworkingV1().NetworkPolicies(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 func (c *Client) GetNetworkPolicyYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -5277,6 +5479,21 @@ func (c *Client) ListHPAs(namespace string) ([]autoscalingv2.HorizontalPodAutosc
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	list, err := cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+// ListHPAsForContext lists HPAs for a specific kubeconfig context
+func (c *Client) ListHPAsForContext(contextName, namespace string) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()

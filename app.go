@@ -1197,6 +1197,309 @@ func (a *App) ListNamespaces(requestId string) ([]v1.Namespace, error) {
 	return a.k8sClient.ListNamespaces()
 }
 
+// ListNamespacesForContext lists namespaces for a specific kubeconfig context
+func (a *App) ListNamespacesForContext(contextName string) ([]v1.Namespace, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	// Empty context name means use current context
+	if contextName == "" {
+		return a.k8sClient.ListNamespaces()
+	}
+	return a.k8sClient.ListNamespacesForContext(contextName)
+}
+
+// ListPodsForContext lists pods for a specific kubeconfig context
+func (a *App) ListPodsForContext(contextName, namespace string) ([]v1.Pod, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if contextName == "" {
+		return a.k8sClient.ListPods(namespace)
+	}
+	return a.k8sClient.ListPodsForContext(contextName, namespace)
+}
+
+// ListDeploymentsForContext lists deployments for a specific kubeconfig context
+func (a *App) ListDeploymentsForContext(contextName, namespace string) ([]appsv1.Deployment, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if contextName == "" {
+		return a.k8sClient.ListDeployments(namespace)
+	}
+	return a.k8sClient.ListDeploymentsForContext(contextName, namespace)
+}
+
+// ResourceNameItem represents a simple resource reference with name and namespace
+type ResourceNameItem struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace,omitempty"`
+}
+
+// ListResourceNamesForContext lists resource names for a specific resource type and context.
+// This is a generic function that handles all resource types for cross-context resource selection.
+// Returns just the names to avoid complex type handling for 18+ different resource types.
+func (a *App) ListResourceNamesForContext(contextName, resourceType, namespace string) ([]ResourceNameItem, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+
+	var items []ResourceNameItem
+
+	switch resourceType {
+	case "deployment":
+		var resources []appsv1.Deployment
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListDeployments(namespace)
+		} else {
+			resources, err = a.k8sClient.ListDeploymentsForContext(contextName, namespace)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "statefulset":
+		// ListStatefulSets already takes contextName as first param
+		resources, err := a.k8sClient.ListStatefulSets(contextName, namespace)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "daemonset":
+		// ListDaemonSets already takes contextName as first param
+		resources, err := a.k8sClient.ListDaemonSets(contextName, namespace)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "pod":
+		var resources []v1.Pod
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListPods(namespace)
+		} else {
+			resources, err = a.k8sClient.ListPodsForContext(contextName, namespace)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "service":
+		var resources []v1.Service
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListServices(namespace)
+		} else {
+			resources, err = a.k8sClient.ListServicesForContext(contextName, namespace)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "configmap":
+		var resources []v1.ConfigMap
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListConfigMaps(namespace)
+		} else {
+			resources, err = a.k8sClient.ListConfigMapsForContext(contextName, namespace)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "secret":
+		var resources []v1.Secret
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListSecrets(namespace)
+		} else {
+			resources, err = a.k8sClient.ListSecretsForContext(contextName, namespace)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "ingress":
+		var resources []networkingv1.Ingress
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListIngresses(namespace)
+		} else {
+			resources, err = a.k8sClient.ListIngressesForContext(contextName, namespace)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "job":
+		// ListJobs already takes contextName as first param
+		resources, err := a.k8sClient.ListJobs(contextName, namespace)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "cronjob":
+		// ListCronJobs already takes contextName as first param
+		resources, err := a.k8sClient.ListCronJobs(contextName, namespace)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "pvc":
+		// ListPVCs already takes contextName as first param
+		resources, err := a.k8sClient.ListPVCs(contextName, namespace)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "serviceaccount":
+		var resources []v1.ServiceAccount
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListServiceAccounts(namespace)
+		} else {
+			resources, err = a.k8sClient.ListServiceAccountsForContext(contextName, namespace)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "role":
+		var resources []rbacv1.Role
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListRoles(namespace)
+		} else {
+			resources, err = a.k8sClient.ListRolesForContext(contextName, namespace)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "rolebinding":
+		var resources []rbacv1.RoleBinding
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListRoleBindings(namespace)
+		} else {
+			resources, err = a.k8sClient.ListRoleBindingsForContext(contextName, namespace)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "clusterrole":
+		var resources []rbacv1.ClusterRole
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListClusterRoles()
+		} else {
+			resources, err = a.k8sClient.ListClusterRolesForContext(contextName)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name})
+		}
+
+	case "clusterrolebinding":
+		var resources []rbacv1.ClusterRoleBinding
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListClusterRoleBindings()
+		} else {
+			resources, err = a.k8sClient.ListClusterRoleBindingsForContext(contextName)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name})
+		}
+
+	case "networkpolicy":
+		var resources []networkingv1.NetworkPolicy
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListNetworkPolicies(namespace)
+		} else {
+			resources, err = a.k8sClient.ListNetworkPoliciesForContext(contextName, namespace)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	case "hpa":
+		var resources []autoscalingv2.HorizontalPodAutoscaler
+		var err error
+		if contextName == "" {
+			resources, err = a.k8sClient.ListHPAs(namespace)
+		} else {
+			resources, err = a.k8sClient.ListHPAsForContext(contextName, namespace)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range resources {
+			items = append(items, ResourceNameItem{Name: r.Name, Namespace: r.Namespace})
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
+	}
+
+	return items, nil
+}
+
 func (a *App) GetNamespaceResourceCounts(namespace string) (*k8s.NamespaceResourceCounts, error) {
 	a.logDebug("GetNamespaceResourceCounts called: namespace=%s", namespace)
 	if a.k8sClient == nil {
@@ -1910,6 +2213,11 @@ func (a *App) logDebug(format string, args ...interface{}) {
 // LogDebug sends a debug message to the frontend (exported as single-arg for Wails binding compatibility)
 func (a *App) LogDebug(msg string) {
 	a.logDebug("%s", msg)
+}
+
+// LogMessage is an alias for LogDebug for frontend compatibility
+func (a *App) LogMessage(message string) {
+	a.logDebug("%s", message)
 }
 
 // GetCrashLogPath returns the path to the crash log file
@@ -5177,5 +5485,97 @@ func (a *App) GetAllCertificateInfo(pemData string) ([]*CertificateInfo, error) 
 		})
 	}
 
+	return result, nil
+}
+
+// =============================================================================
+// DIAGNOSTIC TOOLKIT - Flow Timeline, Resource Diff, RBAC Checker
+// =============================================================================
+
+// GetFlowTimeline returns a unified timeline of events and logs for a resource and its dependencies
+func (a *App) GetFlowTimeline(resourceType, namespace, name string, durationMinutes int, includeLogs bool) ([]k8s.FlowTimelineEntry, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("no Kubernetes client available")
+	}
+
+	req := k8s.FlowTimelineRequest{
+		ResourceType:    resourceType,
+		Namespace:       namespace,
+		Name:            name,
+		DurationMinutes: durationMinutes,
+		IncludeLogs:     includeLogs,
+		MaxEntries:      200,
+	}
+
+	return a.k8sClient.GetFlowTimeline(req)
+}
+
+// DiffResources compares two Kubernetes resources and returns a structured diff
+func (a *App) DiffResources(sourceContext, sourceNamespace, sourceKind, sourceName, targetContext, targetNamespace, targetKind, targetName string, ignoreFields []string) (*k8s.DiffResult, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("no Kubernetes client available")
+	}
+
+	req := k8s.DiffRequest{
+		SourceContext:   sourceContext,
+		SourceNamespace: sourceNamespace,
+		SourceKind:      sourceKind,
+		SourceName:      sourceName,
+		TargetContext:   targetContext,
+		TargetNamespace: targetNamespace,
+		TargetKind:      targetKind,
+		TargetName:      targetName,
+		IgnoreFields:    ignoreFields,
+	}
+
+	return a.k8sClient.DiffResources(req)
+}
+
+// CheckRBACAccess checks if a subject has permission to perform an action
+func (a *App) CheckRBACAccess(subjectKind, subjectName, subjectNamespace, verb, resource, resourceName, namespace, apiGroup string) (*k8s.RBACCheckResult, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("no Kubernetes client available")
+	}
+
+	req := k8s.RBACCheckRequest{
+		SubjectKind:      subjectKind,
+		SubjectName:      subjectName,
+		SubjectNamespace: subjectNamespace,
+		Verb:             verb,
+		Resource:         resource,
+		ResourceName:     resourceName,
+		Namespace:        namespace,
+		APIGroup:         apiGroup,
+	}
+
+	return a.k8sClient.CheckRBACAccess(req)
+}
+
+// GetMultiPodLogs fetches logs from multiple pods matching criteria (batch mode)
+func (a *App) GetMultiPodLogs(namespace string, labelSelector map[string]string, podNames []string, container string, tailLines int64, sinceSeconds int64) ([]k8s.MultiLogEntry, error) {
+	fmt.Printf("[GetMultiPodLogs] Called: ns=%s labels=%v pods=%v container=%s tail=%d since=%d\n",
+		namespace, labelSelector, podNames, container, tailLines, sinceSeconds)
+
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("no Kubernetes client available")
+	}
+
+	req := k8s.MultiLogRequest{
+		Namespace:     namespace,
+		LabelSelector: labelSelector,
+		PodNames:      podNames,
+		Container:     container,
+		TailLines:     tailLines,
+		SinceSeconds:  sinceSeconds,
+		Follow:        false,
+		Timestamps:    true,
+	}
+
+	result, err := a.k8sClient.GetMultiPodLogsBatch(req)
+	if err != nil {
+		fmt.Printf("[GetMultiPodLogs] Error: %v\n", err)
+		return nil, err
+	}
+	fmt.Printf("[GetMultiPodLogs] Returned %d log entries\n", len(result))
 	return result, nil
 }

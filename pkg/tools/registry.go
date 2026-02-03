@@ -110,6 +110,31 @@ func (r *ToolRegistry) initMetadata() {
 		RelevantActions: []string{"deps", "details"},
 		Category:        "resources",
 	}
+
+	// Diagnostic tools
+	r.metadata["get_flow_timeline"] = ToolMeta{
+		RelevantViews:   []string{"pods", "deployments", "statefulsets", "daemonsets", "jobs", "services", "flow-timeline"},
+		RelevantActions: []string{"details"},
+		Category:        "diagnostics",
+	}
+
+	r.metadata["get_multi_pod_logs"] = ToolMeta{
+		RelevantViews:   []string{"pods", "deployments", "statefulsets", "daemonsets", "jobs", "multi-log-viewer"},
+		RelevantActions: []string{"logs"},
+		Category:        "diagnostics",
+	}
+
+	r.metadata["diff_resources"] = ToolMeta{
+		RelevantViews:   []string{"deployments", "statefulsets", "configmaps", "secrets", "services", "resource-diff"},
+		RelevantActions: []string{"yaml", "details"},
+		Category:        "diagnostics",
+	}
+
+	r.metadata["check_rbac_access"] = ToolMeta{
+		RelevantViews:   []string{"serviceaccounts", "pods", "rbac-checker"},
+		RelevantActions: []string{"details"},
+		Category:        "diagnostics",
+	}
 }
 
 // GetAllTools returns all registered tool definitions.

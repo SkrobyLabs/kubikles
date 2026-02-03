@@ -1,4 +1,4 @@
-import { LogDebug } from '../../wailsjs/go/main/App';
+import { LogMessage } from '../../wailsjs/go/main/App';
 
 const formatMessage = (message, data) => {
     if (data) {
@@ -15,7 +15,7 @@ const Logger = {
     info: (message, data = null) => {
         const formatted = formatMessage(message, data);
         console.log(`[INFO] ${formatted}`);
-        LogDebug(`[INFO] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
+        LogMessage(`[INFO] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
     },
 
     error: (message, error = null) => {
@@ -29,21 +29,21 @@ const Logger = {
         }
         const formatted = `${message}${errorMsg}`;
         console.error(`[ERROR] ${formatted}`);
-        LogDebug(`[ERROR] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
+        LogMessage(`[ERROR] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
     },
 
     debug: (message, data = null) => {
         const formatted = formatMessage(message, data);
         console.debug(`[DEBUG] ${formatted}`);
         // Optional: only send debug logs to backend if verbose mode is on?
-        // For now, let's send them as LogDebug is intended for debug.
-        LogDebug(`[DEBUG] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
+        // For now, let's send them as LogMessage is intended for debug.
+        LogMessage(`[DEBUG] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
     },
 
     warn: (message, data = null) => {
         const formatted = formatMessage(message, data);
         console.warn(`[WARN] ${formatted}`);
-        LogDebug(`[WARN] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
+        LogMessage(`[WARN] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
     }
 };
 

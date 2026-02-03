@@ -15,6 +15,9 @@ export default function SearchSelect({
     disabled = false,
     onOpen = null,          // Callback when dropdown opens
     preserveOrder = false,  // If true, don't sort alphabetically (preserve input order)
+    searchable = true,      // If false, hide the search input (for simple dropdowns)
+    // Multi-select customization
+    multiSelectLabels = null, // { all: "All Items", count: (n) => `${n} items selected` }
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -33,6 +36,10 @@ export default function SearchSelect({
         return option === '' ? 'All Namespaces' : String(option);
     };
 
+    // Default labels for multi-select (namespace-centric for backward compatibility)
+    const defaultLabels = { all: 'All Namespaces', count: (n) => `${n} namespaces selected` };
+    const labels = multiSelectLabels || defaultLabels;
+
     // Helper to get display value for multi-select
     const getMultiSelectDisplay = () => {
         if (!value || value.length === 0) {
@@ -40,12 +47,12 @@ export default function SearchSelect({
         }
         // Check for "all" marker
         if (value.includes('*')) {
-            return 'All Namespaces';
+            return labels.all;
         }
         if (value.length === 1) {
             return getDisplayLabel(value[0]);
         }
-        return `${value.length} namespaces selected`;
+        return labels.count(value.length);
     };
 
     useEffect(() => {
@@ -169,6 +176,12 @@ export default function SearchSelect({
             const selectedOption = options.find(opt => getValueFromOption(opt) === value);
             return selectedOption ? getDisplayLabel(selectedOption) : placeholder;
         }
+
+        // For string options: if value is empty and not in options, show placeholder
+        if (value === '' && !options.includes('')) {
+            return placeholder;
+        }
+
         return getDisplayLabel(value);
     };
 
@@ -200,7 +213,9 @@ export default function SearchSelect({
 
             {isOpen && (
                 <div className="absolute z-50 w-full mt-1 bg-surface border border-border rounded shadow-lg max-h-60 flex flex-col">
+                    {(searchable || multiSelect) && (
                     <div className="p-2 border-b border-border sticky top-0 bg-surface">
+                        {searchable && (
                         <div className="relative">
                             <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-2 top-1/2 transform -translate-y-1/2" />
                             <input
@@ -216,6 +231,7 @@ export default function SearchSelect({
                                 spellCheck="false"
                             />
                         </div>
+                        )}
                         {multiSelect && !searchTerm && (
                             <button
                                 className="w-full mt-2 pl-1 pr-3 py-2 text-sm bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors flex items-center gap-2"
@@ -235,7 +251,7 @@ export default function SearchSelect({
                                     ref={(el) => { if (el) el.indeterminate = allSelectionState.indeterminate; }}
                                     onChange={() => {}}
                                 />
-                                <span>All Namespaces ({allNamespaces.length})</span>
+                                <span>{labels.all} ({allNamespaces.length})</span>
                             </button>
                         )}
                         {multiSelect && searchTerm && nonEmptyFilteredOptions.length > 0 && (
@@ -264,6 +280,7 @@ export default function SearchSelect({
                             </button>
                         )}
                     </div>
+                    )}
                     <div className="overflow-y-auto flex-1">
                         {nonEmptyFilteredOptions.length > 0 ? (
                             nonEmptyFilteredOptions.map((option) => (

@@ -34,6 +34,10 @@ export function CheckAIProvider() {
   return window['go']['main']['App']['CheckAIProvider']();
 }
 
+export function CheckRBACAccess(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
+  return window['go']['main']['App']['CheckRBACAccess'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+}
+
 export function ClearAISession(arg1) {
   return window['go']['main']['App']['ClearAISession'](arg1);
 }
@@ -234,6 +238,10 @@ export function DetectPrometheus() {
   return window['go']['main']['App']['DetectPrometheus']();
 }
 
+export function DiffResources(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
+  return window['go']['main']['App']['DiffResources'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+}
+
 export function DownloadPodFile(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['DownloadPodFile'](arg1, arg2, arg3, arg4);
 }
@@ -398,6 +406,10 @@ export function GetEventYAML(arg1, arg2) {
   return window['go']['main']['App']['GetEventYAML'](arg1, arg2);
 }
 
+export function GetFlowTimeline(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetFlowTimeline'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function GetHPAYaml(arg1, arg2) {
   return window['go']['main']['App']['GetHPAYaml'](arg1, arg2);
 }
@@ -464,6 +476,10 @@ export function GetManagedHosts() {
 
 export function GetMetricsRequestStats() {
   return window['go']['main']['App']['GetMetricsRequestStats']();
+}
+
+export function GetMultiPodLogs(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['GetMultiPodLogs'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function GetMutatingWebhookConfigurationYaml(arg1) {
@@ -694,6 +710,10 @@ export function ListDeployments(arg1, arg2) {
   return window['go']['main']['App']['ListDeployments'](arg1, arg2);
 }
 
+export function ListDeploymentsForContext(arg1, arg2) {
+  return window['go']['main']['App']['ListDeploymentsForContext'](arg1, arg2);
+}
+
 export function ListEndpointSlices(arg1) {
   return window['go']['main']['App']['ListEndpointSlices'](arg1);
 }
@@ -746,6 +766,10 @@ export function ListNamespaces(arg1) {
   return window['go']['main']['App']['ListNamespaces'](arg1);
 }
 
+export function ListNamespacesForContext(arg1) {
+  return window['go']['main']['App']['ListNamespacesForContext'](arg1);
+}
+
 export function ListNetworkPolicies(arg1) {
   return window['go']['main']['App']['ListNetworkPolicies'](arg1);
 }
@@ -778,6 +802,10 @@ export function ListPods(arg1, arg2) {
   return window['go']['main']['App']['ListPods'](arg1, arg2);
 }
 
+export function ListPodsForContext(arg1, arg2) {
+  return window['go']['main']['App']['ListPodsForContext'](arg1, arg2);
+}
+
 export function ListPriorityClasses() {
   return window['go']['main']['App']['ListPriorityClasses']();
 }
@@ -788,6 +816,10 @@ export function ListPrometheusInstalls() {
 
 export function ListReplicaSets(arg1, arg2) {
   return window['go']['main']['App']['ListReplicaSets'](arg1, arg2);
+}
+
+export function ListResourceNamesForContext(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ListResourceNamesForContext'](arg1, arg2, arg3);
 }
 
 export function ListResourceQuotas(arg1) {
@@ -832,6 +864,10 @@ export function ListValidatingWebhookConfigurations() {
 
 export function LogDebug(arg1) {
   return window['go']['main']['App']['LogDebug'](arg1);
+}
+
+export function LogMessage(arg1) {
+  return window['go']['main']['App']['LogMessage'](arg1);
 }
 
 export function LoginACRWithAzureCLI(arg1) {

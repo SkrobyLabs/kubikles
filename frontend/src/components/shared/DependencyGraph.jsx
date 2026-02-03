@@ -204,7 +204,7 @@ const getEdgeStyle = (relation) => {
 };
 
 export default function DependencyGraph({ resourceType, namespace, resourceName, onClose }) {
-    const { openTab, closeTab } = useUI();
+    const { openTab, closeTab, openDiagnostic } = useUI();
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [loading, setLoading] = useState(true);
@@ -286,6 +286,25 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
         });
         setContextMenu(null);
     }, [openTab, closeTab]);
+
+    const handleCompareResource = useCallback((node) => {
+        const resType = getResourceTypeFromKind(node.kind);
+        // Pre-fill both source and target with the same resource
+        // User typically just needs to change the target context
+        openDiagnostic('resource-diff', {
+            initialSource: {
+                kind: resType,
+                namespace: node.namespace || 'default',
+                name: node.label
+            },
+            initialTarget: {
+                kind: resType,
+                namespace: node.namespace || 'default',
+                name: node.label
+            }
+        });
+        setContextMenu(null);
+    }, [openDiagnostic]);
 
     // Handle expanding a summary node
     const handleExpandNode = useCallback(async (summaryNode) => {
@@ -591,6 +610,12 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                                     Show Dependencies
                                 </button>
                             )}
+                            <button
+                                onClick={() => handleCompareResource(contextMenu.node)}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover"
+                            >
+                                Compare to...
+                            </button>
                         </>
                     )}
                 </div>

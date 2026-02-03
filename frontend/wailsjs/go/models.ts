@@ -673,7 +673,155 @@ export namespace k8s {
 		}
 	}
 	
+	export class DiffChange {
+	    type: string;
+	    path: string;
+	    old?: string;
+	    new?: string;
 	
+	    static createFrom(source: any = {}) {
+	        return new DiffChange(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.path = source["path"];
+	        this.old = source["old"];
+	        this.new = source["new"];
+	    }
+	}
+	export class DiffResult {
+	    sourceYaml: string;
+	    targetYaml: string;
+	    unifiedDiff: string;
+	    hasChanges: boolean;
+	    changeCount: number;
+	    sourceExists: boolean;
+	    targetExists: boolean;
+	    changes: DiffChange[];
+	
+	    static createFrom(source: any = {}) {
+	        return new DiffResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sourceYaml = source["sourceYaml"];
+	        this.targetYaml = source["targetYaml"];
+	        this.unifiedDiff = source["unifiedDiff"];
+	        this.hasChanges = source["hasChanges"];
+	        this.changeCount = source["changeCount"];
+	        this.sourceExists = source["sourceExists"];
+	        this.targetExists = source["targetExists"];
+	        this.changes = this.convertValues(source["changes"], DiffChange);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class FlowTimelineEntry {
+	    // Go type: time
+	    timestamp: any;
+	    entryType: string;
+	    severity: string;
+	    resourceRef: string;
+	    kind: string;
+	    name: string;
+	    namespace: string;
+	    message: string;
+	    details?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FlowTimelineEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.timestamp = this.convertValues(source["timestamp"], null);
+	        this.entryType = source["entryType"];
+	        this.severity = source["severity"];
+	        this.resourceRef = source["resourceRef"];
+	        this.kind = source["kind"];
+	        this.name = source["name"];
+	        this.namespace = source["namespace"];
+	        this.message = source["message"];
+	        this.details = source["details"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class MultiLogEntry {
+	    // Go type: time
+	    timestamp: any;
+	    podName: string;
+	    container: string;
+	    message: string;
+	    color: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MultiLogEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.timestamp = this.convertValues(source["timestamp"], null);
+	        this.podName = source["podName"];
+	        this.container = source["container"];
+	        this.message = source["message"];
+	        this.color = source["color"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class NamespaceMetricsHistory {
 	    namespace: string;
 	    cpu: MetricsDataPoint[];
@@ -1087,6 +1235,60 @@ export namespace k8s {
 	        this.type = source["type"];
 	        this.reachable = source["reachable"];
 	    }
+	}
+	export class RBACChainLink {
+	    kind: string;
+	    name: string;
+	    namespace?: string;
+	    grants: boolean;
+	    rule: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RBACChainLink(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.name = source["name"];
+	        this.namespace = source["namespace"];
+	        this.grants = source["grants"];
+	        this.rule = source["rule"];
+	    }
+	}
+	export class RBACCheckResult {
+	    allowed: boolean;
+	    reason: string;
+	    chain: RBACChainLink[];
+	
+	    static createFrom(source: any = {}) {
+	        return new RBACCheckResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.allowed = source["allowed"];
+	        this.reason = source["reason"];
+	        this.chain = this.convertValues(source["chain"], RBACChainLink);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	
 	export class SecretMetadata {
@@ -1624,6 +1826,20 @@ export namespace main {
 	    }
 	}
 	
+	export class ResourceNameItem {
+	    name: string;
+	    namespace?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResourceNameItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.namespace = source["namespace"];
+	    }
+	}
 	export class ThemeFontConfig {
 	    family: string;
 	    weights?: number[];

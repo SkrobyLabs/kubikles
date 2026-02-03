@@ -21,6 +21,14 @@ export const UIProvider = ({ children }) => {
     const [pendingSearch, setPendingSearch] = useState(null);
     const [modal, setModal] = useState(null);
 
+    // Diagnostic view params - used when navigating to diagnostic views with pre-filled data
+    const [diagnosticParams, setDiagnosticParams] = useState(null);
+
+    // Comparison source for resource diff feature
+    // Format: { kind: 'pod', namespace: 'default', name: 'nginx-xyz', context: 'my-cluster' }
+    // Persists across context switches for cross-cluster comparison
+    const [comparisonSource, setComparisonSourceState] = useState(null);
+
     // Track active detail tab per resource type (e.g., { pod: 'metrics', node: 'basic' })
     const [detailTabByResourceType, setDetailTabByResourceType] = useState({});
 
@@ -41,6 +49,53 @@ export const UIProvider = ({ children }) => {
         setPendingSearch(searchTerm); // Trigger re-render
         setActiveView(view);
     }, []);
+
+    // Navigate to a diagnostic view with initial params
+    const openDiagnostic = useCallback((view, params = {}) => {
+        setDiagnosticParams(params);
+        setActiveView(view);
+    }, []);
+
+    // Consume diagnostic params (called by diagnostic component when it mounts)
+    const consumeDiagnosticParams = useCallback(() => {
+        const result = diagnosticParams;
+        setDiagnosticParams(null);
+        return result;
+    }, [diagnosticParams]);
+
+    // Set comparison source for resource diff (includes current context for cross-cluster comparison)
+    const setComparisonSource = useCallback((kind, namespace, name) => {
+        setComparisonSourceState({ kind, namespace, name, context: currentContext });
+    }, [currentContext]);
+
+    // Clear comparison source
+    const clearComparisonSource = useCallback(() => {
+        setComparisonSourceState(null);
+    }, []);
+
+    // Compare current resource with the comparison source
+    const compareWithSource = useCallback((targetKind, targetNamespace, targetName) => {
+        if (!comparisonSource) {
+            return;
+        }
+        const params = {
+            initialSource: {
+                kind: comparisonSource.kind,
+                namespace: comparisonSource.namespace,
+                name: comparisonSource.name,
+                context: comparisonSource.context
+            },
+            initialTarget: {
+                kind: targetKind,
+                namespace: targetNamespace,
+                name: targetName,
+                context: currentContext
+            }
+        };
+        openDiagnostic('resource-diff', params);
+        // Clear comparison source after use
+        setComparisonSourceState(null);
+    }, [comparisonSource, currentContext, openDiagnostic]);
 
     // Consume pending search (called by ResourceList when it mounts/updates)
     const consumePendingSearch = useCallback(() => {
@@ -247,7 +302,14 @@ export const UIProvider = ({ children }) => {
         openModal,
         closeModal,
         getDetailTab,
-        setDetailTab
+        setDetailTab,
+        diagnosticParams,
+        openDiagnostic,
+        consumeDiagnosticParams,
+        comparisonSource,
+        setComparisonSource,
+        clearComparisonSource,
+        compareWithSource
     }), [
         activeView,
         bottomTabs,
@@ -269,7 +331,14 @@ export const UIProvider = ({ children }) => {
         openModal,
         closeModal,
         getDetailTab,
-        setDetailTab
+        setDetailTab,
+        diagnosticParams,
+        openDiagnostic,
+        consumeDiagnosticParams,
+        comparisonSource,
+        setComparisonSource,
+        clearComparisonSource,
+        compareWithSource
     ]);
 
     return (
