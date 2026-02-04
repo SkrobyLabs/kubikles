@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	logFileName    = "kubikles.log"
-	maxLogSize     = 5 * 1024 * 1024 // 5MB
-	maxLogFiles    = 3
+	logFileName = "kubikles.log"
+	maxLogSize  = 5 * 1024 * 1024 // 5MB
+	maxLogFiles = 3
 )
 
 var (

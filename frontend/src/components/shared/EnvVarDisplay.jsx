@@ -16,7 +16,7 @@ import {
     MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import { GetConfigMapData, GetSecretData } from '../../../wailsjs/go/main/App';
-import { useUI } from '../../context/UIContext';
+import { useUI } from '../../context';
 
 // Copy button component
 const CopyButton = ({ value, className = '' }) => {

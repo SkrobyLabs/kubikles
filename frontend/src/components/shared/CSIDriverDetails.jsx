@@ -1,7 +1,7 @@
 import React from 'react';
 import { PencilSquareIcon, ShareIcon, CheckCircleIcon, XCircleIcon, CpuChipIcon } from '@heroicons/react/24/outline';
-import { useK8s } from '../../context/K8sContext';
-import { useUI } from '../../context/UIContext';
+import { useK8s } from '../../context';
+import { useUI } from '../../context';
 import { formatAge } from '../../utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';

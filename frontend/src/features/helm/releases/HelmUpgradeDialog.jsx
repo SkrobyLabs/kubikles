@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { XMarkIcon, ArrowPathIcon, ExclamationTriangleIcon, ChevronDownIcon, ChevronRightIcon, DocumentTextIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { SearchHelmChart, UpgradeHelmRelease, GetHelmChartVersions, GetHelmReleaseValues, GetHelmReleaseAllValues, ListChartSources, SearchChartInSource } from '../../../../wailsjs/go/main/App';
-import { useNotification } from '../../../context/NotificationContext';
+import { useNotification } from '../../../context';
 import SearchSelect from '../../../components/shared/SearchSelect';
 import Editor from '@monaco-editor/react';
 import yaml from 'js-yaml';

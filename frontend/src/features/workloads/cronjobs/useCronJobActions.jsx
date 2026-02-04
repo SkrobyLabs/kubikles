@@ -1,7 +1,7 @@
 import React from 'react';
 import { useBaseResourceActions } from '../../../hooks/useBaseResourceActions';
 import { DeleteCronJob, TriggerCronJob, SuspendCronJob, ListJobs, ListPods } from '../../../../wailsjs/go/main/App';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import CronJobDetails from '../../../components/shared/CronJobDetails';
 import LogViewer from '../../../components/shared/log-viewer';
 import Logger from '../../../utils/Logger';

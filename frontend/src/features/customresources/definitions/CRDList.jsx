@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import { useCRDs } from '../../../hooks/useCRDs';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteCRD, GetCRDYaml } from '../../../../wailsjs/go/main/App';

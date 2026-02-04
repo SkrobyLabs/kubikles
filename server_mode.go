@@ -55,7 +55,7 @@ func RunServer(assets embed.FS, port int, label string) {
 		srv.AddDisconnectListener(listener)
 	}
 
-	// Run server (blocks until context is cancelled)
+	// Run server (blocks until context is canceled)
 	if err := srv.Run(ctx); err != nil {
 		crashlog.LogFatal("Server error: %v", err)
 	}

@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import LimitRangeActionsMenu from './LimitRangeActionsMenu';
 import { useLimitRanges } from '../../../hooks/resources';
 import { useLimitRangeActions } from './useLimitRangeActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteLimitRange, GetLimitRangeYaml } from '../../../../wailsjs/go/main/App';

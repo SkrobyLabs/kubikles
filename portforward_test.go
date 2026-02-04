@@ -69,10 +69,10 @@ func TestPortForwardConfig_ServiceType(t *testing.T) {
 
 func TestPortForwardConfig_HTTPS(t *testing.T) {
 	cfg := PortForwardConfig{
-		ID:           "https-fwd",
-		HTTPS:        true,
-		LocalPort:    8443,
-		RemotePort:   443,
+		ID:         "https-fwd",
+		HTTPS:      true,
+		LocalPort:  8443,
+		RemotePort: 443,
 	}
 
 	if !cfg.HTTPS {
@@ -127,9 +127,9 @@ func TestPortForwardConfig_JSON(t *testing.T) {
 
 func TestActivePortForward_Fields(t *testing.T) {
 	cfg := PortForwardConfig{
-		ID:           "active-test",
-		LocalPort:    8080,
-		RemotePort:   80,
+		ID:         "active-test",
+		LocalPort:  8080,
+		RemotePort: 80,
 	}
 
 	active := ActivePortForward{

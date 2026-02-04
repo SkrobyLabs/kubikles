@@ -20,18 +20,18 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
+	coordinationv1 "k8s.io/api/coordination/v1"
 	v1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	storagev1 "k8s.io/api/storage/v1"
-	coordinationv1 "k8s.io/api/coordination/v1"
-	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
-	discoveryv1 "k8s.io/api/discovery/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -50,8 +50,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// ErrRequestCancelled is returned when a request was cancelled
-var ErrRequestCancelled = errors.New("request cancelled")
+// ErrRequestCancelled is returned when a request was canceled
+var ErrRequestCancelled = errors.New("request canceled")
 
 // isCancelledError checks if an error is a context cancellation or deadline exceeded
 func isCancelledError(err error) bool {
@@ -371,7 +371,7 @@ func (c *Client) getClientset() (kubernetes.Interface, error) {
 	// If pool is configured, rotate among main client + pool clients
 	if len(pool) > 0 {
 		idx := atomic.AddUint64(&c.clientPoolIdx, 1)
-		totalClients := uint64(len(pool) + 1) // main + additional
+		totalClients := uint64(len(pool) + 1) //nolint:gosec // pool size is small, safe conversion
 		selected := idx % totalClients
 		if selected == 0 {
 			return mainCs, nil
@@ -927,8 +927,8 @@ func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 
 		result = append(result, NodeMetrics{
 			Name:         nm.Name,
-			CPUUsage:     cpuUsage,  // millicores
-			MemoryUsage:  memUsage,  // bytes
+			CPUUsage:     cpuUsage, // millicores
+			MemoryUsage:  memUsage, // bytes
 			CPUCapacity:  cap.cpu,
 			MemCapacity:  cap.memory,
 			CPURequested: reqCPU,
@@ -1031,7 +1031,7 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 		return nil
 	})
 
-	g.Wait()
+	_ = g.Wait() // All goroutines return nil, wait just for synchronization
 
 	// Helper to extract values from Prometheus result, checking for both "node" and "nodename" labels
 	extractValues := func(result *PrometheusQueryResult, labelKey string) map[string]float64 {
@@ -1181,7 +1181,7 @@ func (c *Client) GetPodMetricsFromPrometheus(contextName string, info *Prometheu
 		return nil
 	})
 
-	g.Wait()
+	_ = g.Wait() // All goroutines return nil, wait just for synchronization
 
 	// Helper to extract pod-keyed values from Prometheus result (namespace + pod labels)
 	extractPodValues := func(result *PrometheusQueryResult) map[string]float64 {
@@ -1253,9 +1253,9 @@ func (c *Client) GetPodMetricsFromPrometheus(contextName string, info *Prometheu
 			continue // Skip pods without a node mapping
 		}
 
-		cpuUsageMilli := int64(cpuUsage[key] * 1000)   // cores to millicores
+		cpuUsageMilli := int64(cpuUsage[key] * 1000) // cores to millicores
 		memUsageBytes := int64(memUsage[key])
-		cpuReqMilli := int64(cpuRequests[key] * 1000)   // cores to millicores
+		cpuReqMilli := int64(cpuRequests[key] * 1000) // cores to millicores
 		memReqBytes := int64(memRequests[key])
 
 		// Committed = max(usage, requested)
@@ -1362,9 +1362,9 @@ func (c *Client) GetPodMetrics() (*PodMetricsResult, error) {
 
 	// Build pod info map: namespace/name -> {nodeName, requests}
 	type podInfo struct {
-		nodeName   string
-		cpuReq     int64
-		memReq     int64
+		nodeName string
+		cpuReq   int64
+		memReq   int64
 	}
 	podInfoMap := make(map[string]podInfo, len(pods.Items))
 	for _, pod := range pods.Items {
@@ -2744,7 +2744,7 @@ func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string,
 }
 
 // StreamPodLogs streams logs from a pod container and calls the callback for each line.
-// It continues until the context is cancelled or an error occurs.
+// It continues until the context is canceled or an error occurs.
 // The callback receives each log line as it arrives.
 func (c *Client) StreamPodLogs(ctx context.Context, namespace, podName, containerName string, timestamps bool, tailLines int64, onLine func(line string)) error {
 	cs, err := c.getClientset()
@@ -6285,41 +6285,41 @@ func (c *Client) DeleteCSINode(contextName, name string) error {
 
 // kindToResource maps Kubernetes kinds to their plural resource names
 var kindToResource = map[string]string{
-	"Pod":                             "pods",
-	"Deployment":                      "deployments",
-	"StatefulSet":                     "statefulsets",
-	"DaemonSet":                       "daemonsets",
-	"ReplicaSet":                      "replicasets",
-	"Job":                             "jobs",
-	"CronJob":                         "cronjobs",
-	"Service":                         "services",
-	"Ingress":                         "ingresses",
-	"ConfigMap":                       "configmaps",
-	"Secret":                          "secrets",
-	"PersistentVolumeClaim":           "persistentvolumeclaims",
-	"PersistentVolume":                "persistentvolumes",
-	"StorageClass":                    "storageclasses",
-	"ServiceAccount":                  "serviceaccounts",
-	"Role":                            "roles",
-	"ClusterRole":                     "clusterroles",
-	"RoleBinding":                     "rolebindings",
-	"ClusterRoleBinding":              "clusterrolebindings",
-	"NetworkPolicy":                   "networkpolicies",
-	"Namespace":                       "namespaces",
-	"Node":                            "nodes",
-	"Endpoints":                       "endpoints",
-	"EndpointSlice":                   "endpointslices",
-	"HorizontalPodAutoscaler":         "horizontalpodautoscalers",
-	"PodDisruptionBudget":             "poddisruptionbudgets",
-	"ResourceQuota":                   "resourcequotas",
-	"LimitRange":                      "limitranges",
-	"ValidatingWebhookConfiguration":  "validatingwebhookconfigurations",
-	"MutatingWebhookConfiguration":    "mutatingwebhookconfigurations",
-	"PriorityClass":                   "priorityclasses",
-	"Lease":                           "leases",
-	"CSIDriver":                       "csidrivers",
-	"CSINode":                         "csinodes",
-	"IngressClass":                    "ingressclasses",
+	"Pod":                            "pods",
+	"Deployment":                     "deployments",
+	"StatefulSet":                    "statefulsets",
+	"DaemonSet":                      "daemonsets",
+	"ReplicaSet":                     "replicasets",
+	"Job":                            "jobs",
+	"CronJob":                        "cronjobs",
+	"Service":                        "services",
+	"Ingress":                        "ingresses",
+	"ConfigMap":                      "configmaps",
+	"Secret":                         "secrets",
+	"PersistentVolumeClaim":          "persistentvolumeclaims",
+	"PersistentVolume":               "persistentvolumes",
+	"StorageClass":                   "storageclasses",
+	"ServiceAccount":                 "serviceaccounts",
+	"Role":                           "roles",
+	"ClusterRole":                    "clusterroles",
+	"RoleBinding":                    "rolebindings",
+	"ClusterRoleBinding":             "clusterrolebindings",
+	"NetworkPolicy":                  "networkpolicies",
+	"Namespace":                      "namespaces",
+	"Node":                           "nodes",
+	"Endpoints":                      "endpoints",
+	"EndpointSlice":                  "endpointslices",
+	"HorizontalPodAutoscaler":        "horizontalpodautoscalers",
+	"PodDisruptionBudget":            "poddisruptionbudgets",
+	"ResourceQuota":                  "resourcequotas",
+	"LimitRange":                     "limitranges",
+	"ValidatingWebhookConfiguration": "validatingwebhookconfigurations",
+	"MutatingWebhookConfiguration":   "mutatingwebhookconfigurations",
+	"PriorityClass":                  "priorityclasses",
+	"Lease":                          "leases",
+	"CSIDriver":                      "csidrivers",
+	"CSINode":                        "csinodes",
+	"IngressClass":                   "ingressclasses",
 }
 
 // ApplyYAML creates a resource from YAML content using the dynamic client
@@ -6402,8 +6402,8 @@ type PrometheusInfo struct {
 // PrometheusInstall represents a discovered Prometheus installation
 type PrometheusInstall struct {
 	Namespace string `json:"namespace"`
-	Name      string `json:"name"`      // CR name or service name
-	Service   string `json:"service"`   // The service to connect to
+	Name      string `json:"name"`    // CR name or service name
+	Service   string `json:"service"` // The service to connect to
 	Port      int    `json:"port"`
 	Type      string `json:"type"`      // "operator" (CRD-based) or "standalone"
 	Reachable bool   `json:"reachable"` // Whether we can connect to it
@@ -7044,11 +7044,11 @@ func (c *Client) TestPrometheusEndpoint(contextName string, endpoint PrometheusE
 
 // NamespaceMetricsHistory holds historical metrics for a namespace
 type NamespaceMetricsHistory struct {
-	Namespace string                   `json:"namespace"`
-	CPU       []MetricsDataPoint       `json:"cpu"`    // millicores
-	Memory    []MetricsDataPoint       `json:"memory"` // bytes
-	Network   *NetworkMetrics          `json:"network"`
-	PodCount  []MetricsDataPoint       `json:"podCount"`
+	Namespace string             `json:"namespace"`
+	CPU       []MetricsDataPoint `json:"cpu"`    // millicores
+	Memory    []MetricsDataPoint `json:"memory"` // bytes
+	Network   *NetworkMetrics    `json:"network"`
+	PodCount  []MetricsDataPoint `json:"podCount"`
 }
 
 // ControllerMetricsHistory holds historical metrics for a controller (deployment, statefulset, etc.)
@@ -7081,12 +7081,12 @@ type PodCountMetrics struct {
 
 // NetworkMetrics holds network I/O metrics
 type NetworkMetrics struct {
-	ReceiveBytes     []MetricsDataPoint `json:"receiveBytes"`
-	TransmitBytes    []MetricsDataPoint `json:"transmitBytes"`
-	ReceivePackets   []MetricsDataPoint `json:"receivePackets"`
-	TransmitPackets  []MetricsDataPoint `json:"transmitPackets"`
-	ReceiveDropped   []MetricsDataPoint `json:"receiveDropped"`
-	TransmitDropped  []MetricsDataPoint `json:"transmitDropped"`
+	ReceiveBytes    []MetricsDataPoint `json:"receiveBytes"`
+	TransmitBytes   []MetricsDataPoint `json:"transmitBytes"`
+	ReceivePackets  []MetricsDataPoint `json:"receivePackets"`
+	TransmitPackets []MetricsDataPoint `json:"transmitPackets"`
+	ReceiveDropped  []MetricsDataPoint `json:"receiveDropped"`
+	TransmitDropped []MetricsDataPoint `json:"transmitDropped"`
 }
 
 // GetControllerMetricsHistory retrieves historical metrics for a controller
@@ -7434,7 +7434,7 @@ func (c *Client) queryRangeToDataPointsWithContext(ctx context.Context, contextN
 
 // NodeMetricsHistory holds historical metrics for a node
 type NodeMetricsHistory struct {
-	NodeName string              `json:"nodeName"`
+	NodeName string               `json:"nodeName"`
 	CPU      *NodeResourceMetrics `json:"cpu"`
 	Memory   *NodeResourceMetrics `json:"memory"`
 	Pods     *NodePodMetrics      `json:"pods"`

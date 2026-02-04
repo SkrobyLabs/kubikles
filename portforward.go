@@ -22,7 +22,7 @@ import (
 // PortForwardConfig represents a saved port forward configuration
 type PortForwardConfig struct {
 	ID           string    `json:"id"`
-	Context      string    `json:"context"`      // K8s context name
+	Context      string    `json:"context"` // K8s context name
 	Namespace    string    `json:"namespace"`
 	ResourceType string    `json:"resourceType"` // "pod" or "service"
 	ResourceName string    `json:"resourceName"`
@@ -49,11 +49,11 @@ type ActivePortForward struct {
 
 // PortForwardEvent is emitted when port forward status changes
 type PortForwardEvent struct {
-	Type     string            `json:"type"` // "started", "stopped", "error", "config_added", "config_removed", "config_updated"
-	ConfigID string            `json:"configId"`
+	Type     string             `json:"type"` // "started", "stopped", "error", "config_added", "config_removed", "config_updated"
+	ConfigID string             `json:"configId"`
 	Config   *PortForwardConfig `json:"config,omitempty"`
-	Status   string            `json:"status,omitempty"`
-	Error    string            `json:"error,omitempty"`
+	Status   string             `json:"status,omitempty"`
+	Error    string             `json:"error,omitempty"`
 }
 
 // PortForwardManager manages port forward configurations and active forwards
@@ -133,7 +133,7 @@ func (m *PortForwardManager) saveConfigs() error {
 		return fmt.Errorf("failed to marshal configs: %w", err)
 	}
 
-	if err := os.WriteFile(m.configPath, data, 0644); err != nil {
+	if err := os.WriteFile(m.configPath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -252,7 +252,7 @@ func (m *PortForwardManager) DeleteConfig(configID string) error {
 	// Stop if active
 	if af, isActive := m.active[configID]; isActive {
 		m.mutex.Unlock()
-		m.Stop(configID)
+		_ = m.Stop(configID) // Best-effort stop before delete
 		m.mutex.Lock()
 		_ = af // Silence unused warning
 	}
@@ -389,7 +389,7 @@ func (m *PortForwardManager) StopAll() {
 	m.mutex.RUnlock()
 
 	for _, id := range ids {
-		m.Stop(id)
+		_ = m.Stop(id) // Best-effort stop
 	}
 }
 
@@ -409,7 +409,7 @@ func (m *PortForwardManager) CleanupIngressConfigs(contextName string) {
 	// Delete outside lock to avoid deadlock (DeleteConfig acquires lock)
 	for _, id := range toDelete {
 		m.app.logDebug("PortForward: Cleaning up orphaned ingress config: %s", id)
-		m.DeleteConfig(id)
+		_ = m.DeleteConfig(id) // Best-effort cleanup
 	}
 }
 
@@ -428,7 +428,7 @@ func (m *PortForwardManager) StopAllAndSaveState() {
 	m.mutex.RUnlock()
 
 	for _, id := range ids {
-		m.stopInternal(id, false) // false = don't update wasRunning
+		_ = m.stopInternal(id, false) // false = don't update wasRunning
 	}
 }
 

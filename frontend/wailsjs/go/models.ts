@@ -1654,7 +1654,7 @@ export namespace main {
 	    total: number;
 	    pending: number;
 	    completed: number;
-	    cancelled: number;
+	    canceled: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ListRequestStats(source);
@@ -1665,7 +1665,7 @@ export namespace main {
 	        this.total = source["total"];
 	        this.pending = source["pending"];
 	        this.completed = source["completed"];
-	        this.cancelled = source["cancelled"];
+	        this.canceled = source["canceled"];
 	    }
 	}
 	export class LogChunkResult {
@@ -1686,7 +1686,7 @@ export namespace main {
 	    total: number;
 	    pending: number;
 	    completed: number;
-	    cancelled: number;
+	    canceled: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new MetricsRequestStats(source);
@@ -1697,7 +1697,7 @@ export namespace main {
 	        this.total = source["total"];
 	        this.pending = source["pending"];
 	        this.completed = source["completed"];
-	        this.cancelled = source["cancelled"];
+	        this.canceled = source["canceled"];
 	    }
 	}
 	export class NodeDebugPodResult {

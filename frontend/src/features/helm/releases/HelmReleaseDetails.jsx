@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { LockClosedIcon, ArrowUturnLeftIcon, ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import HelmReleaseInfoTab from './HelmReleaseInfoTab';
 import HelmReleaseHistoryTab from './HelmReleaseHistoryTab';
 import HelmReleaseValuesTab from './HelmReleaseValuesTab';

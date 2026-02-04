@@ -635,9 +635,6 @@ func TestFormatHexFingerprint(t *testing.T) {
 	}
 }
 
-
-
-
 // TestECDSACertificate tests parsing an ECDSA certificate
 func TestECDSACertificate(t *testing.T) {
 	// Generate ECDSA key
@@ -779,4 +776,3 @@ func TestParseAllCertInfoEmptyChain(t *testing.T) {
 		t.Error("Expected error for private key only input, got nil")
 	}
 }
-

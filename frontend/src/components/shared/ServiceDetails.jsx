@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { LockClosedIcon, SignalIcon, ClipboardDocumentIcon, CheckIcon, PlayIcon, StopIcon, TrashIcon, ArrowTopRightOnSquareIcon, PencilSquareIcon, ShareIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
-import { useK8s } from '../../context/K8sContext';
+import { useK8s } from '../../context';
 import { usePortForwards } from '../../hooks/usePortForwards';
-import { useUI } from '../../context/UIContext';
+import { useUI } from '../../context';
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
 import ServicePortForwardDialog from './ServicePortForwardDialog';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';

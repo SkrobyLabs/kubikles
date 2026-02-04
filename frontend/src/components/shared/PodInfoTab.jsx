@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
-import { useUI } from '../../context/UIContext';
-import { useK8s } from '../../context/K8sContext';
+import { useUI } from '../../context';
+import { useK8s } from '../../context';
 import { getPodController } from '../../utils/k8s-helpers';
 import { formatAge } from '../../utils/formatting';
 import { getOwnerViewId } from '../../utils/owner-navigation';

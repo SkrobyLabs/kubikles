@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import CSINodeActionsMenu from './CSINodeActionsMenu';
 import { useCSINodes } from '../../../hooks/resources';
 import { useCSINodeActions } from './useCSINodeActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteCSINode, GetCSINodeYaml } from '../../../../wailsjs/go/main/App';

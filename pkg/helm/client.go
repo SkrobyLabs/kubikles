@@ -43,10 +43,10 @@ type Release struct {
 // ReleaseDetail contains full release information including values
 type ReleaseDetail struct {
 	Release
-	Values        map[string]interface{} `json:"values"`
+	Values         map[string]interface{} `json:"values"`
 	ComputedValues map[string]interface{} `json:"computedValues"`
-	Notes         string                 `json:"notes"`
-	Manifest      string                 `json:"manifest"`
+	Notes          string                 `json:"notes"`
+	Manifest       string                 `json:"manifest"`
 }
 
 // ReleaseHistory represents a single revision in release history

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useConfig } from '../../../context/ConfigContext';
-import { useUI } from '../../../context/UIContext';
+import { useConfig } from '../../../context';
+import { useUI } from '../../../context';
 import { XMarkIcon, ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import ConfigSidebar from './ConfigSidebar';
 import ConfigSection from './ConfigSection';

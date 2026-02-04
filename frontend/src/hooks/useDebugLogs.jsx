@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useUI } from '../context/UIContext';
-import { useDebug } from '../context/DebugContext';
-import { useNotification } from '../context/NotificationContext';
+import { useUI } from '../context';
+import { useDebug } from '../context';
+import { useNotification } from '../context';
 import DebugLogViewer from '../components/shared/DebugLogViewer';
 import { SaveLogFile } from '../../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';

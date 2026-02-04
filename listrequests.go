@@ -12,7 +12,7 @@ type ListRequestStats struct {
 	Total     int64 `json:"total"`
 	Pending   int64 `json:"pending"`
 	Completed int64 `json:"completed"`
-	Cancelled int64 `json:"cancelled"`
+	Canceled  int64 `json:"canceled"`
 }
 
 // requestEntry tracks a single request with its sequence number
@@ -32,8 +32,8 @@ type ListRequestManager struct {
 
 	// Whether to actually cancel HTTP requests.
 	//
-	// Due to a Go HTTP/2 bug, cancelling requests can cause O(N²) performance collapse
-	// and connection pool issues. When a request is cancelled, sync.Cond.Broadcast() wakes
+	// Due to a Go HTTP/2 bug, canceling requests can cause O(N²) performance collapse
+	// and connection pool issues. When a request is canceled, sync.Cond.Broadcast() wakes
 	// up every goroutine waiting on the connection, causing severe slowdowns.
 	//
 	// When disabled, cancel() is not called - requests complete in background
@@ -46,7 +46,7 @@ type ListRequestManager struct {
 	total     atomic.Int64
 	pending   atomic.Int64
 	completed atomic.Int64
-	cancelled atomic.Int64
+	canceled  atomic.Int64
 }
 
 // DefaultListRequestTimeout is the default timeout for list requests
@@ -74,7 +74,7 @@ func (m *ListRequestManager) IsCancellationEnabled() bool {
 }
 
 // StartRequest creates a new cancellable context for a request.
-// If a request with the same ID exists, it will be cancelled first (if cancellation is enabled).
+// If a request with the same ID exists, it will be canceled first (if cancellation is enabled).
 // Returns the context to use and the sequence number for completing.
 func (m *ListRequestManager) StartRequest(requestId string) (context.Context, int64) {
 	m.mu.Lock()
@@ -86,8 +86,8 @@ func (m *ListRequestManager) StartRequest(requestId string) (context.Context, in
 		if m.cancellationEnabled.Load() {
 			entry.cancel()
 		}
-		// Always update stats - the request is logically cancelled even if HTTP continues
-		m.cancelled.Add(1)
+		// Always update stats - the request is logically canceled even if HTTP continues
+		m.canceled.Add(1)
 		m.pending.Add(-1)
 	}
 
@@ -132,7 +132,7 @@ func (m *ListRequestManager) CancelRequest(requestId string) bool {
 			entry.cancel()
 		}
 		delete(m.requests, requestId)
-		m.cancelled.Add(1)
+		m.canceled.Add(1)
 		m.pending.Add(-1)
 		return true
 	}
@@ -145,6 +145,6 @@ func (m *ListRequestManager) GetStats() ListRequestStats {
 		Total:     m.total.Load(),
 		Pending:   m.pending.Load(),
 		Completed: m.completed.Load(),
-		Cancelled: m.cancelled.Load(),
+		Canceled:  m.canceled.Load(),
 	}
 }

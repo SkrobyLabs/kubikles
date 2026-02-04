@@ -12,8 +12,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { usePortForwards } from '../../hooks/usePortForwards';
-import { useK8s } from '../../context/K8sContext';
-import { useUI } from '../../context/UIContext';
+import { useK8s } from '../../context';
+import { useUI } from '../../context';
 import PortForwardDialog from './PortForwardDialog';
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
 

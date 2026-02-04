@@ -6,7 +6,7 @@ import IngressActionsMenu from './IngressActionsMenu';
 import { useIngresses } from '../../../hooks/resources';
 import { useIngressActions } from './useIngressActions';
 import { useIngressForward } from '../../../hooks/useIngressForward';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteIngress, GetIngressYaml } from '../../../../wailsjs/go/main/App';

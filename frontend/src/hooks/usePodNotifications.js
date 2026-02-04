@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useNotification } from '../context/NotificationContext';
+import { useNotification } from '../context';
 import { NOTIFICATION_SOUNDS } from '../components/shared/NotificationSettingsMenu';
 
 /**

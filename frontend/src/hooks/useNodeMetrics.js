@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GetNodeMetrics, GetNodeMetricsFromPrometheus, DetectPrometheus } from '../../wailsjs/go/main/App';
-import { useK8s } from '../context/K8sContext';
-import { useConfig } from '../context/ConfigContext';
+import { useK8s } from '../context';
+import { useConfig } from '../context';
 
 export const useNodeMetrics = (isVisible, isReady = true, autoPoll = true) => {
     const [metrics, setMetrics] = useState({});

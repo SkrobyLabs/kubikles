@@ -1,0 +1,98 @@
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    # Default linters
+    - errcheck       # Check error returns are handled
+    - gosimple       # Simplify code suggestions
+    - govet          # Reports suspicious constructs
+    - ineffassign    # Detects ineffectual assignments
+    - staticcheck    # Static analysis checks
+    - unused         # Checks for unused code
+
+    # Formatting
+    - gofmt          # Check if code is gofmt-ed
+    - goimports      # Check imports are sorted/grouped
+
+    # Style
+    - misspell       # Finds commonly misspelled English words
+    - whitespace     # Detects leading/trailing whitespace
+
+    # Bugs
+    - bodyclose      # Checks HTTP response body is closed
+    - nilerr         # Finds code returning nil when err is not nil
+    - sqlclosecheck  # Checks sql.Rows/Stmt are closed
+    - nilnil         # Checks for (nil, nil) returns
+    - unparam        # Reports unused function parameters
+
+    # Security
+    - gosec          # Security-oriented linter
+
+    # Code quality
+    - gocritic       # Opinionated linter with many checks
+
+linters-settings:
+  errcheck:
+    exclude-functions:
+      - (io.Closer).Close
+      - (*os.File).Close
+      - (*os.File).Sync           # Best-effort flush in logging
+      - os.MkdirAll               # Will fail later if dir doesn't exist
+      - os.Rename                 # Log rotation - best effort
+      - (*sync.WaitGroup).Wait    # errgroup.Wait returns err but sync.WaitGroup doesn't
+      - (*golang.org/x/sync/errgroup.Group).Wait  # Often used fire-and-forget
+
+  goimports:
+    local-prefixes: kubikles
+
+  misspell:
+    locale: US
+    ignore-words:
+      - Maximised  # Wails API uses British spelling
+      - cancelled  # Common in Go ecosystem (context.Canceled is exception)
+      - cancelling
+
+  gocritic:
+    disabled-checks:
+      - ifElseChain    # Style preference, not a bug
+      - assignOp       # Style preference, not a bug
+      - elseif         # Style preference, not a bug
+
+  gosec:
+    excludes:
+      - G401  # SHA1 used for certificate fingerprints (display only)
+      - G505  # SHA1 import for above
+      - G404  # Weak random used for port selection (not security critical)
+
+issues:
+  exclude-rules:
+    # Ignore errcheck in tests
+    - path: _test\.go
+      linters:
+        - errcheck
+    # Ignore unused params in tests (test function signatures)
+    - path: _test\.go
+      linters:
+        - unparam
+    # Ignore file permissions in tests (test fixtures)
+    - path: _test\.go
+      linters:
+        - gosec
+      text: "G306"
+    # Allow deprecated v1.Endpoints API (still needed for older K8s clusters)
+    - linters:
+        - staticcheck
+      text: "SA1019:.*Endpoints is deprecated"
+    # Dependencies functions have consistent signatures for API uniformity
+    - path: pkg/k8s/dependencies\.go
+      linters:
+        - unparam
+    # Tool functions have consistent signatures for registry
+    - path: pkg/tools/tools\.go
+      linters:
+        - unparam
+    # Reflection-based method caller returns nil for not-found (not an error)
+    - path: pkg/server/api\.go
+      linters:
+        - nilnil

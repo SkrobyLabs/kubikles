@@ -317,7 +317,7 @@ func (m *ThemeManager) saveConfig() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(m.configPath, data, 0644)
+	return os.WriteFile(m.configPath, data, 0600)
 }
 
 // GetThemes returns all available themes (called from frontend)

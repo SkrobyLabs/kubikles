@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { ListEvents } from '../../../wailsjs/go/main/App';
-import { useK8s } from '../../context/K8sContext';
+import { useK8s } from '../../context';
 import { useResourceWatcher } from '../../hooks/useResourceWatcher';
 import { formatAge } from '../../utils/formatting';
 

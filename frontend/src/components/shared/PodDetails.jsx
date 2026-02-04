@@ -11,8 +11,8 @@ import {
     ShieldCheckIcon,
     DocumentDuplicateIcon
 } from '@heroicons/react/24/outline';
-import { useK8s } from '../../context/K8sContext';
-import { useUI } from '../../context/UIContext';
+import { useK8s } from '../../context';
+import { useUI } from '../../context';
 import { usePodActions } from '../../features/workloads/pods/usePodActions';
 import { ListPods } from '../../../wailsjs/go/main/App';
 import { getPodController } from '../../utils/k8s-helpers';

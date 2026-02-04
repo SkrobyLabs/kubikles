@@ -1,0 +1,66 @@
+package main
+
+import (
+	"kubikles/pkg/k8s"
+
+	"fmt"
+
+	appsv1 "k8s.io/api/apps/v1"
+)
+
+// =============================================================================
+// DaemonSets
+// =============================================================================
+
+func (a *App) ListDaemonSets(requestId, namespace string) ([]appsv1.DaemonSet, error) {
+	currentContext := a.GetCurrentContext()
+	a.logDebug("ListDaemonSets called: context=%s, ns=%s", currentContext, namespace)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListDaemonSetsWithContext(ctx, currentContext, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
+	}
+	return a.k8sClient.ListDaemonSets(currentContext, namespace)
+}
+
+func (a *App) GetDaemonSetYaml(namespace, name string) (string, error) {
+	a.logDebug("GetDaemonSetYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return "", fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetDaemonSetYaml(namespace, name)
+}
+
+func (a *App) UpdateDaemonSetYaml(namespace, name, yamlContent string) error {
+	a.logDebug("UpdateDaemonSetYaml called: ns=%s, name=%s", namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateDaemonSetYaml(namespace, name, yamlContent)
+}
+
+func (a *App) RestartDaemonSet(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.logDebug("RestartDaemonSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.RestartDaemonSet(currentContext, namespace, name)
+}
+
+func (a *App) DeleteDaemonSet(namespace, name string) error {
+	currentContext := a.GetCurrentContext()
+	a.logDebug("DeleteDaemonSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteDaemonSet(currentContext, namespace, name)
+}

@@ -1,0 +1,58 @@
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+// =============================================================================
+// Configuration
+// =============================================================================
+
+// SetEventCoalescerFrameInterval updates the frame interval for resource event batching.
+// Value is in milliseconds, clamped to 1-100ms. Default is 16ms (~60fps).
+// Lower values = more responsive but more CPU usage.
+// Higher values = less CPU usage but more latency.
+func (a *App) SetEventCoalescerFrameInterval(ms int) {
+	if a.eventCoalescer != nil {
+		a.eventCoalescer.SetFrameInterval(ms)
+	}
+}
+
+// SetK8sAPITimeout sets the timeout for Kubernetes API calls.
+// Accepts timeout in milliseconds. Default is 60000ms (60 seconds).
+func (a *App) SetK8sAPITimeout(ms int) {
+	if a.k8sClient != nil && ms > 0 {
+		a.k8sClient.SetAPITimeout(time.Duration(ms) * time.Millisecond)
+	}
+}
+
+// SetForceHTTP1 enables or disables forcing HTTP/1.1 instead of HTTP/2.
+// HTTP/1.1 opens multiple connections for parallel requests, avoiding
+// HTTP/2 flow control bottlenecks. Requires context switch to take effect.
+func (a *App) SetForceHTTP1(enabled bool) {
+	if a.k8sClient != nil {
+		a.k8sClient.SetForceHTTP1(enabled)
+		a.logDebug("Force HTTP/1.1: %v", enabled)
+	}
+}
+
+// SetClientPoolSize sets the number of clientsets in the rotation pool.
+// More clients = more parallel HTTP/2 connections. Set to 0 to disable pooling.
+// Requires context switch to take effect.
+func (a *App) SetClientPoolSize(size int) {
+	if a.k8sClient != nil {
+		a.k8sClient.SetClientPoolSize(size)
+		a.logDebug("Client pool size: %d", size)
+	}
+}
+
+// Greet returns a greeting for the given name
+func (a *App) Greet(name string) string {
+	return fmt.Sprintf("Hello %s, It's show time!", name)
+}
+
+// TestEmit emits a test debug log event
+func (a *App) TestEmit() {
+	a.logDebug("TestEmit called from frontend")
+}

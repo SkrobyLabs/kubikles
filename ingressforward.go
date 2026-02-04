@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+
 	"kubikles/pkg/hosts"
 )
 
@@ -354,7 +355,7 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 	// Start port forwards
 	for _, id := range portForwardIDs {
 		if err := m.app.portForwardManager.Start(id); err != nil {
-			m.Stop() // Cleanup
+			_ = m.Stop() // Cleanup on error
 			m.setError(fmt.Sprintf("failed to start port forward: %v", err))
 			return err
 		}
@@ -418,8 +419,8 @@ func (m *IngressForwardManager) Stop() error {
 		if err := m.app.portForwardManager.Stop(id); err != nil {
 			m.app.logDebug("IngressForward: Failed to stop port forward %s: %v", id, err)
 		}
-		// Delete the config too
-		m.app.portForwardManager.DeleteConfig(id)
+		// Delete the config too (best-effort cleanup)
+		_ = m.app.portForwardManager.DeleteConfig(id)
 	}
 
 	// Clean up hosts file
@@ -515,6 +516,6 @@ func (m *IngressForwardManager) Cleanup() {
 	m.mutex.RUnlock()
 
 	if active {
-		m.Stop()
+		_ = m.Stop() // Best-effort cleanup
 	}
 }

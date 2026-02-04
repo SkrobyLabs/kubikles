@@ -1,7 +1,7 @@
 import React from 'react';
-import { useUI } from '../../../context/UIContext';
-import { useK8s } from '../../../context/K8sContext';
-import { useNotification } from '../../../context/NotificationContext';
+import { useUI } from '../../../context';
+import { useK8s } from '../../../context';
+import { useNotification } from '../../../context';
 import { DeleteSecret } from '../../../../wailsjs/go/main/App';
 import SecretEditor from '../../../components/shared/SecretEditor';
 import { LazyDependencyGraph as DependencyGraph } from '../../../components/lazy';

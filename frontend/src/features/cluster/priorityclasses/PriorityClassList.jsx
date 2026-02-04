@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import PriorityClassActionsMenu from './PriorityClassActionsMenu';
 import { usePriorityClasses } from '../../../hooks/resources';
 import { usePriorityClassActions } from './usePriorityClassActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeletePriorityClass, GetPriorityClassYaml } from '../../../../wailsjs/go/main/App';

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ChartBarIcon, CheckCircleIcon, XCircleIcon, ArrowPathIcon, ServerStackIcon, ArrowTopRightOnSquareIcon, CpuChipIcon } from '@heroicons/react/24/outline';
 import { GetNodeMetrics, DetectPrometheus, ListPrometheusInstalls, TestPrometheusEndpoint, SavePrometheusConfig, ClearPrometheusConfig, AddPortForwardConfig, StartPortForward, GetRandomAvailablePort, GetPortForwardConfigs, GetActivePortForwards } from '../../../../wailsjs/go/main/App';
 import { BrowserOpenURL } from '../../../../wailsjs/runtime/runtime';
-import { useK8s } from '../../../context/K8sContext';
-import { useConfig } from '../../../context/ConfigContext';
+import { useK8s } from '../../../context';
+import { useConfig } from '../../../context';
 import SourceSelect, { sourceOptions } from '../../../components/shared/SourceSelect';
 
 export default function MetricsList({ isVisible }) {

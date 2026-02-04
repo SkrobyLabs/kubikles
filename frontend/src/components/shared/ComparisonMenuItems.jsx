@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowsRightLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { useUI } from '../../context/UIContext';
-import { useK8s } from '../../context/K8sContext';
+import { useUI } from '../../context';
+import { useK8s } from '../../context';
 
 /**
  * Comparison menu items for resource action menus.

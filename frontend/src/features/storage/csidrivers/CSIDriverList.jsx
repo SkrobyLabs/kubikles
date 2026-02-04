@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import CSIDriverActionsMenu from './CSIDriverActionsMenu';
 import { useCSIDrivers } from '../../../hooks/resources';
 import { useCSIDriverActions } from './useCSIDriverActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteCSIDriver, GetCSIDriverYaml } from '../../../../wailsjs/go/main/App';

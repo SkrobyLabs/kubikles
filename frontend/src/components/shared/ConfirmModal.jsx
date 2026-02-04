@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { useUI } from '../../context/UIContext';
+import { useUI } from '../../context';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 export default function ConfirmModal() {

@@ -59,7 +59,7 @@ func (c *ClaudeCLIProvider) Capabilities() ProviderCapabilities {
 	return ProviderCapabilities{
 		SupportsStreaming: true,
 		SupportsSessions:  true,
-		SupportedTools:    nil, // nil means all tools supported
+		SupportedTools:    nil,    // nil means all tools supported
 		MaxContextLength:  200000, // Claude models support large context
 	}
 }

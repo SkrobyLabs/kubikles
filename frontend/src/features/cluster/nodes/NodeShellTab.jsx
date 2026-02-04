@@ -5,7 +5,7 @@ import {
     DeletePod,
     ListPods
 } from '../../../../wailsjs/go/main/App';
-import { useConfig } from '../../../context/ConfigContext';
+import { useConfig } from '../../../context';
 import Logger from '../../../utils/Logger';
 
 // Preset debug images

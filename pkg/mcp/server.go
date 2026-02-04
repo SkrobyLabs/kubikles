@@ -4,9 +4,10 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"os"
+
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/tools"
-	"os"
 )
 
 // Server implements an MCP JSON-RPC 2.0 server over stdin/stdout.

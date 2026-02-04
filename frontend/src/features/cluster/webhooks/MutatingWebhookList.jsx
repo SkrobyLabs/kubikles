@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import MutatingWebhookActionsMenu from './MutatingWebhookActionsMenu';
 import { useMutatingWebhookConfigurations } from '../../../hooks/resources';
 import { useMutatingWebhookActions } from './useMutatingWebhookActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteMutatingWebhookConfiguration, GetMutatingWebhookConfigurationYaml } from '../../../../wailsjs/go/main/App';

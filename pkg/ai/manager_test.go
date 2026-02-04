@@ -235,7 +235,7 @@ func TestManager_CancelRequest(t *testing.T) {
 	provider := NewMockProvider()
 	provider.SetSupportsSession(false)
 
-	// Block in SendMessage until context is cancelled
+	// Block in SendMessage until context is canceled
 	sendStarted := make(chan struct{})
 	provider.SetSendMessageFunc(func(ctx context.Context, req Request, onChunk func(StreamEvent)) error {
 		close(sendStarted)

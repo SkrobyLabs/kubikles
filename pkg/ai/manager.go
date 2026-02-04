@@ -27,7 +27,7 @@ type AIResponseEvent struct {
 // session tracks a single AI chat session.
 type session struct {
 	id           string
-	clientID     string    // WebSocket client that owns this session (for cleanup on disconnect)
+	clientID     string // WebSocket client that owns this session (for cleanup on disconnect)
 	cancel       context.CancelFunc
 	generation   uint64    // incremented per SendMessage to detect stale events
 	hasHistory   bool      // true after first message sent
@@ -139,7 +139,8 @@ func (m *Manager) SendMessage(sessionID, message, systemPrompt, model, k8sContex
 
 // sendMessagePersistent uses a persistent CLI session for fast message sending.
 // Returns true if the message was successfully queued for sending.
-func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, systemPrompt, model, k8sContext string, allowedTools []string, timeoutSeconds int) bool {
+// Note: timeoutSeconds is unused for persistent sessions (they handle timeouts internally)
+func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, systemPrompt, model, k8sContext string, allowedTools []string, _ int) bool {
 	m.mu.Lock()
 	sess.generation++
 

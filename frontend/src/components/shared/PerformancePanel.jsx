@@ -399,7 +399,7 @@ export default function PerformancePanel({
                                 )}
                             </div>
                             <p className="text-xs text-gray-600 mt-2">
-                                Hot watchers (>1 event/s) are highlighted in red. Warm watchers (>0.1 event/s) in yellow.
+                                Hot watchers (&gt;1 event/s) are highlighted in red. Warm watchers (&gt;0.1 event/s) in yellow.
                             </p>
                         </div>
                     </>

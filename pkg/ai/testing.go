@@ -7,16 +7,16 @@ import (
 
 // MockProvider is a test double for AI providers.
 type MockProvider struct {
-	name               string
-	available          bool
-	availableStatus    string
-	supportsSession    bool
-	capabilities       ProviderCapabilities
-	sendMessageFunc    func(ctx context.Context, req Request, onChunk func(StreamEvent)) error
-	startSessionFunc   func(sessionID, systemPrompt, model, k8sContext string, allowedTools []string, onEvent func(StreamEvent)) (Session, error)
-	mu                 sync.Mutex
-	sendMessageCalls   []Request
-	startSessionCalls  []mockStartSessionCall
+	name              string
+	available         bool
+	availableStatus   string
+	supportsSession   bool
+	capabilities      ProviderCapabilities
+	sendMessageFunc   func(ctx context.Context, req Request, onChunk func(StreamEvent)) error
+	startSessionFunc  func(sessionID, systemPrompt, model, k8sContext string, allowedTools []string, onEvent func(StreamEvent)) (Session, error)
+	mu                sync.Mutex
+	sendMessageCalls  []Request
+	startSessionCalls []mockStartSessionCall
 }
 
 type mockStartSessionCall struct {

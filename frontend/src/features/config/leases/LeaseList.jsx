@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import LeaseActionsMenu from './LeaseActionsMenu';
 import { useLeases } from '../../../hooks/resources';
 import { useLeaseActions } from './useLeaseActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteLease, GetLeaseYaml } from '../../../../wailsjs/go/main/App';

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useMenu } from '../context/MenuContext';
+import { useMenu } from '../context';
 
 /**
  * Hook for managing dropdown menu positioning with edge detection.

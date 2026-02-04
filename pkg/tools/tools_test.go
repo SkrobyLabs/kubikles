@@ -186,10 +186,10 @@ func TestStrArg(t *testing.T) {
 		expected string
 	}{
 		{"str_key", "value"},
-		{"int_key", ""},        // non-string type returns empty
-		{"float_key", ""},      // non-string type returns empty
-		{"nil_key", ""},        // nil returns empty
-		{"missing_key", ""},    // missing key returns empty
+		{"int_key", ""},     // non-string type returns empty
+		{"float_key", ""},   // non-string type returns empty
+		{"nil_key", ""},     // nil returns empty
+		{"missing_key", ""}, // missing key returns empty
 	}
 
 	for _, tt := range tests {
@@ -211,15 +211,15 @@ func TestIntArg(t *testing.T) {
 	}
 
 	tests := []struct {
-		key         string
-		defaultVal  int
-		expected    int
+		key        string
+		defaultVal int
+		expected   int
 	}{
-		{"float_key", 0, 42},        // float64 converted to int
-		{"int_key", 0, 100},         // int returned directly
-		{"str_key", 5, 5},           // non-numeric returns default
-		{"nil_key", 10, 10},         // nil returns default
-		{"missing_key", 25, 25},     // missing returns default
+		{"float_key", 0, 42},    // float64 converted to int
+		{"int_key", 0, 100},     // int returned directly
+		{"str_key", 5, 5},       // non-numeric returns default
+		{"nil_key", 10, 10},     // nil returns default
+		{"missing_key", 25, 25}, // missing returns default
 	}
 
 	for _, tt := range tests {

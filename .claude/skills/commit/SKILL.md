@@ -1,6 +1,7 @@
 ---
 name: commit
 description: Create well-formatted git commits. Use when committing changes, creating commits, or preparing code for commit.
+model: haiku
 disable-model-invocation: true
 allowed-tools: Bash, Read
 ---

@@ -111,9 +111,20 @@ func (s *Session) Resize(cols, rows int) error {
 		return nil
 	default:
 	}
+	// Clamp to valid uint16 range to prevent overflow
+	if cols < 1 {
+		cols = 80
+	} else if cols > 65535 {
+		cols = 65535
+	}
+	if rows < 1 {
+		rows = 24
+	} else if rows > 65535 {
+		rows = 65535
+	}
 	return pty.Setsize(s.pty, &pty.Winsize{
-		Cols: uint16(cols),
-		Rows: uint16(rows),
+		Cols: uint16(cols), //nolint:gosec // bounds checked above
+		Rows: uint16(rows), //nolint:gosec // bounds checked above
 	})
 }
 

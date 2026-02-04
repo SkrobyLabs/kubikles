@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import IngressClassActionsMenu from './IngressClassActionsMenu';
 import { useIngressClasses } from '../../../hooks/resources';
 import { useIngressClassActions } from './useIngressClassActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteIngressClass, GetIngressClassYaml } from '../../../../wailsjs/go/main/App';

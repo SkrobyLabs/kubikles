@@ -3,7 +3,7 @@ import ConfigField from './fields/ConfigField';
 import ConfigFieldGroup from './ConfigFieldGroup';
 import { configSchema, isModified } from '../../../config/configSchema';
 import { GetCrashLogPath, OpenCrashLogDir } from '../../../../wailsjs/go/main/App';
-import { useTheme } from '../../../context/ThemeContext';
+import { useTheme } from '../../../context';
 
 // Async value sources
 const asyncSources = {

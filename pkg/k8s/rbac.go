@@ -14,7 +14,7 @@ import (
 
 // RBACCheckRequest specifies what permission to check
 type RBACCheckRequest struct {
-	SubjectKind      string `json:"subjectKind"`      // "ServiceAccount", "User", "Group"
+	SubjectKind      string `json:"subjectKind"` // "ServiceAccount", "User", "Group"
 	SubjectName      string `json:"subjectName"`
 	SubjectNamespace string `json:"subjectNamespace"` // For ServiceAccounts only
 	Verb             string `json:"verb"`             // "get", "list", "create", "delete", etc.
@@ -33,7 +33,7 @@ type RBACCheckResult struct {
 
 // RBACChainLink represents a step in the RBAC chain
 type RBACChainLink struct {
-	Kind      string `json:"kind"`      // "ClusterRole", "Role", "ClusterRoleBinding", "RoleBinding"
+	Kind      string `json:"kind"` // "ClusterRole", "Role", "ClusterRoleBinding", "RoleBinding"
 	Name      string `json:"name"`
 	Namespace string `json:"namespace,omitempty"`
 	Grants    bool   `json:"grants"` // true if this link grants the permission

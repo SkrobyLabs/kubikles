@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowUturnLeftIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { GetHelmReleaseHistory, RollbackHelmRelease } from '../../../../wailsjs/go/main/App';
-import { useK8s } from '../../../context/K8sContext';
-import { useUI } from '../../../context/UIContext';
-import { useNotification } from '../../../context/NotificationContext';
+import { useK8s } from '../../../context';
+import { useUI } from '../../../context';
+import { useNotification } from '../../../context';
 import Logger from '../../../utils/Logger';
 
 const formatDate = (timestamp) => {

@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
 import { useCommandPaletteItems } from '../../hooks/useCommandPaletteItems';
-import { useUI } from '../../context/UIContext';
-import { useConfig } from '../../context/ConfigContext';
+import { useUI } from '../../context';
+import { useConfig } from '../../context';
 import { usePerformancePanel } from '../../hooks/usePerformancePanel';
 import { useDebugLogs } from '../../hooks/useDebugLogs';
 

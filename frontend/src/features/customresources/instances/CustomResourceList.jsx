@@ -3,7 +3,7 @@ import ResourceList from '../../../components/shared/ResourceList';
 import BulkActionModal from '../../../components/shared/BulkActionModal';
 import { useCustomResources } from '../../../hooks/useCustomResources';
 import { useCRDPrinterColumns } from '../../../hooks/useCRDPrinterColumns';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteCustomResource, GetCustomResourceYaml } from '../../../../wailsjs/go/main/App';

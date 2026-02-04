@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { CheckRBACAccess } from '../../../wailsjs/go/main/App';
-import { useK8s } from '../../context/K8sContext';
+import { useK8s } from '../../context';
 import Tooltip from '../../components/shared/Tooltip';
 import SearchSelect from '../../components/shared/SearchSelect';
 import {

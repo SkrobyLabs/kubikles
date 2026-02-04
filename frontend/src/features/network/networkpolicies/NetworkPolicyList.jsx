@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import NetworkPolicyActionsMenu from './NetworkPolicyActionsMenu';
 import { useNetworkPolicies } from '../../../hooks/resources';
 import { useNetworkPolicyActions } from './useNetworkPolicyActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteNetworkPolicy, GetNetworkPolicyYaml } from '../../../../wailsjs/go/main/App';

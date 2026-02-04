@@ -387,24 +387,24 @@ func TestValidateHostname_Valid(t *testing.T) {
 
 func TestValidateHostname_Invalid(t *testing.T) {
 	invalidHostnames := []string{
-		"",                           // empty
-		"foo\"; rm -rf / #",          // command injection
-		"foo$(whoami)",               // command substitution
-		"foo`id`",                    // backtick execution
-		"foo'bar",                    // single quote
-		"foo\"bar",                   // double quote
-		"foo;bar",                    // semicolon
-		"foo|bar",                    // pipe
-		"foo&bar",                    // ampersand
-		"foo>bar",                    // redirect
-		"foo<bar",                    // redirect
-		"foo bar",                    // space
-		"foo\tbar",                   // tab
-		"foo\nbar",                   // newline
-		"-startswithhyphen.com",      // starts with hyphen
-		".startwithdot.com",          // starts with dot
-		"endswithhyphen-.com",        // label ends with hyphen
-		string(make([]byte, 254)),    // too long (254 chars)
+		"",                        // empty
+		"foo\"; rm -rf / #",       // command injection
+		"foo$(whoami)",            // command substitution
+		"foo`id`",                 // backtick execution
+		"foo'bar",                 // single quote
+		"foo\"bar",                // double quote
+		"foo;bar",                 // semicolon
+		"foo|bar",                 // pipe
+		"foo&bar",                 // ampersand
+		"foo>bar",                 // redirect
+		"foo<bar",                 // redirect
+		"foo bar",                 // space
+		"foo\tbar",                // tab
+		"foo\nbar",                // newline
+		"-startswithhyphen.com",   // starts with hyphen
+		".startwithdot.com",       // starts with dot
+		"endswithhyphen-.com",     // label ends with hyphen
+		string(make([]byte, 254)), // too long (254 chars)
 	}
 	for _, h := range invalidHostnames {
 		if err := ValidateHostname(h); err == nil {

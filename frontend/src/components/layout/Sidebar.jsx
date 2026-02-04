@@ -41,8 +41,8 @@ import {
     BugAntIcon,
     SparklesIcon
 } from '@heroicons/react/24/outline';
-import { useConfig } from '../../context/ConfigContext';
-import { useAIChat } from '../../context/AIChatContext';
+import { useConfig } from '../../context';
+import { useAIChat } from '../../context';
 import { usePerformancePanel } from '../../hooks/usePerformancePanel.jsx';
 import { useDebugLogs } from '../../hooks/useDebugLogs.jsx';
 import SearchSelect from '../shared/SearchSelect';

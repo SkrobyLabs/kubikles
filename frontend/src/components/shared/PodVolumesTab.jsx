@@ -1,5 +1,5 @@
 import React from 'react';
-import { useUI } from '../../context/UIContext';
+import { useUI } from '../../context';
 
 // Volume type badge
 const VolumeTypeBadge = ({ type }) => {

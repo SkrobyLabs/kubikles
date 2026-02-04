@@ -1,7 +1,7 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch profile build-pgo
+.PHONY: help dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch lint lint-go lint-fix fmt profile build-pgo
 
 .DEFAULT_GOAL := help
 
@@ -43,6 +43,12 @@ help:
 	@echo "  test               Run all tests"
 	@echo "  test-frontend      Run frontend tests"
 	@echo "  test-watch         Run frontend tests in watch mode"
+	@echo ""
+	@echo "Linting:"
+	@echo "  lint               Run all linters"
+	@echo "  lint-go            Run Go linter (golangci-lint)"
+	@echo "  lint-fix           Run Go linter with auto-fix"
+	@echo "  fmt                Format Go code (gofmt + goimports)"
 	@echo ""
 	@echo "Profile-Guided Optimization:"
 	@echo "  profile            Collect CPU profile for PGO optimization"
@@ -198,6 +204,26 @@ test-frontend:
 # Run frontend tests in watch mode
 test-watch:
 	cd frontend && npm run test:watch
+
+# ===========================================
+# Linting
+# ===========================================
+
+# Run all linters
+lint: lint-go
+
+# Run Go linter (install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
+lint-go:
+	golangci-lint run ./...
+
+# Run Go linter with auto-fix
+lint-fix:
+	golangci-lint run --fix ./...
+
+# Format Go code
+fmt:
+	gofmt -w .
+	goimports -w .
 
 # ===========================================
 # Profile-Guided Optimization (PGO)

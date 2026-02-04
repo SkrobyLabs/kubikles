@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { GetAllPodLogs, SavePodLogs, SaveLogsBundle } from '../../../../wailsjs/go/main/App';
-import { useK8s } from '../../../context/K8sContext';
-import { useDebug } from '../../../context/DebugContext';
-import { useConfig } from '../../../context/ConfigContext';
+import { useK8s } from '../../../context';
+import { useDebug } from '../../../context';
+import { useConfig } from '../../../context';
 import {
     ArrowDownTrayIcon,
     ArchiveBoxArrowDownIcon,

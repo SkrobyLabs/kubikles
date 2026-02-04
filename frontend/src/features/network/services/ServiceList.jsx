@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import ServiceActionsMenu from './ServiceActionsMenu';
 import { useServices } from '../../../hooks/resources';
 import { useServiceActions } from './useServiceActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteService, GetServiceYaml } from '../../../../wailsjs/go/main/App';

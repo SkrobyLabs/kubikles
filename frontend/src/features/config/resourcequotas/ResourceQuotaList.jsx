@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import ResourceQuotaActionsMenu from './ResourceQuotaActionsMenu';
 import { useResourceQuotas } from '../../../hooks/resources';
 import { useResourceQuotaActions } from './useResourceQuotaActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteResourceQuota, GetResourceQuotaYaml } from '../../../../wailsjs/go/main/App';

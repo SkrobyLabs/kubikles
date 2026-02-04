@@ -16,7 +16,7 @@ func TestNewListRequestManager(t *testing.T) {
 	}
 
 	stats := m.GetStats()
-	if stats.Total != 0 || stats.Pending != 0 || stats.Completed != 0 || stats.Cancelled != 0 {
+	if stats.Total != 0 || stats.Pending != 0 || stats.Completed != 0 || stats.Canceled != 0 {
 		t.Errorf("expected all stats to be 0, got %+v", stats)
 	}
 }
@@ -33,7 +33,7 @@ func TestStartRequest_CreatesContext(t *testing.T) {
 		t.Errorf("expected sequence 1, got %d", seq)
 	}
 
-	// Context should not be cancelled yet
+	// Context should not be canceled yet
 	select {
 	case <-ctx.Done():
 		t.Error("context should not be done yet")
@@ -65,12 +65,12 @@ func TestStartRequest_SameIDCancelsPrevious(t *testing.T) {
 		t.Errorf("expected sequence 2, got %d", seq2)
 	}
 
-	// First context should be cancelled
+	// First context should be canceled
 	select {
 	case <-ctx1.Done():
-		// good - context was cancelled
+		// good - context was canceled
 	default:
-		t.Error("first context should be cancelled")
+		t.Error("first context should be canceled")
 	}
 
 	// Second context should still be active
@@ -88,8 +88,8 @@ func TestStartRequest_SameIDCancelsPrevious(t *testing.T) {
 	if stats.Pending != 1 {
 		t.Errorf("expected Pending=1, got %d", stats.Pending)
 	}
-	if stats.Cancelled != 1 {
-		t.Errorf("expected Cancelled=1, got %d", stats.Cancelled)
+	if stats.Canceled != 1 {
+		t.Errorf("expected Canceled=1, got %d", stats.Canceled)
 	}
 }
 
@@ -184,22 +184,22 @@ func TestCancelRequest_Exists(t *testing.T) {
 
 	ctx, _ := m.StartRequest("test-1")
 
-	cancelled := m.CancelRequest("test-1")
-	if !cancelled {
+	canceled := m.CancelRequest("test-1")
+	if !canceled {
 		t.Error("CancelRequest should return true for existing request")
 	}
 
-	// Context should be cancelled
+	// Context should be canceled
 	select {
 	case <-ctx.Done():
 		// good
 	default:
-		t.Error("context should be cancelled")
+		t.Error("context should be canceled")
 	}
 
 	stats := m.GetStats()
-	if stats.Cancelled != 1 {
-		t.Errorf("expected Cancelled=1, got %d", stats.Cancelled)
+	if stats.Canceled != 1 {
+		t.Errorf("expected Canceled=1, got %d", stats.Canceled)
 	}
 	if stats.Pending != 0 {
 		t.Errorf("expected Pending=0, got %d", stats.Pending)
@@ -209,14 +209,14 @@ func TestCancelRequest_Exists(t *testing.T) {
 func TestCancelRequest_NonExistent(t *testing.T) {
 	m := NewListRequestManager()
 
-	cancelled := m.CancelRequest("non-existent")
-	if cancelled {
+	canceled := m.CancelRequest("non-existent")
+	if canceled {
 		t.Error("CancelRequest should return false for non-existent request")
 	}
 
 	stats := m.GetStats()
-	if stats.Cancelled != 0 {
-		t.Errorf("expected Cancelled=0, got %d", stats.Cancelled)
+	if stats.Canceled != 0 {
+		t.Errorf("expected Canceled=0, got %d", stats.Canceled)
 	}
 }
 
@@ -227,14 +227,14 @@ func TestCancelRequest_AlreadyCancelled(t *testing.T) {
 	m.CancelRequest("test-1")
 
 	// Try to cancel again
-	cancelled := m.CancelRequest("test-1")
-	if cancelled {
-		t.Error("CancelRequest should return false for already cancelled request")
+	canceled := m.CancelRequest("test-1")
+	if canceled {
+		t.Error("CancelRequest should return false for already canceled request")
 	}
 
 	stats := m.GetStats()
-	if stats.Cancelled != 1 {
-		t.Errorf("expected Cancelled=1, got %d", stats.Cancelled)
+	if stats.Canceled != 1 {
+		t.Errorf("expected Canceled=1, got %d", stats.Canceled)
 	}
 }
 
@@ -296,21 +296,21 @@ func TestConcurrentAccess(t *testing.T) {
 		t.Errorf("expected Total=%d, got %d", numGoroutines, stats.Total)
 	}
 
-	// Pending should be 0 (all requests either completed or cancelled)
+	// Pending should be 0 (all requests either completed or canceled)
 	if stats.Pending != 0 {
 		t.Errorf("expected Pending=0, got %d", stats.Pending)
 	}
 
-	// Completed + Cancelled should account for all requests
+	// Completed + Canceled should account for all requests
 	// Note: some completes may fail due to sequence mismatch, so we can't be exact
-	t.Logf("Stats after concurrent test: Total=%d, Pending=%d, Completed=%d, Cancelled=%d",
-		stats.Total, stats.Pending, stats.Completed, stats.Cancelled)
+	t.Logf("Stats after concurrent test: Total=%d, Pending=%d, Completed=%d, Canceled=%d",
+		stats.Total, stats.Pending, stats.Completed, stats.Canceled)
 }
 
 func TestRaceCondition_OldRequestCompletesAfterNew(t *testing.T) {
 	// This test simulates the race condition where:
 	// 1. Request A starts (seq=1)
-	// 2. Request B starts with same ID (seq=2), cancelling A
+	// 2. Request B starts with same ID (seq=2), canceling A
 	// 3. Request A's goroutine tries to complete with seq=1
 	// 4. This should be rejected because seq doesn't match
 
@@ -322,10 +322,10 @@ func TestRaceCondition_OldRequestCompletesAfterNew(t *testing.T) {
 	// Start request B (cancels A)
 	_, seqB := m.StartRequest("test")
 
-	// Verify A was cancelled
+	// Verify A was canceled
 	stats := m.GetStats()
-	if stats.Cancelled != 1 {
-		t.Errorf("expected Cancelled=1 after second StartRequest, got %d", stats.Cancelled)
+	if stats.Canceled != 1 {
+		t.Errorf("expected Canceled=1 after second StartRequest, got %d", stats.Canceled)
 	}
 
 	// Try to complete with A's sequence (should be rejected)
@@ -378,16 +378,16 @@ func TestStatsConsistency(t *testing.T) {
 	m.CancelRequest("request-D")
 
 	stats = m.GetStats()
-	if stats.Cancelled != 2 || stats.Pending != 1 {
-		t.Errorf("after 2 cancels: expected Cancelled=2, Pending=1, got Cancelled=%d, Pending=%d", stats.Cancelled, stats.Pending)
+	if stats.Canceled != 2 || stats.Pending != 1 {
+		t.Errorf("after 2 cancels: expected Canceled=2, Pending=1, got Canceled=%d, Pending=%d", stats.Canceled, stats.Pending)
 	}
 
 	// Replace E with new request (same ID)
 	m.StartRequest("request-E")
 
 	stats = m.GetStats()
-	if stats.Total != 6 || stats.Cancelled != 3 || stats.Pending != 1 {
-		t.Errorf("after replacement: expected Total=6, Cancelled=3, Pending=1, got Total=%d, Cancelled=%d, Pending=%d",
-			stats.Total, stats.Cancelled, stats.Pending)
+	if stats.Total != 6 || stats.Canceled != 3 || stats.Pending != 1 {
+		t.Errorf("after replacement: expected Total=6, Canceled=3, Pending=1, got Total=%d, Canceled=%d, Pending=%d",
+			stats.Total, stats.Canceled, stats.Pending)
 	}
 }

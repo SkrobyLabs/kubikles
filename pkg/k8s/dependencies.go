@@ -40,11 +40,11 @@ var (
 // resourceCache provides request-scoped caching for Kubernetes resources
 // to avoid duplicate API calls within a single GetResourceDependencies call
 type resourceCache struct {
-	pods         map[string][]v1.Pod               // namespace -> pods
-	services     map[string][]v1.Service           // namespace -> services
-	ingresses    map[string][]networkingv1.Ingress // namespace -> ingresses
-	replicaSets  map[string][]appsv1.ReplicaSet    // namespace -> replicasets
-	jobs         map[string][]batchv1.Job          // namespace -> jobs
+	pods        map[string][]v1.Pod               // namespace -> pods
+	services    map[string][]v1.Service           // namespace -> services
+	ingresses   map[string][]networkingv1.Ingress // namespace -> ingresses
+	replicaSets map[string][]appsv1.ReplicaSet    // namespace -> replicasets
+	jobs        map[string][]batchv1.Job          // namespace -> jobs
 	// Name-indexed maps for O(1) lookups by name
 	podsByName        map[string]map[string]*v1.Pod            // namespace -> name -> pod
 	replicaSetsByName map[string]map[string]*appsv1.ReplicaSet // namespace -> name -> replicaset
@@ -103,7 +103,7 @@ func (rc *resourceCache) getPodByName(namespace, name string) (*v1.Pod, error) {
 	if nameIndex, ok := rc.podsByName[namespace]; ok {
 		return nameIndex[name], nil
 	}
-	return nil, nil
+	return nil, nil //nolint:nilnil // nil means "not found", not an error
 }
 
 func (rc *resourceCache) getServices(namespace string) ([]v1.Service, error) {
@@ -159,7 +159,7 @@ func (rc *resourceCache) getReplicaSetByName(namespace, name string) (*appsv1.Re
 	if rs, ok := rc.replicaSetsByName[namespace][name]; ok {
 		return rs, nil
 	}
-	return nil, nil
+	return nil, nil //nolint:nilnil // nil means "not found", not an error
 }
 
 func (rc *resourceCache) getJobs(namespace string) ([]batchv1.Job, error) {
@@ -191,7 +191,7 @@ func (rc *resourceCache) getJobByName(namespace, name string) (*batchv1.Job, err
 	if job, ok := rc.jobsByName[namespace][name]; ok {
 		return job, nil
 	}
-	return nil, nil
+	return nil, nil //nolint:nilnil // nil means "not found", not an error
 }
 
 // getAllPods returns all pods cluster-wide with caching
@@ -232,8 +232,8 @@ type DependencyNode struct {
 	Namespace string `json:"namespace,omitempty"`
 	Status    string `json:"status,omitempty"`
 	// Summary node fields
-	IsSummary      bool `json:"isSummary,omitempty"`
-	RemainingCount int  `json:"remainingCount,omitempty"`
+	IsSummary      bool   `json:"isSummary,omitempty"`
+	RemainingCount int    `json:"remainingCount,omitempty"`
 	ParentID       string `json:"parentId,omitempty"` // For expansion context
 }
 
@@ -250,43 +250,8 @@ type DependencyGraph struct {
 	Edges []DependencyEdge `json:"edges"`
 }
 
-// limiterKey is a struct key for NodeLimiter maps (avoids string concat allocations)
-type limiterKey struct{ parentID, kind string }
-
-// NodeLimiter tracks how many nodes of each type have been added per parent
-type NodeLimiter struct {
-	counts  map[limiterKey]int
-	limit   int
-	skipped map[limiterKey][]DependencyNode
-}
-
 const DefaultNodeLimit = 5
 const ExpansionLimit = 10
-
-func newNodeLimiter(limit int) *NodeLimiter {
-	return &NodeLimiter{
-		counts:  make(map[limiterKey]int),
-		limit:   limit,
-		skipped: make(map[limiterKey][]DependencyNode),
-	}
-}
-
-func (l *NodeLimiter) canAdd(parentID, kind string) bool {
-	return l.counts[limiterKey{parentID, kind}] < l.limit
-}
-
-func (l *NodeLimiter) add(parentID, kind string) {
-	l.counts[limiterKey{parentID, kind}]++
-}
-
-func (l *NodeLimiter) skip(parentID, kind string, node DependencyNode) {
-	key := limiterKey{parentID, kind}
-	l.skipped[key] = append(l.skipped[key], node)
-}
-
-func (l *NodeLimiter) getSkippedCount(parentID, kind string) int {
-	return len(l.skipped[limiterKey{parentID, kind}])
-}
 
 // GetResourceDependencies resolves all dependencies for a given resource
 func (c *Client) GetResourceDependencies(contextName, resourceType, namespace, name string) (*DependencyGraph, error) {
@@ -305,7 +270,7 @@ func (c *Client) GetResourceDependencies(contextName, resourceType, namespace, n
 	}
 
 	nodeMap := make(map[string]bool, 32) // Track added nodes by ID, pre-sized for typical graph
-	cache := newResourceCache(ctx, cs)    // Request-scoped cache for List() results
+	cache := newResourceCache(ctx, cs)   // Request-scoped cache for List() results
 
 	var result *DependencyGraph
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import ConfigField from './fields/ConfigField';
 import { isModified } from '../../../config/configSchema';
-import { useTheme } from '../../../context/ThemeContext';
+import { useTheme } from '../../../context';
 
 export default function ConfigFieldGroup({ title, fields, basePath, config, onFieldChange }) {
     const { currentTheme, themes, switchTheme, uiFont, monoFont, setUiFont, setMonoFont, uiFonts, monoFonts } = useTheme();

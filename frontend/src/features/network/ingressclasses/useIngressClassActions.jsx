@@ -1,6 +1,6 @@
 import React from 'react';
-import { useUI } from '../../../context/UIContext';
-import { useK8s } from '../../../context/K8sContext';
+import { useUI } from '../../../context';
+import { useK8s } from '../../../context';
 import { DeleteIngressClass } from '../../../../wailsjs/go/main/App';
 import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
 import Logger from '../../../utils/Logger';

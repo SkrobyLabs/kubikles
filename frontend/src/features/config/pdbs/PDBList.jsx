@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import PDBActionsMenu from './PDBActionsMenu';
 import { usePDBs } from '../../../hooks/resources';
 import { usePDBActions } from './usePDBActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeletePDB, GetPDBYaml } from '../../../../wailsjs/go/main/App';

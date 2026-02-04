@@ -215,7 +215,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	log.Printf("WebSocket client %s connected (total: %d)", clientID, len(s.clients))
 
 	// Send initial connection event with client ID
-	client.WriteJSON(Event{Type: "event", Name: "connected", Data: map[string]interface{}{
+	_ = client.WriteJSON(Event{Type: "event", Name: "connected", Data: map[string]interface{}{
 		"serverMode": true,
 		"clientId":   clientID,
 	}})
@@ -308,14 +308,14 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return result in format expected by frontend adapter
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"data": result,
 	})
 }
 
 func (s *Server) writeError(w http.ResponseWriter, status int, message string) {
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"error": message,
 	})
 }

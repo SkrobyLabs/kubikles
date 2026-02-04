@@ -4,7 +4,7 @@ import {
     LoginOCIRegistry,
     LoginACRWithAzureCLI
 } from '../../../../wailsjs/go/main/App';
-import { useNotification } from '../../../context/NotificationContext';
+import { useNotification } from '../../../context';
 
 export default function OCIRegistryLoginDialog({ onClose, onSuccess }) {
     const [registry, setRegistry] = useState('');

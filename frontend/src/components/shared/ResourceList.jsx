@@ -8,8 +8,8 @@ import ColumnConfigurator from './ColumnConfigurator';
 import SavedViewsDropdown from './SavedViewsDropdown';
 import { createFilter, getFieldsMetadata } from '../../utils/search';
 import { useSavedViews } from '../../hooks/useSavedViews';
-import { useUI } from '../../context/UIContext';
-import { useConfig } from '../../context/ConfigContext';
+import { useUI } from '../../context';
+import { useConfig } from '../../context';
 
 // Tri-state checkbox component for header (memoized to prevent re-renders)
 const TriStateCheckbox = React.memo(({ state, onChange, disabled = false }) => {

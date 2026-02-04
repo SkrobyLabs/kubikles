@@ -1146,11 +1146,3 @@ func TestSetNodeSchedulable(t *testing.T) {
 		t.Error("SetNodeSchedulable(true) should set Unschedulable to false")
 	}
 }
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-func int32Ptr(i int32) *int32 {
-	return &i
-}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { GetHelmReleaseAllValues, GetHelmReleaseValues } from '../../../../wailsjs/go/main/App';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import Logger from '../../../utils/Logger';
 import yaml from 'js-yaml';

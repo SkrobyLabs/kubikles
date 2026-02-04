@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ListCRDs } from '../../wailsjs/go/main/App';
-import { useK8s } from '../context/K8sContext';
+import { useK8s } from '../context';
 
 export const useCRDs = (currentContext, isVisible) => {
     const [crds, setCRDs] = useState([]);

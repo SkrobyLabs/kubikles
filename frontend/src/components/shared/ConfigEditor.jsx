@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
-import { useConfig } from '../../context/ConfigContext';
+import { useConfig } from '../../context';
 import { XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import ConfigEditorUI from './config-editor/ConfigEditorUI';
 import { configSchema } from '../../config/configSchema';

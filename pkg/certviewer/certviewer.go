@@ -30,10 +30,10 @@ type KeyInfo struct {
 // CertInfo contains parsed certificate information
 type CertInfo struct {
 	// Subject and Issuer
-	Subject     SubjectInfo `json:"subject"`
-	SubjectRaw  string      `json:"subjectRaw"`
-	Issuer      SubjectInfo `json:"issuer"`
-	IssuerRaw   string      `json:"issuerRaw"`
+	Subject    SubjectInfo `json:"subject"`
+	SubjectRaw string      `json:"subjectRaw"`
+	Issuer     SubjectInfo `json:"issuer"`
+	IssuerRaw  string      `json:"issuerRaw"`
 
 	// Validity
 	NotBefore          string `json:"notBefore"`
@@ -167,18 +167,6 @@ func getPublicKeyInfo(cert *x509.Certificate) KeyInfo {
 	}
 
 	return info
-}
-
-// parseSubject extracts individual fields from a pkix.Name
-func parseSubject(name interface{ String() string }, cn, o, ou, c, p, l string) SubjectInfo {
-	return SubjectInfo{
-		CommonName:         cn,
-		Organization:       o,
-		OrganizationalUnit: ou,
-		Country:            c,
-		Province:           p,
-		Locality:           l,
-	}
 }
 
 // parseSingleCert parses a single x509.Certificate into CertInfo

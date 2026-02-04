@@ -5,11 +5,12 @@ package tools
 
 import (
 	"fmt"
-	"kubikles/pkg/k8s"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
+
+	"kubikles/pkg/k8s"
 
 	v1 "k8s.io/api/core/v1"
 )
@@ -1442,7 +1443,7 @@ func toolDiffResources(client *k8s.Client, args map[string]interface{}) (string,
 		targetLabel = req.TargetContext + "/" + targetLabel
 	}
 
-	sb.WriteString(fmt.Sprintf("# Resource Diff\n\n"))
+	sb.WriteString("# Resource Diff\n\n")
 	sb.WriteString(fmt.Sprintf("**Source**: %s (exists: %v)\n", sourceLabel, result.SourceExists))
 	sb.WriteString(fmt.Sprintf("**Target**: %s (exists: %v)\n\n", targetLabel, result.TargetExists))
 

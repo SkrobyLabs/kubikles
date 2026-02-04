@@ -1,6 +1,7 @@
 ---
 name: pr-summary
 description: Generate PR summary from branch commits. Use when reviewing commits, preparing PR, or before pushing.
+model: haiku
 allowed-tools: Bash
 ---
 

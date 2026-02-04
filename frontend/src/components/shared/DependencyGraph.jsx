@@ -12,7 +12,7 @@ import {
 import dagre from 'dagre';
 import '@xyflow/react/dist/style.css';
 import { GetResourceDependencies, ExpandDependencyNode } from '../../../wailsjs/go/main/App';
-import { useUI } from '../../context/UIContext';
+import { useUI } from '../../context';
 import { LazyYamlEditor as YamlEditor } from '../lazy';
 import Logger from '../../utils/Logger';
 import {

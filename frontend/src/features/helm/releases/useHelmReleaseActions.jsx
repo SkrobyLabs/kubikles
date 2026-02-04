@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
-import { useUI } from '../../../context/UIContext';
-import { useK8s } from '../../../context/K8sContext';
-import { useNotification } from '../../../context/NotificationContext';
+import { useUI } from '../../../context';
+import { useK8s } from '../../../context';
+import { useNotification } from '../../../context';
 import { UninstallHelmRelease } from '../../../../wailsjs/go/main/App';
 import HelmReleaseDetails from './HelmReleaseDetails';
 import Logger from '../../../utils/Logger';

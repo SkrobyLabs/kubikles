@@ -65,7 +65,7 @@ func (m *Manager) AddEntriesWithPortRedirect(entries []Entry, httpsPort, httpPor
 	cmd := exec.Command("osascript", "-e", script)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to update hosts/pfctl (user may have cancelled): %w, output: %s", err, string(output))
+		return fmt.Errorf("failed to update hosts/pfctl (user may have canceled): %w, output: %s", err, string(output))
 	}
 
 	return nil
@@ -92,7 +92,7 @@ func (m *Manager) RemoveEntriesWithPortRedirect() error {
 		// Still need to disable pfctl
 		script := `do shell script "pfctl -d 2>/dev/null || true" with administrator privileges`
 		cmd := exec.Command("osascript", "-e", script)
-		cmd.Run() // Ignore errors - pfctl might not be enabled
+		_ = cmd.Run() // Ignore errors - pfctl might not be enabled
 		return nil
 	}
 
@@ -109,7 +109,7 @@ func (m *Manager) RemoveEntriesWithPortRedirect() error {
 	cmd := exec.Command("osascript", "-e", script)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to update hosts file (user may have cancelled): %w, output: %s", err, string(output))
+		return fmt.Errorf("failed to update hosts file (user may have canceled): %w, output: %s", err, string(output))
 	}
 
 	return nil

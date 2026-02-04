@@ -28,8 +28,8 @@ import {
 } from '../../../../wailsjs/go/main/App';
 import HelmRepoAddDialog from './HelmRepoAddDialog';
 import { OCIRegistryLoginDialog } from '../oci';
-import { useNotification } from '../../../context/NotificationContext';
-import { useUI } from '../../../context/UIContext';
+import { useNotification } from '../../../context';
+import { useUI } from '../../../context';
 
 export default function HelmRepoList({ isVisible }) {
     const [repos, setRepos] = useState([]);

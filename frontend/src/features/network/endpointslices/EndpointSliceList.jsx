@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import EndpointSliceActionsMenu from './EndpointSliceActionsMenu';
 import { useEndpointSlices } from '../../../hooks/resources';
 import { useEndpointSliceActions } from './useEndpointSliceActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteEndpointSlice, GetEndpointSliceYaml } from '../../../../wailsjs/go/main/App';

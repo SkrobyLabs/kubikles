@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import Editor from '@monaco-editor/react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { ApplyYAML } from '../../../wailsjs/go/main/App';
-import { useNotification } from '../../context/NotificationContext';
+import { useNotification } from '../../context';
 
 /**
  * CreateResourceModal - Modal for creating new Kubernetes resources from YAML

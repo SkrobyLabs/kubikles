@@ -336,10 +336,10 @@ type ChartSourceInfo struct {
 
 // ChartSearchResult contains the result of searching a single source
 type ChartSearchResult struct {
-	Found    bool           `json:"found"`    // Whether chart was found
-	Source   *ChartSource   `json:"source"`   // The source details if found
-	Log      string         `json:"log"`      // Log message describing what happened
-	Duration int64          `json:"duration"` // Search duration in milliseconds
+	Found    bool         `json:"found"`    // Whether chart was found
+	Source   *ChartSource `json:"source"`   // The source details if found
+	Log      string       `json:"log"`      // Log message describing what happened
+	Duration int64        `json:"duration"` // Search duration in milliseconds
 }
 
 // RepoPriorities stores priority settings for repositories
@@ -394,7 +394,7 @@ func saveRepoPriorities(priorities *RepoPriorities) error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }
 
 // ListRepositories returns all configured Helm repositories with priorities
@@ -513,17 +513,17 @@ func (c *Client) RemoveRepository(name string) error {
 		return fmt.Errorf("failed to write repository file: %w", err)
 	}
 
-	// Remove from priorities
+	// Remove from priorities (best-effort)
 	priorities, err := loadRepoPriorities()
 	if err == nil {
 		delete(priorities.Priorities, name)
-		saveRepoPriorities(priorities)
+		_ = saveRepoPriorities(priorities)
 	}
 
-	// Remove cached index file
+	// Remove cached index file (best-effort cleanup)
 	cacheDir := c.settings.RepositoryCache
 	indexFile := filepath.Join(cacheDir, fmt.Sprintf("%s-index.yaml", name))
-	os.Remove(indexFile)
+	_ = os.Remove(indexFile)
 
 	return nil
 }

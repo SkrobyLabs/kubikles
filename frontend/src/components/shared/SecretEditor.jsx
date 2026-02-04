@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { GetSecretYaml, UpdateSecretYaml, GetSecretData, UpdateSecretData, GetCertificateInfo, GetAllCertificateInfo } from '../../../wailsjs/go/main/App';
-import { useK8s } from '../../context/K8sContext';
-import { useNotification } from '../../context/NotificationContext';
+import { useK8s } from '../../context';
+import { useNotification } from '../../context';
 import Logger from '../../utils/Logger';
 import { EyeIcon, EyeSlashIcon, TrashIcon, PlusIcon, LockClosedIcon, MagnifyingGlassIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import CertificateModal from './CertificateModal';

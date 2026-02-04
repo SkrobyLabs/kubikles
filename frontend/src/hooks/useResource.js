@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useK8s } from '../context/K8sContext';
+import { useK8s } from '../context';
 import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 import { useResourceWatcher } from './useResourceWatcher';
 import { createResourceEventHandler, createNamespacedResourceEventHandler } from './useResourceEventHandler';

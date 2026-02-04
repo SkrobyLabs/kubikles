@@ -1,7 +1,7 @@
 import React from 'react';
-import { useUI } from '../../../context/UIContext';
-import { useK8s } from '../../../context/K8sContext';
-import { useNotification } from '../../../context/NotificationContext';
+import { useUI } from '../../../context';
+import { useK8s } from '../../../context';
+import { useNotification } from '../../../context';
 import { DeleteRole } from '../../../../wailsjs/go/main/App';
 import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
 import Logger from '../../../utils/Logger';

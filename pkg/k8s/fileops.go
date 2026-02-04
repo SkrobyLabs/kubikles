@@ -68,14 +68,15 @@ func (c *Client) ListFiles(ctx context.Context, namespace, pod, container, dirPa
 	// We avoid -h (human readable) to get exact byte sizes
 	cmd := []string{"ls", "-laL", "--time-style=long-iso", dirPath}
 
-	stdout, stderr, err := c.execInPod(ctx, namespace, pod, effectiveContainer, cmd)
+	stdout, _, err := c.execInPod(ctx, namespace, pod, effectiveContainer, cmd)
 	if err != nil {
 		// Try without -L (some systems don't support it or have broken symlinks)
 		cmd = []string{"ls", "-la", "--time-style=long-iso", dirPath}
-		stdout, stderr, err = c.execInPod(ctx, namespace, pod, effectiveContainer, cmd)
+		stdout, _, err = c.execInPod(ctx, namespace, pod, effectiveContainer, cmd)
 		if err != nil {
 			// Final fallback: basic ls
 			cmd = []string{"ls", "-la", dirPath}
+			var stderr string
 			stdout, stderr, err = c.execInPod(ctx, namespace, pod, effectiveContainer, cmd)
 			if err != nil {
 				return nil, fmt.Errorf("failed to list files: %w, stderr: %s", err, stderr)
@@ -187,10 +188,11 @@ func (c *Client) GetFileSize(ctx context.Context, namespace, pod, container, fil
 	effectiveContainer, _ := c.GetOrCreateFileHelper(ctx, namespace, pod, container)
 
 	cmd := []string{"stat", "-c", "%s", filePath}
-	stdout, stderr, err := c.execInPod(ctx, namespace, pod, effectiveContainer, cmd)
+	stdout, _, err := c.execInPod(ctx, namespace, pod, effectiveContainer, cmd)
 	if err != nil {
 		// Try macOS/BSD stat format
 		cmd = []string{"stat", "-f", "%z", filePath}
+		var stderr string
 		stdout, stderr, err = c.execInPod(ctx, namespace, pod, effectiveContainer, cmd)
 		if err != nil {
 			return -1, fmt.Errorf("failed to get file size: %w, stderr: %s", err, stderr)
@@ -684,13 +686,13 @@ func (c *Client) GetOrCreateFileHelper(ctx context.Context, namespace, podName, 
 		if err := c.injectEphemeralContainer(ctx, namespace, podName, preferredContainer); err != nil {
 			// If injection fails (e.g., no RBAC or feature not supported), fall back to preferred container
 			// The operation might still work if basic tools exist
-			return preferredContainer, nil
+			return preferredContainer, nil //nolint:nilerr // intentional fallback
 		}
 	}
 
 	// Wait for it to be ready
 	if err := c.waitForEphemeralContainer(ctx, namespace, podName, 30*time.Second); err != nil {
-		return preferredContainer, nil // Fall back on timeout
+		return preferredContainer, nil //nolint:nilerr // intentional fallback on timeout
 	}
 
 	return EphemeralContainerName, nil

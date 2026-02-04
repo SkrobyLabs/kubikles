@@ -6,9 +6,7 @@ import (
 )
 
 // TestStruct is a test struct for method calling tests
-type TestStruct struct {
-	value string
-}
+type TestStruct struct{}
 
 func (t *TestStruct) NoArgs() string {
 	return "no args"

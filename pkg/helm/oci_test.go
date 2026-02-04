@@ -147,8 +147,8 @@ func TestOCIPriorities_SetGet(t *testing.T) {
 func TestOCIPriorities_JSON(t *testing.T) {
 	priorities := OCIPriorities{
 		Priorities: map[string]int{
-			"https://ghcr.io":            10,
-			"https://myacr.azurecr.io":   5,
+			"https://ghcr.io":          10,
+			"https://myacr.azurecr.io": 5,
 		},
 	}
 

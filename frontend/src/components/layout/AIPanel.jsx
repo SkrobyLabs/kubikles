@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { XMarkIcon, PlusIcon, StopIcon, ClipboardDocumentIcon, CheckIcon, ClockIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { useAIChat } from '../../context/AIChatContext';
-import { useK8s } from '../../context/K8sContext';
-import { useUI } from '../../context/UIContext';
-import { useConfig } from '../../context/ConfigContext';
+import { useAIChat } from '../../context';
+import { useK8s } from '../../context';
+import { useUI } from '../../context';
+import { useConfig } from '../../context';
 import { navLinkRegex } from './navUtils';
 import { executeNavLink } from './AIMarkdown';
 import MessageBubble, { ThinkingBubble } from './MessageBubble';

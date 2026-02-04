@@ -12,7 +12,7 @@ type MetricsRequestStats struct {
 	Total     int64 `json:"total"`
 	Pending   int64 `json:"pending"`
 	Completed int64 `json:"completed"`
-	Cancelled int64 `json:"cancelled"`
+	Canceled  int64 `json:"canceled"`
 }
 
 // DefaultMetricsRequestTimeout is the default timeout for metrics requests
@@ -36,7 +36,7 @@ type MetricsRequestManager struct {
 	total     atomic.Int64
 	pending   atomic.Int64
 	completed atomic.Int64
-	cancelled atomic.Int64
+	canceled  atomic.Int64
 }
 
 // NewMetricsRequestManager creates a new request manager
@@ -55,7 +55,7 @@ func (m *MetricsRequestManager) StartRequest(requestId string) (context.Context,
 	// Cancel any existing request with this ID
 	if entry, exists := m.requests[requestId]; exists {
 		entry.cancel()
-		m.cancelled.Add(1)
+		m.canceled.Add(1)
 		m.pending.Add(-1)
 	}
 
@@ -96,7 +96,7 @@ func (m *MetricsRequestManager) CancelRequest(requestId string) bool {
 	if entry, exists := m.requests[requestId]; exists {
 		entry.cancel()
 		delete(m.requests, requestId)
-		m.cancelled.Add(1)
+		m.canceled.Add(1)
 		m.pending.Add(-1)
 		return true
 	}
@@ -109,6 +109,6 @@ func (m *MetricsRequestManager) GetStats() MetricsRequestStats {
 		Total:     m.total.Load(),
 		Pending:   m.pending.Load(),
 		Completed: m.completed.Load(),
-		Cancelled: m.cancelled.Load(),
+		Canceled:  m.canceled.Load(),
 	}
 }

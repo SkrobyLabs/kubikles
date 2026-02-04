@@ -72,7 +72,7 @@ func saveOCIPriorities(priorities *OCIPriorities) error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600) // Config may contain credentials
 }
 
 // DockerConfig represents the Docker config.json structure
@@ -226,7 +226,7 @@ func (c *Client) RemoveOCIRegistry(registry string) error {
 			}
 			if modified {
 				if newData, err := json.MarshalIndent(config, "", "  "); err == nil {
-					_ = os.WriteFile(configPath, newData, 0644)
+					_ = os.WriteFile(configPath, newData, 0600) // Contains auth credentials
 				}
 			}
 		}

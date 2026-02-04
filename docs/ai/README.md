@@ -2,7 +2,9 @@
 
 Quick-access reference for AI assistants. This document eliminates the need to re-scan the codebase.
 
-> **Maintenance Note**: If this document becomes outdated due to codebase changes, update it to reflect the current structure. This is the canonical reference for AI assistants.
+> **Required**: When adding/removing files in `pkg/k8s/`, `frontend/src/features/`, `frontend/src/hooks/`, `frontend/src/context/`, or root `.go` files, update this document and `.claude/rules/kubikles-context.md` and `.claude/skills/kubikles-ref/SKILL.md` in the same session.
+
+> **DO NOT** store line counts, file sizes, file counts, or any metrics that become stale after code changes.
 
 ## Identity
 
@@ -27,23 +29,40 @@ kubikles/
 ├── main_desktop.go         # Desktop mode entry
 ├── main_headless.go        # Headless mode entry
 ├── server_mode.go          # Server mode logic
-├── app.go                  # Main App struct (~3200 lines) - all Wails bindings
+├── app.go                  # App struct & lifecycle
+├── app_*.go                # Domain-specific Wails bindings
+│   ├── app_watchermgr.go   # ResourceWatcherManager
+│   ├── app_watchers.go     # Watch loops, event types
+│   ├── app_perfmetrics.go  # Performance metrics
+│   ├── app_pods.go         # Pod operations
+│   ├── app_deployments.go  # Deployment operations
+│   ├── app_services.go     # Service operations
+│   ├── app_helm.go         # Helm releases/repos
+│   ├── app_logs.go         # Log streaming
+│   ├── app_terminal.go     # Terminal sessions
+│   ├── app_ai.go           # AI assistant
+│   └── ...                 # (see rule file for complete list)
 ├── runtime_darwin_arm64.go # Apple Silicon runtime tuning
 ├── runtime_other.go        # Other platform runtime
 ├── eventcoalescer.go       # 16ms event batching for IPC efficiency
 ├── logcoalescer.go         # Log streaming batching
-├── portforward.go          # Port forward management
-├── ingressforward.go       # Ingress forwarding
+├── portforward.go          # Port forward manager types
+├── ingressforward.go       # Ingress forwarding types
 ├── metricsrequests.go      # Prometheus metrics handling
 ├── listrequests.go         # Cancellable K8s list requests
-├── theme.go                # Theme management
+├── theme.go                # Theme manager types
 ├── profiling.go            # PGO profiling support
 ├── version.go              # Version info
 │
 ├── pkg/
 │   ├── k8s/
-│   │   ├── client.go       # K8s API wrapper (214KB) - all resource operations
-│   │   └── dependencies.go # Dependency graph computation (76KB)
+│   │   ├── client.go       # K8s API wrapper - all resource operations
+│   │   ├── dependencies.go # Dependency graph computation
+│   │   ├── diff.go         # Resource diff/comparison
+│   │   ├── fileops.go      # File operations for K8s resources
+│   │   ├── flowtimeline.go # Flow timeline for resource events
+│   │   ├── multilog.go     # Multi-resource log streaming
+│   │   └── rbac.go         # RBAC operations
 │   ├── terminal/
 │   │   ├── manager.go      # Session lifecycle
 │   │   ├── session_unix.go # Unix/macOS PTY
@@ -95,7 +114,8 @@ kubikles/
 │   │   ├── access-control/ # roles/, clusterroles/, rolebindings/,
 │   │   │                   # clusterrolebindings/, serviceaccounts/
 │   │   ├── customresources/ # CRDs and custom instances
-│   │   ├── helm/           # Helm releases and repositories
+│   │   ├── helm/           # Helm releases, repos, OCI
+│   │   ├── diagnostics/    # Resource comparison, diagnostics
 │   │   └── portforwards/   # Port forward management UI
 │   ├── components/
 │   │   ├── layout/         # Sidebar.jsx, BottomPanel.jsx
@@ -212,7 +232,7 @@ Each resource type (`features/[category]/[resource]/`):
 ## Adding New Resource
 
 1. **Backend** (`pkg/k8s/client.go`): Add List/Get/Update/Delete methods
-2. **Expose** (`app.go`): Wrap client methods, add watcher
+2. **Expose** (`app_[domain].go`): Wrap client methods, add watcher (use existing domain file or create new)
 3. **Generate**: `wails generate module`
 4. **Hook** (`hooks/use[Resource].js`): Copy pattern from existing
 5. **Feature** (`features/[category]/[resource]/`): List + Actions
@@ -224,17 +244,21 @@ Each resource type (`features/[category]/[resource]/`):
 
 | Task | File(s) |
 |------|---------|
-| Add K8s operation | `pkg/k8s/client.go` + `app.go` |
+| Add K8s operation | `pkg/k8s/client.go` + `app_[domain].go` |
 | Add view/feature | `App.jsx` + `Sidebar.jsx` + `features/` |
 | Add context state | Relevant `context/*.jsx` |
 | Add shared component | `components/shared/` |
 | Configure resource | `utils/resourceRegistry.js` |
-| Theme customization | `theme.go` + `ThemeContext.jsx` |
-| Port forward logic | `portforward.go` + `hooks/usePortForwards.js` |
-| Terminal behavior | `pkg/terminal/` + `components/shared/Terminal.jsx` |
+| Theme customization | `app_themes.go` + `ThemeContext.jsx` |
+| Port forward logic | `app_portforward.go` + `hooks/usePortForwards.js` |
+| Terminal behavior | `app_terminal.go` + `pkg/terminal/` + `Terminal.jsx` |
+| Log streaming | `app_logs.go` + `log-viewer/` |
+| Helm operations | `app_helm.go` + `pkg/helm/` |
 | Dependency graph | `pkg/k8s/dependencies.go` + `DependencyGraph.jsx` |
-| AI integration | `pkg/ai/` + `AIChatContext.jsx` |
+| AI integration | `app_ai.go` + `pkg/ai/` + `AIChatContext.jsx` |
 | MCP server | `pkg/mcp/server.go` |
+| Watcher infrastructure | `app_watchermgr.go` + `app_watchers.go` |
+| Performance metrics | `app_perfmetrics.go` |
 
 ## Build Commands
 

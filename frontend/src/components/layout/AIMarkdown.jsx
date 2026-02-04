@@ -1,8 +1,8 @@
 import React, { useCallback } from 'react';
 import { ArrowTopRightOnSquareIcon, CubeIcon } from '@heroicons/react/24/outline';
-import { useK8s } from '../../context/K8sContext';
-import { useUI } from '../../context/UIContext';
-import { useConfig } from '../../context/ConfigContext';
+import { useK8s } from '../../context';
+import { useUI } from '../../context';
+import { useConfig } from '../../context';
 import { LazyYamlEditor } from '../lazy';
 import LogViewer from '../shared/log-viewer';
 import { getResourceIcon } from '../../utils/resourceIcons';

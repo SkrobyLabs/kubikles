@@ -15,9 +15,6 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-//go:embed build/appicon.png
-var appIcon []byte
-
 var (
 	serverMode = flag.Bool("server", false, "Run in server mode (HTTP/WebSocket) instead of desktop app")
 	serverPort = flag.Int("port", 8080, "Port for server mode")

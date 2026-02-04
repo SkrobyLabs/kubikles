@@ -1,15 +1,17 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
-import { K8sProvider, useK8s } from './context/K8sContext';
-import { UIProvider, useUI } from './context/UIContext';
-import { MenuProvider } from './context/MenuContext';
-import { DebugProvider } from './context/DebugContext';
-import { ConfigProvider, useConfig } from './context/ConfigContext';
-import { NotificationProvider } from './context/NotificationContext';
-import { ThemeProvider } from './context/ThemeContext';
+import {
+    K8sProvider, useK8s,
+    UIProvider, useUI,
+    MenuProvider,
+    DebugProvider,
+    ConfigProvider, useConfig,
+    NotificationProvider,
+    ThemeProvider,
+    AIChatProvider, useAIChat
+} from './context';
 import Sidebar from './components/layout/Sidebar';
 import BottomPanel from './components/layout/BottomPanel';
 import AIPanel from './components/layout/AIPanel';
-import { AIChatProvider, useAIChat } from './context/AIChatContext';
 import ToastContainer from './components/shared/ToastContainer';
 import PodList from './features/workloads/pods/PodList';
 import DeploymentList from './features/workloads/deployments/DeploymentList';

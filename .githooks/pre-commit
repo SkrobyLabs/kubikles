@@ -1,14 +1,28 @@
 #!/bin/sh
 #
-# Pre-commit hook that runs frontend tests before allowing a commit.
+# Pre-commit hook that runs linting and tests before allowing a commit.
 # To skip this hook, use: git commit --no-verify
 
-echo "Running frontend tests..."
-
-# Run tests from the project root
 cd "$(git rev-parse --show-toplevel)"
 
+# Run Go linter first (fast, catches issues early)
+echo "Running Go linter..."
+GOLANGCI_LINT="${GOLANGCI_LINT:-$(command -v golangci-lint || echo "$HOME/go/bin/golangci-lint")}"
+if [ -x "$GOLANGCI_LINT" ]; then
+    "$GOLANGCI_LINT" run ./...
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo "Linting failed. Commit aborted."
+        echo "Run 'make lint-fix' to auto-fix issues, or 'git commit --no-verify' to skip."
+        exit 1
+    fi
+    echo "Linting passed!"
+else
+    echo "Warning: golangci-lint not found, skipping Go lint"
+fi
+
 # Run frontend tests
+echo "Running frontend tests..."
 cd frontend && npm test
 
 if [ $? -ne 0 ]; then

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ListCRDs } from '../../wailsjs/go/main/App';
-import { useK8s } from '../context/K8sContext';
+import { useK8s } from '../context';
 
 // Static menu structure matching Sidebar.jsx
 const menuGroups = [

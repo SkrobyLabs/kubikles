@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { AddHelmRepository } from '../../../../wailsjs/go/main/App';
-import { useNotification } from '../../../context/NotificationContext';
+import { useNotification } from '../../../context';
 
 export default function HelmRepoAddDialog({ onClose, onSuccess }) {
     const { addNotification } = useNotification();

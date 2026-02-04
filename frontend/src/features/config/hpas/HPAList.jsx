@@ -5,7 +5,7 @@ import BulkActionModal from '../../../components/shared/BulkActionModal';
 import HPAActionsMenu from './HPAActionsMenu';
 import { useHPAs } from '../../../hooks/resources';
 import { useHPAActions } from './useHPAActions';
-import { useK8s } from '../../../context/K8sContext';
+import { useK8s } from '../../../context';
 import { useSelection } from '../../../hooks/useSelection';
 import { useBulkActions } from '../../../hooks/useBulkActions';
 import { DeleteHPA, GetHPAYaml } from '../../../../wailsjs/go/main/App';
