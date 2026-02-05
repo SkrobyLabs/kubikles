@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    // Gradual migration settings
+    "allowJs": true,                    // Allow JS files to coexist with TS
+    "checkJs": false,                   // Don't type-check JS files (start lenient)
+    "strict": true,                     // Enable strict type checking
+
+    // React + JSX settings
+    "jsx": "react-jsx",                 // Use React 17+ JSX transform
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+
+    // Module resolution
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",      // Vite uses bundler resolution
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+
+    // Type checking
+    "skipLibCheck": true,               // Skip type checking of declaration files
+    "noEmit": true,                     // Vite handles transpilation
+
+    // Path mapping (match vite.config.js aliases)
+    "baseUrl": ".",
+    "paths": {
+      "wailsjs/go/main/App": ["./src/lib/wailsjs-adapter/go/main/App"],
+      "wailsjs/runtime/runtime": ["./src/lib/wailsjs-adapter/runtime/runtime"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "vite.config.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "wailsjs"
+  ]
+}

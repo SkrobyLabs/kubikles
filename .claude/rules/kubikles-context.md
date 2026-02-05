@@ -83,13 +83,13 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 ### Frontend Core
 | Purpose | File |
 |---------|------|
-| App entry/routing | `frontend/src/App.jsx` |
-| K8s state | `frontend/src/context/K8sContext.jsx` |
-| UI state | `frontend/src/context/UIContext.jsx` |
-| Config state | `frontend/src/context/ConfigContext.jsx` |
-| AI Chat | `frontend/src/context/AIChatContext.jsx` |
-| Sidebar nav | `frontend/src/components/layout/Sidebar.jsx` |
-| Resource table | `frontend/src/components/shared/ResourceList.jsx` |
+| App entry/routing | `frontend/src/App.tsx` |
+| K8s state | `frontend/src/context/K8sContext.tsx` |
+| UI state | `frontend/src/context/UIContext.tsx` |
+| Config state | `frontend/src/context/ConfigContext.tsx` |
+| AI Chat | `frontend/src/context/AIChatContext.tsx` |
+| Sidebar nav | `frontend/src/components/layout/Sidebar.tsx` |
+| Resource table | `frontend/src/components/shared/ResourceList.tsx` |
 
 ### Feature Modules
 Resources are at `frontend/src/features/{category}/{resource}/`:
@@ -107,10 +107,10 @@ Resources are at `frontend/src/features/{category}/{resource}/`:
 ## Adding New K8s Resource
 1. Backend: `pkg/k8s/client.go` (List/Get/Update/Delete) + `app_[domain].go` (expose + watcher)
 2. Generate: `wails generate module`
-3. Hook: `frontend/src/hooks/use[Resource].js`
+3. Hook: `frontend/src/hooks/use[Resource].tsx`
 4. Feature: `frontend/src/features/{category}/{resource}/`
-5. Register: `frontend/src/utils/resourceRegistry.js`
-6. Route: `App.jsx` + `Sidebar.jsx`
+5. Register: `frontend/src/utils/resourceRegistry.ts`
+6. Route: `App.tsx` + `Sidebar.tsx`
 
 ## Build Commands
 ```bash
@@ -130,8 +130,8 @@ After adding/removing/renaming files in these locations, you MUST update the doc
 |------------------|-------------------|
 | `pkg/k8s/*.go` | All three docs below |
 | `frontend/src/features/*/` | All three docs below |
-| `frontend/src/hooks/*.js` | All three docs below |
-| `frontend/src/context/*.jsx` | All three docs below |
+| `frontend/src/hooks/*.tsx` | All three docs below |
+| `frontend/src/context/*.tsx` | All three docs below |
 | Root `*.go` files | All three docs below |
 
 **Files to update:**

@@ -34,7 +34,7 @@ describe('App.js Adapter Sync', () => {
     it('should contain all methods from Wails-generated App.js', () => {
         // Read both files
         const wailsAppPath = join(__dirname, '../../../../../wailsjs/go/main/App.js');
-        const adapterAppPath = join(__dirname, 'App.js');
+        const adapterAppPath = join(__dirname, 'App.ts');
 
         const wailsContent = readFileSync(wailsAppPath, 'utf-8');
         const adapterContent = readFileSync(adapterAppPath, 'utf-8');
@@ -56,7 +56,7 @@ describe('App.js Adapter Sync', () => {
     it('should not have extra methods unless explicitly allowed', () => {
         // Read both files
         const wailsAppPath = join(__dirname, '../../../../../wailsjs/go/main/App.js');
-        const adapterAppPath = join(__dirname, 'App.js');
+        const adapterAppPath = join(__dirname, 'App.ts');
 
         const wailsContent = readFileSync(wailsAppPath, 'utf-8');
         const adapterContent = readFileSync(adapterAppPath, 'utf-8');

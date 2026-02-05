@@ -1476,6 +1476,66 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class WatcherEventStats {
+	    key: string;
+	    added: number;
+	    modified: number;
+	    deleted: number;
+	    totalEvents: number;
+	    lastEventMs: number;
+	    eventsPerSec: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new WatcherEventStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.added = source["added"];
+	        this.modified = source["modified"];
+	        this.deleted = source["deleted"];
+	        this.totalEvents = source["totalEvents"];
+	        this.lastEventMs = source["lastEventMs"];
+	        this.eventsPerSec = source["eventsPerSec"];
+	    }
+	}
+	export class ActivityStats {
+	    topWatchers: WatcherEventStats[];
+	    totalEvents: number;
+	    windowStartMs: number;
+	    windowDuration: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ActivityStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.topWatchers = this.convertValues(source["topWatchers"], WatcherEventStats);
+	        this.totalEvents = source["totalEvents"];
+	        this.windowStartMs = source["windowStartMs"];
+	        this.windowDuration = source["windowDuration"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class CertKeyInfo {
 	    algorithm: string;
 	    size: number;
@@ -1730,7 +1790,7 @@ export namespace main {
 	    ingressForwards: any;
 	    // Go type: struct { Active int "json:\"active\"" }
 	    logStreams: any;
-	    activity: struct { TopWatchers []main.;
+	    activity: ActivityStats;
 	    metricsRequests: MetricsRequestStats;
 	    listRequests: ListRequestStats;
 	
@@ -1748,7 +1808,7 @@ export namespace main {
 	        this.portForwards = this.convertValues(source["portForwards"], Object);
 	        this.ingressForwards = this.convertValues(source["ingressForwards"], Object);
 	        this.logStreams = this.convertValues(source["logStreams"], Object);
-	        this.activity = this.convertValues(source["activity"], Object);
+	        this.activity = this.convertValues(source["activity"], ActivityStats);
 	        this.metricsRequests = this.convertValues(source["metricsRequests"], MetricsRequestStats);
 	        this.listRequests = this.convertValues(source["listRequests"], ListRequestStats);
 	    }
@@ -2003,30 +2063,7 @@ export namespace main {
 	        this.isDev = source["isDev"];
 	    }
 	}
-	export class WatcherEventStats {
-	    key: string;
-	    added: number;
-	    modified: number;
-	    deleted: number;
-	    totalEvents: number;
-	    lastEventMs: number;
-	    eventsPerSec: number;
 	
-	    static createFrom(source: any = {}) {
-	        return new WatcherEventStats(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.key = source["key"];
-	        this.added = source["added"];
-	        this.modified = source["modified"];
-	        this.deleted = source["deleted"];
-	        this.totalEvents = source["totalEvents"];
-	        this.lastEventMs = source["lastEventMs"];
-	        this.eventsPerSec = source["eventsPerSec"];
-	    }
-	}
 	export class YamlBackupEntry {
 	    namespace: string;
 	    name: string;

@@ -11,17 +11,17 @@ export default defineConfig({
     alias: {
       // Redirect wailsjs imports to our adapters for dual-mode support
       // The adapters detect runtime mode and route to Wails bindings or HTTP API
-      'wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.js'),
-      'wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.js'),
+      'wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.ts'),
+      'wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.ts'),
       // Also handle relative imports that may occur
-      '../wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.js'),
-      '../../wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.js'),
-      '../../../wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.js'),
-      '../../../../wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.js'),
-      '../wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.js'),
-      '../../wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.js'),
-      '../../../wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.js'),
-      '../../../../wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.js'),
+      '../wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.ts'),
+      '../../wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.ts'),
+      '../../../wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.ts'),
+      '../../../../wailsjs/go/main/App': path.resolve(__dirname, 'src/lib/wailsjs-adapter/go/main/App.ts'),
+      '../wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.ts'),
+      '../../wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.ts'),
+      '../../../wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.ts'),
+      '../../../../wailsjs/runtime/runtime': path.resolve(__dirname, 'src/lib/wailsjs-adapter/runtime/runtime.ts'),
     },
   },
   test: {

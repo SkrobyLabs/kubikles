@@ -21,6 +21,14 @@ type WatcherEventStats struct {
 	EventsPerSec float64 `json:"eventsPerSec"` // Calculated rate
 }
 
+// ActivityStats tracks activity metrics sorted by event count
+type ActivityStats struct {
+	TopWatchers    []WatcherEventStats `json:"topWatchers"`    // Top watchers by event count
+	TotalEvents    int64               `json:"totalEvents"`    // Total events across all watchers
+	WindowStartMs  int64               `json:"windowStartMs"`  // Start of measurement window
+	WindowDuration int64               `json:"windowDuration"` // Duration in ms
+}
+
 // PerformanceMetrics contains all performance-related metrics for the dashboard
 type PerformanceMetrics struct {
 	Timestamp int64 `json:"timestamp"` // Unix timestamp in ms
@@ -81,12 +89,7 @@ type PerformanceMetrics struct {
 	} `json:"logStreams"`
 
 	// Activity Stats - sorted by event count (highest first)
-	Activity struct {
-		TopWatchers    []WatcherEventStats `json:"topWatchers"`    // Top watchers by event count
-		TotalEvents    int64               `json:"totalEvents"`    // Total events across all watchers
-		WindowStartMs  int64               `json:"windowStartMs"`  // Start of measurement window
-		WindowDuration int64               `json:"windowDuration"` // Duration in ms
-	} `json:"activity"`
+	Activity ActivityStats `json:"activity"`
 
 	// Metrics Request Stats
 	MetricsRequests MetricsRequestStats `json:"metricsRequests"`

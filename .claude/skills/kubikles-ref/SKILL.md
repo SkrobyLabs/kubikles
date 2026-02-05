@@ -110,34 +110,35 @@ Read the AI reference documentation for full project context:
 ### Context Providers
 | Purpose | File |
 |---------|------|
-| K8s state | `frontend/src/context/K8sContext.jsx` |
-| UI state | `frontend/src/context/UIContext.jsx` |
-| Config state | `frontend/src/context/ConfigContext.jsx` |
-| Theme state | `frontend/src/context/ThemeContext.jsx` |
-| Menu state | `frontend/src/context/MenuContext.jsx` |
-| Debug logging | `frontend/src/context/DebugContext.jsx` |
-| Notifications | `frontend/src/context/NotificationContext.jsx` |
-| AI Chat | `frontend/src/context/AIChatContext.jsx` |
+| K8s state | `frontend/src/context/K8sContext.tsx` |
+| UI state | `frontend/src/context/UIContext.tsx` |
+| Config state | `frontend/src/context/ConfigContext.tsx` |
+| Theme state | `frontend/src/context/ThemeContext.tsx` |
+| Menu state | `frontend/src/context/MenuContext.tsx` |
+| Debug logging | `frontend/src/context/DebugContext.tsx` |
+| Notifications | `frontend/src/context/NotificationContext.tsx` |
+| AI Chat | `frontend/src/context/AIChatContext.tsx` |
 
 ### Shared Components
 | Purpose | File |
 |---------|------|
-| Resource table | `frontend/src/components/shared/ResourceList.jsx` |
-| YAML editor | `frontend/src/components/shared/YamlEditor.jsx` |
+| Resource table | `frontend/src/components/shared/ResourceList.tsx` |
+| YAML editor | `frontend/src/components/shared/YamlEditor.tsx` |
 | Log viewer | `frontend/src/components/shared/log-viewer/` |
-| Terminal | `frontend/src/components/shared/Terminal.jsx` |
-| Dep graph | `frontend/src/components/shared/DependencyGraph.jsx` |
+| Terminal | `frontend/src/components/shared/Terminal.tsx` |
+| Dep graph | `frontend/src/components/shared/DependencyGraph.tsx` |
 | Config editor | `frontend/src/components/shared/config-editor/` |
-| Command palette | `frontend/src/components/shared/CommandPalette.jsx` |
-| Bulk actions | `frontend/src/components/shared/BulkActionBar.jsx` |
-| Performance panel | `frontend/src/components/shared/PerformancePanel.jsx` |
+| Command palette | `frontend/src/components/shared/CommandPalette.tsx` |
+| Bulk actions | `frontend/src/components/shared/BulkActionBar.tsx` |
+| Performance panel | `frontend/src/components/shared/PerformancePanel.tsx` |
 
 ### Utils
 | Purpose | File |
 |---------|------|
-| Resource registry | `frontend/src/utils/resourceRegistry.js` |
-| K8s helpers | `frontend/src/utils/k8s-helpers.js` |
-| Logger | `frontend/src/utils/Logger.js` |
+| Resource registry | `frontend/src/utils/resourceRegistry.ts` |
+| K8s helpers | `frontend/src/utils/k8s-helpers.ts` |
+| Logger | `frontend/src/utils/Logger.ts` |
+| K8s type definitions | `frontend/src/types/k8s.ts` |
 
 ## Feature Directories
 
@@ -159,18 +160,19 @@ Path pattern: `frontend/src/features/{category}/{resource}/`
 ## Hooks
 | Hook | Purpose |
 |------|---------|
-| `useResource.js` | Generic resource fetching |
-| `useResourceWatcher.js` | Subscribe to K8s watch events |
-| `useResourceEventHandler.js` | Handle resource events |
-| `usePortForwards.js` | Port forward state |
-| `useIngressForward.js` | Ingress forward state |
-| `usePodMetrics.js` | Pod metrics |
-| `useNodeMetrics.js` | Node metrics |
-| `useClusterMetrics.js` | Cluster metrics |
-| `useNamespaceMetrics.js` | Namespace metrics |
-| `useCRDs.js` | CRD fetching |
-| `useCustomResources.js` | Custom resource instances |
-| `useHelmReleases.js` | Helm release state |
-| `useBulkActions.js` | Bulk action handling |
-| `useSelection.js` | Selection state |
-| `useCommandPaletteItems.js` | Command palette items |
+| `useResource.tsx` | Generic resource fetching (TypeScript generics) |
+| `useResourceWatcher.tsx` | Subscribe to K8s watch events |
+| `useResourceEventHandler.tsx` | Handle resource events |
+| `usePortForwards.tsx` | Port forward state |
+| `useIngressForward.tsx` | Ingress forward state |
+| `usePodMetrics.tsx` | Pod metrics |
+| `useNodeMetrics.tsx` | Node metrics |
+| `useClusterMetrics.tsx` | Cluster metrics |
+| `useNamespaceMetrics.tsx` | Namespace metrics |
+| `useCRDs.tsx` | CRD fetching |
+| `useCustomResources.tsx` | Custom resource instances |
+| `useHelmReleases.tsx` | Helm release state |
+| `useBulkActions.tsx` | Bulk action handling |
+| `useSelection.tsx` | Selection state |
+| `useCommandPaletteItems.tsx` | Command palette items |
+| `useBaseResourceActions.tsx` | Base action handlers for all resources |

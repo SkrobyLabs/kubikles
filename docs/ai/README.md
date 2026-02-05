@@ -16,7 +16,7 @@ Quick-access reference for AI assistants. This document eliminates the need to r
 |-------|------|
 | Desktop | Wails v2 |
 | Backend | Go 1.24+, client-go |
-| Frontend | React 18, Vite, TailwindCSS |
+| Frontend | React 18, TypeScript, Vite, TailwindCSS |
 | Editor | Monaco |
 | Terminal | xterm.js (WebGL) |
 | Graphs | React Flow + dagre |
@@ -90,17 +90,17 @@ kubikles/
 │   └── crashlog/           # Crash logging
 │
 ├── frontend/src/
-│   ├── App.jsx             # Root component, providers, view routing
-│   ├── main.jsx            # Entry, Monaco config
+│   ├── App.tsx             # Root component, providers, view routing
+│   ├── main.tsx            # Entry, Monaco config
 │   ├── context/
-│   │   ├── K8sContext.jsx      # K8s state (contexts, namespaces, CRDs)
-│   │   ├── UIContext.jsx       # UI state (tabs, modals, panels)
-│   │   ├── ConfigContext.jsx   # User settings, port forwards
-│   │   ├── ThemeContext.jsx    # Active theme
-│   │   ├── MenuContext.jsx     # Context menus
-│   │   ├── DebugContext.jsx    # Debug logging
-│   │   ├── NotificationContext.jsx # Toast notifications
-│   │   └── AIChatContext.jsx   # AI chat integration
+│   │   ├── K8sContext.tsx      # K8s state (contexts, namespaces, CRDs)
+│   │   ├── UIContext.tsx       # UI state (tabs, modals, panels)
+│   │   ├── ConfigContext.tsx   # User settings, port forwards
+│   │   ├── ThemeContext.tsx    # Active theme
+│   │   ├── MenuContext.tsx     # Context menus
+│   │   ├── DebugContext.tsx    # Debug logging
+│   │   ├── NotificationContext.tsx # Toast notifications
+│   │   └── AIChatContext.tsx   # AI chat integration
 │   ├── features/
 │   │   ├── workloads/      # pods/, deployments/, statefulsets/, daemonsets/,
 │   │   │                   # replicasets/, jobs/, cronjobs/
@@ -118,16 +118,18 @@ kubikles/
 │   │   ├── diagnostics/    # Resource comparison, diagnostics
 │   │   └── portforwards/   # Port forward management UI
 │   ├── components/
-│   │   ├── layout/         # Sidebar.jsx, BottomPanel.jsx
-│   │   └── shared/         # ResourceList.jsx, YamlEditor.jsx, LogViewer.jsx,
-│   │                       # Terminal.jsx, DependencyGraph.jsx, ConfigEditor/
-│   ├── hooks/              # ~25 hooks: useResource.js, useResourceWatcher.js,
-│   │                       # usePortForwards.js, useIngressForward.js, etc.
+│   │   ├── layout/         # Sidebar.tsx, BottomPanel.tsx
+│   │   └── shared/         # ResourceList.tsx, YamlEditor.tsx, LogViewer.tsx,
+│   │                       # Terminal.tsx, DependencyGraph.tsx, ConfigEditor/
+│   ├── hooks/              # ~25 hooks: useResource.tsx, useResourceWatcher.tsx,
+│   │                       # usePortForwards.tsx, useIngressForward.tsx, etc.
+│   ├── types/
+│   │   └── k8s.ts          # TypeScript K8s resource type definitions
 │   └── utils/
-│       ├── resourceRegistry.js  # Central resource type definitions
-│       ├── k8s-helpers.js       # Status helpers
-│       ├── Logger.js            # Logging utility
-│       └── formatting.js        # Date/time formatting
+│       ├── resourceRegistry.ts  # Central resource type definitions
+│       ├── k8s-helpers.ts       # Status helpers
+│       ├── Logger.ts            # Logging utility
+│       └── formatting.ts        # Date/time formatting
 │
 ├── docs/
 │   ├── ai/README.md        # THIS FILE
@@ -225,37 +227,39 @@ export const useResource = (currentContext, selectedNamespaces, isVisible) => {
 ## Feature Module Pattern
 
 Each resource type (`features/[category]/[resource]/`):
-- `[Resource]List.jsx` - List view with ResourceList component
-- `use[Resource]Actions.jsx` - Edit, delete, view handlers
-- `[Resource]ActionsMenu.jsx` - Context menu (optional)
+- `[Resource]List.tsx` - List view with ResourceList component
+- `use[Resource]Actions.tsx` - Edit, delete, view handlers
+- `[Resource]ActionsMenu.tsx` - Context menu (optional)
 
 ## Adding New Resource
 
 1. **Backend** (`pkg/k8s/client.go`): Add List/Get/Update/Delete methods
 2. **Expose** (`app_[domain].go`): Wrap client methods, add watcher (use existing domain file or create new)
 3. **Generate**: `wails generate module`
-4. **Hook** (`hooks/use[Resource].js`): Copy pattern from existing
-5. **Feature** (`features/[category]/[resource]/`): List + Actions
-6. **Register** (`utils/resourceRegistry.js`): Add resource config
-7. **Route** (`App.jsx`): Add case in renderContent
-8. **Sidebar** (`Sidebar.jsx`): Add navigation item
+4. **Types** (`types/k8s.ts`): Add K8s resource type definition if needed
+5. **Hook** (`hooks/use[Resource].tsx`): Copy pattern from existing, add explicit types
+6. **Feature** (`features/[category]/[resource]/`): List + Actions
+7. **Register** (`utils/resourceRegistry.ts`): Add resource config
+8. **Route** (`App.tsx`): Add case in renderContent
+9. **Sidebar** (`Sidebar.tsx`): Add navigation item
 
 ## Critical Files Quick Reference
 
 | Task | File(s) |
 |------|---------|
 | Add K8s operation | `pkg/k8s/client.go` + `app_[domain].go` |
-| Add view/feature | `App.jsx` + `Sidebar.jsx` + `features/` |
-| Add context state | Relevant `context/*.jsx` |
+| Add view/feature | `App.tsx` + `Sidebar.tsx` + `features/` |
+| Add context state | Relevant `context/*.tsx` |
 | Add shared component | `components/shared/` |
-| Configure resource | `utils/resourceRegistry.js` |
-| Theme customization | `app_themes.go` + `ThemeContext.jsx` |
-| Port forward logic | `app_portforward.go` + `hooks/usePortForwards.js` |
-| Terminal behavior | `app_terminal.go` + `pkg/terminal/` + `Terminal.jsx` |
+| Add K8s resource type | `types/k8s.ts` |
+| Configure resource | `utils/resourceRegistry.ts` |
+| Theme customization | `app_themes.go` + `ThemeContext.tsx` |
+| Port forward logic | `app_portforward.go` + `hooks/usePortForwards.tsx` |
+| Terminal behavior | `app_terminal.go` + `pkg/terminal/` + `Terminal.tsx` |
 | Log streaming | `app_logs.go` + `log-viewer/` |
 | Helm operations | `app_helm.go` + `pkg/helm/` |
-| Dependency graph | `pkg/k8s/dependencies.go` + `DependencyGraph.jsx` |
-| AI integration | `app_ai.go` + `pkg/ai/` + `AIChatContext.jsx` |
+| Dependency graph | `pkg/k8s/dependencies.go` + `DependencyGraph.tsx` |
+| AI integration | `app_ai.go` + `pkg/ai/` + `AIChatContext.tsx` |
 | MCP server | `pkg/mcp/server.go` |
 | Watcher infrastructure | `app_watchermgr.go` + `app_watchers.go` |
 | Performance metrics | `app_perfmetrics.go` |
