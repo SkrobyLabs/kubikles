@@ -57,7 +57,7 @@ export default function PodDetails({ pod, tabContext = '' }) {
 
         if (controller) {
             try {
-                const allPods = await ListPods(namespace);
+                const allPods = await ListPods('', namespace);
                 const siblings = allPods.filter(p => {
                     const c = getPodController(p);
                     return c && c.uid === controller.uid;

@@ -323,6 +323,16 @@ export const configSchema = {
             description: 'Display resource type icons in tab titles',
             default: true
         }
+    },
+    debug: {
+        _meta: { label: 'Debug', description: 'Developer and debugging options' },
+        showLogSourceMarkers: {
+            type: 'boolean',
+            label: 'Show Log Source Markers',
+            description: 'Show debug download button in log viewer',
+            subtext: 'Downloads logs with markers showing how each line was fetched: [INITIAL], [STREAM], [BEFORE], [AFTER]. Useful for debugging log viewer pagination.',
+            default: false
+        }
     }
 };
 

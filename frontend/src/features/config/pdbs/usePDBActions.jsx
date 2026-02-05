@@ -18,7 +18,7 @@ export const usePDBActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (pdb) => {
-            await DeletePDB(currentContext, pdb.metadata.namespace, pdb.metadata.name);
+            await DeletePDB(pdb.metadata.namespace, pdb.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this PodDisruptionBudget? Pod disruption protection will be removed.' }
     );

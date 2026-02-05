@@ -18,7 +18,7 @@ export const useLimitRangeActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (lr) => {
-            await DeleteLimitRange(currentContext, lr.metadata.namespace, lr.metadata.name);
+            await DeleteLimitRange(lr.metadata.namespace, lr.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this LimitRange? Default limits will no longer be applied.' }
     );

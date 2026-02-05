@@ -47,7 +47,7 @@ export const useJobActions = (onRefresh) => {
         Logger.info("View logs for Job", { namespace, name: job.metadata.name });
 
         try {
-            const allPods = await ListPods(namespace);
+            const allPods = await ListPods('', namespace);
             const jobPods = allPods.filter(pod =>
                 pod.metadata?.labels?.['job-name'] === job.metadata.name
             );

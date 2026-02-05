@@ -29,7 +29,7 @@ export const useCronJobActions = () => {
         const namespace = cronJob.metadata.namespace;
 
         try {
-            const allJobs = await ListJobs(namespace);
+            const allJobs = await ListJobs('', namespace);
             const cronJobJobs = allJobs.filter(job => {
                 const ownerRefs = job.metadata?.ownerReferences || [];
                 return ownerRefs.some(ref =>
@@ -47,7 +47,7 @@ export const useCronJobActions = () => {
             );
             const mostRecentJob = cronJobJobs[0];
 
-            const allPods = await ListPods(namespace);
+            const allPods = await ListPods('', namespace);
             const jobPods = allPods.filter(pod =>
                 pod.metadata?.labels?.['job-name'] === mostRecentJob.metadata.name
             );

@@ -18,7 +18,7 @@ export const useNetworkPolicyActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (networkPolicy) => {
-            await DeleteNetworkPolicy(currentContext, networkPolicy.metadata.namespace, networkPolicy.metadata.name);
+            await DeleteNetworkPolicy(networkPolicy.metadata.namespace, networkPolicy.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this network policy? This may affect pod network connectivity.' }
     );

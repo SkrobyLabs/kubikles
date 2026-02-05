@@ -18,7 +18,7 @@ export const useValidatingWebhookActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (webhook) => {
-            await DeleteValidatingWebhookConfiguration(currentContext, webhook.metadata.name);
+            await DeleteValidatingWebhookConfiguration(webhook.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this validating webhook configuration? This may affect resource validation in the cluster.' }
     );

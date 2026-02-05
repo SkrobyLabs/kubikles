@@ -78,6 +78,12 @@ const defaultConfig = {
         // Additional K8s client connections for better parallelism.
         // 0 = just main connection. Requires context switch.
         clientPoolSize: 0
+    },
+    debug: {
+        // Show debug download button in log viewer. Downloads logs with source
+        // markers indicating how each line was fetched: [INITIAL], [STREAM],
+        // [BEFORE], [AFTER]. Useful for debugging log viewer pagination issues.
+        showLogSourceMarkers: false
     }
 };
 

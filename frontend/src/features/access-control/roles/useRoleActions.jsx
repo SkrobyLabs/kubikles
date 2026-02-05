@@ -42,7 +42,7 @@ export const useRoleActions = () => {
             confirmStyle: 'danger',
             onConfirm: async () => {
                 try {
-                    await DeleteRole(currentContext, namespace, name);
+                    await DeleteRole(namespace, name);
                     Logger.info("Role deleted successfully", { namespace, name });
                     closeModal();
                 } catch (err) {

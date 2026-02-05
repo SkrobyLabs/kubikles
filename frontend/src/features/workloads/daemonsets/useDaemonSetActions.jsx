@@ -44,7 +44,7 @@ export const useDaemonSetActions = () => {
         const namespace = daemonSet.metadata.namespace;
 
         try {
-            const allPods = await ListPods(namespace);
+            const allPods = await ListPods('', namespace);
             const daemonSetPods = allPods.filter(pod => {
                 const ownerRefs = pod.metadata?.ownerReferences || [];
                 return ownerRefs.some(ref =>

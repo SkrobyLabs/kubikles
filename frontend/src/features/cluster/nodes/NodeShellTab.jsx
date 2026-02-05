@@ -21,7 +21,7 @@ const waitForPodRunning = async (namespace, podName, timeoutMs = 60000, pollInte
 
     while (Date.now() - startTime < timeoutMs) {
         try {
-            const pods = await ListPods(namespace);
+            const pods = await ListPods('', namespace);
             const pod = pods.find(p => p.metadata.name === podName);
 
             if (pod) {

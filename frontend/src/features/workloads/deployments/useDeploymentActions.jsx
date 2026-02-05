@@ -44,7 +44,7 @@ export const useDeploymentActions = () => {
         const namespace = deployment.metadata.namespace;
 
         try {
-            const allPods = await ListPods(namespace);
+            const allPods = await ListPods('', namespace);
             const deploymentPods = allPods.filter(pod => {
                 const ownerRefs = pod.metadata?.ownerReferences || [];
                 return ownerRefs.some(ref =>

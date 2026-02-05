@@ -42,7 +42,7 @@ export const useServiceAccountActions = () => {
             confirmStyle: 'danger',
             onConfirm: async () => {
                 try {
-                    await DeleteServiceAccount(currentContext, namespace, name);
+                    await DeleteServiceAccount(namespace, name);
                     Logger.info("ServiceAccount deleted successfully", { namespace, name });
                     closeModal();
                 } catch (err) {

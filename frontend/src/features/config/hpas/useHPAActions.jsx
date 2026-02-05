@@ -18,7 +18,7 @@ export const useHPAActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (hpa) => {
-            await DeleteHPA(currentContext, hpa.metadata.namespace, hpa.metadata.name);
+            await DeleteHPA(hpa.metadata.namespace, hpa.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this HorizontalPodAutoscaler? Automatic scaling will be disabled.' }
     );

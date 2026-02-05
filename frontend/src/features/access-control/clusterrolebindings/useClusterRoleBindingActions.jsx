@@ -40,7 +40,7 @@ export const useClusterRoleBindingActions = () => {
             confirmStyle: 'danger',
             onConfirm: async () => {
                 try {
-                    await DeleteClusterRoleBinding(currentContext, name);
+                    await DeleteClusterRoleBinding(name);
                     Logger.info("ClusterRoleBinding deleted successfully", { name });
                     closeModal();
                 } catch (err) {

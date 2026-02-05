@@ -18,7 +18,7 @@ export const useResourceQuotaActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (quota) => {
-            await DeleteResourceQuota(currentContext, quota.metadata.namespace, quota.metadata.name);
+            await DeleteResourceQuota(quota.metadata.namespace, quota.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this ResourceQuota? Resource limits will no longer be enforced.' }
     );

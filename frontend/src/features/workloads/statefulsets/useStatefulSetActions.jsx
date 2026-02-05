@@ -44,7 +44,7 @@ export const useStatefulSetActions = () => {
         const namespace = statefulSet.metadata.namespace;
 
         try {
-            const allPods = await ListPods(namespace);
+            const allPods = await ListPods('', namespace);
             const statefulSetPods = allPods.filter(pod => {
                 const ownerRefs = pod.metadata?.ownerReferences || [];
                 return ownerRefs.some(ref =>

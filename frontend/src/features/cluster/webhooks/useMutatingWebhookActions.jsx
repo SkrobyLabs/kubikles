@@ -18,7 +18,7 @@ export const useMutatingWebhookActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (webhook) => {
-            await DeleteMutatingWebhookConfiguration(currentContext, webhook.metadata.name);
+            await DeleteMutatingWebhookConfiguration(webhook.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this mutating webhook configuration? This may affect resource mutations in the cluster.' }
     );

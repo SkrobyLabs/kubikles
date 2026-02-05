@@ -18,7 +18,7 @@ export const useEndpointsActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (endpoints) => {
-            await DeleteEndpoints(currentContext, endpoints.metadata.namespace, endpoints.metadata.name);
+            await DeleteEndpoints(endpoints.metadata.namespace, endpoints.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete these endpoints? This may affect service connectivity.' }
     );

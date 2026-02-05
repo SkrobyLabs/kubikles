@@ -30,7 +30,6 @@ export function useLogStream({
     siblingPods, // Array of sibling pod names (needed for "All Pods" mode)
     podContainerMap, // Map of podName -> containerNames (needed for "All Pods" mode)
     showPrevious,
-    pinPreviousLogs = false, // When true, preserve logs if container becomes unavailable
     sinceTime,
     viewMode,
     initialPosition,
@@ -61,9 +60,11 @@ export function useLogStream({
     const [isAllLoaded, setIsAllLoaded] = useState(() => initialPosition === 'all');
     const [streamDisconnected, setStreamDisconnected] = useState(false);
     const [disconnectReason, setDisconnectReason] = useState('');
+    // Ref to track disconnected state synchronously (avoids stale closure in effects)
+    const streamDisconnectedRef = useRef(false);
     const [firstItemIndex, setFirstItemIndex] = useState(10000); // For virtuoso prepending
 
-    const [isPinned, setIsPinned] = useState(false); // True when showing pinned previous logs
+    const [fetchError, setFetchError] = useState(null); // Error message when fetch fails (logs preserved)
 
     const streamIdRef = useRef(null);
     const loadingBeforeRef = useRef(false);
@@ -74,6 +75,8 @@ export function useLogStream({
     const prevPodRef = useRef(pod);
     const prevContainerRef = useRef(container);
     const prevShowPreviousRef = useRef(showPrevious);
+    const prevSinceTimeRef = useRef(sinceTime);
+    const prevViewModeRef = useRef(viewMode);
     // Ref to track fetch state synchronously (avoids React batching race conditions)
     const isFetchingRef = useRef(true);
 
@@ -114,6 +117,8 @@ export function useLogStream({
             streamIdRef.current = null;
         }
 
+        // Clear disconnected state (user is manually refreshing)
+        streamDisconnectedRef.current = false;
         setStreamDisconnected(false);
         setDisconnectReason('');
         setIsAllLoaded(false);
@@ -145,19 +150,20 @@ export function useLogStream({
                 setHasMoreAfter(false);
             }
             const parsed = parseLogLines(logData, 'initial');
-            if (parsed.length === 0 && pinPreviousLogs && logs.length > 0) {
-                // Container gone but we have pinned logs — keep them
-                setIsPinned(true);
+            if (parsed.length === 0 && logs.length > 0) {
+                // Container gone but we have existing logs — keep them and show warning
+                setFetchError('Container no longer available');
             } else {
-                setIsPinned(false);
+                setFetchError(null);
                 setLogs(parsed);
             }
         } catch (err) {
-            if (pinPreviousLogs && logs.length > 0) {
-                // Container gone — keep pinned logs
-                setIsPinned(true);
+            // On error, preserve existing logs and show error banner
+            if (logs.length > 0) {
+                setFetchError(`Error fetching logs: ${err}`);
             } else {
-                setLogs([{ timestamp: '', content: `Error fetching logs: ${err}`, source: 'error' }]);
+                setFetchError(`Error fetching logs: ${err}`);
+                setLogs([]);
             }
             setHasMoreBefore(false);
             setHasMoreAfter(false);
@@ -165,7 +171,7 @@ export function useLogStream({
             setLoading(false);
             isFetchingRef.current = false;
         }
-    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, pinPreviousLogs, logs.length, sinceTime, viewMode]);
+    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, logs.length, sinceTime, viewMode]);
 
     // Load all logs at once
     const loadAllLogs = useCallback(async () => {
@@ -325,13 +331,21 @@ export function useLogStream({
         const podChanged = prevPodRef.current !== pod;
         const containerChanged = prevContainerRef.current !== container;
         const showPreviousChanged = prevShowPreviousRef.current !== showPrevious;
+        const sinceTimeChanged = prevSinceTimeRef.current !== sinceTime;
+        const viewModeChanged = prevViewModeRef.current !== viewMode;
         prevPodRef.current = pod;
         prevContainerRef.current = container;
         prevShowPreviousRef.current = showPrevious;
+        prevSinceTimeRef.current = sinceTime;
+        prevViewModeRef.current = viewMode;
 
-        if (podChanged || containerChanged || showPreviousChanged) {
+        if (podChanged || containerChanged || showPreviousChanged || sinceTimeChanged || viewModeChanged) {
             // Set ref and loading immediately to prevent streaming race condition
             isFetchingRef.current = true;
+            // Clear disconnected state since user is changing selection
+            streamDisconnectedRef.current = false;
+            setStreamDisconnected(false);
+            setDisconnectReason('');
             setLoading(true);
             resetChunkState();
             setLogs([]);
@@ -350,6 +364,12 @@ export function useLogStream({
         }
 
         if (isAllLoaded) return;
+
+        // Don't auto-fetch if stream was disconnected (preserve existing logs)
+        if (streamDisconnectedRef.current) return;
+
+        // Only fetch on initial load, not on every effect run
+        if (initialLoadDone.current) return;
 
         initialLoadDone.current = true;
         fetchLogs();
@@ -443,6 +463,7 @@ export function useLogStream({
 
             if (event.done) {
                 streamIdRef.current = null;
+                streamDisconnectedRef.current = true;
                 setStreamDisconnected(true);
                 setDisconnectReason('Pod terminated or container restarted');
                 return;
@@ -451,6 +472,7 @@ export function useLogStream({
             if (event.error) {
                 console.error('Log stream error:', event.error);
                 streamIdRef.current = null;
+                streamDisconnectedRef.current = true;
                 setStreamDisconnected(true);
                 setDisconnectReason(event.error);
                 return;
@@ -497,8 +519,8 @@ export function useLogStream({
         hasMoreBefore,
         hasMoreAfter,
         isAllLoaded,
-        isPinned,
-        setIsPinned,
+        fetchError,
+        clearFetchError: () => setFetchError(null),
         streamDisconnected,
         disconnectReason,
         firstItemIndex,

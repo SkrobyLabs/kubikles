@@ -18,7 +18,7 @@ export const usePriorityClassActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (priorityClass) => {
-            await DeletePriorityClass(currentContext, priorityClass.metadata.name);
+            await DeletePriorityClass(priorityClass.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this priority class? This may affect pod scheduling priorities.' }
     );

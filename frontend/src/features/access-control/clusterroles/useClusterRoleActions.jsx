@@ -40,7 +40,7 @@ export const useClusterRoleActions = () => {
             confirmStyle: 'danger',
             onConfirm: async () => {
                 try {
-                    await DeleteClusterRole(currentContext, name);
+                    await DeleteClusterRole(name);
                     Logger.info("ClusterRole deleted successfully", { name });
                     closeModal();
                 } catch (err) {

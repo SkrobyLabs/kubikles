@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { GetAllPodLogs, SavePodLogs, SaveLogsBundle } from '../../../../wailsjs/go/main/App';
-import { useK8s } from '../../../context';
-import { useDebug } from '../../../context';
-import { useConfig } from '../../../context';
+import { useK8s, useConfig } from '../../../context';
 import {
     ArrowDownTrayIcon,
     ArchiveBoxArrowDownIcon,
@@ -15,7 +13,6 @@ import {
     CalendarIcon,
     ExclamationTriangleIcon,
     ArrowPathIcon,
-    BugAntIcon,
     EyeIcon,
     MagnifyingGlassIcon,
     XMarkIcon,
@@ -23,8 +20,7 @@ import {
     MinusIcon,
     PlusIcon,
     ArrowsPointingOutIcon,
-    LockClosedIcon,
-    LockOpenIcon
+    BugAntIcon
 } from '@heroicons/react/24/outline';
 
 import SearchSelect from '../SearchSelect';
@@ -48,7 +44,6 @@ export default function LogViewer({
     tabContext = ''
 }) {
     const { currentContext } = useK8s();
-    const { isDebugMode } = useDebug();
     const { getConfig } = useConfig();
 
     // Helper to safely get config with validation and fallback
@@ -75,7 +70,6 @@ export default function LogViewer({
     const [wrapLines, setWrapLines] = useState(() => getSafeConfig('logs.lineWrap', true, v => typeof v === 'boolean'));
     const [showTimestamps, setShowTimestamps] = useState(() => getSafeConfig('logs.showTimestamps', false, v => typeof v === 'boolean'));
     const [showPrevious, setShowPrevious] = useState(false);
-    const [pinPreviousLogs, setPinPreviousLogs] = useState(false);
     const [showTimeModal, setShowTimeModal] = useState(false);
     const [sinceTime, setSinceTime] = useState('');
     const initialPosition = getSafeConfig('logs.position', 'end', v => ['start', 'end', 'all'].includes(v));
@@ -83,6 +77,8 @@ export default function LogViewer({
     const [autoFollow, setAutoFollow] = useState(true);
     const [downloading, setDownloading] = useState(false);
     const [downloadingBundle, setDownloadingBundle] = useState(false);
+
+    const showDebugDownload = getConfig('debug.showLogSourceMarkers');
 
     const virtuosoRef = useRef(null);
     const isAtBottomRef = useRef(true);
@@ -104,7 +100,6 @@ export default function LogViewer({
         siblingPods, // Pass sibling pods for "All Pods" mode
         podContainerMap, // Pass pod-container map for "All Pods" mode
         showPrevious,
-        pinPreviousLogs,
         sinceTime,
         viewMode,
         initialPosition,
@@ -356,11 +351,19 @@ export default function LogViewer({
                 </div>
             )}
 
-            {/* Pinned Previous Logs Banner */}
-            {stream.isPinned && (
-                <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-900/20 border-b border-amber-500/30 text-amber-400 shrink-0">
-                    <LockClosedIcon className="h-4 w-4" />
-                    <span className="text-xs">Showing pinned previous logs (container no longer available)</span>
+            {/* Fetch Error Banner */}
+            {stream.fetchError && (
+                <div className="flex items-center justify-between px-4 py-1.5 bg-amber-900/20 border-b border-amber-500/30 text-amber-400 shrink-0">
+                    <div className="flex items-center gap-2">
+                        <ExclamationTriangleIcon className="h-4 w-4" />
+                        <span className="text-xs">{stream.fetchError}</span>
+                    </div>
+                    <button
+                        onClick={stream.clearFetchError}
+                        className="text-xs text-amber-400 hover:text-amber-300 px-2"
+                    >
+                        Dismiss
+                    </button>
                 </div>
             )}
 
@@ -397,6 +400,7 @@ export default function LogViewer({
                                     placeholder="Select Container..."
                                     className="text-xs"
                                     getOptionLabel={(opt) => opt === ALL_CONTAINERS ? 'All Containers' : opt}
+                                    disabled={!!stream.fetchError || stream.streamDisconnected}
                                 />
                             </div>
                         </div>
@@ -439,19 +443,10 @@ export default function LogViewer({
                     <Tooltip content={showPrevious ? 'Showing previous container logs' : 'Show previous container logs'}>
                         <button
                             onClick={() => setShowPrevious(!showPrevious)}
-                            className={`p-1.5 rounded transition-colors ${showPrevious ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                            disabled={!!stream.fetchError || stream.streamDisconnected}
+                            className={`p-1.5 rounded transition-colors disabled:opacity-50 ${showPrevious ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                         >
                             <BackwardIcon className="w-4 h-4" />
-                        </button>
-                    </Tooltip>
-
-                    {/* Pin Logs Toggle — always visible, preserves logs if container crashes/restarts */}
-                    <Tooltip content={pinPreviousLogs ? 'Logs pinned — preserved if container becomes unavailable' : 'Pin logs — keep them if container becomes unavailable'}>
-                        <button
-                            onClick={() => setPinPreviousLogs(!pinPreviousLogs)}
-                            className={`p-1.5 rounded transition-colors ${pinPreviousLogs ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        >
-                            {pinPreviousLogs ? <LockClosedIcon className="w-4 h-4" /> : <LockOpenIcon className="w-4 h-4" />}
                         </button>
                     </Tooltip>
 
@@ -461,7 +456,7 @@ export default function LogViewer({
                     <Tooltip content="Jump to start">
                         <button
                             onClick={jumpToStart}
-                            disabled={stream.loading || stream.loadingAll}
+                            disabled={stream.loading || stream.loadingAll || !!stream.fetchError || stream.streamDisconnected}
                             className={`p-1.5 rounded transition-colors disabled:opacity-50 ${viewMode === 'start' && !stream.isAllLoaded ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                         >
                             <ChevronDoubleUpIcon className="w-4 h-4" />
@@ -472,7 +467,7 @@ export default function LogViewer({
                     <Tooltip content={isFollowing ? "Following logs (click to pause)" : viewMode === 'end' && !sinceTime && !showPrevious ? "Click to resume following" : "Jump to end & follow"}>
                         <button
                             onClick={jumpToEnd}
-                            disabled={stream.loading || stream.loadingAll}
+                            disabled={stream.loading || stream.loadingAll || !!stream.fetchError || stream.streamDisconnected}
                             className={`p-1.5 rounded transition-colors disabled:opacity-50 ${isFollowing ? 'bg-green-500/20 text-green-400' : viewMode === 'end' && !sinceTime && !stream.isAllLoaded ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                         >
                             <ChevronDoubleDownIcon className={`w-4 h-4 ${isFollowing ? 'animate-pulse' : ''}`} />
@@ -483,7 +478,7 @@ export default function LogViewer({
                     <Tooltip content={sinceTime ? `Filtering from: ${sinceTime}` : 'Jump to time'}>
                         <button
                             onClick={() => setShowTimeModal(true)}
-                            disabled={stream.loadingAll}
+                            disabled={stream.loadingAll || !!stream.fetchError || stream.streamDisconnected}
                             className={`p-1.5 rounded transition-colors disabled:opacity-50 ${sinceTime ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                         >
                             <CalendarIcon className="w-4 h-4" />
@@ -494,7 +489,7 @@ export default function LogViewer({
                     <Tooltip content={stream.isAllLoaded ? "All logs loaded" : "Load all logs"}>
                         <button
                             onClick={handleLoadAll}
-                            disabled={stream.loading || stream.loadingAll || stream.isAllLoaded}
+                            disabled={stream.loading || stream.loadingAll || stream.isAllLoaded || !!stream.fetchError || stream.streamDisconnected}
                             className={`p-1.5 rounded transition-colors disabled:opacity-50 ${stream.isAllLoaded ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                         >
                             {stream.loadingAll ? <Spinner /> : <ArrowsPointingOutIcon className="w-4 h-4" />}
@@ -503,7 +498,7 @@ export default function LogViewer({
 
                     <div className="w-px h-4 bg-border mx-1" />
 
-                    {/* Download */}
+                    {/* Download container logs */}
                     <Tooltip content={
                         selectedPod === ALL_PODS
                             ? (selectedContainer === ALL_CONTAINERS ? "Download merged logs (all pods, all containers)" : "Download merged logs (all pods)")
@@ -511,19 +506,19 @@ export default function LogViewer({
                     }>
                         <button
                             onClick={downloadLogs}
-                            disabled={stream.logs.length === 0 || stream.loading || downloading}
+                            disabled={stream.logs.length === 0 || stream.loading || downloading || !!stream.fetchError || stream.streamDisconnected}
                             className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {downloading ? <Spinner /> : <ArrowDownTrayIcon className="w-4 h-4" />}
                         </button>
                     </Tooltip>
 
-                    {/* Download All */}
+                    {/* Download all pod logs */}
                     {siblingPods.length > 1 && (
-                        <Tooltip content="Download all pod logs">
+                        <Tooltip content="Download all pod logs (zip)">
                             <button
                                 onClick={downloadBundle}
-                                disabled={stream.loading || downloadingBundle}
+                                disabled={stream.loading || downloadingBundle || !!stream.fetchError || stream.streamDisconnected}
                                 className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {downloadingBundle ? <Spinner /> : <ArchiveBoxArrowDownIcon className="w-4 h-4" />}
@@ -532,7 +527,7 @@ export default function LogViewer({
                     )}
 
                     {/* Download visible logs */}
-                    <Tooltip content="Download currently visible logs">
+                    <Tooltip content="Download visible logs">
                         <button
                             onClick={downloadVisibleLogs}
                             disabled={stream.logs.length === 0}
@@ -542,13 +537,13 @@ export default function LogViewer({
                         </button>
                     </Tooltip>
 
-                    {/* DEBUG: Download logs with debug markers */}
-                    {isDebugMode && (
-                        <Tooltip content="DEBUG: Download logs with source markers">
+                    {/* Debug download (with source markers) - enable via debug.showLogSourceMarkers config */}
+                    {showDebugDownload && (
+                        <Tooltip content="Download with source markers (debug)">
                             <button
                                 onClick={downloadDebugLogs}
                                 disabled={stream.logs.length === 0}
-                                className="p-1.5 rounded text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <BugAntIcon className="w-4 h-4" />
                             </button>
@@ -768,6 +763,7 @@ export default function LogViewer({
                 getFirstTimestamp={stream.getFirstTimestamp}
                 podCreationTime={podCreationTime}
             />
+
         </div>
     );
 }

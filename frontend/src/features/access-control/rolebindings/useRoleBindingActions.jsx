@@ -42,7 +42,7 @@ export const useRoleBindingActions = () => {
             confirmStyle: 'danger',
             onConfirm: async () => {
                 try {
-                    await DeleteRoleBinding(currentContext, namespace, name);
+                    await DeleteRoleBinding(namespace, name);
                     Logger.info("RoleBinding deleted successfully", { namespace, name });
                     closeModal();
                 } catch (err) {

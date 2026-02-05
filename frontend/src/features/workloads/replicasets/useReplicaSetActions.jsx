@@ -23,7 +23,7 @@ export const useReplicaSetActions = () => {
 
     const handleDelete = createDeleteHandler(
         async (replicaSet) => {
-            await DeleteReplicaSet(currentContext, replicaSet.metadata.namespace, replicaSet.metadata.name);
+            await DeleteReplicaSet(replicaSet.metadata.namespace, replicaSet.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this replicaset? This will also delete all associated pods.' }
     );
@@ -33,7 +33,7 @@ export const useReplicaSetActions = () => {
         const namespace = replicaSet.metadata.namespace;
 
         try {
-            const allPods = await ListPods(namespace);
+            const allPods = await ListPods('', namespace);
             const replicaSetPods = allPods.filter(pod => {
                 const ownerRefs = pod.metadata?.ownerReferences || [];
                 return ownerRefs.some(ref =>
