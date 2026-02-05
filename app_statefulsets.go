@@ -44,3 +44,11 @@ func (a *App) UpdateStatefulSetYaml(namespace, name, yamlContent string) error {
 	}
 	return a.k8sClient.UpdateStatefulSetYaml(namespace, name, yamlContent)
 }
+
+func (a *App) ScaleStatefulSet(namespace, name string, replicas int32) error {
+	a.logDebug("ScaleStatefulSet called: ns=%s, name=%s, replicas=%d", namespace, name, replicas)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ScaleStatefulSet(namespace, name, replicas)
+}

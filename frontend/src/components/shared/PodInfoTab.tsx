@@ -1,17 +1,20 @@
 import React, { useCallback } from 'react';
+import { ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { useUI } from '../../context';
 import { useK8s } from '../../context';
 import { getPodController } from '../../utils/k8s-helpers';
 import { formatAge } from '../../utils/formatting';
 import { getOwnerViewId } from '../../utils/owner-navigation';
 import { CopyableLabel, DetailRow } from './DetailComponents';
+import Tooltip from './Tooltip';
 
 export default function PodInfoTab({ pod }) {
-    const { navigateWithSearch } = useUI();
+    const { navigateWithSearch, openDiagnostic } = useUI();
     const { crds } = useK8s();
 
     const controller = getPodController(pod);
     const controllerViewId = controller ? getOwnerViewId(controller, crds) : null;
+    const serviceAccount = pod.spec?.serviceAccountName || 'default';
     const labels = pod.metadata?.labels || {};
     const tolerations = pod.spec?.tolerations || [];
     const qosClass = pod.status?.qosClass || 'N/A';
@@ -22,6 +25,16 @@ export default function PodInfoTab({ pod }) {
         if (!controller || !controllerViewId) return;
         navigateWithSearch(controllerViewId, `uid:"${controller.uid}"`);
     }, [controller, controllerViewId, navigateWithSearch]);
+
+    const handleRBACCheck = useCallback(() => {
+        openDiagnostic('rbac-checker', {
+            initialSubject: {
+                kind: 'ServiceAccount',
+                name: serviceAccount,
+                namespace: pod.metadata?.namespace
+            }
+        });
+    }, [serviceAccount, pod.metadata?.namespace, openDiagnostic]);
 
     return (
         <div className="flex flex-col h-full overflow-auto p-4">
@@ -51,6 +64,21 @@ export default function PodInfoTab({ pod }) {
                     ) : (
                         <span className="text-gray-500">None</span>
                     )}
+                </DetailRow>
+
+                {/* Service Account */}
+                <DetailRow label="Service Account">
+                    <div className="flex items-center gap-2">
+                        <CopyableLabel value={serviceAccount} />
+                        <Tooltip content="Check RBAC">
+                            <button
+                                onClick={handleRBACCheck}
+                                className="p-1 text-gray-400 hover:text-amber-400 hover:bg-white/10 rounded transition-colors"
+                            >
+                                <ShieldCheckIcon className="w-4 h-4" />
+                            </button>
+                        </Tooltip>
+                    </div>
                 </DetailRow>
 
                 {/* Created */}

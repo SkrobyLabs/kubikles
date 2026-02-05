@@ -7,9 +7,7 @@ import {
     SignalIcon,
     FolderIcon,
     CommandLineIcon,
-    ClockIcon,
-    ShieldCheckIcon,
-    DocumentDuplicateIcon
+    ClockIcon
 } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context';
 import { useUI } from '../../context';
@@ -96,68 +94,6 @@ export default function PodDetails({ pod, tabContext = '' }) {
             resourceType: 'pod',
             namespace: pod.metadata?.namespace,
             name: pod.metadata?.name
-        });
-    }, [pod, openDiagnostic]);
-
-    // Handle opening Multi-Pod Logs with this pod preselected
-    // Filter labels to only meaningful ones for grouping (excluding volatile labels)
-    const handleMultiPodLogs = useCallback(() => {
-        const controller = getPodController(pod);
-        let labelSelector = {};
-
-        if (controller && pod.metadata?.labels) {
-            // Labels to exclude - these change per ReplicaSet/revision or are too specific
-            const excludeLabels = [
-                'pod-template-hash',
-                'controller-revision-hash',
-                'statefulset.kubernetes.io/pod-name',
-                'app.kubernetes.io/version',
-                'helm.sh/chart'
-            ];
-
-            // Preferred labels for grouping pods (in order of preference)
-            const preferredLabels = [
-                'app',
-                'app.kubernetes.io/name',
-                'app.kubernetes.io/instance',
-                'app.kubernetes.io/component'
-            ];
-
-            const allLabels = pod.metadata.labels;
-
-            // First try to use only preferred labels that exist
-            for (const key of preferredLabels) {
-                if (allLabels[key]) {
-                    labelSelector[key] = allLabels[key];
-                }
-            }
-
-            // If no preferred labels found, use all labels except excluded ones
-            if (Object.keys(labelSelector).length === 0) {
-                for (const [key, value] of Object.entries(allLabels)) {
-                    if (!excludeLabels.includes(key)) {
-                        labelSelector[key] = value;
-                    }
-                }
-            }
-        }
-
-        openDiagnostic('multi-log-viewer', {
-            initialNamespace: pod.metadata?.namespace,
-            initialPodNames: [pod.metadata?.name],
-            initialLabelSelector: labelSelector
-        });
-    }, [pod, openDiagnostic]);
-
-    // Handle RBAC check for this pod's service account
-    const handleRBACCheck = useCallback(() => {
-        const serviceAccount = pod.spec?.serviceAccountName || 'default';
-        openDiagnostic('rbac-checker', {
-            initialSubject: {
-                kind: 'ServiceAccount',
-                name: serviceAccount,
-                namespace: pod.metadata?.namespace
-            }
         });
     }, [pod, openDiagnostic]);
 
@@ -280,7 +216,7 @@ export default function PodDetails({ pod, tabContext = '' }) {
             {/* Header Bar */}
             <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
-                    <div className="text-sm font-medium text-gray-400">
+                    <div className="text-sm font-medium text-gray-400 selectable">
                         {pod.metadata?.namespace}/{pod.metadata?.name}
                     </div>
                     {/* Tab Toggle */}
@@ -386,22 +322,6 @@ export default function PodDetails({ pod, tabContext = '' }) {
                                 className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-white/10 rounded transition-colors"
                             >
                                 <ClockIcon className="w-4 h-4" />
-                            </button>
-                        </Tooltip>
-                        <Tooltip content="Multi-Pod Logs">
-                            <button
-                                onClick={handleMultiPodLogs}
-                                className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-white/10 rounded transition-colors"
-                            >
-                                <DocumentDuplicateIcon className="w-4 h-4" />
-                            </button>
-                        </Tooltip>
-                        <Tooltip content="Check RBAC">
-                            <button
-                                onClick={handleRBACCheck}
-                                className="p-1.5 text-gray-400 hover:text-amber-400 hover:bg-white/10 rounded transition-colors"
-                            >
-                                <ShieldCheckIcon className="w-4 h-4" />
                             </button>
                         </Tooltip>
                     </div>

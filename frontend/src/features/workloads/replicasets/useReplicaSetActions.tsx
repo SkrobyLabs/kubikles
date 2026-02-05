@@ -18,6 +18,9 @@ export const useReplicaSetActions = (): ReplicaSetActionsReturn => {
         handleShowDependencies,
         createDeleteHandler,
         openTab,
+        closeTab,
+        openModal,
+        closeModal,
         currentContext,
         addNotification,
     } = useBaseResourceActions<K8sReplicaSet>({

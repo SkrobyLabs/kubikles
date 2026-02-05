@@ -143,12 +143,13 @@ export const useDiagnostics = (): UseDiagnosticsReturn => {
       resourceType: string,
       resourceName: string,
       namespace: string,
-      context: string
+      durationMinutes: number = 30,
+      includeLogs: boolean = true
     ): Promise<FlowTimelineEvent[] | null> => {
       setLoading(true);
       setError(null);
       try {
-        const result = await GetFlowTimeline(resourceType, resourceName, namespace, context);
+        const result = await GetFlowTimeline(resourceType, namespace, resourceName, durationMinutes, includeLogs);
         return result as FlowTimelineEvent[];
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to get flow timeline';

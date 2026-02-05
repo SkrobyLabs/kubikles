@@ -14,6 +14,7 @@ import {
 import { useK8s } from '../../context';
 import Tooltip from '../../components/shared/Tooltip';
 import SearchSelect from '../../components/shared/SearchSelect';
+import { converter, normalizeAnsiCodes } from '../../components/shared/log-viewer/logUtils';
 import {
     MagnifyingGlassIcon,
     ClockIcon,
@@ -134,6 +135,10 @@ function TimelineEntry({ entry, expanded, onToggle }) {
     const TypeIcon = ENTRY_TYPE_ICONS[entry.entryType] || DocumentTextIcon;
     const colorClass = SEVERITY_COLORS[entry.severity] || SEVERITY_COLORS.info;
 
+    // Convert ANSI escape codes to HTML for proper color rendering
+    const messageHtml = converter.toHtml(normalizeAnsiCodes(entry.message || ''));
+    const detailsHtml = entry.details ? converter.toHtml(normalizeAnsiCodes(entry.details)) : null;
+
     return (
         <div className={`border-l-2 pl-4 py-2 mb-2 rounded-r bg-surface ${colorClass}`}>
             <div
@@ -153,7 +158,7 @@ function TimelineEntry({ entry, expanded, onToggle }) {
                         <span className="capitalize">{entry.entryType}</span>
                     </div>
                     <div className="text-sm text-text break-words">
-                        {entry.message}
+                        <span dangerouslySetInnerHTML={{ __html: messageHtml }} />
                     </div>
                 </div>
                 <div className="flex-shrink-0 text-xs text-gray-500">
@@ -170,7 +175,7 @@ function TimelineEntry({ entry, expanded, onToggle }) {
             </div>
             {expanded && entry.details && (
                 <div className="mt-2 ml-8 p-2 bg-background rounded text-xs font-mono text-gray-400 whitespace-pre-wrap">
-                    {entry.details}
+                    <span dangerouslySetInnerHTML={{ __html: detailsHtml }} />
                 </div>
             )}
         </div>

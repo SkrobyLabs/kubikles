@@ -75,6 +75,17 @@ export default function Sidebar({
     }, []);
     const settingsButtonRef = useRef(null);
     const settingsMenuRef = useRef(null);
+    const activeItemRef = useRef<HTMLButtonElement | null>(null);
+
+    // Scroll active menu item into view when it changes
+    useEffect(() => {
+        if (activeItemRef.current) {
+            activeItemRef.current.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+            });
+        }
+    }, [activeView]);
 
     // Close settings menu on click outside
     useEffect(() => {
@@ -382,6 +393,7 @@ export default function Sidebar({
                                         return (
                                             <li key={item.id}>
                                                 <button
+                                                    ref={activeView === item.id ? activeItemRef : null}
                                                     onClick={() => handleViewChange(item.id)}
                                                     className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${activeView === item.id
                                                         ? 'bg-primary/10 text-primary font-medium'
@@ -419,6 +431,7 @@ export default function Sidebar({
                         <div className="px-2 mt-1">
                             {/* Definitions link */}
                             <button
+                                ref={activeView === 'crds' ? activeItemRef : null}
                                 onClick={() => handleViewChange('crds')}
                                 className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${activeView === 'crds'
                                     ? 'bg-primary/10 text-primary font-medium'
@@ -461,6 +474,7 @@ export default function Sidebar({
                                                     return (
                                                         <li key={res.kind}>
                                                             <button
+                                                                ref={activeView === viewId ? activeItemRef : null}
                                                                 onClick={() => handleViewChange(viewId)}
                                                                 className={`w-full flex items-center pl-7 pr-2 py-1.5 text-sm rounded-md transition-colors ${activeView === viewId
                                                                     ? 'bg-primary/10 text-primary font-medium'

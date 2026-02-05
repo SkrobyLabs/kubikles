@@ -195,7 +195,9 @@ body {
 
 /* Allow text selection in editable/content areas */
 input, textarea, [contenteditable="true"],
-pre, code, .monaco-editor, .xterm {
+pre, code, .monaco-editor, .xterm,
+[data-virtuoso-scroller="true"],
+.detail-panel, .overflow-auto, .selectable {
   user-select: text;
   -webkit-user-select: text;
 }

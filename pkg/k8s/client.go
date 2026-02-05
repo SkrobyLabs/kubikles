@@ -3906,6 +3906,24 @@ func (c *Client) UpdateDeploymentYaml(namespace, name, content string) error {
 	return err
 }
 
+func (c *Client) ScaleDeployment(namespace, name string, replicas int32) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+
+	deployment, err := cs.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get deployment: %w", err)
+	}
+
+	deployment.Spec.Replicas = &replicas
+	_, err = cs.AppsV1().Deployments(namespace).Update(ctx, deployment, metav1.UpdateOptions{})
+	return err
+}
+
 func (c *Client) DeleteDeployment(contextName, namespace, name string) error {
 	log.Printf("Deleting deployment: context=%s, ns=%s, name=%s", contextName, namespace, name)
 	cs, err := c.getClientForContext(contextName)
@@ -4013,6 +4031,24 @@ func (c *Client) RestartStatefulSet(contextName, namespace, name string) error {
 	// Patch the statefulset to trigger a rollout
 	patch := fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, metav1.Now().String())
 	_, err = cs.AppsV1().StatefulSets(namespace).Patch(ctx, name, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{})
+	return err
+}
+
+func (c *Client) ScaleStatefulSet(namespace, name string, replicas int32) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+
+	statefulSet, err := cs.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get statefulset: %w", err)
+	}
+
+	statefulSet.Spec.Replicas = &replicas
+	_, err = cs.AppsV1().StatefulSets(namespace).Update(ctx, statefulSet, metav1.UpdateOptions{})
 	return err
 }
 
@@ -4186,6 +4222,24 @@ func (c *Client) UpdateReplicaSetYaml(namespace, name, yamlContent string) error
 		return fmt.Errorf("failed to parse YAML: %w", err)
 	}
 	_, err = cs.AppsV1().ReplicaSets(namespace).Update(ctx, &replicaset, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Client) ScaleReplicaSet(namespace, name string, replicas int32) error {
+	cs, err := c.getClientset()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+
+	replicaSet, err := cs.AppsV1().ReplicaSets(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get replicaset: %w", err)
+	}
+
+	replicaSet.Spec.Replicas = &replicas
+	_, err = cs.AppsV1().ReplicaSets(namespace).Update(ctx, replicaSet, metav1.UpdateOptions{})
 	return err
 }
 

@@ -121,7 +121,9 @@ export const LogLine = React.memo(function LogLine({
     };
 
     return (
-        <div className={`flex ${entry.isMatch ? 'bg-yellow-500/10' : ''} ${wrapLines ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'}`}>
+        <div
+            className={`flex ${entry.isMatch ? 'bg-yellow-500/10' : ''} ${wrapLines ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'}`}
+        >
             {showTimestamps && entry.timestamp && (
                 <span className="text-gray-500 select-none mr-2 shrink-0">
                     {entry.timestamp}

@@ -29,4 +29,12 @@ func (a *App) ListDeployments(requestId, namespace string) ([]appsv1.Deployment,
 	return a.k8sClient.ListDeployments(namespace)
 }
 
+func (a *App) ScaleDeployment(namespace, name string, replicas int32) error {
+	a.logDebug("ScaleDeployment called: ns=%s, name=%s, replicas=%d", namespace, name, replicas)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ScaleDeployment(namespace, name, replicas)
+}
+
 // Pod Logs: see app_logs.go

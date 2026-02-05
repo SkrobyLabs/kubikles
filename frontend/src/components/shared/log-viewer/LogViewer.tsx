@@ -82,6 +82,7 @@ export default function LogViewer({
 
     const virtuosoRef = useRef(null);
     const isAtBottomRef = useRef(true);
+    const [isSelecting, setIsSelecting] = useState(false);
 
     // Check if this tab is stale
     const isStale = tabContext && tabContext !== currentContext;
@@ -141,6 +142,21 @@ export default function LogViewer({
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [namespace, selectedPod, selectedContainer, showPrevious, sinceTime, viewMode, stream.fetchLogs]);
+
+    // Track selection state to increase overscan during selection
+    useEffect(() => {
+        const handleMouseDown = () => setIsSelecting(true);
+        const handleMouseUp = () => setIsSelecting(false);
+
+        document.addEventListener('mousedown', handleMouseDown);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            document.removeEventListener('mousedown', handleMouseDown);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, []);
+
 
     // Virtuoso callbacks
     const handleAtBottomStateChange = useCallback((atBottom) => {
@@ -685,7 +701,7 @@ export default function LogViewer({
             )}
 
             {/* Logs Content */}
-            <div className="flex-1 overflow-hidden text-gray-300 font-mono text-xs">
+            <div ref={logsContainerRef} className="flex-1 overflow-hidden text-gray-300 font-mono text-xs">
                 {stream.loading || stream.loadingAll ? (
                     <div className="flex flex-col items-center justify-center h-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -724,7 +740,8 @@ export default function LogViewer({
                         atBottomStateChange={handleAtBottomStateChange}
                         startReached={handleStartReached}
                         endReached={handleEndReached}
-                        overscan={200}
+                        overscan={isSelecting ? 5000 : 200}
+                        increaseViewportBy={isSelecting ? { top: 5000, bottom: 5000 } : { top: 0, bottom: 0 }}
                         components={{
                             Header: () => (
                                 <>

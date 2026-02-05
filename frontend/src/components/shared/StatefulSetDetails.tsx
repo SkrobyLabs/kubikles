@@ -1,31 +1,67 @@
-import React, { useMemo, useState } from 'react';
-import { PencilSquareIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { PencilSquareIcon, DocumentTextIcon, ShareIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context';
 import { useUI } from '../../context';
+import { useNotification } from '../../context';
 import { formatAge } from '../../utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 import ControllerMetricsTab from './ControllerMetricsTab';
+import ScaleModal from './ScaleModal';
+import { ScaleStatefulSet } from '../../lib/wailsjs-adapter/go/main/App';
+import { useResourceWatcher } from '../../hooks/useResourceWatcher';
 
 const TAB_BASIC = 'basic';
 const TAB_METRICS = 'metrics';
 
-export default function StatefulSetDetails({ statefulSet, tabContext = '' }) {
+export default function StatefulSetDetails({ statefulSet: initialStatefulSet, tabContext = '' }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
+    const { addNotification } = useNotification();
     const activeTab = getDetailTab('statefulset', TAB_BASIC);
     const setActiveTab = (tab) => setDetailTab('statefulset', tab);
+    const [showScaleModal, setShowScaleModal] = useState(false);
+    const [optimisticReplicas, setOptimisticReplicas] = useState<number | null>(null);
+
+    // Track the current statefulset state, updating from watcher
+    const [statefulSet, setStatefulSet] = useState(initialStatefulSet);
 
     const isStale = tabContext && tabContext !== currentContext;
 
     const name = statefulSet.metadata?.name;
     const namespace = statefulSet.metadata?.namespace;
+    const uid = statefulSet.metadata?.uid;
     const labels = statefulSet.metadata?.labels || {};
     const annotations = statefulSet.metadata?.annotations || {};
+
+    // Subscribe to statefulset updates for this specific resource
+    const handleWatcherEvent = useCallback((event: any) => {
+        // Only update if this event is for our specific statefulset
+        if (event.resource?.metadata?.uid === uid) {
+            if (event.type === 'MODIFIED' || event.type === 'ADDED') {
+                setStatefulSet(event.resource);
+            }
+        }
+    }, [uid]);
+
+    useResourceWatcher(
+        'statefulsets',
+        namespace || '',
+        handleWatcherEvent,
+        Boolean(namespace && !isStale)
+    );
     const spec = statefulSet.spec || {};
     const status = statefulSet.status || {};
 
-    const replicas = spec.replicas ?? 0;
+    const actualReplicas = spec.replicas ?? 0;
+    const replicas = optimisticReplicas !== null ? optimisticReplicas : actualReplicas;
+
+    // Clear optimistic update when watcher updates the actual value
+    useEffect(() => {
+        if (optimisticReplicas !== null && actualReplicas === optimisticReplicas) {
+            setOptimisticReplicas(null);
+        }
+    }, [actualReplicas, optimisticReplicas]);
     const readyReplicas = status.readyReplicas ?? 0;
     const currentReplicas = status.currentReplicas ?? 0;
     const updatedReplicas = status.updatedReplicas ?? 0;
@@ -76,6 +112,24 @@ export default function StatefulSetDetails({ statefulSet, tabContext = '' }) {
         }
     };
 
+    const handleScale = async (newReplicas: number) => {
+        try {
+            await ScaleStatefulSet(namespace, name, newReplicas);
+            // Optimistically update the UI
+            setOptimisticReplicas(newReplicas);
+            addNotification({
+                type: 'success',
+                message: `Scaled ${name} to ${newReplicas} replica${newReplicas !== 1 ? 's' : ''}`
+            });
+        } catch (error) {
+            addNotification({
+                type: 'error',
+                message: `Failed to scale ${name}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            });
+            throw error;
+        }
+    };
+
     const handleViewService = () => {
         if (serviceName) {
             navigateWithSearch('services', `name:"${serviceName}" namespace:"${namespace}"`);
@@ -99,7 +153,7 @@ export default function StatefulSetDetails({ statefulSet, tabContext = '' }) {
             {/* Header Bar */}
             <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
-                    <div className="text-sm font-medium text-gray-400">
+                    <div className="text-sm font-medium text-gray-400 selectable">
                         {namespace}/{name}
                     </div>
                     <StatusBadge
@@ -129,7 +183,7 @@ export default function StatefulSetDetails({ statefulSet, tabContext = '' }) {
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="View Pods"
                         >
-                            <DocumentTextIcon className="w-4 h-4" />
+                            <CubeIcon className="w-4 h-4" />
                         </button>
                         <button
                             onClick={handleEditYaml}
@@ -163,10 +217,14 @@ export default function StatefulSetDetails({ statefulSet, tabContext = '' }) {
                 {/* Replica Status */}
                 <DetailSection title="Replicas">
                     <div className="grid grid-cols-4 gap-4 mb-2">
-                        <div className="text-center p-3 bg-background-dark rounded border border-border">
+                        <button
+                            onClick={() => setShowScaleModal(true)}
+                            className="text-center p-3 bg-background-dark rounded border border-border hover:border-primary/50 hover:bg-primary/10 cursor-pointer transition-colors"
+                            title="Click to scale"
+                        >
                             <div className="text-2xl font-bold text-gray-200">{replicas}</div>
                             <div className="text-xs text-gray-500">Desired</div>
-                        </div>
+                        </button>
                         <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className={`text-2xl font-bold ${readyReplicas === replicas ? 'text-green-400' : 'text-yellow-400'}`}>
                                 {readyReplicas}
@@ -257,6 +315,19 @@ export default function StatefulSetDetails({ statefulSet, tabContext = '' }) {
                     <AnnotationsDisplay annotations={annotations} />
                 </DetailSection>
             </div>
+            )}
+
+            {/* Scale Modal */}
+            {showScaleModal && (
+                <ScaleModal
+                    resourceType="StatefulSet"
+                    resourceName={name}
+                    namespace={namespace}
+                    currentReplicas={replicas}
+                    selector={selector}
+                    onScale={handleScale}
+                    onClose={() => setShowScaleModal(false)}
+                />
             )}
         </div>
     );

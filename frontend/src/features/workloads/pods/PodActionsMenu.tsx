@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PencilSquareIcon, DocumentTextIcon, CommandLineIcon, TrashIcon, EllipsisVerticalIcon, ShareIcon, InformationCircleIcon, SignalIcon, DocumentDuplicateIcon, FolderIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, DocumentTextIcon, CommandLineIcon, TrashIcon, EllipsisVerticalIcon, ShareIcon, InformationCircleIcon, SignalIcon, FolderIcon } from '@heroicons/react/24/outline';
 import ComparisonMenuItems from '../../../components/shared/ComparisonMenuItems';
 
-export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange, onLogs, onLogsAll, onEditYaml, onShowDependencies, onShowDetails, onDelete, onForceDelete, onShell, onFiles, onPortForward }) {
+export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange, onLogs, onEditYaml, onShowDependencies, onShowDetails, onDelete, onForceDelete, onShell, onFiles, onPortForward }) {
     const buttonRef = useRef(null);
     const menuRef = useRef(null);
 
@@ -63,15 +63,6 @@ export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange
                 <DocumentTextIcon className="h-4 w-4" />
                 View Logs
             </button>
-            {onLogsAll && (
-                <button
-                    onClick={(e) => { e.stopPropagation(); handleAction(() => onLogsAll(pod)); }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
-                >
-                    <DocumentDuplicateIcon className="h-4 w-4" />
-                    All Sibling Logs
-                </button>
-            )}
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onEditYaml(pod)); }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"

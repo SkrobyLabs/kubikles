@@ -317,6 +317,9 @@ export function SaveLogsBundle(...args) { return AppProxy.SaveLogsBundle(...args
 export function SavePodLogs(...args) { return AppProxy.SavePodLogs(...args); }
 export function SavePrometheusConfig(...args) { return AppProxy.SavePrometheusConfig(...args); }
 export function SaveYamlBackup(...args) { return AppProxy.SaveYamlBackup(...args); }
+export function ScaleDeployment(...args) { return AppProxy.ScaleDeployment(...args); }
+export function ScaleReplicaSet(...args) { return AppProxy.ScaleReplicaSet(...args); }
+export function ScaleStatefulSet(...args) { return AppProxy.ScaleStatefulSet(...args); }
 export function SearchChartInSource(...args) { return AppProxy.SearchChartInSource(...args); }
 export function SearchHelmChart(...args) { return AppProxy.SearchHelmChart(...args); }
 export function SendAIMessage(...args) { return AppProxy.SendAIMessage(...args); }

@@ -950,6 +950,18 @@ export function SaveYamlBackup(arg1, arg2) {
   return window['go']['main']['App']['SaveYamlBackup'](arg1, arg2);
 }
 
+export function ScaleDeployment(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ScaleDeployment'](arg1, arg2, arg3);
+}
+
+export function ScaleReplicaSet(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ScaleReplicaSet'](arg1, arg2, arg3);
+}
+
+export function ScaleStatefulSet(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ScaleStatefulSet'](arg1, arg2, arg3);
+}
+
 export function SearchChartInSource(arg1, arg2) {
   return window['go']['main']['App']['SearchChartInSource'](arg1, arg2);
 }

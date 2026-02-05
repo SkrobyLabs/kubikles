@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { PencilSquareIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, DocumentTextIcon, ShareIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context';
 import { useUI } from '../../context';
 import { formatAge } from '../../utils/formatting';
@@ -92,7 +92,7 @@ export default function DaemonSetDetails({ daemonSet, tabContext = '' }) {
             {/* Header Bar */}
             <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
-                    <div className="text-sm font-medium text-gray-400">
+                    <div className="text-sm font-medium text-gray-400 selectable">
                         {namespace}/{name}
                     </div>
                     <StatusBadge
@@ -122,7 +122,7 @@ export default function DaemonSetDetails({ daemonSet, tabContext = '' }) {
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="View Pods"
                         >
-                            <DocumentTextIcon className="w-4 h-4" />
+                            <CubeIcon className="w-4 h-4" />
                         </button>
                         <button
                             onClick={handleEditYaml}

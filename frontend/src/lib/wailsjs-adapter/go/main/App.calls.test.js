@@ -28,7 +28,7 @@ function extractFunctionSignatures(content) {
 }
 
 /**
- * Recursively find all .js and .jsx files in a directory
+ * Recursively find all .js, .jsx, .ts, and .tsx files in a directory
  */
 function findSourceFiles(dir, files = []) {
     const entries = readdirSync(dir);
@@ -40,7 +40,8 @@ function findSourceFiles(dir, files = []) {
             if (!entry.includes('node_modules') && !entry.includes('wailsjs')) {
                 findSourceFiles(fullPath, files);
             }
-        } else if (entry.endsWith('.js') || entry.endsWith('.jsx')) {
+        } else if (entry.endsWith('.js') || entry.endsWith('.jsx') ||
+                   entry.endsWith('.ts') || entry.endsWith('.tsx')) {
             // Skip test files
             if (!entry.includes('.test.')) {
                 files.push(fullPath);

@@ -1,31 +1,67 @@
-import React, { useMemo, useState } from 'react';
-import { PencilSquareIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { PencilSquareIcon, DocumentTextIcon, ShareIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '../../context';
 import { useUI } from '../../context';
+import { useNotification } from '../../context';
 import { formatAge } from '../../utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 import ControllerMetricsTab from './ControllerMetricsTab';
+import ScaleModal from './ScaleModal';
+import { ScaleDeployment } from '../../lib/wailsjs-adapter/go/main/App';
+import { useResourceWatcher } from '../../hooks/useResourceWatcher';
 
 const TAB_BASIC = 'basic';
 const TAB_METRICS = 'metrics';
 
-export default function DeploymentDetails({ deployment, tabContext = '' }) {
+export default function DeploymentDetails({ deployment: initialDeployment, tabContext = '' }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
+    const { addNotification } = useNotification();
     const activeTab = getDetailTab('deployment', TAB_BASIC);
     const setActiveTab = (tab) => setDetailTab('deployment', tab);
+    const [showScaleModal, setShowScaleModal] = useState(false);
+    const [optimisticReplicas, setOptimisticReplicas] = useState<number | null>(null);
+
+    // Track the current deployment state, updating from watcher
+    const [deployment, setDeployment] = useState(initialDeployment);
 
     const isStale = tabContext && tabContext !== currentContext;
 
     const name = deployment.metadata?.name;
     const namespace = deployment.metadata?.namespace;
+    const uid = deployment.metadata?.uid;
     const labels = deployment.metadata?.labels || {};
     const annotations = deployment.metadata?.annotations || {};
+
+    // Subscribe to deployment updates for this specific resource
+    const handleWatcherEvent = useCallback((event: any) => {
+        // Only update if this event is for our specific deployment
+        if (event.resource?.metadata?.uid === uid) {
+            if (event.type === 'MODIFIED' || event.type === 'ADDED') {
+                setDeployment(event.resource);
+            }
+        }
+    }, [uid]);
+
+    useResourceWatcher(
+        'deployments',
+        namespace || '',
+        handleWatcherEvent,
+        Boolean(namespace && !isStale)
+    );
     const spec = deployment.spec || {};
     const status = deployment.status || {};
 
-    const replicas = spec.replicas ?? 0;
+    const actualReplicas = spec.replicas ?? 0;
+    const replicas = optimisticReplicas !== null ? optimisticReplicas : actualReplicas;
+
+    // Clear optimistic update when watcher updates the actual value
+    useEffect(() => {
+        if (optimisticReplicas !== null && actualReplicas === optimisticReplicas) {
+            setOptimisticReplicas(null);
+        }
+    }, [actualReplicas, optimisticReplicas]);
     const readyReplicas = status.readyReplicas ?? 0;
     const availableReplicas = status.availableReplicas ?? 0;
     const updatedReplicas = status.updatedReplicas ?? 0;
@@ -75,6 +111,24 @@ export default function DeploymentDetails({ deployment, tabContext = '' }) {
         }
     };
 
+    const handleScale = async (newReplicas: number) => {
+        try {
+            await ScaleDeployment(namespace, name, newReplicas);
+            // Optimistically update the UI
+            setOptimisticReplicas(newReplicas);
+            addNotification({
+                type: 'success',
+                message: `Scaled ${name} to ${newReplicas} replica${newReplicas !== 1 ? 's' : ''}`
+            });
+        } catch (error) {
+            addNotification({
+                type: 'error',
+                message: `Failed to scale ${name}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            });
+            throw error;
+        }
+    };
+
     const getReplicaStatus = () => {
         if (readyReplicas === replicas && replicas > 0) return 'success';
         if (readyReplicas > 0) return 'warning';
@@ -98,7 +152,7 @@ export default function DeploymentDetails({ deployment, tabContext = '' }) {
             {/* Header Bar */}
             <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
-                    <div className="text-sm font-medium text-gray-400">
+                    <div className="text-sm font-medium text-gray-400 selectable">
                         {namespace}/{name}
                     </div>
                     <StatusBadge
@@ -128,7 +182,7 @@ export default function DeploymentDetails({ deployment, tabContext = '' }) {
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="View Pods"
                         >
-                            <DocumentTextIcon className="w-4 h-4" />
+                            <CubeIcon className="w-4 h-4" />
                         </button>
                         <button
                             onClick={handleEditYaml}
@@ -162,10 +216,14 @@ export default function DeploymentDetails({ deployment, tabContext = '' }) {
                 {/* Replica Status */}
                 <DetailSection title="Replicas">
                     <div className="grid grid-cols-4 gap-4 mb-2">
-                        <div className="text-center p-3 bg-background-dark rounded border border-border">
+                        <button
+                            onClick={() => setShowScaleModal(true)}
+                            className="text-center p-3 bg-background-dark rounded border border-border hover:border-primary/50 hover:bg-primary/10 cursor-pointer transition-colors"
+                            title="Click to scale"
+                        >
                             <div className="text-2xl font-bold text-gray-200">{replicas}</div>
                             <div className="text-xs text-gray-500">Desired</div>
-                        </div>
+                        </button>
                         <div className="text-center p-3 bg-background-dark rounded border border-border">
                             <div className={`text-2xl font-bold ${readyReplicas === replicas ? 'text-green-400' : 'text-yellow-400'}`}>
                                 {readyReplicas}
@@ -246,6 +304,19 @@ export default function DeploymentDetails({ deployment, tabContext = '' }) {
                     <AnnotationsDisplay annotations={annotations} />
                 </DetailSection>
             </div>
+            )}
+
+            {/* Scale Modal */}
+            {showScaleModal && (
+                <ScaleModal
+                    resourceType="Deployment"
+                    resourceName={name}
+                    namespace={namespace}
+                    currentReplicas={replicas}
+                    selector={selector}
+                    onScale={handleScale}
+                    onClose={() => setShowScaleModal(false)}
+                />
             )}
         </div>
     );

@@ -483,6 +483,12 @@ export function SavePrometheusConfig(arg1:string,arg2:string,arg3:number):Promis
 
 export function SaveYamlBackup(arg1:Array<main.YamlBackupEntry>,arg2:string):Promise<void>;
 
+export function ScaleDeployment(arg1:string,arg2:string,arg3:number):Promise<void>;
+
+export function ScaleReplicaSet(arg1:string,arg2:string,arg3:number):Promise<void>;
+
+export function ScaleStatefulSet(arg1:string,arg2:string,arg3:number):Promise<void>;
+
 export function SearchChartInSource(arg1:string,arg2:string):Promise<helm.ChartSearchResult>;
 
 export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;

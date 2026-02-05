@@ -47,6 +47,14 @@ func (a *App) UpdateReplicaSetYaml(namespace, name, yamlContent string) error {
 	return a.k8sClient.UpdateReplicaSetYaml(namespace, name, yamlContent)
 }
 
+func (a *App) ScaleReplicaSet(namespace, name string, replicas int32) error {
+	a.logDebug("ScaleReplicaSet called: ns=%s, name=%s, replicas=%d", namespace, name, replicas)
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ScaleReplicaSet(namespace, name, replicas)
+}
+
 func (a *App) DeleteReplicaSet(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
 	a.logDebug("DeleteReplicaSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
