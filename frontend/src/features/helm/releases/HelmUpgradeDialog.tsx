@@ -4,13 +4,26 @@ import { SearchHelmChart, UpgradeHelmRelease, GetHelmChartVersions, GetHelmRelea
 import { useNotification } from '~/context';
 import SearchSelect from '~/components/shared/SearchSelect';
 import Editor from '@monaco-editor/react';
+// @ts-ignore
 import yaml from 'js-yaml';
 
-export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
+interface SearchLogEntry {
+    time: Date;
+    message: string;
+    type: string;
+}
+
+interface HelmUpgradeDialogProps {
+    release: any;
+    onClose: () => void;
+    onSuccess: () => void;
+}
+
+export default function HelmUpgradeDialog({ release, onClose, onSuccess }: HelmUpgradeDialogProps) {
     const { addNotification } = useNotification();
     const [loading, setLoading] = useState(true);
     const [upgrading, setUpgrading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
 
     // Search mode: 'auto' or 'manual'
     const [searchMode, setSearchMode] = useState('auto');
@@ -19,19 +32,19 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
     const searchStartedRef = useRef(false);
 
     // All available sources (for manual mode)
-    const [allSources, setAllSources] = useState([]);
+    const [allSources, setAllSources] = useState<any[]>([]);
 
     // Search progress
     const [searchProgress, setSearchProgress] = useState({ current: 0, total: 0, currentSource: '' });
-    const [searchLogs, setSearchLogs] = useState([]);
+    const [searchLogs, setSearchLogs] = useState<SearchLogEntry[]>([]);
     const [showLogs, setShowLogs] = useState(false);
 
     // Chart sources from search
-    const [chartSources, setChartSources] = useState([]);
+    const [chartSources, setChartSources] = useState<any[]>([]);
     const [selectedSourceName, setSelectedSourceName] = useState('');
 
     // Versions for selected source
-    const [versions, setVersions] = useState([]);
+    const [versions, setVersions] = useState<any[]>([]);
     const [selectedVersion, setSelectedVersion] = useState('');
     const [loadingVersions, setLoadingVersions] = useState(false);
 
@@ -47,11 +60,11 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
     const [valuesFormat, setValuesFormat] = useState('yaml');
     const [showUserValuesOnly, setShowUserValuesOnly] = useState(true);
     const [loadingValues, setLoadingValues] = useState(false);
-    const [valuesError, setValuesError] = useState(null);
-    const editorRef = useRef(null);
+    const [valuesError, setValuesError] = useState<string | null>(null);
+    const editorRef = useRef<any>(null);
 
     // Get selected source object
-    const selectedSource = chartSources.find(s => s.repoName === selectedSourceName) || null;
+    const selectedSource = chartSources.find((s: any) => s.repoName === selectedSourceName) || null;
 
     // Load values when editor is opened
     useEffect(() => {
@@ -69,9 +82,9 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                     ? yaml.dump(values || {}, { indent: 2, lineWidth: -1, noRefs: true, sortKeys: true })
                     : JSON.stringify(values || {}, null, 2);
                 setValuesContent(formatted);
-            } catch (err) {
+            } catch (err: any) {
                 console.error('Failed to fetch values:', err);
-                setValuesError(err?.message || String(err));
+                setValuesError((err as any)?.message || String(err));
             } finally {
                 setLoadingValues(false);
             }
@@ -81,7 +94,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
     }, [showValuesEditor, showUserValuesOnly, release.namespace, release.name]);
 
     // Convert values format
-    const handleFormatChange = useCallback((newFormat) => {
+    const handleFormatChange = useCallback((newFormat: string) => {
         if (newFormat === valuesFormat) return;
 
         try {
@@ -97,8 +110,8 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
 
             setValuesContent(converted);
             setValuesFormat(newFormat);
-        } catch (err) {
-            setValuesError(`Failed to convert: ${err.message}`);
+        } catch (err: any) {
+            setValuesError(`Failed to convert: ${(err as any).message}`);
         }
     }, [valuesFormat, valuesContent]);
 
@@ -112,8 +125,8 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
             return valuesFormat === 'yaml'
                 ? yaml.load(valuesContent) || {}
                 : JSON.parse(valuesContent);
-        } catch (err) {
-            throw new Error(`Invalid ${valuesFormat.toUpperCase()}: ${err.message}`);
+        } catch (err: any) {
+            throw new Error(`Invalid ${valuesFormat.toUpperCase()}: ${(err as any).message}`);
         }
     }, [showValuesEditor, valuesContent, valuesFormat]);
 
@@ -169,10 +182,10 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                         // Update chart sources progressively
                         setChartSources([...foundSources]);
                     }
-                } catch (err) {
+                } catch (err: any) {
                     setSearchLogs(prev => [...prev, {
                         time: new Date(),
-                        message: `[${source.name}] Error: ${err?.message || err}`,
+                        message: `[${source.name}] Error: ${(err as any)?.message || err}`,
                         type: 'error'
                     }]);
                 }
@@ -187,7 +200,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                 setSelectedSourceName(foundSources[0].repoName);
                 setVersions(foundSources[0].versions || []);
                 const currentVersion = release.chartVersion;
-                if (currentVersion && foundSources[0].versions?.some(v => v.version === currentVersion)) {
+                if (currentVersion && foundSources[0].versions?.some((v: any) => v.version === currentVersion)) {
                     setSelectedVersion(currentVersion);
                 } else if (foundSources[0].versions?.length > 0) {
                     setSelectedVersion(foundSources[0].versions[0].version);
@@ -198,10 +211,10 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                 ? `Search complete. Found ${foundSources.length} source(s) with chart "${chartName}".`
                 : `Search complete. Chart "${chartName}" not found in any source.`;
             setSearchLogs(prev => [...prev, { time: new Date(), message: msg, type: foundSources.length > 0 ? 'success' : 'warn' }]);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to search charts:', err);
-            setError(`Failed to search: ${err?.message || err}`);
-            setSearchLogs(prev => [...prev, { time: new Date(), message: `Error: ${err?.message || err}`, type: 'error' }]);
+            setError(`Failed to search: ${(err as any)?.message || err}`);
+            setSearchLogs(prev => [...prev, { time: new Date(), message: `Error: ${(err as any)?.message || err}`, type: 'error' }]);
         } finally {
             setLoading(false);
             setSearchProgress({ current: 0, total: 0, currentSource: '' });
@@ -233,14 +246,14 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
             try {
                 const sources = await ListChartSources();
                 setAllSources(sources || []);
-            } catch (err) {
+            } catch (err: any) {
                 console.error('Failed to load sources:', err);
             }
         }
     }, [allSources.length]);
 
     // Manual source selection and validation
-    const handleManualSourceSelect = useCallback(async (sourceName) => {
+    const handleManualSourceSelect = useCallback(async (sourceName: string) => {
         setSelectedSourceName(sourceName);
         setLoadingVersions(true);
         setError(null);
@@ -260,7 +273,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                 setVersions(result.source.versions || []);
                 if (result.source.versions?.length > 0) {
                     const currentVersion = release.chartVersion;
-                    if (currentVersion && result.source.versions.some(v => v.version === currentVersion)) {
+                    if (currentVersion && result.source.versions.some((v: any) => v.version === currentVersion)) {
                         setSelectedVersion(currentVersion);
                     } else {
                         setSelectedVersion(result.source.versions[0].version);
@@ -270,9 +283,9 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                 setChartSources([]);
                 setError(`Chart "${release.chart}" not found in ${sourceName}`);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to validate source:', err);
-            setError(`Failed to validate: ${err?.message || err}`);
+            setError(`Failed to validate: ${(err as any)?.message || err}`);
         } finally {
             setLoadingVersions(false);
         }
@@ -287,9 +300,9 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
     }, []);
 
     // Load versions when source changes
-    const handleSourceChange = useCallback(async (repoName) => {
+    const handleSourceChange = useCallback(async (repoName: string) => {
         setSelectedSourceName(repoName);
-        const source = chartSources.find(s => s.repoName === repoName);
+        const source = chartSources.find((s: any) => s.repoName === repoName);
         if (!source) return;
 
         setLoadingVersions(true);
@@ -301,7 +314,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                 setVersions(source.versions);
                 // Default to current version if available
                 const currentVersion = release.chartVersion;
-                if (currentVersion && source.versions.some(v => v.version === currentVersion)) {
+                if (currentVersion && source.versions.some((v: any) => v.version === currentVersion)) {
                     setSelectedVersion(currentVersion);
                 } else {
                     setSelectedVersion(source.versions[0].version);
@@ -314,9 +327,9 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                     setSelectedVersion(fetchedVersions[0].version);
                 }
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to load versions:', err);
-            setError(`Failed to load versions: ${err?.message || err}`);
+            setError(`Failed to load versions: ${(err as any)?.message || err}`);
         } finally {
             setLoadingVersions(false);
         }
@@ -334,8 +347,8 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
             if (showValuesEditor && valuesContent.trim()) {
                 customValues = parseValues();
             }
-        } catch (err) {
-            setError(err?.message || String(err));
+        } catch (err: any) {
+            setError((err as any)?.message || String(err));
             return;
         }
 
@@ -373,12 +386,12 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                 });
                 onSuccess();
             })
-            .catch((err) => {
+            .catch((err: any) => {
                 console.error('Failed to upgrade release:', err);
                 addNotification({
                     type: 'error',
                     title: 'Upgrade failed',
-                    message: err?.message || String(err)
+                    message: (err as any)?.message || String(err)
                 });
             });
     }, [release, selectedSource, selectedVersion, reuseValues, resetValues, force, wait, onClose, onSuccess, showValuesEditor, valuesContent, parseValues, addNotification]);
@@ -486,8 +499,8 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                     onChange={handleManualSourceSelect}
                                     placeholder="Select source..."
                                     disabled={loadingVersions}
-                                    getOptionValue={(source) => source.name}
-                                    getOptionLabel={(source) => `${source.name} (priority: ${source.priority})`}
+                                    getOptionValue={(source: any) => source.name}
+                                    getOptionLabel={(source: any) => `${source.name} (priority: ${source.priority})`}
                                     renderOption={(source, isSelected) => (
                                         <div className="flex-1">
                                             <div className={isSelected ? 'text-primary' : ''}>
@@ -560,8 +573,8 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                         onChange={handleSourceChange}
                                         placeholder="Select chart source..."
                                         disabled={upgrading}
-                                        getOptionValue={(source) => source.repoName}
-                                        getOptionLabel={(source) => `${source.repoName} (priority: ${source.priority})`}
+                                        getOptionValue={(source: any) => source.repoName}
+                                        getOptionLabel={(source: any) => `${source.repoName} (priority: ${source.priority})`}
                                         renderOption={(source, isSelected) => (
                                             <div className="flex-1">
                                                 <div className={isSelected ? 'text-primary' : ''}>
@@ -599,8 +612,8 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                     onChange={setSelectedVersion}
                                     placeholder="Select version..."
                                     disabled={upgrading || loadingVersions || versions.length === 0}
-                                    getOptionValue={(v) => v.version}
-                                    getOptionLabel={(v) => {
+                                    getOptionValue={(v: any) => v.version}
+                                    getOptionLabel={(v: any) => {
                                         let label = v.version;
                                         if (v.appVersion) label += ` (App: ${v.appVersion})`;
                                         if (v.version === release.chartVersion) label += ' (current)';
@@ -636,7 +649,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                         <input
                                             type="checkbox"
                                             checked={reuseValues && !showValuesEditor}
-                                            onChange={(e) => {
+                                            onChange={(e: any) => {
                                                 setReuseValues(e.target.checked);
                                                 if (e.target.checked) setResetValues(false);
                                             }}
@@ -656,7 +669,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                         <input
                                             type="checkbox"
                                             checked={resetValues}
-                                            onChange={(e) => {
+                                            onChange={(e: any) => {
                                                 setResetValues(e.target.checked);
                                                 if (e.target.checked) setReuseValues(false);
                                             }}
@@ -673,7 +686,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                         <input
                                             type="checkbox"
                                             checked={force}
-                                            onChange={(e) => setForce(e.target.checked)}
+                                            onChange={(e: any) => setForce(e.target.checked)}
                                             disabled={upgrading}
                                             className="mt-1"
                                         />
@@ -687,7 +700,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                         <input
                                             type="checkbox"
                                             checked={wait}
-                                            onChange={(e) => setWait(e.target.checked)}
+                                            onChange={(e: any) => setWait(e.target.checked)}
                                             disabled={upgrading}
                                             className="mt-1"
                                         />
@@ -728,7 +741,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                                 <input
                                                     type="checkbox"
                                                     checked={showUserValuesOnly}
-                                                    onChange={(e) => setShowUserValuesOnly(e.target.checked)}
+                                                    onChange={(e: any) => setShowUserValuesOnly(e.target.checked)}
                                                     disabled={loadingValues}
                                                 />
                                                 User values only
@@ -779,7 +792,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                                     height="100%"
                                                     language={valuesFormat}
                                                     value={valuesContent}
-                                                    onChange={(value) => setValuesContent(value || '')}
+                                                    onChange={(value: any) => setValuesContent(value || '')}
                                                     theme="vs-dark"
                                                     onMount={(editor) => { editorRef.current = editor; }}
                                                     options={{
@@ -842,7 +855,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                                     type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        const logText = searchLogs.map(l => `[${l.time.toLocaleTimeString()}] ${l.message}`).join('\n');
+                                        const logText = searchLogs.map((l: any) => `[${l.time.toLocaleTimeString()}] ${l.message}`).join('\n');
                                         navigator.clipboard.writeText(logText);
                                     }}
                                     className="text-xs text-gray-500 hover:text-gray-300 px-2 py-0.5 bg-surface rounded"
@@ -852,7 +865,7 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }) {
                             </button>
                             {showLogs && (
                                 <div className="border-t border-border bg-background-dark max-h-40 overflow-y-auto font-mono text-xs">
-                                    {searchLogs.map((log, i) => (
+                                    {searchLogs.map((log: any, i: number) => (
                                         <div
                                             key={i}
                                             className={`px-4 py-1 border-b border-border/50 ${

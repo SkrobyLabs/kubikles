@@ -12,7 +12,7 @@ interface DaemonSetActionsReturn extends BaseResourceActionsReturn<K8sDaemonSet>
     handleViewLogs: (daemonSet: K8sDaemonSet) => Promise<void>;
 }
 
-export const useDaemonSetActions = (): DaemonSetActionsReturn => {
+export const useDaemonSetActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -21,6 +21,7 @@ export const useDaemonSetActions = (): DaemonSetActionsReturn => {
         openTab,
 
         addNotification,
+        currentContext,
     } = useBaseResourceActions({
         resourceType: 'daemonset',
         resourceLabel: 'DaemonSet',
@@ -33,14 +34,14 @@ export const useDaemonSetActions = (): DaemonSetActionsReturn => {
         try {
             await RestartDaemonSet(daemonSet.metadata.namespace, daemonSet.metadata.name);
             Logger.info("DaemonSet restarted successfully", { name: daemonSet.metadata.name });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to restart DaemonSet", err);
             addNotification({ type: 'error', title: 'Failed to restart daemonset', message: String(err.message || err) });
         }
     };
 
     const handleDelete = createDeleteHandler(
-        async (daemonSet: K8sDaemonSet): Promise<void> => {
+        async (daemonSet: any): Promise<void> => {
             await DeleteDaemonSet(daemonSet.metadata.namespace, daemonSet.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this daemonset? This will also delete all associated pods.' }
@@ -52,9 +53,9 @@ export const useDaemonSetActions = (): DaemonSetActionsReturn => {
 
         try {
             const allPods = await ListPods('', namespace);
-            const daemonSetPods = allPods.filter(pod => {
+            const daemonSetPods = allPods.filter((pod: any) => {
                 const ownerRefs = pod.metadata?.ownerReferences || [];
-                return ownerRefs.some(ref =>
+                return ownerRefs.some((ref: any) =>
                     ref.kind === 'DaemonSet' && ref.name === daemonSet.metadata.name
                 );
             });
@@ -66,15 +67,15 @@ export const useDaemonSetActions = (): DaemonSetActionsReturn => {
 
             const pod = daemonSetPods[0];
             const containers = [
-                ...(pod.spec?.initContainers || []).map(c => c.name),
-                ...(pod.spec?.containers || []).map(c => c.name)
+                ...(pod.spec?.initContainers || []).map((c: any) => c.name),
+                ...(pod.spec?.containers || []).map((c: any) => c.name)
             ];
 
-            const podContainerMap = {};
+            const podContainerMap: Record<string, string[]> = {};
             for (const p of daemonSetPods) {
                 podContainerMap[p.metadata.name] = [
-                    ...(p.spec?.initContainers || []).map(c => c.name),
-                    ...(p.spec?.containers || []).map(c => c.name)
+                    ...(p.spec?.initContainers || []).map((c: any) => c.name),
+                    ...(p.spec?.containers || []).map((c: any) => c.name)
                 ];
             }
 
@@ -87,7 +88,7 @@ export const useDaemonSetActions = (): DaemonSetActionsReturn => {
                         namespace={namespace}
                         pod={pod.metadata.name}
                         containers={containers}
-                        siblingPods={daemonSetPods.map(p => p.metadata.name)}
+                        siblingPods={daemonSetPods.map((p: any) => p.metadata.name)}
                         podContainerMap={podContainerMap}
                         ownerName={daemonSet.metadata.name}
                         tabContext={currentContext}
@@ -95,7 +96,7 @@ export const useDaemonSetActions = (): DaemonSetActionsReturn => {
                 ),
                 resourceMeta: { kind: 'DaemonSet', name: daemonSet.metadata.name, namespace },
             });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to get pods for DaemonSet", err);
             addNotification({ type: 'error', title: 'Failed to get pods for daemonset', message: String(err.message || err) });
         }

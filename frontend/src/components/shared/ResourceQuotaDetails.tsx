@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' }) {
+export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -72,7 +72,7 @@ export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' })
 
     const quotaItems = getQuotaItems();
 
-    const parseQuantity = (value) => {
+    const parseQuantity = (value: any) => {
         if (typeof value === 'number') return value;
         if (typeof value !== 'string') return 0;
         const num = parseFloat(value);
@@ -85,14 +85,14 @@ export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' })
         return num;
     };
 
-    const getUsagePercent = (usedVal, hardVal) => {
+    const getUsagePercent = (usedVal: any, hardVal: any) => {
         const usedNum = parseQuantity(usedVal);
         const hardNum = parseQuantity(hardVal);
         if (hardNum === 0) return 0;
         return Math.min(100, Math.round((usedNum / hardNum) * 100));
     };
 
-    const getUsageColor = (percent) => {
+    const getUsageColor = (percent: any) => {
         if (percent >= 90) return 'bg-red-500';
         if (percent >= 70) return 'bg-yellow-500';
         return 'bg-green-500';
@@ -187,7 +187,7 @@ export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' })
                     <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-3">Scopes</h3>
                         <div className="flex flex-wrap gap-2">
-                            {scopes.map((scope) => (
+                            {scopes.map((scope: any) => (
                                 <span
                                     key={scope}
                                     className="inline-flex items-center px-2 py-1 rounded text-xs bg-blue-900/50 text-blue-300"

@@ -8,17 +8,17 @@ import ServicePortForwardDialog from './ServicePortForwardDialog';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 // Copy button component
-const CopyButton = ({ value }) => {
+const CopyButton = ({ value }: any) => {
     const [copied, setCopied] = useState(false);
 
-    const handleCopy = async (e) => {
+    const handleCopy = async (e: any) => {
         e.stopPropagation();
         if (!value) return;
         try {
             await navigator.clipboard.writeText(value);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     };
@@ -39,7 +39,7 @@ const CopyButton = ({ value }) => {
 };
 
 // Copyable label component
-const CopyableLabel = ({ value, className = '' }) => {
+const CopyableLabel = ({ value, className = '' }: any) => {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
@@ -48,7 +48,7 @@ const CopyableLabel = ({ value, className = '' }) => {
             await navigator.clipboard.writeText(value);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     };
@@ -76,7 +76,7 @@ const CopyableLabel = ({ value, className = '' }) => {
 };
 
 // Detail row component
-const DetailRow = ({ label, value, children }) => (
+const DetailRow = ({ label, value, children }: any) => (
     <div className="flex py-2 border-b border-border/50">
         <div className="w-40 text-xs font-medium text-gray-500 uppercase tracking-wider shrink-0">
             {label}
@@ -87,11 +87,11 @@ const DetailRow = ({ label, value, children }) => (
     </div>
 );
 
-export default function ServiceDetails({ service, tabContext = '' }) {
+export default function ServiceDetails({ service, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { configs, activeForwards, startForward, stopForward, deleteConfig } = usePortForwards(currentContext, true);
     const { openModal, closeModal, openTab, closeTab } = useUI();
-    const [portForwardDialog, setPortForwardDialog] = useState({ open: false, port: null });
+    const [portForwardDialog, setPortForwardDialog] = useState<{ open: boolean; port: any; existingConfig?: any }>({ open: false, port: null });
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
@@ -145,8 +145,8 @@ export default function ServiceDetails({ service, tabContext = '' }) {
     const selector = spec.selector || {};
 
     // Find port forward config for a specific port
-    const getPortForwardConfig = useCallback((port) => {
-        return configs.find(c =>
+    const getPortForwardConfig = useCallback((port: any) => {
+        return configs.find((c: any) =>
             c.resourceType === 'service' &&
             c.resourceName === service.metadata?.name &&
             c.namespace === service.metadata?.namespace &&
@@ -155,13 +155,13 @@ export default function ServiceDetails({ service, tabContext = '' }) {
     }, [configs, service.metadata?.name, service.metadata?.namespace]);
 
     // Get status for a config ID from activeForwards
-    const getConfigStatus = useCallback((configId) => {
-        const af = activeForwards.find(af => af.config?.id === configId);
+    const getConfigStatus = useCallback((configId: any) => {
+        const af = activeForwards.find((af: any) => af.config?.id === configId);
         return af?.status || 'stopped';
     }, [activeForwards]);
 
     // Get styling for a port based on port forward status
-    const getPortStyle = useCallback((port) => {
+    const getPortStyle = useCallback((port: any) => {
         const config = getPortForwardConfig(port);
         if (!config) {
             return {
@@ -190,7 +190,7 @@ export default function ServiceDetails({ service, tabContext = '' }) {
     }, [getPortForwardConfig, getConfigStatus]);
 
     // Handle port click - open dialog
-    const handlePortClick = useCallback((port) => {
+    const handlePortClick = useCallback((port: any) => {
         const existingConfig = getPortForwardConfig(port.port);
         setPortForwardDialog({
             open: true,
@@ -204,7 +204,7 @@ export default function ServiceDetails({ service, tabContext = '' }) {
     }, []);
 
     // Handle start/stop toggle for a port forward
-    const handleToggleForward = useCallback(async (e, config) => {
+    const handleToggleForward = useCallback(async (e: any, config: any) => {
         e.stopPropagation();
         const status = getConfigStatus(config.id);
         try {
@@ -213,13 +213,13 @@ export default function ServiceDetails({ service, tabContext = '' }) {
             } else {
                 await startForward(config.id);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to toggle port forward:', err);
         }
     }, [getConfigStatus, startForward, stopForward]);
 
     // Handle delete for a port forward
-    const handleDeleteForward = useCallback((e, config) => {
+    const handleDeleteForward = useCallback((e: any, config: any) => {
         e.stopPropagation();
         openModal({
             title: 'Delete Port Forward',
@@ -234,7 +234,7 @@ export default function ServiceDetails({ service, tabContext = '' }) {
                     }
                     await deleteConfig(config.id);
                     closeModal();
-                } catch (err) {
+                } catch (err: any) {
                     console.error('Failed to delete port forward:', err);
                 }
             }
@@ -242,7 +242,7 @@ export default function ServiceDetails({ service, tabContext = '' }) {
     }, [openModal, closeModal, getConfigStatus, stopForward, deleteConfig]);
 
     // Handle open in browser
-    const handleOpenBrowser = useCallback((e, config) => {
+    const handleOpenBrowser = useCallback((e: any, config: any) => {
         e.stopPropagation();
         const protocol = config.https ? 'https' : 'http';
         BrowserOpenURL(`${protocol}://localhost:${config.localPort}`);
@@ -272,7 +272,7 @@ export default function ServiceDetails({ service, tabContext = '' }) {
                             onClick={handleEditYaml}
                             className={`p-1.5 rounded transition-colors ${isStale ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -301,7 +301,7 @@ export default function ServiceDetails({ service, tabContext = '' }) {
                     <DetailRow label="Ports">
                         {ports.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
-                                {ports.map((port, idx) => {
+                                {ports.map((port: any, idx: number) => {
                                     const portStyle = getPortStyle(port.port);
                                     const config = getPortForwardConfig(port.port);
                                     const status = config ? getConfigStatus(config.id) : null;
@@ -361,7 +361,7 @@ export default function ServiceDetails({ service, tabContext = '' }) {
                     <DetailRow label="Cluster IPs">
                         {clusterIPs.length > 0 && clusterIPs[0] !== 'None' ? (
                             <div className="flex flex-wrap gap-2">
-                                {clusterIPs.map((ip, idx) => (
+                                {clusterIPs.map((ip: any, idx: number) => (
                                     <CopyableLabel key={idx} value={ip} />
                                 ))}
                             </div>
@@ -374,7 +374,7 @@ export default function ServiceDetails({ service, tabContext = '' }) {
                     {externalIPs.length > 0 && (
                         <DetailRow label="External IPs">
                             <div className="flex flex-wrap gap-2">
-                                {externalIPs.map((ip, idx) => (
+                                {externalIPs.map((ip: any, idx: number) => (
                                     <CopyableLabel key={idx} value={ip} />
                                 ))}
                             </div>
@@ -386,7 +386,7 @@ export default function ServiceDetails({ service, tabContext = '' }) {
                         <DetailRow label="Load Balancer">
                             {loadBalancerIngress.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
-                                    {loadBalancerIngress.map((ingress, idx) => (
+                                    {loadBalancerIngress.map((ingress: any, idx: number) => (
                                         <CopyableLabel
                                             key={idx}
                                             value={ingress.ip || ingress.hostname}
@@ -400,10 +400,10 @@ export default function ServiceDetails({ service, tabContext = '' }) {
                     )}
 
                     {/* NodePort (for NodePort or LoadBalancer types) */}
-                    {(spec.type === 'NodePort' || spec.type === 'LoadBalancer') && ports.some(p => p.nodePort) && (
+                    {(spec.type === 'NodePort' || spec.type === 'LoadBalancer') && ports.some((p: any) => p.nodePort) && (
                         <DetailRow label="Node Ports">
                             <div className="flex flex-wrap gap-2">
-                                {ports.filter(p => p.nodePort).map((port, idx) => (
+                                {ports.filter((p: any) => p.nodePort).map((port: any, idx: number) => (
                                     <span key={idx} className="px-2 py-0.5 text-xs rounded bg-gray-500/10 text-gray-300 border border-gray-500/30">
                                         {port.nodePort}
                                         {port.name && <span className="opacity-60 ml-1">({port.name})</span>}

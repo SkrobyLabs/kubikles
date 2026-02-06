@@ -8,7 +8,7 @@ import { useNotification } from '~/context';
 import { ExclamationTriangleIcon, InformationCircleIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 
 // Extract controller owner from YAML content
-function extractControllerOwner(yamlContent) {
+function extractControllerOwner(yamlContent: any) {
     if (!yamlContent) return null;
 
     // Find ownerReferences section
@@ -48,16 +48,24 @@ export default function YamlEditor({
     getYamlFn,
     updateYamlFn,
     tabContext = ''
+}: {
+    resourceType: any;
+    namespace: any;
+    resourceName: any;
+    onClose: any;
+    getYamlFn?: any;
+    updateYamlFn?: any;
+    tabContext?: string;
 }) {
     const { openTab, closeTab } = useUI();
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [hasConflict, setHasConflict] = useState(false);
-    const editorRef = useRef(null);
+    const editorRef = useRef<any>(null);
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
@@ -108,7 +116,7 @@ export default function YamlEditor({
     };
 
     // Helper: Restore editor state after content refresh
-    const restoreEditorState = (state) => {
+    const restoreEditorState = (state: any) => {
         if (!editorRef.current || !state) return;
         const editor = editorRef.current;
         const model = editor.getModel();
@@ -149,7 +157,7 @@ export default function YamlEditor({
             const yaml = await getYaml();
             setContent(yaml);
             Logger.info("YAML fetched successfully", { resourceType, namespace, name: resourceName });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to load YAML", err);
             setError(`Failed to load YAML: ${err}`);
         } finally {
@@ -164,7 +172,7 @@ export default function YamlEditor({
             setContent(yaml);
             setHasConflict(false);
             Logger.info("YAML reloaded", { resourceType, namespace, name: resourceName });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to reload YAML", err);
             addNotification({ type: 'error', title: 'Failed to reload YAML', message: String(err) });
         }
@@ -186,7 +194,7 @@ export default function YamlEditor({
             if (updateYamlFn) {
                 await updateYamlFn(content);
             } else {
-                await resource.updateYaml(namespace, resourceName, content);
+                await resource!.updateYaml(namespace, resourceName, content);
             }
 
             Logger.info("YAML saved successfully", { resourceType, namespace, name: resourceName });
@@ -203,12 +211,12 @@ export default function YamlEditor({
                 Logger.warn("Failed to refresh YAML after save", refreshErr);
             }
 
-            addNotification({ type: 'success', title: 'YAML saved successfully' });
-        } catch (err) {
+            addNotification({ type: 'success', title: 'YAML saved successfully', message: '' });
+        } catch (err: any) {
             Logger.error("Failed to save YAML", err);
 
             // Check for 409 Conflict (stale resourceVersion)
-            const errStr = err.toString().toLowerCase();
+            const errStr = (err as any).toString().toLowerCase();
             if (errStr.includes('409') || errStr.includes('conflict') || errStr.includes('modified')) {
                 setHasConflict(true);
                 Logger.warn("Conflict detected - resource was modified externally", { resourceType, namespace, name: resourceName });
@@ -220,7 +228,7 @@ export default function YamlEditor({
         }
     };
 
-    const handleEditorDidMount = (editor, monaco) => {
+    const handleEditorDidMount = (editor: any, monaco: any) => {
         editorRef.current = editor;
 
         // Configure editor
@@ -333,7 +341,7 @@ export default function YamlEditor({
                     </button>
                     <button
                         onClick={handleSave}
-                        disabled={saving || hasConflict || isStale}
+                        disabled={saving || hasConflict || !!isStale}
                         title={isStale ? "Cannot save - tab is from a different context" : hasConflict ? "Resolve conflict using the options above" : "Save changes"}
                         className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -348,12 +356,12 @@ export default function YamlEditor({
                     height="100%"
                     defaultLanguage="yaml"
                     value={content}
-                    onChange={(value) => !isStale && setContent(value || '')}
+                    onChange={(value: any) => !isStale && setContent(value || '')}
                     onMount={handleEditorDidMount}
                     theme="vs-dark"
                     options={{
                         automaticLayout: true,
-                        readOnly: isStale,
+                        readOnly: !!isStale,
                         scrollbar: {
                             vertical: 'auto',
                             horizontal: 'auto',

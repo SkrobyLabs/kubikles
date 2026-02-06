@@ -18,26 +18,41 @@ export default function SearchSelect({
     searchable = true,      // If false, hide the search input (for simple dropdowns)
     // Multi-select customization
     multiSelectLabels = null, // { all: "All Items", count: (n) => `${n} items selected` }
+}: {
+    options: any[];
+    value: any;
+    onChange: any;
+    placeholder?: string;
+    className?: string;
+    multiSelect?: boolean;
+    getOptionValue?: ((option: any) => string) | null;
+    getOptionLabel?: ((option: any) => string) | null;
+    renderOption?: ((option: any, isSelected: boolean) => React.ReactNode) | null;
+    disabled?: boolean;
+    onOpen?: (() => void) | null;
+    preserveOrder?: boolean;
+    searchable?: boolean;
+    multiSelectLabels?: { all: string; count: (n: number) => string } | null;
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const wrapperRef = useRef(null);
-    const inputRef = useRef(null);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     // Helper to get the value from an option (for comparison)
-    const getValueFromOption = (option) => {
+    const getValueFromOption = (option: any) => {
         if (getOptionValue) return getOptionValue(option);
         return option;
     };
 
     // Helper to get display label for an option
-    const getDisplayLabel = (option) => {
+    const getDisplayLabel = (option: any): string => {
         if (getOptionLabel) return getOptionLabel(option);
         return option === '' ? 'All Namespaces' : String(option);
     };
 
     // Default labels for multi-select (namespace-centric for backward compatibility)
-    const defaultLabels = { all: 'All Namespaces', count: (n) => `${n} namespaces selected` };
+    const defaultLabels = { all: 'All Namespaces', count: (n: number) => `${n} namespaces selected` };
     const labels = multiSelectLabels || defaultLabels;
 
     // Helper to get display value for multi-select
@@ -56,8 +71,8 @@ export default function SearchSelect({
     };
 
     useEffect(() => {
-        function handleClickOutside(event) {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        function handleClickOutside(event: MouseEvent) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         }
@@ -76,7 +91,7 @@ export default function SearchSelect({
         }
     }, [isOpen]);
 
-    const isOptionSelected = useCallback((option) => {
+    const isOptionSelected = useCallback((option: any) => {
         const optionValue = getValueFromOption(option);
         if (!multiSelect) {
             return optionValue === value;
@@ -87,7 +102,7 @@ export default function SearchSelect({
     // Memoize filtered/sorted options (computed once per search/value change)
     const filteredOptions = useMemo(() => {
         const lowerSearch = searchTerm.toLowerCase();
-        const filtered = options.filter(option =>
+        const filtered = options.filter((option: any) =>
             getDisplayLabel(option).toLowerCase().includes(lowerSearch)
         );
 
@@ -97,7 +112,7 @@ export default function SearchSelect({
         }
 
         // Default: sort with selected first, then alphabetically
-        return filtered.sort((a, b) => {
+        return filtered.sort((a: any, b: any) => {
             const aSelected = isOptionSelected(a);
             const bSelected = isOptionSelected(b);
             if (aSelected && !bSelected) return -1;
@@ -107,11 +122,11 @@ export default function SearchSelect({
     }, [options, searchTerm, isOptionSelected, getDisplayLabel, preserveOrder]);
 
     // Memoize "all namespaces" (non-empty options) - used in multiple places
-    const allNamespaces = useMemo(() => options.filter(opt => opt !== ''), [options]);
+    const allNamespaces = useMemo(() => options.filter((opt: any) => opt !== ''), [options]);
 
     // Memoize non-empty filtered options - used in rendering
     const nonEmptyFilteredOptions = useMemo(
-        () => filteredOptions.filter(opt => getValueFromOption(opt) !== ''),
+        () => filteredOptions.filter((opt: any) => getValueFromOption(opt) !== ''),
         [filteredOptions, getValueFromOption]
     );
 
@@ -122,8 +137,8 @@ export default function SearchSelect({
         const currentValueSet = new Set(currentValue);
         const allNamespacesSet = new Set(allNamespaces);
         const hasAllMarker = currentValueSet.has('*');
-        const allSelected = hasAllMarker || (allNamespaces.length > 0 && allNamespaces.every(ns => currentValueSet.has(ns)));
-        const someSelected = currentValue.some(v => allNamespacesSet.has(v) || v === '*');
+        const allSelected = hasAllMarker || (allNamespaces.length > 0 && allNamespaces.every((ns: any) => currentValueSet.has(ns)));
+        const someSelected = currentValue.some((v: any) => allNamespacesSet.has(v) || v === '*');
         return { allSelected, someSelected, indeterminate: someSelected && !allSelected };
     }, [value, allNamespaces]);
 
@@ -132,14 +147,14 @@ export default function SearchSelect({
     const matchingSelectionState = useMemo(() => {
         const currentValue = Array.isArray(value) ? value : [];
         const currentValueSet = new Set(currentValue);
-        const matchingNamespaces = nonEmptyFilteredOptions.map(opt => typeof opt === 'string' ? opt : getValueFromOption(opt));
+        const matchingNamespaces = nonEmptyFilteredOptions.map((opt: any) => typeof opt === 'string' ? opt : getValueFromOption(opt));
         const matchingNamespacesSet = new Set(matchingNamespaces);
-        const allSelected = matchingNamespaces.length > 0 && matchingNamespaces.every(ns => currentValueSet.has(ns));
-        const someSelected = currentValue.some(v => matchingNamespacesSet.has(v));
+        const allSelected = matchingNamespaces.length > 0 && matchingNamespaces.every((ns: any) => currentValueSet.has(ns));
+        const someSelected = currentValue.some((v: any) => matchingNamespacesSet.has(v));
         return { allSelected, someSelected, indeterminate: someSelected && !allSelected, matchingNamespaces };
     }, [value, nonEmptyFilteredOptions, getValueFromOption]);
 
-    const handleOptionClick = (option) => {
+    const handleOptionClick = (option: any) => {
         const optionValue = getValueFromOption(option);
 
         if (!multiSelect) {
@@ -160,7 +175,7 @@ export default function SearchSelect({
         }
 
         if (isSelected) {
-            onChange(currentValue.filter(v => v !== optionValue));
+            onChange(currentValue.filter((v: any) => v !== optionValue));
         } else {
             onChange([...currentValue, optionValue]);
         }
@@ -173,7 +188,7 @@ export default function SearchSelect({
 
         // If using object options, find the matching option
         if (getOptionValue) {
-            const selectedOption = options.find(opt => getValueFromOption(opt) === value);
+            const selectedOption = options.find((opt: any) => getValueFromOption(opt) === value);
             return selectedOption ? getDisplayLabel(selectedOption) : placeholder;
         }
 
@@ -224,7 +239,7 @@ export default function SearchSelect({
                                 className="w-full bg-background border border-border rounded pl-8 pr-2 py-1 text-sm text-text focus:outline-none focus:border-primary"
                                 placeholder="Search..."
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e: any) => setSearchTerm(e.target.value)}
                                 onClick={(e) => e.stopPropagation()}
                                 autoComplete="off"
                                 autoCorrect="off"
@@ -262,11 +277,11 @@ export default function SearchSelect({
                                     const { matchingNamespaces, allSelected, someSelected } = matchingSelectionState;
 
                                     if (allSelected) {
-                                        onChange(currentValue.filter(v => !matchingNamespaces.includes(v)));
+                                        onChange(currentValue.filter((v: any) => !matchingNamespaces.includes(v)));
                                     } else if (!someSelected) {
                                         onChange([...new Set([...currentValue, ...matchingNamespaces])]);
                                     } else {
-                                        onChange(currentValue.filter(v => !matchingNamespaces.includes(v)));
+                                        onChange(currentValue.filter((v: any) => !matchingNamespaces.includes(v)));
                                     }
                                 }}
                             >

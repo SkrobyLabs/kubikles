@@ -8,15 +8,15 @@
 /**
  * Get node status (Ready/NotReady)
  */
-function getNodeStatus(node) {
-    const readyCondition = (node.status?.conditions || []).find(c => c.type === 'Ready');
+function getNodeStatus(node: any) {
+    const readyCondition = (node.status?.conditions || []).find((c: any) => c.type === 'Ready');
     return readyCondition?.status === 'True' ? 'Ready' : 'NotReady';
 }
 
 /**
  * Get node roles from labels
  */
-function getNodeRoles(node) {
+function getNodeRoles(node: any) {
     const labels = node.metadata?.labels || {};
     const roles = [];
     for (const [key, value] of Object.entries(labels)) {
@@ -30,19 +30,19 @@ function getNodeRoles(node) {
 /**
  * Get specific condition status
  */
-function getConditionStatus(node, conditionType) {
-    const condition = (node.status?.conditions || []).find(c => c.type === conditionType);
+function getConditionStatus(node: any, conditionType: string) {
+    const condition = (node.status?.conditions || []).find((c: any) => c.type === conditionType);
     return condition?.status || '';
 }
 
 export const nodeFields = {
     name: {
-        extractor: (item) => item.metadata?.name || '',
+        extractor: (item: any) => item.metadata?.name || '',
         aliases: ['n']
     },
 
     labels: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const labels = item.metadata?.labels || {};
             return Object.entries(labels)
                 .map(([k, v]) => `${k}=${v}`)
@@ -52,7 +52,7 @@ export const nodeFields = {
     },
 
     annotations: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const annotations = item.metadata?.annotations || {};
             return Object.entries(annotations)
                 .map(([k, v]) => `${k}=${v}`)
@@ -62,98 +62,98 @@ export const nodeFields = {
     },
 
     uid: {
-        extractor: (item) => item.metadata?.uid || '',
+        extractor: (item: any) => item.metadata?.uid || '',
         aliases: []
     },
 
     status: {
-        extractor: (item) => getNodeStatus(item),
+        extractor: (item: any) => getNodeStatus(item),
         aliases: ['state']
     },
 
     role: {
-        extractor: (item) => getNodeRoles(item),
+        extractor: (item: any) => getNodeRoles(item),
         aliases: ['roles']
     },
 
     version: {
-        extractor: (item) => item.status?.nodeInfo?.kubeletVersion || '',
+        extractor: (item: any) => item.status?.nodeInfo?.kubeletVersion || '',
         aliases: ['kubeletversion', 'k8sversion']
     },
 
     os: {
-        extractor: (item) => item.status?.nodeInfo?.osImage || '',
+        extractor: (item: any) => item.status?.nodeInfo?.osImage || '',
         aliases: ['osimage']
     },
 
     kernel: {
-        extractor: (item) => item.status?.nodeInfo?.kernelVersion || '',
+        extractor: (item: any) => item.status?.nodeInfo?.kernelVersion || '',
         aliases: ['kernelversion']
     },
 
     containerruntime: {
-        extractor: (item) => item.status?.nodeInfo?.containerRuntimeVersion || '',
+        extractor: (item: any) => item.status?.nodeInfo?.containerRuntimeVersion || '',
         aliases: ['runtime', 'cri']
     },
 
     arch: {
-        extractor: (item) => item.status?.nodeInfo?.architecture || '',
+        extractor: (item: any) => item.status?.nodeInfo?.architecture || '',
         aliases: ['architecture']
     },
 
     podcidr: {
-        extractor: (item) => item.spec?.podCIDR || '',
+        extractor: (item: any) => item.spec?.podCIDR || '',
         aliases: ['cidr']
     },
 
     internalip: {
-        extractor: (item) => {
-            const addr = (item.status?.addresses || []).find(a => a.type === 'InternalIP');
+        extractor: (item: any) => {
+            const addr = (item.status?.addresses || []).find((a: any) => a.type === 'InternalIP');
             return addr?.address || '';
         },
         aliases: ['ip']
     },
 
     externalip: {
-        extractor: (item) => {
-            const addr = (item.status?.addresses || []).find(a => a.type === 'ExternalIP');
+        extractor: (item: any) => {
+            const addr = (item.status?.addresses || []).find((a: any) => a.type === 'ExternalIP');
             return addr?.address || '';
         },
         aliases: ['extip']
     },
 
     hostname: {
-        extractor: (item) => {
-            const addr = (item.status?.addresses || []).find(a => a.type === 'Hostname');
+        extractor: (item: any) => {
+            const addr = (item.status?.addresses || []).find((a: any) => a.type === 'Hostname');
             return addr?.address || '';
         },
         aliases: ['host']
     },
 
     memorypressure: {
-        extractor: (item) => getConditionStatus(item, 'MemoryPressure'),
+        extractor: (item: any) => getConditionStatus(item, 'MemoryPressure'),
         aliases: ['memory']
     },
 
     diskpressure: {
-        extractor: (item) => getConditionStatus(item, 'DiskPressure'),
+        extractor: (item: any) => getConditionStatus(item, 'DiskPressure'),
         aliases: ['disk']
     },
 
     pidpressure: {
-        extractor: (item) => getConditionStatus(item, 'PIDPressure'),
+        extractor: (item: any) => getConditionStatus(item, 'PIDPressure'),
         aliases: ['pid']
     },
 
     unschedulable: {
-        extractor: (item) => String(item.spec?.unschedulable || false),
+        extractor: (item: any) => String(item.spec?.unschedulable || false),
         aliases: ['cordon', 'cordoned']
     },
 
     taints: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const taints = item.spec?.taints || [];
-            return taints.map(t => `${t.key}=${t.value}:${t.effect}`).join(' ');
+            return taints.map((t: any) => `${t.key}=${t.value}:${t.effect}`).join(' ');
         },
         aliases: ['taint']
     }

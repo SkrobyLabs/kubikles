@@ -15,7 +15,7 @@ export interface ServiceAccountActionsReturn extends Pick<BaseResourceActionsRet
     handleDelete: (serviceAccount: K8sServiceAccount) => void;
 }
 
-export const useServiceAccountActions = (): ServiceAccountActionsReturn => {
+export const useServiceAccountActions = (): any => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();

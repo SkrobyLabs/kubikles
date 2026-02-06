@@ -12,10 +12,10 @@ import { DeleteLease, GetLeaseYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function LeaseList({ isVisible }) {
+export default function LeaseList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { leases, loading } = useLeases(currentContext, selectedNamespaces, isVisible);
+    const { leases, loading } = useLeases(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useLeaseActions();
     const selection = useSelection();
 
@@ -35,42 +35,42 @@ export default function LeaseList({ isVisible }) {
 
     });
 
-    const getHolderIdentity = (lease) => {
+    const getHolderIdentity = (lease: any) => {
         return lease.spec?.holderIdentity || '-';
     };
 
-    const getLeaseDuration = (lease) => {
+    const getLeaseDuration = (lease: any) => {
         const duration = lease.spec?.leaseDurationSeconds;
         if (!duration) return '-';
         return `${duration}s`;
     };
 
-    const getRenewTime = (lease) => {
+    const getRenewTime = (lease: any) => {
         const renewTime = lease.spec?.renewTime;
         if (!renewTime) return '-';
         return formatAge(renewTime);
     };
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
-        { key: 'holder', label: 'Holder Identity', render: (item) => getHolderIdentity(item), getValue: (item) => getHolderIdentity(item) },
-        { key: 'duration', label: 'Duration', render: (item) => getLeaseDuration(item), getValue: (item) => item.spec?.leaseDurationSeconds || 0 },
-        { key: 'renewTime', label: 'Last Renewed', render: (item) => getRenewTime(item), getValue: (item) => item.spec?.renewTime || '' },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
+        { key: 'holder', label: 'Holder Identity', render: (item: any) => getHolderIdentity(item), getValue: (item: any) => getHolderIdentity(item) },
+        { key: 'duration', label: 'Duration', render: (item: any) => getLeaseDuration(item), getValue: (item: any) => item.spec?.leaseDurationSeconds || 0 },
+        { key: 'renewTime', label: 'Last Renewed', render: (item: any) => getRenewTime(item), getValue: (item: any) => item.spec?.renewTime || '' },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <LeaseActionsMenu
                     lease={item}
                     isOpen={activeMenuId === `lease-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `lease-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `lease-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(item) => openBulkDelete([item])}
+                    onDelete={(item: any) => openBulkDelete([item])}
                 />
             ),
             getValue: () => '',
@@ -99,7 +99,7 @@ export default function LeaseList({ isVisible }) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
         </>
     );
 }

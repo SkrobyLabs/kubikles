@@ -12,7 +12,7 @@ import PVCActionsMenu from './PVCActionsMenu';
 import { usePVCActions } from './usePVCActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-const getStatusColor = (phase) => {
+const getStatusColor = (phase: any) => {
     switch (phase) {
         case 'Bound':
             return 'text-green-400';
@@ -25,7 +25,7 @@ const getStatusColor = (phase) => {
     }
 };
 
-const getAccessModeColor = (mode) => {
+const getAccessModeColor = (mode: any) => {
     switch (mode) {
         case 'ReadWriteOnce':
             return 'text-blue-400';
@@ -40,21 +40,21 @@ const getAccessModeColor = (mode) => {
     }
 };
 
-const renderAccessModes = (modes) => {
+const renderAccessModes = (modes: any) => {
     if (!modes || modes.length === 0) return '-';
     return (
         <span className="flex flex-wrap gap-1">
-            {modes.map((mode, idx) => (
+            {modes.map((mode: any, idx: number) => (
                 <span key={idx} className={getAccessModeColor(mode)}>{mode}</span>
             ))}
         </span>
     );
 };
 
-export default function PVCList({ isVisible }) {
+export default function PVCList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { pvcs, loading } = usePVCs(currentContext, selectedNamespaces, isVisible);
+    const { pvcs, loading } = usePVCs(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = usePVCActions();
     const selection = useSelection();
 
@@ -75,68 +75,68 @@ export default function PVCList({ isVisible }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
         {
             key: 'status',
             label: 'Status',
-            render: (item) => (
+            render: (item: any) => (
                 <span className={getStatusColor(item.status?.phase)}>
                     {item.status?.phase || 'Unknown'}
                 </span>
             ),
-            getValue: (item) => item.status?.phase
+            getValue: (item: any) => item.status?.phase
         },
-        { key: 'volume', label: 'Volume', render: (item) => item.spec?.volumeName || '-', getValue: (item) => item.spec?.volumeName || '' },
+        { key: 'volume', label: 'Volume', render: (item: any) => item.spec?.volumeName || '-', getValue: (item: any) => item.spec?.volumeName || '' },
         {
             key: 'capacity',
             label: 'Capacity',
-            render: (item) => item.status?.capacity?.storage || item.spec?.resources?.requests?.storage || '-',
-            getValue: (item) => item.status?.capacity?.storage || item.spec?.resources?.requests?.storage || ''
+            render: (item: any) => item.status?.capacity?.storage || item.spec?.resources?.requests?.storage || '-',
+            getValue: (item: any) => item.status?.capacity?.storage || item.spec?.resources?.requests?.storage || ''
         },
-        { key: 'accessModes', label: 'Access Modes', render: (item) => renderAccessModes(item.spec?.accessModes), getValue: (item) => item.spec?.accessModes?.join(', ') || '' },
-        { key: 'storageClass', label: 'Storage Class', render: (item) => item.spec?.storageClassName || '-', getValue: (item) => item.spec?.storageClassName || '' },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'accessModes', label: 'Access Modes', render: (item: any) => renderAccessModes(item.spec?.accessModes), getValue: (item: any) => item.spec?.accessModes?.join(', ') || '' },
+        { key: 'storageClass', label: 'Storage Class', render: (item: any) => item.spec?.storageClassName || '-', getValue: (item: any) => item.spec?.storageClassName || '' },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         // Hidden by default columns
         {
             key: 'volumeMode',
             label: 'Volume Mode',
             defaultHidden: true,
-            render: (item) => item.spec?.volumeMode || 'Filesystem',
-            getValue: (item) => item.spec?.volumeMode || 'Filesystem',
+            render: (item: any) => item.spec?.volumeMode || 'Filesystem',
+            getValue: (item: any) => item.spec?.volumeMode || 'Filesystem',
         },
         {
             key: 'requested',
             label: 'Requested',
             defaultHidden: true,
-            render: (item) => item.spec?.resources?.requests?.storage || '-',
-            getValue: (item) => item.spec?.resources?.requests?.storage || '',
+            render: (item: any) => item.spec?.resources?.requests?.storage || '-',
+            getValue: (item: any) => item.spec?.resources?.requests?.storage || '',
         },
         {
             key: 'selector',
             label: 'Selector',
             defaultHidden: true,
-            render: (item) => {
+            render: (item: any) => {
                 const labels = item.spec?.selector?.matchLabels || {};
                 const entries = Object.entries(labels);
                 if (entries.length === 0) return <span className="text-gray-500">-</span>;
                 return <span title={entries.map(([k, v]) => `${k}=${v}`).join('\n')}>{entries.length} label{entries.length > 1 ? 's' : ''}</span>;
             },
-            getValue: (item) => Object.entries(item.spec?.selector?.matchLabels || {}).map(([k, v]) => `${k}=${v}`).join(','),
+            getValue: (item: any) => Object.entries(item.spec?.selector?.matchLabels || {}).map(([k, v]) => `${k}=${v}`).join(','),
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <PVCActionsMenu
                     pvc={item}
                     isOpen={activeMenuId === `pvc-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `pvc-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `pvc-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(item) => openBulkDelete([item])}
+                    onDelete={(item: any) => openBulkDelete([item])}
                 />
             ),
             getValue: () => '',
@@ -164,7 +164,7 @@ export default function PVCList({ isVisible }) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
         </>
     );
 }

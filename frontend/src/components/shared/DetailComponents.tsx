@@ -4,19 +4,19 @@ import { CheckIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 /**
  * Copyable label component - displays a value that can be clicked to copy
  */
-export const CopyableLabel = ({ value, copyValue, className = '' }) => {
+export const CopyableLabel = ({ value, copyValue, className = '' }: { value: any; copyValue?: any; className?: string }) => {
     const [copied, setCopied] = useState(false);
 
     const textToCopy = copyValue || value;
 
-    const handleCopy = async (e) => {
+    const handleCopy = async (e: any) => {
         e.stopPropagation();
         if (!textToCopy) return;
         try {
             await navigator.clipboard.writeText(textToCopy);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     };
@@ -46,7 +46,7 @@ export const CopyableLabel = ({ value, copyValue, className = '' }) => {
 /**
  * Copyable text block - larger text area for messages/content with copy button
  */
-export const CopyableTextBlock = ({ value, maxLines = 10 }) => {
+export const CopyableTextBlock = ({ value, maxLines = 10 }: { value: any; maxLines?: number }) => {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
@@ -55,7 +55,7 @@ export const CopyableTextBlock = ({ value, maxLines = 10 }) => {
             await navigator.clipboard.writeText(value);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     };
@@ -93,7 +93,7 @@ export const CopyableTextBlock = ({ value, maxLines = 10 }) => {
  * Detail row component - displays a label/value pair
  * Memoized to prevent re-renders when parent updates with same props
  */
-export const DetailRow = React.memo(({ label, value, children }) => (
+export const DetailRow = React.memo(({ label, value, children }: { label: string; value?: any; children?: React.ReactNode }) => (
     <div className="flex py-2 border-b border-border/50">
         <div className="w-32 text-xs font-medium text-gray-500 uppercase tracking-wider shrink-0">
             {label}
@@ -108,7 +108,7 @@ export const DetailRow = React.memo(({ label, value, children }) => (
  * Detail section component - groups related detail rows with a title
  * Memoized to prevent re-renders when parent updates with same props
  */
-export const DetailSection = React.memo(({ title, children }) => (
+export const DetailSection = React.memo(({ title, children }: { title?: string; children?: React.ReactNode }) => (
     <div className="bg-surface rounded-lg border border-border p-4 mb-4">
         {title && (
             <h3 className="text-sm font-medium text-gray-300 mb-3 pb-2 border-b border-border">
@@ -123,8 +123,8 @@ export const DetailSection = React.memo(({ title, children }) => (
  * Status badge component
  * Memoized to prevent re-renders when parent updates with same props
  */
-export const StatusBadge = React.memo(({ status, variant = 'default' }) => {
-    const variants = {
+export const StatusBadge = React.memo(({ status, variant = 'default' }: { status: any; variant?: string }) => {
+    const variants: Record<string, string> = {
         success: 'bg-green-500/10 text-green-400 border-green-500/30',
         warning: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
         error: 'bg-red-500/10 text-red-400 border-red-500/30',
@@ -143,7 +143,7 @@ export const StatusBadge = React.memo(({ status, variant = 'default' }) => {
  * Labels display component
  * Memoized to prevent re-renders when parent updates with same props
  */
-export const LabelsDisplay = React.memo(({ labels, emptyText = 'None' }) => {
+export const LabelsDisplay = React.memo(({ labels, emptyText = 'None' }: { labels: any; emptyText?: string }) => {
     if (!labels || Object.keys(labels).length === 0) {
         return <span className="text-gray-500">{emptyText}</span>;
     }
@@ -163,7 +163,7 @@ export const LabelsDisplay = React.memo(({ labels, emptyText = 'None' }) => {
  * Annotations display component (same as labels but with different styling)
  * Memoized to prevent re-renders when parent updates with same props
  */
-export const AnnotationsDisplay = React.memo(({ annotations, emptyText = 'None' }) => {
+export const AnnotationsDisplay = React.memo(({ annotations, emptyText = 'None' }: { annotations: any; emptyText?: string }) => {
     if (!annotations || Object.keys(annotations).length === 0) {
         return <span className="text-gray-500">{emptyText}</span>;
     }
@@ -188,7 +188,7 @@ export const AnnotationsDisplay = React.memo(({ annotations, emptyText = 'None' 
  * Resource count badge
  * Memoized to prevent re-renders when parent updates with same props
  */
-export const ResourceCountBadge = React.memo(({ count, label, onClick }) => {
+export const ResourceCountBadge = React.memo(({ count, label, onClick }: { count: any; label: any; onClick?: any }) => {
     const Component = onClick ? 'button' : 'div';
     return (
         <Component

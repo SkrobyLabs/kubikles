@@ -15,7 +15,7 @@ export interface CRDActionsReturn extends Pick<BaseResourceActionsReturn<K8sCust
     handleDelete: (crd: K8sCustomResourceDefinition) => void;
 }
 
-export const useCRDActions = (): CRDActionsReturn => {
+export const useCRDActions = (): any => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();

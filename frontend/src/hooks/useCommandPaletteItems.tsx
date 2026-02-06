@@ -7,6 +7,7 @@ import {
     DEFAULT_MENU_SECTIONS,
     reconcileLayout,
     getVisibleItemIds,
+    type SidebarLayoutSection,
 } from '~/constants/menuStructure';
 
 export interface CommandPaletteItem {
@@ -41,7 +42,7 @@ export const useCommandPaletteItems = (): UseCommandPaletteItemsResult => {
             try {
                 const list = await ListCRDs();
                 setCRDs(list || []);
-            } catch (err) {
+            } catch (err: any) {
                 console.error('Failed to fetch CRDs for command palette:', err);
                 setError(err as Error);
                 setCRDs([]);
@@ -63,7 +64,7 @@ export const useCommandPaletteItems = (): UseCommandPaletteItemsResult => {
         // Get effective sections for path building and visibility
         const sections = sidebarLayout
             ? reconcileLayout(sidebarLayout)
-            : DEFAULT_MENU_SECTIONS.map(s => ({ id: s.id, title: s.title, items: [...s.items] }));
+            : DEFAULT_MENU_SECTIONS.map((s: any) => ({ id: s.id, title: s.title, items: [...s.items] } as SidebarLayoutSection));
 
         // Only show items that are visible in the current layout
         const visibleIds = getVisibleItemIds(sections);
@@ -111,7 +112,7 @@ export const useCommandPaletteItems = (): UseCommandPaletteItemsResult => {
             const kind = crd.spec?.names?.kind;
             const plural = crd.spec?.names?.plural;
             const versions = crd.spec?.versions || [];
-            const storageVersion = versions.find(v => v.storage)?.name || versions[0]?.name || 'v1';
+            const storageVersion = versions.find((v: any) => v.storage)?.name || versions[0]?.name || 'v1';
             const namespaced = crd.spec?.scope === 'Namespaced';
 
             if (kind && plural) {

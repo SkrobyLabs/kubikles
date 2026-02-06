@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 // Copy button with feedback
-function CopyButton({ value, className = '' }) {
+function CopyButton({ value, className = '' }: { value: any; className?: string }) {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
@@ -21,7 +21,7 @@ function CopyButton({ value, className = '' }) {
             await navigator.clipboard.writeText(value);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     };
@@ -42,7 +42,7 @@ function CopyButton({ value, className = '' }) {
 }
 
 // Value row with optional copy button
-function ValueRow({ label, value, showCopy = false, mono = false, muted = false }) {
+function ValueRow({ label, value, showCopy = false, mono = false, muted = false }: { label: any; value: any; showCopy?: boolean; mono?: boolean; muted?: boolean }) {
     if (!value) return null;
     return (
         <div className="flex items-start justify-between gap-2 py-1">
@@ -58,7 +58,7 @@ function ValueRow({ label, value, showCopy = false, mono = false, muted = false 
 }
 
 // Badge/chip component
-function Badge({ children, className = '' }) {
+function Badge({ children, className = '' }: { children: React.ReactNode; className?: string }) {
     return (
         <span className={`inline-flex items-center px-2 py-0.5 text-xs rounded border ${className}`}>
             {children}
@@ -67,8 +67,8 @@ function Badge({ children, className = '' }) {
 }
 
 // SAN item with type badge
-function SANItem({ type, value }) {
-    const typeColors = {
+function SANItem({ type, value }: { type: string; value: any }) {
+    const typeColors: Record<string, string> = {
         DNS: 'bg-blue-900/30 text-blue-400 border-blue-500/30',
         IP: 'bg-purple-900/30 text-purple-400 border-purple-500/30',
         Email: 'bg-amber-900/30 text-amber-400 border-amber-500/30',
@@ -87,7 +87,7 @@ function SANItem({ type, value }) {
     );
 }
 
-export default function CertificateModal({ certificates, pemData, onClose }) {
+export default function CertificateModal({ certificates, pemData, onClose }: { certificates: any; pemData: any; onClose: any }) {
     const [showRaw, setShowRaw] = useState(false);
     const [pemCopied, setPemCopied] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -102,7 +102,7 @@ export default function CertificateModal({ certificates, pemData, onClose }) {
     const hasMultiple = totalCerts > 1;
 
     // Get cert type label for navigation
-    const getCertTypeLabel = (cert, index) => {
+    const getCertTypeLabel = (cert: any, index: number) => {
         if (index === 0) return 'Leaf';
         if (index === totalCerts - 1 && totalCerts > 1) return 'Root';
         return 'Intermediate';
@@ -167,7 +167,7 @@ export default function CertificateModal({ certificates, pemData, onClose }) {
     };
 
     // Format dates
-    const formatDate = (isoDate) => {
+    const formatDate = (isoDate: any) => {
         try {
             const date = new Date(isoDate);
             return date.toLocaleDateString('en-US', {
@@ -189,16 +189,16 @@ export default function CertificateModal({ certificates, pemData, onClose }) {
             await navigator.clipboard.writeText(pemData);
             setPemCopied(true);
             setTimeout(() => setPemCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy PEM:', err);
         }
     };
 
     // Collect all SANs
     const allSANs = [
-        ...(certInfo.dnsNames || []).map(v => ({ type: 'DNS', value: v })),
-        ...(certInfo.ipAddresses || []).map(v => ({ type: 'IP', value: v })),
-        ...(certInfo.emailAddresses || []).map(v => ({ type: 'Email', value: v })),
+        ...(certInfo.dnsNames || []).map((v: any) => ({ type: 'DNS', value: v })),
+        ...(certInfo.ipAddresses || []).map((v: any) => ({ type: 'IP', value: v })),
+        ...(certInfo.emailAddresses || []).map((v: any) => ({ type: 'Email', value: v })),
     ];
 
     return createPortal(
@@ -325,7 +325,7 @@ export default function CertificateModal({ certificates, pemData, onClose }) {
                                         <span className="text-xs text-gray-500">{allSANs.length} {allSANs.length === 1 ? 'name' : 'names'}</span>
                                     </div>
                                     <div className="space-y-1 max-h-32 overflow-y-auto">
-                                        {allSANs.map((san, i) => (
+                                        {allSANs.map((san: any, i: number) => (
                                             <SANItem key={i} type={san.type} value={san.value} />
                                         ))}
                                     </div>
@@ -344,7 +344,7 @@ export default function CertificateModal({ certificates, pemData, onClose }) {
                                         />
                                         <ValueRow
                                             label="Size"
-                                            value={certInfo.publicKey?.size ? `${certInfo.publicKey.size} bits` : null}
+                                            value={certInfo.publicKey?.size ? `${certInfo.publicKey.size} bits` : undefined}
                                         />
                                         <ValueRow
                                             label="Signature"
@@ -357,12 +357,12 @@ export default function CertificateModal({ certificates, pemData, onClose }) {
                                 <div className="bg-surface-light rounded-lg p-3">
                                     <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Key Usage</h3>
                                     <div className="flex flex-wrap gap-1">
-                                        {(certInfo.keyUsage || []).map((usage, i) => (
+                                        {(certInfo.keyUsage || []).map((usage: any, i: number) => (
                                             <Badge key={i} className="bg-zinc-800 text-zinc-300 border-zinc-600">
                                                 {usage}
                                             </Badge>
                                         ))}
-                                        {(certInfo.extKeyUsage || []).map((usage, i) => (
+                                        {(certInfo.extKeyUsage || []).map((usage: any, i: number) => (
                                             <Badge key={`ext-${i}`} className="bg-blue-900/30 text-blue-400 border-blue-500/30">
                                                 {usage.replace(' Authentication', ' Auth')}
                                             </Badge>

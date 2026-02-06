@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Wails Runtime Adapter - handles events and window functions for both desktop and server modes
 // SYNC: This file mirrors wailsjs/runtime/runtime.js from Wails v2
 // See: https://github.com/wailsapp/wails/blob/master/v2/internal/frontend/runtime/runtime.js

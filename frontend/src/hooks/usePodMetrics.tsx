@@ -41,7 +41,7 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
     const [source, setSource] = useState<MetricsSource>(null); // 'k8s' or 'prometheus'
     const { currentContext } = useK8s();
     const { getConfig } = useConfig();
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const prometheusInfoRef = useRef<k8s.PrometheusInfo | null>(null); // Cache prometheus info for fallback
     const pollInterval = getConfig('kubernetes.metricsPollIntervalMs') ?? 30000;
 
@@ -104,7 +104,7 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
                 if (promInfo?.available) {
                     prometheusInfoRef.current = promInfo;
                 }
-            } catch (e) {
+            } catch (e: any) {
                 console.log("Pod metrics: Prometheus detection failed:", e);
             }
         }
@@ -124,7 +124,7 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
         const promInfo = await ensurePrometheusInfo();
         if (!promInfo) {
             console.log("Pod metrics: No Prometheus available");
-            return { available: false, metrics: [], error: "No Prometheus available" };
+            return { available: false, metrics: [], error: "No Prometheus available" } as any;
         }
         const { namespace, service, port } = promInfo;
         console.log(`Pod metrics: Querying Prometheus at ${namespace}/${service}:${port}...`);
@@ -132,9 +132,9 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
             const promResult = await GetPodMetricsFromPrometheus(namespace, service, port);
             console.log("Pod metrics: Prometheus result:", promResult);
             return promResult;
-        } catch (e) {
+        } catch (e: any) {
             console.log("Pod metrics: Prometheus query failed:", e);
-            return { available: false, metrics: [], error: String(e) };
+            return { available: false, metrics: [], error: String(e) } as any;
         }
     }, [ensurePrometheusInfo]);
 
@@ -199,7 +199,7 @@ export const usePodMetrics = (isVisible: boolean, isReady: boolean = true, autoP
             setAvailable(false);
             setSource(null);
             setMetrics({});
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to fetch pod metrics", err);
             setAvailable(false);
             setSource(null);

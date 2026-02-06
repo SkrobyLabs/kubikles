@@ -7,7 +7,7 @@ export interface CSINodeActionsReturn extends BaseResourceActionsReturn<K8sCSINo
     handleDelete: (csiNode: K8sCSINode) => void;
 }
 
-export const useCSINodeActions = (): CSINodeActionsReturn => {
+export const useCSINodeActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -20,7 +20,7 @@ export const useCSINodeActions = (): CSINodeActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (csiNode: K8sCSINode): Promise<void> => {
+        async (csiNode: any): Promise<void> => {
             await DeleteCSINode(csiNode.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this CSI Node? This is usually managed automatically by the kubelet.' }

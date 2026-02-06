@@ -7,7 +7,7 @@ export interface EventActionsReturn extends BaseResourceActionsReturn<K8sEvent> 
     handleDelete: (event: K8sEvent) => void;
 }
 
-export const useEventActions = (): EventActionsReturn => {
+export const useEventActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -21,7 +21,8 @@ export const useEventActions = (): EventActionsReturn => {
         getTabTitle: (event: K8sEvent) => event.reason || 'Event',
     });
 
-    const handleDelete = createDeleteHandler(async (event: K8sEvent): Promise<void> => {
+    const handleDelete = createDeleteHandler(
+        async (event: any): Promise<void> => {
         await DeleteEvent(event.metadata.namespace!, event.metadata.name);
     });
 

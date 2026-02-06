@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function LimitRangeDetails({ limitRange, tabContext = '' }) {
+export default function LimitRangeDetails({ limitRange, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -114,7 +114,7 @@ export default function LimitRangeDetails({ limitRange, tabContext = '' }) {
                         <p className="text-sm text-gray-500">No limits defined</p>
                     ) : (
                         <div className="space-y-4">
-                            {limits.map((limit, idx) => (
+                            {limits.map((limit: any, idx: number) => (
                                 <div key={idx} className="bg-gray-800/50 rounded-lg p-4">
                                     <div className="flex items-center gap-2 mb-3">
                                         <span className="text-sm font-medium text-gray-200">{limit.type}</span>

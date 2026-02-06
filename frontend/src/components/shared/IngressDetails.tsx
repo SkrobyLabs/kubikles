@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function IngressDetails({ ingress, tabContext = '' }) {
+export default function IngressDetails({ ingress, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch } = useUI();
 
@@ -28,7 +28,7 @@ export default function IngressDetails({ ingress, tabContext = '' }) {
     // Determine ingress status - "Active" only if we have addresses assigned
     const getIngressStatus = () => {
         if (loadBalancer.length > 0) {
-            const hasAddress = loadBalancer.some(lb => lb.ip || lb.hostname);
+            const hasAddress = loadBalancer.some((lb: any) => lb.ip || lb.hostname);
             if (hasAddress) return { status: 'Active', variant: 'success' };
         }
         // Check if there are any rules defined
@@ -73,11 +73,11 @@ export default function IngressDetails({ ingress, tabContext = '' }) {
         });
     };
 
-    const handleViewService = (serviceName) => {
+    const handleViewService = (serviceName: any) => {
         navigateWithSearch('services', `name:"${serviceName}" namespace:"${namespace}"`);
     };
 
-    const renderBackend = (backend) => {
+    const renderBackend = (backend: any) => {
         if (!backend) return <span className="text-gray-500">-</span>;
 
         if (backend.service) {
@@ -144,7 +144,7 @@ export default function IngressDetails({ ingress, tabContext = '' }) {
                 {loadBalancer.length > 0 && (
                     <DetailSection title="Load Balancer">
                         <div className="space-y-1.5">
-                            {loadBalancer.map((lb, idx) => (
+                            {loadBalancer.map((lb: any, idx: number) => (
                                 <div key={idx} className="flex items-center gap-2">
                                     <GlobeAltIcon className="h-4 w-4 text-gray-400" />
                                     <CopyableLabel value={lb.ip || lb.hostname} />
@@ -158,19 +158,19 @@ export default function IngressDetails({ ingress, tabContext = '' }) {
                 <DetailSection title="Rules">
                     {rules.length > 0 ? (
                         <div className="space-y-4">
-                            {rules.map((rule, ruleIdx) => (
+                            {rules.map((rule: any, ruleIdx: number) => (
                                 <div key={ruleIdx} className="p-3 bg-background-dark rounded border border-border">
                                     <div className="flex items-center gap-2 mb-2">
                                         <span className="text-sm font-medium text-gray-300">
                                             {rule.host || '*'}
                                         </span>
-                                        {tls.some(t => t.hosts?.includes(rule.host)) && (
+                                        {tls.some((t: any) => t.hosts?.includes(rule.host)) && (
                                             <StatusBadge status="TLS" variant="success" />
                                         )}
                                     </div>
                                     {rule.http?.paths && rule.http.paths.length > 0 && (
                                         <div className="space-y-1.5 ml-4">
-                                            {rule.http.paths.map((path, pathIdx) => (
+                                            {rule.http.paths.map((path: any, pathIdx: number) => (
                                                 <div key={pathIdx} className="flex items-center gap-4 text-sm">
                                                     <span className="font-mono text-gray-400 min-w-[100px]">
                                                         {path.path || '/'}
@@ -203,7 +203,7 @@ export default function IngressDetails({ ingress, tabContext = '' }) {
                 {tls.length > 0 && (
                     <DetailSection title="TLS">
                         <div className="space-y-2">
-                            {tls.map((tlsEntry, idx) => (
+                            {tls.map((tlsEntry: any, idx: number) => (
                                 <div key={idx} className="p-2 bg-background-dark rounded border border-border">
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className="text-sm text-gray-300">Secret:</span>

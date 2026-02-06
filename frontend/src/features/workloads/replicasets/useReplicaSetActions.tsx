@@ -11,7 +11,7 @@ export interface ReplicaSetActionsReturn extends BaseResourceActionsReturn<K8sRe
     handleViewLogs: (replicaSet: K8sReplicaSet) => Promise<void>;
 }
 
-export const useReplicaSetActions = (): ReplicaSetActionsReturn => {
+export const useReplicaSetActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -31,7 +31,7 @@ export const useReplicaSetActions = (): ReplicaSetActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (replicaSet: K8sReplicaSet): Promise<void> => {
+        async (replicaSet: any): Promise<void> => {
             await DeleteReplicaSet(replicaSet.metadata.namespace!, replicaSet.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this replicaset? This will also delete all associated pods.' }
@@ -45,7 +45,7 @@ export const useReplicaSetActions = (): ReplicaSetActionsReturn => {
             const allPods: K8sPod[] = await ListPods('', namespace);
             const replicaSetPods: K8sPod[] = allPods.filter((pod: K8sPod) => {
                 const ownerRefs = pod.metadata?.ownerReferences || [];
-                return ownerRefs.some(ref =>
+                return ownerRefs.some((ref: any) =>
                     ref.kind === 'ReplicaSet' && ref.name === replicaSet.metadata.name
                 );
             });
@@ -57,15 +57,15 @@ export const useReplicaSetActions = (): ReplicaSetActionsReturn => {
 
             const pod: K8sPod = replicaSetPods[0];
             const containers: string[] = [
-                ...(pod.spec?.initContainers || []).map(c => c.name),
-                ...(pod.spec?.containers || []).map(c => c.name)
+                ...(pod.spec?.initContainers || []).map((c: any) => c.name),
+                ...(pod.spec?.containers || []).map((c: any) => c.name)
             ];
 
             const podContainerMap: Record<string, string[]> = {};
             for (const p of replicaSetPods) {
                 podContainerMap[p.metadata.name] = [
-                    ...(p.spec?.initContainers || []).map(c => c.name),
-                    ...(p.spec?.containers || []).map(c => c.name)
+                    ...(p.spec?.initContainers || []).map((c: any) => c.name),
+                    ...(p.spec?.containers || []).map((c: any) => c.name)
                 ];
             }
 
@@ -78,7 +78,7 @@ export const useReplicaSetActions = (): ReplicaSetActionsReturn => {
                         namespace={namespace}
                         pod={pod.metadata.name}
                         containers={containers}
-                        siblingPods={replicaSetPods.map(p => p.metadata.name)}
+                        siblingPods={replicaSetPods.map((p: any) => p.metadata.name)}
                         podContainerMap={podContainerMap}
                         ownerName={replicaSet.metadata.name}
                         tabContext={currentContext}

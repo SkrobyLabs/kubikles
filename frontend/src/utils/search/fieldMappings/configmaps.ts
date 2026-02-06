@@ -11,17 +11,17 @@ export const configMapFields = {
     ...commonFields,
 
     keys: {
-        extractor: (item) => Object.keys(item.data || {}).join(' '),
+        extractor: (item: any) => Object.keys(item.data || {}).join(' '),
         aliases: ['key', 'datakeys']
     },
 
     keycount: {
-        extractor: (item) => String(Object.keys(item.data || {}).length),
+        extractor: (item: any) => String(Object.keys(item.data || {}).length),
         aliases: ['count']
     },
 
     binarykeys: {
-        extractor: (item) => Object.keys(item.binaryData || {}).join(' '),
+        extractor: (item: any) => Object.keys(item.binaryData || {}).join(' '),
         aliases: ['binarykey', 'binary']
     }
 };

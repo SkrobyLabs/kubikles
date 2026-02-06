@@ -2,14 +2,14 @@ import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
 
-export default function DaemonSetActionsMenu({ daemonSet, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onRestart, onDelete, onViewLogs }) {
-    const buttonRef = useRef(null);
-    const menuRef = useRef(null);
+export default function DaemonSetActionsMenu({ daemonSet, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onRestart, onDelete, onViewLogs }: any) {
+    const buttonRef = useRef<any>(null);
+    const menuRef = useRef<any>(null);
 
     useEffect(() => {
         if (!isOpen) return;
 
-        const handleClickOutside = (event) => {
+        const handleClickOutside = (event: any) => {
             if (buttonRef.current && !buttonRef.current.contains(event.target) &&
                 menuRef.current && !menuRef.current.contains(event.target)) {
                 onOpenChange(false);
@@ -29,12 +29,12 @@ export default function DaemonSetActionsMenu({ daemonSet, isOpen, menuPosition, 
         };
     }, [isOpen, onOpenChange]);
 
-    const toggleMenu = (e) => {
+    const toggleMenu = (e: any) => {
         e.stopPropagation();
         onOpenChange(!isOpen, buttonRef.current);
     };
 
-    const handleAction = (action) => {
+    const handleAction = (action: any) => {
         onOpenChange(false);
         action();
     };

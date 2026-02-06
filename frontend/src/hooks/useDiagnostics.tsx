@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+// @ts-ignore - generated bindings may not have these yet
 import { GetResourceDiff, GetDependencyGraph, GetFlowTimeline } from 'wailsjs/go/main/App';
 
 interface DiagnosticsError {
@@ -66,7 +67,8 @@ interface UseDiagnosticsReturn {
     resourceType: string,
     resourceName: string,
     namespace: string,
-    context: string
+    durationMinutes?: number,
+    includeLogs?: boolean
   ) => Promise<FlowTimelineEvent[] | null>;
   clearError: () => void;
 }
@@ -104,7 +106,7 @@ export const useDiagnostics = (): UseDiagnosticsReturn => {
           targetContext
         );
         return result as DiffResult;
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to get resource diff';
         setError({ message: errorMessage });
         return null;
@@ -127,7 +129,7 @@ export const useDiagnostics = (): UseDiagnosticsReturn => {
       try {
         const result = await GetDependencyGraph(resourceType, resourceName, namespace, context);
         return result as DependencyGraph;
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to get dependency graph';
         setError({ message: errorMessage });
         return null;
@@ -151,7 +153,7 @@ export const useDiagnostics = (): UseDiagnosticsReturn => {
       try {
         const result = await GetFlowTimeline(resourceType, namespace, resourceName, durationMinutes, includeLogs);
         return result as FlowTimelineEvent[];
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to get flow timeline';
         setError({ message: errorMessage });
         return null;

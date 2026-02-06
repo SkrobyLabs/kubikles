@@ -304,7 +304,7 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
     }, [value]);
 
     const [expandedSections, setExpandedSections] = useState<Set<string>>(() =>
-        new Set(layout.map(s => s.id))
+        new Set(layout.map((s: any) => s.id))
     );
 
     const [activeId, setActiveId] = useState<string | null>(null);
@@ -322,9 +322,9 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
     const availableGroups = useMemo(() => {
         const groups = getAvailableGroups(layout);
         // Enrich with icon from ALL_MENU_ITEMS for rendering
-        return groups.map(g => ({
+        return groups.map((g: any) => ({
             ...g,
-            items: g.items.map(item => ({ ...item, icon: ALL_MENU_ITEMS[item.id]?.icon })),
+            items: g.items.map((item: any) => ({ ...item, icon: ALL_MENU_ITEMS[item.id]?.icon })),
         }));
     }, [layout]);
 
@@ -335,13 +335,13 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
     // ---- Helpers ----
 
     const findSectionForItem = (itemId: string): number => {
-        return layout.findIndex(s => s.items.includes(itemId));
+        return layout.findIndex((s: any) => s.items.includes(itemId));
     };
 
     // Resolve an overId to { sectionIdx, insertIndex }
     const resolveDropTarget = (overId: string): { sectionIdx: number; insertIndex: number } | null => {
         if (overId.startsWith('section:')) {
-            const sectionIdx = layout.findIndex(s => s.id === overId.replace('section:', ''));
+            const sectionIdx = layout.findIndex((s: any) => s.id === overId.replace('section:', ''));
             if (sectionIdx === -1) return null;
             return { sectionIdx, insertIndex: layout[sectionIdx].items.length };
         }
@@ -425,15 +425,15 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
 
         let toSectionIdx: number;
         if (overId.startsWith('section:')) {
-            toSectionIdx = layout.findIndex(s => s.id === overId.replace('section:', ''));
+            toSectionIdx = layout.findIndex((s: any) => s.id === overId.replace('section:', ''));
         } else {
             toSectionIdx = findSectionForItem(overId);
         }
 
         if (toSectionIdx === -1 || fromSectionIdx === toSectionIdx) return;
 
-        const newLayout = layout.map(s => ({ ...s, items: [...s.items] }));
-        newLayout[fromSectionIdx].items = newLayout[fromSectionIdx].items.filter(id => id !== activeItemId);
+        const newLayout = layout.map((s: any) => ({ ...s, items: [...s.items] }));
+        newLayout[fromSectionIdx].items = newLayout[fromSectionIdx].items.filter((id: any) => id !== activeItemId);
 
         if (overId.startsWith('section:')) {
             newLayout[toSectionIdx].items.push(activeItemId);
@@ -468,7 +468,7 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
             const target = resolveDropTarget(overIdStr);
             if (!target) return;
 
-            const newLayout = layout.map((s, i) => {
+            const newLayout = layout.map((s: any, i: number) => {
                 if (i !== target.sectionIdx) return s;
                 const newItems = [...s.items];
                 newItems.splice(target.insertIndex, 0, dragItemId);
@@ -483,8 +483,8 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
             if (overIdStr === 'available-bin' || overIdStr.startsWith('avail:')) {
                 const sectionIdx = findSectionForItem(dragItemId);
                 if (sectionIdx === -1) return;
-                const newLayout = layout.map((s, i) =>
-                    i === sectionIdx ? { ...s, items: s.items.filter(id => id !== dragItemId) } : s
+                const newLayout = layout.map((s: any, i: number) =>
+                    i === sectionIdx ? { ...s, items: s.items.filter((id: any) => id !== dragItemId) } : s
                 );
                 updateLayout(newLayout);
                 return;
@@ -496,8 +496,8 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
             const fromId = (active.id as string).replace('section:', '');
             const toId = overIdStr.replace('section:', '');
             if (fromId === toId) return;
-            const fromIdx = layout.findIndex(s => s.id === fromId);
-            const toIdx = layout.findIndex(s => s.id === toId);
+            const fromIdx = layout.findIndex((s: any) => s.id === fromId);
+            const toIdx = layout.findIndex((s: any) => s.id === toId);
             if (fromIdx === -1 || toIdx === -1) return;
             updateLayout(arrayMove(layout, fromIdx, toIdx));
             return;
@@ -515,7 +515,7 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
             const toIdx = items.indexOf(overIdStr);
             if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
 
-            const newLayout = layout.map((s, i) =>
+            const newLayout = layout.map((s: any, i: number) =>
                 i === sectionIdx ? { ...s, items: arrayMove(items, fromIdx, toIdx) } : s
             );
             updateLayout(newLayout);
@@ -544,7 +544,7 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
     };
 
     const addGroupToLayout = (sectionId: string, itemIds: string[]) => {
-        const existingIdx = layout.findIndex(s => s.id === sectionId);
+        const existingIdx = layout.findIndex((s: any) => s.id === sectionId);
         if (existingIdx === -1) {
             setExpandedSections(prev => new Set([...prev, sectionId]));
         }
@@ -568,7 +568,7 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
 
     const handleReset = () => {
         onChange(undefined);
-        setExpandedSections(new Set(getDefaultLayout().map(s => s.id)));
+        setExpandedSections(new Set(getDefaultLayout().map((s: any) => s.id)));
     };
 
     const toggleSection = (sectionId: string) => {
@@ -581,9 +581,9 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
     };
 
     // Build sortable IDs
-    const sectionSortableIds = layout.map(s => `section:${s.id}`);
+    const sectionSortableIds = layout.map((s: any) => `section:${s.id}`);
     const activeDragItemId = activeId && activeType === 'item' ? activeId : null;
-    const activeDragSection = activeId && activeType === 'section' ? layout.find(s => s.id === activeId) : null;
+    const activeDragSection = activeId && activeType === 'section' ? layout.find((s: any) => s.id === activeId) : null;
 
     return (
         <div className="py-2">
@@ -622,10 +622,10 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
                             Current Layout
                         </div>
                         <SortableContext items={sectionSortableIds} strategy={verticalListSortingStrategy}>
-                            {layout.map((section, sectionIdx) => {
+                            {layout.map((section: any, sectionIdx: number) => {
                                 const isFixed = FIXED_SECTION_IDS.has(section.id);
                                 const isExpanded = expandedSections.has(section.id);
-                                const itemIds = isFixed ? [] : section.items.filter(id => ALL_MENU_ITEMS[id]);
+                                const itemIds = isFixed ? [] : section.items.filter((id: any) => ALL_MENU_ITEMS[id]);
                                 const previewHere = !isFixed && insertPreview?.sectionId === section.id;
 
                                 return (
@@ -643,7 +643,7 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
                                             </div>
                                         ) : (
                                             <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                                                {itemIds.map((itemId, itemIdx) => {
+                                                {itemIds.map((itemId: any, itemIdx: number) => {
                                                     const def = ALL_MENU_ITEMS[itemId];
                                                     if (!def) return null;
                                                     const displayLabel = section.itemLabels?.[itemId] || def.label;
@@ -743,14 +743,14 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {availableGroups.map(group => (
+                                {availableGroups.map((group: any) => (
                                     <div key={group.sectionId}>
                                         <div className="flex items-center justify-between px-1 mb-1">
                                             <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                                                 {group.title}
                                             </span>
                                             <button
-                                                onClick={() => addGroupToLayout(group.sectionId, group.items.map(i => i.id))}
+                                                onClick={() => addGroupToLayout(group.sectionId, group.items.map((i: any) => i.id))}
                                                 className="text-[10px] text-gray-500 hover:text-primary transition-colors"
                                                 title={`Add all ${group.title} items`}
                                             >
@@ -758,7 +758,7 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
                                             </button>
                                         </div>
                                         <div className="space-y-0.5">
-                                            {group.items.map(item => (
+                                            {group.items.map((item: any) => (
                                                 <DraggableAvailableItem
                                                     key={item.id}
                                                     id={item.id}

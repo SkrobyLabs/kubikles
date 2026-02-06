@@ -7,7 +7,7 @@ interface ValidatingWebhookActionsReturn extends BaseResourceActionsReturn<K8sVa
     handleDelete: (webhook: K8sValidatingWebhookConfiguration) => void;
 }
 
-export const useValidatingWebhookActions = (): ValidatingWebhookActionsReturn => {
+export const useValidatingWebhookActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -22,7 +22,7 @@ export const useValidatingWebhookActions = (): ValidatingWebhookActionsReturn =>
     });
 
     const handleDelete = createDeleteHandler(
-        async (webhook: K8sValidatingWebhookConfiguration): Promise<void> => {
+        async (webhook: any): Promise<void> => {
             await DeleteValidatingWebhookConfiguration(webhook.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this validating webhook configuration? This may affect resource validation in the cluster.' }

@@ -14,7 +14,7 @@ export const secretFields = {
     ...commonFields,
 
     type: {
-        extractor: (item) => item.type || 'Opaque',
+        extractor: (item: any) => item.type || 'Opaque',
         aliases: ['secrettype']
     },
 
@@ -22,7 +22,7 @@ export const secretFields = {
     // Key count is available from the Table API response
 
     keycount: {
-        extractor: (item) => String(item.dataKeys ?? 0),
+        extractor: (item: any) => String(item.dataKeys ?? 0),
         aliases: ['count', 'datakeys']
     }
 };

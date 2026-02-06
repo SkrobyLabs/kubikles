@@ -1,5 +1,5 @@
 // Configuration schema - single source of truth for property metadata
-export const configSchema = {
+export const configSchema: Record<string, any> = {
     app: {
         _meta: { label: 'App', description: 'Application information and diagnostics' },
         crashLogPath: {
@@ -350,9 +350,9 @@ export const getSortedSections = () =>
     Object.keys(configSchema).sort();
 
 // Get a field's schema by path (e.g., "logs.search.debounceMs")
-export const getFieldSchema = (path) => {
+export const getFieldSchema = (path: string): any => {
     const parts = path.split('.');
-    let current = configSchema;
+    let current: any = configSchema;
     for (const part of parts) {
         if (!current || !current[part]) return null;
         current = current[part];
@@ -361,7 +361,7 @@ export const getFieldSchema = (path) => {
 };
 
 // Check if a value differs from default
-export const isModified = (path, value) => {
+export const isModified = (path: string, value: any) => {
     const schema = getFieldSchema(path);
     if (!schema || schema.default === undefined) return false;
     if (Array.isArray(schema.default)) {
@@ -371,11 +371,11 @@ export const isModified = (path, value) => {
 };
 
 // Get all modified fields with their current and default values
-export const getModifiedFields = (config) => {
-    const modified = [];
+export const getModifiedFields = (config: any) => {
+    const modified: any[] = [];
 
-    const checkFields = (schema, configObj, path = '') => {
-        for (const [key, fieldSchema] of Object.entries(schema)) {
+    const checkFields = (schema: any, configObj: any, path = '') => {
+        for (const [key, fieldSchema] of Object.entries(schema) as [string, any][]) {
             if (key === '_meta') continue;
 
             const currentPath = path ? `${path}.${key}` : key;
@@ -416,14 +416,14 @@ export const getModifiedFields = (config) => {
 };
 
 // Search fields by label or description, returns { section: [fieldKeys] }
-export const searchFields = (query) => {
+export const searchFields = (query: string) => {
     if (!query || query.trim() === '') return null;
 
     const lowerQuery = query.toLowerCase();
-    const results = {};
+    const results: Record<string, string[]> = {};
 
-    const searchInObject = (obj, sectionKey, prefix = '') => {
-        for (const [key, value] of Object.entries(obj)) {
+    const searchInObject = (obj: any, sectionKey: string, prefix = '') => {
+        for (const [key, value] of Object.entries(obj) as [string, any][]) {
             if (key === '_meta') continue;
 
             // Check if this is a nested group

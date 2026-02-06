@@ -12,10 +12,10 @@ import RoleBindingActionsMenu from './RoleBindingActionsMenu';
 import { useRoleBindingActions } from './useRoleBindingActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function RoleBindingList({ isVisible }) {
+export default function RoleBindingList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { roleBindings, loading } = useRoleBindings(currentContext, selectedNamespaces, isVisible);
+    const { roleBindings, loading } = useRoleBindings(currentContext, selectedNamespaces, isVisible) as any;
     const { handleEditYaml } = useRoleBindingActions();
     const selection = useSelection();
 
@@ -31,18 +31,18 @@ export default function RoleBindingList({ isVisible }) {
         resourceLabel: 'RoleBinding',
         resourceType: 'rolebindings',
         isNamespaced: true,
-        deleteApi: (context, namespace, name) => DeleteRoleBinding(namespace, name),
+        deleteApi: ((namespace: string, name: string) => DeleteRoleBinding(namespace, name)) as any,
         getYamlApi: GetRoleBindingYaml,
 
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
         {
             key: 'roleRef',
             label: 'Role Ref',
-            render: (item) => {
+            render: (item: any) => {
                 const ref = item.roleRef || {};
                 return (
                     <span>
@@ -51,28 +51,28 @@ export default function RoleBindingList({ isVisible }) {
                     </span>
                 );
             },
-            getValue: (item) => `${item.roleRef?.kind}/${item.roleRef?.name}`
+            getValue: (item: any) => `${item.roleRef?.kind}/${item.roleRef?.name}`
         },
         {
             key: 'subjects',
             label: 'Subjects',
             align: 'center',
-            render: (item) => (item.subjects || []).length,
-            getValue: (item) => (item.subjects || []).length
+            render: (item: any) => (item.subjects || []).length,
+            getValue: (item: any) => (item.subjects || []).length
         },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <RoleBindingActionsMenu
                     roleBinding={item}
                     isOpen={activeMenuId === `rolebinding-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `rolebinding-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `rolebinding-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={(roleBinding) => openBulkDelete([roleBinding])}
+                    onDelete={(roleBinding: any) => openBulkDelete([roleBinding])}
                 />
             ),
             getValue: () => '',
@@ -103,7 +103,7 @@ export default function RoleBindingList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

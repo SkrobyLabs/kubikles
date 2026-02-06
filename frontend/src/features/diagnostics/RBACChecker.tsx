@@ -48,7 +48,7 @@ const COMMON_RESOURCES = [
     { value: 'clusterrolebindings', label: 'clusterrolebindings', group: 'rbac.authorization.k8s.io' }
 ];
 
-function ChainLink({ link }) {
+function ChainLink({ link }: any) {
     const isBinding = link.kind.includes('Binding');
     const bgColor = link.grants
         ? 'bg-green-900/20 border-green-800/50'
@@ -87,10 +87,10 @@ function ChainLink({ link }) {
 }
 
 export default function RBACChecker({
-    initialSubject = {},
-    initialAction = {},
+    initialSubject = {} as any,
+    initialAction = {} as any,
     onClose
-}) {
+}: any) {
     const { currentNamespace } = useK8s();
 
     // Form state
@@ -105,13 +105,13 @@ export default function RBACChecker({
     const [customResource, setCustomResource] = useState(false);
 
     // Result state
-    const [result, setResult] = useState(null);
+    const [result, setResult] = useState<any>(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<any>(null);
 
     // Handle resource selection
-    const handleResourceSelect = useCallback((value) => {
-        const found = COMMON_RESOURCES.find(r => r.value === value);
+    const handleResourceSelect = useCallback((value: any) => {
+        const found = COMMON_RESOURCES.find((r: any) => r.value === value);
         setResource(value);
         if (found) {
             setApiGroup(found.group);
@@ -144,7 +144,7 @@ export default function RBACChecker({
                 apiGroup
             );
             setResult(checkResult);
-        } catch (err) {
+        } catch (err: any) {
             setError(err.message || 'Failed to check RBAC access');
             setResult(null);
         } finally {
@@ -181,7 +181,7 @@ export default function RBACChecker({
                         <div>
                             <label className="block text-xs text-gray-400 mb-1">Subject Type</label>
                             <div className="flex gap-1">
-                                {SUBJECT_KINDS.map(sk => (
+                                {SUBJECT_KINDS.map((sk: any) => (
                                     <button
                                         key={sk.value}
                                         onClick={() => setSubjectKind(sk.value)}
@@ -202,7 +202,7 @@ export default function RBACChecker({
                             <input
                                 type="text"
                                 value={subjectName}
-                                onChange={(e) => setSubjectName(e.target.value)}
+                                onChange={(e: any) => setSubjectName(e.target.value)}
                                 className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 placeholder={subjectKind === 'ServiceAccount' ? 'default' : 'admin'}
                                 autoComplete="off"
@@ -214,7 +214,7 @@ export default function RBACChecker({
                                 <input
                                     type="text"
                                     value={subjectNamespace}
-                                    onChange={(e) => setSubjectNamespace(e.target.value)}
+                                    onChange={(e: any) => setSubjectNamespace(e.target.value)}
                                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
                                     placeholder="default"
                                     autoComplete="off"
@@ -255,7 +255,7 @@ export default function RBACChecker({
                                 <input
                                     type="text"
                                     value={resource}
-                                    onChange={(e) => setResource(e.target.value)}
+                                    onChange={(e: any) => setResource(e.target.value)}
                                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
                                     placeholder="pods"
                                     autoComplete="off"
@@ -266,8 +266,8 @@ export default function RBACChecker({
                                     value={resource}
                                     onChange={handleResourceSelect}
                                     placeholder="Select resource..."
-                                    getOptionValue={(r) => r.value}
-                                    getOptionLabel={(r) => r.group ? `${r.label} (${r.group})` : r.label}
+                                    getOptionValue={(r: any) => r.value}
+                                    getOptionLabel={(r: any) => r.group ? `${r.label} (${r.group})` : r.label}
                                     preserveOrder={true}
                                 />
                             )}
@@ -277,7 +277,7 @@ export default function RBACChecker({
                             <input
                                 type="text"
                                 value={namespace}
-                                onChange={(e) => setNamespace(e.target.value)}
+                                onChange={(e: any) => setNamespace(e.target.value)}
                                 className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 placeholder="default (empty=cluster-wide)"
                                 autoComplete="off"
@@ -288,7 +288,7 @@ export default function RBACChecker({
                             <input
                                 type="text"
                                 value={resourceName}
-                                onChange={(e) => setResourceName(e.target.value)}
+                                onChange={(e: any) => setResourceName(e.target.value)}
                                 className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 placeholder="specific-pod"
                                 autoComplete="off"
@@ -301,7 +301,7 @@ export default function RBACChecker({
                             <input
                                 type="text"
                                 value={apiGroup}
-                                onChange={(e) => setApiGroup(e.target.value)}
+                                onChange={(e: any) => setApiGroup(e.target.value)}
                                 className="w-48 px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 placeholder="apps (empty=core)"
                                 autoComplete="off"
@@ -401,7 +401,7 @@ export default function RBACChecker({
                                     Authorization Chain
                                 </h4>
                                 <div className="space-y-2">
-                                    {result.chain.map((link, index) => (
+                                    {result.chain.map((link: any, index: number) => (
                                         <ChainLink key={index} link={link} />
                                     ))}
                                 </div>

@@ -13,10 +13,10 @@ import { DeleteIngress, GetIngressYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function IngressList({ isVisible }) {
+export default function IngressList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { ingresses, loading } = useIngresses(currentContext, selectedNamespaces, isVisible);
+    const { ingresses, loading } = useIngresses(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useIngressActions();
     const selection = useSelection();
 
@@ -78,7 +78,7 @@ export default function IngressList({ isVisible }) {
         try {
             await startForward(detectedController, []); // Empty = all namespaces
             setShowForwardDialog(false);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to start ingress forward:', err);
         }
     }, [detectedController, startForward]);
@@ -86,7 +86,7 @@ export default function IngressList({ isVisible }) {
     const handleStopForward = useCallback(async () => {
         try {
             await stopForward();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to stop ingress forward:', err);
         }
     }, [stopForward]);
@@ -94,18 +94,18 @@ export default function IngressList({ isVisible }) {
     const handleRefreshHostnames = useCallback(async () => {
         try {
             await refreshHostnames([]); // Empty = all namespaces
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to refresh hostnames:', err);
         }
     }, [refreshHostnames]);
 
-    const getHosts = (ingress) => {
+    const getHosts = (ingress: any) => {
         const rules = ingress.spec?.rules || [];
-        const hosts = rules.map(r => r.host).filter(Boolean);
+        const hosts = rules.map((r: any) => r.host).filter(Boolean);
         return hosts.length > 0 ? hosts.join(', ') : '*';
     };
 
-    const getPaths = (ingress) => {
+    const getPaths = (ingress: any) => {
         const rules = ingress.spec?.rules || [];
         const paths = [];
         for (const rule of rules) {
@@ -117,24 +117,24 @@ export default function IngressList({ isVisible }) {
         return paths.length > 0 ? paths.slice(0, 3).join(', ') + (paths.length > 3 ? '...' : '') : '-';
     };
 
-    const getIngressClass = (ingress) => {
+    const getIngressClass = (ingress: any) => {
         return ingress.spec?.ingressClassName || ingress.metadata?.annotations?.['kubernetes.io/ingress.class'] || '-';
     };
 
-    const getAddress = (ingress) => {
+    const getAddress = (ingress: any) => {
         const lbIngress = ingress.status?.loadBalancer?.ingress || [];
         if (lbIngress.length === 0) return '-';
-        const addresses = lbIngress.map(lb => lb.ip || lb.hostname).filter(Boolean);
+        const addresses = lbIngress.map((lb: any) => lb.ip || lb.hostname).filter(Boolean);
         return addresses.length > 0 ? addresses.join(', ') : '-';
     };
 
-    const getIngressStatus = (ingress) => {
+    const getIngressStatus = (ingress: any) => {
         const lbIngress = ingress.status?.loadBalancer?.ingress || [];
         const rules = ingress.spec?.rules || [];
         const defaultBackend = ingress.spec?.defaultBackend;
 
         if (lbIngress.length > 0) {
-            const hasAddress = lbIngress.some(lb => lb.ip || lb.hostname);
+            const hasAddress = lbIngress.some((lb: any) => lb.ip || lb.hostname);
             if (hasAddress) return { status: 'Active', color: 'text-green-400' };
         }
         if (rules.length === 0 && !defaultBackend) {
@@ -144,73 +144,73 @@ export default function IngressList({ isVisible }) {
     };
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
         {
             key: 'status',
             label: 'Status',
-            render: (item) => {
+            render: (item: any) => {
                 const { status, color } = getIngressStatus(item);
                 return <span className={color}>{status}</span>;
             },
-            getValue: (item) => getIngressStatus(item).status
+            getValue: (item: any) => getIngressStatus(item).status
         },
-        { key: 'class', label: 'Class', render: (item) => getIngressClass(item), getValue: (item) => getIngressClass(item) },
-        { key: 'hosts', label: 'Hosts', render: (item) => getHosts(item), getValue: (item) => getHosts(item) },
-        { key: 'address', label: 'Address', render: (item) => getAddress(item), getValue: (item) => getAddress(item) },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'class', label: 'Class', render: (item: any) => getIngressClass(item), getValue: (item: any) => getIngressClass(item) },
+        { key: 'hosts', label: 'Hosts', render: (item: any) => getHosts(item), getValue: (item: any) => getHosts(item) },
+        { key: 'address', label: 'Address', render: (item: any) => getAddress(item), getValue: (item: any) => getAddress(item) },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         // Hidden by default columns
         {
             key: 'paths',
             label: 'Paths',
             defaultHidden: true,
-            render: (item) => getPaths(item),
-            getValue: (item) => getPaths(item),
+            render: (item: any) => getPaths(item),
+            getValue: (item: any) => getPaths(item),
         },
         {
             key: 'tls',
             label: 'TLS',
             defaultHidden: true,
-            render: (item) => {
+            render: (item: any) => {
                 const tls = item.spec?.tls || [];
                 if (tls.length === 0) return <span className="text-gray-500">No</span>;
                 return <span className="text-green-400">Yes ({tls.length})</span>;
             },
-            getValue: (item) => (item.spec?.tls || []).length > 0 ? 'Yes' : 'No',
+            getValue: (item: any) => (item.spec?.tls || []).length > 0 ? 'Yes' : 'No',
         },
         {
             key: 'defaultBackend',
             label: 'Default Backend',
             defaultHidden: true,
-            render: (item) => {
+            render: (item: any) => {
                 const backend = item.spec?.defaultBackend;
                 if (!backend) return <span className="text-gray-500">-</span>;
                 const svc = backend.service;
                 if (svc) return `${svc.name}:${svc.port?.number || svc.port?.name}`;
                 return '-';
             },
-            getValue: (item) => item.spec?.defaultBackend?.service?.name || '',
+            getValue: (item: any) => item.spec?.defaultBackend?.service?.name || '',
         },
         {
             key: 'rules',
             label: 'Rules',
             defaultHidden: true,
-            render: (item) => (item.spec?.rules || []).length,
-            getValue: (item) => (item.spec?.rules || []).length,
+            render: (item: any) => (item.spec?.rules || []).length,
+            getValue: (item: any) => (item.spec?.rules || []).length,
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <IngressActionsMenu
                     ingress={item}
                     isOpen={activeMenuId === `ingress-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `ingress-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `ingress-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(ingress) => openBulkDelete([ingress])}
+                    onDelete={(ingress: any) => openBulkDelete([ingress])}
                 />
             ),
             getValue: () => '',
@@ -343,7 +343,7 @@ export default function IngressList({ isVisible }) {
                                 <div className="bg-gray-900 rounded max-h-48 overflow-y-auto">
                                     {previewHostnames.length > 0 ? (
                                         <ul className="text-xs text-gray-300 p-2 space-y-0.5">
-                                            {previewHostnames.map((hostname, i) => (
+                                            {previewHostnames.map((hostname: any, i: number) => (
                                                 <li key={i} className="font-mono">127.0.0.1 {hostname}</li>
                                             ))}
                                         </ul>
@@ -362,7 +362,7 @@ export default function IngressList({ isVisible }) {
                             {forwardError && (
                                 <div className="flex items-start gap-2 text-xs text-red-400 bg-red-400/10 px-3 py-2 rounded">
                                     <ExclamationTriangleIcon className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                                    <p>{forwardError.message || forwardError}</p>
+                                    <p>{(forwardError as any).message || String(forwardError)}</p>
                                 </div>
                             )}
                         </div>
@@ -411,7 +411,7 @@ export default function IngressList({ isVisible }) {
                     onBulkDelete={openBulkDelete}
                 />
             </div>
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
         </div>
     );
 }

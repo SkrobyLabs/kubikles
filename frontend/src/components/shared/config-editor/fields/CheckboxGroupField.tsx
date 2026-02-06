@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
-export default function CheckboxGroupField({ label, description, value, onChange, isModified, options }) {
+export default function CheckboxGroupField({ label, description, value, onChange, isModified, options }: { label: any; description: any; value: any; onChange: any; isModified: any; options: any }) {
     const [customInput, setCustomInput] = useState('');
     const selected = value || [];
-    const knownValues = new Set(options.map(o => o.value));
-    const customEntries = selected.filter(v => !knownValues.has(v));
+    const knownValues = new Set(options.map((o: any) => o.value));
+    const customEntries = selected.filter((v: any) => !knownValues.has(v));
 
-    const toggle = (optValue) => {
+    const toggle = (optValue: any) => {
         const updated = selected.includes(optValue)
-            ? selected.filter(v => v !== optValue)
+            ? selected.filter((v: any) => v !== optValue)
             : [...selected, optValue];
         onChange(updated);
     };
@@ -21,11 +21,11 @@ export default function CheckboxGroupField({ label, description, value, onChange
         setCustomInput('');
     };
 
-    const removeCustom = (entry) => {
-        onChange(selected.filter(v => v !== entry));
+    const removeCustom = (entry: any) => {
+        onChange(selected.filter((v: any) => v !== entry));
     };
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: any) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             addCustom();
@@ -44,7 +44,7 @@ export default function CheckboxGroupField({ label, description, value, onChange
 
             {/* Checkbox list for known tools */}
             <div className="space-y-1.5 mb-3">
-                {options.map((opt, idx) => {
+                {options.map((opt: any, idx: number) => {
                     const checked = selected.includes(opt.value);
                     const prevOpt = idx > 0 ? options[idx - 1] : null;
                     const showDivider = opt.warn && (!prevOpt || !prevOpt.warn);
@@ -79,7 +79,7 @@ export default function CheckboxGroupField({ label, description, value, onChange
             {/* Custom tool tags */}
             {customEntries.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                    {customEntries.map((entry) => (
+                    {customEntries.map((entry: any) => (
                         <span
                             key={entry}
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/10 text-xs text-gray-300 font-mono"
@@ -101,7 +101,7 @@ export default function CheckboxGroupField({ label, description, value, onChange
                 <input
                     type="text"
                     value={customInput}
-                    onChange={(e) => setCustomInput(e.target.value)}
+                    onChange={(e: any) => setCustomInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="mcp__external__tool_name"
                     className="flex-1 bg-background border border-border rounded px-2 py-1 text-xs text-text placeholder-gray-500 outline-none focus:border-primary font-mono"

@@ -10,7 +10,7 @@
 import React, { Suspense, lazy } from 'react';
 
 // Loading spinner component
-const LoadingSpinner = ({ text = 'Loading...' }) => (
+const LoadingSpinner = ({ text = 'Loading...' }: { text?: string }) => (
     <div className="flex items-center justify-center h-full w-full bg-background">
         <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -33,7 +33,7 @@ const MonacoEditorImpl = lazy(() =>
 /**
  * Lazy-loaded YAML Editor with Suspense boundary
  */
-export const LazyYamlEditor = (props) => (
+export const LazyYamlEditor = (props: any) => (
     <Suspense fallback={<LoadingSpinner text="Loading editor..." />}>
         <YamlEditorImpl {...props} />
     </Suspense>
@@ -42,7 +42,7 @@ export const LazyYamlEditor = (props) => (
 /**
  * Lazy-loaded Dependency Graph with Suspense boundary
  */
-export const LazyDependencyGraph = (props) => (
+export const LazyDependencyGraph = (props: any) => (
     <Suspense fallback={<LoadingSpinner text="Loading graph..." />}>
         <DependencyGraphImpl {...props} />
     </Suspense>
@@ -51,7 +51,7 @@ export const LazyDependencyGraph = (props) => (
 /**
  * Lazy-loaded Terminal with Suspense boundary
  */
-export const LazyTerminal = (props) => (
+export const LazyTerminal = (props: any) => (
     <Suspense fallback={<LoadingSpinner text="Connecting..." />}>
         <TerminalImpl {...props} />
     </Suspense>
@@ -61,7 +61,7 @@ export const LazyTerminal = (props) => (
  * Lazy-loaded Monaco Editor with Suspense boundary
  * Use this for direct Monaco usage (ConfigEditor, SecretEditor, etc.)
  */
-export const LazyMonacoEditor = (props) => (
+export const LazyMonacoEditor = (props: any) => (
     <Suspense fallback={<LoadingSpinner text="Loading editor..." />}>
         <MonacoEditorImpl {...props} />
     </Suspense>
@@ -70,7 +70,7 @@ export const LazyMonacoEditor = (props) => (
 /**
  * Lazy-loaded Pod File Browser with Suspense boundary
  */
-export const LazyPodFileBrowser = (props) => (
+export const LazyPodFileBrowser = (props: any) => (
     <Suspense fallback={<LoadingSpinner text="Loading file browser..." />}>
         <PodFileBrowserImpl {...props} />
     </Suspense>

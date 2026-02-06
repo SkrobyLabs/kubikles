@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TrashIcon, ArrowDownTrayIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
 
-export default function DebugLogViewer({ logs, onClear, onDownload }) {
-    const endRef = useRef(null);
+export default function DebugLogViewer({ logs, onClear, onDownload }: any) {
+    const endRef = useRef<any>(null);
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
@@ -55,7 +55,7 @@ export default function DebugLogViewer({ logs, onClear, onDownload }) {
                 {logs.length === 0 ? (
                     <div className="text-gray-500 italic p-2">No logs yet...</div>
                 ) : (
-                    logs.map((log, i) => (
+                    logs.map((log: any, i: number) => (
                         <div key={i} className="border-b border-white/5 py-1 hover:bg-white/5 px-1">
                             {log}
                         </div>

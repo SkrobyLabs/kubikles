@@ -74,11 +74,11 @@ const resourceStyles = {
 };
 
 // Custom node component - memoized to prevent unnecessary re-renders
-const ResourceNode = React.memo(function ResourceNode({ data }) {
-    const style = resourceStyles[data.kind] || { icon: CubeIcon, color: '#6b7280', bgColor: '#6b728020' };
+const ResourceNode = React.memo(function ResourceNode({ data }: any) {
+    const style = (resourceStyles as Record<string, any>)[data.kind] || { icon: CubeIcon, color: '#6b7280', bgColor: '#6b728020' };
     const Icon = data.isSummary ? EllipsisHorizontalIcon : style.icon;
 
-    const getStatusColor = (status) => {
+    const getStatusColor = (status: any) => {
         if (!status) return 'text-gray-400';
         const s = status.toLowerCase();
         if (s === 'running' || s === 'bound' || s === 'available' || s === 'active') return 'text-green-400';
@@ -148,22 +148,22 @@ const nodeTypes = {
 };
 
 // Layout the graph using dagre
-function getLayoutedElements(nodes, edges) {
+function getLayoutedElements(nodes: any, edges: any) {
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
     dagreGraph.setGraph({ rankdir: 'TB', nodesep: 60, ranksep: 80 });
 
-    nodes.forEach((node) => {
+    nodes.forEach((node: any) => {
         dagreGraph.setNode(node.id, { width: 160, height: 70 });
     });
 
-    edges.forEach((edge) => {
+    edges.forEach((edge: any) => {
         dagreGraph.setEdge(edge.source, edge.target);
     });
 
     dagre.layout(dagreGraph);
 
-    const layoutedNodes = nodes.map((node) => {
+    const layoutedNodes = nodes.map((node: any) => {
         const nodeWithPosition = dagreGraph.node(node.id);
         return {
             ...node,
@@ -178,7 +178,7 @@ function getLayoutedElements(nodes, edges) {
 }
 
 // Edge styles based on relation type
-const getEdgeStyle = (relation) => {
+const getEdgeStyle = (relation: any) => {
     switch (relation) {
         case 'owns':
             return { stroke: '#22c55e', strokeWidth: 2 };
@@ -203,14 +203,14 @@ const getEdgeStyle = (relation) => {
     }
 };
 
-export default function DependencyGraph({ resourceType, namespace, resourceName, onClose }) {
+export default function DependencyGraph({ resourceType, namespace, resourceName, onClose }: any) {
     const { openTab, closeTab, openDiagnostic } = useUI();
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [contextMenu, setContextMenu] = useState(null);
-    const [expansionOffsets, setExpansionOffsets] = useState({}); // Track offset per summary node
+    const [error, setError] = useState<any>(null);
+    const [contextMenu, setContextMenu] = useState<any>(null);
+    const [expansionOffsets, setExpansionOffsets] = useState<Record<string, any>>({}); // Track offset per summary node
 
     // Refs to track current state for reading without triggering setState callbacks
     const nodesRef = useRef(nodes);
@@ -219,7 +219,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
     useEffect(() => { edgesRef.current = edges; }, [edges]);
 
     // Map resource type to kind for context menu actions
-    const getResourceTypeFromKind = (kind) => {
+    const getResourceTypeFromKind = (kind: any) => {
         const mapping = {
             Pod: 'pod',
             Deployment: 'deployment',
@@ -243,10 +243,10 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             HorizontalPodAutoscaler: 'hpa',
             PodDisruptionBudget: 'pdb',
         };
-        return mapping[kind] || kind.toLowerCase();
+        return (mapping as Record<string, string>)[kind] || kind.toLowerCase();
     };
 
-    const handleNodeContextMenu = useCallback((event, nodeData) => {
+    const handleNodeContextMenu = useCallback((event: any, nodeData: any) => {
         event.preventDefault();
         setContextMenu({
             x: event.clientX,
@@ -255,7 +255,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
         });
     }, []);
 
-    const handleEditYaml = useCallback((node) => {
+    const handleEditYaml = useCallback((node: any) => {
         const resType = getResourceTypeFromKind(node.kind);
         const tabId = `yaml-${resType}-${node.namespace || ''}-${node.label}`;
 
@@ -274,7 +274,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
         setContextMenu(null);
     }, [openTab, closeTab]);
 
-    const handleShowDependencies = useCallback((node) => {
+    const handleShowDependencies = useCallback((node: any) => {
         const resType = getResourceTypeFromKind(node.kind);
         const tabId = `deps-${resType}-${node.namespace || ''}-${node.label}`;
 
@@ -293,7 +293,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
         setContextMenu(null);
     }, [openTab, closeTab]);
 
-    const handleCompareResource = useCallback((node) => {
+    const handleCompareResource = useCallback((node: any) => {
         const resType = getResourceTypeFromKind(node.kind);
         // Pre-fill both source and target with the same resource
         // User typically just needs to change the target context
@@ -301,19 +301,21 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             initialSource: {
                 kind: resType,
                 namespace: node.namespace || 'default',
-                name: node.label
+                name: node.label,
+                context: ''
             },
             initialTarget: {
                 kind: resType,
                 namespace: node.namespace || 'default',
-                name: node.label
+                name: node.label,
+                context: ''
             }
         });
         setContextMenu(null);
     }, [openDiagnostic]);
 
     // Handle expanding a summary node
-    const handleExpandNode = useCallback(async (summaryNode) => {
+    const handleExpandNode = useCallback(async (summaryNode: any) => {
         setContextMenu(null);
 
         // Calculate the current offset (default 5 for initial expansion)
@@ -336,7 +338,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             }
 
             // Convert new nodes to flow nodes
-            const newFlowNodes = expandedGraph.nodes.map((node) => ({
+            const newFlowNodes = expandedGraph.nodes.map((node: any) => ({
                 id: node.id,
                 type: 'resource',
                 data: {
@@ -347,7 +349,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                     isSummary: node.isSummary || false,
                     remainingCount: node.remainingCount || 0,
                     parentId: node.parentId || '',
-                    onContextMenu: (e) => handleNodeContextMenu(e, {
+                    onContextMenu: (e: any) => handleNodeContextMenu(e, {
                         label: node.name,
                         kind: node.kind,
                         namespace: node.namespace,
@@ -360,7 +362,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             }));
 
             // Convert new edges
-            const newFlowEdges = expandedGraph.edges.map((edge, idx) => ({
+            const newFlowEdges = expandedGraph.edges.map((edge: any, idx: number) => ({
                 id: `edge-expand-${currentOffset}-${idx}`,
                 source: edge.source,
                 target: edge.target,
@@ -381,15 +383,15 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             const currentEdges = edgesRef.current;
 
             // Filter out the old summary node and add new nodes
-            const filteredNodes = currentNodes.filter(n => n.id !== summaryId);
-            const existingNodeIds = new Set(filteredNodes.map(n => n.id));
-            const uniqueNewNodes = newFlowNodes.filter(n => !existingNodeIds.has(n.id));
+            const filteredNodes = currentNodes.filter((n: any) => n.id !== summaryId);
+            const existingNodeIds = new Set(filteredNodes.map((n: any) => n.id));
+            const uniqueNewNodes = newFlowNodes.filter((n: any) => !existingNodeIds.has(n.id));
             const allNodes = [...filteredNodes, ...uniqueNewNodes];
 
             // Filter edges and add new edges
-            const filteredEdges = currentEdges.filter(e => e.target !== summaryId && e.source !== summaryId);
-            const existingEdgeIds = new Set(filteredEdges.map(e => `${e.source}-${e.target}`));
-            const uniqueNewEdges = newFlowEdges.filter(e => !existingEdgeIds.has(`${e.source}-${e.target}`));
+            const filteredEdges = currentEdges.filter((e: any) => e.target !== summaryId && e.source !== summaryId);
+            const existingEdgeIds = new Set(filteredEdges.map((e: any) => `${e.source}-${e.target}`));
+            const uniqueNewEdges = newFlowEdges.filter((e: any) => !existingEdgeIds.has(`${e.source}-${e.target}`));
             const allEdges = [...filteredEdges, ...uniqueNewEdges];
 
             // Compute layout once with all data
@@ -405,7 +407,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                 [summaryId]: currentOffset + 10,
             }));
 
-        } catch (err) {
+        } catch (err: any) {
             Logger.error('Failed to expand summary node', err);
         }
     }, [resourceType, namespace, resourceName, expansionOffsets, handleNodeContextMenu]);
@@ -434,7 +436,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                 }
 
                 // Convert backend nodes to React Flow nodes
-                const flowNodes = graph.nodes.map((node) => ({
+                const flowNodes = graph.nodes.map((node: any) => ({
                     id: node.id,
                     type: 'resource',
                     data: {
@@ -445,7 +447,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                         isSummary: node.isSummary || false,
                         remainingCount: node.remainingCount || 0,
                         parentId: node.parentId || '',
-                        onContextMenu: (e) => handleNodeContextMenu(e, {
+                        onContextMenu: (e: any) => handleNodeContextMenu(e, {
                             label: node.name,
                             kind: node.kind,
                             namespace: node.namespace,
@@ -458,7 +460,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                 }));
 
                 // Convert backend edges to React Flow edges
-                const flowEdges = graph.edges.map((edge, idx) => ({
+                const flowEdges = graph.edges.map((edge: any, idx: number) => ({
                     id: `edge-${idx}`,
                     source: edge.source,
                     target: edge.target,
@@ -480,7 +482,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                 setNodes(layoutedNodes);
                 setEdges(layoutedEdges);
                 setLoading(false);
-            } catch (err) {
+            } catch (err: any) {
                 Logger.error('Failed to load dependencies', err);
                 setError(err.message || 'Failed to load dependencies');
                 setLoading(false);

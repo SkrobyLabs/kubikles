@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function PDBDetails({ pdb, tabContext = '' }) {
+export default function PDBDetails({ pdb, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -181,7 +181,7 @@ export default function PDBDetails({ pdb, tabContext = '' }) {
                     <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-3">Conditions</h3>
                         <div className="space-y-2">
-                            {conditions.map((condition, idx) => (
+                            {conditions.map((condition: any, idx: number) => (
                                 <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
                                     <div className="flex justify-between items-start">
                                         <span className={`text-sm ${condition.status === 'True' ? 'text-green-400' : 'text-gray-300'}`}>

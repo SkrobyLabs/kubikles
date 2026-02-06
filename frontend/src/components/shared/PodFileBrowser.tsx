@@ -29,7 +29,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 // Format bytes to human readable
-function formatBytes(bytes) {
+function formatBytes(bytes: any) {
     if (bytes === 0) return '0 B';
     if (bytes < 0) return '-';
     const k = 1024;
@@ -39,7 +39,7 @@ function formatBytes(bytes) {
 }
 
 // Progress bar component
-function ProgressBar({ progress }) {
+function ProgressBar({ progress }: { progress: any }) {
     if (!progress || progress.done) return null;
 
     const percentage = progress.totalBytes > 0
@@ -77,7 +77,7 @@ function ProgressBar({ progress }) {
 }
 
 // Helper to get container name from container (supports both string and object format)
-const getContainerName = (container) => {
+const getContainerName = (container: any) => {
     return typeof container === 'object' ? container.name : container;
 };
 
@@ -86,27 +86,27 @@ export default function PodFileBrowser({
     pod,
     containers = [],
     tabContext = ''
-}) {
+}: any) {
     const { currentContext } = useK8s();
     const { openModal, closeModal } = useUI();
     // Show container selector initially if multiple containers available
     const [state, setState] = useState(containers.length > 1 ? 'selecting' : 'browsing');
     const [currentPath, setCurrentPath] = useState('/');
-    const [files, setFiles] = useState([]);
+    const [files, setFiles] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<any>(null);
     const [selectedContainer, setSelectedContainer] = useState(
         containers.length === 1 ? getContainerName(containers[0]) : ''
     );
-    const [selectedFiles, setSelectedFiles] = useState(new Set());
-    const [progress, setProgress] = useState(null);
+    const [selectedFiles, setSelectedFiles] = useState(new Set<any>());
+    const [progress, setProgress] = useState<any>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [showNewFolderInput, setShowNewFolderInput] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
-    const dropZoneRef = useRef(null);
-    const newFolderInputRef = useRef(null);
+    const dropZoneRef = useRef<any>(null);
+    const newFolderInputRef = useRef<any>(null);
     const dragCounterRef = useRef(0);
-    const dragLeaveTimeoutRef = useRef(null);
+    const dragLeaveTimeoutRef = useRef<any>(null);
 
     const isStale = tabContext && tabContext !== currentContext;
 
@@ -116,12 +116,12 @@ export default function PodFileBrowser({
 
         setLoading(true);
         setError(null);
-        setSelectedFiles(new Set());
+        setSelectedFiles(new Set<any>());
 
         try {
             const result = await ListPodFiles(namespace, pod, selectedContainer, currentPath);
             setFiles(result || []);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to list files:', err);
             setError(err.message || String(err));
             setFiles([]);
@@ -137,14 +137,14 @@ export default function PodFileBrowser({
     }, [loadFiles, state]);
 
     // Handle container selection and start browsing
-    const handleContainerSelect = (container) => {
+    const handleContainerSelect = (container: any) => {
         setSelectedContainer(container);
         setState('browsing');
     };
 
     // Listen for progress events
     useEffect(() => {
-        const handleProgress = (data) => {
+        const handleProgress = (data: any) => {
             setProgress(data);
             if (data.done) {
                 // Clear progress after a short delay and refresh
@@ -165,7 +165,7 @@ export default function PodFileBrowser({
     useEffect(() => {
         if (isStale) return;
 
-        const handleFileDrop = async (x, y, paths) => {
+        const handleFileDrop = async (x: any, y: any, paths: any) => {
             setIsDragging(false);
             dragCounterRef.current = 0;
 
@@ -174,7 +174,7 @@ export default function PodFileBrowser({
                 for (const localPath of paths) {
                     try {
                         await UploadFileToPod(namespace, pod, selectedContainer, localPath, currentPath);
-                    } catch (err) {
+                    } catch (err: any) {
                         console.error('Upload failed:', err);
                     }
                 }
@@ -193,7 +193,7 @@ export default function PodFileBrowser({
     // Handle drag events for visual feedback only
     // These don't interfere with Wails native drop handling
     // Use debounced approach to prevent window glitching from rapid event firing
-    const handleDragEnter = useCallback((e) => {
+    const handleDragEnter = useCallback((e: any) => {
         e.preventDefault();
         e.stopPropagation();
 
@@ -209,7 +209,7 @@ export default function PodFileBrowser({
         }
     }, [isStale, isDragging]);
 
-    const handleDragOver = useCallback((e) => {
+    const handleDragOver = useCallback((e: any) => {
         e.preventDefault();
         e.stopPropagation();
         // Keep the drag indicator alive
@@ -219,7 +219,7 @@ export default function PodFileBrowser({
         }
     }, []);
 
-    const handleDragLeave = useCallback((e) => {
+    const handleDragLeave = useCallback((e: any) => {
         e.preventDefault();
         e.stopPropagation();
         dragCounterRef.current--;
@@ -238,7 +238,7 @@ export default function PodFileBrowser({
         }
     }, []);
 
-    const handleDrop = useCallback((e) => {
+    const handleDrop = useCallback((e: any) => {
         e.preventDefault();
         e.stopPropagation();
 
@@ -262,7 +262,7 @@ export default function PodFileBrowser({
     }, []);
 
     // Navigation
-    const navigateTo = (path) => {
+    const navigateTo = (path: any) => {
         setCurrentPath(path);
     };
 
@@ -273,7 +273,7 @@ export default function PodFileBrowser({
         setCurrentPath('/' + parts.join('/'));
     };
 
-    const handleFileDoubleClick = (file) => {
+    const handleFileDoubleClick = (file: any) => {
         if (file.isDir) {
             if (file.name === '..') {
                 navigateUp();
@@ -286,7 +286,7 @@ export default function PodFileBrowser({
         }
     };
 
-    const toggleFileSelection = (file, e) => {
+    const toggleFileSelection = (file: any, e?: any) => {
         if (e) e.stopPropagation();
         if (file.name === '..') return;
         setSelectedFiles(prev => {
@@ -300,19 +300,19 @@ export default function PodFileBrowser({
         });
     };
 
-    const selectableFiles = files.filter(f => f.name !== '..');
+    const selectableFiles = files.filter((f: any) => f.name !== '..');
 
     const toggleSelectAll = () => {
         if (selectedFiles.size === selectableFiles.length) {
-            setSelectedFiles(new Set());
+            setSelectedFiles(new Set<any>());
         } else {
-            setSelectedFiles(new Set(selectableFiles.map(f => f.name)));
+            setSelectedFiles(new Set(selectableFiles.map((f: any) => f.name)));
         }
     };
 
     // Get selected file objects
     const getSelectedFileObjects = () => {
-        return files.filter(f => selectedFiles.has(f.name));
+        return files.filter((f: any) => selectedFiles.has(f.name));
     };
 
     // Actions
@@ -323,7 +323,7 @@ export default function PodFileBrowser({
         try {
             if (selected.length > 1) {
                 // Multiple items: batch download as single tar.gz
-                await DownloadPodFiles(namespace, pod, selectedContainer, currentPath, selected.map(f => f.name));
+                await DownloadPodFiles(namespace, pod, selectedContainer, currentPath, selected.map((f: any) => f.name));
             } else {
                 // Single item: use specific handler
                 const file = selected[0];
@@ -337,7 +337,7 @@ export default function PodFileBrowser({
                     await DownloadPodFile(namespace, pod, selectedContainer, remotePath);
                 }
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Download failed:', err);
         }
     };
@@ -345,7 +345,7 @@ export default function PodFileBrowser({
     const handleUpload = async () => {
         try {
             await UploadToPod(namespace, pod, selectedContainer, currentPath + '/');
-        } catch (err) {
+        } catch (err: any) {
             console.error('Upload failed:', err);
         }
     };
@@ -362,7 +362,7 @@ export default function PodFileBrowser({
             setNewFolderName('');
             setShowNewFolderInput(false);
             loadFiles();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to create directory:', err);
         }
     };
@@ -390,9 +390,9 @@ export default function PodFileBrowser({
                             : currentPath + '/' + file.name;
                         await DeletePodFile(namespace, pod, selectedContainer, filePath);
                     }
-                    setSelectedFiles(new Set());
+                    setSelectedFiles(new Set<any>());
                     await loadFiles();
-                } catch (err) {
+                } catch (err: any) {
                     console.error('Failed to delete:', err);
                     setError('Failed to delete: ' + (err.message || String(err)));
                 } finally {
@@ -457,8 +457,8 @@ export default function PodFileBrowser({
                                     onChange={setSelectedContainer}
                                     placeholder="Select..."
                                     className="text-xs"
-                                    getOptionValue={(c) => typeof c === 'object' ? c.name : c}
-                                    getOptionLabel={(c) => typeof c === 'object' ? c.name : c}
+                                    getOptionValue={(c: any) => typeof c === 'object' ? c.name : c}
+                                    getOptionLabel={(c: any) => typeof c === 'object' ? c.name : c}
                                 />
                             </div>
                         </div>
@@ -472,7 +472,7 @@ export default function PodFileBrowser({
                         >
                             <HomeIcon className="h-4 w-4" />
                         </button>
-                        {pathParts.map((part, idx) => (
+                        {pathParts.map((part: any, idx: number) => (
                             <React.Fragment key={idx}>
                                 <ChevronRightIcon className="h-3 w-3 text-gray-600" />
                                 <button
@@ -493,7 +493,7 @@ export default function PodFileBrowser({
                                 {selectedFiles.size} selected
                             </span>
                             <button
-                                onClick={() => setSelectedFiles(new Set())}
+                                onClick={() => setSelectedFiles(new Set<any>())}
                                 className="text-gray-500 hover:text-white"
                             >
                                 Clear
@@ -570,7 +570,7 @@ export default function PodFileBrowser({
                         type="text"
                         placeholder="New folder name..."
                         value={newFolderName}
-                        onChange={(e) => setNewFolderName(e.target.value)}
+                        onChange={(e: any) => setNewFolderName(e.target.value)}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') handleCreateFolder();
                             if (e.key === 'Escape') {
@@ -641,7 +641,7 @@ export default function PodFileBrowser({
                             </tr>
                         </thead>
                         <tbody>
-                            {files.map((file, idx) => (
+                            {files.map((file: any, idx: number) => (
                                 <tr
                                     key={idx}
                                     onClick={() => toggleFileSelection(file)}
@@ -657,7 +657,7 @@ export default function PodFileBrowser({
                                             <input
                                                 type="checkbox"
                                                 checked={selectedFiles.has(file.name)}
-                                                onChange={(e) => toggleFileSelection(file, e)}
+                                                onChange={(e: any) => toggleFileSelection(file, e)}
                                                 onClick={(e) => e.stopPropagation()}
                                                 className="w-3.5 h-3.5 rounded border-gray-500 bg-transparent text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
                                             />

@@ -21,7 +21,7 @@ export default function BulkActionBar({
     onExportYaml,
     resourceType = 'items',
     position = 'top',
-}) {
+}: any) {
     if (selectedCount === 0) return null;
 
     // Format the count display

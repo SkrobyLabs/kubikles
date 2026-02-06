@@ -11,7 +11,7 @@ import { useNodeMetrics } from './useNodeMetrics';
  * - Pod count
  * - Manual refresh (no auto-polling)
  */
-export const useClusterMetrics = (isVisible) => {
+export const useClusterMetrics = (isVisible: boolean) => {
     // Disable auto-polling - user will manually refresh
     // Only use node metrics - they include pod count per node, which is all we need for Overview
     const { metrics: nodeMetricsMap, available: nodeAvailable, loading: nodeLoading, source: metricsSource, refresh: refreshNodes } = useNodeMetrics(isVisible, true, false);
@@ -54,7 +54,7 @@ export const useClusterMetrics = (isVisible) => {
             };
         }
 
-        const totals = nodes.reduce((acc, node) => ({
+        const totals = nodes.reduce((acc: any, node: any) => ({
             cpuUsage: acc.cpuUsage + (node.cpuUsage || 0),
             cpuReserved: acc.cpuReserved + (node.cpuRequested || 0),  // Field is named cpuRequested in useNodeMetrics
             cpuCommitted: acc.cpuCommitted + (node.cpuCommitted || 0),

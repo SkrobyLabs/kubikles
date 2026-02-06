@@ -14,12 +14,12 @@ import { useResourceWatcher } from '~/hooks/useResourceWatcher';
 const TAB_BASIC = 'basic';
 const TAB_METRICS = 'metrics';
 
-export default function StatefulSetDetails({ statefulSet: initialStatefulSet, tabContext = '' }) {
+export default function StatefulSetDetails({ statefulSet: initialStatefulSet, tabContext = '' }: { statefulSet: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
     const { addNotification } = useNotification();
     const activeTab = getDetailTab('statefulset', TAB_BASIC);
-    const setActiveTab = (tab) => setDetailTab('statefulset', tab);
+    const setActiveTab = (tab: string) => setDetailTab('statefulset', tab);
     const [showScaleModal, setShowScaleModal] = useState(false);
     const [optimisticReplicas, setOptimisticReplicas] = useState<number | null>(null);
 
@@ -121,7 +121,7 @@ export default function StatefulSetDetails({ statefulSet: initialStatefulSet, ta
                 type: 'success',
                 message: `Scaled ${name} to ${newReplicas} replica${newReplicas !== 1 ? 's' : ''}`
             });
-        } catch (error) {
+        } catch (error: any) {
             addNotification({
                 type: 'error',
                 message: `Failed to scale ${name}: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -189,7 +189,7 @@ export default function StatefulSetDetails({ statefulSet: initialStatefulSet, ta
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -210,7 +210,7 @@ export default function StatefulSetDetails({ statefulSet: initialStatefulSet, ta
                     namespace={namespace}
                     name={name}
                     controllerType="statefulset"
-                    isStale={isStale}
+                    isStale={!!isStale}
                 />
             ) : (
             <div className="h-full overflow-auto p-4">
@@ -280,7 +280,7 @@ export default function StatefulSetDetails({ statefulSet: initialStatefulSet, ta
                 {volumeClaimTemplates.length > 0 && (
                     <DetailSection title="Volume Claim Templates">
                         <div className="space-y-2">
-                            {volumeClaimTemplates.map((vct, idx) => (
+                            {volumeClaimTemplates.map((vct: any, idx: number) => (
                                 <div key={idx} className="p-2 bg-background-dark rounded border border-border">
                                     <div className="text-sm font-medium text-gray-300">{vct.metadata?.name}</div>
                                     <div className="text-xs text-gray-500 mt-1">

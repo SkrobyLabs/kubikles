@@ -23,14 +23,14 @@ export default function HelmReleaseActionsMenu({
     onUpgrade,
     onForceStatus,
     onUninstall
-}) {
-    const buttonRef = useRef(null);
-    const menuRef = useRef(null);
+}: any) {
+    const buttonRef = useRef<any>(null);
+    const menuRef = useRef<any>(null);
 
     useEffect(() => {
         if (!isOpen) return;
 
-        const handleClickOutside = (event) => {
+        const handleClickOutside = (event: any) => {
             if (buttonRef.current && !buttonRef.current.contains(event.target) &&
                 menuRef.current && !menuRef.current.contains(event.target)) {
                 onOpenChange(false);
@@ -50,12 +50,12 @@ export default function HelmReleaseActionsMenu({
         };
     }, [isOpen, onOpenChange]);
 
-    const toggleMenu = (e) => {
+    const toggleMenu = (e: any) => {
         e.stopPropagation();
         onOpenChange(!isOpen, buttonRef.current);
     };
 
-    const handleAction = (action) => {
+    const handleAction = (action: any) => {
         onOpenChange(false);
         action();
     };

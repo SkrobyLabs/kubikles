@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 // Format bytes to human readable
-const formatBytes = (bytes) => {
+const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
@@ -22,7 +22,7 @@ const formatBytes = (bytes) => {
 };
 
 // Format nanoseconds to readable duration
-const formatNanos = (ns) => {
+const formatNanos = (ns: number) => {
     if (ns < 1000) return `${ns}ns`;
     if (ns < 1000000) return `${(ns / 1000).toFixed(2)}us`;
     if (ns < 1000000000) return `${(ns / 1000000).toFixed(2)}ms`;
@@ -30,7 +30,7 @@ const formatNanos = (ns) => {
 };
 
 // Mini sparkline chart component
-const Sparkline = ({ data, color = 'stroke-primary', height = 32, width = 100 }) => {
+const Sparkline = ({ data, color = 'stroke-primary', height = 32, width = 100 }: { data: number[]; color?: string; height?: number; width?: number }) => {
     if (!data || data.length < 2) {
         return <div className="text-gray-600 text-xs italic">waiting...</div>;
     }
@@ -39,7 +39,7 @@ const Sparkline = ({ data, color = 'stroke-primary', height = 32, width = 100 })
     const max = Math.max(...data);
     const range = max - min || 1;
 
-    const points = data.map((value, i) => {
+    const points = data.map((value: number, i: number) => {
         const x = (i / (data.length - 1)) * width;
         const y = height - ((value - min) / range) * (height - 4) - 2;
         return `${x},${y}`;
@@ -60,7 +60,7 @@ const Sparkline = ({ data, color = 'stroke-primary', height = 32, width = 100 })
 };
 
 // Metric card component
-const MetricCard = ({ title, value, subtitle, icon: Icon, sparklineData, sparklineColor }) => (
+const MetricCard = ({ title, value, subtitle, icon: Icon, sparklineData, sparklineColor }: { title: string; value: any; subtitle?: string; icon?: any; sparklineData?: number[]; sparklineColor?: string }) => (
     <div className="bg-surface-light rounded-lg p-3 border border-border">
         <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1.5">
@@ -77,7 +77,7 @@ const MetricCard = ({ title, value, subtitle, icon: Icon, sparklineData, sparkli
 );
 
 // Section component
-const Section = ({ title, children }) => (
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="mb-5">
         <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">{title}</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -92,14 +92,14 @@ export default function PerformancePanel({
     isPolling,
     onTogglePolling,
     bottomTabs = []
-}) {
+}: { backendMetrics: any; metricsHistory: any[]; isPolling: boolean; onTogglePolling: () => void; bottomTabs?: any[] }) {
     const [activeTab, setActiveTab] = useState('overview');
 
     // Count keepAlive tabs by type
     const keepAliveCounts = useMemo(() => {
-        const shells = bottomTabs.filter(t => t.keepAlive && t.id.startsWith('shell-')).length
-            + bottomTabs.filter(t => t.keepAlive && t.id.startsWith('node-shell-')).length;
-        const logs = bottomTabs.filter(t => t.keepAlive && (
+        const shells = bottomTabs.filter((t: any) => t.keepAlive && t.id.startsWith('shell-')).length
+            + bottomTabs.filter((t: any) => t.keepAlive && t.id.startsWith('node-shell-')).length;
+        const logs = bottomTabs.filter((t: any) => t.keepAlive && (
             t.id.startsWith('logs-') ||
             t.id.startsWith('logs-deploy-') ||
             t.id.startsWith('logs-statefulset-') ||
@@ -113,15 +113,15 @@ export default function PerformancePanel({
 
     // Extract historical data for sparklines
     const heapHistory = useMemo(() =>
-        metricsHistory.map(m => m?.memory?.heapInuse || 0),
+        metricsHistory.map((m: any) => m?.memory?.heapInuse || 0),
         [metricsHistory]);
 
     const goroutineHistory = useMemo(() =>
-        metricsHistory.map(m => m?.goroutines?.count || 0),
+        metricsHistory.map((m: any) => m?.goroutines?.count || 0),
         [metricsHistory]);
 
     const watcherHistory = useMemo(() =>
-        metricsHistory.map(m => m?.watchers?.active || 0),
+        metricsHistory.map((m: any) => m?.watchers?.active || 0),
         [metricsHistory]);
 
     if (!backendMetrics) {
@@ -154,7 +154,7 @@ export default function PerformancePanel({
 
                     {/* Tab Navigation */}
                     <div className="flex items-center gap-0.5 bg-surface-light rounded p-0.5">
-                        {tabs.map(tab => (
+                        {tabs.map((tab: any) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
@@ -365,7 +365,7 @@ export default function PerformancePanel({
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {backendMetrics.activity.topWatchers.map((watcher, i) => {
+                                            {backendMetrics.activity.topWatchers.map((watcher: any, i: number) => {
                                                 const isHot = watcher.eventsPerSec > 1;
                                                 const isWarm = watcher.eventsPerSec > 0.1;
                                                 return (
@@ -455,7 +455,7 @@ export default function PerformancePanel({
                                     <div className="text-gray-500 text-sm">No active watchers</div>
                                 ) : (
                                     <ul className="space-y-1 text-xs font-mono">
-                                        {backendMetrics.watchers.watcherKeys.map((key, i) => (
+                                        {backendMetrics.watchers.watcherKeys.map((key: any, i: number) => (
                                             <li key={i} className="text-gray-300 py-1 border-b border-border/50 last:border-0">
                                                 {key}
                                             </li>

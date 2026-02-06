@@ -14,7 +14,7 @@ export const converter = new Convert({
  * Fix non-standard 4-digit 256-color codes (e.g., 0008 -> 8) to standard format.
  * Some log sources emit non-standard ANSI codes that need normalization.
  */
-export const normalizeAnsiCodes = (text) => {
+export const normalizeAnsiCodes = (text: any) => {
     return text.replace(/\x1b\[38;5;0*(\d{1,3})m/g, '\x1b[38;5;$1m')
                .replace(/\x1b\[48;5;0*(\d{1,3})m/g, '\x1b[48;5;$1m');
 };
@@ -22,7 +22,7 @@ export const normalizeAnsiCodes = (text) => {
 /**
  * Strip all ANSI escape codes from text (for search matching).
  */
-export const stripAnsiCodes = (text) => {
+export const stripAnsiCodes = (text: any) => {
     // eslint-disable-next-line no-control-regex
     return text.replace(/\x1b\[[0-9;]*m/g, '');
 };
@@ -31,7 +31,7 @@ export const stripAnsiCodes = (text) => {
  * Validate RFC3339 datetime format (e.g., 2024-11-26T14:30:00Z).
  * Accepts multiple common formats.
  */
-export const isValidDateTime = (str) => {
+export const isValidDateTime = (str: any) => {
     if (!str) return false;
     // Accept formats like: 2024-11-26T14:30:00Z, 2024-11-26T14:30:00, 2024-11-26 14:30:00
     const patterns = [
@@ -40,7 +40,7 @@ export const isValidDateTime = (str) => {
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/,
         /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/
     ];
-    if (!patterns.some(p => p.test(str))) return false;
+    if (!patterns.some((p: any) => p.test(str))) return false;
     const date = new Date(str.replace(' ', 'T'));
     return !isNaN(date.getTime());
 };
@@ -48,7 +48,7 @@ export const isValidDateTime = (str) => {
 /**
  * Convert input datetime string to RFC3339 format.
  */
-export const toRFC3339 = (str) => {
+export const toRFC3339 = (str: any) => {
     if (!str) return '';
     let normalized = str.replace(' ', 'T');
     if (!normalized.includes(':00Z') && !normalized.endsWith('Z')) {
@@ -71,11 +71,11 @@ export const toRFC3339 = (str) => {
  * @param {string} source - Source identifier for the log entries
  * @returns {Array<{timestamp: string, content: string, source: string}>}
  */
-export const parseLogLines = (rawLogs, source) => {
+export const parseLogLines = (rawLogs: any, source: any) => {
     if (!rawLogs) return [];
     return rawLogs.split('\n')
-        .filter(line => line.trim())
-        .map(line => {
+        .filter((line: any) => line.trim())
+        .map((line: any) => {
             // Match K8s timestamp format: 2024-11-26T14:30:00.123456789Z
             const match = line.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s*(.*)/);
             if (match) {
@@ -94,7 +94,7 @@ export const parseLogLines = (rawLogs, source) => {
  * @param {RegExp} searchRegex - Search regex pattern
  * @returns {string} HTML with highlighted matches
  */
-export const highlightMatchesInHtml = (html, plainText, searchRegex) => {
+export const highlightMatchesInHtml = (html: any, plainText: any, searchRegex: any) => {
     if (!searchRegex) return html;
 
     // Find all matches in plain text (ANSI-stripped)
@@ -197,8 +197,8 @@ export const highlightMatchesInHtml = (html, plainText, searchRegex) => {
 /**
  * Convert structured logs to visible format (what user sees - respects showTimestamps setting).
  */
-export const logsToVisibleString = (logs, showTimestamps) => {
-    return logs.map(entry => {
+export const logsToVisibleString = (logs: any, showTimestamps: any) => {
+    return logs.map((entry: any) => {
         if (showTimestamps && entry.timestamp) {
             return `${entry.timestamp} ${entry.content}`;
         }
@@ -209,8 +209,8 @@ export const logsToVisibleString = (logs, showTimestamps) => {
 /**
  * Convert structured logs to debug format (includes source markers).
  */
-export const logsToDebugString = (logs) => {
-    return logs.map(entry => {
+export const logsToDebugString = (logs: any) => {
+    return logs.map((entry: any) => {
         const sourceMarker = `[${entry.source.toUpperCase()}]`;
         if (entry.timestamp) {
             return `${entry.timestamp} ${sourceMarker} ${entry.content}`;

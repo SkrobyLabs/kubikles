@@ -4,7 +4,7 @@ const formatMessage = (message: string, data: unknown): string => {
     if (data) {
         try {
             return `${message} | Data: ${JSON.stringify(data)}`;
-        } catch (e) {
+        } catch (e: any) {
             return `${message} | Data: [Circular or Non-Serializable]`;
         }
     }
@@ -22,7 +22,7 @@ const Logger: Logger = {
     info: (message: string, data: unknown = null) => {
         const formatted = formatMessage(message, data);
         console.log(`[INFO] ${formatted}`);
-        LogMessage(`[INFO] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
+        LogMessage(`[INFO] ${formatted}`).catch((err: any) => console.error("Failed to send log to backend:", err));
     },
 
     error: (message: string, error: Error | unknown = null) => {
@@ -36,7 +36,7 @@ const Logger: Logger = {
         }
         const formatted = `${message}${errorMsg}`;
         console.error(`[ERROR] ${formatted}`);
-        LogMessage(`[ERROR] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
+        LogMessage(`[ERROR] ${formatted}`).catch((err: any) => console.error("Failed to send log to backend:", err));
     },
 
     debug: (message: string, data: unknown = null) => {
@@ -44,13 +44,13 @@ const Logger: Logger = {
         console.debug(`[DEBUG] ${formatted}`);
         // Optional: only send debug logs to backend if verbose mode is on?
         // For now, let's send them as LogMessage is intended for debug.
-        LogMessage(`[DEBUG] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
+        LogMessage(`[DEBUG] ${formatted}`).catch((err: any) => console.error("Failed to send log to backend:", err));
     },
 
     warn: (message: string, data: unknown = null) => {
         const formatted = formatMessage(message, data);
         console.warn(`[WARN] ${formatted}`);
-        LogMessage(`[WARN] ${formatted}`).catch(err => console.error("Failed to send log to backend:", err));
+        LogMessage(`[WARN] ${formatted}`).catch((err: any) => console.error("Failed to send log to backend:", err));
     }
 };
 

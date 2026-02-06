@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function CronJobDetails({ cronJob, tabContext = '' }) {
+export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch } = useUI();
 
@@ -91,7 +91,7 @@ export default function CronJobDetails({ cronJob, tabContext = '' }) {
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -148,7 +148,7 @@ export default function CronJobDetails({ cronJob, tabContext = '' }) {
                 {activeJobs.length > 0 && (
                     <DetailSection title="Active Jobs">
                         <div className="space-y-1.5">
-                            {activeJobs.map((jobRef, idx) => (
+                            {activeJobs.map((jobRef: any, idx: number) => (
                                 <div key={idx} className="flex items-center gap-2">
                                     <StatusBadge status="Running" variant="warning" />
                                     <button

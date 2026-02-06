@@ -12,10 +12,10 @@ import { DeleteMutatingWebhookConfiguration, GetMutatingWebhookConfigurationYaml
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function MutatingWebhookList({ isVisible }) {
+export default function MutatingWebhookList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { mutatingWebhookConfigurations, loading } = useMutatingWebhookConfigurations(currentContext, isVisible);
+    const { mutatingWebhookConfigurations, loading } = useMutatingWebhookConfigurations(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useMutatingWebhookActions();
     const selection = useSelection();
 
@@ -36,45 +36,45 @@ export default function MutatingWebhookList({ isVisible }) {
 
     });
 
-    const getWebhookCount = (config) => {
+    const getWebhookCount = (config: any) => {
         return (config.webhooks || []).length;
     };
 
-    const getFailurePolicy = (config) => {
-        const policies = new Set();
-        (config.webhooks || []).forEach(wh => {
+    const getFailurePolicy = (config: any) => {
+        const policies = new Set<any>();
+        (config.webhooks || []).forEach((wh: any) => {
             policies.add(wh.failurePolicy || 'Fail');
         });
         return Array.from(policies).join(', ') || '-';
     };
 
-    const getReinvocationPolicy = (config) => {
-        const policies = new Set();
-        (config.webhooks || []).forEach(wh => {
+    const getReinvocationPolicy = (config: any) => {
+        const policies = new Set<any>();
+        (config.webhooks || []).forEach((wh: any) => {
             policies.add(wh.reinvocationPolicy || 'Never');
         });
         return Array.from(policies).join(', ') || '-';
     };
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'webhooks', label: 'Webhooks', render: (item) => getWebhookCount(item), getValue: (item) => getWebhookCount(item) },
-        { key: 'failurePolicy', label: 'Failure Policy', render: (item) => getFailurePolicy(item), getValue: (item) => getFailurePolicy(item) },
-        { key: 'reinvocation', label: 'Reinvocation', render: (item) => getReinvocationPolicy(item), getValue: (item) => getReinvocationPolicy(item) },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'webhooks', label: 'Webhooks', render: (item: any) => getWebhookCount(item), getValue: (item: any) => getWebhookCount(item) },
+        { key: 'failurePolicy', label: 'Failure Policy', render: (item: any) => getFailurePolicy(item), getValue: (item: any) => getFailurePolicy(item) },
+        { key: 'reinvocation', label: 'Reinvocation', render: (item: any) => getReinvocationPolicy(item), getValue: (item: any) => getReinvocationPolicy(item) },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <MutatingWebhookActionsMenu
                     webhook={item}
                     isOpen={activeMenuId === `mutatingwebhook-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `mutatingwebhook-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `mutatingwebhook-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(webhook) => openBulkDelete([webhook])}
+                    onDelete={(webhook: any) => openBulkDelete([webhook])}
                 />
             ),
             getValue: () => '',
@@ -102,7 +102,7 @@ export default function MutatingWebhookList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

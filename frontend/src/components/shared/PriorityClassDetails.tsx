@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function PriorityClassDetails({ priorityClass, tabContext = '' }) {
+export default function PriorityClassDetails({ priorityClass, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -51,7 +51,7 @@ export default function PriorityClassDetails({ priorityClass, tabContext = '' })
         });
     };
 
-    const formatValue = (value) => {
+    const formatValue = (value: any) => {
         if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B (${value.toLocaleString()})`;
         if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M (${value.toLocaleString()})`;
         if (value >= 1000) return `${(value / 1000).toFixed(1)}K (${value.toLocaleString()})`;

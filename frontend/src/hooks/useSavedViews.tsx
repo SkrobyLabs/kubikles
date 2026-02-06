@@ -77,7 +77,7 @@ export function loadViews(): SavedView[] {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         return saved ? JSON.parse(saved) : [];
-    } catch (e) {
+    } catch (e: any) {
         console.error('Failed to load saved views:', e);
         return [];
     }
@@ -90,7 +90,7 @@ export function loadViews(): SavedView[] {
 export function persistViews(views: SavedView[]): void {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(views));
-    } catch (e) {
+    } catch (e: any) {
         console.error('Failed to save views:', e);
     }
 }
@@ -112,7 +112,7 @@ export function useSavedViews(resourceType: string | null = null): UseSavedViews
 
     // Filter views by resource type if specified
     const views = resourceType
-        ? allViews.filter(v => v.resourceType === resourceType)
+        ? allViews.filter((v: any) => v.resourceType === resourceType)
         : allViews;
 
     // Persist changes to localStorage
@@ -144,7 +144,7 @@ export function useSavedViews(resourceType: string | null = null): UseSavedViews
      * Get a view by ID.
      */
     const loadView = useCallback((viewId: string): SavedView | null => {
-        return allViews.find(v => v.id === viewId) || null;
+        return allViews.find((v: any) => v.id === viewId) || null;
     }, [allViews]);
 
     /**
@@ -152,7 +152,7 @@ export function useSavedViews(resourceType: string | null = null): UseSavedViews
      */
     const updateView = useCallback((viewId: string, updates: Partial<SavedView>): boolean => {
         setAllViews(prev => {
-            const index = prev.findIndex(v => v.id === viewId);
+            const index = prev.findIndex((v: any) => v.id === viewId);
             if (index === -1) return prev;
 
             const updated = [...prev];
@@ -173,14 +173,14 @@ export function useSavedViews(resourceType: string | null = null): UseSavedViews
      * Delete a view.
      */
     const deleteView = useCallback((viewId: string): void => {
-        setAllViews(prev => prev.filter(v => v.id !== viewId));
+        setAllViews(prev => prev.filter((v: any) => v.id !== viewId));
     }, []);
 
     /**
      * Duplicate a view.
      */
     const duplicateView = useCallback((viewId: string): SavedView | null => {
-        const source = allViews.find(v => v.id === viewId);
+        const source = allViews.find((v: any) => v.id === viewId);
         if (!source) return null;
 
         const newView: SavedView = {
@@ -201,13 +201,13 @@ export function useSavedViews(resourceType: string | null = null): UseSavedViews
      */
     const setDefaultView = useCallback((viewId: string): void => {
         setAllViews(prev => {
-            const view = prev.find(v => v.id === viewId);
+            const view = prev.find((v: any) => v.id === viewId);
             if (!view) return prev;
 
             const isCurrentlyDefault = view.isDefault;
             const viewResourceType = view.resourceType;
 
-            return prev.map(v => {
+            return prev.map((v: any) => {
                 // If this is the target view, toggle its default status
                 if (v.id === viewId) {
                     return { ...v, isDefault: !isCurrentlyDefault };
@@ -225,7 +225,7 @@ export function useSavedViews(resourceType: string | null = null): UseSavedViews
      * Get the default view for the current resource type.
      */
     const getDefaultView = useCallback((): SavedView | null => {
-        return views.find(v => v.isDefault) || null;
+        return views.find((v: any) => v.isDefault) || null;
     }, [views]);
 
     return {

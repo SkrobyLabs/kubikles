@@ -7,7 +7,7 @@ interface EndpointSliceActionsReturn extends BaseResourceActionsReturn<K8sEndpoi
     handleDelete: (endpointSlice: K8sEndpointSlice) => void;
 }
 
-export const useEndpointSliceActions = (): EndpointSliceActionsReturn => {
+export const useEndpointSliceActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -22,7 +22,7 @@ export const useEndpointSliceActions = (): EndpointSliceActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (endpointSlice: K8sEndpointSlice): Promise<void> => {
+        async (endpointSlice: any): Promise<void> => {
             await DeleteEndpointSlice(endpointSlice.metadata.namespace, endpointSlice.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this EndpointSlice? This may affect service connectivity.' }

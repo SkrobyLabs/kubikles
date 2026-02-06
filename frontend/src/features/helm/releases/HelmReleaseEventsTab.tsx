@@ -7,19 +7,19 @@ import { formatAge } from '~/utils/formatting';
 import Logger from '~/utils/Logger';
 
 // Event type indicator
-const EventTypeIcon = ({ type }) => {
+const EventTypeIcon = ({ type }: any) => {
     if (type === 'Warning') {
         return <ExclamationTriangleIcon className="w-4 h-4 text-yellow-400" />;
     }
     return <InformationCircleIcon className="w-4 h-4 text-green-400" />;
 };
 
-export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 }) {
+export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 }: any) {
     const { currentContext, lastRefresh } = useK8s();
-    const [events, setEvents] = useState([]);
-    const [resources, setResources] = useState([]);
+    const [events, setEvents] = useState<any[]>([]);
+    const [resources, setResources] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<any>(null);
 
     const namespace = release?.namespace;
     const releaseName = release?.name;
@@ -40,23 +40,23 @@ export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 
 
                 // Get unique namespaces from resources (some might be in different namespaces)
                 const resourceNamespaces = new Set([namespace]);
-                (releaseResources || []).forEach(r => {
+                (releaseResources || []).forEach((r: any) => {
                     if (r.namespace) resourceNamespaces.add(r.namespace);
                 });
 
                 // Fetch events from all relevant namespaces
-                let allEvents = [];
+                let allEvents: any[] = [];
                 for (const ns of resourceNamespaces) {
-                    const nsEvents = await ListEvents('', ns);
+                    const nsEvents = await ListEvents('', ns as string);
                     allEvents = allEvents.concat(nsEvents || []);
                 }
 
                 // Filter events related to release resources
-                const releaseEvents = allEvents.filter(event => {
+                const releaseEvents = allEvents.filter((event: any) => {
                     const involvedObj = event.involvedObject;
                     if (!involvedObj) return false;
 
-                    return (releaseResources || []).some(res =>
+                    return (releaseResources || []).some((res: any) =>
                         res.kind === involvedObj.kind &&
                         res.name === involvedObj.name &&
                         (res.namespace === involvedObj.namespace || !involvedObj.namespace)
@@ -64,7 +64,7 @@ export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 
                 });
 
                 setEvents(releaseEvents);
-            } catch (err) {
+            } catch (err: any) {
                 Logger.error("Failed to fetch release events", err);
                 setError(err.message || String(err));
             } finally {
@@ -76,14 +76,14 @@ export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 
     }, [currentContext, namespace, releaseName, isStale, lastRefresh, refreshKey]);
 
     // Handle real-time event updates
-    const handleEvent = useCallback((event) => {
+    const handleEvent = useCallback((event: any) => {
         const { type, resource: eventResource } = event;
 
         // Only process events related to release resources
         const involvedObj = eventResource.involvedObject;
         if (!involvedObj) return;
 
-        const isRelevant = resources.some(res =>
+        const isRelevant = resources.some((res: any) =>
             res.kind === involvedObj.kind &&
             res.name === involvedObj.name &&
             (res.namespace === involvedObj.namespace || !involvedObj.namespace)
@@ -97,12 +97,12 @@ export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 
 
             switch (type) {
                 case 'ADDED':
-                    if (prev.find(e => e.metadata?.uid === uid)) return prev;
+                    if (prev.find((e: any) => e.metadata?.uid === uid)) return prev;
                     return [...prev, eventResource];
                 case 'MODIFIED':
-                    return prev.map(e => e.metadata?.uid === uid ? eventResource : e);
+                    return prev.map((e: any) => e.metadata?.uid === uid ? eventResource : e);
                 case 'DELETED':
-                    return prev.filter(e => e.metadata?.uid !== uid);
+                    return prev.filter((e: any) => e.metadata?.uid !== uid);
                 default:
                     return prev;
             }
@@ -122,7 +122,7 @@ export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 
         return [...events].sort((a, b) => {
             const timeA = new Date(a.lastTimestamp || a.metadata?.creationTimestamp || 0);
             const timeB = new Date(b.lastTimestamp || b.metadata?.creationTimestamp || 0);
-            return timeB - timeA;
+            return timeB.getTime() - timeA.getTime();
         });
     }, [events]);
 

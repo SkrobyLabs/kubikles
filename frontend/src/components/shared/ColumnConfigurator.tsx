@@ -13,36 +13,36 @@ export default function ColumnConfigurator({
     onToggleColumn,
     onShowAll,
     onResetDefaults,
-    defaultHiddenColumns = new Set(),
-}) {
+    defaultHiddenColumns = new Set<any>(),
+}: { columns: any; hiddenColumns: any; onToggleColumn: any; onShowAll: any; onResetDefaults: any; defaultHiddenColumns?: any }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const containerRef = useRef(null);
-    const searchInputRef = useRef(null);
+    const containerRef = useRef<any>(null);
+    const searchInputRef = useRef<any>(null);
 
     // Filter out special columns (selection, column selector)
     const configurableColumns = columns.filter(
-        col => !col.isColumnSelector && !col.isSelectionColumn
+        (col: any) => !col.isColumnSelector && !col.isSelectionColumn
     );
 
     // Filter columns by search term
     const filteredColumns = useMemo(() => {
         if (!searchTerm.trim()) return configurableColumns;
         const term = searchTerm.toLowerCase();
-        return configurableColumns.filter(col =>
+        return configurableColumns.filter((col: any) =>
             col.label.toLowerCase().includes(term) ||
             col.key.toLowerCase().includes(term)
         );
     }, [configurableColumns, searchTerm]);
 
     // Count visible columns
-    const visibleCount = configurableColumns.filter(col => !hiddenColumns.has(col.key)).length;
+    const visibleCount = configurableColumns.filter((col: any) => !hiddenColumns.has(col.key)).length;
     const totalCount = configurableColumns.length;
 
     // Close dropdown when clicking outside
     useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (containerRef.current && !containerRef.current.contains(e.target)) {
+        const handleClickOutside = (e: any) => {
+            if (containerRef.current && !(containerRef.current as any).contains(e.target)) {
                 setIsOpen(false);
                 setSearchTerm('');
             }
@@ -56,13 +56,13 @@ export default function ColumnConfigurator({
     // Focus search input when opening (only if many columns)
     useEffect(() => {
         if (isOpen && configurableColumns.length > 8 && searchInputRef.current) {
-            searchInputRef.current.focus();
+            (searchInputRef.current as any).focus();
         }
     }, [isOpen, configurableColumns.length]);
 
     // Close on Escape key
     useEffect(() => {
-        const handleKeyDown = (e) => {
+        const handleKeyDown = (e: any) => {
             if (e.key === 'Escape' && isOpen) {
                 setIsOpen(false);
                 setSearchTerm('');
@@ -98,7 +98,7 @@ export default function ColumnConfigurator({
                                 ref={searchInputRef}
                                 type="text"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e: any) => setSearchTerm(e.target.value)}
                                 placeholder="Search columns..."
                                 className="w-full pl-7 pr-2 py-1 text-xs bg-background border border-border rounded focus:outline-none focus:border-primary"
                                 autoComplete="off"
@@ -112,7 +112,7 @@ export default function ColumnConfigurator({
                             <div className="px-3 py-2 text-xs text-gray-500 text-center">
                                 No matching columns
                             </div>
-                        ) : filteredColumns.map((col) => {
+                        ) : filteredColumns.map((col: any) => {
                             const isVisible = !hiddenColumns.has(col.key);
                             const isDefaultHidden = defaultHiddenColumns.has(col.key);
                             return (

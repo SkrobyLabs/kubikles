@@ -27,7 +27,7 @@ export function ThinkingBubble() {
     );
 }
 
-export default function MessageBubble({ msg }) {
+export default function MessageBubble({ msg }: { msg: any }) {
     const [copied, setCopied] = useState(false);
     const [isThinking, setIsThinking] = useState(false);
     const contentLenRef = useRef(msg.content?.length || 0);

@@ -10,38 +10,38 @@ export const limitRangeFields = {
     ...commonFields,
 
     limittype: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const limits = item.spec?.limits || [];
-            return limits.map(l => l.type).join(' ');
+            return limits.map((l: any) => l.type).join(' ');
         },
         aliases: ['type', 'types']
     },
 
     limitcount: {
-        extractor: (item) => String(item.spec?.limits?.length || 0),
+        extractor: (item: any) => String(item.spec?.limits?.length || 0),
         aliases: ['count', 'limits']
     },
 
     hascontainer: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const limits = item.spec?.limits || [];
-            return limits.some(l => l.type === 'Container') ? 'true' : 'false';
+            return limits.some((l: any) => l.type === 'Container') ? 'true' : 'false';
         },
         aliases: ['container']
     },
 
     haspod: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const limits = item.spec?.limits || [];
-            return limits.some(l => l.type === 'Pod') ? 'true' : 'false';
+            return limits.some((l: any) => l.type === 'Pod') ? 'true' : 'false';
         },
         aliases: ['pod']
     },
 
     haspvc: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const limits = item.spec?.limits || [];
-            return limits.some(l => l.type === 'PersistentVolumeClaim') ? 'true' : 'false';
+            return limits.some((l: any) => l.type === 'PersistentVolumeClaim') ? 'true' : 'false';
         },
         aliases: ['pvc']
     }

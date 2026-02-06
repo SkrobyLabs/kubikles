@@ -11,8 +11,8 @@ export default function PortForwardDialog({
     onSave,
     contexts,
     currentContext
-}) {
-    const [availablePorts, setAvailablePorts] = useState([]);
+}: any) {
+    const [availablePorts, setAvailablePorts] = useState<any[]>([]);
     const [loadingPorts, setLoadingPorts] = useState(false);
 
     const isEditing = !!config;
@@ -76,7 +76,7 @@ export default function PortForwardDialog({
                 });
                 // Get a random available port
                 GetRandomAvailablePort()
-                    .then(port => form.setValue('localPort', port))
+                    .then((port: any) => form.setValue('localPort', port))
                     .catch(console.error);
                 setAvailablePorts([]);
             }
@@ -103,7 +103,7 @@ export default function PortForwardDialog({
             if (ports && ports.length > 0 && !form.values.remotePort) {
                 form.setValue('remotePort', ports[0]);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to fetch ports:', err);
             setAvailablePorts([]);
         } finally {
@@ -125,7 +125,7 @@ export default function PortForwardDialog({
         try {
             const port = await GetRandomAvailablePort();
             form.setValue('localPort', port);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to get random port:', err);
         }
     }, []);
@@ -197,7 +197,7 @@ export default function PortForwardDialog({
                                 <input
                                     type="number"
                                     value={form.values.localPort || ''}
-                                    onChange={(e) => form.setValue('localPort', parseInt(e.target.value) || 0)}
+                                    onChange={(e: any) => form.setValue('localPort', parseInt(e.target.value) || 0)}
                                     onBlur={() => form.setFieldTouched('localPort')}
                                     placeholder="8080"
                                     min="1"
@@ -232,12 +232,12 @@ export default function PortForwardDialog({
                                 </label>
                                 <select
                                     value={form.values.context}
-                                    onChange={(e) => form.setValue('context', e.target.value)}
+                                    onChange={(e: any) => form.setValue('context', e.target.value)}
                                     onBlur={() => form.setFieldTouched('context')}
                                     className="w-full"
                                 >
                                     <option value="">Select context...</option>
-                                    {contexts.map(ctx => (
+                                    {contexts.map((ctx: any) => (
                                         <option key={ctx} value={ctx}>{ctx}</option>
                                     ))}
                                 </select>
@@ -274,7 +274,7 @@ export default function PortForwardDialog({
                                             name="resourceType"
                                             value="pod"
                                             checked={form.values.resourceType === 'pod'}
-                                            onChange={(e) => form.setValue('resourceType', e.target.value as 'pod' | 'service')}
+                                            onChange={(e: any) => form.setValue('resourceType', e.target.value as 'pod' | 'service')}
                                         />
                                         <span>Pod</span>
                                     </label>
@@ -284,7 +284,7 @@ export default function PortForwardDialog({
                                             name="resourceType"
                                             value="service"
                                             checked={form.values.resourceType === 'service'}
-                                            onChange={(e) => form.setValue('resourceType', e.target.value as 'pod' | 'service')}
+                                            onChange={(e: any) => form.setValue('resourceType', e.target.value as 'pod' | 'service')}
                                         />
                                         <span>Service</span>
                                     </label>
@@ -327,7 +327,7 @@ export default function PortForwardDialog({
                             <input
                                 type="number"
                                 value={form.values.localPort || ''}
-                                onChange={(e) => form.setValue('localPort', parseInt(e.target.value) || 0)}
+                                onChange={(e: any) => form.setValue('localPort', parseInt(e.target.value) || 0)}
                                 onBlur={() => form.setFieldTouched('localPort')}
                                 placeholder="8080"
                                 min="1"
@@ -346,12 +346,12 @@ export default function PortForwardDialog({
                             {availablePorts.length > 0 ? (
                                 <select
                                     value={form.values.remotePort || ''}
-                                    onChange={(e) => form.setValue('remotePort', parseInt(e.target.value) || 0)}
+                                    onChange={(e: any) => form.setValue('remotePort', parseInt(e.target.value) || 0)}
                                     onBlur={() => form.setFieldTouched('remotePort')}
                                     className="w-full"
                                 >
                                     <option value="">Select port...</option>
-                                    {availablePorts.map(port => (
+                                    {availablePorts.map((port: any) => (
                                         <option key={port} value={port}>{port}</option>
                                     ))}
                                 </select>
@@ -359,7 +359,7 @@ export default function PortForwardDialog({
                                 <input
                                     type="number"
                                     value={form.values.remotePort || ''}
-                                    onChange={(e) => form.setValue('remotePort', parseInt(e.target.value) || 0)}
+                                    onChange={(e: any) => form.setValue('remotePort', parseInt(e.target.value) || 0)}
                                     onBlur={() => form.setFieldTouched('remotePort')}
                                     placeholder="80"
                                     min="1"

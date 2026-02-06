@@ -12,10 +12,10 @@ import { DeleteValidatingWebhookConfiguration, GetValidatingWebhookConfiguration
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function ValidatingWebhookList({ isVisible }) {
+export default function ValidatingWebhookList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { validatingWebhookConfigurations, loading } = useValidatingWebhookConfigurations(currentContext, isVisible);
+    const { validatingWebhookConfigurations, loading } = useValidatingWebhookConfigurations(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useValidatingWebhookActions();
     const selection = useSelection();
 
@@ -36,36 +36,36 @@ export default function ValidatingWebhookList({ isVisible }) {
 
     });
 
-    const getWebhookCount = (config) => {
+    const getWebhookCount = (config: any) => {
         return (config.webhooks || []).length;
     };
 
-    const getFailurePolicy = (config) => {
-        const policies = new Set();
-        (config.webhooks || []).forEach(wh => {
+    const getFailurePolicy = (config: any) => {
+        const policies = new Set<any>();
+        (config.webhooks || []).forEach((wh: any) => {
             policies.add(wh.failurePolicy || 'Fail');
         });
         return Array.from(policies).join(', ') || '-';
     };
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'webhooks', label: 'Webhooks', render: (item) => getWebhookCount(item), getValue: (item) => getWebhookCount(item) },
-        { key: 'failurePolicy', label: 'Failure Policy', render: (item) => getFailurePolicy(item), getValue: (item) => getFailurePolicy(item) },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'webhooks', label: 'Webhooks', render: (item: any) => getWebhookCount(item), getValue: (item: any) => getWebhookCount(item) },
+        { key: 'failurePolicy', label: 'Failure Policy', render: (item: any) => getFailurePolicy(item), getValue: (item: any) => getFailurePolicy(item) },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <ValidatingWebhookActionsMenu
                     webhook={item}
                     isOpen={activeMenuId === `validatingwebhook-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `validatingwebhook-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `validatingwebhook-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(webhook) => openBulkDelete([webhook])}
+                    onDelete={(webhook: any) => openBulkDelete([webhook])}
                 />
             ),
             getValue: () => '',
@@ -93,7 +93,7 @@ export default function ValidatingWebhookList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

@@ -12,7 +12,7 @@ interface ClusterRoleActionsReturn {
     handleDelete: (clusterRole: K8sClusterRole) => void;
 }
 
-export const useClusterRoleActions = (): ClusterRoleActionsReturn => {
+export const useClusterRoleActions = (): any => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();
@@ -49,7 +49,7 @@ export const useClusterRoleActions = (): ClusterRoleActionsReturn => {
                     await DeleteClusterRole(name);
                     Logger.info("ClusterRole deleted successfully", { name });
                     closeModal();
-                } catch (err) {
+                } catch (err: any) {
                     Logger.error("Failed to delete ClusterRole", err);
                     addNotification({ type: 'error', title: 'Failed to delete cluster role', message: String(err) });
                 }

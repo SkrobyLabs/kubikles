@@ -48,7 +48,7 @@ export const useDebugLogs = (): {
         if (!globalEventHandler) {
             console.log("Registering debug-log listener");
             globalEventHandler = (msg: string): void => {
-                subscribers.forEach(sub => sub(msg));
+                subscribers.forEach((sub: any) => sub(msg));
             };
             EventsOn("debug-log", globalEventHandler);
         }
@@ -69,7 +69,7 @@ export const useDebugLogs = (): {
         try {
             const content = debugLogs.join('\n');
             await SaveLogFile(content);
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to save logs:", err);
             addNotification({ type: 'error', title: 'Failed to save logs', message: String(err) });
         }
@@ -77,7 +77,7 @@ export const useDebugLogs = (): {
 
     // Sync debug logs to the tab content whenever they change
     useEffect((): void => {
-        setBottomTabs(prev => prev.map(tab => {
+        setBottomTabs(prev => prev.map((tab: any) => {
             if (tab.id === 'debug-logs') {
                 return {
                     ...tab,
@@ -96,7 +96,7 @@ export const useDebugLogs = (): {
 
     const toggleDebug = (): void => {
         const debugTabId = 'debug-logs';
-        const existingTab = bottomTabs.find(t => t.id === debugTabId);
+        const existingTab = bottomTabs.find((t: any) => t.id === debugTabId);
 
         // Enable debug mode globally when opening debug logs
         enableDebugMode();

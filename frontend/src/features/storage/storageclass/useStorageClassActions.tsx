@@ -7,7 +7,7 @@ export interface StorageClassActionsReturn extends BaseResourceActionsReturn<K8s
     handleDelete: (storageClass: K8sStorageClass) => void;
 }
 
-export const useStorageClassActions = (): StorageClassActionsReturn => {
+export const useStorageClassActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -22,7 +22,8 @@ export const useStorageClassActions = (): StorageClassActionsReturn => {
         hasDependencies: false,
     });
 
-    const handleDelete = createDeleteHandler(async (storageClass: K8sStorageClass): Promise<void> => {
+    const handleDelete = createDeleteHandler(
+        async (storageClass: any): Promise<void> => {
         await DeleteStorageClass(storageClass.metadata.name);
     });
 

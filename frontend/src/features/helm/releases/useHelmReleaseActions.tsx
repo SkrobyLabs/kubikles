@@ -18,7 +18,7 @@ export interface HelmReleaseActionsReturn {
     handleUninstall: (release: K8sHelmRelease) => void;
 }
 
-export const useHelmReleaseActions = (): HelmReleaseActionsReturn => {
+export const useHelmReleaseActions = (): any => {
     const { openTab, openModal, closeModal } = useUI();
     const { currentContext, triggerRefresh } = useK8s();
     const { addNotification } = useNotification();

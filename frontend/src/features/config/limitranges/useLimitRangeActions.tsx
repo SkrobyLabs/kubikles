@@ -7,7 +7,7 @@ export interface LimitRangeActionsReturn extends BaseResourceActionsReturn<K8sLi
     handleDelete: (limitRange: K8sLimitRange) => void;
 }
 
-export const useLimitRangeActions = (): LimitRangeActionsReturn => {
+export const useLimitRangeActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -22,7 +22,7 @@ export const useLimitRangeActions = (): LimitRangeActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (lr: K8sLimitRange): Promise<void> => {
+        async (lr: any): Promise<void> => {
             await DeleteLimitRange(lr.metadata.namespace, lr.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this LimitRange? Default limits will no longer be applied.' }

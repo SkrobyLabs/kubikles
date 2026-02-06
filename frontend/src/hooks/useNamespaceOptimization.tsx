@@ -11,9 +11,9 @@
  * @param {string[]} allAvailableNamespaces - All available namespaces
  * @returns {string|string[]|null} Either '' for all namespaces, array of specific namespaces, or null for none
  */
-export const optimizeNamespaceQuery = (selectedNamespaces, allAvailableNamespaces) => {
+export const optimizeNamespaceQuery = (selectedNamespaces: string | string[], allAvailableNamespaces: string[]) => {
     const namespacesToFetch = Array.isArray(selectedNamespaces) ? selectedNamespaces : [selectedNamespaces];
-    const allAvailableNs = allAvailableNamespaces.filter(ns => ns !== '');
+    const allAvailableNs = allAvailableNamespaces.filter((ns: string) => ns !== '');
 
     // If empty array, no namespaces selected - return null to skip query
     if (namespacesToFetch.length === 0) {
@@ -28,7 +28,7 @@ export const optimizeNamespaceQuery = (selectedNamespaces, allAvailableNamespace
     // If all namespaces are selected individually, fetch from all in one query
     const shouldFetchAll = allAvailableNs.length > 0 &&
                           namespacesToFetch.length === allAvailableNs.length &&
-                          allAvailableNs.every(ns => namespacesToFetch.includes(ns));
+                          allAvailableNs.every((ns: any) => namespacesToFetch.includes(ns));
 
     return shouldFetchAll ? '' : namespacesToFetch;
 };

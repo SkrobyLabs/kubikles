@@ -16,14 +16,14 @@ import { formatAge, formatBytes, formatCpu } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 // Get namespace status from conditions
-function getNamespaceStatus(namespace) {
+function getNamespaceStatus(namespace: any) {
     const phase = namespace.status?.phase;
     if (phase === 'Active') return 'Active';
     if (phase === 'Terminating') return 'Terminating';
     return phase || 'Unknown';
 }
 
-function getStatusColor(status) {
+function getStatusColor(status: any) {
     switch (status) {
         case 'Active':
             return 'text-green-400';
@@ -34,7 +34,7 @@ function getStatusColor(status) {
     }
 }
 
-export default function NamespaceList({ isVisible }) {
+export default function NamespaceList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
@@ -55,23 +55,23 @@ export default function NamespaceList({ isVisible }) {
         getYamlApi: GetNamespaceYAML,
 
     });
-    const { namespaces, loading } = useNamespacesList(currentContext, isVisible);
+    const { namespaces, loading } = useNamespacesList(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useNamespaceActions();
 
     // Load metrics after namespaces are loaded
-    const { metrics, available: metricsAvailable } = useNamespaceMetrics(isVisible, !loading && namespaces.length > 0);
+    const { metrics, available: metricsAvailable } = useNamespaceMetrics(isVisible, !loading && (namespaces as any)?.length > 0);
 
     const columns = useMemo(() => [
         {
             key: 'name',
             label: 'Name',
-            render: (item) => item.metadata?.name,
-            getValue: (item) => item.metadata?.name
+            render: (item: any) => item.metadata?.name,
+            getValue: (item: any) => item.metadata?.name
         },
         {
             key: 'cpu',
             label: 'CPU',
-            render: (item) => {
+            render: (item: any) => {
                 const name = item.metadata?.name;
                 const m = metrics[name];
                 if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
@@ -90,7 +90,7 @@ export default function NamespaceList({ isVisible }) {
                     />
                 );
             },
-            getValue: (item) => {
+            getValue: (item: any) => {
                 const name = item.metadata?.name;
                 return metrics[name]?.cpuCommittedPercent ?? -1;
             }
@@ -98,7 +98,7 @@ export default function NamespaceList({ isVisible }) {
         {
             key: 'memory',
             label: 'Memory',
-            render: (item) => {
+            render: (item: any) => {
                 const name = item.metadata?.name;
                 const m = metrics[name];
                 if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
@@ -117,7 +117,7 @@ export default function NamespaceList({ isVisible }) {
                     />
                 );
             },
-            getValue: (item) => {
+            getValue: (item: any) => {
                 const name = item.metadata?.name;
                 return metrics[name]?.memCommittedPercent ?? -1;
             }
@@ -125,28 +125,28 @@ export default function NamespaceList({ isVisible }) {
         {
             key: 'status',
             label: 'Status',
-            render: (item) => {
+            render: (item: any) => {
                 const status = getNamespaceStatus(item);
                 return <span className={getStatusColor(status)}>{status}</span>;
             },
-            getValue: (item) => getNamespaceStatus(item)
+            getValue: (item: any) => getNamespaceStatus(item)
         },
         {
             key: 'age',
             label: 'Age',
-            render: (item) => formatAge(item.metadata?.creationTimestamp),
-            getValue: (item) => item.metadata?.creationTimestamp
+            render: (item: any) => formatAge(item.metadata?.creationTimestamp),
+            getValue: (item: any) => item.metadata?.creationTimestamp
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <NamespaceActionsMenu
                     namespace={item}
                     isOpen={activeMenuId === `namespace-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `namespace-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `namespace-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={() => handleEditYaml(item)}
                     onDelete={() => openBulkDelete([item])}
                 />
@@ -174,7 +174,7 @@ export default function NamespaceList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

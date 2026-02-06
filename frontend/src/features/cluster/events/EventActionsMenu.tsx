@@ -2,14 +2,14 @@ import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 
-export default function EventActionsMenu({ event, isOpen, menuPosition, onOpenChange, onEditYaml, onDelete }) {
-    const buttonRef = useRef(null);
-    const menuRef = useRef(null);
+export default function EventActionsMenu({ event, isOpen, menuPosition, onOpenChange, onEditYaml, onDelete }: any) {
+    const buttonRef = useRef<any>(null);
+    const menuRef = useRef<any>(null);
 
     useEffect(() => {
         if (!isOpen) return;
 
-        const handleClickOutside = (e) => {
+        const handleClickOutside = (e: any) => {
             if (buttonRef.current && !buttonRef.current.contains(e.target) &&
                 menuRef.current && !menuRef.current.contains(e.target)) {
                 onOpenChange(false);
@@ -29,12 +29,12 @@ export default function EventActionsMenu({ event, isOpen, menuPosition, onOpenCh
         };
     }, [isOpen, onOpenChange]);
 
-    const toggleMenu = (e) => {
+    const toggleMenu = (e: any) => {
         e.stopPropagation();
         onOpenChange(!isOpen, buttonRef.current);
     };
 
-    const handleAction = (action) => {
+    const handleAction = (action: any) => {
         onOpenChange(false);
         action();
     };

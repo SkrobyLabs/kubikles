@@ -25,7 +25,7 @@ const kindToView = {
     'Ingress': 'ingresses',
 };
 
-export default function EventDetails({ event, tabContext = '' }) {
+export default function EventDetails({ event, tabContext = '' }: { event: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch } = useUI();
 
@@ -58,13 +58,13 @@ export default function EventDetails({ event, tabContext = '' }) {
 
     const handleNavigateToObject = () => {
         if (!involvedObject.kind || !involvedObject.uid) return;
-        const viewName = kindToView[involvedObject.kind];
+        const viewName = (kindToView as Record<string, string>)[involvedObject.kind];
         if (viewName) {
             navigateWithSearch(viewName, `uid:"${involvedObject.uid}"`);
         }
     };
 
-    const getTypeVariant = (type) => {
+    const getTypeVariant = (type: any) => {
         switch (type) {
             case 'Normal': return 'success';
             case 'Warning': return 'warning';
@@ -87,7 +87,7 @@ export default function EventDetails({ event, tabContext = '' }) {
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -125,7 +125,7 @@ export default function EventDetails({ event, tabContext = '' }) {
                 <DetailSection title="Involved Object">
                     <DetailRow label="Kind" value={involvedObject.kind} />
                     <DetailRow label="Name">
-                        {kindToView[involvedObject.kind] ? (
+                        {(kindToView as Record<string, string>)[involvedObject.kind] ? (
                             <button
                                 onClick={handleNavigateToObject}
                                 className="text-primary hover:text-primary/80 hover:underline transition-colors"

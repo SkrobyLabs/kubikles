@@ -6,12 +6,12 @@ import { useK8s } from '~/context';
 import { useConfig } from '~/context';
 import SourceSelect, { sourceOptions } from '~/components/shared/SourceSelect';
 
-export default function MetricsList({ isVisible }) {
+export default function MetricsList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { getConfig, setConfig } = useConfig();
 
     // Direct K8s Metrics API check (bypasses dual-source logic so we test metrics-server specifically)
-    const [k8sMetricsAvailable, setK8sMetricsAvailable] = useState(null);
+    const [k8sMetricsAvailable, setK8sMetricsAvailable] = useState<boolean | null>(null);
     const [k8sMetricsLoading, setK8sMetricsLoading] = useState(false);
 
     const checkK8sMetrics = useCallback(async () => {
@@ -40,16 +40,16 @@ export default function MetricsList({ isVisible }) {
 
     // Metrics source preference
     const preferredSource = getConfig('metrics.preferredSource') ?? 'auto';
-    const handleSourceChange = (newValue) => {
+    const handleSourceChange = (newValue: any) => {
         setConfig('metrics.preferredSource', newValue);
     };
 
-    const [prometheusInfo, setPrometheusInfo] = useState(null);
-    const [allInstalls, setAllInstalls] = useState([]);
+    const [prometheusInfo, setPrometheusInfo] = useState<any>(null);
+    const [allInstalls, setAllInstalls] = useState<any[]>([]);
     const [detecting, setDetecting] = useState(true);
     const [testing, setTesting] = useState(false);
-    const [testResult, setTestResult] = useState(null);
-    const [openingUI, setOpeningUI] = useState(null); // Track which install is being opened
+    const [testResult, setTestResult] = useState<any>(null);
+    const [openingUI, setOpeningUI] = useState<string | null>(null); // Track which install is being opened
 
     // Custom endpoint form
     const [customEndpoint, setCustomEndpoint] = useState({
@@ -85,7 +85,7 @@ export default function MetricsList({ isVisible }) {
                     port: info.port,
                 });
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to detect Prometheus:', err);
             setPrometheusInfo({ available: false });
             setAllInstalls([]);
@@ -123,7 +123,7 @@ export default function MetricsList({ isVisible }) {
             } else {
                 setTestResult({ success: true, message: 'Connection successful!' });
             }
-        } catch (err) {
+        } catch (err: any) {
             setTestResult({ success: false, message: err.toString() });
         } finally {
             setTesting(false);
@@ -146,7 +146,7 @@ export default function MetricsList({ isVisible }) {
                 port: customEndpoint.port,
                 detectionMethod: 'manual'
             });
-        } catch (err) {
+        } catch (err: any) {
             setTestResult({ success: false, message: 'Failed to save: ' + err.toString() });
         }
     };
@@ -156,19 +156,19 @@ export default function MetricsList({ isVisible }) {
             await ClearPrometheusConfig();
             setPrometheusInfo({ available: false });
             setTestResult({ success: true, message: 'Configuration cleared.' });
-        } catch (err) {
+        } catch (err: any) {
             setTestResult({ success: false, message: 'Failed to clear: ' + err.toString() });
         }
     };
 
     // Open Prometheus UI by port-forwarding and opening browser
     // Reuses existing port forward if available
-    const openPrometheusUI = async (namespace, service, port, installKey = 'active') => {
+    const openPrometheusUI = async (namespace: any, service: any, port: any, installKey = 'active') => {
         setOpeningUI(installKey);
         try {
             // Check for existing port forward config for this service
             const configs = await GetPortForwardConfigs(currentContext);
-            const existingConfig = configs?.find(c =>
+            const existingConfig = configs?.find((c: any) =>
                 c.namespace === namespace &&
                 c.resourceName === service &&
                 c.resourceType === 'service' &&
@@ -181,7 +181,7 @@ export default function MetricsList({ isVisible }) {
             if (existingConfig) {
                 // Found existing config - check if it's active
                 const activeForwards = await GetActivePortForwards();
-                const isActive = activeForwards?.some(a => a.config?.id === existingConfig.id);
+                const isActive = activeForwards?.some((a: any) => a.config?.id === existingConfig.id);
 
                 localPort = existingConfig.localPort;
                 configId = existingConfig.id;
@@ -219,15 +219,15 @@ export default function MetricsList({ isVisible }) {
             // Open in browser
             BrowserOpenURL(`http://localhost:${localPort}`);
             setTestResult({ success: true, message: `Opened Prometheus UI on localhost:${localPort}` });
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to open Prometheus UI:', err);
-            setTestResult({ success: false, message: `Failed to open UI: ${err.toString()}` });
+            setTestResult({ success: false, message: `Failed to open UI: ${(err as any).toString()}` });
         } finally {
             setOpeningUI(null);
         }
     };
 
-    const selectInstall = async (install) => {
+    const selectInstall = async (install: any) => {
         setCustomEndpoint({
             namespace: install.namespace,
             service: install.service,
@@ -257,7 +257,7 @@ export default function MetricsList({ isVisible }) {
                 port: install.port,
                 detectionMethod: install.type === 'operator' ? 'crd' : 'service'
             });
-        } catch (err) {
+        } catch (err: any) {
             setTestResult({ success: false, message: err.toString() });
         } finally {
             setTesting(false);
@@ -413,7 +413,7 @@ export default function MetricsList({ isVisible }) {
                                 Click to select one for manual testing.
                             </p>
                             <div className="space-y-2">
-                                {allInstalls.map((install, idx) => {
+                                {allInstalls.map((install: any, idx: number) => {
                                     const installKey = `${install.namespace}-${install.service}-${idx}`;
                                     const isSelected = customEndpoint.namespace === install.namespace &&
                                         customEndpoint.service === install.service;
@@ -476,7 +476,7 @@ export default function MetricsList({ isVisible }) {
                                 <input
                                     type="text"
                                     value={customEndpoint.namespace}
-                                    onChange={(e) => setCustomEndpoint(prev => ({ ...prev, namespace: e.target.value }))}
+                                    onChange={(e: any) => setCustomEndpoint(prev => ({ ...prev, namespace: e.target.value }))}
                                     placeholder="monitoring"
                                     className="w-full"
                                 />
@@ -486,7 +486,7 @@ export default function MetricsList({ isVisible }) {
                                 <input
                                     type="text"
                                     value={customEndpoint.service}
-                                    onChange={(e) => setCustomEndpoint(prev => ({ ...prev, service: e.target.value }))}
+                                    onChange={(e: any) => setCustomEndpoint(prev => ({ ...prev, service: e.target.value }))}
                                     placeholder="prometheus"
                                     className="w-full"
                                 />
@@ -496,7 +496,7 @@ export default function MetricsList({ isVisible }) {
                                 <input
                                     type="number"
                                     value={customEndpoint.port}
-                                    onChange={(e) => setCustomEndpoint(prev => ({ ...prev, port: parseInt(e.target.value) || 9090 }))}
+                                    onChange={(e: any) => setCustomEndpoint(prev => ({ ...prev, port: parseInt(e.target.value) || 9090 }))}
                                     placeholder="9090"
                                     className="w-full"
                                 />

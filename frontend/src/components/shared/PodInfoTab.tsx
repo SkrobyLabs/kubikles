@@ -8,7 +8,7 @@ import { getOwnerViewId } from '~/utils/owner-navigation';
 import { CopyableLabel, DetailRow } from './DetailComponents';
 import Tooltip from './Tooltip';
 
-export default function PodInfoTab({ pod }) {
+export default function PodInfoTab({ pod }: { pod: any }) {
     const { navigateWithSearch, openDiagnostic } = useUI();
     const { crds } = useK8s();
 
@@ -107,7 +107,7 @@ export default function PodInfoTab({ pod }) {
                 <DetailRow label="Tolerations">
                     {tolerations.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
-                            {tolerations.map((t, idx) => {
+                            {tolerations.map((t: any, idx: number) => {
                                 // Build display text
                                 const parts = [];
                                 if (t.key) parts.push(t.key);
@@ -145,7 +145,7 @@ export default function PodInfoTab({ pod }) {
                 <DetailRow label="Pod IPs">
                     {podIPs.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
-                            {podIPs.map((pip, idx) => (
+                            {podIPs.map((pip: any, idx: number) => (
                                 <CopyableLabel key={idx} value={pip.ip} />
                             ))}
                         </div>

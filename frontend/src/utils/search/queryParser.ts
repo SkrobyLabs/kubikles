@@ -25,7 +25,7 @@
  * parseQuery('name:/^web-/ OR name:/^api-/')
  * // Returns: { groups: [[cond1], [cond2]] }  // Two groups, OR-ed
  */
-export function parseQuery(queryString) {
+export function parseQuery(queryString: string): { groups: any[][] } {
     if (!queryString || typeof queryString !== 'string') {
         return { groups: [] };
     }
@@ -37,8 +37,8 @@ export function parseQuery(queryString) {
     const orSegments = query.split(/\s+OR\s+/i);
 
     const groups = orSegments
-        .map(segment => parseSegment(segment.trim()))
-        .filter(conditions => conditions.length > 0);
+        .map((segment: any) => parseSegment(segment.trim()))
+        .filter((conditions: any) => conditions.length > 0);
 
     return { groups };
 }
@@ -49,10 +49,10 @@ export function parseQuery(queryString) {
  * @param {string} segment - Query segment without OR
  * @returns {Array<{type: string, field?: string, value: string|RegExp, isRegex: boolean}>}
  */
-function parseSegment(segment) {
+function parseSegment(segment: string): any[] {
     if (!segment) return [];
 
-    const conditions = [];
+    const conditions: any[] = [];
     let remaining = segment;
 
     while (remaining.length > 0) {
@@ -101,7 +101,7 @@ function parseSegment(segment) {
  * @param {string} str - String to parse
  * @returns {{condition: object, consumed: number}|null}
  */
-function matchFieldCondition(str) {
+function matchFieldCondition(str: string): { condition: any; consumed: number } | null {
     // Match field name followed by colon
     const fieldNameMatch = str.match(/^(\w+):/);
     if (!fieldNameMatch) return null;
@@ -126,7 +126,7 @@ function matchFieldCondition(str) {
                 },
                 consumed: pos + regexMatch[0].length
             };
-        } catch (e) {
+        } catch (e: any) {
             // Invalid regex - treat as literal string
             return {
                 condition: {

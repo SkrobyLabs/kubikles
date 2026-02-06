@@ -12,7 +12,7 @@ import PVActionsMenu from './PVActionsMenu';
 import { usePVActions } from './usePVActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-const getStatusColor = (phase) => {
+const getStatusColor = (phase: any) => {
     switch (phase) {
         case 'Bound':
             return 'text-green-400';
@@ -27,7 +27,7 @@ const getStatusColor = (phase) => {
     }
 };
 
-const getReclaimPolicyColor = (policy) => {
+const getReclaimPolicyColor = (policy: any) => {
     switch (policy) {
         case 'Delete':
             return 'text-red-400';
@@ -40,7 +40,7 @@ const getReclaimPolicyColor = (policy) => {
     }
 };
 
-const getAccessModeColor = (mode) => {
+const getAccessModeColor = (mode: any) => {
     switch (mode) {
         case 'ReadWriteOnce':
             return 'text-blue-400';
@@ -55,21 +55,21 @@ const getAccessModeColor = (mode) => {
     }
 };
 
-const renderAccessModes = (modes) => {
+const renderAccessModes = (modes: any) => {
     if (!modes || modes.length === 0) return '-';
     return (
         <span className="flex flex-wrap gap-1">
-            {modes.map((mode, idx) => (
+            {modes.map((mode: any, idx: number) => (
                 <span key={idx} className={getAccessModeColor(mode)}>{mode}</span>
             ))}
         </span>
     );
 };
 
-export default function PVList({ isVisible }) {
+export default function PVList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { pvs, loading } = usePVs(currentContext, isVisible);
+    const { pvs, loading } = usePVs(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = usePVActions();
     const selection = useSelection();
 
@@ -91,60 +91,60 @@ export default function PVList({ isVisible }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
         {
             key: 'capacity',
             label: 'Capacity',
-            render: (item) => item.spec?.capacity?.storage || '-',
-            getValue: (item) => item.spec?.capacity?.storage || ''
+            render: (item: any) => item.spec?.capacity?.storage || '-',
+            getValue: (item: any) => item.spec?.capacity?.storage || ''
         },
         {
             key: 'accessModes',
             label: 'Access Modes',
-            render: (item) => renderAccessModes(item.spec?.accessModes),
-            getValue: (item) => item.spec?.accessModes?.join(', ') || ''
+            render: (item: any) => renderAccessModes(item.spec?.accessModes),
+            getValue: (item: any) => item.spec?.accessModes?.join(', ') || ''
         },
         {
             key: 'reclaimPolicy',
             label: 'Reclaim Policy',
-            render: (item) => item.spec?.persistentVolumeReclaimPolicy ? (
+            render: (item: any) => item.spec?.persistentVolumeReclaimPolicy ? (
                 <span className={getReclaimPolicyColor(item.spec.persistentVolumeReclaimPolicy)}>
                     {item.spec.persistentVolumeReclaimPolicy}
                 </span>
             ) : '-',
-            getValue: (item) => item.spec?.persistentVolumeReclaimPolicy || ''
+            getValue: (item: any) => item.spec?.persistentVolumeReclaimPolicy || ''
         },
         {
             key: 'status',
             label: 'Status',
-            render: (item) => (
+            render: (item: any) => (
                 <span className={getStatusColor(item.status?.phase)}>
                     {item.status?.phase || 'Unknown'}
                 </span>
             ),
-            getValue: (item) => item.status?.phase
+            getValue: (item: any) => item.status?.phase
         },
         {
             key: 'claim',
             label: 'Claim',
-            render: (item) => item.spec?.claimRef ? `${item.spec.claimRef.namespace}/${item.spec.claimRef.name}` : '-',
-            getValue: (item) => item.spec?.claimRef ? `${item.spec.claimRef.namespace}/${item.spec.claimRef.name}` : ''
+            render: (item: any) => item.spec?.claimRef ? `${item.spec.claimRef.namespace}/${item.spec.claimRef.name}` : '-',
+            getValue: (item: any) => item.spec?.claimRef ? `${item.spec.claimRef.namespace}/${item.spec.claimRef.name}` : ''
         },
-        { key: 'storageClass', label: 'Storage Class', render: (item) => item.spec?.storageClassName || '-', getValue: (item) => item.spec?.storageClassName || '' },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'storageClass', label: 'Storage Class', render: (item: any) => item.spec?.storageClassName || '-', getValue: (item: any) => item.spec?.storageClassName || '' },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <PVActionsMenu
                     pv={item}
                     isOpen={activeMenuId === `pv-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `pv-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `pv-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(pv) => openBulkDelete([pv])}
+                    onDelete={(pv: any) => openBulkDelete([pv])}
                 />
             ),
             getValue: () => '',
@@ -171,7 +171,7 @@ export default function PVList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

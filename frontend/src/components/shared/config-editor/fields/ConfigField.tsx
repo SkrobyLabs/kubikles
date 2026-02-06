@@ -7,7 +7,7 @@ import ReadonlyField from './ReadonlyField';
 import CheckboxGroupField from './CheckboxGroupField';
 import SidebarLayoutEditor from './SidebarLayoutEditor';
 
-export default function ConfigField({ schema, value, onChange, isModified, asyncValue, onAction }) {
+export default function ConfigField({ schema, value, onChange, isModified, asyncValue, onAction }: any) {
     const { type, label, description } = schema;
 
     switch (type) {

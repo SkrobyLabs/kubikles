@@ -13,7 +13,7 @@ import { useStorageClassActions } from './useStorageClassActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 // Get color for reclaim policy
-const getReclaimPolicyColor = (policy) => {
+const getReclaimPolicyColor = (policy: any) => {
     switch (policy) {
         case 'Delete':
             return 'text-red-400';
@@ -27,7 +27,7 @@ const getReclaimPolicyColor = (policy) => {
 };
 
 // Get color for volume binding mode
-const getBindingModeColor = (mode) => {
+const getBindingModeColor = (mode: any) => {
     switch (mode) {
         case 'Immediate':
             return 'text-green-400';
@@ -38,10 +38,10 @@ const getBindingModeColor = (mode) => {
     }
 };
 
-export default function StorageClassList({ isVisible }) {
+export default function StorageClassList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { storageClasses, loading } = useStorageClasses(currentContext, isVisible);
+    const { storageClasses, loading } = useStorageClasses(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useStorageClassActions();
     const selection = useSelection();
 
@@ -66,7 +66,7 @@ export default function StorageClassList({ isVisible }) {
         {
             key: 'name',
             label: 'Name',
-            render: (item) => (
+            render: (item: any) => (
                 <div className="flex items-center gap-2">
                     {item.metadata?.name}
                     {item.metadata?.annotations?.['storageclass.kubernetes.io/is-default-class'] === 'true' && (
@@ -74,48 +74,48 @@ export default function StorageClassList({ isVisible }) {
                     )}
                 </div>
             ),
-            getValue: (item) => item.metadata?.name
+            getValue: (item: any) => item.metadata?.name
         },
-        { key: 'provisioner', label: 'Provisioner', render: (item) => item.provisioner || '-', getValue: (item) => item.provisioner || '' },
+        { key: 'provisioner', label: 'Provisioner', render: (item: any) => item.provisioner || '-', getValue: (item: any) => item.provisioner || '' },
         {
             key: 'reclaimPolicy',
             label: 'Reclaim Policy',
-            render: (item) => item.reclaimPolicy ? (
+            render: (item: any) => item.reclaimPolicy ? (
                 <span className={getReclaimPolicyColor(item.reclaimPolicy)}>{item.reclaimPolicy}</span>
             ) : '-',
-            getValue: (item) => item.reclaimPolicy || ''
+            getValue: (item: any) => item.reclaimPolicy || ''
         },
         {
             key: 'volumeBindingMode',
             label: 'Volume Binding Mode',
-            render: (item) => item.volumeBindingMode ? (
+            render: (item: any) => item.volumeBindingMode ? (
                 <span className={getBindingModeColor(item.volumeBindingMode)}>{item.volumeBindingMode}</span>
             ) : '-',
-            getValue: (item) => item.volumeBindingMode || ''
+            getValue: (item: any) => item.volumeBindingMode || ''
         },
         {
             key: 'allowVolumeExpansion',
             label: 'Allow Expansion',
-            render: (item) => item.allowVolumeExpansion ? (
+            render: (item: any) => item.allowVolumeExpansion ? (
                 <CheckCircleIcon className="h-5 w-5 text-green-400" />
             ) : (
                 <span className="text-gray-500">-</span>
             ),
-            getValue: (item) => item.allowVolumeExpansion ? 'Yes' : 'No'
+            getValue: (item: any) => item.allowVolumeExpansion ? 'Yes' : 'No'
         },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <StorageClassActionsMenu
                     storageClass={item}
                     isOpen={activeMenuId === `storageclass-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `storageclass-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `storageclass-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={(storageClass) => openBulkDelete([storageClass])}
+                    onDelete={(storageClass: any) => openBulkDelete([storageClass])}
                 />
             ),
             getValue: () => '',
@@ -142,7 +142,7 @@ export default function StorageClassList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

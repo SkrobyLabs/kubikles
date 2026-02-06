@@ -4,17 +4,18 @@ import { GetHelmReleaseAllValues, GetHelmReleaseValues } from 'wailsjs/go/main/A
 import { useK8s } from '~/context';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import Logger from '~/utils/Logger';
+// @ts-ignore - no declaration file for js-yaml
 import yaml from 'js-yaml';
 
-export default function HelmReleaseValuesTab({ release, isStale, refreshKey = 0 }) {
+export default function HelmReleaseValuesTab({ release, isStale, refreshKey = 0 }: any) {
     const { currentContext, lastRefresh } = useK8s();
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<any>(null);
     const [format, setFormat] = useState('yaml'); // 'yaml' or 'json'
     const [showUserOnly, setShowUserOnly] = useState(false);
-    const [rawValues, setRawValues] = useState(null);
-    const editorRef = useRef(null);
+    const [rawValues, setRawValues] = useState<any>(null);
+    const editorRef = useRef<any>(null);
 
     // Fetch values
     useEffect(() => {
@@ -33,7 +34,7 @@ export default function HelmReleaseValuesTab({ release, isStale, refreshKey = 0 
                     ? await GetHelmReleaseValues(release.namespace, release.name)
                     : await GetHelmReleaseAllValues(release.namespace, release.name);
                 setRawValues(values || {});
-            } catch (err) {
+            } catch (err: any) {
                 Logger.error("Failed to fetch Helm release values", err);
                 setError(err.message || String(err));
             } finally {
@@ -59,13 +60,13 @@ export default function HelmReleaseValuesTab({ release, isStale, refreshKey = 0 
             } else {
                 setContent(JSON.stringify(rawValues, null, 2));
             }
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to format values", err);
             setContent(JSON.stringify(rawValues, null, 2));
         }
     }, [rawValues, format]);
 
-    const handleEditorDidMount = (editor) => {
+    const handleEditorDidMount = (editor: any) => {
         editorRef.current = editor;
     };
 
@@ -99,7 +100,7 @@ export default function HelmReleaseValuesTab({ release, isStale, refreshKey = 0 
                         <input
                             type="checkbox"
                             checked={showUserOnly}
-                            onChange={(e) => setShowUserOnly(e.target.checked)}
+                            onChange={(e: any) => setShowUserOnly(e.target.checked)}
                             className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-primary focus:ring-primary focus:ring-offset-0"
                         />
                         User values only

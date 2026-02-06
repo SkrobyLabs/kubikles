@@ -10,9 +10,9 @@ import { commonFields } from './common';
 /**
  * Get owner reference info
  */
-function getOwnerInfo(item) {
+function getOwnerInfo(item: any) {
     const owners = item.metadata?.ownerReferences || [];
-    const controller = owners.find(owner => owner.controller);
+    const controller = owners.find((owner: any) => owner.controller);
     return controller ? { kind: controller.kind, name: controller.name } : null;
 }
 
@@ -20,34 +20,34 @@ export const workloadCommonFields = {
     ...commonFields,
 
     image: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const containers = item.spec?.template?.spec?.containers || [];
             const initContainers = item.spec?.template?.spec?.initContainers || [];
             return [...containers, ...initContainers]
-                .map(c => c.image)
+                .map((c: any) => c.image)
                 .join(' ');
         },
         aliases: ['images']
     },
 
     container: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const containers = item.spec?.template?.spec?.containers || [];
             const initContainers = item.spec?.template?.spec?.initContainers || [];
             return [...containers, ...initContainers]
-                .map(c => c.name)
+                .map((c: any) => c.name)
                 .join(' ');
         },
         aliases: ['containers']
     },
 
     serviceaccount: {
-        extractor: (item) => item.spec?.template?.spec?.serviceAccountName || item.spec?.template?.spec?.serviceAccount || '',
+        extractor: (item: any) => item.spec?.template?.spec?.serviceAccountName || item.spec?.template?.spec?.serviceAccount || '',
         aliases: ['sa']
     },
 
     selector: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const matchLabels = item.spec?.selector?.matchLabels || {};
             return Object.entries(matchLabels)
                 .map(([k, v]) => `${k}=${v}`)
@@ -57,7 +57,7 @@ export const workloadCommonFields = {
     },
 
     controlledby: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const owner = getOwnerInfo(item);
             return owner ? owner.kind : '';
         },
@@ -65,7 +65,7 @@ export const workloadCommonFields = {
     },
 
     controllername: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const owner = getOwnerInfo(item);
             return owner ? owner.name : '';
         },

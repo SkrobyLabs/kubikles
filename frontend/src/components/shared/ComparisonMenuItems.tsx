@@ -8,7 +8,7 @@ import { useK8s } from '~/context';
  * Usage: Include <ComparisonMenuItems kind="pod" namespace="default" name="my-pod" onAction={closeMenu} />
  * in any actions menu to add comparison functionality.
  */
-export default function ComparisonMenuItems({ kind, namespace, name, onAction }) {
+export default function ComparisonMenuItems({ kind, namespace, name, onAction }: any) {
     const { comparisonSource, setComparisonSource, clearComparisonSource, compareWithSource } = useUI();
     const { currentContext } = useK8s();
 
@@ -21,19 +21,19 @@ export default function ComparisonMenuItems({ kind, namespace, name, onAction })
     // Check if source is from a different context
     const isCrossContext = comparisonSource && comparisonSource.context !== currentContext;
 
-    const handleSetSource = (e) => {
+    const handleSetSource = (e: any) => {
         e.stopPropagation();
         setComparisonSource(kind, namespace, name);
         onAction?.();
     };
 
-    const handleCompare = (e) => {
+    const handleCompare = (e: any) => {
         e.stopPropagation();
         compareWithSource(kind, namespace, name);
         onAction?.();
     };
 
-    const handleClear = (e) => {
+    const handleClear = (e: any) => {
         e.stopPropagation();
         clearComparisonSource();
         onAction?.();

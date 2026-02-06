@@ -7,15 +7,15 @@
 
 export const commonFields = {
     name: {
-        extractor: (item) => item.metadata?.name || '',
+        extractor: (item: any) => item.metadata?.name || '',
         aliases: ['n']
     },
     namespace: {
-        extractor: (item) => item.metadata?.namespace || '',
+        extractor: (item: any) => item.metadata?.namespace || '',
         aliases: ['ns']
     },
     labels: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const labels = item.metadata?.labels || {};
             return Object.entries(labels)
                 .map(([k, v]) => `${k}=${v}`)
@@ -24,7 +24,7 @@ export const commonFields = {
         aliases: ['label', 'l']
     },
     annotations: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const annotations = item.metadata?.annotations || {};
             return Object.entries(annotations)
                 .map(([k, v]) => `${k}=${v}`)
@@ -33,7 +33,7 @@ export const commonFields = {
         aliases: ['annotation', 'a']
     },
     uid: {
-        extractor: (item) => item.metadata?.uid || '',
+        extractor: (item: any) => item.metadata?.uid || '',
         aliases: []
     }
 };

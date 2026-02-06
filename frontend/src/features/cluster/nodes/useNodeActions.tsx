@@ -14,7 +14,7 @@ export interface NodeActionsReturn extends BaseResourceActionsReturn<K8sNode> {
     handleDelete: (node: K8sNode) => void;
 }
 
-export const useNodeActions = (refetch?: () => void): NodeActionsReturn => {
+export const useNodeActions = (refetch?: () => void): any => {
     const { currentContext } = useK8s();
     const {
         handleShowDetails,
@@ -43,7 +43,7 @@ export const useNodeActions = (refetch?: () => void): NodeActionsReturn => {
             await SetNodeSchedulable(name, isUnschedulable);
             Logger.info(`Node ${action.toLowerCase()}ed successfully`, { name });
             if (refetch) refetch();
-        } catch (err) {
+        } catch (err: any) {
             Logger.error(`Failed to ${action.toLowerCase()} node`, err);
             addNotification({ type: 'error', title: `Failed to ${action.toLowerCase()} node`, message: String(err) });
         }
@@ -66,7 +66,7 @@ export const useNodeActions = (refetch?: () => void): NodeActionsReturn => {
     }, [currentContext, openTab]);
 
     const handleDelete = createDeleteHandler(
-        async (node: K8sNode): Promise<void> => {
+        async (node: any): Promise<void> => {
             await DeleteNode(node.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this node? This will remove the node from the cluster. Any pods running on this node will need to be rescheduled.' }

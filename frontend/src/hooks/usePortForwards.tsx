@@ -72,7 +72,7 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
             setConfigs(cfgs || []);
             setActiveForwards(active || []);
             setError(null);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to fetch port forwards:', err);
             setError(err instanceof Error ? err : new Error(String(err)));
         } finally {
@@ -96,7 +96,7 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
                 if (event.config) {
                     setConfigs(prev => {
                         // Avoid duplicates
-                        if (prev.find(c => c.id === event.config!.id)) return prev;
+                        if (prev.find((c: any) => c.id === event.config!.id)) return prev;
                         // Apply context filter if set
                         if (contextFilterRef.current && event.config!.context !== contextFilterRef.current) return prev;
                         return [...prev, event.config!];
@@ -105,29 +105,29 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
                 break;
             case 'config_updated':
                 if (event.config) {
-                    setConfigs(prev => prev.map(c =>
+                    setConfigs(prev => prev.map((c: any) =>
                         c.id === event.config!.id ? event.config! : c
                     ));
                 }
                 break;
             case 'config_removed':
-                setConfigs(prev => prev.filter(c => c.id !== event.configId));
-                setActiveForwards(prev => prev.filter(af => af.config?.id !== event.configId));
+                setConfigs(prev => prev.filter((c: any) => c.id !== event.configId));
+                setActiveForwards(prev => prev.filter((af: any) => af.config?.id !== event.configId));
                 break;
             case 'started':
             case 'error':
                 // Update active forwards status
                 setConfigs(currentConfigs => {
                     setActiveForwards(prev => {
-                        const existing = prev.find(af => af.config?.id === event.configId);
+                        const existing = prev.find((af: any) => af.config?.id === event.configId);
                         if (existing) {
-                            return prev.map(af =>
+                            return prev.map((af: any) =>
                                 af.config?.id === event.configId
-                                    ? { ...af, status: event.status || af.status, error: event.error || '' }
+                                    ? { ...af, status: event.status || af.status, error: event.error || '' } as any
                                     : af
                             );
                         } else {
-                            const cfg = currentConfigs.find(c => c.id === event.configId);
+                            const cfg = currentConfigs.find((c: any) => c.id === event.configId);
                             if (cfg && event.status) {
                                 const activeForward = new main.ActivePortForward({
                                     config: cfg,
@@ -144,14 +144,14 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
                 });
                 break;
             case 'stopped':
-                setActiveForwards(prev => prev.filter(af => af.config?.id !== event.configId));
+                setActiveForwards(prev => prev.filter((af: any) => af.config?.id !== event.configId));
                 break;
         }
     }, []);
 
     // Subscribe to global event system
     useEffect(() => {
-        if (!window.runtime || !isVisible) return;
+        if (!(window as any).runtime || !isVisible) return;
 
         // Create wrapper that calls through ref (avoids stale closure)
         const subscriber: PortForwardSubscriber = (event: PortForwardEvent) => {
@@ -166,10 +166,10 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
         if (!globalEventHandler) {
             globalEventHandler = (event: PortForwardEvent) => {
                 console.log('Port forward event:', event);
-                subscribers.forEach(sub => {
+                subscribers.forEach((sub: any) => {
                     try {
                         sub(event);
-                    } catch (err) {
+                    } catch (err: any) {
                         console.error('Error in port forward subscriber:', err);
                     }
                 });
@@ -184,7 +184,7 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
             if (subscribers.size === 0 && globalEventHandler) {
                 try {
                     EventsOff('port-forward-event');
-                } catch (err) {
+                } catch (err: any) {
                     console.error('Error removing port-forward-event listener:', err);
                 }
                 globalEventHandler = null;
@@ -197,7 +197,7 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
         try {
             const result = await AddPortForwardConfig(config);
             return result;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to add port forward config:', err);
             throw err;
         }
@@ -207,7 +207,7 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
     const updateConfig = useCallback(async (config: main.PortForwardConfig): Promise<void> => {
         try {
             await UpdatePortForwardConfig(config);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to update port forward config:', err);
             throw err;
         }
@@ -217,7 +217,7 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
     const deleteConfig = useCallback(async (configId: string): Promise<void> => {
         try {
             await DeletePortForwardConfig(configId);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to delete port forward config:', err);
             throw err;
         }
@@ -227,7 +227,7 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
     const startForward = useCallback(async (configId: string): Promise<void> => {
         try {
             await StartPortForward(configId);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to start port forward:', err);
             throw err;
         }
@@ -237,7 +237,7 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
     const stopForward = useCallback(async (configId: string): Promise<void> => {
         try {
             await StopPortForward(configId);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to stop port forward:', err);
             throw err;
         }
@@ -247,7 +247,7 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
     const getAvailablePort = useCallback(async (preferred: number = 0): Promise<number> => {
         try {
             return await GetAvailablePort(preferred);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to get available port:', err);
             throw err;
         }
@@ -255,18 +255,18 @@ export const usePortForwards = (contextFilter: string = '', isVisible: boolean =
 
     // Check if a config is currently active
     const isActive = useCallback((configId: string): boolean => {
-        return activeForwards.some(af => af.config?.id === configId && af.status === 'running');
+        return activeForwards.some((af: any) => af.config?.id === configId && af.status === 'running');
     }, [activeForwards]);
 
     // Get the status of a config
     const getStatus = useCallback((configId: string): string => {
-        const af = activeForwards.find(af => af.config?.id === configId);
+        const af = activeForwards.find((af: any) => af.config?.id === configId);
         return af?.status || 'stopped';
     }, [activeForwards]);
 
     // Get the error for a config
     const getError = useCallback((configId: string): string => {
-        const af = activeForwards.find(af => af.config?.id === configId);
+        const af = activeForwards.find((af: any) => af.config?.id === configId);
         return af?.error || '';
     }, [activeForwards]);
 

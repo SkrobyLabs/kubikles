@@ -11,9 +11,9 @@ export const roleFields = {
     ...commonFields,
 
     rules: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const rules = item.rules || [];
-            return rules.map(r => {
+            return rules.map((r: any) => {
                 const verbs = (r.verbs || []).join(',');
                 const resources = (r.resources || []).join(',');
                 const apiGroups = (r.apiGroups || ['']).join(',');
@@ -24,35 +24,35 @@ export const roleFields = {
     },
 
     rulecount: {
-        extractor: (item) => String((item.rules || []).length),
+        extractor: (item: any) => String((item.rules || []).length),
         aliases: ['rulescount', 'numrules']
     },
 
     verbs: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const rules = item.rules || [];
-            const allVerbs = new Set();
-            rules.forEach(r => (r.verbs || []).forEach(v => allVerbs.add(v)));
+            const allVerbs = new Set<any>();
+            rules.forEach((r: any) => (r.verbs || []).forEach((v: any) => allVerbs.add(v)));
             return Array.from(allVerbs).join(' ');
         },
         aliases: ['verb']
     },
 
     resources: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const rules = item.rules || [];
-            const allResources = new Set();
-            rules.forEach(r => (r.resources || []).forEach(res => allResources.add(res)));
+            const allResources = new Set<any>();
+            rules.forEach((r: any) => (r.resources || []).forEach((res: any) => allResources.add(res)));
             return Array.from(allResources).join(' ');
         },
         aliases: ['resource']
     },
 
     apigroups: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const rules = item.rules || [];
-            const allGroups = new Set();
-            rules.forEach(r => (r.apiGroups || []).forEach(g => allGroups.add(g || 'core')));
+            const allGroups = new Set<any>();
+            rules.forEach((r: any) => (r.apiGroups || []).forEach((g: any) => allGroups.add(g || 'core')));
             return Array.from(allGroups).join(' ');
         },
         aliases: ['apigroup', 'groups', 'group']

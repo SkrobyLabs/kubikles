@@ -38,10 +38,10 @@ const typeStyles = {
     }
 };
 
-const Toast = memo(function Toast({ notification, onClose }) {
+const Toast = memo(function Toast({ notification, onClose }: { notification: any; onClose: any }) {
     const [copied, setCopied] = useState(false);
     const { type = 'info', title, message } = notification;
-    const styles = typeStyles[type] || typeStyles.info;
+    const styles = (typeStyles as Record<string, any>)[type] || typeStyles.info;
     const Icon = styles.icon;
 
     const handleCopy = useCallback(async () => {
@@ -50,7 +50,7 @@ const Toast = memo(function Toast({ notification, onClose }) {
             await navigator.clipboard.writeText(text);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     }, [title, message]);

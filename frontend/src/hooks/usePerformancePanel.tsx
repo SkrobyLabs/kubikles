@@ -14,7 +14,7 @@ export const usePerformancePanel = (): {
     const [metricsHistory, setMetricsHistory] = useState<main.PerformanceMetrics[]>([]);
     const [isPolling, setIsPolling] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
-    const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const { openTab, bottomTabs, setBottomTabs } = useUI();
     const { getConfig } = useConfig();
     const pollInterval = getConfig('performance.pollIntervalMs') ?? 1500;
@@ -34,7 +34,7 @@ export const usePerformancePanel = (): {
                 }
                 return newHistory;
             });
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to fetch performance metrics:', err);
             setError(err as Error);
         }
@@ -68,7 +68,7 @@ export const usePerformancePanel = (): {
 
     // Update tab content when metrics change
     useEffect((): void => {
-        setBottomTabs(prev => prev.map(tab => {
+        setBottomTabs(prev => prev.map((tab: any) => {
             if (tab.id === 'performance-panel') {
                 return {
                     ...tab,
@@ -90,7 +90,7 @@ export const usePerformancePanel = (): {
     // Open performance panel
     const openPerformancePanel = useCallback((): void => {
         const tabId = 'performance-panel';
-        const existingTab = bottomTabs.find(t => t.id === tabId);
+        const existingTab = bottomTabs.find((t: any) => t.id === tabId);
 
         if (!existingTab) {
             startPolling();
@@ -119,7 +119,7 @@ export const usePerformancePanel = (): {
 
     // Stop polling when tab is closed
     useEffect(() => {
-        const hasTab = bottomTabs.some(t => t.id === 'performance-panel');
+        const hasTab = bottomTabs.some((t: any) => t.id === 'performance-panel');
         if (!hasTab && isPolling) {
             stopPolling();
         }

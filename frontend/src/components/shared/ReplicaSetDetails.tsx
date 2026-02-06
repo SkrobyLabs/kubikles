@@ -14,12 +14,12 @@ import { useResourceWatcher } from '~/hooks/useResourceWatcher';
 const TAB_BASIC = 'basic';
 const TAB_METRICS = 'metrics';
 
-export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabContext = '' }) {
+export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabContext = '' }: { replicaSet: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
     const { addNotification } = useNotification();
     const activeTab = getDetailTab('replicaset', TAB_BASIC);
-    const setActiveTab = (tab) => setDetailTab('replicaset', tab);
+    const setActiveTab = (tab: string) => setDetailTab('replicaset', tab);
     const [showScaleModal, setShowScaleModal] = useState(false);
     const [optimisticReplicas, setOptimisticReplicas] = useState<number | null>(null);
 
@@ -68,7 +68,7 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
     const fullyLabeledReplicas = status.fullyLabeledReplicas ?? 0;
 
     const selector = spec.selector?.matchLabels || {};
-    const controller = ownerReferences.find(ref => ref.controller);
+    const controller = ownerReferences.find((ref: any) => ref.controller);
 
     const handleEditYaml = () => {
         const tabId = `yaml-replicaset-${replicaSet.metadata.uid}`;
@@ -119,7 +119,7 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
                 type: 'success',
                 message: `Scaled ${name} to ${newReplicas} replica${newReplicas !== 1 ? 's' : ''}`
             });
-        } catch (error) {
+        } catch (error: any) {
             addNotification({
                 type: 'error',
                 message: `Failed to scale ${name}: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -130,7 +130,7 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
 
     const handleViewController = () => {
         if (controller) {
-            const kindToView = {
+            const kindToView: Record<string, string> = {
                 'Deployment': 'deployments',
             };
             const viewName = kindToView[controller.kind];
@@ -193,7 +193,7 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -214,7 +214,7 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
                     namespace={namespace}
                     name={name}
                     controllerType="replicaset"
-                    isStale={isStale}
+                    isStale={!!isStale}
                 />
             ) : (
             <div className="h-full overflow-auto p-4">

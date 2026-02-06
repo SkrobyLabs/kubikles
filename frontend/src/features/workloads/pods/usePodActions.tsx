@@ -35,7 +35,7 @@ export interface PodActionsReturn {
     handleDelete: (namespace: string, name: string, isTerminating?: boolean) => void;
 }
 
-export const usePodActions = (): PodActionsReturn => {
+export const usePodActions = (): any => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();
@@ -73,7 +73,7 @@ export const usePodActions = (): PodActionsReturn => {
 
         // Add init containers
         for (const spec of (pod.spec?.initContainers || [])) {
-            const status = initStatuses.find(s => s.name === spec.name);
+            const status = initStatuses.find((s: any) => s.name === spec.name);
             if (status?.state?.running || status?.state?.waiting) {
                 containers.push({ name: spec.name, status, isInit: true });
             }
@@ -81,7 +81,7 @@ export const usePodActions = (): PodActionsReturn => {
 
         // Add regular containers
         for (const spec of (pod.spec?.containers || [])) {
-            const status = containerStatuses.find(s => s.name === spec.name);
+            const status = containerStatuses.find((s: any) => s.name === spec.name);
             if (status?.state?.running || status?.state?.waiting) {
                 containers.push({ name: spec.name, status, isInit: false });
             }
@@ -232,7 +232,7 @@ export const usePodActions = (): PodActionsReturn => {
                     }
                     Logger.info(`Pod ${actionType.toLowerCase()}d successfully`, { namespace, name });
                     closeModal();
-                } catch (err) {
+                } catch (err: any) {
                     Logger.error(`Failed to ${actionType.toLowerCase()} pod`, err);
                     addNotification({ type: 'error', title: `Failed to ${actionType.toLowerCase()} pod`, message: String(err) });
                 }

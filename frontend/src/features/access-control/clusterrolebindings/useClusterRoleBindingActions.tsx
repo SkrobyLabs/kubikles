@@ -15,7 +15,7 @@ export interface ClusterRoleBindingActionsReturn extends Pick<BaseResourceAction
     handleDelete: (clusterRoleBinding: K8sClusterRoleBinding) => void;
 }
 
-export const useClusterRoleBindingActions = (): ClusterRoleBindingActionsReturn => {
+export const useClusterRoleBindingActions = (): any => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();

@@ -1,8 +1,8 @@
 import React from 'react';
 import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
-export default function NumberField({ label, description, value, onChange, isModified, min, max, step = 1, unit }) {
-    const handleInputChange = (e) => {
+export default function NumberField({ label, description, value, onChange, isModified, min, max, step = 1, unit }: any) {
+    const handleInputChange = (e: any) => {
         const val = e.target.value === '' ? min || 0 : parseFloat(e.target.value);
         if (!isNaN(val)) {
             onChange(Math.min(max ?? val, Math.max(min ?? val, val)));

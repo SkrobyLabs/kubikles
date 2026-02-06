@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function TextField({ label, description, value, onChange, isModified, placeholder }) {
+export default function TextField({ label, description, value, onChange, isModified, placeholder }: any) {
     return (
         <div className="py-2">
             <div className="text-sm font-medium text-text mb-1">
@@ -13,7 +13,7 @@ export default function TextField({ label, description, value, onChange, isModif
             <input
                 type="text"
                 value={value ?? ''}
-                onChange={(e) => onChange(e.target.value)}
+                onChange={(e: any) => onChange(e.target.value)}
                 placeholder={placeholder}
                 className="w-64 px-2 py-1.5 text-sm bg-surface border border-border rounded text-text focus:outline-none focus:border-primary"
             />

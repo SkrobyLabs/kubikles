@@ -71,7 +71,7 @@ export const useHelmReleases = (
 
             const list = await ListHelmReleases(namespacesToQuery);
             setReleases(list || []);
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to fetch Helm releases", err);
             setError(err as Error);
             setReleases([]);
@@ -89,7 +89,7 @@ export const useHelmReleases = (
     const getRelease = useCallback(async (namespace: string, name: string): Promise<K8sHelmRelease> => {
         try {
             return await GetHelmRelease(namespace, name);
-        } catch (err) {
+        } catch (err: any) {
             console.error(`Failed to get Helm release ${namespace}/${name}`, err);
             throw err;
         }
@@ -99,7 +99,7 @@ export const useHelmReleases = (
     const getValues = useCallback(async (namespace: string, name: string): Promise<string> => {
         try {
             return await GetHelmReleaseValues(namespace, name);
-        } catch (err) {
+        } catch (err: any) {
             console.error(`Failed to get values for ${namespace}/${name}`, err);
             throw err;
         }
@@ -109,7 +109,7 @@ export const useHelmReleases = (
     const getAllValues = useCallback(async (namespace: string, name: string): Promise<string> => {
         try {
             return await GetHelmReleaseAllValues(namespace, name);
-        } catch (err) {
+        } catch (err: any) {
             console.error(`Failed to get all values for ${namespace}/${name}`, err);
             throw err;
         }
@@ -119,7 +119,7 @@ export const useHelmReleases = (
     const getHistory = useCallback(async (namespace: string, name: string): Promise<HelmReleaseHistory[]> => {
         try {
             return await GetHelmReleaseHistory(namespace, name);
-        } catch (err) {
+        } catch (err: any) {
             console.error(`Failed to get history for ${namespace}/${name}`, err);
             throw err;
         }
@@ -131,7 +131,7 @@ export const useHelmReleases = (
             await UninstallHelmRelease(namespace, name);
             // Refresh list after uninstall
             await fetchReleases();
-        } catch (err) {
+        } catch (err: any) {
             console.error(`Failed to uninstall ${namespace}/${name}`, err);
             throw err;
         }
@@ -143,7 +143,7 @@ export const useHelmReleases = (
             await RollbackHelmRelease(namespace, name, revision);
             // Refresh list after rollback
             await fetchReleases();
-        } catch (err) {
+        } catch (err: any) {
             console.error(`Failed to rollback ${namespace}/${name} to revision ${revision}`, err);
             throw err;
         }

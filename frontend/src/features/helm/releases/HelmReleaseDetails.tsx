@@ -12,7 +12,7 @@ const TAB_HISTORY = 'history';
 const TAB_VALUES = 'values';
 const TAB_EVENTS = 'events';
 
-export default function HelmReleaseDetails({ release, tabContext = '', initialTab = TAB_BASIC }) {
+export default function HelmReleaseDetails({ release, tabContext = '', initialTab = TAB_BASIC }: any) {
     const { currentContext } = useK8s();
     const { handleRollback, handleUninstall } = useHelmReleaseActions();
     const [refreshing, setRefreshing] = useState(false);

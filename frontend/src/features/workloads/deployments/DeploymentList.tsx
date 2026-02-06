@@ -64,7 +64,7 @@ export default function DeploymentList({ isVisible }: DeploymentListProps) {
             if (!selector) continue;
 
             const deploymentKey = `${deployment.metadata?.namespace}/${deployment.metadata?.name}`;
-            const matchingPods = allPods.filter(pod => {
+            const matchingPods = allPods.filter((pod: any) => {
                 if (pod.metadata.namespace !== deployment.metadata.namespace) return false;
                 for (const [key, value] of Object.entries(selector)) {
                     if (pod.metadata.labels?.[key] !== value) return false;
@@ -98,7 +98,7 @@ export default function DeploymentList({ isVisible }: DeploymentListProps) {
                     if (count === 0) return null;
                     return (
                         <div className="flex gap-1">
-                            {Array.from({ length: Math.min(count, 5) }).map((_, i) => (
+                            {Array.from({ length: Math.min(count, 5) }).map((_: any, i: number) => (
                                 <div
                                     key={i}
                                     className="w-3 h-3 rounded-sm bg-gray-700 animate-pulse"
@@ -166,7 +166,7 @@ export default function DeploymentList({ isVisible }: DeploymentListProps) {
                 const containers = item.spec?.template?.spec?.containers || [];
                 if (containers.length === 0) return '-';
                 if (containers.length === 1) return <span title={containers[0].image}>{containers[0].image?.split('/').pop()}</span>;
-                return <span title={containers.map(c => c.image).join('\n')}>{containers.length} images</span>;
+                return <span title={containers.map((c: any) => c.image).join('\n')}>{containers.length} images</span>;
             },
             getValue: (item: K8sDeployment) => item.spec?.template?.spec?.containers?.[0]?.image || '',
         },
@@ -191,7 +191,7 @@ export default function DeploymentList({ isVisible }: DeploymentListProps) {
                     deployment={item}
                     isOpen={activeMenuId === `deployment-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `deployment-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `deployment-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies?.(item)}
                     onRestart={() => openBulkRestart?.([item])}
@@ -230,11 +230,11 @@ export default function DeploymentList({ isVisible }: DeploymentListProps) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel={bulkActionModal.action === 'delete' ? 'Delete' : 'Restart'}
                 items={bulkActionModal.items as any}
                 onConfirm={confirmBulkAction as any}
-                onExportYaml={bulkActionModal.action === 'delete' ? exportYaml : null}
+                onExportYaml={bulkActionModal.action === 'delete' ? exportYaml : undefined}
                 progress={bulkProgress as any}
             />
         </>

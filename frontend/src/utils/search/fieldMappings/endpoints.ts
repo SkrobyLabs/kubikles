@@ -10,15 +10,15 @@ export const endpointsFields = {
     ...commonFields,
 
     subsets: {
-        extractor: (item) => String(item.subsets?.length || 0),
+        extractor: (item: any) => String(item.subsets?.length || 0),
         aliases: ['subsetcount']
     },
 
     addresses: {
-        extractor: (item) => {
-            const addresses = [];
-            (item.subsets || []).forEach(subset => {
-                (subset.addresses || []).forEach(addr => addresses.push(addr.ip));
+        extractor: (item: any) => {
+            const addresses: string[] = [];
+            (item.subsets || []).forEach((subset: any) => {
+                (subset.addresses || []).forEach((addr: any) => addresses.push(addr.ip));
             });
             return addresses.join(' ');
         },
@@ -26,9 +26,9 @@ export const endpointsFields = {
     },
 
     ready: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             let count = 0;
-            (item.subsets || []).forEach(subset => {
+            (item.subsets || []).forEach((subset: any) => {
                 count += (subset.addresses || []).length;
             });
             return String(count);
@@ -37,9 +37,9 @@ export const endpointsFields = {
     },
 
     notready: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             let count = 0;
-            (item.subsets || []).forEach(subset => {
+            (item.subsets || []).forEach((subset: any) => {
                 count += (subset.notReadyAddresses || []).length;
             });
             return String(count);
@@ -48,10 +48,10 @@ export const endpointsFields = {
     },
 
     ports: {
-        extractor: (item) => {
-            const ports = new Set();
-            (item.subsets || []).forEach(subset => {
-                (subset.ports || []).forEach(port => {
+        extractor: (item: any) => {
+            const ports = new Set<any>();
+            (item.subsets || []).forEach((subset: any) => {
+                (subset.ports || []).forEach((port: any) => {
                     ports.add(`${port.port}/${port.protocol || 'TCP'}`);
                 });
             });
@@ -61,10 +61,10 @@ export const endpointsFields = {
     },
 
     targetref: {
-        extractor: (item) => {
-            const refs = [];
-            (item.subsets || []).forEach(subset => {
-                (subset.addresses || []).forEach(addr => {
+        extractor: (item: any) => {
+            const refs: string[] = [];
+            (item.subsets || []).forEach((subset: any) => {
+                (subset.addresses || []).forEach((addr: any) => {
                     if (addr.targetRef) {
                         refs.push(`${addr.targetRef.kind}/${addr.targetRef.name}`);
                     }

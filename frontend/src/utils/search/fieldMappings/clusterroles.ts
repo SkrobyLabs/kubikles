@@ -12,9 +12,9 @@ export const clusterRoleFields = {
     ...roleFields,
 
     aggregation: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const rules = item.aggregationRule?.clusterRoleSelectors || [];
-            return rules.map(r => {
+            return rules.map((r: any) => {
                 const matchLabels = r.matchLabels || {};
                 return Object.entries(matchLabels).map(([k, v]) => `${k}=${v}`).join(',');
             }).join(' ');

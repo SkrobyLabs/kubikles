@@ -7,7 +7,7 @@ import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadg
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 import { GetStorageClass, ResizePVC } from 'wailsjs/go/main/App';
 
-export default function PVCDetails({ pvc, tabContext = '' }) {
+export default function PVCDetails({ pvc, tabContext = '' }: { pvc: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch } = useUI();
 
@@ -30,10 +30,10 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
     const conditions = status.conditions || [];
 
     // Resize functionality state
-    const [allowVolumeExpansion, setAllowVolumeExpansion] = useState(null); // null = loading, true/false = result
+    const [allowVolumeExpansion, setAllowVolumeExpansion] = useState<boolean | null>(null); // null = loading, true/false = result
     const [showResizeDialog, setShowResizeDialog] = useState(false);
     const [newSize, setNewSize] = useState('');
-    const [resizeError, setResizeError] = useState(null);
+    const [resizeError, setResizeError] = useState<string | null>(null);
     const [resizing, setResizing] = useState(false);
     // Track displayed requested storage for optimistic updates after resize
     const [displayedRequestedStorage, setDisplayedRequestedStorage] = useState(requestedStorageFromSpec);
@@ -47,10 +47,10 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
     useEffect(() => {
         if (storageClassName && !isStale) {
             GetStorageClass(storageClassName)
-                .then((sc) => {
+                .then((sc: any) => {
                     setAllowVolumeExpansion(sc?.allowVolumeExpansion || false);
                 })
-                .catch((err) => {
+                .catch((err: any) => {
                     console.error('Failed to fetch storage class:', err);
                     setAllowVolumeExpansion(false);
                 });
@@ -80,8 +80,8 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
             // Optimistic update - show the new size immediately
             setDisplayedRequestedStorage(newSize.trim());
             setShowResizeDialog(false);
-        } catch (err) {
-            setResizeError(err.message || String(err));
+        } catch (err: any) {
+            setResizeError((err as any).message || String(err));
         } finally {
             setResizing(false);
         }
@@ -135,7 +135,7 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
         }
     };
 
-    const getAccessModeColor = (mode) => {
+    const getAccessModeColor = (mode: any) => {
         switch (mode) {
             case 'ReadWriteOnce': return 'bg-blue-500/20 text-blue-400';
             case 'ReadOnlyMany': return 'bg-yellow-500/20 text-yellow-400';
@@ -160,7 +160,7 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -198,7 +198,7 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
                                 <input
                                     type="text"
                                     value={newSize}
-                                    onChange={(e) => setNewSize(e.target.value)}
+                                    onChange={(e: any) => setNewSize(e.target.value)}
                                     placeholder="e.g., 20Gi, 100Gi"
                                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                                 />
@@ -274,7 +274,7 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
                 <DetailSection title="Access Modes">
                     {accessModes.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
-                            {accessModes.map((mode, idx) => (
+                            {accessModes.map((mode: any, idx: number) => (
                                 <span
                                     key={idx}
                                     className={`px-2 py-1 text-xs rounded ${getAccessModeColor(mode)}`}
@@ -304,7 +304,7 @@ export default function PVCDetails({ pvc, tabContext = '' }) {
                 {conditions.length > 0 && (
                     <DetailSection title="Conditions">
                         <div className="space-y-2">
-                            {conditions.map((condition, idx) => (
+                            {conditions.map((condition: any, idx: number) => (
                                 <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                                     <div className="flex items-center gap-2">
                                         <StatusBadge

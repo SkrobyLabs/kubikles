@@ -11,28 +11,28 @@ export const serviceAccountFields = {
     ...commonFields,
 
     secrets: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const secrets = item.secrets || [];
-            return secrets.map(s => s.name).join(' ');
+            return secrets.map((s: any) => s.name).join(' ');
         },
         aliases: ['secret']
     },
 
     secretcount: {
-        extractor: (item) => String((item.secrets || []).length),
+        extractor: (item: any) => String((item.secrets || []).length),
         aliases: ['secretscount', 'numsecrets']
     },
 
     imagepullsecrets: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const secrets = item.imagePullSecrets || [];
-            return secrets.map(s => s.name).join(' ');
+            return secrets.map((s: any) => s.name).join(' ');
         },
         aliases: ['pullsecrets', 'imagepull']
     },
 
     automount: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const val = item.automountServiceAccountToken;
             return val === undefined ? 'true' : String(val);
         },

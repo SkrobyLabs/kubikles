@@ -14,11 +14,11 @@ import { useBulkActions } from '~/hooks/useBulkActions';
 import { ForceHelmReleaseStatus, UninstallHelmRelease, GetHelmReleaseValues } from 'wailsjs/go/main/App';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-const formatAge = (timestamp) => {
+const formatAge = (timestamp: any) => {
     if (!timestamp) return '-';
     const date = new Date(timestamp);
     const now = new Date();
-    const diff = now - date;
+    const diff = now.getTime() - date.getTime();
 
     const seconds = Math.floor(diff / 1000);
     if (seconds < 60) return `${seconds}s`;
@@ -33,7 +33,7 @@ const formatAge = (timestamp) => {
     return `${days}d`;
 };
 
-const getStatusIcon = (status) => {
+const getStatusIcon = (status: any) => {
     const statusLower = status?.toLowerCase() || '';
     if (statusLower === 'deployed') {
         return <CheckCircleIcon className="h-4 w-4 text-green-400" />;
@@ -47,7 +47,7 @@ const getStatusIcon = (status) => {
     return null;
 };
 
-const getStatusClass = (status) => {
+const getStatusClass = (status: any) => {
     const statusLower = status?.toLowerCase() || '';
     if (statusLower === 'deployed') return 'text-green-400';
     if (statusLower === 'failed') return 'text-red-400';
@@ -55,15 +55,15 @@ const getStatusClass = (status) => {
     return 'text-gray-400';
 };
 
-export default function HelmReleaseList({ isVisible }) {
+export default function HelmReleaseList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { openModal, closeModal } = useUI();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { addNotification } = useNotification();
-    const [upgradeRelease, setUpgradeRelease] = useState(null);
+    const [upgradeRelease, setUpgradeRelease] = useState<any>(null);
     const selection = useSelection();
 
-    const { releases, loading, refresh } = useHelmReleases(currentContext, selectedNamespaces, isVisible);
+    const { releases, loading, refresh } = useHelmReleases(currentContext, selectedNamespaces, isVisible) as any;
     const {
         handleOpenDetails,
         handleViewValues,
@@ -73,12 +73,12 @@ export default function HelmReleaseList({ isVisible }) {
     } = useHelmReleaseActions();
 
     // Wrapper for UninstallHelmRelease to match useBulkActions API signature (context, namespace, name)
-    const uninstallApi = useCallback(async (_context, namespace, name) => {
+    const uninstallApi = useCallback(async (_context: any, namespace: any, name: any) => {
         return UninstallHelmRelease(namespace, name);
     }, []);
 
     // Custom export for Helm releases - includes chart info in YAML header
-    const handleExportYaml = useCallback(async (items, { onProgress, signal } = {}) => {
+    const handleExportYaml = useCallback(async (items: any[], { onProgress, signal }: any = {}) => {
         const { SaveYamlBackup } = await import('../../../../wailsjs/go/main/App');
         const entries = [];
         for (let i = 0; i < items.length; i++) {
@@ -89,14 +89,14 @@ export default function HelmReleaseList({ isVisible }) {
             try {
                 const values = await GetHelmReleaseValues(namespace, name);
                 entries.push({ namespace, name, kind: 'HelmRelease', yaml: `# Helm Release: ${name}\n# Chart: ${item.chart}-${item.chartVersion}\n# Values:\n${values}` });
-            } catch (err) {
+            } catch (err: any) {
                 entries.push({ namespace, name, kind: 'HelmRelease', yaml: `# Failed: ${err}` });
             }
             onProgress?.(i + 1, items.length);
         }
         if (entries.length === 0) return;
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        try { await SaveYamlBackup(entries, `helmreleases-backup-${timestamp}.zip`); } catch (err) { if (err?.toString()) addNotification({ type: 'error', title: 'Failed to save backup', message: String(err) }); }
+        try { await SaveYamlBackup(entries, `helmreleases-backup-${timestamp}.zip`); } catch (err: any) { if (err?.toString()) addNotification({ type: 'error', title: 'Failed to save backup', message: String(err) }); }
     }, []);
 
     const {
@@ -109,7 +109,7 @@ export default function HelmReleaseList({ isVisible }) {
         resourceLabel: 'Helm Release',
         resourceType: 'helmreleases',
         isNamespaced: true,
-        deleteApi: uninstallApi,
+        deleteApi: uninstallApi as any,
         getYamlApi: GetHelmReleaseValues,
 
     });
@@ -120,11 +120,11 @@ export default function HelmReleaseList({ isVisible }) {
         refresh();
     }, [closeBulkActionBase, refresh]);
 
-    const handleUpgrade = useCallback((release) => {
+    const handleUpgrade = useCallback((release: any) => {
         setUpgradeRelease(release);
     }, []);
 
-    const handleForceStatus = useCallback((release) => {
+    const handleForceStatus = useCallback((release: any) => {
         openModal({
             title: `Force Status: ${release.name}`,
             content: `Force release "${release.name}" status to "deployed"? This will mark the release as successfully deployed without making any changes to the actual resources.`,
@@ -152,7 +152,7 @@ export default function HelmReleaseList({ isVisible }) {
                         });
                         refresh();
                     })
-                    .catch((err) => {
+                    .catch((err: any) => {
                         addNotification({
                             type: 'error',
                             title: 'Failed to update status',
@@ -168,7 +168,7 @@ export default function HelmReleaseList({ isVisible }) {
         refresh();
     }, [refresh]);
 
-    const handleRowClick = useCallback((item) => {
+    const handleRowClick = useCallback((item: any) => {
         handleOpenDetails(item);
     }, [handleOpenDetails]);
 
@@ -176,66 +176,66 @@ export default function HelmReleaseList({ isVisible }) {
         {
             key: 'name',
             label: 'Name',
-            render: (item) => item.name,
-            getValue: (item) => item.name,
+            render: (item: any) => item.name,
+            getValue: (item: any) => item.name,
             initialSort: 'asc'
         },
         {
             key: 'namespace',
             label: 'Namespace',
-            render: (item) => item.namespace,
-            getValue: (item) => item.namespace
+            render: (item: any) => item.namespace,
+            getValue: (item: any) => item.namespace
         },
         {
             key: 'revision',
             label: 'Rev',
-            render: (item) => item.revision,
-            getValue: (item) => item.revision
+            render: (item: any) => item.revision,
+            getValue: (item: any) => item.revision
         },
         {
             key: 'status',
             label: 'Status',
-            render: (item) => (
+            render: (item: any) => (
                 <div className="flex items-center gap-1.5">
                     {getStatusIcon(item.status)}
                     <span className={getStatusClass(item.status)}>{item.status}</span>
                 </div>
             ),
-            getValue: (item) => item.status
+            getValue: (item: any) => item.status
         },
         {
             key: 'chart',
             label: 'Chart',
-            render: (item) => (
+            render: (item: any) => (
                 <span className="font-mono text-xs">
                     {item.chart}
                     {item.chartVersion && <span className="text-gray-500">-{item.chartVersion}</span>}
                 </span>
             ),
-            getValue: (item) => `${item.chart}-${item.chartVersion || ''}`
+            getValue: (item: any) => `${item.chart}-${item.chartVersion || ''}`
         },
         {
             key: 'appVersion',
             label: 'App Version',
-            render: (item) => item.appVersion || '-',
-            getValue: (item) => item.appVersion || ''
+            render: (item: any) => item.appVersion || '-',
+            getValue: (item: any) => item.appVersion || ''
         },
         {
             key: 'updated',
             label: 'Updated',
-            render: (item) => formatAge(item.updated),
-            getValue: (item) => item.updated
+            render: (item: any) => formatAge(item.updated),
+            getValue: (item: any) => item.updated
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <HelmReleaseActionsMenu
                     release={item}
                     isOpen={activeMenuId === `helm-${item.namespace}-${item.name}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `helm-${item.namespace}-${item.name}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `helm-${item.namespace}-${item.name}`, buttonElement)}
                     onViewDetails={() => handleOpenDetails(item)}
                     onViewValues={() => handleViewValues(item)}
                     onViewHistory={() => handleViewHistory(item)}
@@ -252,7 +252,7 @@ export default function HelmReleaseList({ isVisible }) {
 
     // Generate a unique ID for each release since Helm releases don't have UIDs
     const dataWithIds = useMemo(() => {
-        return releases.map(r => ({
+        return releases.map((r: any) => ({
             ...r,
             metadata: {
                 uid: `${r.namespace}-${r.name}`,
@@ -283,7 +283,7 @@ export default function HelmReleaseList({ isVisible }) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Uninstall" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={handleExportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Uninstall" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={handleExportYaml} progress={bulkProgress} />
 
             {upgradeRelease && (
                 <HelmUpgradeDialog

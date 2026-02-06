@@ -103,8 +103,8 @@ const applyThemeColors = (theme: Theme | null): void => {
 // Apply font CSS variables
 const applyFonts = (uiFontId: string, monoFontId: string): void => {
     const root = document.documentElement;
-    const uiFont = UI_FONTS.find(f => f.id === uiFontId) || UI_FONTS[0];
-    const monoFont = MONO_FONTS.find(f => f.id === monoFontId) || MONO_FONTS[0];
+    const uiFont = UI_FONTS.find((f: any) => f.id === uiFontId) || UI_FONTS[0];
+    const monoFont = MONO_FONTS.find((f: any) => f.id === monoFontId) || MONO_FONTS[0];
 
     root.style.setProperty('--font-ui', uiFont.family);
     root.style.setProperty('--font-mono', monoFont.family);
@@ -117,7 +117,7 @@ const loadFontPreferences = (): FontPreferences => {
         if (saved) {
             return JSON.parse(saved) as FontPreferences;
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error('Failed to load font preferences:', e);
     }
     return { ui: 'inter', mono: 'jetbrains' };
@@ -127,7 +127,7 @@ const loadFontPreferences = (): FontPreferences => {
 const saveFontPreferences = (ui: string, mono: string): void => {
     try {
         localStorage.setItem(FONT_STORAGE_KEY, JSON.stringify({ ui, mono }));
-    } catch (e) {
+    } catch (e: any) {
         console.error('Failed to save font preferences:', e);
     }
 };
@@ -164,7 +164,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 if (themeList) {
                     setThemes(themeList);
                 }
-            } catch (err) {
+            } catch (err: any) {
                 console.error('Failed to load theme:', err);
             } finally {
                 setLoading(false);
@@ -195,11 +195,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, []);
 
     // Switch theme programmatically
-    const switchTheme = useCallback(async (themeId) => {
+    const switchTheme = useCallback(async (themeId: string) => {
         try {
             await SetTheme(themeId);
             // Theme will be applied via the event listener
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to switch theme:', err);
         }
     }, []);
@@ -211,20 +211,20 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             if (themeList) {
                 setThemes(themeList);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to refresh themes:', err);
         }
     }, []);
 
     // Set UI font
-    const setUiFont = useCallback((fontId) => {
+    const setUiFont = useCallback((fontId: string) => {
         setUiFontState(fontId);
         applyFonts(fontId, monoFont);
         saveFontPreferences(fontId, monoFont);
     }, [monoFont]);
 
     // Set monospace font
-    const setMonoFont = useCallback((fontId) => {
+    const setMonoFont = useCallback((fontId: string) => {
         setMonoFontState(fontId);
         applyFonts(uiFont, fontId);
         saveFontPreferences(uiFont, fontId);

@@ -70,13 +70,13 @@ export default function NotificationSettingsMenu({
     selectedSound,
     onSoundChange,
     onPreviewSound,
-}) {
-    const menuRef = useRef(null);
+}: any) {
+    const menuRef = useRef<any>(null);
 
     // Close on outside click (with delay to avoid catching the opening click)
     useEffect(() => {
         if (!isOpen) return;
-        const handleClick = (e) => {
+        const handleClick = (e: any) => {
             if (menuRef.current && !menuRef.current.contains(e.target)) {
                 onClose();
             }
@@ -94,7 +94,7 @@ export default function NotificationSettingsMenu({
     // Close on Escape
     useEffect(() => {
         if (!isOpen) return;
-        const handleKeyDown = (e) => {
+        const handleKeyDown = (e: any) => {
             if (e.key === 'Escape') onClose();
         };
         document.addEventListener('keydown', handleKeyDown);
@@ -130,7 +130,7 @@ export default function NotificationSettingsMenu({
                         max="60"
                         step="1"
                         value={throttleSeconds}
-                        onChange={(e) => onThrottleChange(Number(e.target.value))}
+                        onChange={(e: any) => onThrottleChange(Number(e.target.value))}
                         className="flex-1 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
                     />
                     <span className="text-sm text-gray-300 w-12 text-right tabular-nums">
@@ -147,7 +147,7 @@ export default function NotificationSettingsMenu({
                 <div className="flex items-center gap-2">
                     <select
                         value={selectedSound}
-                        onChange={(e) => onSoundChange(e.target.value)}
+                        onChange={(e: any) => onSoundChange(e.target.value)}
                         className="flex-1 px-2 py-1.5 bg-background border border-border rounded text-sm text-gray-300 focus:outline-none focus:border-primary cursor-pointer"
                     >
                         {Object.entries(NOTIFICATION_SOUNDS).map(([key, { label }]) => (

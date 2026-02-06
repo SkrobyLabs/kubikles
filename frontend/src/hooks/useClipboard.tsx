@@ -19,7 +19,7 @@ export const useClipboard = (timeout: number = 2000): UseClipboardReturn => {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), timeout);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to copy to clipboard:', error);
       throw error;
     }

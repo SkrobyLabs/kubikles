@@ -19,17 +19,17 @@ import { GetConfigMapData, GetSecretData } from 'wailsjs/go/main/App';
 import { useUI } from '~/context';
 
 // Copy button component
-const CopyButton = ({ value, className = '' }) => {
+const CopyButton = ({ value, className = '' }: { value: string; className?: string }) => {
     const [copied, setCopied] = useState(false);
 
-    const handleCopy = async (e) => {
+    const handleCopy = async (e: any) => {
         e.stopPropagation();
         if (!value) return;
         try {
             await navigator.clipboard.writeText(value);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     };
@@ -50,7 +50,7 @@ const CopyButton = ({ value, className = '' }) => {
 };
 
 // Source badge component
-const SourceBadge = ({ type }) => {
+const SourceBadge = ({ type }: { type: string }) => {
     const badges = {
         value: {
             className: 'bg-gray-500/10 text-gray-400 border-gray-500/30',
@@ -84,7 +84,7 @@ const SourceBadge = ({ type }) => {
         }
     };
 
-    const badge = badges[type] || badges.value;
+    const badge = (badges as Record<string, any>)[type] || badges.value;
     const Icon = badge.icon;
 
     return (
@@ -96,7 +96,7 @@ const SourceBadge = ({ type }) => {
 };
 
 // Get the field value from pod data
-const resolveFieldRef = (pod, fieldPath) => {
+const resolveFieldRef = (pod: any, fieldPath: string) => {
     if (!fieldPath) return null;
 
     const paths = {
@@ -109,12 +109,12 @@ const resolveFieldRef = (pod, fieldPath) => {
         'spec.serviceAccountName': pod.spec?.serviceAccountName,
         'status.hostIP': pod.status?.hostIP,
         'status.podIP': pod.status?.podIP,
-        'status.podIPs': pod.status?.podIPs?.map(ip => ip.ip).join(',')
+        'status.podIPs': pod.status?.podIPs?.map((ip: any) => ip.ip).join(',')
     };
 
     // Direct match
-    if (paths[fieldPath] !== undefined) {
-        return paths[fieldPath];
+    if ((paths as Record<string, any>)[fieldPath] !== undefined) {
+        return (paths as Record<string, any>)[fieldPath];
     }
 
     // Try to resolve nested paths
@@ -143,7 +143,7 @@ const EnvVarItem = ({
     resolvedValues,
     onResolve,
     onNavigate
-}) => {
+}: { envVar: any; pod: any; namespace: string; isStale: boolean; resolvedValues: Record<string, any>; onResolve: (type: string, name: string | null, key: string | null) => Promise<void>; onNavigate: (resource: string, search: string) => void }) => {
     const [revealed, setRevealed] = useState(false);
     const [resolving, setResolving] = useState(false);
 
@@ -352,7 +352,7 @@ const EnvFromItem = ({
     resolvedEnvFrom,
     onResolveEnvFrom,
     onNavigate
-}) => {
+}: { envFrom: any; namespace: string; isStale: boolean; resolvedEnvFrom: Record<string, any>; onResolveEnvFrom: (type: string, name: string | null) => Promise<void>; onNavigate: (resource: string, search: string) => void }) => {
     const [expanded, setExpanded] = useState(false);
     const [resolving, setResolving] = useState(false);
     const [revealed, setRevealed] = useState(false);
@@ -480,7 +480,7 @@ const EnvFromItem = ({
             {/* Expanded entries */}
             {expanded && entries.length > 0 && (
                 <div className="border-t border-border/50 px-3 py-2 bg-surface/50">
-                    {entries.map(({ key, value }) => (
+                    {entries.map(({ key, value }: { key: string; value: string }) => (
                         <div key={key} className="flex items-center gap-2 py-1 border-b border-border/20 last:border-b-0">
                             <code className="font-mono text-xs text-gray-200 shrink-0 max-w-[26rem] truncate" title={prefix + key}>
                                 {prefix}{key}
@@ -510,12 +510,12 @@ export default function EnvVarSection({
     pod,
     namespace,
     isStale = false
-}) {
+}: { env?: any[]; envFrom?: any[]; pod: any; namespace: string; isStale?: boolean }) {
     const { navigateWithSearch } = useUI();
     const [expanded, setExpanded] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [resolvedValues, setResolvedValues] = useState({});
-    const [resolvedEnvFrom, setResolvedEnvFrom] = useState({});
+    const [resolvedValues, setResolvedValues] = useState<Record<string, any>>({});
+    const [resolvedEnvFrom, setResolvedEnvFrom] = useState<Record<string, any>>({});
     const [resolvingAll, setResolvingAll] = useState(false);
 
     const totalCount = env.length + envFrom.length;
@@ -525,14 +525,14 @@ export default function EnvVarSection({
     const filteredEnv = useMemo(() => {
         if (!searchTerm) return env;
         const term = searchTerm.toLowerCase();
-        return env.filter(e =>
+        return env.filter((e: any) =>
             e.name.toLowerCase().includes(term) ||
             e.value?.toLowerCase().includes(term)
         );
     }, [env, searchTerm]);
 
     // Resolve a single ConfigMap/Secret key
-    const handleResolve = useCallback(async (type, name, key) => {
+    const handleResolve = useCallback(async (type: string, name: string | null, key: string | null) => {
         const cacheKey = `${type === 'configMap' ? 'configmap' : 'secret'}:${name}/${key}`;
 
         try {
@@ -543,10 +543,10 @@ export default function EnvVarSection({
                 data = await GetSecretData(namespace, name);
             }
 
-            if (data && key in data) {
+            if (data && key && key in data) {
                 setResolvedValues(prev => ({
                     ...prev,
-                    [cacheKey]: { resolved: true, value: data[key] }
+                    [cacheKey]: { resolved: true, value: data[key as string] }
                 }));
             } else {
                 setResolvedValues(prev => ({
@@ -554,7 +554,7 @@ export default function EnvVarSection({
                     [cacheKey]: { resolved: true, value: null, error: 'Key not found' }
                 }));
             }
-        } catch (err) {
+        } catch (err: any) {
             setResolvedValues(prev => ({
                 ...prev,
                 [cacheKey]: { resolved: true, error: err.message || 'Failed to resolve' }
@@ -563,7 +563,7 @@ export default function EnvVarSection({
     }, [namespace]);
 
     // Resolve envFrom (entire ConfigMap/Secret)
-    const handleResolveEnvFrom = useCallback(async (type, name) => {
+    const handleResolveEnvFrom = useCallback(async (type: string, name: string | null) => {
         const cacheKey = `${type}:${name}`;
 
         try {
@@ -575,7 +575,7 @@ export default function EnvVarSection({
             }
 
             if (data) {
-                const entries = Object.entries(data).map(([key, value]) => ({ key, value }));
+                const entries = Object.entries(data).map(([key, value]: [string, any]) => ({ key, value }));
                 setResolvedEnvFrom(prev => ({
                     ...prev,
                     [cacheKey]: { resolved: true, entries }
@@ -586,7 +586,7 @@ export default function EnvVarSection({
                     [cacheKey]: { resolved: true, entries: [], error: 'Resource not found' }
                 }));
             }
-        } catch (err) {
+        } catch (err: any) {
             setResolvedEnvFrom(prev => ({
                 ...prev,
                 [cacheKey]: { resolved: true, error: err.message || 'Failed to resolve' }
@@ -601,14 +601,14 @@ export default function EnvVarSection({
 
         try {
             // Collect all unique ConfigMaps and Secrets to fetch
-            const toFetch = new Map();
+            const toFetch = new Map<string, any>();
 
             for (const e of env) {
                 if (e.valueFrom?.configMapKeyRef) {
                     const ref = e.valueFrom.configMapKeyRef;
                     const key = `configMap:${ref.name}`;
                     if (!toFetch.has(key)) {
-                        toFetch.set(key, { type: 'configMap', name: ref.name, keys: new Set() });
+                        toFetch.set(key, { type: 'configMap', name: ref.name, keys: new Set<any>() });
                     }
                     toFetch.get(key).keys.add(ref.key);
                 }
@@ -616,7 +616,7 @@ export default function EnvVarSection({
                     const ref = e.valueFrom.secretKeyRef;
                     const key = `secret:${ref.name}`;
                     if (!toFetch.has(key)) {
-                        toFetch.set(key, { type: 'secret', name: ref.name, keys: new Set() });
+                        toFetch.set(key, { type: 'secret', name: ref.name, keys: new Set<any>() });
                     }
                     toFetch.get(key).keys.add(ref.key);
                 }
@@ -626,19 +626,19 @@ export default function EnvVarSection({
                 if (ef.configMapRef) {
                     const key = `configMap:${ef.configMapRef.name}`;
                     if (!toFetch.has(key)) {
-                        toFetch.set(key, { type: 'configMap', name: ef.configMapRef.name, keys: new Set() });
+                        toFetch.set(key, { type: 'configMap', name: ef.configMapRef.name, keys: new Set<any>() });
                     }
                 }
                 if (ef.secretRef) {
                     const key = `secret:${ef.secretRef.name}`;
                     if (!toFetch.has(key)) {
-                        toFetch.set(key, { type: 'secret', name: ef.secretRef.name, keys: new Set() });
+                        toFetch.set(key, { type: 'secret', name: ef.secretRef.name, keys: new Set<any>() });
                     }
                 }
             }
 
             // Fetch all in parallel
-            const promises = Array.from(toFetch.values()).map(async ({ type, name, keys }) => {
+            const promises = Array.from(toFetch.values()).map(async ({ type, name, keys }: any) => {
                 try {
                     let data;
                     if (type === 'configMap') {
@@ -648,7 +648,7 @@ export default function EnvVarSection({
                     }
 
                     // Update resolved values for individual keys
-                    const newResolved = {};
+                    const newResolved: Record<string, any> = {};
                     for (const key of keys) {
                         const cacheKey = `${type === 'configMap' ? 'configmap' : 'secret'}:${name}/${key}`;
                         if (data && key in data) {
@@ -661,21 +661,21 @@ export default function EnvVarSection({
 
                     // Update envFrom resolution
                     if (data) {
-                        const entries = Object.entries(data).map(([key, value]) => ({ key, value }));
+                        const entries = Object.entries(data).map(([key, value]: [string, any]) => ({ key, value }));
                         setResolvedEnvFrom(prev => ({
                             ...prev,
                             [`${type}:${name}`]: { resolved: true, entries }
                         }));
                     }
-                } catch (err) {
+                } catch (err: any) {
                     // Mark all keys from this resource as error
-                    const newResolved = {};
+                    const newResolved: Record<string, any> = {};
                     for (const key of keys) {
                         const cacheKey = `${type === 'configMap' ? 'configmap' : 'secret'}:${name}/${key}`;
                         newResolved[cacheKey] = { resolved: true, error: err.message || 'Failed to resolve' };
                     }
                     setResolvedValues(prev => ({ ...prev, ...newResolved }));
-                    setResolvedEnvFrom(prev => ({
+                    setResolvedEnvFrom((prev: Record<string, any>) => ({
                         ...prev,
                         [`${type}:${name}`]: { resolved: true, error: err.message || 'Failed to resolve' }
                     }));
@@ -709,7 +709,7 @@ export default function EnvVarSection({
 
     // Add resolved status to env vars for rendering
     const enrichedEnv = useMemo(() => {
-        return filteredEnv.map(e => {
+        return filteredEnv.map((e: any) => {
             if (e.valueFrom?.configMapKeyRef) {
                 const ref = e.valueFrom.configMapKeyRef;
                 const resolved = resolvedValues[`configmap:${ref.name}/${ref.key}`];
@@ -747,7 +747,7 @@ export default function EnvVarSection({
                         <input
                             type="text"
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e: any) => setSearchTerm(e.target.value)}
                             placeholder="Filter..."
                             className="pl-7 pr-2 py-1 text-xs bg-surface border border-border rounded w-32 focus:outline-none focus:border-primary"
                             autoComplete="off"
@@ -785,7 +785,7 @@ export default function EnvVarSection({
 
             {/* Env vars list */}
             <div className="space-y-0">
-                {displayEnv.map((e, idx) => (
+                {displayEnv.map((e: any, idx: number) => (
                     <EnvVarItem
                         key={e.name || idx}
                         envVar={e}
@@ -824,7 +824,7 @@ export default function EnvVarSection({
             {envFrom.length > 0 && (
                 <div className="mt-3 space-y-2">
                     <div className="text-xs text-gray-500 mb-2">envFrom:</div>
-                    {envFrom.map((ef, idx) => (
+                    {envFrom.map((ef: any, idx: number) => (
                         <EnvFromItem
                             key={ef.configMapRef?.name || ef.secretRef?.name || idx}
                             envFrom={ef}

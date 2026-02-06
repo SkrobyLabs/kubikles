@@ -7,7 +7,7 @@ export interface ResourceQuotaActionsReturn extends BaseResourceActionsReturn<K8
     handleDelete: (quota: K8sResourceQuota) => void;
 }
 
-export const useResourceQuotaActions = (): ResourceQuotaActionsReturn => {
+export const useResourceQuotaActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -22,7 +22,7 @@ export const useResourceQuotaActions = (): ResourceQuotaActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (quota: K8sResourceQuota): Promise<void> => {
+        async (quota: any): Promise<void> => {
             await DeleteResourceQuota(quota.metadata.namespace, quota.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this ResourceQuota? Resource limits will no longer be enforced.' }

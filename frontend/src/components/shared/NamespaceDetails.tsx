@@ -11,13 +11,13 @@ import NamespaceMetricsTab from './NamespaceMetricsTab';
 const TAB_BASIC = 'basic';
 const TAB_METRICS = 'metrics';
 
-export default function NamespaceDetails({ namespace, tabContext = '' }) {
+export default function NamespaceDetails({ namespace, tabContext = '' }: { namespace: any; tabContext?: string }) {
     const { currentContext } = useK8s();
-    const { openTab, closeTab, navigateWithSearch, setSelectedNamespaces, getDetailTab, setDetailTab } = useUI();
-    const [resourceCounts, setResourceCounts] = useState(null);
+    const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
+    const [resourceCounts, setResourceCounts] = useState<any>(null);
     const [loadingCounts, setLoadingCounts] = useState(true);
     const activeTab = getDetailTab('namespace', TAB_BASIC);
-    const setActiveTab = (tab) => setDetailTab('namespace', tab);
+    const setActiveTab = (tab: string) => setDetailTab('namespace', tab);
 
     // Check if this tab is stale
     const isStale = tabContext && tabContext !== currentContext;
@@ -41,7 +41,7 @@ export default function NamespaceDetails({ namespace, tabContext = '' }) {
             try {
                 const counts = await GetNamespaceResourceCounts(name);
                 setResourceCounts(counts);
-            } catch (err) {
+            } catch (err: any) {
                 console.error('Failed to fetch resource counts:', err);
             } finally {
                 setLoadingCounts(false);
@@ -68,12 +68,11 @@ export default function NamespaceDetails({ namespace, tabContext = '' }) {
         });
     };
 
-    const handleNavigateToResource = (viewName) => {
-        setSelectedNamespaces([name]);
+    const handleNavigateToResource = (viewName: string) => {
         navigateWithSearch(viewName, '');
     };
 
-    const getStatusVariant = (status) => {
+    const getStatusVariant = (status: string) => {
         switch (status) {
             case 'Active': return 'success';
             case 'Terminating': return 'warning';
@@ -150,7 +149,7 @@ export default function NamespaceDetails({ namespace, tabContext = '' }) {
                 return (
                     <NamespaceMetricsTab
                         namespace={namespace}
-                        isStale={isStale}
+                        isStale={!!isStale}
                     />
                 );
             default:
@@ -189,7 +188,7 @@ export default function NamespaceDetails({ namespace, tabContext = '' }) {
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>

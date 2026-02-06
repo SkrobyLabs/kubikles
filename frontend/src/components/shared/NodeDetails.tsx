@@ -10,14 +10,14 @@ import NodeMetricsTab from './NodeMetricsTab';
 const TAB_BASIC = 'basic';
 const TAB_METRICS = 'metrics';
 
-function formatBytes(bytes) {
+function formatBytes(bytes: any) {
     if (!bytes) return 'N/A';
     const num = parseInt(bytes.replace(/Ki$/, '')) * 1024;
     const gb = num / (1024 * 1024 * 1024);
     return `${gb.toFixed(1)} GB`;
 }
 
-function formatCPU(cpu) {
+function formatCPU(cpu: any) {
     if (!cpu) return 'N/A';
     if (cpu.endsWith('m')) {
         return `${(parseInt(cpu) / 1000).toFixed(2)} cores`;
@@ -25,11 +25,11 @@ function formatCPU(cpu) {
     return `${cpu} cores`;
 }
 
-export default function NodeDetails({ node, tabContext = '' }) {
+export default function NodeDetails({ node, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
     const activeTab = getDetailTab('node', TAB_BASIC);
-    const setActiveTab = (tab) => setDetailTab('node', tab);
+    const setActiveTab = (tab: any) => setDetailTab('node', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
 
@@ -72,7 +72,7 @@ export default function NodeDetails({ node, tabContext = '' }) {
         navigateWithSearch('pods', `node:"${name}"`);
     };
 
-    const getConditionVariant = (condition) => {
+    const getConditionVariant = (condition: any) => {
         // For Ready, True is good
         // For others (MemoryPressure, DiskPressure, PIDPressure), False is good
         if (condition.type === 'Ready') {
@@ -81,7 +81,7 @@ export default function NodeDetails({ node, tabContext = '' }) {
         return condition.status === 'False' ? 'success' : 'error';
     };
 
-    const isReady = conditions.find(c => c.type === 'Ready')?.status === 'True';
+    const isReady = conditions.find((c: any) => c.type === 'Ready')?.status === 'True';
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -166,7 +166,7 @@ export default function NodeDetails({ node, tabContext = '' }) {
                 {/* Conditions */}
                 <DetailSection title="Conditions">
                     <div className="space-y-2">
-                        {conditions.map((condition, idx) => (
+                        {conditions.map((condition: any, idx: number) => (
                             <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                                 <div className="flex items-center gap-2">
                                     <StatusBadge status={condition.type} variant={getConditionVariant(condition)} />
@@ -182,7 +182,7 @@ export default function NodeDetails({ node, tabContext = '' }) {
 
                 {/* Addresses */}
                 <DetailSection title="Addresses">
-                    {addresses.map((addr, idx) => (
+                    {addresses.map((addr: any, idx: number) => (
                         <DetailRow key={idx} label={addr.type}>
                             <CopyableLabel value={addr.address} />
                         </DetailRow>
@@ -203,7 +203,7 @@ export default function NodeDetails({ node, tabContext = '' }) {
                 {taints.length > 0 && (
                     <DetailSection title="Taints">
                         <div className="space-y-1.5">
-                            {taints.map((taint, idx) => (
+                            {taints.map((taint: any, idx: number) => (
                                 <div key={idx} className="flex items-center gap-2">
                                     <CopyableLabel
                                         value={`${taint.key}=${taint.value || ''}:${taint.effect}`}

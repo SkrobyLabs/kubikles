@@ -15,7 +15,7 @@ import { useDebugLogs } from '~/hooks/useDebugLogs';
  * Allows searching and navigating to any resource view including CRDs
  * Also supports actions like "Create Resource"
  */
-export default function CommandPalette({ isOpen, onClose, onCreateResource, onToggleAI }) {
+export default function CommandPalette({ isOpen, onClose, onCreateResource, onToggleAI }: any) {
     const { setActiveView } = useUI();
     const { openConfigEditor } = useConfig();
     const { openPerformancePanel } = usePerformancePanel();
@@ -45,8 +45,8 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource, onTo
     }, [navigationItems, onCreateResource]);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const inputRef = useRef(null);
-    const listRef = useRef(null);
+    const inputRef = useRef<any>(null);
+    const listRef = useRef<any>(null);
 
     // Filter items based on query
     const filteredItems = useMemo(() => {
@@ -58,7 +58,7 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource, onTo
 
         // Filter and score items
         const scored = items
-            .map(item => {
+            .map((item: any) => {
                 const labelLower = item.label.toLowerCase();
                 const pathLower = item.path.toLowerCase();
 
@@ -119,7 +119,7 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource, onTo
     }, [selectedIndex, filteredItems.length]);
 
     // Handle selection
-    const handleSelect = useCallback((item) => {
+    const handleSelect = useCallback((item: any) => {
         if (item.type === 'action') {
             switch (item.action) {
                 case 'create-resource': onCreateResource?.(); break;
@@ -136,7 +136,7 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource, onTo
     }, [setActiveView, onClose, onCreateResource, onToggleAI, openConfigEditor, openPerformancePanel, toggleDebug]);
 
     // Handle keyboard navigation
-    const handleKeyDown = useCallback((e) => {
+    const handleKeyDown = useCallback((e: any) => {
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault();
@@ -164,7 +164,7 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource, onTo
     }, [filteredItems, selectedIndex, handleSelect, onClose]);
 
     // Handle backdrop click
-    const handleBackdropClick = useCallback((e) => {
+    const handleBackdropClick = useCallback((e: any) => {
         if (e.target === e.currentTarget) {
             onClose();
         }
@@ -188,7 +188,7 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource, onTo
                         ref={inputRef}
                         type="text"
                         value={query}
-                        onChange={(e) => {
+                        onChange={(e: any) => {
                             setQuery(e.target.value);
                             setSelectedIndex(0);
                         }}
@@ -213,7 +213,7 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource, onTo
                             {query ? 'No results found' : 'No resources available'}
                         </div>
                     ) : (
-                        filteredItems.map((item, index) => (
+                        filteredItems.map((item: any, index: number) => (
                             <button
                                 key={item.id}
                                 onClick={() => handleSelect(item)}
@@ -230,7 +230,7 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource, onTo
                                 )}
                                 <span className="text-sm truncate">
                                     {/* Render path with dimmed group names */}
-                                    {item.path.split(' > ').map((part, i, arr) => (
+                                    {item.path.split(' > ').map((part: any, i: any, arr: any) => (
                                         <span key={i}>
                                             {i < arr.length - 1 ? (
                                                 <>

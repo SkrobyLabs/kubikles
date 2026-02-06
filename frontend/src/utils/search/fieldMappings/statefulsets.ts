@@ -11,37 +11,37 @@ export const statefulSetFields = {
     ...workloadCommonFields,
 
     replicas: {
-        extractor: (item) => String(item.spec?.replicas || 0),
+        extractor: (item: any) => String(item.spec?.replicas || 0),
         aliases: ['desired']
     },
 
     ready: {
-        extractor: (item) => String(item.status?.readyReplicas || 0),
+        extractor: (item: any) => String(item.status?.readyReplicas || 0),
         aliases: ['readyreplicas']
     },
 
     current: {
-        extractor: (item) => String(item.status?.currentReplicas || 0),
+        extractor: (item: any) => String(item.status?.currentReplicas || 0),
         aliases: ['currentreplicas']
     },
 
     updated: {
-        extractor: (item) => String(item.status?.updatedReplicas || 0),
+        extractor: (item: any) => String(item.status?.updatedReplicas || 0),
         aliases: ['updatedreplicas']
     },
 
     servicename: {
-        extractor: (item) => item.spec?.serviceName || '',
+        extractor: (item: any) => item.spec?.serviceName || '',
         aliases: ['service', 'headless']
     },
 
     podmanagementpolicy: {
-        extractor: (item) => item.spec?.podManagementPolicy || 'OrderedReady',
+        extractor: (item: any) => item.spec?.podManagementPolicy || 'OrderedReady',
         aliases: ['podpolicy']
     },
 
     updatestrategy: {
-        extractor: (item) => item.spec?.updateStrategy?.type || 'RollingUpdate',
+        extractor: (item: any) => item.spec?.updateStrategy?.type || 'RollingUpdate',
         aliases: ['strategy']
     }
 };

@@ -10,14 +10,14 @@ const webhookBaseFields = {
     ...commonFields,
 
     webhooks: {
-        extractor: (item) => String(item.webhooks?.length || 0),
+        extractor: (item: any) => String(item.webhooks?.length || 0),
         aliases: ['webhookcount', 'count']
     },
 
     failurepolicy: {
-        extractor: (item) => {
-            const policies = new Set();
-            (item.webhooks || []).forEach(wh => {
+        extractor: (item: any) => {
+            const policies = new Set<any>();
+            (item.webhooks || []).forEach((wh: any) => {
                 policies.add(wh.failurePolicy || 'Fail');
             });
             return Array.from(policies).join(' ');
@@ -26,9 +26,9 @@ const webhookBaseFields = {
     },
 
     sideeffects: {
-        extractor: (item) => {
-            const effects = new Set();
-            (item.webhooks || []).forEach(wh => {
+        extractor: (item: any) => {
+            const effects = new Set<any>();
+            (item.webhooks || []).forEach((wh: any) => {
                 effects.add(wh.sideEffects || 'Unknown');
             });
             return Array.from(effects).join(' ');
@@ -37,9 +37,9 @@ const webhookBaseFields = {
     },
 
     service: {
-        extractor: (item) => {
-            const services = [];
-            (item.webhooks || []).forEach(wh => {
+        extractor: (item: any) => {
+            const services: string[] = [];
+            (item.webhooks || []).forEach((wh: any) => {
                 if (wh.clientConfig?.service) {
                     const svc = wh.clientConfig.service;
                     services.push(`${svc.namespace}/${svc.name}`);
@@ -51,11 +51,11 @@ const webhookBaseFields = {
     },
 
     resources: {
-        extractor: (item) => {
-            const resources = new Set();
-            (item.webhooks || []).forEach(wh => {
-                (wh.rules || []).forEach(rule => {
-                    (rule.resources || []).forEach(r => resources.add(r));
+        extractor: (item: any) => {
+            const resources = new Set<any>();
+            (item.webhooks || []).forEach((wh: any) => {
+                (wh.rules || []).forEach((rule: any) => {
+                    (rule.resources || []).forEach((r: any) => resources.add(r));
                 });
             });
             return Array.from(resources).join(' ');
@@ -64,11 +64,11 @@ const webhookBaseFields = {
     },
 
     operations: {
-        extractor: (item) => {
-            const ops = new Set();
-            (item.webhooks || []).forEach(wh => {
-                (wh.rules || []).forEach(rule => {
-                    (rule.operations || []).forEach(op => ops.add(op));
+        extractor: (item: any) => {
+            const ops = new Set<any>();
+            (item.webhooks || []).forEach((wh: any) => {
+                (wh.rules || []).forEach((rule: any) => {
+                    (rule.operations || []).forEach((op: any) => ops.add(op));
                 });
             });
             return Array.from(ops).join(' ');
@@ -85,9 +85,9 @@ export const mutatingWebhookFields = {
     ...webhookBaseFields,
 
     reinvocation: {
-        extractor: (item) => {
-            const policies = new Set();
-            (item.webhooks || []).forEach(wh => {
+        extractor: (item: any) => {
+            const policies = new Set<any>();
+            (item.webhooks || []).forEach((wh: any) => {
                 policies.add(wh.reinvocationPolicy || 'Never');
             });
             return Array.from(policies).join(' ');

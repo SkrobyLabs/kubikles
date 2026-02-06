@@ -18,19 +18,19 @@ export default function SavedViewsDropdown({
     onDuplicate,
     onSetDefault,
     getCurrentConfig,
-}) {
+}: any) {
     const [isOpen, setIsOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [newViewName, setNewViewName] = useState('');
-    const [editingId, setEditingId] = useState(null);
+    const [editingId, setEditingId] = useState<any>(null);
     const [editName, setEditName] = useState('');
-    const [savedViewId, setSavedViewId] = useState(null); // For save feedback
-    const dropdownRef = useRef(null);
-    const inputRef = useRef(null);
+    const [savedViewId, setSavedViewId] = useState<any>(null); // For save feedback
+    const dropdownRef = useRef<any>(null);
+    const inputRef = useRef<any>(null);
 
     // Close dropdown when clicking outside
     useEffect(() => {
-        const handleClickOutside = (e) => {
+        const handleClickOutside = (e: any) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
                 setIsOpen(false);
                 setIsSaving(false);
@@ -59,7 +59,7 @@ export default function SavedViewsDropdown({
         setIsSaving(false);
     }, [newViewName, getCurrentConfig, onSave]);
 
-    const handleSaveKeyDown = useCallback((e) => {
+    const handleSaveKeyDown = useCallback((e: any) => {
         if (e.key === 'Enter') {
             handleSave();
         } else if (e.key === 'Escape') {
@@ -68,14 +68,14 @@ export default function SavedViewsDropdown({
         }
     }, [handleSave]);
 
-    const handleRename = useCallback((viewId) => {
+    const handleRename = useCallback((viewId: any) => {
         if (!editName.trim()) return;
         onRename(viewId, editName.trim());
         setEditingId(null);
         setEditName('');
     }, [editName, onRename]);
 
-    const handleRenameKeyDown = useCallback((e, viewId) => {
+    const handleRenameKeyDown = useCallback((e: any, viewId: any) => {
         if (e.key === 'Enter') {
             handleRename(viewId);
         } else if (e.key === 'Escape') {
@@ -84,35 +84,35 @@ export default function SavedViewsDropdown({
         }
     }, [handleRename]);
 
-    const handleLoad = useCallback((viewId) => {
+    const handleLoad = useCallback((viewId: any) => {
         // If clicking the already-active view, don't reload or close — let user access edit actions
         if (viewId === activeViewId) return;
         onLoad(viewId);
         setIsOpen(false);
     }, [onLoad, activeViewId]);
 
-    const handleDelete = useCallback((e, viewId) => {
+    const handleDelete = useCallback((e: any, viewId: any) => {
         e.stopPropagation();
         onDelete(viewId);
     }, [onDelete]);
 
-    const handleStartEdit = useCallback((e, view) => {
+    const handleStartEdit = useCallback((e: any, view: any) => {
         e.stopPropagation();
         setEditingId(view.id);
         setEditName(view.name);
     }, []);
 
-    const handleDuplicate = useCallback((e, viewId) => {
+    const handleDuplicate = useCallback((e: any, viewId: any) => {
         e.stopPropagation();
         onDuplicate?.(viewId);
     }, [onDuplicate]);
 
-    const handleSetDefault = useCallback((e, viewId) => {
+    const handleSetDefault = useCallback((e: any, viewId: any) => {
         e.stopPropagation();
         onSetDefault?.(viewId);
     }, [onSetDefault]);
 
-    const handleUpdate = useCallback((viewId) => {
+    const handleUpdate = useCallback((viewId: any) => {
         if (!viewId || !onUpdate) return;
         const config = getCurrentConfig();
         onUpdate(viewId, config);
@@ -121,7 +121,7 @@ export default function SavedViewsDropdown({
         setTimeout(() => setSavedViewId(null), 1500);
     }, [onUpdate, getCurrentConfig]);
 
-    const activeView = activeViewId ? views.find(v => v.id === activeViewId) : null;
+    const activeView = activeViewId ? views.find((v: any) => v.id === activeViewId) : null;
     const hasActiveView = !!activeView;
 
     return (
@@ -168,7 +168,7 @@ export default function SavedViewsDropdown({
                                     ref={inputRef}
                                     type="text"
                                     value={newViewName}
-                                    onChange={(e) => setNewViewName(e.target.value)}
+                                    onChange={(e: any) => setNewViewName(e.target.value)}
                                     onKeyDown={handleSaveKeyDown}
                                     placeholder="View name..."
                                     className="flex-1 min-w-0 px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
@@ -194,7 +194,7 @@ export default function SavedViewsDropdown({
                                 Set up your filters and click "Save current".
                             </div>
                         ) : (
-                            views.map((view) => (
+                            views.map((view: any) => (
                                 <div
                                     key={view.id}
                                     className={`group flex items-center gap-2 px-3 py-2 hover:bg-white/5 cursor-pointer transition-colors ${
@@ -206,7 +206,7 @@ export default function SavedViewsDropdown({
                                         <input
                                             type="text"
                                             value={editName}
-                                            onChange={(e) => setEditName(e.target.value)}
+                                            onChange={(e: any) => setEditName(e.target.value)}
                                             onKeyDown={(e) => handleRenameKeyDown(e, view.id)}
                                             onBlur={() => handleRename(view.id)}
                                             onClick={(e) => e.stopPropagation()}

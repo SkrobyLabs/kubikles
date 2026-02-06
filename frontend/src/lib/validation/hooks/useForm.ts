@@ -13,12 +13,13 @@ interface UseFormOptions<T extends z.ZodType> {
 }
 
 interface FieldProps {
-  value: string | number | boolean;
+  value: any;
   onChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => void;
   onBlur: () => void;
   name: string;
+  [key: string]: any;
 }
 
 interface UseFormReturn<T extends z.ZodType> {
@@ -101,7 +102,7 @@ export function useForm<T extends ZodSchema>({
   const setValue = useCallback(
     <K extends keyof FormValues>(field: K, value: FormValues[K]) => {
       setValuesState((prev) => {
-        const newValues = { ...prev, [field]: value };
+        const newValues = { ...(prev as any), [field]: value };
 
         if (validateOnChange) {
           const result = schema.safeParse(newValues);
@@ -129,7 +130,7 @@ export function useForm<T extends ZodSchema>({
   // Set multiple values
   const setValues = useCallback(
     (newValues: Partial<FormValues>) => {
-      setValuesState((prev) => ({ ...prev, ...newValues }));
+      setValuesState((prev) => ({ ...(prev as any), ...newValues }));
       if (validateOnChange) {
         // Re-validate after setting values
         setTimeout(() => validate(), 0);
@@ -199,8 +200,8 @@ export function useForm<T extends ZodSchema>({
       e?.preventDefault();
 
       // Mark all fields as touched
-      const allTouched = Object.keys(values).reduce(
-        (acc, key) => ({ ...acc, [key]: true }),
+      const allTouched = Object.keys(values as any).reduce(
+        (acc: any, key: string) => ({ ...acc, [key]: true }),
         {} as TouchedFields<FormValues>
       );
       setTouched(allTouched);

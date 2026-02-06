@@ -7,7 +7,7 @@ export interface HPAActionsReturn extends BaseResourceActionsReturn<K8sHorizonta
     handleDelete: (hpa: K8sHorizontalPodAutoscaler) => void;
 }
 
-export const useHPAActions = (): HPAActionsReturn => {
+export const useHPAActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -22,7 +22,7 @@ export const useHPAActions = (): HPAActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (hpa: K8sHorizontalPodAutoscaler): Promise<void> => {
+        async (hpa: any): Promise<void> => {
             await DeleteHPA(hpa.metadata.namespace, hpa.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this HorizontalPodAutoscaler? Automatic scaling will be disabled.' }

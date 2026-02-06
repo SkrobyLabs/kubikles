@@ -12,10 +12,10 @@ import { DeleteEndpoints, GetEndpointsYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function EndpointsList({ isVisible }) {
+export default function EndpointsList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { endpoints, loading } = useEndpoints(currentContext, selectedNamespaces, isVisible);
+    const { endpoints, loading } = useEndpoints(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useEndpointsActions();
     const selection = useSelection();
 
@@ -35,27 +35,27 @@ export default function EndpointsList({ isVisible }) {
 
     });
 
-    const getAddressCount = (ep) => {
+    const getAddressCount = (ep: any) => {
         let count = 0;
-        (ep.subsets || []).forEach(subset => {
+        (ep.subsets || []).forEach((subset: any) => {
             count += (subset.addresses || []).length;
             count += (subset.notReadyAddresses || []).length;
         });
         return count;
     };
 
-    const getReadyCount = (ep) => {
+    const getReadyCount = (ep: any) => {
         let count = 0;
-        (ep.subsets || []).forEach(subset => {
+        (ep.subsets || []).forEach((subset: any) => {
             count += (subset.addresses || []).length;
         });
         return count;
     };
 
-    const getPorts = (ep) => {
-        const ports = new Set();
-        (ep.subsets || []).forEach(subset => {
-            (subset.ports || []).forEach(port => {
+    const getPorts = (ep: any) => {
+        const ports = new Set<any>();
+        (ep.subsets || []).forEach((subset: any) => {
+            (subset.ports || []).forEach((port: any) => {
                 ports.add(`${port.port}/${port.protocol || 'TCP'}`);
             });
         });
@@ -63,33 +63,33 @@ export default function EndpointsList({ isVisible }) {
     };
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
         {
             key: 'endpoints',
             label: 'Endpoints',
-            render: (item) => {
+            render: (item: any) => {
                 const ready = getReadyCount(item);
                 const total = getAddressCount(item);
                 return `${ready}/${total}`;
             },
-            getValue: (item) => getAddressCount(item)
+            getValue: (item: any) => getAddressCount(item)
         },
-        { key: 'ports', label: 'Ports', render: (item) => getPorts(item), getValue: (item) => getPorts(item) },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'ports', label: 'Ports', render: (item: any) => getPorts(item), getValue: (item: any) => getPorts(item) },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <EndpointsActionsMenu
                     endpoints={item}
                     isOpen={activeMenuId === `endpoints-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `endpoints-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `endpoints-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(ep) => openBulkDelete([ep])}
+                    onDelete={(ep: any) => openBulkDelete([ep])}
                 />
             ),
             getValue: () => '',
@@ -118,7 +118,7 @@ export default function EndpointsList({ isVisible }) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
         </>
     );
 }

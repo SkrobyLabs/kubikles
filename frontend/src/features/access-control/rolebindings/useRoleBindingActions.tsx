@@ -12,7 +12,7 @@ interface RoleBindingActionsReturn {
     handleDelete: (roleBinding: K8sRoleBinding) => void;
 }
 
-export const useRoleBindingActions = (): RoleBindingActionsReturn => {
+export const useRoleBindingActions = (): any => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();
@@ -51,7 +51,7 @@ export const useRoleBindingActions = (): RoleBindingActionsReturn => {
                     await DeleteRoleBinding(namespace, name);
                     Logger.info("RoleBinding deleted successfully", { namespace, name });
                     closeModal();
-                } catch (err) {
+                } catch (err: any) {
                     Logger.error("Failed to delete RoleBinding", err);
                     addNotification({ type: 'error', title: 'Failed to delete role binding', message: String(err) });
                 }

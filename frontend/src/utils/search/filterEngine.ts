@@ -23,7 +23,7 @@ import { getFieldByName } from './fieldMappings';
  * // OR query - match either pattern
  * createFilter('pods', 'name:/^web-/ OR name:/^api-/')
  */
-export function createFilter(resourceType, queryString) {
+export function createFilter(resourceType: string, queryString: string): (item: any) => boolean {
     const parsed = parseQuery(queryString);
 
     // No groups = match everything
@@ -31,11 +31,11 @@ export function createFilter(resourceType, queryString) {
         return () => true;
     }
 
-    return (item) => {
+    return (item: any) => {
         // Groups are OR-ed: if ANY group matches, the item passes
-        return parsed.groups.some(group => {
+        return parsed.groups.some((group: any) => {
             // Conditions within a group are AND-ed: ALL must match
-            return group.every(condition => matchCondition(item, condition, resourceType));
+            return group.every((condition: any) => matchCondition(item, condition, resourceType));
         });
     };
 }
@@ -48,7 +48,7 @@ export function createFilter(resourceType, queryString) {
  * @param {string} resourceType - The resource type
  * @returns {boolean}
  */
-function matchCondition(item, condition, resourceType) {
+function matchCondition(item: any, condition: any, resourceType: string): boolean {
     if (condition.type === 'plain') {
         // Plain text matches name only (backward compatible)
         const name = item.metadata?.name || '';
@@ -69,7 +69,7 @@ function matchCondition(item, condition, resourceType) {
             // Regex match
             try {
                 return condition.value.test(fieldValue);
-            } catch (e) {
+            } catch (e: any) {
                 return false;
             }
         } else {
@@ -89,7 +89,7 @@ function matchCondition(item, condition, resourceType) {
  * @param {string} queryString - The search query string
  * @returns {Array} Filtered array
  */
-export function filterData(data, resourceType, queryString) {
+export function filterData(data: any[], resourceType: string, queryString: string): any[] {
     const filterFn = createFilter(resourceType, queryString);
     return data.filter(filterFn);
 }

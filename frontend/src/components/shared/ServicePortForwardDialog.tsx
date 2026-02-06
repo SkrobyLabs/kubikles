@@ -12,7 +12,7 @@ export default function ServicePortForwardDialog({
     servicePort,
     currentContext,
     existingConfig = null
-}) {
+}: { open: any; onOpenChange: any; service: any; servicePort: any; currentContext: any; existingConfig?: any }) {
     const isEditing = !!existingConfig;
 
     const remotePort = servicePort?.port || 0;
@@ -92,8 +92,8 @@ export default function ServicePortForwardDialog({
                 });
 
                 GetRandomAvailablePort()
-                    .then(port => form.setValue('localPort', port))
-                    .catch(err => {
+                    .then((port: any) => form.setValue('localPort', port))
+                    .catch((err: any) => {
                         console.error('Failed to get available port:', err);
                         form.setValue('localPort', remotePort);
                     });
@@ -109,7 +109,7 @@ export default function ServicePortForwardDialog({
         try {
             const port = await GetRandomAvailablePort();
             form.setValue('localPort', port);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to get random port:', err);
         }
     }, []);
@@ -152,7 +152,7 @@ export default function ServicePortForwardDialog({
                         </label>
                         <input
                             type="text"
-                            {...form.getFieldProps('label')}
+                            {...form.getFieldProps('label') as any}
                             className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
                         />
                     </div>
@@ -184,7 +184,7 @@ export default function ServicePortForwardDialog({
                             <input
                                 type="number"
                                 value={form.values.localPort || ''}
-                                onChange={(e) => form.setValue('localPort', parseInt(e.target.value) || 0)}
+                                onChange={(e: any) => form.setValue('localPort', parseInt(e.target.value) || 0)}
                                 onBlur={() => form.setFieldTouched('localPort')}
                                 min="1"
                                 max="65535"
@@ -214,7 +214,7 @@ export default function ServicePortForwardDialog({
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
-                                        {...form.getFieldProps('autoStart')}
+                                        {...form.getFieldProps('autoStart') as any}
                                         checked={form.values.autoStart}
                                         className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                                     />
@@ -223,7 +223,7 @@ export default function ServicePortForwardDialog({
                                 <label className={`flex items-center gap-2 ${form.values.autoStart ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
                                     <input
                                         type="checkbox"
-                                        {...form.getFieldProps('openInBrowser')}
+                                        {...form.getFieldProps('openInBrowser') as any}
                                         checked={form.values.openInBrowser}
                                         disabled={!form.values.autoStart}
                                         className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
@@ -235,7 +235,7 @@ export default function ServicePortForwardDialog({
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input
                                 type="checkbox"
-                                {...form.getFieldProps('https')}
+                                {...form.getFieldProps('https') as any}
                                 checked={form.values.https}
                                 className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                             />
@@ -244,7 +244,7 @@ export default function ServicePortForwardDialog({
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input
                                 type="checkbox"
-                                {...form.getFieldProps('favorite')}
+                                {...form.getFieldProps('favorite') as any}
                                 checked={form.values.favorite}
                                 className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                             />

@@ -168,7 +168,7 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
                 }
                 results.push({ name, namespace: namespace || '', success: true, message: '' });
                 Logger.info(`${resourceLabel} ${action}d`, { namespace, name });
-            } catch (err) {
+            } catch (err: any) {
                 const errorMessage = err instanceof Error ? err.message : String(err);
                 results.push({ name, namespace: namespace || '', success: false, message: errorMessage });
                 Logger.error(`Failed to ${action} ${resourceLabel.toLowerCase()}`, { namespace, name, error: err });
@@ -181,8 +181,8 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
         Logger.info(`Bulk ${action} completed`, {
             resourceType,
             total: items.length,
-            success: results.filter(r => r.success).length,
-            failed: results.filter(r => !r.success).length,
+            success: results.filter((r: any) => r.success).length,
+            failed: results.filter((r: any) => !r.success).length,
         });
     }, [bulkActionModal.action, deleteApi, restartApi, isNamespaced, resourceLabel, resourceType]);
 
@@ -221,7 +221,7 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
                 });
                 entries.push(entry);
                 Logger.info('Fetched YAML for backup', { namespace, name });
-            } catch (err) {
+            } catch (err: any) {
                 const errorMessage = err instanceof Error ? err.message : String(err);
                 Logger.error('Failed to get YAML for backup', { namespace, name, error: err });
                 const entry = new main.YamlBackupEntry({
@@ -244,7 +244,7 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
         try {
             await SaveYamlBackup(entries, filename);
             Logger.info('YAML backup saved', { filename, partial: signal?.aborted });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error('Failed to save YAML backup', { error: err });
             if (err) {
                 const errorMessage = err instanceof Error ? err.message : String(err);

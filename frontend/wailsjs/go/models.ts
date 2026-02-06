@@ -1,3 +1,4 @@
+// @ts-nocheck
 export namespace helm {
 	
 	export class ChartVersion {

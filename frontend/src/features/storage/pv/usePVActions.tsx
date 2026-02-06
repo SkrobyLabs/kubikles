@@ -7,7 +7,7 @@ export interface PVActionsReturn extends BaseResourceActionsReturn<K8sPersistent
     handleDelete: (pv: K8sPersistentVolume) => void;
 }
 
-export const usePVActions = (): PVActionsReturn => {
+export const usePVActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -21,7 +21,8 @@ export const usePVActions = (): PVActionsReturn => {
         isNamespaced: false,
     });
 
-    const handleDelete = createDeleteHandler(async (pv: K8sPersistentVolume): Promise<void> => {
+    const handleDelete = createDeleteHandler(
+        async (pv: any): Promise<void> => {
         await DeletePV(pv.metadata.name);
     });
 

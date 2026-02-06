@@ -5,7 +5,7 @@ import ContainerSelector from '~/components/shared/ContainerSelector';
 /**
  * Get container name from container (supports both string and object format)
  */
-const getContainerName = (container) => {
+const getContainerName = (container: any) => {
     return typeof container === 'object' ? container.name : container;
 };
 
@@ -13,14 +13,14 @@ const getContainerName = (container) => {
  * Pod shell tab with inline container selection.
  * Shows container selector when multiple containers are available.
  */
-const PodShellTab = ({ namespace, pod, containers = [], context }) => {
+const PodShellTab = ({ namespace, pod, containers = [], context }: any) => {
     // If only one container, go straight to terminal
     const [state, setState] = useState(containers.length > 1 ? 'selecting' : 'connected');
     const [selectedContainer, setSelectedContainer] = useState(
         containers.length === 1 ? getContainerName(containers[0]) : ''
     );
 
-    const handleContainerSelect = (containerName) => {
+    const handleContainerSelect = (containerName: any) => {
         setSelectedContainer(containerName);
         setState('connected');
     };

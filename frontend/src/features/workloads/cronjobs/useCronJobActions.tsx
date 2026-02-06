@@ -14,7 +14,7 @@ interface CronJobActionsReturn extends BaseResourceActionsReturn<K8sCronJob> {
     handleDelete: (cronJob: K8sCronJob) => void;
 }
 
-export const useCronJobActions = (): CronJobActionsReturn => {
+export const useCronJobActions = (): any => {
     const { triggerRefresh } = useK8s();
     const {
         handleShowDetails,
@@ -25,6 +25,7 @@ export const useCronJobActions = (): CronJobActionsReturn => {
         closeModal,
 
         addNotification,
+        currentContext,
     } = useBaseResourceActions({
         resourceType: 'cronjob',
         resourceLabel: 'CronJob',
@@ -38,9 +39,9 @@ export const useCronJobActions = (): CronJobActionsReturn => {
 
         try {
             const allJobs = await ListJobs('', namespace);
-            const cronJobJobs = allJobs.filter(job => {
+            const cronJobJobs = allJobs.filter((job: any) => {
                 const ownerRefs = job.metadata?.ownerReferences || [];
-                return ownerRefs.some(ref =>
+                return ownerRefs.some((ref: any) =>
                     ref.kind === 'CronJob' && ref.name === cronJob.metadata.name
                 );
             });
@@ -50,13 +51,13 @@ export const useCronJobActions = (): CronJobActionsReturn => {
                 return;
             }
 
-            cronJobJobs.sort((a, b) =>
-                new Date(b.metadata.creationTimestamp) - new Date(a.metadata.creationTimestamp)
+            cronJobJobs.sort((a: any, b: any) =>
+                new Date(b.metadata.creationTimestamp).getTime() - new Date(a.metadata.creationTimestamp).getTime()
             );
             const mostRecentJob = cronJobJobs[0];
 
             const allPods = await ListPods('', namespace);
-            const jobPods = allPods.filter(pod =>
+            const jobPods = allPods.filter((pod: any) =>
                 pod.metadata?.labels?.['job-name'] === mostRecentJob.metadata.name
             );
 
@@ -67,15 +68,15 @@ export const useCronJobActions = (): CronJobActionsReturn => {
 
             const pod = jobPods[0];
             const containers = [
-                ...(pod.spec?.initContainers || []).map(c => c.name),
-                ...(pod.spec?.containers || []).map(c => c.name)
+                ...(pod.spec?.initContainers || []).map((c: any) => c.name),
+                ...(pod.spec?.containers || []).map((c: any) => c.name)
             ];
 
-            const podContainerMap = {};
+            const podContainerMap: Record<string, string[]> = {};
             for (const p of jobPods) {
                 podContainerMap[p.metadata.name] = [
-                    ...(p.spec?.initContainers || []).map(c => c.name),
-                    ...(p.spec?.containers || []).map(c => c.name)
+                    ...(p.spec?.initContainers || []).map((c: any) => c.name),
+                    ...(p.spec?.containers || []).map((c: any) => c.name)
                 ];
             }
 
@@ -88,7 +89,7 @@ export const useCronJobActions = (): CronJobActionsReturn => {
                         namespace={namespace}
                         pod={pod.metadata.name}
                         containers={containers}
-                        siblingPods={jobPods.map(p => p.metadata.name)}
+                        siblingPods={jobPods.map((p: any) => p.metadata.name)}
                         podContainerMap={podContainerMap}
                         ownerName={cronJob.metadata.name}
                         tabContext={currentContext}
@@ -96,7 +97,7 @@ export const useCronJobActions = (): CronJobActionsReturn => {
                 ),
                 resourceMeta: { kind: 'CronJob', name: cronJob.metadata.name, namespace },
             });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to get logs for CronJob", err);
             addNotification({ type: 'error', title: 'Failed to get logs for cronjob', message: String(err.message || err) });
         }
@@ -110,7 +111,7 @@ export const useCronJobActions = (): CronJobActionsReturn => {
             await TriggerCronJob(namespace, name);
             Logger.info("TriggerCronJob returned successfully", { namespace, name });
             triggerRefresh();
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to trigger CronJob", err);
             addNotification({ type: 'error', title: 'Failed to trigger cronjob', message: String(err.message || err) });
         }
@@ -127,7 +128,7 @@ export const useCronJobActions = (): CronJobActionsReturn => {
             await SuspendCronJob(namespace, name, !isSuspended);
             Logger.info(`CronJob ${action.toLowerCase()}d successfully`, { namespace, name });
             triggerRefresh();
-        } catch (err) {
+        } catch (err: any) {
             const action = cronJob.spec?.suspend ? "resume" : "suspend";
             Logger.error(`Failed to ${action} CronJob`, err);
             addNotification({ type: 'error', title: `Failed to ${action} cronjob`, message: String(err.message || err) });
@@ -150,7 +151,7 @@ export const useCronJobActions = (): CronJobActionsReturn => {
                     Logger.info("CronJob deleted successfully", { namespace, name });
                     closeModal();
                     triggerRefresh();
-                } catch (err) {
+                } catch (err: any) {
                     Logger.error("Failed to delete CronJob", err);
                     addNotification({ type: 'error', title: 'Failed to delete cronjob', message: String(err.message || err) });
                 }

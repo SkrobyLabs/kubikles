@@ -8,19 +8,19 @@ export function useLogSearch({
     logs,
     getConfig,
     getSafeConfig
-}) {
+}: { logs: any; getConfig: any; getSafeConfig: any }) {
     const [showSearch, setShowSearch] = useState(false);
     const [searchTerm, setSearchTerm] = useState(''); // The actual search term used for filtering
     const [searchInput, setSearchInput] = useState(''); // The input field value
-    const [isRegex, setIsRegex] = useState(() => getSafeConfig('logs.search.useRegex', false, v => typeof v === 'boolean'));
-    const [filterOnly, setFilterOnly] = useState(() => getSafeConfig('logs.search.filterOnly', false, v => typeof v === 'boolean'));
-    const [searchOnEnter, setSearchOnEnter] = useState(() => getSafeConfig('logs.search.searchOnEnter', true, v => typeof v === 'boolean'));
-    const [contextLinesBefore, setContextLinesBefore] = useState(() => getSafeConfig('logs.search.contextLinesBefore', 1, v => typeof v === 'number' && v >= 0));
-    const [contextLinesAfter, setContextLinesAfter] = useState(() => getSafeConfig('logs.search.contextLinesAfter', 5, v => typeof v === 'number' && v >= 0));
+    const [isRegex, setIsRegex] = useState(() => getSafeConfig('logs.search.useRegex', false, (v: any) => typeof v === 'boolean'));
+    const [filterOnly, setFilterOnly] = useState(() => getSafeConfig('logs.search.filterOnly', false, (v: any) => typeof v === 'boolean'));
+    const [searchOnEnter, setSearchOnEnter] = useState(() => getSafeConfig('logs.search.searchOnEnter', true, (v: any) => typeof v === 'boolean'));
+    const [contextLinesBefore, setContextLinesBefore] = useState(() => getSafeConfig('logs.search.contextLinesBefore', 1, (v: any) => typeof v === 'number' && v >= 0));
+    const [contextLinesAfter, setContextLinesAfter] = useState(() => getSafeConfig('logs.search.contextLinesAfter', 5, (v: any) => typeof v === 'number' && v >= 0));
     const [regexError, setRegexError] = useState('');
 
-    const searchInputRef = useRef(null);
-    const searchDebounceRef = useRef(null);
+    const searchInputRef = useRef<any>(null);
+    const searchDebounceRef = useRef<any>(null);
 
     // Create search regex with validation
     const { searchRegex, searchRegexError } = useMemo(() => {
@@ -31,8 +31,8 @@ export function useLogSearch({
             const pattern = isRegex ? searchTerm : searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(pattern, 'gi');
             return { searchRegex: regex, searchRegexError: '' };
-        } catch (e) {
-            return { searchRegex: null, searchRegexError: e.message };
+        } catch (e: any) {
+            return { searchRegex: null, searchRegexError: (e as any).message };
         }
     }, [searchTerm, isRegex]);
 
@@ -49,8 +49,8 @@ export function useLogSearch({
             clearTimeout(searchDebounceRef.current);
         }
 
-        const debounceMs = getSafeConfig('logs.search.debounceMs', 200, v => typeof v === 'number' && v >= 0 && v <= 2000);
-        searchDebounceRef.current = setTimeout(() => {
+        const debounceMs = getSafeConfig('logs.search.debounceMs', 200, (v: any) => typeof v === 'number' && v >= 0 && v <= 2000);
+        (searchDebounceRef as any).current = setTimeout(() => {
             setSearchTerm(searchInput);
         }, debounceMs);
 
@@ -62,7 +62,7 @@ export function useLogSearch({
     }, [searchInput, searchOnEnter, getSafeConfig]);
 
     // Handle search input Enter key
-    const handleSearchKeyDown = useCallback((e) => {
+    const handleSearchKeyDown = useCallback((e: any) => {
         if (e.key === 'Enter' && searchOnEnter) {
             setSearchTerm(searchInput);
         }
@@ -71,7 +71,7 @@ export function useLogSearch({
     // Open search
     const openSearch = useCallback(() => {
         setShowSearch(true);
-        setTimeout(() => searchInputRef.current?.focus(), 0);
+        setTimeout(() => (searchInputRef as any).current?.focus(), 0);
     }, []);
 
     // Close search
@@ -91,17 +91,17 @@ export function useLogSearch({
     // Calculate which lines match and filtered view with context
     const { displayLogs, matchCount, matchIndices } = useMemo(() => {
         if (!logs || logs.length === 0) {
-            return { displayLogs: [], matchCount: 0, matchIndices: new Set() };
+            return { displayLogs: [], matchCount: 0, matchIndices: new Set<any>() };
         }
 
         // If no search term, show all logs
         if (!searchTerm || !searchRegex) {
-            return { displayLogs: logs.map((entry, i) => ({ ...entry, originalIndex: i })), matchCount: 0, matchIndices: new Set() };
+            return { displayLogs: logs.map((entry: any, i: number) => ({ ...entry, originalIndex: i })), matchCount: 0, matchIndices: new Set<any>() };
         }
 
         // Find all matching line indices (search in stripped content without ANSI codes)
-        const matches = new Set();
-        logs.forEach((entry, index) => {
+        const matches = new Set<any>();
+        logs.forEach((entry: any, index: number) => {
             searchRegex.lastIndex = 0; // Reset regex state
             const strippedContent = stripAnsiCodes(entry.content);
             if (searchRegex.test(strippedContent)) {
@@ -112,36 +112,36 @@ export function useLogSearch({
         // If not filtering, return all logs with match info
         if (!filterOnly) {
             return {
-                displayLogs: logs.map((entry, i) => ({ ...entry, originalIndex: i, isMatch: matches.has(i) })),
+                displayLogs: logs.map((entry: any, index: number) => ({ ...entry, originalIndex: index, isMatch: matches.has(index) })),
                 matchCount: matches.size,
                 matchIndices: matches
             };
         }
 
         // Filter mode: include matching lines with context
-        const includedIndices = new Set();
-        matches.forEach(matchIndex => {
+        const includedIndices = new Set<any>();
+        matches.forEach((matchIndex: any) => {
             // Add context lines before
-            for (let i = Math.max(0, matchIndex - contextLinesBefore); i < matchIndex; i++) {
+            for (let i = Math.max(0, (matchIndex as number) - contextLinesBefore); i < (matchIndex as number); i++) {
                 includedIndices.add(i);
             }
             // Add matching line
             includedIndices.add(matchIndex);
             // Add context lines after
-            for (let i = matchIndex + 1; i <= Math.min(logs.length - 1, matchIndex + contextLinesAfter); i++) {
+            for (let i = (matchIndex as number) + 1; i <= Math.min(logs.length - 1, (matchIndex as number) + contextLinesAfter); i++) {
                 includedIndices.add(i);
             }
         });
 
         // Build display with skipped line indicators
-        const result = [];
-        const sortedIndices = Array.from(includedIndices).sort((a, b) => a - b);
+        const result: any[] = [];
+        const sortedIndices = Array.from(includedIndices).sort((a: any, b: any) => a - b);
         let lastIndex = -1;
 
-        sortedIndices.forEach(index => {
+        sortedIndices.forEach((index: any) => {
             // Check if we need to show skipped lines indicator
-            if (lastIndex !== -1 && index > lastIndex + 1) {
-                const skipped = index - lastIndex - 1;
+            if (lastIndex !== -1 && (index as number) > lastIndex + 1) {
+                const skipped = (index as number) - lastIndex - 1;
                 result.push({
                     isSkipIndicator: true,
                     skippedCount: skipped,
@@ -149,11 +149,11 @@ export function useLogSearch({
                 });
             }
             result.push({
-                ...logs[index],
+                ...logs[index as number],
                 originalIndex: index,
                 isMatch: matches.has(index)
             });
-            lastIndex = index;
+            lastIndex = index as number;
         });
 
         return {
@@ -165,7 +165,7 @@ export function useLogSearch({
 
     // Keyboard shortcuts
     useEffect(() => {
-        const handleKeyDown = (e) => {
+        const handleKeyDown = (e: any) => {
             // Cmd+F / Ctrl+F to open search
             if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
                 e.preventDefault();

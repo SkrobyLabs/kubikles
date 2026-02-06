@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function CSINodeDetails({ csiNode, tabContext = '' }) {
+export default function CSINodeDetails({ csiNode, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -111,7 +111,7 @@ export default function CSINodeDetails({ csiNode, tabContext = '' }) {
                         <p className="text-sm text-gray-500">No CSI drivers registered on this node</p>
                     ) : (
                         <div className="space-y-3">
-                            {drivers.map((driver, idx) => (
+                            {drivers.map((driver: any, idx: number) => (
                                 <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-sm font-medium text-gray-200">{driver.name}</span>
@@ -132,7 +132,7 @@ export default function CSINodeDetails({ csiNode, tabContext = '' }) {
                                         <div className="mt-2">
                                             <div className="text-xs text-gray-500 mb-1">Topology Keys:</div>
                                             <div className="flex flex-wrap gap-1">
-                                                {driver.topologyKeys.map((key, keyIdx) => (
+                                                {driver.topologyKeys.map((key: any, keyIdx: number) => (
                                                     <span
                                                         key={keyIdx}
                                                         className="text-xs px-1.5 py-0.5 bg-gray-700 text-gray-300 rounded"
@@ -154,7 +154,7 @@ export default function CSINodeDetails({ csiNode, tabContext = '' }) {
                     <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-3">Owner References</h3>
                         <div className="space-y-2">
-                            {metadata.ownerReferences.map((ref, idx) => (
+                            {metadata.ownerReferences.map((ref: any, idx: number) => (
                                 <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
                                     <div className="text-sm text-gray-300">
                                         {ref.kind}: {ref.name}

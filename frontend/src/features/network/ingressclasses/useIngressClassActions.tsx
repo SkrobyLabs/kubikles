@@ -12,8 +12,8 @@ export interface IngressClassActionsReturn {
     handleDelete: (ingressClass: K8sIngressClass) => void;
 }
 
-export const useIngressClassActions = (): IngressClassActionsReturn => {
-    const { openTab, closeTab, showConfirm } = useUI();
+export const useIngressClassActions = (): any => {
+    const { openTab, closeTab, openModal } = useUI();
     const { currentContext, triggerRefresh } = useK8s();
 
     const handleEditYaml = (ingressClass: K8sIngressClass): void => {
@@ -39,17 +39,17 @@ export const useIngressClassActions = (): IngressClassActionsReturn => {
 
     const handleDelete = (ingressClass: K8sIngressClass): void => {
         Logger.info("Delete requested for IngressClass", { name: ingressClass.metadata.name });
-        showConfirm({
+        openModal({
             title: 'Delete Ingress Class',
-            message: `Are you sure you want to delete ingress class "${ingressClass.metadata.name}"?`,
-            confirmLabel: 'Delete',
-            cancelLabel: 'Cancel',
+            content: `Are you sure you want to delete ingress class "${ingressClass.metadata.name}"?`,
+            confirmText: 'Delete',
+            confirmStyle: 'danger',
             onConfirm: async (): Promise<void> => {
                 try {
                     await DeleteIngressClass(ingressClass.metadata.name);
                     Logger.info("IngressClass deleted successfully", { name: ingressClass.metadata.name });
                     triggerRefresh();
-                } catch (err) {
+                } catch (err: any) {
                     Logger.error("Failed to delete ingress class", { error: err });
                 }
             }

@@ -12,7 +12,7 @@ export interface StatefulSetActionsReturn extends BaseResourceActionsReturn<K8sS
     handleViewLogs: (statefulSet: K8sStatefulSet) => Promise<void>;
 }
 
-export const useStatefulSetActions = (): StatefulSetActionsReturn => {
+export const useStatefulSetActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -21,6 +21,7 @@ export const useStatefulSetActions = (): StatefulSetActionsReturn => {
         openTab,
 
         addNotification,
+        currentContext,
     } = useBaseResourceActions<K8sStatefulSet>({
         resourceType: 'statefulset',
         resourceLabel: 'StatefulSet',
@@ -33,14 +34,14 @@ export const useStatefulSetActions = (): StatefulSetActionsReturn => {
         try {
             await RestartStatefulSet(statefulSet.metadata.namespace!, statefulSet.metadata.name);
             Logger.info("Restart triggered successfully", { name: statefulSet.metadata.name });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to restart statefulset", err);
             addNotification({ type: 'error', title: 'Failed to restart statefulset', message: String(err) });
         }
     };
 
     const handleDelete = createDeleteHandler(
-        async (statefulSet: K8sStatefulSet): Promise<void> => {
+        async (statefulSet: any): Promise<void> => {
             await DeleteStatefulSet(statefulSet.metadata.namespace!, statefulSet.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this statefulset? This will also delete all associated pods.' }
@@ -54,7 +55,7 @@ export const useStatefulSetActions = (): StatefulSetActionsReturn => {
             const allPods: K8sPod[] = await ListPods('', namespace);
             const statefulSetPods = allPods.filter((pod: K8sPod) => {
                 const ownerRefs = pod.metadata?.ownerReferences || [];
-                return ownerRefs.some(ref =>
+                return ownerRefs.some((ref: any) =>
                     ref.kind === 'StatefulSet' && ref.name === statefulSet.metadata.name
                 );
             });
@@ -66,15 +67,15 @@ export const useStatefulSetActions = (): StatefulSetActionsReturn => {
 
             const pod = statefulSetPods[0];
             const containers: string[] = [
-                ...(pod.spec?.initContainers || []).map(c => c.name),
-                ...(pod.spec?.containers || []).map(c => c.name)
+                ...(pod.spec?.initContainers || []).map((c: any) => c.name),
+                ...(pod.spec?.containers || []).map((c: any) => c.name)
             ];
 
             const podContainerMap: Record<string, string[]> = {};
             for (const p of statefulSetPods) {
                 podContainerMap[p.metadata.name] = [
-                    ...(p.spec?.initContainers || []).map(c => c.name),
-                    ...(p.spec?.containers || []).map(c => c.name)
+                    ...(p.spec?.initContainers || []).map((c: any) => c.name),
+                    ...(p.spec?.containers || []).map((c: any) => c.name)
                 ];
             }
 
@@ -87,7 +88,7 @@ export const useStatefulSetActions = (): StatefulSetActionsReturn => {
                         namespace={namespace}
                         pod={pod.metadata.name}
                         containers={containers}
-                        siblingPods={statefulSetPods.map(p => p.metadata.name)}
+                        siblingPods={statefulSetPods.map((p: any) => p.metadata.name)}
                         podContainerMap={podContainerMap}
                         ownerName={statefulSet.metadata.name}
                         tabContext={currentContext}

@@ -18,7 +18,7 @@ const PREFIX_COLORS = [
 ];
 
 // Simple hash function to get consistent color index for a name
-const getColorForName = (name) => {
+const getColorForName = (name: any) => {
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = ((hash << 5) - hash) + name.charCodeAt(i);
@@ -28,7 +28,7 @@ const getColorForName = (name) => {
 };
 
 // Parse prefix from content: [podName/containerName] or [containerName] or [podName]
-const parseLogPrefix = (content) => {
+const parseLogPrefix = (content: any) => {
     const match = content.match(/^\[([^\]]+)\]\s*/);
     if (match) {
         const prefixContent = match[1];
@@ -66,7 +66,7 @@ export const LogLine = React.memo(function LogLine({
     searchTerm,
     searchRegex,
     wrapLines
-}) {
+}: { entry: any; showTimestamps: any; searchTerm: any; searchRegex: any; wrapLines: any }) {
     // Skip indicator (for filtered view)
     if (entry.isSkipIndicator) {
         return (
@@ -138,7 +138,7 @@ export const LogLine = React.memo(function LogLine({
 /**
  * Spinner component for loading states.
  */
-export function Spinner({ className = "w-4 h-4" }) {
+export function Spinner({ className = "w-4 h-4" }: any) {
     return (
         <svg className={`${className} animate-spin`} fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

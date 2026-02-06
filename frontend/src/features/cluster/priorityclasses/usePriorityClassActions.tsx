@@ -7,7 +7,7 @@ export interface PriorityClassActionsReturn extends BaseResourceActionsReturn<K8
     handleDelete: (priorityClass: K8sPriorityClass) => void;
 }
 
-export const usePriorityClassActions = (): PriorityClassActionsReturn => {
+export const usePriorityClassActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -22,7 +22,7 @@ export const usePriorityClassActions = (): PriorityClassActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (priorityClass: K8sPriorityClass): Promise<void> => {
+        async (priorityClass: any): Promise<void> => {
             await DeletePriorityClass(priorityClass.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this priority class? This may affect pod scheduling priorities.' }

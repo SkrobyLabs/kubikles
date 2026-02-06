@@ -28,20 +28,20 @@ const TAB_CONTAINERS = 'containers';
 const TAB_EVENTS = 'events';
 const TAB_METRICS = 'metrics';
 
-export default function PodDetails({ pod, tabContext = '' }) {
+export default function PodDetails({ pod, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openLogs, handleShell, handleEditYaml, handleShowDependencies, handleFiles } = usePodActions();
     const { getDetailTab, setDetailTab, openDiagnostic } = useUI();
     const activeTab = getDetailTab('pod', TAB_BASIC);
-    const setActiveTab = (tab) => setDetailTab('pod', tab);
+    const setActiveTab = (tab: any) => setDetailTab('pod', tab);
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
 
     // Get containers for logs (including init containers)
     const containers = [
-        ...(pod.spec?.initContainers || []).map(c => c.name),
-        ...(pod.spec?.containers || []).map(c => c.name)
+        ...(pod.spec?.initContainers || []).map((c: any) => c.name),
+        ...(pod.spec?.containers || []).map((c: any) => c.name)
     ];
 
     // Handle opening logs with sibling pod discovery
@@ -56,23 +56,23 @@ export default function PodDetails({ pod, tabContext = '' }) {
         if (controller) {
             try {
                 const allPods = await ListPods('', namespace);
-                const siblings = allPods.filter(p => {
+                const siblings = allPods.filter((p: any) => {
                     const c = getPodController(p);
                     return c && c.uid === controller.uid;
                 });
 
                 if (siblings.length > 0) {
-                    siblingPods = siblings.map(p => p.metadata.name);
+                    siblingPods = siblings.map((p: any) => p.metadata.name);
                     podContainerMap = {};
                     for (const p of siblings) {
                         podContainerMap[p.metadata.name] = [
-                            ...(p.spec?.initContainers || []).map(c => c.name),
-                            ...(p.spec?.containers || []).map(c => c.name)
+                            ...(p.spec?.initContainers || []).map((c: any) => c.name),
+                            ...(p.spec?.containers || []).map((c: any) => c.name)
                         ];
                     }
                     ownerName = controller.name;
                 }
-            } catch (err) {
+            } catch (err: any) {
                 console.error('Failed to fetch sibling pods:', err);
             }
         }
@@ -108,7 +108,7 @@ export default function PodDetails({ pod, tabContext = '' }) {
     // Port forward state
     const [portForwardDialog, setPortForwardDialog] = useState({ open: false, port: null });
     const [portMenuOpen, setPortMenuOpen] = useState(false);
-    const portMenuRef = useRef(null);
+    const portMenuRef = useRef<any>(null);
 
     // Get all ports from all containers
     const allPorts = useMemo(() => {
@@ -130,7 +130,7 @@ export default function PodDetails({ pod, tabContext = '' }) {
 
     // Close port menu when clicking outside
     useEffect(() => {
-        const handleClickOutside = (e) => {
+        const handleClickOutside = (e: any) => {
             if (portMenuRef.current && !portMenuRef.current.contains(e.target)) {
                 setPortMenuOpen(false);
             }
@@ -152,7 +152,7 @@ export default function PodDetails({ pod, tabContext = '' }) {
         }
     }, [allPorts]);
 
-    const handleSelectPort = useCallback((port) => {
+    const handleSelectPort = useCallback((port: any) => {
         setPortMenuOpen(false);
         setPortForwardDialog({ open: true, port });
     }, []);
@@ -257,7 +257,7 @@ export default function PodDetails({ pod, tabContext = '' }) {
                                         <div className="px-3 py-1.5 text-xs text-gray-500 border-b border-border">
                                             Select port to forward
                                         </div>
-                                        {allPorts.map((port, idx) => (
+                                        {allPorts.map((port: any, idx: number) => (
                                             <button
                                                 key={idx}
                                                 onClick={() => handleSelectPort(port)}

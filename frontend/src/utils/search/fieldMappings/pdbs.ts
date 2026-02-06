@@ -10,17 +10,17 @@ export const pdbFields = {
     ...commonFields,
 
     minavailable: {
-        extractor: (item) => String(item.spec?.minAvailable ?? ''),
+        extractor: (item: any) => String(item.spec?.minAvailable ?? ''),
         aliases: ['min']
     },
 
     maxunavailable: {
-        extractor: (item) => String(item.spec?.maxUnavailable ?? ''),
+        extractor: (item: any) => String(item.spec?.maxUnavailable ?? ''),
         aliases: ['max']
     },
 
     selector: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const selector = item.spec?.selector?.matchLabels || {};
             return Object.entries(selector)
                 .map(([k, v]) => `${k}=${v}`)
@@ -30,22 +30,22 @@ export const pdbFields = {
     },
 
     currenthealthy: {
-        extractor: (item) => String(item.status?.currentHealthy ?? ''),
+        extractor: (item: any) => String(item.status?.currentHealthy ?? ''),
         aliases: ['healthy', 'current']
     },
 
     desiredhealthy: {
-        extractor: (item) => String(item.status?.desiredHealthy ?? ''),
+        extractor: (item: any) => String(item.status?.desiredHealthy ?? ''),
         aliases: ['desired']
     },
 
     disruptionsallowed: {
-        extractor: (item) => String(item.status?.disruptionsAllowed ?? ''),
+        extractor: (item: any) => String(item.status?.disruptionsAllowed ?? ''),
         aliases: ['allowed', 'disruptions']
     },
 
     expectedpods: {
-        extractor: (item) => String(item.status?.expectedPods ?? ''),
+        extractor: (item: any) => String(item.status?.expectedPods ?? ''),
         aliases: ['expected', 'pods']
     }
 };

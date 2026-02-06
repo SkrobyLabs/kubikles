@@ -87,7 +87,7 @@ export function createNamespacedResourceHook<T extends K8sResource>(
 
         // Calculate optimized namespaces for watching
         const optimizedNamespaces = useMemo((): string[] => {
-            const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
+            const optimized = optimizeNamespaceQuery(selectedNamespaces || [], allNamespaces);
             if (optimized === null) return [];
             if (optimized === '') return ['']; // Watch all namespaces
             return optimized;
@@ -131,7 +131,7 @@ export function createNamespacedResourceHook<T extends K8sResource>(
                         if (!isCancelled) setData(list || []);
                     } else {
                         const allResults = await Promise.all(
-                            optimized.map(ns => listFn(newRequestId, ns).catch((err: any) => {
+                            optimized.map((ns: any) => listFn(newRequestId, ns).catch((err: any) => {
                                 // Don't log cancelled request errors
                                 if (!err?.message?.includes('cancelled')) {
                                     console.error(`Failed to fetch ${resourceType} from namespace ${ns}`, err);
@@ -154,7 +154,7 @@ export function createNamespacedResourceHook<T extends K8sResource>(
                         setData(Array.from(seen.values()));
                     }
                     if (!isCancelled) setError(null);
-                } catch (err) {
+                } catch (err: any) {
                     // Don't show error for cancelled requests
                     const wasCancelledByBackend = (err as any)?.message?.includes('cancelled');
                     if (!isCancelled && !wasCancelledByBackend) {
@@ -197,14 +197,14 @@ export function createNamespacedResourceHook<T extends K8sResource>(
 
         // Subscribe to resource events
         const handleEvent = useCallback(
-            createNamespacedResourceEventHandler(setData, selectedNamespacesList),
+            createNamespacedResourceEventHandler(setData as any, selectedNamespacesList),
             [selectedNamespacesList]
         );
 
         useResourceWatcher(
             resourceType,
             optimizedNamespaces,
-            handleEvent,
+            handleEvent as any,
             Boolean(currentContext && isVisible && optimizedNamespaces.length > 0)
         );
 
@@ -269,7 +269,7 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
                         setData(list || []);
                         setError(null);
                     }
-                } catch (err) {
+                } catch (err: any) {
                     // Don't show error for cancelled requests
                     const wasCancelledByBackend = (err as any)?.message?.includes('cancelled');
                     if (!isCancelled && !wasCancelledByBackend) {
@@ -311,7 +311,7 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
                 const list = await listFn(refetchRequestId);
                 setData(list || []);
                 setError(null);
-            } catch (err) {
+            } catch (err: any) {
                 if (!(err as any)?.message?.includes('cancelled')) {
                     console.error(`Failed to fetch ${resourceType}`, err);
                     setError(err instanceof Error ? err : new Error(String(err)));
@@ -323,8 +323,8 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
         }, [currentContext, isVisible, checkConnectionError]);
 
         // Subscribe to resource events (cluster-scoped, so namespace = "")
-        const handleEvent = useCallback(createResourceEventHandler<T>(setData), []);
-        useResourceWatcher(resourceType, "", handleEvent, Boolean(currentContext && isVisible));
+        const handleEvent = useCallback(createResourceEventHandler(setData as any), []);
+        useResourceWatcher(resourceType, "", handleEvent as any, Boolean(currentContext && isVisible));
 
         const result: ClusterScopedResourceHookReturn<T> = {
             loading,

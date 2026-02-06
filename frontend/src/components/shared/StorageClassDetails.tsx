@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function StorageClassDetails({ storageClass, tabContext = '' }) {
+export default function StorageClassDetails({ storageClass, tabContext = '' }: { storageClass: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -95,7 +95,7 @@ export default function StorageClassDetails({ storageClass, tabContext = '' }) {
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -163,7 +163,7 @@ export default function StorageClassDetails({ storageClass, tabContext = '' }) {
                 {mountOptions.length > 0 && (
                     <DetailSection title={`Mount Options (${mountOptions.length})`}>
                         <div className="flex flex-wrap gap-1.5">
-                            {mountOptions.map((option, idx) => (
+                            {mountOptions.map((option: any, idx: number) => (
                                 <span
                                     key={idx}
                                     className="px-2 py-1 text-xs font-mono bg-gray-700/50 text-gray-300 rounded"

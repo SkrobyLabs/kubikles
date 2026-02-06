@@ -12,10 +12,10 @@ import ClusterRoleActionsMenu from './ClusterRoleActionsMenu';
 import { useClusterRoleActions } from './useClusterRoleActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function ClusterRoleList({ isVisible }) {
+export default function ClusterRoleList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { clusterRoles, loading } = useClusterRoles(currentContext, isVisible);
+    const { clusterRoles, loading } = useClusterRoles(currentContext, isVisible) as any;
     const { handleEditYaml } = useClusterRoleActions();
     const selection = useSelection();
 
@@ -37,18 +37,18 @@ export default function ClusterRoleList({ isVisible }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
         {
             key: 'rules',
             label: 'Rules',
             align: 'center',
-            render: (item) => (item.rules || []).length,
-            getValue: (item) => (item.rules || []).length
+            render: (item: any) => (item.rules || []).length,
+            getValue: (item: any) => (item.rules || []).length
         },
         {
             key: 'aggregation',
             label: 'Aggregation',
-            render: (item) => {
+            render: (item: any) => {
                 const selectors = item.aggregationRule?.clusterRoleSelectors || [];
                 return selectors.length > 0 ? (
                     <span className="text-blue-400">Aggregated</span>
@@ -56,21 +56,21 @@ export default function ClusterRoleList({ isVisible }) {
                     <span className="text-gray-500">-</span>
                 );
             },
-            getValue: (item) => (item.aggregationRule?.clusterRoleSelectors || []).length > 0 ? 'Yes' : 'No'
+            getValue: (item: any) => (item.aggregationRule?.clusterRoleSelectors || []).length > 0 ? 'Yes' : 'No'
         },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <ClusterRoleActionsMenu
                     clusterRole={item}
                     isOpen={activeMenuId === `clusterrole-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `clusterrole-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `clusterrole-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={(clusterRole) => openBulkDelete([clusterRole])}
+                    onDelete={(clusterRole: any) => openBulkDelete([clusterRole])}
                 />
             ),
             getValue: () => '',
@@ -97,7 +97,7 @@ export default function ClusterRoleList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Environment } from 'wailsjs/runtime/runtime';
 import { isInServerMode } from '~/lib/wailsjs-adapter/runtime/runtime';
+// @ts-ignore
 import appIcon from '~/assets/images/logo-universal.png';
 import {
     ChevronDownIcon,
@@ -26,6 +27,21 @@ import SearchSelect from '../shared/SearchSelect';
 import Logger from '~/utils/Logger';
 import { ListCRDs, GetVersionInfo } from 'wailsjs/go/main/App';
 
+interface VersionInfo {
+    version?: string;
+    commit?: string;
+    isDirty?: boolean;
+}
+
+interface SidebarProps {
+    activeView: string;
+    onViewChange: (viewId: string) => void;
+    contexts: string[];
+    currentContext: string;
+    onContextChange: (ctx: string) => void;
+    onContextSelectorOpen?: () => void;
+}
+
 export default function Sidebar({
     activeView,
     onViewChange,
@@ -33,7 +49,7 @@ export default function Sidebar({
     currentContext,
     onContextChange,
     onContextSelectorOpen
-}) {
+}: SidebarProps) {
     const { openConfigEditor, config } = useConfig();
     const { isOpen: aiOpen, togglePanel: toggleAI, providerAvailable } = useAIChat();
     const { openPerformancePanel } = usePerformancePanel();
@@ -43,15 +59,15 @@ export default function Sidebar({
     const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
 
     // Version info
-    const [versionInfo, setVersionInfo] = useState(null);
+    const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
     const [isMac, setIsMac] = useState(true); // default true to avoid layout shift on macOS
 
     useEffect(() => {
         GetVersionInfo().then(setVersionInfo).catch(() => {});
-        Environment().then(env => setIsMac(env.platform === 'darwin')).catch(() => {});
+        Environment().then((env: any) => setIsMac(env.platform === 'darwin')).catch(() => {});
     }, []);
-    const settingsButtonRef = useRef(null);
-    const settingsMenuRef = useRef(null);
+    const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
+    const settingsMenuRef = useRef<HTMLDivElement | null>(null);
     const activeItemRef = useRef<HTMLButtonElement | null>(null);
 
     // Scroll active menu item into view when it changes
@@ -68,9 +84,9 @@ export default function Sidebar({
     useEffect(() => {
         if (!settingsMenuOpen) return;
 
-        const handleClickOutside = (event) => {
-            if (settingsButtonRef.current && !settingsButtonRef.current.contains(event.target) &&
-                settingsMenuRef.current && !settingsMenuRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (settingsButtonRef.current && !settingsButtonRef.current.contains(event.target as Node) &&
+                settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
                 setSettingsMenuOpen(false);
             }
         };
@@ -80,11 +96,11 @@ export default function Sidebar({
     }, [settingsMenuOpen]);
 
     // Fetch CRDs for dynamic menu (lazy loaded)
-    const [crds, setCRDs] = useState([]);
+    const [crds, setCRDs] = useState<any[]>([]);
     const [crdsLoading, setCRDsLoading] = useState(false);
     const [crdsLoaded, setCRDsLoaded] = useState(false);
     // Track which CRD groups are expanded (collapsed by default)
-    const [expandedCRDGroups, setExpandedCRDGroups] = useState(() => {
+    const [expandedCRDGroups, setExpandedCRDGroups] = useState<Record<string, boolean>>(() => {
         try {
             const saved = localStorage.getItem('kubikles_expanded_crd_groups');
             return saved ? JSON.parse(saved) : {};
@@ -101,11 +117,11 @@ export default function Sidebar({
         if (!collapsedGroups['Custom Resources'] && currentContext) {
             setCRDsLoading(true);
             ListCRDs()
-                .then(list => {
+                .then((list: any) => {
                     setCRDs(list || []);
                     setCRDsLoaded(true);
                 })
-                .catch(err => {
+                .catch((err: any) => {
                     console.error("Failed to fetch CRDs for sidebar:", err);
                     setCRDs([]);
                 })
@@ -124,7 +140,7 @@ export default function Sidebar({
             const list = await ListCRDs();
             setCRDs(list || []);
             setCRDsLoaded(true);
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to fetch CRDs for sidebar:", err);
             setCRDs([]);
         } finally {
@@ -139,7 +155,7 @@ export default function Sidebar({
 
     // Group CRDs by API group
     const crdGroups = useMemo(() => {
-        const groups = {};
+        const groups: Record<string, any[]> = {};
         for (const crd of crds) {
             const group = crd.spec?.group || 'unknown';
             if (!groups[group]) {
@@ -147,7 +163,7 @@ export default function Sidebar({
             }
             // Get storage version
             const versions = crd.spec?.versions || [];
-            const storageVersion = versions.find(v => v.storage)?.name || versions[0]?.name || 'v1';
+            const storageVersion = versions.find((v: any) => v.storage)?.name || versions[0]?.name || 'v1';
 
             groups[group].push({
                 kind: crd.spec?.names?.kind,
@@ -158,15 +174,15 @@ export default function Sidebar({
             });
         }
         // Sort groups alphabetically, and resources within each group
-        const sortedGroups = {};
-        Object.keys(groups).sort().forEach(key => {
-            sortedGroups[key] = groups[key].sort((a, b) => a.kind.localeCompare(b.kind));
+        const sortedGroups: Record<string, any[]> = {};
+        Object.keys(groups).sort().forEach((key: any) => {
+            sortedGroups[key] = groups[key].sort((a: any, b: any) => a.kind.localeCompare(b.kind));
         });
         return sortedGroups;
     }, [crds]);
 
-    const toggleCRDGroup = (groupName) => {
-        setExpandedCRDGroups(prev => ({
+    const toggleCRDGroup = (groupName: string) => {
+        setExpandedCRDGroups((prev: Record<string, boolean>) => ({
             ...prev,
             [groupName]: !prev[groupName]
         }));
@@ -177,26 +193,26 @@ export default function Sidebar({
     const menuGroups = useMemo(() => {
         const sections: SidebarLayoutSection[] = sidebarLayout
             ? reconcileLayout(sidebarLayout)
-            : DEFAULT_MENU_SECTIONS.map(s => ({ id: s.id, title: s.title, items: [...s.items] }));
+            : DEFAULT_MENU_SECTIONS.map((s: any) => ({ id: s.id, title: s.title, items: [...s.items] }));
 
         // Convert to renderable format with icon/label lookups
         return sections
-            .map(section => ({
+            .map((section: any) => ({
                 id: section.id,
                 title: section.title,
                 items: section.items
-                    .filter(id => ALL_MENU_ITEMS[id])
-                    .map(id => {
+                    .filter((id: any) => ALL_MENU_ITEMS[id])
+                    .map((id: any) => {
                         const def = ALL_MENU_ITEMS[id];
                         return { id: def.id, label: section.itemLabels?.[id] || def.label, icon: def.icon };
                     }),
             }))
-            .filter(group => group.id === 'custom-resources' || group.items.length > 0);
+            .filter((group: any) => group.id === 'custom-resources' || group.items.length > 0);
     }, [sidebarLayout]);
 
     // Collapsed categories state with localStorage persistence
     // Custom Resources and Diagnostics are collapsed by default
-    const [collapsedGroups, setCollapsedGroups] = useState(() => {
+    const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
         try {
             const saved = localStorage.getItem('kubikles_collapsed_groups');
             if (saved) {
@@ -221,24 +237,24 @@ export default function Sidebar({
         localStorage.setItem('kubikles_collapsed_groups', JSON.stringify(collapsedGroups));
     }, [collapsedGroups]);
 
-    const toggleGroup = (groupTitle) => {
+    const toggleGroup = (groupTitle: string) => {
         const isCurrentlyCollapsed = collapsedGroups[groupTitle];
         // If opening Custom Resources, trigger lazy load
         if (groupTitle === 'Custom Resources' && isCurrentlyCollapsed) {
             fetchCRDs();
         }
-        setCollapsedGroups(prev => ({
+        setCollapsedGroups((prev: Record<string, boolean>) => ({
             ...prev,
             [groupTitle]: !prev[groupTitle]
         }));
     };
 
-    const handleViewChange = (viewId) => {
+    const handleViewChange = (viewId: string) => {
         Logger.info("Navigating to view", { view: viewId });
         onViewChange(viewId);
     };
 
-    const handleContextChange = (newContext) => {
+    const handleContextChange = (newContext: string) => {
         Logger.info("Context change requested from Sidebar", { context: newContext });
         onContextChange(newContext);
     };
@@ -291,7 +307,7 @@ export default function Sidebar({
                                 {!isCollapsed && (
                                     <div className="px-2 mt-1">
                                         <button
-                                            ref={activeView === 'crds' ? activeItemRef : null}
+                                            ref={activeView === 'crds' ? activeItemRef : undefined}
                                             onClick={() => handleViewChange('crds')}
                                             className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${activeView === 'crds'
                                                 ? 'bg-primary/10 text-primary font-medium'
@@ -325,12 +341,12 @@ export default function Sidebar({
                                                     </button>
                                                     {isExpanded && (
                                                         <ul className="ml-2 space-y-0.5">
-                                                            {resources.map((res) => {
+                                                            {resources.map((res: any) => {
                                                                 const viewId = `cr:${res.group}:${res.version}:${res.plural}:${res.kind}:${res.namespaced}`;
                                                                 return (
                                                                     <li key={res.kind}>
                                                                         <button
-                                                                            ref={activeView === viewId ? activeItemRef : null}
+                                                                            ref={activeView === viewId ? activeItemRef : undefined}
                                                                             onClick={() => handleViewChange(viewId)}
                                                                             className={`w-full flex items-center pl-7 pr-2 py-1.5 text-sm rounded-md transition-colors ${activeView === viewId
                                                                                 ? 'bg-primary/10 text-primary font-medium'
@@ -371,12 +387,12 @@ export default function Sidebar({
                             </button>
                             {!isCollapsed && (
                                 <ul className="space-y-1 px-2 mt-1">
-                                    {group.items.map((item) => {
+                                    {group.items.map((item: any) => {
                                         const Icon = item.icon;
                                         return (
                                             <li key={item.id}>
                                                 <button
-                                                    ref={activeView === item.id ? activeItemRef : null}
+                                                    ref={activeView === item.id ? activeItemRef : undefined}
                                                     onClick={() => handleViewChange(item.id)}
                                                     className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${activeView === item.id
                                                         ? 'bg-primary/10 text-primary font-medium'
@@ -442,7 +458,7 @@ export default function Sidebar({
                             className="fixed w-44 bg-surface-light border border-border rounded-md shadow-lg py-1 z-[100]"
                             style={{
                                 bottom: '52px',
-                                left: settingsButtonRef.current?.getBoundingClientRect().left - 60 || 0
+                                left: (settingsButtonRef.current?.getBoundingClientRect()?.left ?? 60) - 60 || 0
                             }}
                         >
                             <button

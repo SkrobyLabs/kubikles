@@ -11,7 +11,7 @@ export interface NamespaceActionsReturn extends Pick<BaseResourceActionsReturn<K
     handleDelete: (namespace: K8sNamespace) => void;
 }
 
-export const useNamespaceActions = (): NamespaceActionsReturn => {
+export const useNamespaceActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,

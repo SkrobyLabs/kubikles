@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
-export default function EnumField({ label, description, value, onChange, isModified, options }) {
+export default function EnumField({ label, description, value, onChange, isModified, options }: any) {
     const [isOpen, setIsOpen] = useState(false);
-    const wrapperRef = useRef(null);
+    const wrapperRef = useRef<any>(null);
 
     useEffect(() => {
-        function handleClickOutside(event) {
+        function handleClickOutside(event: any) {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 setIsOpen(false);
             }
@@ -15,7 +15,7 @@ export default function EnumField({ label, description, value, onChange, isModif
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const selectedOption = options.find(opt => opt.value === value);
+    const selectedOption = options.find((opt: any) => opt.value === value);
 
     return (
         <div className="py-2">
@@ -36,7 +36,7 @@ export default function EnumField({ label, description, value, onChange, isModif
                 </button>
                 {isOpen && (
                     <div className="absolute left-0 z-50 mt-1 min-w-full bg-surface border border-border rounded shadow-lg py-1">
-                        {options.map((opt) => (
+                        {options.map((opt: any) => (
                             <button
                                 key={opt.value}
                                 onClick={() => {

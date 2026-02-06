@@ -31,7 +31,7 @@ export interface CustomResourceActionsReturn {
 /**
  * Hook for custom resource instance actions (edit, delete)
  */
-export const useCustomResourceActions = (crdInfo: CRDInfo): CustomResourceActionsReturn => {
+export const useCustomResourceActions = (crdInfo: CRDInfo): any => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
 
@@ -65,9 +65,9 @@ export const useCustomResourceActions = (crdInfo: CRDInfo): CustomResourceAction
 
         openModal({
             title: `Delete ${crdInfo.kind}`,
-            message: `Are you sure you want to delete ${crdInfo.kind} "${displayName}"? This action cannot be undone.`,
-            confirmLabel: 'Delete',
-            confirmVariant: 'danger',
+            content: `Are you sure you want to delete ${crdInfo.kind} "${displayName}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            confirmStyle: 'danger',
             onConfirm: async (): Promise<void> => {
                 try {
                     await DeleteCustomResource(crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name);
@@ -77,7 +77,7 @@ export const useCustomResourceActions = (crdInfo: CRDInfo): CustomResourceAction
                     // The modal will stay open so user can see the error or retry
                 }
             },
-            onCancel: (): void => closeModal()
+            onClose: (): void => closeModal()
         });
     };
 

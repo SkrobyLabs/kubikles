@@ -41,7 +41,7 @@ export const useCRDPrinterColumns = (
                 const cols = await GetCRDPrinterColumns(crdName);
                 setColumns(cols || []);
                 setError(null);
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Failed to fetch CRD printer columns", err);
                 setError(err as Error);
                 setColumns([]);

@@ -9,7 +9,7 @@ import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } 
 const TAB_INFO = 'info';
 const TAB_DATA = 'data';
 
-function ConfigMapKeyValue({ keyName, value, isExpanded, onToggle }) {
+function ConfigMapKeyValue({ keyName, value, isExpanded, onToggle }: { keyName: any; value: any; isExpanded: any; onToggle: any }) {
     const [copied, setCopied] = useState(false);
     const isMultiline = value && value.includes('\n');
     const displayValue = isMultiline ? value : (value || '');
@@ -19,7 +19,7 @@ function ConfigMapKeyValue({ keyName, value, isExpanded, onToggle }) {
             await navigator.clipboard.writeText(value || '');
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     };
@@ -62,7 +62,7 @@ function ConfigMapKeyValue({ keyName, value, isExpanded, onToggle }) {
     );
 }
 
-function ConfigMapInfoTab({ configMap }) {
+function ConfigMapInfoTab({ configMap }: { configMap: any }) {
     const name = configMap.metadata?.name;
     const namespace = configMap.metadata?.namespace;
     const labels = configMap.metadata?.labels || {};
@@ -116,15 +116,15 @@ function ConfigMapInfoTab({ configMap }) {
     );
 }
 
-function ConfigMapDataTab({ configMap }) {
-    const [expandedKeys, setExpandedKeys] = useState({});
+function ConfigMapDataTab({ configMap }: { configMap: any }) {
+    const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
     const data = configMap.data || {};
     const binaryData = configMap.binaryData || {};
 
     const dataKeys = Object.keys(data);
     const binaryKeys = Object.keys(binaryData);
 
-    const toggleKey = (key) => {
+    const toggleKey = (key: string) => {
         setExpandedKeys(prev => ({
             ...prev,
             [key]: !prev[key]
@@ -137,7 +137,7 @@ function ConfigMapDataTab({ configMap }) {
             <DetailSection title={`Data (${dataKeys.length})`}>
                 {dataKeys.length > 0 ? (
                     <div className="space-y-2">
-                        {dataKeys.map(key => (
+                        {dataKeys.map((key: any) => (
                             <ConfigMapKeyValue
                                 key={key}
                                 keyName={key}
@@ -156,7 +156,7 @@ function ConfigMapDataTab({ configMap }) {
             {binaryKeys.length > 0 && (
                 <DetailSection title={`Binary Data (${binaryKeys.length})`}>
                     <div className="space-y-1.5">
-                        {binaryKeys.map(key => (
+                        {binaryKeys.map((key: any) => (
                             <div key={key} className="flex items-center gap-2 px-3 py-2 bg-background-dark rounded border border-border">
                                 <span className="font-mono text-sm text-gray-300">{key}</span>
                                 <span className="text-xs text-gray-500">
@@ -171,11 +171,11 @@ function ConfigMapDataTab({ configMap }) {
     );
 }
 
-export default function ConfigMapDetails({ configMap, tabContext = '' }) {
+export default function ConfigMapDetails({ configMap, tabContext = '' }: { configMap: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, getDetailTab, setDetailTab } = useUI();
     const activeTab = getDetailTab('configmap', TAB_INFO);
-    const setActiveTab = (tab) => setDetailTab('configmap', tab);
+    const setActiveTab = (tab: string) => setDetailTab('configmap', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
 
@@ -265,7 +265,7 @@ export default function ConfigMapDetails({ configMap, tabContext = '' }) {
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>

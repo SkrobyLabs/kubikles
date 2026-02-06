@@ -1,7 +1,7 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind
+.PHONY: help dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind
 
 .DEFAULT_GOAL := help
 
@@ -43,6 +43,7 @@ help:
 	@echo "  test               Run all tests"
 	@echo "  test-frontend      Run frontend tests"
 	@echo "  test-watch         Run frontend tests in watch mode"
+	@echo "  typecheck          Run TypeScript type checking (tsc --noEmit)"
 	@echo ""
 	@echo "Linting:"
 	@echo "  lint               Run all linters"
@@ -214,6 +215,10 @@ test-frontend:
 # Run frontend tests in watch mode
 test-watch:
 	cd frontend && npm run test:watch
+
+# Run TypeScript type checking (zero errors = gate passes)
+typecheck:
+	cd frontend && npm run typecheck
 
 # ===========================================
 # Linting

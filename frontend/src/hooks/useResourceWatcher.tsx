@@ -64,7 +64,7 @@ export const useResourceWatcher = (
                         // Subscribed but already unmounted - unsubscribe immediately
                         UnsubscribeWatcher(key).catch(() => {});
                     }
-                } catch (err) {
+                } catch (err: any) {
                     console.error(`Failed to subscribe to ${resourceType} watcher:`, err);
                 }
             }
@@ -99,8 +99,8 @@ export const useResourceWatcher = (
             EventsOff("resource-events-batch", handleBatchEvents);
 
             // Unsubscribe all keys that were subscribed during this effect
-            subscribedKeys.forEach(key => {
-                UnsubscribeWatcher(key).catch(err => {
+            subscribedKeys.forEach((key: any) => {
+                UnsubscribeWatcher(key).catch((err: any) => {
                     console.error(`Failed to unsubscribe watcher ${key}:`, err);
                 });
             });
@@ -152,7 +152,7 @@ export const useCRDWatcher = (
                     } else if (key && !isMounted) {
                         UnsubscribeWatcher(key).catch(() => {});
                     }
-                } catch (err) {
+                } catch (err: any) {
                     console.error(`Failed to subscribe to CRD watcher ${group}/${version}/${resource}:`, err);
                 }
             }
@@ -186,8 +186,8 @@ export const useCRDWatcher = (
             EventsOff("resource-event", handleEvent);
             EventsOff("resource-events-batch", handleBatchEvents);
 
-            subscribedKeys.forEach(key => {
-                UnsubscribeWatcher(key).catch(err => {
+            subscribedKeys.forEach((key: any) => {
+                UnsubscribeWatcher(key).catch((err: any) => {
                     console.error(`Failed to unsubscribe CRD watcher ${key}:`, err);
                 });
             });

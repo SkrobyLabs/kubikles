@@ -12,10 +12,10 @@ import { DeleteLimitRange, GetLimitRangeYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function LimitRangeList({ isVisible }) {
+export default function LimitRangeList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { limitRanges, loading } = useLimitRanges(currentContext, selectedNamespaces, isVisible);
+    const { limitRanges, loading } = useLimitRanges(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useLimitRangeActions();
     const selection = useSelection();
 
@@ -35,28 +35,28 @@ export default function LimitRangeList({ isVisible }) {
 
     });
 
-    const getLimitCount = (lr) => {
+    const getLimitCount = (lr: any) => {
         return lr.spec?.limits?.length ?? 0;
     };
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
-        { key: 'limits', label: 'Limits', render: (item) => getLimitCount(item), getValue: (item) => getLimitCount(item) },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
+        { key: 'limits', label: 'Limits', render: (item: any) => getLimitCount(item), getValue: (item: any) => getLimitCount(item) },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <LimitRangeActionsMenu
                     limitRange={item}
                     isOpen={activeMenuId === `limitrange-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `limitrange-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `limitrange-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(item) => openBulkDelete([item])}
+                    onDelete={(item: any) => openBulkDelete([item])}
                 />
             ),
             getValue: () => '',
@@ -85,7 +85,7 @@ export default function LimitRangeList({ isVisible }) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
         </>
     );
 }

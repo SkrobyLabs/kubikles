@@ -42,7 +42,7 @@ const RESOURCE_TYPES = [
 
 // Helper to fetch resources - handles different function signatures
 // Backend has inconsistent signatures: some need (requestId, ns), some just (ns), some (requestId, ctx, ns)
-const fetchResourcesByType = async (type, namespace) => {
+const fetchResourcesByType = async (type: string, namespace: string) => {
     const requestId = `flow-timeline-${type}-${Date.now()}`;
     switch (type) {
         case 'deployment':
@@ -105,7 +105,7 @@ const ENTRY_TYPE_ICONS = {
     change: ArrowPathIcon
 };
 
-function formatTimestamp(timestamp) {
+function formatTimestamp(timestamp: any) {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], {
         hour: '2-digit',
@@ -115,10 +115,10 @@ function formatTimestamp(timestamp) {
     });
 }
 
-function formatRelativeTime(timestamp) {
+function formatRelativeTime(timestamp: any) {
     const now = new Date();
     const then = new Date(timestamp);
-    const diffMs = now - then;
+    const diffMs = now.getTime() - then.getTime();
     const diffSec = Math.floor(diffMs / 1000);
     const diffMin = Math.floor(diffSec / 60);
     const diffHour = Math.floor(diffMin / 60);
@@ -128,10 +128,10 @@ function formatRelativeTime(timestamp) {
     return `${diffHour}h ${diffMin % 60}m ago`;
 }
 
-function TimelineEntry({ entry, expanded, onToggle }) {
-    const SeverityIcon = SEVERITY_ICONS[entry.severity] || InformationCircleIcon;
-    const TypeIcon = ENTRY_TYPE_ICONS[entry.entryType] || DocumentTextIcon;
-    const colorClass = SEVERITY_COLORS[entry.severity] || SEVERITY_COLORS.info;
+function TimelineEntry({ entry, expanded, onToggle }: { entry: any; expanded: boolean; onToggle: () => void }) {
+    const SeverityIcon = (SEVERITY_ICONS as any)[entry.severity] || InformationCircleIcon;
+    const TypeIcon = (ENTRY_TYPE_ICONS as any)[entry.entryType] || DocumentTextIcon;
+    const colorClass = (SEVERITY_COLORS as any)[entry.severity] || SEVERITY_COLORS.info;
 
     // Convert ANSI escape codes to HTML for proper color rendering
     const messageHtml = converter.toHtml(normalizeAnsiCodes(entry.message || ''));
@@ -173,7 +173,7 @@ function TimelineEntry({ entry, expanded, onToggle }) {
             </div>
             {expanded && entry.details && (
                 <div className="mt-2 ml-8 p-2 bg-background rounded text-xs font-mono text-gray-400 whitespace-pre-wrap">
-                    <span dangerouslySetInnerHTML={{ __html: detailsHtml }} />
+                    <span dangerouslySetInnerHTML={{ __html: detailsHtml as string }} />
                 </div>
             )}
         </div>
@@ -185,7 +185,7 @@ export default function FlowTimeline({
     namespace = '',
     name = '',
     onClose
-}) {
+}: { resourceType?: string; namespace?: string; name?: string; onClose?: any }) {
     const { currentNamespace, namespaces } = useK8s();
     // Don't use '*' (All Namespaces) as a namespace - fall back to 'default'
     const effectiveNamespace = (currentNamespace && currentNamespace !== '*') ? currentNamespace : 'default';
@@ -196,16 +196,16 @@ export default function FlowTimeline({
     });
     const [durationMinutes, setDurationMinutes] = useState(10);
     const [includeLogs, setIncludeLogs] = useState(true);
-    const [entries, setEntries] = useState([]);
+    const [entries, setEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [expandedEntries, setExpandedEntries] = useState(new Set());
+    const [error, setError] = useState<string | null>(null);
+    const [expandedEntries, setExpandedEntries] = useState(new Set<any>());
     const [severityFilter, setSeverityFilter] = useState('all');
     const [typeFilter, setTypeFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
 
     // Available resources for the selected type and namespace
-    const [availableResources, setAvailableResources] = useState([]);
+    const [availableResources, setAvailableResources] = useState<any[]>([]);
     const [loadingResources, setLoadingResources] = useState(false);
 
     // Fetch available resources when type or namespace changes
@@ -220,11 +220,11 @@ export default function FlowTimeline({
             try {
                 const resources = await fetchResourcesByType(formData.resourceType, formData.namespace);
                 const resourceNames = (resources || [])
-                    .map(r => r.metadata?.name)
+                    .map((r: any) => r.metadata?.name)
                     .filter(Boolean)
                     .sort();
                 setAvailableResources(resourceNames);
-            } catch (err) {
+            } catch (err: any) {
                 console.error('[FlowTimeline] Failed to fetch resources:', err);
                 setAvailableResources([]);
             } finally {
@@ -237,7 +237,7 @@ export default function FlowTimeline({
 
     // Filter namespaces to exclude empty (All Namespaces) option
     const namespaceOptions = useMemo(() =>
-        (namespaces || []).filter(ns => ns !== ''),
+        (namespaces || []).filter((ns: any) => ns !== ''),
     [namespaces]);
 
     const fetchTimeline = useCallback(async () => {
@@ -258,7 +258,7 @@ export default function FlowTimeline({
                 includeLogs
             );
             setEntries(result || []);
-        } catch (err) {
+        } catch (err: any) {
             setError(err.message || 'Failed to fetch timeline');
             setEntries([]);
         } finally {
@@ -266,7 +266,7 @@ export default function FlowTimeline({
         }
     }, [formData, durationMinutes, includeLogs]);
 
-    const toggleEntry = useCallback((index) => {
+    const toggleEntry = useCallback((index: number) => {
         setExpandedEntries(prev => {
             const next = new Set(prev);
             if (next.has(index)) {
@@ -279,7 +279,7 @@ export default function FlowTimeline({
     }, []);
 
     const filteredEntries = useMemo(() => {
-        return entries.filter(entry => {
+        return entries.filter((entry: any) => {
             if (severityFilter !== 'all' && entry.severity !== severityFilter) return false;
             if (typeFilter !== 'all' && entry.entryType !== typeFilter) return false;
             if (searchQuery) {
@@ -294,8 +294,8 @@ export default function FlowTimeline({
     }, [entries, severityFilter, typeFilter, searchQuery]);
 
     const stats = useMemo(() => {
-        const counts = { error: 0, warning: 0, info: 0, event: 0, log: 0 };
-        entries.forEach(e => {
+        const counts: Record<string, number> = { error: 0, warning: 0, info: 0, event: 0, log: 0 };
+        entries.forEach((e: any) => {
             counts[e.severity] = (counts[e.severity] || 0) + 1;
             counts[e.entryType] = (counts[e.entryType] || 0) + 1;
         });
@@ -328,10 +328,10 @@ export default function FlowTimeline({
                         <SearchSelect
                             options={RESOURCE_TYPES}
                             value={formData.resourceType}
-                            onChange={(val) => setFormData(prev => ({ ...prev, resourceType: val, name: '' }))}
+                            onChange={(val: any) => setFormData(prev => ({ ...prev, resourceType: val, name: '' }))}
                             placeholder="Select type..."
-                            getOptionValue={(rt) => rt.value}
-                            getOptionLabel={(rt) => rt.label}
+                            getOptionValue={(rt: any) => rt.value}
+                            getOptionLabel={(rt: any) => rt.label}
                             preserveOrder={true}
                         />
                     </div>
@@ -340,7 +340,7 @@ export default function FlowTimeline({
                         <SearchSelect
                             options={namespaceOptions}
                             value={formData.namespace}
-                            onChange={(val) => setFormData(prev => ({ ...prev, namespace: val, name: '' }))}
+                            onChange={(val: any) => setFormData(prev => ({ ...prev, namespace: val, name: '' }))}
                             placeholder="Select namespace..."
                         />
                     </div>
@@ -351,7 +351,7 @@ export default function FlowTimeline({
                         <SearchSelect
                             options={availableResources}
                             value={formData.name}
-                            onChange={(val) => setFormData(prev => ({ ...prev, name: val }))}
+                            onChange={(val: any) => setFormData(prev => ({ ...prev, name: val }))}
                             placeholder={loadingResources ? "Loading..." : "Select resource..."}
                             disabled={loadingResources}
                         />
@@ -382,8 +382,8 @@ export default function FlowTimeline({
                                 value={durationMinutes}
                                 onChange={setDurationMinutes}
                                 placeholder="Duration"
-                                getOptionValue={(d) => d.value}
-                                getOptionLabel={(d) => d.label}
+                                getOptionValue={(d: any) => d.value}
+                                getOptionLabel={(d: any) => d.label}
                                 preserveOrder={true}
                                 searchable={false}
                             />
@@ -393,7 +393,7 @@ export default function FlowTimeline({
                         <input
                             type="checkbox"
                             checked={includeLogs}
-                            onChange={(e) => setIncludeLogs(e.target.checked)}
+                            onChange={(e: any) => setIncludeLogs(e.target.checked)}
                             className="rounded bg-surface border-border"
                         />
                         <span className="text-gray-300">Include error logs</span>
@@ -436,7 +436,7 @@ export default function FlowTimeline({
                                 <input
                                     type="text"
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e: any) => setSearchQuery(e.target.value)}
                                     placeholder="Search..."
                                     className="w-48 pl-9 pr-3 py-2 bg-surface border border-border rounded text-sm text-text focus:outline-none focus:border-primary"
                                     autoComplete="off"
@@ -448,8 +448,8 @@ export default function FlowTimeline({
                                     value={severityFilter}
                                     onChange={setSeverityFilter}
                                     placeholder="Severity"
-                                    getOptionValue={(s) => s.value}
-                                    getOptionLabel={(s) => s.label}
+                                    getOptionValue={(s: any) => s.value}
+                                    getOptionLabel={(s: any) => s.label}
                                     preserveOrder={true}
                                     searchable={false}
                                 />
@@ -460,8 +460,8 @@ export default function FlowTimeline({
                                     value={typeFilter}
                                     onChange={setTypeFilter}
                                     placeholder="Type"
-                                    getOptionValue={(t) => t.value}
-                                    getOptionLabel={(t) => t.label}
+                                    getOptionValue={(t: any) => t.value}
+                                    getOptionLabel={(t: any) => t.label}
                                     preserveOrder={true}
                                     searchable={false}
                                 />

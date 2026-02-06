@@ -12,10 +12,10 @@ import ClusterRoleBindingActionsMenu from './ClusterRoleBindingActionsMenu';
 import { useClusterRoleBindingActions } from './useClusterRoleBindingActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function ClusterRoleBindingList({ isVisible }) {
+export default function ClusterRoleBindingList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { clusterRoleBindings, loading } = useClusterRoleBindings(currentContext, isVisible);
+    const { clusterRoleBindings, loading } = useClusterRoleBindings(currentContext, isVisible) as any;
     const { handleEditYaml } = useClusterRoleBindingActions();
     const selection = useSelection();
 
@@ -37,11 +37,11 @@ export default function ClusterRoleBindingList({ isVisible }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
         {
             key: 'roleRef',
             label: 'Role Ref',
-            render: (item) => {
+            render: (item: any) => {
                 const ref = item.roleRef || {};
                 return (
                     <span>
@@ -50,28 +50,28 @@ export default function ClusterRoleBindingList({ isVisible }) {
                     </span>
                 );
             },
-            getValue: (item) => `${item.roleRef?.kind}/${item.roleRef?.name}`
+            getValue: (item: any) => `${item.roleRef?.kind}/${item.roleRef?.name}`
         },
         {
             key: 'subjects',
             label: 'Subjects',
             align: 'center',
-            render: (item) => (item.subjects || []).length,
-            getValue: (item) => (item.subjects || []).length
+            render: (item: any) => (item.subjects || []).length,
+            getValue: (item: any) => (item.subjects || []).length
         },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <ClusterRoleBindingActionsMenu
                     clusterRoleBinding={item}
                     isOpen={activeMenuId === `clusterrolebinding-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `clusterrolebinding-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `clusterrolebinding-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={(clusterRoleBinding) => openBulkDelete([clusterRoleBinding])}
+                    onDelete={(clusterRoleBinding: any) => openBulkDelete([clusterRoleBinding])}
                 />
             ),
             getValue: () => '',
@@ -98,7 +98,7 @@ export default function ClusterRoleBindingList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

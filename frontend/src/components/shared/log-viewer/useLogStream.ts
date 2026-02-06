@@ -35,21 +35,21 @@ export function useLogStream({
     initialPosition,
     isStale,
     currentContext
-}) {
+}: { namespace: any; pod: any; container: any; containers: any; siblingPods: any; podContainerMap: any; showPrevious: any; sinceTime: any; viewMode: any; initialPosition: any; isStale: any; currentContext: any }) {
     const isAllContainers = container === ALL_CONTAINERS;
     const isAllPods = pod === ALL_PODS;
 
     // Build pod-container pairs for "All Pods" mode
     const buildPodContainerPairs = useCallback(() => {
         if (!isAllPods || !siblingPods?.length) return [];
-        return siblingPods.map(podName => ({
+        return siblingPods.map((podName: any) => ({
             podName,
             containerNames: isAllContainers
                 ? (podContainerMap?.[podName] || containers || [])
                 : (container ? [container] : [])
         }));
     }, [isAllPods, isAllContainers, siblingPods, podContainerMap, containers, container]);
-    const [logs, setLogs] = useState([]); // Array of { timestamp, content, source }
+    const [logs, setLogs] = useState<any[]>([]); // Array of { timestamp, content, source }
     // Start with loading=true to prevent streaming race condition on initial mount
     const [loading, setLoading] = useState(true);
     const [loadingAll, setLoadingAll] = useState(false);
@@ -64,9 +64,9 @@ export function useLogStream({
     const streamDisconnectedRef = useRef(false);
     const [firstItemIndex, setFirstItemIndex] = useState(10000); // For virtuoso prepending
 
-    const [fetchError, setFetchError] = useState(null); // Error message when fetch fails (logs preserved)
+    const [fetchError, setFetchError] = useState<string | null>(null); // Error message when fetch fails (logs preserved)
 
-    const streamIdRef = useRef(null);
+    const streamIdRef = useRef<any>(null);
     const loadingBeforeRef = useRef(false);
     const loadingAfterRef = useRef(false);
     const lastFetchedBeforeTs = useRef('');
@@ -83,7 +83,7 @@ export function useLogStream({
     // Extract first timestamp from current logs
     const getFirstTimestamp = useCallback(() => {
         if (!logs.length) return '';
-        const entry = logs.find(e => e.timestamp);
+        const entry = logs.find((e: any) => e.timestamp);
         return entry?.timestamp || '';
     }, [logs]);
 
@@ -157,7 +157,7 @@ export function useLogStream({
                 setFetchError(null);
                 setLogs(parsed);
             }
-        } catch (err) {
+        } catch (err: any) {
             // On error, preserve existing logs and show error banner
             if (logs.length > 0) {
                 setFetchError(`Error fetching logs: ${err}`);
@@ -204,7 +204,7 @@ export function useLogStream({
                 allLogs = await GetAllPodLogs(namespace, pod, container, true, showPrevious);
             }
             setLogs(parseLogLines(allLogs, 'initial'));
-        } catch (err) {
+        } catch (err: any) {
             setLogs([{ timestamp: '', content: `Error fetching all logs: ${err}`, source: 'error' }]);
             setIsAllLoaded(false);
         } finally {
@@ -259,7 +259,7 @@ export function useLogStream({
             } else {
                 setHasMoreBefore(false);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to load older logs:', err);
             setHasMoreBefore(false);
         } finally {
@@ -312,7 +312,7 @@ export function useLogStream({
             } else {
                 setHasMoreAfter(false);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to load newer logs:', err);
             setHasMoreAfter(false);
         } finally {
@@ -402,7 +402,7 @@ export function useLogStream({
                 streamId = await StartLogStream(namespace, pod, container, true);
             }
             streamIdRef.current = streamId;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to start log stream:', err);
         }
     }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs]);
@@ -417,15 +417,15 @@ export function useLogStream({
     // Listen for log stream events (single lines and batches from 60fps coalescer)
     useEffect(() => {
         // Process a single log line, filtering duplicates by timestamp
-        const processLine = (line) => {
+        const processLine = (line: any) => {
             const newEntries = parseLogLines(line, 'stream');
             if (newEntries.length > 0) {
                 setLogs(prev => {
                     const lastTs = prev.length > 0 ?
-                        (prev.slice().reverse().find(e => e.timestamp)?.timestamp || '') : '';
+                        (prev.slice().reverse().find((e: any) => e.timestamp)?.timestamp || '') : '';
 
                     const filteredEntries = lastTs ?
-                        newEntries.filter(e => !e.timestamp || e.timestamp > lastTs) :
+                        newEntries.filter((e: any) => !e.timestamp || e.timestamp > lastTs) :
                         newEntries;
 
                     return filteredEntries.length > 0 ? [...prev, ...filteredEntries] : prev;
@@ -434,11 +434,11 @@ export function useLogStream({
         };
 
         // Process multiple log lines in a single state update (from batch event)
-        const processBatch = (lines) => {
+        const processBatch = (lines: any) => {
             if (!lines || lines.length === 0) return;
 
             // Parse all lines first
-            const allNewEntries = [];
+            const allNewEntries: any[] = [];
             for (const line of lines) {
                 const entries = parseLogLines(line, 'stream');
                 allNewEntries.push(...entries);
@@ -447,10 +447,10 @@ export function useLogStream({
             if (allNewEntries.length > 0) {
                 setLogs(prev => {
                     const lastTs = prev.length > 0 ?
-                        (prev.slice().reverse().find(e => e.timestamp)?.timestamp || '') : '';
+                        (prev.slice().reverse().find((e: any) => e.timestamp)?.timestamp || '') : '';
 
                     const filteredEntries = lastTs ?
-                        allNewEntries.filter(e => !e.timestamp || e.timestamp > lastTs) :
+                        allNewEntries.filter((e: any) => !e.timestamp || e.timestamp > lastTs) :
                         allNewEntries;
 
                     return filteredEntries.length > 0 ? [...prev, ...filteredEntries] : prev;
@@ -458,7 +458,7 @@ export function useLogStream({
             }
         };
 
-        const handleLogEvent = (event) => {
+        const handleLogEvent = (event: any) => {
             if (!streamIdRef.current || event.streamId !== streamIdRef.current) return;
 
             if (event.done) {
@@ -484,7 +484,7 @@ export function useLogStream({
         };
 
         // Batch event handler (from 60fps log coalescer - reduces IPC overhead)
-        const handleBatchEvent = (event) => {
+        const handleBatchEvent = (event: any) => {
             if (!streamIdRef.current || event.streamId !== streamIdRef.current) return;
             if (event.lines) {
                 processBatch(event.lines);

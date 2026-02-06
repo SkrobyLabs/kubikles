@@ -6,20 +6,20 @@ import ConfigSidebar from './ConfigSidebar';
 import ConfigSection from './ConfigSection';
 import { getSortedSections, searchFields, getModifiedFields } from '~/config/configSchema';
 
-export default function ConfigEditorUI({ onSwitchMode }) {
+export default function ConfigEditorUI({ onSwitchMode }: any) {
     const { config, setConfig, resetConfig, closeConfigEditor } = useConfig();
     const { openModal, closeModal } = useUI();
     const [activeSection, setActiveSection] = useState(() => getSortedSections()[0]);
     const [saved, setSaved] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [showSearch, setShowSearch] = useState(false);
-    const searchInputRef = useRef(null);
+    const searchInputRef = useRef<any>(null);
 
     // Search results - which sections/fields match
     const searchResults = searchTerm ? searchFields(searchTerm) : null;
 
     // Auto-save on field change
-    const handleFieldChange = useCallback((path, value) => {
+    const handleFieldChange = useCallback((path: any, value: any) => {
         setConfig(path, value);
         setSaved(true);
     }, [setConfig]);
@@ -34,7 +34,7 @@ export default function ConfigEditorUI({ onSwitchMode }) {
 
     // Cmd+F to open search
     useEffect(() => {
-        const handleKeyDown = (e) => {
+        const handleKeyDown = (e: any) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
                 e.preventDefault();
                 setShowSearch(true);
@@ -74,7 +74,7 @@ export default function ConfigEditorUI({ onSwitchMode }) {
             return;
         }
 
-        const formatValue = (val) => {
+        const formatValue = (val: any) => {
             if (typeof val === 'boolean') return val ? 'Yes' : 'No';
             return String(val);
         };
@@ -131,7 +131,7 @@ export default function ConfigEditorUI({ onSwitchMode }) {
                                 ref={searchInputRef}
                                 type="text"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e: any) => setSearchTerm(e.target.value)}
                                 placeholder="Search settings..."
                                 className="w-48 pl-8 pr-8 py-1 text-sm bg-background border border-border rounded text-text focus:outline-none focus:border-primary"
                                 autoComplete="off"

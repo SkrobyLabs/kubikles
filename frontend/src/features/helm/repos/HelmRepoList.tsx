@@ -31,14 +31,14 @@ import { OCIRegistryLoginDialog } from '../oci';
 import { useNotification } from '~/context';
 import { useUI } from '~/context';
 
-export default function HelmRepoList({ isVisible }) {
-    const [repos, setRepos] = useState([]);
-    const [ociRegistries, setOciRegistries] = useState([]);
+export default function HelmRepoList({ isVisible }: { isVisible: boolean }) {
+    const [repos, setRepos] = useState<any[]>([]);
+    const [ociRegistries, setOciRegistries] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [showAddDialog, setShowAddDialog] = useState(false);
     const [showOCILoginDialog, setShowOCILoginDialog] = useState(false);
-    const [updatingRepo, setUpdatingRepo] = useState(null);
-    const [loggingIn, setLoggingIn] = useState(null);
+    const [updatingRepo, setUpdatingRepo] = useState<any>(null);
+    const [loggingIn, setLoggingIn] = useState<any>(null);
     const { addNotification } = useNotification();
     const { openModal, closeModal } = useUI();
 
@@ -52,7 +52,7 @@ export default function HelmRepoList({ isVisible }) {
             ]);
             setRepos(repoData || []);
             setOciRegistries(ociData || []);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to fetch chart sources:', err);
             addNotification({
                 type: 'error',
@@ -68,7 +68,7 @@ export default function HelmRepoList({ isVisible }) {
         fetchData();
     }, [fetchData]);
 
-    const handleUpdateRepo = useCallback(async (repo) => {
+    const handleUpdateRepo = useCallback(async (repo: any) => {
         setUpdatingRepo(repo.name);
         try {
             await UpdateHelmRepository(repo.name);
@@ -77,7 +77,7 @@ export default function HelmRepoList({ isVisible }) {
                 title: 'Repository updated',
                 message: `Successfully updated index for ${repo.name}`
             });
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to update repository:', err);
             addNotification({
                 type: 'error',
@@ -98,7 +98,7 @@ export default function HelmRepoList({ isVisible }) {
                 title: 'Repositories updated',
                 message: 'Successfully updated all repository indexes'
             });
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to update repositories:', err);
             addNotification({
                 type: 'error',
@@ -110,7 +110,7 @@ export default function HelmRepoList({ isVisible }) {
         }
     }, [addNotification]);
 
-    const handleRemoveRepo = useCallback((repo) => {
+    const handleRemoveRepo = useCallback((repo: any) => {
         openModal({
             title: `Remove ${repo.name}`,
             content: `Are you sure you want to remove repository "${repo.name}"?`,
@@ -126,7 +126,7 @@ export default function HelmRepoList({ isVisible }) {
                     });
                     closeModal();
                     fetchData();
-                } catch (err) {
+                } catch (err: any) {
                     console.error('Failed to remove repository:', err);
                     addNotification({
                         type: 'error',
@@ -138,7 +138,7 @@ export default function HelmRepoList({ isVisible }) {
         });
     }, [openModal, closeModal, fetchData, addNotification]);
 
-    const handleChangePriority = useCallback(async (item, delta) => {
+    const handleChangePriority = useCallback(async (item: any, delta: number) => {
         const newPriority = Math.max(0, item.priority + delta);
         try {
             if (item.type === 'oci') {
@@ -147,7 +147,7 @@ export default function HelmRepoList({ isVisible }) {
                 await SetHelmRepositoryPriority(item.name, newPriority);
             }
             fetchData();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to update priority:', err);
             addNotification({
                 type: 'error',
@@ -157,7 +157,7 @@ export default function HelmRepoList({ isVisible }) {
         }
     }, [fetchData, addNotification]);
 
-    const handleACRLogin = useCallback(async (registry) => {
+    const handleACRLogin = useCallback(async (registry: any) => {
         setLoggingIn(registry.url);
         try {
             await LoginACRWithAzureCLI(registry.url);
@@ -167,7 +167,7 @@ export default function HelmRepoList({ isVisible }) {
                 message: `Successfully authenticated to ${registry.url}`
             });
             fetchData();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to login to ACR:', err);
             addNotification({
                 type: 'error',
@@ -179,7 +179,7 @@ export default function HelmRepoList({ isVisible }) {
         }
     }, [addNotification, fetchData]);
 
-    const handleOCILogout = useCallback((registry) => {
+    const handleOCILogout = useCallback((registry: any) => {
         openModal({
             title: `Logout from ${registry.url}`,
             content: `Are you sure you want to logout from "${registry.url}"? You will need to re-authenticate to pull charts from this registry.`,
@@ -195,7 +195,7 @@ export default function HelmRepoList({ isVisible }) {
                     });
                     closeModal();
                     fetchData();
-                } catch (err) {
+                } catch (err: any) {
                     addNotification({
                         type: 'error',
                         title: 'Failed to logout',
@@ -206,7 +206,7 @@ export default function HelmRepoList({ isVisible }) {
         });
     }, [openModal, closeModal, addNotification, fetchData]);
 
-    const handleOCIRemove = useCallback((registry) => {
+    const handleOCIRemove = useCallback((registry: any) => {
         openModal({
             title: `Remove ${registry.name}`,
             content: `Are you sure you want to remove "${registry.url}"? This will logout and remove the registry from the list.`,
@@ -222,7 +222,7 @@ export default function HelmRepoList({ isVisible }) {
                     });
                     closeModal();
                     fetchData();
-                } catch (err) {
+                } catch (err: any) {
                     addNotification({
                         type: 'error',
                         title: 'Failed to remove registry',
@@ -245,7 +245,7 @@ export default function HelmRepoList({ isVisible }) {
 
     // Combine repos and OCI registries into a single list
     const combinedData = useMemo(() => {
-        const httpRepos = repos.map(r => ({
+        const httpRepos = repos.map((r: any) => ({
             ...r,
             type: 'http',
             authenticated: true, // HTTP repos are always "authenticated" if they exist
@@ -255,7 +255,7 @@ export default function HelmRepoList({ isVisible }) {
             }
         }));
 
-        const ociRepos = ociRegistries.map(r => ({
+        const ociRepos = ociRegistries.map((r: any) => ({
             name: r.url.replace(/^https?:\/\//, '').split('/')[0], // Extract hostname as name
             url: r.url,
             priority: r.priority,
@@ -277,7 +277,7 @@ export default function HelmRepoList({ isVisible }) {
             key: 'priority',
             label: '#',
             width: '60px',
-            render: (item) => (
+            render: (item: any) => (
                 <div className="flex items-center gap-1">
                     <span className="text-gray-400 font-mono text-xs">{item.priority}</span>
                     <div className="flex flex-col">
@@ -298,14 +298,14 @@ export default function HelmRepoList({ isVisible }) {
                     </div>
                 </div>
             ),
-            getValue: (item) => item.priority,
+            getValue: (item: any) => item.priority,
             initialSort: 'asc'
         },
         {
             key: 'type',
             label: 'Type',
             width: '80px',
-            render: (item) => (
+            render: (item: any) => (
                 <div className="flex items-center gap-1.5">
                     {item.type === 'oci' ? (
                         <>
@@ -324,31 +324,31 @@ export default function HelmRepoList({ isVisible }) {
                     )}
                 </div>
             ),
-            getValue: (item) => item.type
+            getValue: (item: any) => item.type
         },
         {
             key: 'name',
             label: 'Name',
-            render: (item) => (
+            render: (item: any) => (
                 <span className="font-medium">{item.name}</span>
             ),
-            getValue: (item) => item.name
+            getValue: (item: any) => item.name
         },
         {
             key: 'url',
             label: 'URL',
-            render: (item) => (
+            render: (item: any) => (
                 <span className="font-mono text-xs text-gray-400 truncate block max-w-md" title={item.url}>
                     {item.url}
                 </span>
             ),
-            getValue: (item) => item.url
+            getValue: (item: any) => item.url
         },
         {
             key: 'status',
             label: 'Status',
             width: '120px',
-            render: (item) => {
+            render: (item: any) => {
                 if (item.type === 'http') {
                     return <span className="text-xs text-gray-500">-</span>;
                 }
@@ -368,14 +368,14 @@ export default function HelmRepoList({ isVisible }) {
                     </div>
                 );
             },
-            getValue: (item) => item.authenticated ? 1 : 0
+            getValue: (item: any) => item.authenticated ? 1 : 0
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
             width: '140px',
-            render: (item) => (
+            render: (item: any) => (
                 <div className="flex items-center justify-center gap-1">
                     {item.type === 'http' ? (
                         // HTTP repo actions

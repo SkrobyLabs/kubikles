@@ -8,8 +8,73 @@ import ColumnConfigurator from './ColumnConfigurator';
 import SavedViewsDropdown from './SavedViewsDropdown';
 import { createFilter, getFieldsMetadata } from '~/utils/search';
 import { useSavedViews } from '~/hooks/useSavedViews';
+import type { SavedView } from '~/hooks/useSavedViews';
 import { useUI } from '~/context';
 import { useConfig } from '~/context';
+
+// Internal filter type used by columnFilters state
+interface ColumnFilter {
+    type: 'select' | 'regex' | 'numeric';
+    values?: Set<string>;
+    conditions?: any[];
+    pattern?: string;
+    logic?: 'and' | 'or';
+    operator?: string;
+    value?: number;
+}
+
+type ColumnFiltersMap = Record<string, ColumnFilter>;
+
+// Position state for the column filter dropdown
+interface ColumnFilterPosition {
+    top: number;
+    left: number;
+    anchorTop?: number;
+    anchorBottom?: number;
+}
+
+// Selection object passed from parent
+interface SelectionState {
+    isSelected: (uid: string) => boolean;
+    getSelectionState: (data: any[]) => 'none' | 'some' | 'all';
+    toggleAll: (data: any[]) => void;
+    toggleItem: (uid: string, index: number, data: any[], shiftKey: boolean) => void;
+    getSelectedItems: (data: any[]) => any[];
+    deselectAll: () => void;
+    selectedCount: number;
+}
+
+// Resizing ref type
+interface ResizeState {
+    columnKey: string;
+    startX: number;
+    startWidth: number;
+}
+
+// ResourceList props
+interface ResourceListProps {
+    title: string;
+    columns: any[];
+    data: any[];
+    isLoading: boolean;
+    namespaces?: string[];
+    currentNamespace?: any;
+    onNamespaceChange?: ((...args: any[]) => void) | null;
+    showNamespaceSelector?: boolean;
+    multiSelectNamespaces?: boolean;
+    highlightedUid?: string | null;
+    initialSort?: any;
+    resourceType?: string | null;
+    onRowClick?: ((item: any) => void) | null;
+    onRefresh?: (() => void) | null;
+    customHeaderActions?: React.ReactNode | null;
+    selection?: SelectionState | null;
+    selectable?: boolean;
+    onBulkDelete?: ((items: any[]) => void) | null;
+    onBulkRestart?: ((items: any[]) => void) | null;
+    onBulkExportYaml?: ((items: any[]) => void) | null;
+    onFilteredUidsChange?: ((uids: Set<string>) => void) | null;
+}
 
 // Tri-state checkbox props
 interface TriStateCheckboxProps {
@@ -170,7 +235,7 @@ const calculateTextWidth = (text: unknown): number => {
 const calculateColumnWidths = (columns: ColumnDef[], data: any[], savedWidths: ColumnWidths): ColumnWidths => {
     if (!data || data.length === 0) return {};
 
-    const calculatedWidths = {};
+    const calculatedWidths: ColumnWidths = {};
 
     // Columns that render visual components with fixed widths - skip auto-calculation
     const fixedWidthColumns = new Set(['cpu', 'memory', 'pods']);
@@ -189,7 +254,7 @@ const calculateColumnWidths = (columns: ColumnDef[], data: any[], savedWidths: C
         const headerWidth = calculateTextWidth(col.label) + 20; // extra for sort indicator
 
         // Sample data to find content widths
-        const contentWidths = [];
+        const contentWidths: number[] = [];
         const sampleSize = Math.min(data.length, 500); // Sample up to 500 rows
         const step = Math.max(1, Math.floor(data.length / sampleSize));
 
@@ -227,7 +292,7 @@ const calculateColumnWidths = (columns: ColumnDef[], data: any[], savedWidths: C
         }
 
         // Sort widths and find 95th percentile
-        contentWidths.sort((a, b) => a - b);
+        contentWidths.sort((a: number, b: number) => a - b);
         const p95Index = Math.floor(contentWidths.length * 0.95);
         const p95Width = contentWidths[p95Index] || contentWidths[contentWidths.length - 1];
 
@@ -264,17 +329,17 @@ export default function ResourceList({
     onBulkRestart = null,
     onBulkExportYaml = null,
     onFilteredUidsChange = null,
-}) {
+}: ResourceListProps) {
     const { pendingSearch, consumePendingSearch } = useUI();
     const { getConfig } = useConfig();
-    const [sortConfig, setSortConfig] = useState(initialSort || { key: null, direction: 'asc' });
+    const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: string }>(initialSort || { key: null, direction: 'asc' });
     const [searchInput, setSearchInput] = useState(''); // Immediate input value
     const [searchTerm, setSearchTerm] = useState('');   // Debounced value for filtering
     const [hiddenColumns, setHiddenColumns] = useState(() => {
         // Initialize with columns marked as defaultHidden
-        return new Set(columns.filter(col => col.defaultHidden).map(col => col.key));
+        return new Set(columns.filter((col: any) => col.defaultHidden).map((col: any) => col.key));
     });
-    const [activeViewId, setActiveViewId] = useState(null);
+    const [activeViewId, setActiveViewId] = useState<string | null>(null);
 
     // Saved views
     const { views, saveView, loadView, updateView, deleteView, renameView, duplicateView, setDefaultView, getDefaultView } = useSavedViews(resourceType);
@@ -285,25 +350,25 @@ export default function ResourceList({
         const timer = setTimeout(() => setSearchTerm(searchInput), searchDebounceMs);
         return () => clearTimeout(timer);
     }, [searchInput, searchDebounceMs]);
-    const [columnFilters, setColumnFilters] = useState({}); // { [columnKey]: { type, values|pattern } }
-    const [openColumnFilter, setOpenColumnFilter] = useState(null); // column key of open filter dropdown
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersMap>({}); // { [columnKey]: { type, values|pattern } }
+    const [openColumnFilter, setOpenColumnFilter] = useState<string | null>(null); // column key of open filter dropdown
     const [columnFilterSearch, setColumnFilterSearch] = useState(''); // search within filter dropdown
     const [regexDraft, setRegexDraft] = useState(''); // draft regex pattern (applied on Enter)
-    const [numericDraft, setNumericDraft] = useState({ operator: '>', value: '', unit: 'h' }); // draft numeric filter
-    const [columnFilterPos, setColumnFilterPos] = useState(null); // { top, left } for fixed-position dropdown
-    const columnFilterRef = useRef(null); // ref for the filter button wrapper
-    const columnFilterDropdownRef = useRef(null); // ref for the fixed-position dropdown
+    const [numericDraft, setNumericDraft] = useState<{ operator: string; value: string; unit: string }>({ operator: '>', value: '', unit: 'h' }); // draft numeric filter
+    const [columnFilterPos, setColumnFilterPos] = useState<ColumnFilterPosition | null>(null); // { top, left } for fixed-position dropdown
+    const columnFilterRef = useRef<HTMLDivElement>(null); // ref for the filter button wrapper
+    const columnFilterDropdownRef = useRef<HTMLDivElement>(null); // ref for the fixed-position dropdown
     const [showSearchHelp, setShowSearchHelp] = useState(false);
-    const searchHelpRef = useRef(null);
-    const tableRef = useRef(null);
+    const searchHelpRef = useRef<HTMLDivElement>(null);
+    const tableRef = useRef<HTMLTableElement>(null);
 
     // Get current view config for saving (defined after columnFilters state)
     const getCurrentViewConfig = useCallback(() => {
         // Serialize columnFilters — convert Sets to arrays for JSON storage
-        const serializedFilters = {};
+        const serializedFilters: Record<string, any> = {};
         for (const [key, filter] of Object.entries(columnFilters)) {
             if (filter.type === 'select') {
-                serializedFilters[key] = { ...filter, values: Array.from(filter.values) };
+                serializedFilters[key] = { ...filter, values: Array.from(filter.values || []) };
             } else {
                 serializedFilters[key] = filter;
             }
@@ -319,13 +384,13 @@ export default function ResourceList({
     }, [searchInput, currentNamespace, hiddenColumns, sortConfig, columnFilters, resourceType]);
 
     // Load a saved view (or reset to defaults if viewId is null)
-    const handleLoadView = useCallback((viewId) => {
+    const handleLoadView = useCallback((viewId: string | null) => {
         if (!viewId) {
             // Reset to application defaults
             setActiveViewId(null);
             setSearchInput('');
             setSearchTerm('');
-            setHiddenColumns(new Set(columns.filter(col => col.defaultHidden).map(col => col.key)));
+            setHiddenColumns(new Set(columns.filter((col: any) => col.defaultHidden).map((col: any) => col.key)));
             setSortConfig(initialSort || { key: null, direction: 'asc' });
             setColumnFilters({});
             return;
@@ -339,17 +404,18 @@ export default function ResourceList({
         if (view.hiddenColumns?.length > 0) {
             setHiddenColumns(new Set(view.hiddenColumns));
         } else {
-            setHiddenColumns(new Set());
+            setHiddenColumns(new Set<any>());
         }
         setSortConfig(view.sortConfig || { key: null, direction: 'asc' });
         // Restore column filters — deserialize arrays back to Sets
         if (view.columnFilters && Object.keys(view.columnFilters).length > 0) {
-            const restored = {};
+            const restored: ColumnFiltersMap = {};
             for (const [key, filter] of Object.entries(view.columnFilters)) {
-                if (filter.type === 'select' && Array.isArray(filter.values)) {
-                    restored[key] = { ...filter, values: new Set(filter.values) };
+                const f = filter as any;
+                if (f.type === 'select' && Array.isArray(f.values)) {
+                    restored[key] = { ...f, values: new Set(f.values) };
                 } else {
-                    restored[key] = filter;
+                    restored[key] = f;
                 }
             }
             setColumnFilters(restored);
@@ -362,14 +428,15 @@ export default function ResourceList({
     }, [loadView, onNamespaceChange, columns, initialSort]);
 
     // Handle updating an existing view with current config
-    const handleUpdateView = useCallback((viewId, config) => {
+    const handleUpdateView = useCallback((viewId: string, config: any) => {
         // Serialize Sets to arrays for storage
-        const serializedFilters = {};
+        const serializedFilters: Record<string, any> = {};
         for (const [key, filter] of Object.entries(config.columnFilters || {})) {
-            if (filter.type === 'select' && filter.values instanceof Set) {
-                serializedFilters[key] = { ...filter, values: Array.from(filter.values) };
+            const f = filter as any;
+            if (f.type === 'select' && f.values instanceof Set) {
+                serializedFilters[key] = { ...f, values: Array.from(f.values) };
             } else {
-                serializedFilters[key] = filter;
+                serializedFilters[key] = f;
             }
         }
         updateView(viewId, {
@@ -382,7 +449,7 @@ export default function ResourceList({
     }, [updateView]);
 
     // Handle deleting a view - reset to defaults if deleting the active view
-    const handleDeleteView = useCallback((viewId) => {
+    const handleDeleteView = useCallback((viewId: string) => {
         deleteView(viewId);
         if (viewId === activeViewId) {
             handleLoadView(null);
@@ -410,11 +477,11 @@ export default function ResourceList({
             return {};
         }
     });
-    const resizingRef = useRef(null);
+    const resizingRef = useRef<ResizeState | null>(null);
 
     // Track data length to know when to recalculate widths
     // We use a ref to store the calculated widths so they persist across scrolls
-    const calculatedWidthsRef = useRef({});
+    const calculatedWidthsRef = useRef<ColumnWidths>({});
     const lastDataLengthRef = useRef(0);
 
     // Calculate column widths based on data - only recalculate when data changes significantly
@@ -446,25 +513,25 @@ export default function ResourceList({
     }, [savedColumnWidths, resourceType]);
 
     // Column resize handlers
-    const handleResizeStart = useCallback((e, columnKey) => {
+    const handleResizeStart = useCallback((e: React.MouseEvent, columnKey: string) => {
         e.preventDefault();
         e.stopPropagation();
 
         const startX = e.clientX;
-        const th = e.target.parentElement;
-        const startWidth = th.offsetWidth;
+        const th = (e.target as HTMLElement).parentElement;
+        const startWidth = th!.offsetWidth;
 
         resizingRef.current = { columnKey, startX, startWidth };
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
 
-        const handleMouseMove = (moveEvent) => {
+        const handleMouseMove = (moveEvent: MouseEvent) => {
             if (!resizingRef.current) return;
             const diff = moveEvent.clientX - resizingRef.current.startX;
             const newWidth = Math.max(50, resizingRef.current.startWidth + diff);
-            setSavedColumnWidths(prev => ({
+            setSavedColumnWidths((prev: ColumnWidths) => ({
                 ...prev,
-                [resizingRef.current.columnKey]: newWidth
+                [resizingRef.current!.columnKey]: newWidth
             }));
         };
 
@@ -481,10 +548,10 @@ export default function ResourceList({
     }, []);
 
     // Double-click to reset column width
-    const handleResizeDoubleClick = useCallback((e, columnKey) => {
+    const handleResizeDoubleClick = useCallback((e: React.MouseEvent, columnKey: string) => {
         e.preventDefault();
         e.stopPropagation();
-        setSavedColumnWidths(prev => {
+        setSavedColumnWidths((prev: ColumnWidths) => {
             const newWidths = { ...prev };
             delete newWidths[columnKey];
             return newWidths;
@@ -509,12 +576,12 @@ export default function ResourceList({
     }, [pendingSearch, consumePendingSearch]);
 
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (searchHelpRef.current && !searchHelpRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchHelpRef.current && !searchHelpRef.current.contains(event.target as Node)) {
                 setShowSearchHelp(false);
             }
-            if (columnFilterRef.current && !columnFilterRef.current.contains(event.target) &&
-                (!columnFilterDropdownRef.current || !columnFilterDropdownRef.current.contains(event.target))) {
+            if (columnFilterRef.current && !columnFilterRef.current.contains(event.target as Node) &&
+                (!columnFilterDropdownRef.current || !columnFilterDropdownRef.current.contains(event.target as Node))) {
                 setOpenColumnFilter(null);
                 setColumnFilterSearch('');
             }
@@ -533,7 +600,7 @@ export default function ResourceList({
         const dropdownRect = dropdown.getBoundingClientRect();
         const vw = window.innerWidth;
         const vh = window.innerHeight;
-        let { top, left, anchorTop, anchorBottom } = columnFilterPos;
+        let { top, left, anchorTop } = columnFilterPos;
         // Clamp right edge
         if (left + dropdownRect.width > vw - 8) {
             left = vw - dropdownRect.width - 8;
@@ -545,12 +612,12 @@ export default function ResourceList({
             top = flippedTop < 8 ? 8 : flippedTop;
         }
         if (top !== columnFilterPos.top || left !== columnFilterPos.left) {
-            setColumnFilterPos(prev => ({ ...prev, top, left }));
+            setColumnFilterPos(prev => prev ? { ...prev, top, left } : prev);
         }
     }, [openColumnFilter, columnFilterPos]);
 
     // Extract numeric value for numeric filters
-    const getNumericValue = useCallback((col, item) => {
+    const getNumericValue = useCallback((col: any, item: any) => {
         if (col.getNumericValue) return col.getNumericValue(item);
         // Auto-detect age column: convert creationTimestamp to hours
         if (col.key === 'age') {
@@ -566,7 +633,7 @@ export default function ResourceList({
     }, []);
 
     // Extract column value for filtering (prefers getFilterValue over getValue)
-    const getColumnValue = useCallback((col, item) => {
+    const getColumnValue = useCallback((col: any, item: any) => {
         if (col.getFilterValue) return String(col.getFilterValue(item) ?? '');
         if (col.key === 'name') return item.metadata?.name || '';
         if (col.key === 'namespace') return item.metadata?.namespace || '';
@@ -579,7 +646,7 @@ export default function ResourceList({
 
     // Determine filter type per column: 'regex' | 'select' | 'numeric' | false
     const columnFilterTypes = useMemo(() => {
-        const types = {};
+        const types: Record<string, string | false> = {};
         for (const col of columns) {
             if (col.filterable === false || col.isColumnSelector || col.isSelectionColumn) {
                 types[col.key] = false;
@@ -625,13 +692,13 @@ export default function ResourceList({
 
     // Compute unique values + counts for select-type filter columns from data, merged with predefined
     const columnUniqueValues = useMemo(() => {
-        const result = {};
-        const selectCols = columns.filter(c => columnFilterTypes[c.key] === 'select');
+        const result: Record<string, { values: string[]; counts: Record<string, number> }> = {};
+        const selectCols = columns.filter((c: any) => columnFilterTypes[c.key] === 'select');
 
         for (const col of selectCols) {
-            const counts = {};
+            const counts: Record<string, number> = {};
             // Seed with predefined values (count = 0)
-            const predefined = PREDEFINED_COLUMN_VALUES[resourceType]?.[col.key] || [];
+            const predefined: string[] = (PREDEFINED_COLUMN_VALUES as any)[resourceType as string]?.[col.key] || [];
             for (const v of predefined) counts[v] = 0;
             // Count actual data values
             for (const item of data) {
@@ -642,7 +709,7 @@ export default function ResourceList({
             if (allValues.length > 0 && allValues.length <= 200) {
                 // Sort: predefined first (in order), then dynamic values alphabetically
                 const predefinedSet = new Set(predefined);
-                const dynamic = allValues.filter(v => !predefinedSet.has(v)).sort((a, b) => a.localeCompare(b));
+                const dynamic = allValues.filter((v: any) => !predefinedSet.has(v)).sort((a, b) => a.localeCompare(b));
                 result[col.key] = { values: [...predefined, ...dynamic], counts };
             }
         }
@@ -650,9 +717,9 @@ export default function ResourceList({
     }, [data, columns, getColumnValue, columnFilterTypes, resourceType, PREDEFINED_COLUMN_VALUES]);
 
     // Toggle a value in a select-type column filter
-    const toggleColumnFilter = useCallback((colKey, value) => {
+    const toggleColumnFilter = useCallback((colKey: string, value: string) => {
         setColumnFilters(prev => {
-            const current = prev[colKey]?.type === 'select' ? new Set(prev[colKey].values) : new Set();
+            const current: Set<string> = prev[colKey]?.type === 'select' ? new Set(prev[colKey].values) : new Set<any>();
             if (current.has(value)) {
                 current.delete(value);
             } else {
@@ -669,22 +736,22 @@ export default function ResourceList({
     }, []);
 
     // Add a regex pattern condition to a column filter
-    const addRegexCondition = useCallback((colKey, pattern) => {
+    const addRegexCondition = useCallback((colKey: string, pattern: string) => {
         if (!pattern) return;
         setColumnFilters(prev => {
             const existing = prev[colKey];
-            const conditions = existing?.type === 'regex' ? [...existing.conditions] : [];
+            const conditions = existing?.type === 'regex' ? [...(existing.conditions || [])] : [];
             conditions.push(pattern);
             return { ...prev, [colKey]: { type: 'regex', conditions, logic: existing?.logic || 'and' } };
         });
     }, []);
 
     // Remove a regex condition by index
-    const removeRegexCondition = useCallback((colKey, index) => {
+    const removeRegexCondition = useCallback((colKey: string, index: number) => {
         setColumnFilters(prev => {
             const existing = prev[colKey];
             if (!existing || existing.type !== 'regex') return prev;
-            const conditions = existing.conditions.filter((_, i) => i !== index);
+            const conditions = (existing.conditions || []).filter((_: any, i: number) => i !== index);
             if (conditions.length === 0) {
                 const next = { ...prev };
                 delete next[colKey];
@@ -695,22 +762,22 @@ export default function ResourceList({
     }, []);
 
     // Add a numeric condition to a column filter
-    const addNumericCondition = useCallback((colKey, operator, value) => {
+    const addNumericCondition = useCallback((colKey: string, operator: string, value: string) => {
         if (value === '' || value === null || isNaN(Number(value))) return;
         setColumnFilters(prev => {
             const existing = prev[colKey];
-            const conditions = existing?.type === 'numeric' ? [...existing.conditions] : [];
+            const conditions = existing?.type === 'numeric' ? [...(existing.conditions || [])] : [];
             conditions.push({ operator, value: Number(value) });
             return { ...prev, [colKey]: { type: 'numeric', conditions, logic: existing?.logic || 'and' } };
         });
     }, []);
 
     // Remove a numeric condition by index
-    const removeNumericCondition = useCallback((colKey, index) => {
+    const removeNumericCondition = useCallback((colKey: string, index: number) => {
         setColumnFilters(prev => {
             const existing = prev[colKey];
             if (!existing || existing.type !== 'numeric') return prev;
-            const conditions = existing.conditions.filter((_, i) => i !== index);
+            const conditions = (existing.conditions || []).filter((_: any, i: number) => i !== index);
             if (conditions.length === 0) {
                 const next = { ...prev };
                 delete next[colKey];
@@ -721,7 +788,7 @@ export default function ResourceList({
     }, []);
 
     // Toggle AND/OR logic for a column filter
-    const toggleFilterLogic = useCallback((colKey) => {
+    const toggleFilterLogic = useCallback((colKey: string) => {
         setColumnFilters(prev => {
             const existing = prev[colKey];
             if (!existing) return prev;
@@ -730,7 +797,7 @@ export default function ResourceList({
     }, []);
 
     // Clear all filters for a column
-    const clearColumnFilter = useCallback((colKey) => {
+    const clearColumnFilter = useCallback((colKey: string) => {
         setColumnFilters(prev => {
             const next = { ...prev };
             delete next[colKey];
@@ -746,7 +813,7 @@ export default function ResourceList({
     // Check if any column has active filters
     const hasActiveColumnFilters = Object.keys(columnFilters).length > 0;
 
-    const toggleColumn = (key) => {
+    const toggleColumn = (key: string) => {
         const newHidden = new Set(hiddenColumns);
         if (newHidden.has(key)) {
             newHidden.delete(key);
@@ -758,25 +825,25 @@ export default function ResourceList({
 
     // Show all columns
     const showAllColumns = useCallback(() => {
-        setHiddenColumns(new Set());
+        setHiddenColumns(new Set<any>());
     }, []);
 
     // Reset columns to default visibility (determined by column.defaultHidden property)
     const resetColumnDefaults = useCallback(() => {
         const defaultHidden = new Set(
-            columns.filter(col => col.defaultHidden).map(col => col.key)
+            columns.filter((col: any) => col.defaultHidden).map((col: any) => col.key)
         );
         setHiddenColumns(defaultHidden);
     }, [columns]);
 
     // Compute default hidden columns set for ColumnConfigurator
     const defaultHiddenColumns = useMemo(() => {
-        return new Set(columns.filter(col => col.defaultHidden).map(col => col.key));
+        return new Set(columns.filter((col: any) => col.defaultHidden).map((col: any) => col.key));
     }, [columns]);
 
-    const baseVisibleColumns = columns.filter(col => !hiddenColumns.has(col.key));
+    const baseVisibleColumns = columns.filter((col: any) => !hiddenColumns.has(col.key));
 
-    const handleSort = (key) => {
+    const handleSort = (key: string) => {
         let direction = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') {
             direction = 'desc';
@@ -789,34 +856,34 @@ export default function ResourceList({
 
         // Apply search term filter
         if (searchTerm) {
-            const filterFn = createFilter(resourceType, searchTerm);
+            const filterFn = createFilter(resourceType as string, searchTerm);
             result = result.filter(filterFn);
         }
 
         // Apply per-column filters (select and regex)
         if (hasActiveColumnFilters) {
-            result = result.filter(item => {
-                for (const [colKey, filter] of Object.entries(columnFilters)) {
-                    const col = columns.find(c => c.key === colKey);
+            result = result.filter((item: any) => {
+                for (const [colKey, filter] of Object.entries(columnFilters) as [string, ColumnFilter][]) {
+                    const col = columns.find((c: any) => c.key === colKey);
                     if (!col) continue;
                     const val = getColumnValue(col, item);
                     if (filter.type === 'select') {
-                        if (!filter.values.has(val)) return false;
+                        if (!filter.values?.has(val)) return false;
                     } else if (filter.type === 'regex') {
                         const conditions = filter.conditions || [filter.pattern];
                         const isAnd = filter.logic !== 'or';
-                        const results = conditions.map(pattern => {
+                        const results = conditions.map((pattern: any) => {
                             try {
                                 return new RegExp(pattern, 'i').test(val);
                             } catch { return true; }
                         });
-                        if (isAnd ? results.some(r => !r) : !results.some(r => r)) return false;
+                        if (isAnd ? results.some((r: boolean) => !r) : !results.some((r: boolean) => r)) return false;
                     } else if (filter.type === 'numeric') {
                         const numVal = getNumericValue(col, item);
                         if (isNaN(numVal)) return false;
                         const conditions = filter.conditions || [{ operator: filter.operator, value: filter.value }];
                         const isAnd = filter.logic !== 'or';
-                        const checkCondition = (cond) => {
+                        const checkCondition = (cond: any) => {
                             const target = cond.value;
                             switch (cond.operator) {
                                 case '>': return numVal > target;
@@ -829,7 +896,7 @@ export default function ResourceList({
                             }
                         };
                         const results = conditions.map(checkCondition);
-                        if (isAnd ? results.some(r => !r) : !results.some(r => r)) return false;
+                        if (isAnd ? results.some((r: boolean) => !r) : !results.some((r: boolean) => r)) return false;
                     }
                 }
                 return true;
@@ -841,13 +908,13 @@ export default function ResourceList({
 
     // Report filtered UIDs to parent (for notifications scoping, etc.)
     // Use a ref to avoid re-calling when the actual UIDs haven't changed
-    const prevFilteredUidsRef = useRef(null);
+    const prevFilteredUidsRef = useRef<Set<string> | null>(null);
     useEffect(() => {
         if (!onFilteredUidsChange) return;
-        const uidArray = filteredData.map(item => item.metadata?.uid).filter(Boolean);
+        const uidArray: string[] = filteredData.map((item: any) => item.metadata?.uid).filter(Boolean);
         // Quick check: same length and same UIDs as last time?
         const prev = prevFilteredUidsRef.current;
-        if (prev && prev.size === uidArray.length && uidArray.every(uid => prev.has(uid))) {
+        if (prev && prev.size === uidArray.length && uidArray.every((uid: string) => prev.has(uid))) {
             return; // No change
         }
         const uids = new Set(uidArray);
@@ -859,10 +926,10 @@ export default function ResourceList({
         if (!sortConfig.key) return filteredData;
 
         return [...filteredData].sort((a, b) => {
-            const column = columns.find(col => col.key === sortConfig.key);
+            const column = columns.find((col: any) => col.key === sortConfig.key);
             if (!column) return 0;
 
-            const getValue = column.getValue || ((item) => item[column.key]);
+            const getValue = column.getValue || ((item: any) => item[column.key]);
             const aValue = getValue(a);
             const bValue = getValue(b);
 
@@ -933,7 +1000,7 @@ export default function ResourceList({
     }, [selection, sortedData]);
 
     // Handle row checkbox click
-    const handleRowCheckboxClick = useCallback((e, item, index) => {
+    const handleRowCheckboxClick = useCallback((e: any, item: any, index: number) => {
         if (!selection) return;
         const uid = item?.metadata?.uid;
         if (uid) {
@@ -967,21 +1034,21 @@ export default function ResourceList({
 
     // Memoize virtuoso components to prevent recreation on every render
     const virtuosoComponents = useMemo(() => ({
-        Table: ({ style, ...props }) => (
+        Table: ({ style, ...props }: any) => (
             <table
                 {...props}
                 ref={tableRef}
                 className="text-left border-collapse w-full"
-                style={{ ...style, tableLayout: 'fixed' }}
+                style={{ ...style, tableLayout: 'fixed' as const }}
             />
         ),
-        TableHead: forwardRef((props, ref) => (
+        TableHead: forwardRef<HTMLTableSectionElement>((props, ref) => (
             <thead {...props} ref={ref} className="bg-surface sticky top-0 z-10" />
         )),
-        TableBody: forwardRef((props, ref) => (
+        TableBody: forwardRef<HTMLTableSectionElement>((props, ref) => (
             <tbody {...props} ref={ref} className="divide-y divide-border" />
         )),
-        TableRow: ({ item, ...props }) => {
+        TableRow: ({ item, ...props }: any) => {
             const isHighlighted = highlightedUid === item?.metadata?.uid;
             const isSelected = selectable && selection?.isSelected(item?.metadata?.uid);
             return (
@@ -1017,7 +1084,7 @@ export default function ResourceList({
                                 placeholder={resourceType ? `Search... (name:"x" status:Running)` : `Search ${title}...`}
                                 className="w-full bg-background border border-border rounded-md pl-9 pr-4 py-1.5 text-sm text-text focus:outline-none focus:border-primary transition-colors"
                                 value={searchInput}
-                                onChange={(e) => setSearchInput(e.target.value)}
+                                onChange={(e: any) => setSearchInput(e.target.value)}
                                 autoComplete="off"
                                 autoCorrect="off"
                                 spellCheck="false"
@@ -1055,7 +1122,7 @@ export default function ResourceList({
                                             <div className="border-t border-border pt-2 mt-2">
                                                 <span className="text-gray-300">Available fields:</span>
                                                 <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-1">
-                                                    {getFieldsMetadata(resourceType).map(f => (
+                                                    {getFieldsMetadata(resourceType).map((f: any) => (
                                                         <span key={f.name} className="bg-background px-1.5 py-0.5 rounded">
                                                             {f.name}
                                                         </span>
@@ -1078,8 +1145,8 @@ export default function ResourceList({
                     {/* Saved Views */}
                     {resourceType && (
                         <SavedViewsDropdown
-                            views={views}
-                            activeViewId={activeViewId}
+                            views={views as any}
+                            activeViewId={activeViewId as any}
                             onSave={saveView}
                             onLoad={handleLoadView}
                             onUpdate={handleUpdateView}
@@ -1110,21 +1177,21 @@ export default function ResourceList({
             {resourceType && hasActiveColumnFilters && (
                 <div className="px-4 py-1.5 border-b border-border bg-surface shrink-0 flex items-center gap-2 flex-wrap">
                     <FunnelIcon className="w-4 h-4 text-gray-500 shrink-0" />
-                    {Object.entries(columnFilters).map(([colKey, filter]) => {
-                        const col = columns.find(c => c.key === colKey);
+                    {(Object.entries(columnFilters) as [string, ColumnFilter][]).map(([colKey, filter]) => {
+                        const col = columns.find((c: any) => c.key === colKey);
                         return (
                             <span key={colKey} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-primary/10 text-primary border border-primary/15 rounded">
                                 <span className="text-gray-400">{col?.label || colKey}:</span>
                                 <span>
                                     {filter.type === 'regex'
-                                        ? <span className="font-mono">{(filter.conditions || [filter.pattern]).map((p, i) => (
+                                        ? <span className="font-mono">{(filter.conditions || [filter.pattern]).map((p: any, i: number) => (
                                             <span key={i}>{i > 0 && <span className="text-gray-500 mx-0.5">{filter.logic === 'or' ? '|' : '&'}</span>}/{p}/</span>
                                         ))}</span>
                                         : filter.type === 'numeric'
-                                            ? <span className="font-mono">{(filter.conditions || [{ operator: filter.operator, value: filter.value }]).map((c, i) => (
+                                            ? <span className="font-mono">{(filter.conditions || [{ operator: filter.operator, value: filter.value }]).map((c: any, i: number) => (
                                                 <span key={i}>{i > 0 && <span className="text-gray-500 mx-0.5">{filter.logic === 'or' ? '|' : '&'}</span>}{c.operator} {c.value}</span>
                                             ))}</span>
-                                            : `${filter.values.size} selected`
+                                            : `${filter.values?.size} selected`
                                     }
                                 </span>
                                 <button
@@ -1216,7 +1283,7 @@ export default function ResourceList({
                         components={virtuosoComponents}
                         fixedHeaderContent={() => (
                             <tr>
-                                {visibleColumns.map((col, colIndex) => {
+                                {visibleColumns.map((col: any, colIndex: number) => {
                                     const isLastDataColumn = colIndex === visibleColumns.length - 2 && visibleColumns[visibleColumns.length - 1]?.isColumnSelector;
                                     const isResizable = !col.isColumnSelector && !col.isSelectionColumn;
                                     // All columns get a width for table-layout: fixed
@@ -1297,10 +1364,10 @@ export default function ResourceList({
                                                                 }`}
                                                                 title={columnFilters[col.key]
                                                                     ? columnFilters[col.key].type === 'regex'
-                                                                        ? `Filtering: ${(columnFilters[col.key].conditions || []).map(p => `/${p}/`).join(` ${columnFilters[col.key].logic || 'and'} `)}`
+                                                                        ? `Filtering: ${(columnFilters[col.key].conditions || []).map((p: any) => `/${p}/`).join(` ${columnFilters[col.key].logic || 'and'} `)}`
                                                                         : columnFilters[col.key].type === 'numeric'
-                                                                            ? `Filtering: ${(columnFilters[col.key].conditions || []).map(c => `${c.operator} ${c.value}`).join(` ${columnFilters[col.key].logic || 'and'} `)}`
-                                                                            : `Filtering: ${columnFilters[col.key].values.size} value(s)`
+                                                                            ? `Filtering: ${(columnFilters[col.key].conditions || []).map((c: any) => `${c.operator} ${c.value}`).join(` ${columnFilters[col.key].logic || 'and'} `)}`
+                                                                            : `Filtering: ${columnFilters[col.key].values?.size} value(s)`
                                                                     : `Filter by ${col.label}`
                                                                 }
                                                             >
@@ -1329,7 +1396,7 @@ export default function ResourceList({
                         )}
                         itemContent={(index, item) => (
                             <>
-                                {visibleColumns.map((col) => {
+                                {visibleColumns.map((col: any) => {
                                     // Selection column cell
                                     if (col.isSelectionColumn) {
                                         const isSelected = selection?.isSelected(item?.metadata?.uid);
@@ -1341,8 +1408,8 @@ export default function ResourceList({
                                             >
                                                 <div className="flex items-center justify-center">
                                                     <RowCheckbox
-                                                        checked={isSelected}
-                                                        onChange={(e) => handleRowCheckboxClick(e, item, index)}
+                                                        checked={!!isSelected}
+                                                        onChange={(e: any) => handleRowCheckboxClick(e, item, index)}
                                                     />
                                                 </div>
                                             </td>
@@ -1388,9 +1455,9 @@ export default function ResourceList({
                 <BulkActionBar
                     selectedCount={selection.selectedCount}
                     onClearSelection={handleClearSelection}
-                    onDelete={onBulkDelete ? handleBulkDelete : null}
-                    onRestart={onBulkRestart ? handleBulkRestart : null}
-                    onExportYaml={onBulkExportYaml ? handleBulkExportYaml : null}
+                    onDelete={onBulkDelete ? handleBulkDelete : undefined}
+                    onRestart={onBulkRestart ? handleBulkRestart : undefined}
+                    onExportYaml={onBulkExportYaml ? handleBulkExportYaml : undefined}
                     resourceType={resourceType || title.toLowerCase()}
                     position="bottom"
                 />
@@ -1398,7 +1465,7 @@ export default function ResourceList({
 
             {/* Column filter dropdown — rendered via portal to escape overflow:hidden ancestors */}
             {openColumnFilter && columnFilterPos && (() => {
-                const col = visibleColumns.find(c => c.key === openColumnFilter);
+                const col = visibleColumns.find((c: any) => c.key === openColumnFilter);
                 if (!col) return null;
                 return createPortal(
                     <div
@@ -1410,9 +1477,9 @@ export default function ResourceList({
                         {columnFilterTypes[col.key] === 'regex' ? (
                             <div className="p-2">
                                 {/* Existing regex conditions */}
-                                {columnFilters[col.key]?.conditions?.length > 0 && (
+                                {(columnFilters[col.key]?.conditions?.length ?? 0) > 0 && (
                                     <div className="mb-2 space-y-1">
-                                        {columnFilters[col.key].conditions.map((pattern, idx) => (
+                                        {(columnFilters[col.key].conditions || []).map((pattern: any, idx: number) => (
                                             <div key={idx} className="flex items-center gap-1">
                                                 {idx > 0 && (
                                                     <button
@@ -1436,7 +1503,7 @@ export default function ResourceList({
                                 <input
                                     type="text"
                                     value={regexDraft}
-                                    onChange={(e) => setRegexDraft(e.target.value)}
+                                    onChange={(e: any) => setRegexDraft(e.target.value)}
                                     placeholder="Regex pattern... (e.g. ^nginx)"
                                     className="w-full px-2 py-1.5 bg-background border border-border rounded text-xs font-mono focus:outline-none focus:border-primary"
                                     autoFocus
@@ -1455,9 +1522,9 @@ export default function ResourceList({
                         ) : columnFilterTypes[col.key] === 'numeric' ? (
                             <div className="p-2">
                                 {/* Existing numeric conditions */}
-                                {columnFilters[col.key]?.conditions?.length > 0 && (
+                                {(columnFilters[col.key]?.conditions?.length ?? 0) > 0 && (
                                     <div className="mb-2 space-y-1">
-                                        {columnFilters[col.key].conditions.map((cond, idx) => (
+                                        {(columnFilters[col.key].conditions || []).map((cond: any, idx: number) => (
                                             <div key={idx} className="flex items-center gap-1">
                                                 {idx > 0 && (
                                                     <button
@@ -1481,7 +1548,7 @@ export default function ResourceList({
                                 <div className="flex gap-1.5">
                                     <select
                                         value={numericDraft.operator}
-                                        onChange={(e) => setNumericDraft(d => ({ ...d, operator: e.target.value }))}
+                                        onChange={(e: any) => setNumericDraft(d => ({ ...d, operator: e.target.value }))}
                                         className="px-1.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:border-primary"
                                     >
                                         <option value=">">{'>'}</option>
@@ -1494,7 +1561,7 @@ export default function ResourceList({
                                     <input
                                         type="number"
                                         value={numericDraft.value}
-                                        onChange={(e) => setNumericDraft(d => ({ ...d, value: e.target.value }))}
+                                        onChange={(e: any) => setNumericDraft(d => ({ ...d, value: e.target.value }))}
                                         placeholder="0"
                                         className="flex-1 min-w-0 px-2 py-1.5 bg-background border border-border rounded text-xs font-mono focus:outline-none focus:border-primary"
                                         autoFocus
@@ -1503,7 +1570,7 @@ export default function ResourceList({
                                             if (e.key === 'Enter') {
                                                 let filterValue = numericDraft.value;
                                                 if (col.key === 'age' && filterValue !== '') {
-                                                    const multipliers = { s: 1/3600, m: 1/60, h: 1, d: 24 };
+                                                    const multipliers: Record<string, number> = { s: 1/3600, m: 1/60, h: 1, d: 24 };
                                                     filterValue = String(Number(filterValue) * (multipliers[numericDraft.unit] || 1));
                                                 }
                                                 addNumericCondition(col.key, numericDraft.operator, filterValue);
@@ -1516,7 +1583,7 @@ export default function ResourceList({
                                     {col.key === 'age' && (
                                         <select
                                             value={numericDraft.unit}
-                                            onChange={(e) => setNumericDraft(d => ({ ...d, unit: e.target.value }))}
+                                            onChange={(e: any) => setNumericDraft(d => ({ ...d, unit: e.target.value }))}
                                             className="px-1.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:border-primary"
                                         >
                                             <option value="s">sec</option>
@@ -1537,7 +1604,7 @@ export default function ResourceList({
                                     <input
                                         type="text"
                                         value={columnFilterSearch}
-                                        onChange={(e) => setColumnFilterSearch(e.target.value)}
+                                        onChange={(e: any) => setColumnFilterSearch(e.target.value)}
                                         placeholder="Search values..."
                                         className="w-full px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none focus:border-primary"
                                         autoFocus
@@ -1546,8 +1613,8 @@ export default function ResourceList({
                                 </div>
                                 <div className="max-h-48 overflow-auto py-1">
                                     {columnUniqueValues[col.key]?.values
-                                        ?.filter(v => !columnFilterSearch || v.toLowerCase().includes(columnFilterSearch.toLowerCase()))
-                                        .map(value => {
+                                        ?.filter((v: string) => !columnFilterSearch || v.toLowerCase().includes(columnFilterSearch.toLowerCase()))
+                                        .map((value: string) => {
                                             const isChecked = columnFilters[col.key]?.values?.has(value);
                                             const count = columnUniqueValues[col.key]?.counts?.[value] ?? 0;
                                             const isZero = count === 0;

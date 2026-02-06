@@ -31,7 +31,7 @@ const SINCE_OPTIONS = [
     { value: 3600, label: '1 hour' }
 ];
 
-function formatTimestamp(timestamp) {
+function formatTimestamp(timestamp: any) {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], {
         hour: '2-digit',
@@ -39,10 +39,10 @@ function formatTimestamp(timestamp) {
         second: '2-digit',
         fractionalSecondDigits: 3,
         hour12: false
-    });
+    } as any);
 }
 
-function LogLine({ entry, showPodName = true, showTimestamp = true }) {
+function LogLine({ entry, showPodName = true, showTimestamp = true }: { entry: any; showPodName?: boolean; showTimestamp?: boolean }) {
     // Convert ANSI codes to HTML for colored output
     const htmlMessage = useMemo(() => {
         const normalized = normalizeAnsiCodes(entry.message || '');
@@ -77,9 +77,9 @@ export default function MultiLogViewer({
     initialPodNames = [],
     initialLabelSelector = {},
     onClose
-}) {
+}: { initialNamespace?: string; initialPodNames?: string[]; initialLabelSelector?: Record<string, string>; onClose?: any }) {
     const { currentNamespace, currentContext, namespaces } = useK8s();
-    const virtuosoRef = useRef(null);
+    const virtuosoRef = useRef<any>(null);
 
     // Sanitize namespace - don't use '*' (All Namespaces marker)
     const effectiveCurrentNamespace = (currentNamespace && currentNamespace !== '*') ? currentNamespace : 'default';
@@ -101,13 +101,13 @@ export default function MultiLogViewer({
     const [sinceSeconds, setSinceSeconds] = useState(300);
 
     // Available pods for selection
-    const [availablePods, setAvailablePods] = useState([]);
+    const [availablePods, setAvailablePods] = useState<any[]>([]);
     const [loadingPods, setLoadingPods] = useState(false);
 
     // Display state
-    const [entries, setEntries] = useState([]);
+    const [entries, setEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showTimestamps, setShowTimestamps] = useState(true);
     const [showPodNames, setShowPodNames] = useState(true);
@@ -126,8 +126,8 @@ export default function MultiLogViewer({
         const requestId = `multi-log-pods-${Date.now()}`;
         // Empty string fetches from all namespaces
         ListPods(requestId, effectiveNamespace)
-            .then(pods => {
-                const podItems = (pods || []).map(p => {
+            .then((pods: any) => {
+                const podItems = (pods || []).map((p: any) => {
                     const name = p.metadata?.name;
                     const ns = p.metadata?.namespace;
                     // When showing all namespaces, prefix pod name with namespace
@@ -135,7 +135,7 @@ export default function MultiLogViewer({
                 }).filter(Boolean).sort();
                 setAvailablePods(podItems);
             })
-            .catch(err => {
+            .catch((err: any) => {
                 console.error('Failed to list pods:', err);
                 setAvailablePods([]);
             })
@@ -175,7 +175,7 @@ export default function MultiLogViewer({
                         );
                         console.log('[MultiLogViewer] Auto-fetch result:', result?.length || 0, 'entries');
                         setEntries(result || []);
-                    } catch (err) {
+                    } catch (err: any) {
                         setError(err.message || 'Failed to fetch logs');
                         setEntries([]);
                     } finally {
@@ -189,11 +189,11 @@ export default function MultiLogViewer({
     }, []); // Empty deps - only run on mount
 
     // Parse label selector string to object
-    const parseLabelSelector = useCallback((str) => {
+    const parseLabelSelector = useCallback((str: string) => {
         if (!str.trim()) return {};
-        const result = {};
-        str.split(',').forEach(pair => {
-            const [key, value] = pair.trim().split('=').map(s => s.trim());
+        const result: Record<string, string> = {};
+        str.split(',').forEach((pair: any) => {
+            const [key, value] = pair.trim().split('=').map((s: any) => s.trim());
             if (key && value !== undefined) {
                 result[key] = value;
             }
@@ -236,12 +236,12 @@ export default function MultiLogViewer({
                 return;
             }
 
-            let result = [];
+            let result: any[] = [];
 
             // When in "All Namespaces" mode, pods are prefixed with namespace/podname
             // Group by namespace and make separate API calls
             if (isAllNamespaces && selectorMode === 'pods') {
-                const podsByNamespace = {};
+                const podsByNamespace: Record<string, string[]> = {};
                 for (const pod of pods) {
                     const slashIdx = pod.indexOf('/');
                     if (slashIdx > 0) {
@@ -253,9 +253,9 @@ export default function MultiLogViewer({
                 }
 
                 // Fetch logs from each namespace in parallel
-                const promises = Object.entries(podsByNamespace).map(([ns, podNames]) =>
+                const promises = Object.entries(podsByNamespace).map(([ns, podNames]: [string, any]) =>
                     GetMultiPodLogs(ns, {}, podNames, container, tailLines, sinceSeconds)
-                        .catch(err => {
+                        .catch((err: any) => {
                             console.error(`[MultiLogViewer] Failed to fetch logs from ${ns}:`, err);
                             return [];
                         })
@@ -286,7 +286,7 @@ export default function MultiLogViewer({
                     });
                 }, 100);
             }
-        } catch (err) {
+        } catch (err: any) {
             setError(err.message || 'Failed to fetch logs');
             setEntries([]);
         } finally {
@@ -296,14 +296,14 @@ export default function MultiLogViewer({
 
     // Get unique pods for filter dropdown
     const uniquePods = useMemo(() => {
-        const pods = new Set();
-        entries.forEach(e => pods.add(e.podName));
+        const pods = new Set<any>();
+        entries.forEach((e: any) => pods.add(e.podName));
         return Array.from(pods).sort();
     }, [entries]);
 
     // Filter entries
     const filteredEntries = useMemo(() => {
-        return entries.filter(entry => {
+        return entries.filter((entry: any) => {
             if (filterPod && entry.podName !== filterPod) return false;
             if (searchQuery) {
                 const query = searchQuery.toLowerCase();
@@ -317,7 +317,7 @@ export default function MultiLogViewer({
 
     // Download logs
     const downloadLogs = useCallback(() => {
-        const content = filteredEntries.map(e => {
+        const content = filteredEntries.map((e: any) => {
             const ts = new Date(e.timestamp).toISOString();
             return `${ts} [${e.podName}/${e.container}] ${e.message}`;
         }).join('\n');
@@ -404,7 +404,7 @@ export default function MultiLogViewer({
                                 disabled={loadingPods}
                                 multiSelectLabels={{
                                     all: 'All Pods',
-                                    count: (n) => `${n} pods selected`
+                                    count: (n: number) => `${n} pods selected`
                                 }}
                             />
                         </div>
@@ -416,7 +416,7 @@ export default function MultiLogViewer({
                             <input
                                 type="text"
                                 value={labelSelector}
-                                onChange={(e) => setLabelSelector(e.target.value)}
+                                onChange={(e: any) => setLabelSelector(e.target.value)}
                                 className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 placeholder="app=nginx"
                                 autoComplete="off"
@@ -431,7 +431,7 @@ export default function MultiLogViewer({
                         <input
                             type="text"
                             value={container}
-                            onChange={(e) => setContainer(e.target.value)}
+                            onChange={(e: any) => setContainer(e.target.value)}
                             className="w-24 px-2 py-1 bg-background border border-border rounded text-xs text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
                             placeholder="all"
                             autoComplete="off"
@@ -445,8 +445,8 @@ export default function MultiLogViewer({
                                 value={tailLines}
                                 onChange={setTailLines}
                                 placeholder="Tail"
-                                getOptionValue={(t) => t.value}
-                                getOptionLabel={(t) => t.label}
+                                getOptionValue={(t: any) => t.value}
+                                getOptionLabel={(t: any) => t.label}
                                 preserveOrder={true}
                                 searchable={false}
                             />
@@ -460,8 +460,8 @@ export default function MultiLogViewer({
                                 value={sinceSeconds}
                                 onChange={setSinceSeconds}
                                 placeholder="Since"
-                                getOptionValue={(s) => s.value}
-                                getOptionLabel={(s) => s.label}
+                                getOptionValue={(s: any) => s.value}
+                                getOptionLabel={(s: any) => s.label}
                                 preserveOrder={true}
                                 searchable={false}
                             />
@@ -498,7 +498,7 @@ export default function MultiLogViewer({
                         </span>
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-gray-400">Pods:</span>
-                            {uniquePods.map((pod, idx) => (
+                            {uniquePods.map((pod: any, idx: number) => (
                                 <button
                                     key={pod}
                                     onClick={() => setFilterPod(filterPod === pod ? '' : pod)}
@@ -525,7 +525,7 @@ export default function MultiLogViewer({
                             <input
                                 type="text"
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e: any) => setSearchQuery(e.target.value)}
                                 placeholder="Filter..."
                                 className="w-36 pl-7 pr-2 py-1 bg-surface border border-border rounded text-xs text-text focus:outline-none focus:border-primary"
                                 autoComplete="off"
@@ -535,7 +535,7 @@ export default function MultiLogViewer({
                             <input
                                 type="checkbox"
                                 checked={showTimestamps}
-                                onChange={(e) => setShowTimestamps(e.target.checked)}
+                                onChange={(e: any) => setShowTimestamps(e.target.checked)}
                                 className="rounded bg-surface border-border"
                             />
                             Timestamps
@@ -544,7 +544,7 @@ export default function MultiLogViewer({
                             <input
                                 type="checkbox"
                                 checked={showPodNames}
-                                onChange={(e) => setShowPodNames(e.target.checked)}
+                                onChange={(e: any) => setShowPodNames(e.target.checked)}
                                 className="rounded bg-surface border-border"
                             />
                             Pod Names

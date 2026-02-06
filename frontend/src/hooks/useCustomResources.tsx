@@ -59,13 +59,13 @@ export const useCustomResources = (
                         // Flatten and deduplicate by UID
                         const merged = allResources.flat();
                         const unique = merged.filter((item, index, self) =>
-                            index === self.findIndex(r => r.metadata?.uid === item.metadata?.uid)
+                            index === self.findIndex((r: any) => r.metadata?.uid === item.metadata?.uid)
                         );
                         setResources(unique);
                     }
                 }
                 setError(null);
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Failed to fetch custom resources", err);
                 setError(err as Error);
             } finally {

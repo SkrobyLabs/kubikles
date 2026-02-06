@@ -8,7 +8,15 @@ import React, { memo } from 'react';
  * @param {string} color - Tailwind color class (e.g., "bg-blue-500")
  * @param {boolean} fixedColor - If true, don't override color based on thresholds
  */
-const ResourceBar = memo(function ResourceBar({ percent, label, tooltipLabel, color = 'bg-blue-500', fixedColor = false }) {
+interface ResourceBarProps {
+    percent: number;
+    label?: string;
+    tooltipLabel?: string;
+    color?: string;
+    fixedColor?: boolean;
+}
+
+const ResourceBar = memo(function ResourceBar({ percent, label, tooltipLabel, color = 'bg-blue-500', fixedColor = false }: ResourceBarProps) {
     // Clamp percent to 0-100
     const clampedPercent = Math.max(0, Math.min(100, percent));
 

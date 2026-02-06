@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-const BooleanBadge = ({ value, label }) => {
+const BooleanBadge = ({ value, label }: any) => {
     return (
         <div className="flex items-center gap-2">
             {value ? (
@@ -21,7 +21,7 @@ const BooleanBadge = ({ value, label }) => {
     );
 };
 
-export default function CSIDriverDetails({ csiDriver, tabContext = '' }) {
+export default function CSIDriverDetails({ csiDriver, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -150,7 +150,7 @@ export default function CSIDriverDetails({ csiDriver, tabContext = '' }) {
                         <p className="text-sm text-gray-500">No modes specified (defaults to Persistent)</p>
                     ) : (
                         <div className="flex flex-wrap gap-2">
-                            {volumeLifecycleModes.map((mode) => (
+                            {volumeLifecycleModes.map((mode: any) => (
                                 <span
                                     key={mode}
                                     className="inline-flex items-center px-2.5 py-1 rounded text-xs bg-blue-500/20 text-blue-400"
@@ -188,7 +188,7 @@ export default function CSIDriverDetails({ csiDriver, tabContext = '' }) {
                     <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-3">Token Requests</h3>
                         <div className="space-y-2">
-                            {tokenRequests.map((request, idx) => (
+                            {tokenRequests.map((request: any, idx: number) => (
                                 <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
                                     <div className="text-sm text-gray-300">{request.audience}</div>
                                     {request.expirationSeconds && (

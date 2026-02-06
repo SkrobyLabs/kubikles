@@ -12,7 +12,7 @@ interface RoleActionsReturn {
     handleDelete: (role: K8sRole) => void;
 }
 
-export const useRoleActions = (): RoleActionsReturn => {
+export const useRoleActions = (): any => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();
@@ -51,7 +51,7 @@ export const useRoleActions = (): RoleActionsReturn => {
                     await DeleteRole(namespace, name);
                     Logger.info("Role deleted successfully", { namespace, name });
                     closeModal();
-                } catch (err) {
+                } catch (err: any) {
                     Logger.error("Failed to delete Role", err);
                     addNotification({ type: 'error', title: 'Failed to delete role', message: String(err) });
                 }

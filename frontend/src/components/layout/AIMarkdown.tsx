@@ -11,7 +11,7 @@ import { GetCustomResourceYaml, UpdateCustomResourceYaml } from 'wailsjs/go/main
 import { parseCrKind, kindToViewName } from './navUtils';
 
 // Execute a nav:// link — shared by NavLink click handler and auto-execution
-export function executeNavLink(href, { setActiveView, navigateWithSearch, openTab, closeTab, currentContext }) {
+export function executeNavLink(href: string, { setActiveView, navigateWithSearch, openTab, closeTab, currentContext }: { setActiveView: any; navigateWithSearch: any; openTab: any; closeTab: any; currentContext: any }) {
     const raw = href.slice('nav://'.length);
     const [pathPart, queryPart] = raw.split('?');
     const parts = pathPart.split('/').filter(Boolean);
@@ -52,7 +52,7 @@ export function executeNavLink(href, { setActiveView, navigateWithSearch, openTa
                         tabContext={currentContext}
                         {...(cr && {
                             getYamlFn: () => GetCustomResourceYaml(cr.group, cr.version, cr.resource, namespace, name),
-                            updateYamlFn: (content) => UpdateCustomResourceYaml(cr.group, cr.version, cr.resource, namespace, name, content),
+                            updateYamlFn: (content: any) => UpdateCustomResourceYaml(cr.group, cr.version, cr.resource, namespace, name, content),
                         })}
                     />
                 ),
@@ -98,7 +98,7 @@ export function executeNavLink(href, { setActiveView, navigateWithSearch, openTa
                 const viewId = `cr:${cr.group}:${cr.version}:${cr.resource}:${cr.kind}:${namespaced}`;
                 navigateWithSearch(viewId, name, true);
             } else {
-                const viewName = kindToViewName[kind.toLowerCase()] || kind.toLowerCase() + 's';
+                const viewName = (kindToViewName as Record<string, string>)[kind.toLowerCase()] || kind.toLowerCase() + 's';
                 navigateWithSearch(viewName, name, true);
             }
             break;
@@ -107,7 +107,7 @@ export function executeNavLink(href, { setActiveView, navigateWithSearch, openTa
 }
 
 // Navigation link component — renders nav:// links as clickable buttons
-function NavLink({ href, children }) {
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
     const { setActiveView, navigateWithSearch, openTab, closeTab } = useUI();
     const { currentContext } = useK8s();
 
@@ -127,7 +127,7 @@ function NavLink({ href, children }) {
 }
 
 // Inline toggle button for allowing/disallowing a tool mentioned in AI chat
-function ToolMention({ toolName }) {
+function ToolMention({ toolName }: { toolName: string }) {
     const { getConfig, setConfig } = useConfig();
     // Normalize to short name for storage (kubikles tools use short names)
     const shortName = toolName.startsWith('mcp__kubikles__')
@@ -139,10 +139,10 @@ function ToolMention({ toolName }) {
     const allowedTools = getConfig('ai.allowedTools') || [];
     const isAllowed = allowedTools.includes(shortName);
 
-    const toggle = (e) => {
+    const toggle = (e: React.MouseEvent) => {
         e.stopPropagation();
         const updated = isAllowed
-            ? allowedTools.filter(t => t !== shortName)
+            ? allowedTools.filter((t: string) => t !== shortName)
             : [...allowedTools, shortName];
         setConfig('ai.allowedTools', updated);
     };
@@ -169,10 +169,10 @@ const inlinePatterns = [
 const mcpToolPattern = /^mcp__\w+__\w+$/;
 // Known kubikles short tool names for broader detection
 const knownToolNames = new Set(
-    (configSchema.ai?.allowedTools?.options || []).map(o => o.value)
+    (configSchema.ai?.allowedTools?.options || []).map((o: any) => o.value)
 );
 
-function renderInline(text) {
+function renderInline(text: string): any {
     const parts = [];
     let remaining = text;
     let key = 0;
@@ -182,7 +182,7 @@ function renderInline(text) {
         let earliest = null;
         for (const p of inlinePatterns) {
             const m = remaining.match(p.regex);
-            if (m && (earliest === null || m.index < earliest.match.index)) {
+            if (m && (earliest === null || m.index! < earliest.match.index!)) {
                 earliest = { match: m, type: p.type };
             }
         }
@@ -193,7 +193,7 @@ function renderInline(text) {
         }
 
         const { match, type } = earliest;
-        if (match.index > 0) parts.push(remaining.slice(0, match.index));
+        if (match.index! > 0) parts.push(remaining.slice(0, match.index!));
 
         switch (type) {
             case 'bold':
@@ -215,14 +215,14 @@ function renderInline(text) {
                 break;
         }
 
-        remaining = remaining.slice(match.index + match[0].length);
+        remaining = remaining.slice(match.index! + match[0].length);
     }
 
     return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : parts;
 }
 
 // Lightweight markdown renderer for AI responses
-export default function SimpleMarkdown({ text }) {
+export default function SimpleMarkdown({ text }: { text: string }) {
     if (!text) return null;
 
     const lines = text.split('\n');
@@ -277,7 +277,7 @@ export default function SimpleMarkdown({ text }) {
             }
             elements.push(
                 <ul key={elements.length} className="list-disc list-inside space-y-0.5 my-0.5">
-                    {items.map((item, j) => <li key={j} className="text-xs">{renderInline(item)}</li>)}
+                    {items.map((item: any, j: number) => <li key={j} className="text-xs">{renderInline(item)}</li>)}
                 </ul>
             );
             continue;
@@ -292,7 +292,7 @@ export default function SimpleMarkdown({ text }) {
             }
             elements.push(
                 <ol key={elements.length} className="list-decimal list-inside space-y-0.5 my-0.5">
-                    {items.map((item, j) => <li key={j} className="text-xs">{renderInline(item)}</li>)}
+                    {items.map((item: any, j: number) => <li key={j} className="text-xs">{renderInline(item)}</li>)}
                 </ol>
             );
             continue;

@@ -16,7 +16,7 @@ export interface ConfigMapActionsReturn {
     handleDelete: (configMap: K8sConfigMap) => void;
 }
 
-export const useConfigMapActions = (): ConfigMapActionsReturn => {
+export const useConfigMapActions = (): any => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();
@@ -93,7 +93,7 @@ export const useConfigMapActions = (): ConfigMapActionsReturn => {
             confirmStyle: 'danger',
             onConfirm: async (): Promise<void> => {
                 try {
-                    await (DeleteConfigMap as (namespace: string, name: string) => Promise<void>)(namespace, name);
+                    await (DeleteConfigMap as (namespace: string, name: string) => Promise<void>)(namespace!, name);
                     Logger.info("ConfigMap deleted successfully", { namespace, name });
                     closeModal();
                 } catch (err: unknown) {

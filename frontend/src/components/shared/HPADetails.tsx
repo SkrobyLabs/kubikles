@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function HPADetails({ hpa, tabContext = '' }) {
+export default function HPADetails({ hpa, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -60,7 +60,7 @@ export default function HPADetails({ hpa, tabContext = '' }) {
         return `${ref.kind}/${ref.name}`;
     };
 
-    const formatMetric = (metric) => {
+    const formatMetric = (metric: any) => {
         if (!metric) return '-';
         const type = metric.type;
         switch (type) {
@@ -88,7 +88,7 @@ export default function HPADetails({ hpa, tabContext = '' }) {
         }
     };
 
-    const formatCurrentMetric = (current) => {
+    const formatCurrentMetric = (current: any) => {
         if (!current) return '-';
         const type = current.type;
         switch (type) {
@@ -178,7 +178,7 @@ export default function HPADetails({ hpa, tabContext = '' }) {
                         <p className="text-sm text-gray-500">No metrics configured</p>
                     ) : (
                         <div className="space-y-2">
-                            {metrics.map((metric, idx) => {
+                            {metrics.map((metric: any, idx: number) => {
                                 const current = currentMetrics[idx];
                                 return (
                                     <div key={idx} className="bg-gray-800/50 rounded-lg p-3 flex justify-between items-center">
@@ -202,7 +202,7 @@ export default function HPADetails({ hpa, tabContext = '' }) {
                     <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-3">Conditions</h3>
                         <div className="space-y-2">
-                            {conditions.map((condition, idx) => (
+                            {conditions.map((condition: any, idx: number) => (
                                 <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
                                     <div className="flex justify-between items-start">
                                         <div>

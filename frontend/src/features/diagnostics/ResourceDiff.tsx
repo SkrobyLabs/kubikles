@@ -43,12 +43,12 @@ const RESOURCE_TYPES = [
 
 // Helper to fetch resource names - uses generic ListResourceNamesForContext for all types.
 // This ensures consistent context selection across all resource types.
-const fetchResourceNamesByType = async (type, namespace, context = '') => {
+const fetchResourceNamesByType = async (type: string, namespace: string, context = '') => {
     // ListResourceNamesForContext returns [{name, namespace}] for all supported types
     return ListResourceNamesForContext(context, type, namespace);
 };
 
-function DiffLine({ line, sourceLineNum, targetLineNum }) {
+function DiffLine({ line, sourceLineNum, targetLineNum }: { line: string; sourceLineNum: any; targetLineNum: any }) {
     // Diff headers - no line number, distinct styling
     if (line.startsWith('---')) {
         return (
@@ -119,7 +119,7 @@ function DiffLine({ line, sourceLineNum, targetLineNum }) {
 }
 
 // Parse @@ hunk header to extract starting line numbers
-function parseHunkHeader(line) {
+function parseHunkHeader(line: string) {
     // Format: @@ -startSource,countSource +startTarget,countTarget @@
     const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
     if (match) {
@@ -131,7 +131,7 @@ function parseHunkHeader(line) {
     return null;
 }
 
-function UnifiedDiffView({ diffLines }) {
+function UnifiedDiffView({ diffLines }: { diffLines: string[] }) {
     // Process diff lines and compute line numbers
     const processedLines = useMemo(() => {
         const result = [];
@@ -204,7 +204,7 @@ function UnifiedDiffView({ diffLines }) {
                 Unified Diff
             </div>
             <div className="overflow-auto max-h-[60vh]">
-                {processedLines.map((item, index) => (
+                {processedLines.map((item: any, index: number) => (
                     <DiffLine
                         key={index}
                         line={item.line}
@@ -217,13 +217,13 @@ function UnifiedDiffView({ diffLines }) {
     );
 }
 
-function ChangesSummary({ changes }) {
+function ChangesSummary({ changes }: { changes: any[] }) {
     if (!changes || changes.length === 0) return null;
 
     const grouped = {
-        added: changes.filter(c => c.type === 'added'),
-        removed: changes.filter(c => c.type === 'removed'),
-        changed: changes.filter(c => c.type === 'changed')
+        added: changes.filter((c: any) => c.type === 'added'),
+        removed: changes.filter((c: any) => c.type === 'removed'),
+        changed: changes.filter((c: any) => c.type === 'changed')
     };
 
     return (
@@ -238,7 +238,7 @@ function ChangesSummary({ changes }) {
                             <PlusCircleIcon className="h-4 w-4" />
                             Added ({grouped.added.length})
                         </div>
-                        {grouped.added.map((c, i) => (
+                        {grouped.added.map((c: any, i: number) => (
                             <div key={i} className="px-3 py-1 text-xs font-mono border-b border-border/50 last:border-0">
                                 <span className="text-gray-400">{c.path}:</span>
                                 <span className="text-green-300 ml-2">{c.new}</span>
@@ -252,7 +252,7 @@ function ChangesSummary({ changes }) {
                             <MinusCircleIcon className="h-4 w-4" />
                             Removed ({grouped.removed.length})
                         </div>
-                        {grouped.removed.map((c, i) => (
+                        {grouped.removed.map((c: any, i: number) => (
                             <div key={i} className="px-3 py-1 text-xs font-mono border-b border-border/50 last:border-0">
                                 <span className="text-gray-400">{c.path}:</span>
                                 <span className="text-red-300 ml-2">{c.old}</span>
@@ -266,7 +266,7 @@ function ChangesSummary({ changes }) {
                             <ArrowsRightLeftIcon className="h-4 w-4" />
                             Changed ({grouped.changed.length})
                         </div>
-                        {grouped.changed.map((c, i) => (
+                        {grouped.changed.map((c: any, i: number) => (
                             <div key={i} className="px-3 py-1 text-xs font-mono border-b border-border/50 last:border-0">
                                 <span className="text-gray-400">{c.path}:</span>
                                 <span className="text-red-300 ml-2 line-through">{c.old}</span>
@@ -283,12 +283,12 @@ function ChangesSummary({ changes }) {
 
 // Parse unified diff into side-by-side aligned lines
 // Groups consecutive deletions and additions to show changes on same row
-function parseDiffToSideBySide(unifiedDiff) {
+function parseDiffToSideBySide(unifiedDiff: string) {
     if (!unifiedDiff) return { left: [], right: [] };
 
     // Split and filter out trailing empty lines from split
     const rawLines = unifiedDiff.split('\n');
-    const lines = rawLines.filter((line, idx) => {
+    const lines = rawLines.filter((line: string, idx: number) => {
         // Keep all lines except trailing empty string from split
         if (idx === rawLines.length - 1 && line === '') return false;
         return true;
@@ -383,7 +383,7 @@ function parseDiffToSideBySide(unifiedDiff) {
     return { left, right };
 }
 
-function SplitDiffLine({ line, side }) {
+function SplitDiffLine({ line, side }: { line: any; side: string }) {
     const bgClass = line.type === 'removed' ? 'bg-red-900/30' :
                     line.type === 'added' ? 'bg-green-900/30' :
                     line.type === 'empty' ? 'bg-gray-800/30' : '';
@@ -401,10 +401,10 @@ function SplitDiffLine({ line, side }) {
     );
 }
 
-function SplitDiffView({ unifiedDiff, sourceName, targetName, sourceContext, targetContext }) {
+function SplitDiffView({ unifiedDiff, sourceName, targetName, sourceContext, targetContext }: { unifiedDiff: string; sourceName: string; targetName: string; sourceContext: string; targetContext: string }) {
     const { left, right } = useMemo(() => parseDiffToSideBySide(unifiedDiff), [unifiedDiff]);
-    const leftRef = useRef(null);
-    const rightRef = useRef(null);
+    const leftRef = useRef<HTMLDivElement>(null);
+    const rightRef = useRef<HTMLDivElement>(null);
     const syncingRef = useRef(false);
 
     // Show context prefix when contexts differ
@@ -413,7 +413,7 @@ function SplitDiffView({ unifiedDiff, sourceName, targetName, sourceContext, tar
     const targetLabel = showContexts ? `[${targetContext}] ${targetName}` : targetName;
 
     // Synchronized scrolling handler
-    const handleScroll = useCallback((source) => {
+    const handleScroll = useCallback((source: string) => {
         if (syncingRef.current) return;
         syncingRef.current = true;
 
@@ -451,7 +451,7 @@ function SplitDiffView({ unifiedDiff, sourceName, targetName, sourceContext, tar
                     className="overflow-auto flex-1"
                     style={{ maxHeight: '60vh' }}
                 >
-                    {left.map((line, idx) => (
+                    {left.map((line: any, idx: number) => (
                         <SplitDiffLine key={idx} line={line} side="left" />
                     ))}
                 </div>
@@ -467,7 +467,7 @@ function SplitDiffView({ unifiedDiff, sourceName, targetName, sourceContext, tar
                     className="overflow-auto flex-1"
                     style={{ maxHeight: '60vh' }}
                 >
-                    {right.map((line, idx) => (
+                    {right.map((line: any, idx: number) => (
                         <SplitDiffLine key={idx} line={line} side="right" />
                     ))}
                 </div>
@@ -476,11 +476,11 @@ function SplitDiffView({ unifiedDiff, sourceName, targetName, sourceContext, tar
     );
 }
 
-function ResourceSelector({ id, label, data, onChange, contexts = [], defaultNamespaces = [] }) {
+function ResourceSelector({ id, label, data, onChange, contexts = [], defaultNamespaces = [] }: { id: string; label: string; data: any; onChange: (data: any) => void; contexts?: string[]; defaultNamespaces?: string[] }) {
     const contextOptions = useMemo(() => ['', ...contexts], [contexts]);
-    const [availableResources, setAvailableResources] = useState([]);
+    const [availableResources, setAvailableResources] = useState<string[]>([]);
     const [loadingResources, setLoadingResources] = useState(false);
-    const [namespaceOptions, setNamespaceOptions] = useState(defaultNamespaces);
+    const [namespaceOptions, setNamespaceOptions] = useState<string[]>(defaultNamespaces);
     const [loadingNamespaces, setLoadingNamespaces] = useState(false);
 
     // Fetch namespaces when context changes
@@ -490,11 +490,11 @@ function ResourceSelector({ id, label, data, onChange, contexts = [], defaultNam
             try {
                 const namespaces = await ListNamespacesForContext(data.context || '');
                 const namespaceNames = (namespaces || [])
-                    .map(ns => ns.metadata?.name)
+                    .map((ns: any) => ns.metadata?.name)
                     .filter(Boolean)
                     .sort();
                 setNamespaceOptions(namespaceNames);
-            } catch (err) {
+            } catch (err: any) {
                 console.error('[ResourceDiff] Failed to fetch namespaces:', err);
                 // Fall back to default namespaces on error
                 setNamespaceOptions(defaultNamespaces);
@@ -519,11 +519,11 @@ function ResourceSelector({ id, label, data, onChange, contexts = [], defaultNam
             // ListResourceNamesForContext returns [{name, namespace}] objects
             const resources = await fetchResourceNamesByType(data.kind, data.namespace, data.context);
             const resourceNames = (resources || [])
-                .map(r => r.name)
+                .map((r: any) => r.name)
                 .filter(Boolean)
                 .sort();
             setAvailableResources(resourceNames);
-        } catch (err) {
+        } catch (err: any) {
             console.error('[ResourceDiff] Failed to fetch resources:', err);
             setAvailableResources([]);
         } finally {
@@ -547,9 +547,9 @@ function ResourceSelector({ id, label, data, onChange, contexts = [], defaultNam
                             key={`${id}-context`}
                             options={contextOptions}
                             value={data.context}
-                            onChange={(val) => onChange({ ...data, context: val })}
+                            onChange={(val: any) => onChange({ ...data, context: val })}
                             placeholder="(Current)"
-                            getOptionLabel={(ctx) => ctx === '' ? '(Current)' : ctx}
+                            getOptionLabel={(ctx: any) => ctx === '' ? '(Current)' : ctx}
                             preserveOrder={true}
                         />
                     </div>
@@ -560,10 +560,10 @@ function ResourceSelector({ id, label, data, onChange, contexts = [], defaultNam
                         key={`${id}-type`}
                         options={RESOURCE_TYPES}
                         value={data.kind}
-                        onChange={(val) => onChange({ ...data, kind: val, name: '' })}
+                        onChange={(val: any) => onChange({ ...data, kind: val, name: '' })}
                         placeholder="Select type..."
-                        getOptionValue={(rt) => rt.value}
-                        getOptionLabel={(rt) => rt.label}
+                        getOptionValue={(rt: any) => rt.value}
+                        getOptionLabel={(rt: any) => rt.label}
                         preserveOrder={true}
                     />
                 </div>
@@ -575,7 +575,7 @@ function ResourceSelector({ id, label, data, onChange, contexts = [], defaultNam
                         key={`${id}-namespace`}
                         options={namespaceOptions}
                         value={data.namespace}
-                        onChange={(val) => onChange({ ...data, namespace: val, name: '' })}
+                        onChange={(val: any) => onChange({ ...data, namespace: val, name: '' })}
                         placeholder={loadingNamespaces ? "Loading..." : "Select namespace..."}
                         disabled={loadingNamespaces}
                     />
@@ -588,7 +588,7 @@ function ResourceSelector({ id, label, data, onChange, contexts = [], defaultNam
                         key={`${id}-name`}
                         options={availableResources}
                         value={data.name}
-                        onChange={(val) => onChange({ ...data, name: val })}
+                        onChange={(val: any) => onChange({ ...data, name: val })}
                         placeholder={loadingResources ? "Loading..." : "Select resource..."}
                         disabled={loadingResources}
                         onOpen={fetchResources}
@@ -603,7 +603,7 @@ export default function ResourceDiff({
     initialSource = {},
     initialTarget = {},
     onClose
-}) {
+}: { initialSource?: any; initialTarget?: any; onClose?: () => void }) {
     const { currentNamespace, currentContext, contexts, namespaces } = useK8s();
 
     // Don't use '*' (All Namespaces) as a namespace - fall back to 'default'
@@ -611,7 +611,7 @@ export default function ResourceDiff({
 
     // Filter namespaces to exclude empty (All Namespaces) option
     const namespaceOptions = useMemo(() =>
-        (namespaces || []).filter(ns => ns !== ''),
+        (namespaces || []).filter((ns: any) => ns !== ''),
     [namespaces]);
 
     const [source, setSource] = useState({
@@ -630,9 +630,9 @@ export default function ResourceDiff({
         ...initialTarget
     });
 
-    const [result, setResult] = useState(null);
+    const [result, setResult] = useState<any>(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState('unified'); // 'unified' | 'split' | 'changes'
 
     // Track if we should auto-run diff when both source and target are provided
@@ -641,7 +641,7 @@ export default function ResourceDiff({
     // Update state when initial props change (e.g., when navigating from comparison menu)
     useEffect(() => {
         if (initialSource && (initialSource.name || initialSource.kind)) {
-            setSource(prev => ({
+            setSource((prev: any) => ({
                 ...prev,
                 context: initialSource.context || '',
                 kind: initialSource.kind || prev.kind,
@@ -657,7 +657,7 @@ export default function ResourceDiff({
 
     useEffect(() => {
         if (initialTarget && (initialTarget.name || initialTarget.kind)) {
-            setTarget(prev => ({
+            setTarget((prev: any) => ({
                 ...prev,
                 context: initialTarget.context || '',
                 kind: initialTarget.kind || prev.kind,
@@ -693,8 +693,8 @@ export default function ResourceDiff({
                 [] // Use default ignore fields
             );
             setResult(diffResult);
-        } catch (err) {
-            setError(err.message || 'Failed to compare resources');
+        } catch (err: any) {
+            setError((err as any)?.message || 'Failed to compare resources');
             setResult(null);
         } finally {
             setLoading(false);

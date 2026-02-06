@@ -20,7 +20,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
  * - .field[index]
  * - .field[?(@.key=="value")].subfield (simple filter)
  */
-const evaluateJSONPath = (obj, jsonPath) => {
+const evaluateJSONPath = (obj: any, jsonPath: any): any => {
     if (!obj || !jsonPath) return undefined;
 
     // Remove leading dot if present
@@ -32,13 +32,13 @@ const evaluateJSONPath = (obj, jsonPath) => {
         const [, arrayPath, filterKey, filterValue, remainingPath] = filterMatch;
         const arr = evaluateJSONPath(obj, arrayPath);
         if (!Array.isArray(arr)) return undefined;
-        const item = arr.find(i => i && i[filterKey] === filterValue);
+        const item = arr.find((i: any) => i && i[filterKey] === filterValue);
         if (!item) return undefined;
         return remainingPath ? evaluateJSONPath(item, remainingPath) : item;
     }
 
     // Handle simple paths
-    const parts = path.split(/\.|\[|\]/).filter(p => p !== '');
+    const parts = path.split(/\.|\[|\]/).filter((p: any) => p !== '');
     let current = obj;
 
     for (const part of parts) {
@@ -57,7 +57,7 @@ const evaluateJSONPath = (obj, jsonPath) => {
 /**
  * Renders a value based on its type from the CRD column definition
  */
-const renderColumnValue = (value, type) => {
+const renderColumnValue = (value: any, type: any) => {
     if (value === undefined || value === null) return '-';
 
     switch (type) {
@@ -95,7 +95,7 @@ const renderColumnValue = (value, type) => {
  * @param {Object} props.crdInfo - CRD information: { group, version, resource, kind, namespaced, plural }
  * @param {boolean} props.isVisible - Whether this component is visible (for data fetching)
  */
-export default function CustomResourceList({ crdInfo, isVisible }) {
+export default function CustomResourceList({ crdInfo, isVisible }: any) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { handleEditYaml } = useCustomResourceActions(crdInfo);
@@ -103,7 +103,7 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
 
     // Wrap APIs to match useBulkActions signature
     // For namespaced: (context, namespace, name), for cluster-scoped: (context, name)
-    const deleteApi = useCallback((_context, namespaceOrName, maybeName) => {
+    const deleteApi = useCallback((_context: any, namespaceOrName: any, maybeName: any) => {
         if (crdInfo.namespaced) {
             return DeleteCustomResource(crdInfo.group, crdInfo.version, crdInfo.resource, namespaceOrName, maybeName);
         } else {
@@ -112,7 +112,7 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
         }
     }, [crdInfo.group, crdInfo.version, crdInfo.resource, crdInfo.namespaced]);
 
-    const getYamlApi = useCallback((namespaceOrName, maybeName) => {
+    const getYamlApi = useCallback((namespaceOrName: any, maybeName: any) => {
         if (crdInfo.namespaced) {
             return GetCustomResourceYaml(crdInfo.group, crdInfo.version, crdInfo.resource, namespaceOrName, maybeName);
         } else {
@@ -132,7 +132,7 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
         resourceLabel: crdInfo.kind,
         resourceType: crdInfo.resource,
         isNamespaced: crdInfo.namespaced,
-        deleteApi,
+        deleteApi: deleteApi as any,
         getYamlApi,
 
     });
@@ -148,18 +148,18 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
         selectedNamespaces,
         isVisible,
         crdInfo.namespaced
-    );
+    ) as any;
 
     // Show namespace column when viewing all namespaces or multiple namespaces (not exactly 1)
     const showNamespaceColumn = crdInfo.namespaced && (selectedNamespaces?.length !== 1);
 
     const columns = useMemo(() => {
-        const cols = [
+        const cols: any[] = [
             {
                 key: 'name',
                 label: 'Name',
-                render: (item) => item.metadata?.name || '-',
-                getValue: (item) => item.metadata?.name || ''
+                render: (item: any) => item.metadata?.name || '-',
+                getValue: (item: any) => item.metadata?.name || ''
             }
         ];
 
@@ -168,8 +168,8 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
             cols.push({
                 key: 'namespace',
                 label: 'Namespace',
-                render: (item) => item.metadata?.namespace || '-',
-                getValue: (item) => item.metadata?.namespace || ''
+                render: (item: any) => item.metadata?.namespace || '-',
+                getValue: (item: any) => item.metadata?.namespace || ''
             });
         }
 
@@ -189,11 +189,11 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
             cols.push({
                 key: colKey,
                 label: col.name,
-                render: (item) => {
+                render: (item: any) => {
                     const value = evaluateJSONPath(item, col.jsonPath);
                     return renderColumnValue(value, col.type);
                 },
-                getValue: (item) => {
+                getValue: (item: any) => {
                     const value = evaluateJSONPath(item, col.jsonPath);
                     if (value === undefined || value === null) return '';
                     return String(value);
@@ -205,8 +205,8 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
         cols.push({
             key: 'age',
             label: 'Age',
-            render: (item) => formatAge(item.metadata?.creationTimestamp),
-            getValue: (item) => item.metadata?.creationTimestamp
+            render: (item: any) => formatAge(item.metadata?.creationTimestamp),
+            getValue: (item: any) => item.metadata?.creationTimestamp
         });
 
         // Add actions column
@@ -214,14 +214,14 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <CustomResourceActionsMenu
                     resource={item}
                     isOpen={activeMenuId === `cr-${item.metadata?.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `cr-${item.metadata?.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `cr-${item.metadata?.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={(resource) => openBulkDelete([resource])}
+                    onDelete={(resource: any) => openBulkDelete([resource])}
                 />
             ),
             getValue: () => '',
@@ -251,7 +251,7 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
         </>
     );
 }

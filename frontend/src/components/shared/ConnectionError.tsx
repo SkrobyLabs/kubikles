@@ -15,7 +15,7 @@ const providerIcons = {
     unknown: '⚠️'
 };
 
-export default function ConnectionError({ error, onRetry, isRetrying }) {
+export default function ConnectionError({ error, onRetry, isRetrying }: any) {
     const [copied, setCopied] = useState(false);
 
     if (!error) return null;
@@ -26,7 +26,7 @@ export default function ConnectionError({ error, onRetry, isRetrying }) {
             await navigator.clipboard.writeText(text);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     };
@@ -38,7 +38,7 @@ export default function ConnectionError({ error, onRetry, isRetrying }) {
                     {/* Header */}
                     <div className="bg-red-500/10 px-6 py-4 border-b border-red-500/20">
                         <div className="flex items-center gap-3">
-                            <div className="text-2xl">{providerIcons[error.provider] || providerIcons.unknown}</div>
+                            <div className="text-2xl">{(providerIcons as Record<string, any>)[error.provider] || providerIcons.unknown}</div>
                             <div>
                                 <h2 className="text-lg font-semibold text-red-400">
                                     {error.title}

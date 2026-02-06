@@ -2,15 +2,15 @@ import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, PlayIcon, PauseIcon, ShareIcon } from '@heroicons/react/24/outline';
 
-export default function CronJobActionsMenu({ cronJob, isOpen, menuPosition, onOpenChange, onViewLogs, onEditYaml, onShowDependencies, onRunNow, onSuspend, onDelete }) {
-    const buttonRef = useRef(null);
-    const menuRef = useRef(null);
+export default function CronJobActionsMenu({ cronJob, isOpen, menuPosition, onOpenChange, onViewLogs, onEditYaml, onShowDependencies, onRunNow, onSuspend, onDelete }: any) {
+    const buttonRef = useRef<any>(null);
+    const menuRef = useRef<any>(null);
     const isSuspended = cronJob.spec?.suspend || false;
 
     useEffect(() => {
         if (!isOpen) return;
 
-        const handleClickOutside = (event) => {
+        const handleClickOutside = (event: any) => {
             if (buttonRef.current && !buttonRef.current.contains(event.target) &&
                 menuRef.current && !menuRef.current.contains(event.target)) {
                 onOpenChange(false);
@@ -30,12 +30,12 @@ export default function CronJobActionsMenu({ cronJob, isOpen, menuPosition, onOp
         };
     }, [isOpen, onOpenChange]);
 
-    const toggleMenu = (e) => {
+    const toggleMenu = (e: any) => {
         e.stopPropagation();
         onOpenChange(!isOpen, buttonRef.current);
     };
 
-    const handleAction = (action) => {
+    const handleAction = (action: any) => {
         onOpenChange(false);
         action();
     };

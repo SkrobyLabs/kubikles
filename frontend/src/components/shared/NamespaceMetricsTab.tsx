@@ -4,7 +4,7 @@ import { DetectPrometheus, GetNamespaceMetricsHistory } from 'wailsjs/go/main/Ap
 import { formatBytes } from '~/utils/formatting';
 
 // Format time for display
-const formatTime = (timestamp, duration) => {
+const formatTime = (timestamp: string, duration: string) => {
     const date = new Date(timestamp);
     if (duration === '30d' || duration === 'all') {
         return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -16,9 +16,9 @@ const formatTime = (timestamp, duration) => {
 };
 
 // Interactive line chart component
-const MetricsChart = React.memo(({ data, color, label, formatValue, duration }) => {
-    const containerRef = useRef(null);
-    const [hoveredIndex, setHoveredIndex] = useState(null);
+const MetricsChart = React.memo(({ data, color, label, formatValue, duration }: { data: any; color: string; label: string; formatValue: (value: number) => string; duration: string }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [containerWidth, setContainerWidth] = useState(500);
 
@@ -47,8 +47,8 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }) 
     const chartData = useMemo(() => {
         if (!data || data.length === 0) return null;
 
-        const values = data.map(d => d.value);
-        const timestamps = data.map(d => d.timestamp);
+        const values = data.map((d: any) => d.value);
+        const timestamps = data.map((d: any) => d.timestamp);
         const max = Math.max(...values) || 1;
         const min = Math.min(...values);
         const range = max - min || 1;
@@ -56,13 +56,13 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }) 
         const yMax = max + range * 0.05;
         const yRange = yMax - yMin || 1;
 
-        const points = data.map((d, i) => {
+        const points = data.map((d: any, i: number) => {
             const x = paddingLeft + (i / (data.length - 1)) * chartWidth;
             const y = paddingTop + chartHeight - ((d.value - yMin) / yRange) * chartHeight;
             return { x, y, value: d.value, timestamp: d.timestamp };
         });
 
-        const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+        const linePath = points.map((p: any, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
         const areaPath = `${linePath} L ${points[points.length - 1].x} ${paddingTop + chartHeight} L ${paddingLeft} ${paddingTop + chartHeight} Z`;
 
         const yTicks = Array.from({ length: 5 }, (_, i) => {
@@ -72,7 +72,7 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }) 
         });
 
         const xTickIndices = [0, Math.floor(data.length / 2), data.length - 1];
-        const xTicks = xTickIndices.map(i => ({
+        const xTicks = xTickIndices.map((i: any) => ({
             timestamp: timestamps[i],
             x: paddingLeft + (i / (data.length - 1)) * chartWidth
         }));
@@ -90,7 +90,7 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }) 
 
     const { points, linePath, areaPath, yTicks, xTicks, currentValue } = chartData;
 
-    const handleMouseMove = useCallback((e) => {
+    const handleMouseMove = useCallback((e: any) => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
         const zoom = parseFloat(document.body.style.zoom) || 1;
@@ -132,7 +132,7 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }) 
             <div ref={containerRef} className="h-56 bg-background rounded border border-border relative"
                 onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)}>
                 <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet" className="w-full h-full">
-                    {yTicks.map((tick, i) => (
+                    {yTicks.map((tick: any, i: number) => (
                         <g key={i}>
                             <line x1={paddingLeft} y1={tick.y} x2={width - paddingRight} y2={tick.y}
                                 className="stroke-gray-700" strokeWidth="0.5" strokeDasharray={i === 0 ? "0" : "2,2"} />
@@ -141,7 +141,7 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }) 
                             </text>
                         </g>
                     ))}
-                    {xTicks.map((tick, i) => (
+                    {xTicks.map((tick: any, i: number) => (
                         <text key={i} x={tick.x} y={height - 8} textAnchor="middle" className="fill-gray-500" fontSize="9">
                             {formatTime(tick.timestamp, duration)}
                         </text>
@@ -161,7 +161,7 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }) 
                 </svg>
                 {hoveredPoint && (
                     <div className="absolute z-10 pointer-events-none bg-surface border border-border rounded-lg shadow-lg px-3 py-2"
-                        style={{ left: Math.min(mousePos.x + 10, containerRef.current?.offsetWidth - 150 || 0), top: mousePos.y - 60 }}>
+                        style={{ left: Math.min(mousePos.x + 10, (containerRef.current?.offsetWidth ?? 0) - 150 || 0), top: mousePos.y - 60 }}>
                         <div className="text-xs text-gray-400 mb-1">{new Date(hoveredPoint.timestamp).toLocaleString()}</div>
                         <div className={`text-sm font-medium ${color.replace('stroke-', 'text-')}`}>{formatValue(hoveredPoint.value)}</div>
                     </div>
@@ -172,9 +172,9 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }) 
 });
 
 // Network I/O chart with bandwidth and packets view toggle
-const NetworkChart = React.memo(({ data, duration }) => {
-    const containerRef = useRef(null);
-    const [hoveredIndex, setHoveredIndex] = useState(null);
+const NetworkChart = React.memo(({ data, duration }: { data: any; duration: string }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [viewMode, setViewMode] = useState('bandwidth');
     const [containerWidth, setContainerWidth] = useState(500);
@@ -219,7 +219,7 @@ const NetworkChart = React.memo(({ data, duration }) => {
     const hasRx = isBandwidthView ? hasRxBytes : hasRxPackets;
     const hasTx = isBandwidthView ? hasTxBytes : hasTxPackets;
 
-    const allValues = [...rx.map(d => d.value), ...tx.map(d => d.value)];
+    const allValues = [...rx.map((d: any) => d.value), ...tx.map((d: any) => d.value)];
     const max = Math.max(...allValues, 1);
     const yMax = max * 1.1;
     const yRange = yMax || 1;
@@ -234,8 +234,8 @@ const NetworkChart = React.memo(({ data, duration }) => {
     const chartHeight = height - paddingTop - paddingBottom;
 
     const baseData = hasRx ? rx : tx;
-    const generatePoints = (dataPoints) => {
-        return dataPoints.map((d, i) => {
+    const generatePoints = (dataPoints: any[]) => {
+        return dataPoints.map((d: any, i: number) => {
             const x = paddingLeft + (i / (dataPoints.length - 1)) * chartWidth;
             const y = paddingTop + chartHeight - (d.value / yRange) * chartHeight;
             return { x, y, value: d.value, timestamp: d.timestamp };
@@ -244,9 +244,9 @@ const NetworkChart = React.memo(({ data, duration }) => {
 
     const rxPoints = hasRx ? generatePoints(rx) : [];
     const txPoints = hasTx ? generatePoints(tx) : [];
-    const createPath = (points) => points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const createPath = (points: any[]) => points.map((p: any, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
-    const handleMouseMove = useCallback((e) => {
+    const handleMouseMove = useCallback((e: any) => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
         const zoom = parseFloat(document.body.style.zoom) || 1;
@@ -273,12 +273,12 @@ const NetworkChart = React.memo(({ data, duration }) => {
         }
     }, [baseData.length, chartWidth]);
 
-    const formatRate = (value) => {
+    const formatRate = (value: number) => {
         if (value == null || isNaN(value)) return '-';
         return `${formatBytes(value)}/s`;
     };
 
-    const formatPacketRate = (value) => {
+    const formatPacketRate = (value: number) => {
         if (value == null || isNaN(value)) return '-';
         if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M/s`;
         if (value >= 1000) return `${(value / 1000).toFixed(1)}K/s`;
@@ -302,7 +302,7 @@ const NetworkChart = React.memo(({ data, duration }) => {
     });
 
     const xTickIndices = baseData.length > 0 ? [0, Math.floor(baseData.length / 2), baseData.length - 1] : [];
-    const xTicks = xTickIndices.map(i => ({
+    const xTicks = xTickIndices.map((i: any) => ({
         timestamp: baseData[i]?.timestamp,
         x: paddingLeft + (i / (baseData.length - 1)) * chartWidth
     }));
@@ -338,7 +338,7 @@ const NetworkChart = React.memo(({ data, duration }) => {
             <div ref={containerRef} className="h-56 bg-background rounded border border-border relative"
                 onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)}>
                 <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet" className="w-full h-full">
-                    {yTicks.map((tick, i) => (
+                    {yTicks.map((tick: any, i: number) => (
                         <g key={i}>
                             <line x1={paddingLeft} y1={tick.y} x2={width - paddingRight} y2={tick.y}
                                 className="stroke-gray-700" strokeWidth="0.5" strokeDasharray={i === 0 ? "0" : "2,2"} />
@@ -347,7 +347,7 @@ const NetworkChart = React.memo(({ data, duration }) => {
                             </text>
                         </g>
                     ))}
-                    {xTicks.map((tick, i) => (
+                    {xTicks.map((tick: any, i: number) => (
                         <text key={i} x={tick.x} y={height - 8} textAnchor="middle" className="fill-gray-500" fontSize="9">
                             {tick.timestamp ? formatTime(tick.timestamp, duration) : ''}
                         </text>
@@ -361,8 +361,8 @@ const NetworkChart = React.memo(({ data, duration }) => {
                 </svg>
                 {(hoveredRxPoint || hoveredTxPoint) && (
                     <div className="absolute z-10 pointer-events-none bg-surface border border-border rounded-lg shadow-lg px-3 py-2"
-                        style={{ left: Math.min(mousePos.x + 10, containerRef.current?.offsetWidth - 160 || 0), top: mousePos.y - 70 }}>
-                        <div className="text-xs text-gray-400 mb-1">{hoveredRxPoint?.timestamp ? new Date(hoveredRxPoint.timestamp).toLocaleString() : ''}</div>
+                        style={{ left: Math.min(mousePos.x + 10, (containerRef.current?.offsetWidth ?? 0) - 160 || 0), top: mousePos.y - 70 }}>
+                        <div className="text-xs text-gray-400 mb-1">{(hoveredRxPoint as any)?.timestamp ? new Date((hoveredRxPoint as any).timestamp).toLocaleString() : ''}</div>
                         {hoveredRxPoint && <div className="text-cyan-400">RX: {formatValue(hoveredRxPoint.value)}</div>}
                         {hoveredTxPoint && <div className="text-yellow-400">TX: {formatValue(hoveredTxPoint.value)}</div>}
                         {!isBandwidthView && (hoveredRxDropped || hoveredTxDropped) && (
@@ -376,9 +376,9 @@ const NetworkChart = React.memo(({ data, duration }) => {
 });
 
 // Simple count chart for pod count
-const CountChart = React.memo(({ data, color, label, duration }) => {
-    const containerRef = useRef(null);
-    const [hoveredIndex, setHoveredIndex] = useState(null);
+const CountChart = React.memo(({ data, color, label, duration }: { data: any; color: string; label: string; duration: string }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [containerWidth, setContainerWidth] = useState(500);
 
@@ -403,7 +403,7 @@ const CountChart = React.memo(({ data, color, label, duration }) => {
         );
     }
 
-    const values = data.map(d => d.value);
+    const values = data.map((d: any) => d.value);
     const max = Math.max(...values, 1);
     const min = Math.min(...values, 0);
     const range = max - min || 1;
@@ -420,15 +420,15 @@ const CountChart = React.memo(({ data, color, label, duration }) => {
     const chartWidth = width - paddingLeft - paddingRight;
     const chartHeight = height - paddingTop - paddingBottom;
 
-    const points = data.map((d, i) => {
+    const points = data.map((d: any, i: number) => {
         const x = paddingLeft + (i / (data.length - 1)) * chartWidth;
         const y = paddingTop + chartHeight - ((d.value - yMin) / yRange) * chartHeight;
         return { x, y, value: d.value, timestamp: d.timestamp };
     });
 
-    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const linePath = points.map((p: any, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
-    const handleMouseMove = useCallback((e) => {
+    const handleMouseMove = useCallback((e: any) => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
         const zoom = parseFloat(document.body.style.zoom) || 1;
@@ -464,7 +464,7 @@ const CountChart = React.memo(({ data, color, label, duration }) => {
     });
 
     const xTickIndices = [0, Math.floor(data.length / 2), data.length - 1];
-    const xTicks = xTickIndices.map(i => ({
+    const xTicks = xTickIndices.map((i: any) => ({
         timestamp: data[i]?.timestamp,
         x: paddingLeft + (i / (data.length - 1)) * chartWidth
     }));
@@ -478,7 +478,7 @@ const CountChart = React.memo(({ data, color, label, duration }) => {
             <div ref={containerRef} className="h-56 bg-background rounded border border-border relative"
                 onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)}>
                 <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet" className="w-full h-full">
-                    {yTicks.map((tick, i) => (
+                    {yTicks.map((tick: any, i: number) => (
                         <g key={i}>
                             <line x1={paddingLeft} y1={tick.y} x2={width - paddingRight} y2={tick.y}
                                 className="stroke-gray-700" strokeWidth="0.5" strokeDasharray={i === 0 ? "0" : "2,2"} />
@@ -487,7 +487,7 @@ const CountChart = React.memo(({ data, color, label, duration }) => {
                             </text>
                         </g>
                     ))}
-                    {xTicks.map((tick, i) => (
+                    {xTicks.map((tick: any, i: number) => (
                         <text key={i} x={tick.x} y={height - 8} textAnchor="middle" className="fill-gray-500" fontSize="9">
                             {formatTime(tick.timestamp, duration)}
                         </text>
@@ -502,7 +502,7 @@ const CountChart = React.memo(({ data, color, label, duration }) => {
                 </svg>
                 {hoveredPoint && (
                     <div className="absolute z-10 pointer-events-none bg-surface border border-border rounded-lg shadow-lg px-3 py-2"
-                        style={{ left: Math.min(mousePos.x + 10, containerRef.current?.offsetWidth - 100 || 0), top: mousePos.y - 50 }}>
+                        style={{ left: Math.min(mousePos.x + 10, (containerRef.current?.offsetWidth ?? 0) - 100 || 0), top: mousePos.y - 50 }}>
                         <div className="text-xs text-gray-400 mb-1">{new Date(hoveredPoint.timestamp).toLocaleString()}</div>
                         <span className={color.replace('stroke-', 'text-')}>{Math.round(hoveredPoint.value)}</span>
                     </div>
@@ -520,12 +520,12 @@ const DURATIONS = [
     { value: '30d', label: '30d' },
 ];
 
-export default function NamespaceMetricsTab({ namespace, isStale }) {
-    const [prometheusInfo, setPrometheusInfo] = useState(null);
+export default function NamespaceMetricsTab({ namespace, isStale }: { namespace: any; isStale: boolean }) {
+    const [prometheusInfo, setPrometheusInfo] = useState<any>(null);
     const [detecting, setDetecting] = useState(true);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [metricsData, setMetricsData] = useState(null);
+    const [error, setError] = useState<string | null>(null);
+    const [metricsData, setMetricsData] = useState<any>(null);
     const [duration, setDuration] = useState('1h');
     const requestIdRef = useRef(0);
 
@@ -536,7 +536,7 @@ export default function NamespaceMetricsTab({ namespace, isStale }) {
             try {
                 const info = await DetectPrometheus();
                 setPrometheusInfo(info);
-            } catch (err) {
+            } catch (err: any) {
                 setPrometheusInfo({ available: false });
             } finally {
                 setDetecting(false);
@@ -567,7 +567,7 @@ export default function NamespaceMetricsTab({ namespace, isStale }) {
                     setMetricsData(data);
                     setLoading(false);
                 }
-            } catch (err) {
+            } catch (err: any) {
                 if (currentRequestId === requestIdRef.current) {
                     setError(err.toString());
                     setLoading(false);
@@ -578,7 +578,7 @@ export default function NamespaceMetricsTab({ namespace, isStale }) {
         fetchMetrics();
     }, [prometheusInfo, namespaceName, duration, isStale]);
 
-    const formatCPU = (value) => {
+    const formatCPU = (value: number) => {
         if (value == null || isNaN(value)) return '-';
         if (value < 1) return `${(value * 1000).toFixed(0)}µ`;
         if (value < 1000) return `${value.toFixed(0)}m`;
@@ -622,7 +622,7 @@ export default function NamespaceMetricsTab({ namespace, isStale }) {
             <div className="flex items-center gap-4 px-4 py-3 border-b border-border shrink-0">
                 <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1 bg-surface-light rounded-md p-0.5">
-                        {DURATIONS.map(d => (
+                        {DURATIONS.map((d: any) => (
                             <button key={d.value} onClick={() => setDuration(d.value)}
                                 className={`px-3 py-1 text-xs font-medium rounded transition-colors ${duration === d.value ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}>
                                 {d.label}

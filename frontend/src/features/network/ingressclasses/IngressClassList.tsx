@@ -12,10 +12,10 @@ import { DeleteIngressClass, GetIngressClassYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function IngressClassList({ isVisible }) {
+export default function IngressClassList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { ingressClasses, loading } = useIngressClasses(currentContext, isVisible);
+    const { ingressClasses, loading } = useIngressClasses(currentContext, isVisible) as any;
     const { handleEditYaml } = useIngressClassActions();
     const selection = useSelection();
 
@@ -35,36 +35,36 @@ export default function IngressClassList({ isVisible }) {
 
     });
 
-    const isDefault = (ingressClass) => {
+    const isDefault = (ingressClass: any) => {
         return ingressClass.metadata?.annotations?.['ingressclass.kubernetes.io/is-default-class'] === 'true';
     };
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'controller', label: 'Controller', render: (item) => item.spec?.controller || '-', getValue: (item) => item.spec?.controller || '' },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'controller', label: 'Controller', render: (item: any) => item.spec?.controller || '-', getValue: (item: any) => item.spec?.controller || '' },
         {
             key: 'default',
             label: 'Default',
-            render: (item) => isDefault(item) ? (
+            render: (item: any) => isDefault(item) ? (
                 <CheckCircleIcon className="h-5 w-5 text-green-400" />
             ) : (
                 <span className="text-gray-500">-</span>
             ),
-            getValue: (item) => isDefault(item) ? 'Yes' : 'No'
+            getValue: (item: any) => isDefault(item) ? 'Yes' : 'No'
         },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <IngressClassActionsMenu
                     ingressClass={item}
                     isOpen={activeMenuId === `ingressclass-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `ingressclass-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `ingressclass-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={(ingressClass) => openBulkDelete([ingressClass])}
+                    onDelete={(ingressClass: any) => openBulkDelete([ingressClass])}
                 />
             ),
             getValue: () => '',
@@ -88,7 +88,7 @@ export default function IngressClassList({ isVisible }) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
         </>
     );
 }

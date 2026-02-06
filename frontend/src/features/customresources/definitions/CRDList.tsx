@@ -12,16 +12,16 @@ import CRDActionsMenu from './CRDActionsMenu';
 import { useCRDActions } from './useCRDActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function CRDList({ isVisible }) {
+export default function CRDList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { crds, loading } = useCRDs(currentContext, isVisible);
+    const { crds, loading } = useCRDs(currentContext, isVisible) as any;
     const { handleEditYaml } = useCRDActions();
     const selection = useSelection();
 
     // Wrap APIs to match useBulkActions signature (context, name) for cluster-scoped
-    const deleteApi = useCallback((_context, name) => DeleteCRD(name), []);
-    const getYamlApi = useCallback((name) => GetCRDYaml(name), []);
+    const deleteApi = useCallback((_context: any, name: any) => DeleteCRD(name), []);
+    const getYamlApi = useCallback((name: any) => GetCRDYaml(name), []);
 
     const {
         bulkActionModal,
@@ -40,16 +40,16 @@ export default function CRDList({ isVisible }) {
     });
 
     // Get the served versions as a comma-separated string
-    const getVersions = (crd) => {
+    const getVersions = (crd: any) => {
         const versions = crd.spec?.versions || [];
-        const served = versions.filter(v => v.served).map(v => v.name);
+        const served = versions.filter((v: any) => v.served).map((v: any) => v.name);
         return served.join(', ') || '-';
     };
 
     // Get the storage version (the one that is stored)
-    const getStorageVersion = (crd) => {
+    const getStorageVersion = (crd: any) => {
         const versions = crd.spec?.versions || [];
-        const storage = versions.find(v => v.storage);
+        const storage = versions.find((v: any) => v.storage);
         return storage?.name || '-';
     };
 
@@ -57,23 +57,23 @@ export default function CRDList({ isVisible }) {
         {
             key: 'resource',
             label: 'Resource',
-            render: (item) => item.spec?.names?.kind || '-',
-            getValue: (item) => item.spec?.names?.kind || ''
+            render: (item: any) => item.spec?.names?.kind || '-',
+            getValue: (item: any) => item.spec?.names?.kind || ''
         },
         {
             key: 'group',
             label: 'Group',
-            render: (item) => item.spec?.group || '-',
-            getValue: (item) => item.spec?.group || ''
+            render: (item: any) => item.spec?.group || '-',
+            getValue: (item: any) => item.spec?.group || ''
         },
         {
             key: 'version',
             label: 'Version',
-            render: (item) => {
+            render: (item: any) => {
                 const versions = item.spec?.versions || [];
-                const storageVersion = versions.find(v => v.storage);
-                const servedVersions = versions.filter(v => v.served && !v.storage && !v.deprecated);
-                const deprecatedVersions = versions.filter(v => v.served && v.deprecated);
+                const storageVersion = versions.find((v: any) => v.storage);
+                const servedVersions = versions.filter((v: any) => v.served && !v.storage && !v.deprecated);
+                const deprecatedVersions = versions.filter((v: any) => v.served && v.deprecated);
 
                 // Order: storage first, then served, then deprecated
                 const orderedVersions = [
@@ -88,7 +88,7 @@ export default function CRDList({ isVisible }) {
 
                 return (
                     <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {displayVersions.map(v => (
+                        {displayVersions.map((v: any) => (
                             <span
                                 key={v.name}
                                 className={`text-xs px-1.5 py-0.5 rounded ${
@@ -109,32 +109,32 @@ export default function CRDList({ isVisible }) {
                     </div>
                 );
             },
-            getValue: (item) => getStorageVersion(item)
+            getValue: (item: any) => getStorageVersion(item)
         },
         {
             key: 'scope',
             label: 'Scope',
-            render: (item) => item.spec?.scope || '-',
-            getValue: (item) => item.spec?.scope || ''
+            render: (item: any) => item.spec?.scope || '-',
+            getValue: (item: any) => item.spec?.scope || ''
         },
         {
             key: 'age',
             label: 'Age',
-            render: (item) => formatAge(item.metadata?.creationTimestamp),
-            getValue: (item) => item.metadata?.creationTimestamp
+            render: (item: any) => formatAge(item.metadata?.creationTimestamp),
+            getValue: (item: any) => item.metadata?.creationTimestamp
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <CRDActionsMenu
                     crd={item}
                     isOpen={activeMenuId === `crd-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `crd-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `crd-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={(crd) => openBulkDelete([crd])}
+                    onDelete={(crd: any) => openBulkDelete([crd])}
                 />
             ),
             getValue: () => '',
@@ -158,7 +158,7 @@ export default function CRDList({ isVisible }) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
         </>
     );
 }

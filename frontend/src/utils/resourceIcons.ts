@@ -157,9 +157,9 @@ const resourceIconMap = {
  * @param {string} resourceType - The resource type (e.g., 'pod', 'deployment', 'configmap')
  * @returns {React.Component|null} The icon component or null if not found
  */
-export function getResourceIcon(resourceType) {
+export function getResourceIcon(resourceType: string) {
     if (!resourceType) return null;
-    return resourceIconMap[resourceType.toLowerCase()] || PuzzlePieceIcon;
+    return (resourceIconMap as Record<string, any>)[resourceType.toLowerCase()] || PuzzlePieceIcon;
 }
 
 /**
@@ -167,7 +167,7 @@ export function getResourceIcon(resourceType) {
  * @param {string} tabId - The tab ID (e.g., 'details-pod-uid123', 'yaml-deployment-uid456')
  * @returns {React.Component|null} The icon component or null if not found
  */
-export function getTabIcon(tabId) {
+export function getTabIcon(tabId: string) {
     if (!tabId) return null;
 
     // System tabs that don't need icons (title is always visible)

@@ -5,13 +5,34 @@ import { useConfig } from '~/context';
 import { getTabIcon } from '~/utils/resourceIcons';
 
 // Map action labels to icons
-const actionIconMap = {
+const actionIconMap: Record<string, any> = {
     'Edit': PencilSquareIcon,
     'Deps': ShareIcon,
     'Logs': DocumentTextIcon,
     'Shell': CommandLineIcon,
     'Files': FolderIcon,
 };
+
+interface ContextMenuState {
+    x: number;
+    y: number;
+    tabId: string;
+    index: number;
+}
+
+interface BottomPanelProps {
+    tabs: any[];
+    activeTabId: string | null;
+    onTabChange: (tabId: string) => void;
+    onTabClose: (tabId: string) => void;
+    onCloseOthers?: (tabId: string) => void;
+    onCloseToRight?: (tabId: string) => void;
+    onCloseAll?: () => void;
+    onReorder?: (fromIndex: number, toIndex: number) => void;
+    onTogglePin?: (tabId: string) => void;
+    isTabStale?: (tab: any) => boolean;
+    height?: string;
+}
 
 export default function BottomPanel({
     tabs,
@@ -25,17 +46,17 @@ export default function BottomPanel({
     onTogglePin,
     isTabStale,
     height = '40%'
-}) {
+}: BottomPanelProps) {
     // Filter out stale tabs unless they are pinned
-    const visibleTabs = tabs.filter(tab => !isTabStale?.(tab) || tab.pinned);
+    const visibleTabs = tabs.filter((tab: any) => !isTabStale?.(tab) || tab.pinned);
     const { getConfig } = useConfig();
     const showTabIcons = getConfig('ui.showTabIcons');
 
-    const [contextMenu, setContextMenu] = useState(null);
-    const [draggedIndex, setDraggedIndex] = useState(null);
-    const [dropTarget, setDropTarget] = useState(null);
-    const contextMenuRef = useRef(null);
-    const tabRefs = useRef({});
+    const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+    const [dropTarget, setDropTarget] = useState<number | null>(null);
+    const contextMenuRef = useRef<HTMLDivElement | null>(null);
+    const tabRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     // Scroll active tab into view when it changes
     useEffect(() => {
@@ -50,8 +71,8 @@ export default function BottomPanel({
 
     // Close context menu on click outside
     useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
                 setContextMenu(null);
             }
         };
@@ -63,7 +84,7 @@ export default function BottomPanel({
 
     // Close context menu on escape
     useEffect(() => {
-        const handleEscape = (e) => {
+        const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape') setContextMenu(null);
         };
         if (contextMenu) {
@@ -72,7 +93,7 @@ export default function BottomPanel({
         }
     }, [contextMenu]);
 
-    const handleContextMenu = (e, tabId, index) => {
+    const handleContextMenu = (e: React.MouseEvent, tabId: string, index: number) => {
         e.preventDefault();
         setContextMenu({
             x: e.clientX,
@@ -82,23 +103,23 @@ export default function BottomPanel({
         });
     };
 
-    const handleDragStart = (e, index) => {
+    const handleDragStart = (e: React.DragEvent, index: number) => {
         setDraggedIndex(index);
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', index.toString());
         // Add slight delay to allow drag image to form
         requestAnimationFrame(() => {
-            e.target.style.opacity = '0.5';
+            (e.target as HTMLElement).style.opacity = '0.5';
         });
     };
 
-    const handleDragEnd = (e) => {
-        e.target.style.opacity = '1';
+    const handleDragEnd = (e: React.DragEvent) => {
+        (e.target as HTMLElement).style.opacity = '1';
         setDraggedIndex(null);
         setDropTarget(null);
     };
 
-    const handleDragOver = (e, index) => {
+    const handleDragOver = (e: React.DragEvent, index: number) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         if (draggedIndex !== null && draggedIndex !== index) {
@@ -110,7 +131,7 @@ export default function BottomPanel({
         setDropTarget(null);
     };
 
-    const handleDrop = (e, toIndex) => {
+    const handleDrop = (e: React.DragEvent, toIndex: number) => {
         e.preventDefault();
         if (draggedIndex !== null && draggedIndex !== toIndex && onReorder) {
             // Prevent dragging between pinned and unpinned sections
@@ -124,7 +145,7 @@ export default function BottomPanel({
         setDropTarget(null);
     };
 
-    const menuAction = (action) => {
+    const menuAction = (action: string) => {
         if (!contextMenu) return;
         const { tabId, index } = contextMenu;
 
@@ -150,9 +171,9 @@ export default function BottomPanel({
 
     if (!visibleTabs || visibleTabs.length === 0) return null;
 
-    const isLastTab = contextMenu && contextMenu.index === visibleTabs.length - 1;
+    const isLastTab = !!(contextMenu && contextMenu.index === visibleTabs.length - 1);
     const isOnlyTab = visibleTabs.length === 1;
-    const contextMenuTab = contextMenu ? visibleTabs.find(t => t.id === contextMenu.tabId) : null;
+    const contextMenuTab = contextMenu ? visibleTabs.find((t: any) => t.id === contextMenu.tabId) : null;
 
     return (
         <div
@@ -160,7 +181,7 @@ export default function BottomPanel({
             style={{ height: height }}
         >
             <div className="flex items-center bg-background border-b border-border overflow-x-auto">
-                {visibleTabs.map((tab, index) => {
+                {visibleTabs.map((tab: any, index: number) => {
                     const stale = isTabStale?.(tab);
                     return (
                         <div

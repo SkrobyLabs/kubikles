@@ -21,9 +21,22 @@ else
     echo "Warning: golangci-lint not found, skipping Go lint"
 fi
 
+# Run frontend type checking
+echo "Running frontend type checking..."
+cd frontend && npm run typecheck
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "Type checking failed. Commit aborted."
+    echo "Fix the type errors or use 'git commit --no-verify' to skip."
+    exit 1
+fi
+
+echo "Type checking passed!"
+
 # Run frontend tests
 echo "Running frontend tests..."
-cd frontend && npm test
+npm test
 
 if [ $? -ne 0 ]; then
     echo ""

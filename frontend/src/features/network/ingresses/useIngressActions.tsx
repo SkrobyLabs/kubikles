@@ -3,7 +3,7 @@ import { DeleteIngress } from 'wailsjs/go/main/App';
 import IngressDetails from '~/components/shared/IngressDetails';
 import { K8sIngress } from '~/types/k8s';
 
-export const useIngressActions = (): BaseResourceActionsReturn<K8sIngress> => {
+export const useIngressActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -16,7 +16,8 @@ export const useIngressActions = (): BaseResourceActionsReturn<K8sIngress> => {
         detailsPropName: 'ingress',
     });
 
-    const handleDelete = createDeleteHandler(async (ingress: K8sIngress): Promise<void> => {
+    const handleDelete = createDeleteHandler(
+        async (ingress: any): Promise<void> => {
         await DeleteIngress(ingress.metadata.namespace, ingress.metadata.name);
     });
 

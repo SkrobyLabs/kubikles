@@ -12,10 +12,10 @@ import ServiceAccountActionsMenu from './ServiceAccountActionsMenu';
 import { useServiceAccountActions } from './useServiceAccountActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function ServiceAccountList({ isVisible }) {
+export default function ServiceAccountList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { serviceAccounts, loading } = useServiceAccounts(currentContext, selectedNamespaces, isVisible);
+    const { serviceAccounts, loading } = useServiceAccounts(currentContext, selectedNamespaces, isVisible) as any;
     const { handleEditYaml } = useServiceAccountActions();
     const selection = useSelection();
 
@@ -31,34 +31,34 @@ export default function ServiceAccountList({ isVisible }) {
         resourceLabel: 'ServiceAccount',
         resourceType: 'serviceaccounts',
         isNamespaced: true,
-        deleteApi: (context, namespace, name) => DeleteServiceAccount(namespace, name),
+        deleteApi: ((namespace: string, name: string) => DeleteServiceAccount(namespace, name)) as any,
         getYamlApi: GetServiceAccountYaml,
 
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
         {
             key: 'secrets',
             label: 'Secrets',
             align: 'center',
-            render: (item) => (item.secrets || []).length,
-            getValue: (item) => (item.secrets || []).length
+            render: (item: any) => (item.secrets || []).length,
+            getValue: (item: any) => (item.secrets || []).length
         },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <ServiceAccountActionsMenu
                     serviceAccount={item}
                     isOpen={activeMenuId === `serviceaccount-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `serviceaccount-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `serviceaccount-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={(serviceAccount) => openBulkDelete([serviceAccount])}
+                    onDelete={(serviceAccount: any) => openBulkDelete([serviceAccount])}
                 />
             ),
             getValue: () => '',
@@ -89,7 +89,7 @@ export default function ServiceAccountList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

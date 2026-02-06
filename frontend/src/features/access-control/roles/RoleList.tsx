@@ -12,10 +12,10 @@ import RoleActionsMenu from './RoleActionsMenu';
 import { useRoleActions } from './useRoleActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function RoleList({ isVisible }) {
+export default function RoleList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { roles, loading } = useRoles(currentContext, selectedNamespaces, isVisible);
+    const { roles, loading } = useRoles(currentContext, selectedNamespaces, isVisible) as any;
     const { handleEditYaml } = useRoleActions();
     const selection = useSelection();
 
@@ -31,34 +31,34 @@ export default function RoleList({ isVisible }) {
         resourceLabel: 'Role',
         resourceType: 'roles',
         isNamespaced: true,
-        deleteApi: (context, namespace, name) => DeleteRole(namespace, name),
+        deleteApi: ((namespace: string, name: string) => DeleteRole(namespace, name)) as any,
         getYamlApi: GetRoleYaml,
 
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
         {
             key: 'rules',
             label: 'Rules',
             align: 'center',
-            render: (item) => (item.rules || []).length,
-            getValue: (item) => (item.rules || []).length
+            render: (item: any) => (item.rules || []).length,
+            getValue: (item: any) => (item.rules || []).length
         },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <RoleActionsMenu
                     role={item}
                     isOpen={activeMenuId === `role-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `role-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `role-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={(role) => openBulkDelete([role])}
+                    onDelete={(role: any) => openBulkDelete([role])}
                 />
             ),
             getValue: () => '',
@@ -89,7 +89,7 @@ export default function RoleList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

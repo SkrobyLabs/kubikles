@@ -1,4 +1,4 @@
-export const getPodStatus = (pod) => {
+export const getPodStatus = (pod: any): string => {
     if (pod.metadata?.deletionTimestamp) return 'Terminating';
 
     // Check for init container failures
@@ -20,7 +20,7 @@ export const getPodStatus = (pod) => {
     return pod.status?.phase || 'Unknown';
 };
 
-export const getPodStatusPriority = (status) => {
+export const getPodStatusPriority = (status: string): number => {
     switch (status) {
         case 'Failed':
         case 'Init:Error': return 1;
@@ -42,7 +42,7 @@ export const getPodStatusPriority = (status) => {
     }
 };
 
-export const getPodStatusColor = (status) => {
+export const getPodStatusColor = (status: string): string => {
     switch (status) {
         case 'Running':
             return 'text-success';
@@ -71,7 +71,7 @@ export const getPodStatusColor = (status) => {
     }
 };
 
-export const getJobConditionColor = (condition) => {
+export const getJobConditionColor = (condition: string): string => {
     switch (condition) {
         case 'Complete':
             return 'text-green-600'; // Dark green (same as Succeeded pods)
@@ -84,7 +84,7 @@ export const getJobConditionColor = (condition) => {
     }
 };
 
-export const getContainerStatusColor = (status) => {
+export const getContainerStatusColor = (status: any): string => {
     if (status.state?.running) return 'bg-success';
     if (status.state?.waiting) {
         const reason = status.state.waiting.reason;
@@ -99,7 +99,7 @@ export const getContainerStatusColor = (status) => {
     return 'bg-gray-500';
 };
 
-export const getEffectivePodStatus = (pod) => {
+export const getEffectivePodStatus = (pod: any): string => {
     // If pod is terminating, that's the status
     if (pod.metadata?.deletionTimestamp) return 'Terminating';
 
@@ -108,7 +108,7 @@ export const getEffectivePodStatus = (pod) => {
     // If multiple containers, ignore Succeeded ones (unless all are succeeded)
     let statusesToCheck = containerStatuses;
     if (containerStatuses.length > 1) {
-        const nonSucceeded = containerStatuses.filter(s =>
+        const nonSucceeded = containerStatuses.filter((s: any) =>
             !(s.state?.terminated && s.state.terminated.exitCode === 0)
         );
         if (nonSucceeded.length > 0) {
@@ -121,7 +121,7 @@ export const getEffectivePodStatus = (pod) => {
     let worstPriority = -1;
 
     // Reuse the severity logic from getPodStatus
-    const getStatusSeverity = (s) => {
+    const getStatusSeverity = (s: string): number => {
         switch (s) {
             case 'Failed': return 100;
             case 'Terminating': return 90;
@@ -160,10 +160,10 @@ export const getEffectivePodStatus = (pod) => {
     return pod.status?.phase || 'Unknown';
 };
 
-export const getDeploymentPods = (deployment, allPods) => {
+export const getDeploymentPods = (deployment: any, allPods: any[]): any[] => {
     if (!deployment.spec?.selector?.matchLabels) return [];
     const selector = deployment.spec.selector.matchLabels;
-    return (allPods || []).filter(pod => {
+    return (allPods || []).filter((pod: any) => {
         if (pod.metadata.namespace !== deployment.metadata.namespace) return false;
         for (const [key, value] of Object.entries(selector)) {
             if (pod.metadata.labels?.[key] !== value) return false;
@@ -172,9 +172,9 @@ export const getDeploymentPods = (deployment, allPods) => {
     });
 };
 
-export const getPodController = (pod) => {
+export const getPodController = (pod: any) => {
     const owners = pod.metadata?.ownerReferences || [];
-    const controller = owners.find(owner => owner.controller);
+    const controller = owners.find((owner: any) => owner.controller);
     if (!controller) return null;
     return {
         apiVersion: controller.apiVersion,

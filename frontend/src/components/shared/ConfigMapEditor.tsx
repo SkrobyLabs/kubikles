@@ -11,7 +11,7 @@ const MODE_YAML = 'yaml';
 const MODE_KEYVALUE = 'keyvalue';
 
 // Convert object to array with stable IDs
-const objectToEntries = (obj) => {
+const objectToEntries = (obj: any) => {
     return Object.entries(obj || {}).map(([key, value], index) => ({
         id: `entry-${Date.now()}-${index}`,
         key,
@@ -20,34 +20,34 @@ const objectToEntries = (obj) => {
 };
 
 // Convert array back to object for saving
-const entriesToObject = (entries) => {
-    const result = {};
-    entries.forEach(({ key, value }) => {
+const entriesToObject = (entries: any) => {
+    const result: Record<string, any> = {};
+    entries.forEach(({ key, value }: { key: any; value: any }) => {
         if (key) result[key] = value;
     });
     return result;
 };
 
-export default function ConfigMapEditor({ namespace, resourceName, onClose, tabContext = '', initialMode = MODE_YAML }) {
+export default function ConfigMapEditor({ namespace, resourceName, onClose, tabContext = '', initialMode = MODE_YAML }: any) {
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();
     const [mode, setMode] = useState(initialMode);
     const [yamlContent, setYamlContent] = useState('');
-    const [configMapEntries, setConfigMapEntries] = useState([]);
+    const [configMapEntries, setConfigMapEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<any>(null);
     const [saving, setSaving] = useState(false);
     const [keySearchTerm, setKeySearchTerm] = useState('');
-    const editorRef = useRef(null);
+    const editorRef = useRef<any>(null);
     const nextIdRef = useRef(0);
-    const [certInfoCache, setCertInfoCache] = useState({});
-    const [selectedCert, setSelectedCert] = useState(null); // { certificates: [], pemData } for modal
+    const [certInfoCache, setCertInfoCache] = useState<Record<string, any>>({});
+    const [selectedCert, setSelectedCert] = useState<any>(null); // { certificates: [], pemData } for modal
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
 
     // Check if a value looks like a PEM certificate
-    const isPEMCertificate = (value) => value?.includes('-----BEGIN CERTIFICATE-----');
+    const isPEMCertificate = (value: any) => value?.includes('-----BEGIN CERTIFICATE-----');
 
     // Load certificate info for entries that look like certificates
     useEffect(() => {
@@ -59,7 +59,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                         if (info?.isCertificate) {
                             setCertInfoCache(prev => ({ ...prev, [entry.id]: info }));
                         }
-                    } catch (err) {
+                    } catch (err: any) {
                         Logger.debug("Failed to parse certificate", { key: entry.key, error: err });
                     }
                 }
@@ -71,7 +71,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
     }, [configMapEntries, mode]);
 
     // Handle opening certificate modal
-    const handleViewCertificate = async (entry) => {
+    const handleViewCertificate = async (entry: any) => {
         try {
             const certificates = await GetAllCertificateInfo(entry.value);
             if (certificates?.length > 0) {
@@ -80,14 +80,14 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                 }
                 setSelectedCert({ certificates, pemData: entry.value });
             }
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to get certificate info", err);
             addNotification({ type: 'error', title: 'Failed to parse certificate', message: String(err) });
         }
     };
 
     // Get expiry badge color based on days until expiry
-    const getExpiryBadgeStyle = (certInfo) => {
+    const getExpiryBadgeStyle = (certInfo: any) => {
         if (!certInfo) return null;
         if (certInfo.isExpired || certInfo.daysUntilExpiry < 7) {
             return 'bg-red-600/20 text-red-400 border-red-500/30';
@@ -99,7 +99,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
     };
 
     // Format expiry text
-    const getExpiryText = (certInfo) => {
+    const getExpiryText = (certInfo: any) => {
         if (!certInfo) return '';
         if (certInfo.isExpired) return 'Expired';
         if (certInfo.daysUntilExpiry === 0) return 'Expires today';
@@ -108,7 +108,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
     };
 
     // Get first SAN or subject for display
-    const getCertSummary = (certInfo) => {
+    const getCertSummary = (certInfo: any) => {
         if (!certInfo) return '';
         if (certInfo.dnsNames?.length > 0) {
             const first = certInfo.dnsNames[0];
@@ -141,7 +141,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
             setYamlContent(yaml);
             setConfigMapEntries(objectToEntries(data));
             Logger.info("ConfigMap data fetched successfully", { namespace, name: resourceName });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to load configmap", err);
             setError(`Failed to load configmap: ${err}`);
         } finally {
@@ -155,11 +155,11 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
         try {
             await UpdateConfigMapYaml(namespace, resourceName, yamlContent);
             Logger.info("YAML saved successfully", { namespace, name: resourceName });
-            addNotification({ type: 'success', title: 'ConfigMap saved successfully' });
+            addNotification({ type: 'success', title: 'ConfigMap saved successfully', message: '' });
             // Refresh key-value data after YAML save
             const data = await GetConfigMapData(namespace, resourceName);
             setConfigMapEntries(objectToEntries(data));
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to save configmap", err);
             addNotification({ type: 'error', title: 'Failed to save ConfigMap', message: String(err) });
         } finally {
@@ -174,11 +174,11 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
             const dataToSave = entriesToObject(configMapEntries);
             await UpdateConfigMapData(namespace, resourceName, dataToSave);
             Logger.info("ConfigMap data saved successfully", { namespace, name: resourceName });
-            addNotification({ type: 'success', title: 'ConfigMap saved successfully' });
+            addNotification({ type: 'success', title: 'ConfigMap saved successfully', message: '' });
             // Refresh YAML after key-value save
             const yaml = await GetConfigMapYaml(namespace, resourceName);
             setYamlContent(yaml);
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to save configmap", err);
             addNotification({ type: 'error', title: 'Failed to save ConfigMap', message: String(err) });
         } finally {
@@ -194,7 +194,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
         }
     };
 
-    const handleEditorDidMount = (editor, monaco) => {
+    const handleEditorDidMount = (editor: any, monaco: any) => {
         editorRef.current = editor;
         editor.updateOptions({
             minimap: { enabled: true },
@@ -212,28 +212,28 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
         });
     };
 
-    const handleKeyChange = (id, newKey) => {
+    const handleKeyChange = (id: any, newKey: any) => {
         setConfigMapEntries(entries =>
-            entries.map(entry =>
+            entries.map((entry: any) =>
                 entry.id === id ? { ...entry, key: newKey } : entry
             )
         );
     };
 
-    const handleValueChange = (id, newValue) => {
+    const handleValueChange = (id: any, newValue: any) => {
         setConfigMapEntries(entries =>
-            entries.map(entry =>
+            entries.map((entry: any) =>
                 entry.id === id ? { ...entry, value: newValue } : entry
             )
         );
     };
 
-    const handleDeleteEntry = (id) => {
-        setConfigMapEntries(entries => entries.filter(entry => entry.id !== id));
+    const handleDeleteEntry = (id: any) => {
+        setConfigMapEntries(entries => entries.filter((entry: any) => entry.id !== id));
     };
 
     const handleAddKey = () => {
-        const existingKeys = new Set(configMapEntries.map(e => e.key));
+        const existingKeys = new Set(configMapEntries.map((e: any) => e.key));
         let newKey = 'NEW_KEY';
         let counter = 1;
         while (existingKeys.has(newKey)) {
@@ -308,7 +308,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                             <input
                                 type="text"
                                 value={keySearchTerm}
-                                onChange={(e) => setKeySearchTerm(e.target.value)}
+                                onChange={(e: any) => setKeySearchTerm(e.target.value)}
                                 placeholder="Filter keys..."
                                 className="w-full bg-background border border-border rounded-md pl-8 pr-3 py-1 text-xs text-text focus:outline-none focus:border-primary transition-colors"
                                 autoComplete="off"
@@ -343,7 +343,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                         height="100%"
                         defaultLanguage="yaml"
                         value={yamlContent}
-                        onChange={(value) => !isStale && setYamlContent(value || '')}
+                        onChange={(value: any) => !isStale && setYamlContent(value || '')}
                         onMount={handleEditorDidMount}
                         theme="vs-dark"
                         options={{
@@ -359,7 +359,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                     <div className="h-full overflow-auto p-4">
                         <div className="space-y-2">
                             {configMapEntries
-                                .filter(entry => !keySearchTerm || entry.key.toLowerCase().includes(keySearchTerm.toLowerCase()))
+                                .filter((entry: any) => !keySearchTerm || entry.key.toLowerCase().includes(keySearchTerm.toLowerCase()))
                                 .map((entry) => {
                                     const isCert = isPEMCertificate(entry.value);
                                     const certInfo = certInfoCache[entry.id];
@@ -368,7 +368,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                                             <input
                                                 type="text"
                                                 value={entry.key}
-                                                onChange={(e) => !isStale && handleKeyChange(entry.id, e.target.value)}
+                                                onChange={(e: any) => !isStale && handleKeyChange(entry.id, e.target.value)}
                                                 disabled={isStale}
                                                 className={`w-48 shrink-0 px-2 py-1.5 text-sm bg-background border border-border rounded text-gray-200 focus:outline-none focus:border-primary ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
                                                 placeholder="Key"
@@ -380,7 +380,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                                             <div className="flex-1 min-w-0">
                                                 <textarea
                                                     value={entry.value}
-                                                    onChange={(e) => !isStale && handleValueChange(entry.id, e.target.value)}
+                                                    onChange={(e: any) => !isStale && handleValueChange(entry.id, e.target.value)}
                                                     disabled={isStale}
                                                     className={`w-full min-h-[60px] px-2 py-1.5 text-sm bg-background border border-border rounded text-gray-200 font-mono focus:outline-none focus:border-primary resize-y ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
                                                     placeholder="Value"
@@ -429,7 +429,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                                     No configmap data. Click "Add Key" to create one.
                                 </div>
                             )}
-                            {configMapEntries.length > 0 && keySearchTerm && configMapEntries.filter(e => e.key.toLowerCase().includes(keySearchTerm.toLowerCase())).length === 0 && (
+                            {configMapEntries.length > 0 && keySearchTerm && configMapEntries.filter((e: any) => e.key.toLowerCase().includes(keySearchTerm.toLowerCase())).length === 0 && (
                                 <div className="text-gray-500 text-sm text-center py-8">
                                     No keys match "{keySearchTerm}"
                                 </div>

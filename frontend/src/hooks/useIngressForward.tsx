@@ -84,7 +84,7 @@ export const useIngressForward = (): UseIngressForwardReturn => {
                 portForwardIds: [],
                 hostsFileUpdated: false
             }));
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to fetch ingress forward state:', err);
             setError(err instanceof Error ? err : new Error(String(err)));
         }
@@ -110,7 +110,7 @@ export const useIngressForward = (): UseIngressForwardReturn => {
 
     // Subscribe to global event system
     useEffect(() => {
-        if (!window.runtime) return;
+        if (!(window as any).runtime) return;
 
         // Create wrapper that calls through ref (avoids stale closure)
         const subscriber: IngressForwardSubscriber = (event: IngressForwardEvent) => {
@@ -125,10 +125,10 @@ export const useIngressForward = (): UseIngressForwardReturn => {
         if (!globalEventHandler) {
             globalEventHandler = (event: IngressForwardEvent) => {
                 console.log('Ingress forward event:', event);
-                subscribers.forEach(sub => {
+                subscribers.forEach((sub: any) => {
                     try {
                         sub(event);
-                    } catch (err) {
+                    } catch (err: any) {
                         console.error('Error in ingress forward subscriber:', err);
                     }
                 });
@@ -143,7 +143,7 @@ export const useIngressForward = (): UseIngressForwardReturn => {
             if (subscribers.size === 0 && globalEventHandler) {
                 try {
                     EventsOff('ingress-forward-event');
-                } catch (err) {
+                } catch (err: any) {
                     console.error('Error removing ingress-forward-event listener:', err);
                 }
                 globalEventHandler = null;
@@ -160,7 +160,7 @@ export const useIngressForward = (): UseIngressForwardReturn => {
             setDetectedController(controller);
             setDetectionAttempted(true);
             return controller;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to detect ingress controller:', err);
             setError(err instanceof Error ? err : new Error(String(err)));
             setDetectedController(null);
@@ -177,7 +177,7 @@ export const useIngressForward = (): UseIngressForwardReturn => {
             const hostnames = await CollectIngressHostnames(namespaces);
             setPreviewHostnames(hostnames || []);
             return hostnames || [];
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to collect ingress hostnames:', err);
             setError(err instanceof Error ? err : new Error(String(err)));
             return [];
@@ -191,7 +191,7 @@ export const useIngressForward = (): UseIngressForwardReturn => {
         try {
             await StartIngressForward(controller, namespaces);
             await fetchState();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to start ingress forward:', err);
             setError(err instanceof Error ? err : new Error(String(err)));
             throw err;
@@ -208,7 +208,7 @@ export const useIngressForward = (): UseIngressForwardReturn => {
             await StopIngressForward();
             await fetchState();
             setPreviewHostnames([]);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to stop ingress forward:', err);
             setError(err instanceof Error ? err : new Error(String(err)));
             throw err;
@@ -224,7 +224,7 @@ export const useIngressForward = (): UseIngressForwardReturn => {
         try {
             await RefreshIngressHostnames(namespaces);
             await fetchState();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to refresh ingress hostnames:', err);
             setError(err instanceof Error ? err : new Error(String(err)));
             throw err;
@@ -237,7 +237,7 @@ export const useIngressForward = (): UseIngressForwardReturn => {
     const getManagedHosts = useCallback(async (): Promise<string[]> => {
         try {
             return await GetManagedHosts();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to get managed hosts:', err);
             return [];
         }

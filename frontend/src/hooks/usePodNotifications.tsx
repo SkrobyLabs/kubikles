@@ -40,7 +40,7 @@ interface NotificationSound {
  */
 export function playNotificationSound(soundKey: string = 'alert'): void {
     try {
-        const sound = NOTIFICATION_SOUNDS[soundKey] as NotificationSound | undefined;
+        const sound = (NOTIFICATION_SOUNDS as Record<string, any>)[soundKey] as NotificationSound | undefined;
         if (!sound || !sound.notes || sound.notes.length === 0) return;
 
         const ctx = getAudioContext();
@@ -85,7 +85,7 @@ export function getOwnerKey(pod: K8sPod): string | null {
 export function getTotalRestarts(pod: K8sPod): number {
     const statuses = pod?.status?.containerStatuses;
     if (!statuses) return 0;
-    return statuses.reduce((sum, cs) => sum + (cs.restartCount || 0), 0);
+    return statuses.reduce((sum: any, cs: any) => sum + (cs.restartCount || 0), 0);
 }
 
 const REDEPLOY_WINDOW_MS = 30000;
@@ -111,7 +111,7 @@ interface NotificationSettings {
 
 interface PendingNotification {
     notification: {
-        type: string;
+        type: 'info' | 'success' | 'warning' | 'error';
         title: string;
         message: string;
     };
@@ -204,7 +204,7 @@ export function usePodNotifications(
                 }
 
                 const containerInfo = restarted.length > 0
-                    ? restarted.map(c => `${c.name} (${c.count})`).join(', ')
+                    ? restarted.map((c: any) => `${c.name} (${c.count})`).join(', ')
                     : `total: ${curr.total}`;
 
                 pending.push({

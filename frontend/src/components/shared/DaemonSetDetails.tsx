@@ -10,11 +10,11 @@ import ControllerMetricsTab from './ControllerMetricsTab';
 const TAB_BASIC = 'basic';
 const TAB_METRICS = 'metrics';
 
-export default function DaemonSetDetails({ daemonSet, tabContext = '' }) {
+export default function DaemonSetDetails({ daemonSet, tabContext = '' }: { daemonSet: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
     const activeTab = getDetailTab('daemonset', TAB_BASIC);
-    const setActiveTab = (tab) => setDetailTab('daemonset', tab);
+    const setActiveTab = (tab: string) => setDetailTab('daemonset', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
 
@@ -128,7 +128,7 @@ export default function DaemonSetDetails({ daemonSet, tabContext = '' }) {
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -149,7 +149,7 @@ export default function DaemonSetDetails({ daemonSet, tabContext = '' }) {
                     namespace={namespace}
                     name={name}
                     controllerType="daemonset"
-                    isStale={isStale}
+                    isStale={!!isStale}
                 />
             ) : (
             <div className="h-full overflow-auto p-4">

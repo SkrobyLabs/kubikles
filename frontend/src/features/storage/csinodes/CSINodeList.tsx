@@ -12,10 +12,10 @@ import { DeleteCSINode, GetCSINodeYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function CSINodeList({ isVisible }) {
+export default function CSINodeList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { csiNodes, loading } = useCSINodes(currentContext, isVisible);
+    const { csiNodes, loading } = useCSINodes(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useCSINodeActions();
     const selection = useSelection();
 
@@ -36,46 +36,46 @@ export default function CSINodeList({ isVisible }) {
 
     });
 
-    const getDriverCount = (csiNode) => {
+    const getDriverCount = (csiNode: any) => {
         const drivers = csiNode.spec?.drivers || [];
         return drivers.length;
     };
 
-    const getDriverNames = (csiNode) => {
+    const getDriverNames = (csiNode: any) => {
         const drivers = csiNode.spec?.drivers || [];
         if (drivers.length === 0) return '-';
         if (drivers.length <= 2) {
-            return drivers.map(d => d.name).join(', ');
+            return drivers.map((d: any) => d.name).join(', ');
         }
         return `${drivers[0].name}, +${drivers.length - 1} more`;
     };
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
         {
             key: 'driverCount',
             label: 'Drivers',
-            render: (item) => (
+            render: (item: any) => (
                 <span className={getDriverCount(item) > 0 ? 'text-green-400' : 'text-gray-500'}>
                     {getDriverCount(item)}
                 </span>
             ),
-            getValue: (item) => getDriverCount(item)
+            getValue: (item: any) => getDriverCount(item)
         },
-        { key: 'driverNames', label: 'Driver Names', render: (item) => getDriverNames(item), getValue: (item) => getDriverNames(item) },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'driverNames', label: 'Driver Names', render: (item: any) => getDriverNames(item), getValue: (item: any) => getDriverNames(item) },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <CSINodeActionsMenu
                     csiNode={item}
                     isOpen={activeMenuId === `csinode-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `csinode-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `csinode-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={(csiNode) => openBulkDelete([csiNode])}
+                    onDelete={(csiNode: any) => openBulkDelete([csiNode])}
                 />
             ),
             getValue: () => '',
@@ -102,7 +102,7 @@ export default function CSINodeList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

@@ -17,8 +17,8 @@ import { useUI } from '~/context';
 import PortForwardDialog from './PortForwardDialog';
 import { BrowserOpenURL } from 'wailsjs/runtime/runtime';
 
-const StatusText = ({ status }) => {
-    const colors = {
+const StatusText = ({ status }: any) => {
+    const colors: Record<string, string> = {
         running: 'text-green-400',
         starting: 'text-yellow-400',
         stopped: 'text-gray-400',
@@ -46,24 +46,24 @@ const ALL_COLUMNS = [
     { key: 'actions', label: '', alwaysVisible: true, isActions: true }
 ];
 
-export default function PortForwardList({ isVisible }) {
+export default function PortForwardList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, contexts } = useK8s();
     const { openModal, closeModal, navigateWithSearch } = useUI();
     const [showAllContexts, setShowAllContexts] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [editingConfig, setEditingConfig] = useState(null);
+    const [editingConfig, setEditingConfig] = useState<any>(null);
     const [hiddenColumns, setHiddenColumns] = useState(new Set(['type']));
     const [showColumnMenu, setShowColumnMenu] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const columnMenuRef = useRef(null);
-    const searchInputRef = useRef(null);
+    const columnMenuRef = useRef<any>(null);
+    const searchInputRef = useRef<any>(null);
 
     // Filter by current context unless showing all
     const contextFilter = showAllContexts ? '' : currentContext;
 
     // Handle click outside column menu
     useEffect(() => {
-        const handleClickOutside = (event) => {
+        const handleClickOutside = (event: any) => {
             if (columnMenuRef.current && !columnMenuRef.current.contains(event.target)) {
                 setShowColumnMenu(false);
             }
@@ -74,14 +74,14 @@ export default function PortForwardList({ isVisible }) {
 
     // Get visible columns based on settings
     const visibleColumns = useMemo(() => {
-        return ALL_COLUMNS.filter(col => {
+        return ALL_COLUMNS.filter((col: any) => {
             if (col.alwaysVisible) return true;
             if (col.contextOnly && !showAllContexts) return false;
             return !hiddenColumns.has(col.key);
         });
     }, [hiddenColumns, showAllContexts]);
 
-    const toggleColumn = useCallback((key) => {
+    const toggleColumn = useCallback((key: any) => {
         setHiddenColumns(prev => {
             const next = new Set(prev);
             if (next.has(key)) {
@@ -112,23 +112,23 @@ export default function PortForwardList({ isVisible }) {
         setDialogOpen(true);
     }, []);
 
-    const handleViewResource = useCallback((config) => {
+    const handleViewResource = useCallback((config: any) => {
         // Navigate to the resource view with a search filter
         const viewMap = {
             pod: 'pods',
             service: 'services'
         };
-        const view = viewMap[config.resourceType] || 'pods';
+        const view = (viewMap as any)[config.resourceType] || 'pods';
         const searchTerm = `name:"${config.resourceName}" namespace:"${config.namespace}"`;
         navigateWithSearch(view, searchTerm);
     }, [navigateWithSearch]);
 
-    const handleEditConfig = useCallback((config) => {
+    const handleEditConfig = useCallback((config: any) => {
         setEditingConfig(config);
         setDialogOpen(true);
     }, []);
 
-    const handleDelete = useCallback((config) => {
+    const handleDelete = useCallback((config: any) => {
         openModal({
             title: 'Delete Port Forward',
             content: `Are you sure you want to delete the port forward "${config.label || config.resourceName}"?`,
@@ -142,40 +142,40 @@ export default function PortForwardList({ isVisible }) {
                     }
                     await deleteConfig(config.id);
                     closeModal();
-                } catch (err) {
+                } catch (err: any) {
                     console.error('Failed to delete:', err);
                 }
             }
         });
     }, [deleteConfig, stopForward, isActive, openModal, closeModal]);
 
-    const handleToggle = useCallback(async (config) => {
+    const handleToggle = useCallback(async (config: any) => {
         try {
             if (isActive(config.id)) {
                 await stopForward(config.id);
             } else {
                 await startForward(config.id);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to toggle port forward:', err);
         }
     }, [isActive, startForward, stopForward]);
 
-    const handleToggleFavorite = useCallback(async (config) => {
+    const handleToggleFavorite = useCallback(async (config: any) => {
         try {
             await updateConfig({ ...config, favorite: !config.favorite });
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to toggle favorite:', err);
         }
     }, [updateConfig]);
 
-    const handleOpenBrowser = useCallback((config) => {
+    const handleOpenBrowser = useCallback((config: any) => {
         const protocol = config.https ? 'https' : 'http';
         const url = `${protocol}://localhost:${config.localPort}`;
         window.open(url, '_blank');
     }, []);
 
-    const handleSave = useCallback(async (config) => {
+    const handleSave = useCallback(async (config: any) => {
         try {
             if (editingConfig) {
                 // Editing existing config
@@ -199,7 +199,7 @@ export default function PortForwardList({ isVisible }) {
             }
             setDialogOpen(false);
             setEditingConfig(null);
-        } catch (err) {
+        } catch (err: any) {
             throw err; // Re-throw to let dialog handle it
         }
     }, [editingConfig, addConfig, updateConfig, startForward]);
@@ -211,7 +211,7 @@ export default function PortForwardList({ isVisible }) {
         // Apply search filter
         if (searchTerm.trim()) {
             const term = searchTerm.toLowerCase();
-            result = result.filter(config => {
+            result = result.filter((config: any) => {
                 const label = (config.label || '').toLowerCase();
                 const resource = (config.resourceName || '').toLowerCase();
                 const namespace = (config.namespace || '').toLowerCase();
@@ -253,7 +253,7 @@ export default function PortForwardList({ isVisible }) {
                             ref={searchInputRef}
                             type="text"
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e: any) => setSearchTerm(e.target.value)}
                             placeholder="Search port forwards..."
                             className="w-full bg-background border border-border rounded-md pl-9 pr-4 py-1.5 text-sm text-text focus:outline-none focus:border-primary transition-colors"
                             autoComplete="off"
@@ -271,7 +271,7 @@ export default function PortForwardList({ isVisible }) {
                         <input
                             type="checkbox"
                             checked={showAllContexts}
-                            onChange={(e) => setShowAllContexts(e.target.checked)}
+                            onChange={(e: any) => setShowAllContexts(e.target.checked)}
                             className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                         />
                         Show all contexts
@@ -336,7 +336,7 @@ export default function PortForwardList({ isVisible }) {
                                                 </button>
                                                 {showColumnMenu && (
                                                     <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-md shadow-lg z-50 py-1">
-                                                        {ALL_COLUMNS.filter(c => !c.alwaysVisible && (!c.contextOnly || showAllContexts)).map(c => (
+                                                        {ALL_COLUMNS.filter((c: any) => !c.alwaysVisible && (!c.contextOnly || showAllContexts)).map((c: any) => (
                                                             <label
                                                                 key={c.key}
                                                                 className="flex items-center px-4 py-2 text-sm text-text hover:bg-white/5 cursor-pointer"
@@ -511,7 +511,7 @@ export default function PortForwardList({ isVisible }) {
             {/* Dialog */}
             <PortForwardDialog
                 open={dialogOpen}
-                onOpenChange={(open) => {
+                onOpenChange={(open: any) => {
                     setDialogOpen(open);
                     if (!open) setEditingConfig(null);
                 }}

@@ -43,7 +43,7 @@ export const useNodeMetrics = (isVisible: boolean, isReady: boolean = true, auto
     const [source, setSource] = useState<MetricsSource>(null); // 'k8s' or 'prometheus'
     const { currentContext } = useK8s();
     const { getConfig } = useConfig();
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const prometheusInfoRef = useRef<k8s.PrometheusInfo | null>(null); // Cache prometheus info for fallback
     const pollInterval = getConfig('kubernetes.metricsPollIntervalMs') ?? 30000;
 
@@ -110,7 +110,7 @@ export const useNodeMetrics = (isVisible: boolean, isReady: boolean = true, auto
                 if (promInfo?.available) {
                     prometheusInfoRef.current = promInfo;
                 }
-            } catch (e) {
+            } catch (e: any) {
                 console.log("Prometheus detection failed:", e);
             }
         }
@@ -130,7 +130,7 @@ export const useNodeMetrics = (isVisible: boolean, isReady: boolean = true, auto
         const promInfo = await ensurePrometheusInfo();
         if (!promInfo) {
             console.log("No Prometheus available");
-            return { available: false, metrics: [], error: "No Prometheus available" };
+            return { available: false, metrics: [], error: "No Prometheus available" } as any;
         }
         const { namespace, service, port } = promInfo;
         console.log(`Querying Prometheus at ${namespace}/${service}:${port}...`);
@@ -138,9 +138,9 @@ export const useNodeMetrics = (isVisible: boolean, isReady: boolean = true, auto
             const promResult = await GetNodeMetricsFromPrometheus(namespace, service, port);
             console.log("Prometheus metrics result:", promResult);
             return promResult;
-        } catch (e) {
+        } catch (e: any) {
             console.log("Prometheus query failed:", e);
-            return { available: false, metrics: [], error: String(e) };
+            return { available: false, metrics: [], error: String(e) } as any;
         }
     }, [ensurePrometheusInfo]);
 
@@ -205,7 +205,7 @@ export const useNodeMetrics = (isVisible: boolean, isReady: boolean = true, auto
             setAvailable(false);
             setSource(null);
             setMetrics({});
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to fetch node metrics", err);
             setAvailable(false);
             setSource(null);

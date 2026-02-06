@@ -7,7 +7,7 @@ interface EndpointsActionsReturn extends BaseResourceActionsReturn<K8sEndpoints>
     handleDelete: (endpoints: K8sEndpoints) => void;
 }
 
-export const useEndpointsActions = (): EndpointsActionsReturn => {
+export const useEndpointsActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -22,7 +22,7 @@ export const useEndpointsActions = (): EndpointsActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (endpoints: K8sEndpoints): Promise<void> => {
+        async (endpoints: any): Promise<void> => {
             await DeleteEndpoints(endpoints.metadata.namespace, endpoints.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete these endpoints? This may affect service connectivity.' }

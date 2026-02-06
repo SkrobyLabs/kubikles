@@ -12,10 +12,10 @@ import { DeleteNetworkPolicy, GetNetworkPolicyYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function NetworkPolicyList({ isVisible }) {
+export default function NetworkPolicyList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { networkPolicies, loading } = useNetworkPolicies(currentContext, selectedNamespaces, isVisible);
+    const { networkPolicies, loading } = useNetworkPolicies(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useNetworkPolicyActions();
     const selection = useSelection();
 
@@ -35,7 +35,7 @@ export default function NetworkPolicyList({ isVisible }) {
 
     });
 
-    const getPodSelector = (policy) => {
+    const getPodSelector = (policy: any) => {
         const selector = policy.spec?.podSelector;
         if (!selector || Object.keys(selector.matchLabels || {}).length === 0) {
             return 'All Pods';
@@ -47,29 +47,29 @@ export default function NetworkPolicyList({ isVisible }) {
         return labels.join(', ') + (extra > 0 ? `, +${extra}` : '');
     };
 
-    const getPolicyTypes = (policy) => {
+    const getPolicyTypes = (policy: any) => {
         return policy.spec?.policyTypes?.join(', ') || 'Ingress';
     };
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
-        { key: 'podSelector', label: 'Pod Selector', render: (item) => getPodSelector(item), getValue: (item) => getPodSelector(item) },
-        { key: 'policyTypes', label: 'Policy Types', render: (item) => getPolicyTypes(item), getValue: (item) => getPolicyTypes(item) },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
+        { key: 'podSelector', label: 'Pod Selector', render: (item: any) => getPodSelector(item), getValue: (item: any) => getPodSelector(item) },
+        { key: 'policyTypes', label: 'Policy Types', render: (item: any) => getPolicyTypes(item), getValue: (item: any) => getPolicyTypes(item) },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <NetworkPolicyActionsMenu
                     networkPolicy={item}
                     isOpen={activeMenuId === `networkpolicy-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `networkpolicy-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `networkpolicy-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(policy) => openBulkDelete([policy])}
+                    onDelete={(policy: any) => openBulkDelete([policy])}
                 />
             ),
             getValue: () => '',
@@ -98,7 +98,7 @@ export default function NetworkPolicyList({ isVisible }) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
+            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
         </>
     );
 }

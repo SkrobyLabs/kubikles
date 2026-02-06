@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * Get status display info for a container
  */
-function getStatusInfo(status) {
+function getStatusInfo(status: any) {
     if (!status) return { label: 'Unknown', color: 'text-gray-400' };
 
     if (status.state?.running) {
@@ -33,7 +33,7 @@ export default function ContainerSelector({
     title = 'Select Container',
     description,
     onSelect
-}) {
+}: any) {
     return (
         <div className="h-full w-full bg-background overflow-auto">
             <div className="max-w-md w-full p-6 mx-auto">
@@ -45,7 +45,7 @@ export default function ContainerSelector({
                 </p>
 
                 <div className="flex flex-col gap-2">
-                    {containers.map((container) => {
+                    {containers.map((container: any) => {
                         // Support both string and object format
                         const isObject = typeof container === 'object';
                         const name = isObject ? container.name : container;

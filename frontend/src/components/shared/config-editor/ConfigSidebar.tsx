@@ -1,12 +1,12 @@
 import React from 'react';
 import { configSchema, getSortedSections } from '~/config/configSchema';
 
-export default function ConfigSidebar({ activeSection, onSectionChange, searchResults }) {
+export default function ConfigSidebar({ activeSection, onSectionChange, searchResults }: any) {
     const allSections = getSortedSections();
 
     // Filter sections if search is active
     const sections = searchResults
-        ? allSections.filter(s => searchResults[s])
+        ? allSections.filter((s: any) => searchResults[s])
         : allSections;
 
     if (sections.length === 0) {

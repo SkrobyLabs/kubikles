@@ -10,7 +10,7 @@ export const networkPolicyFields = {
     ...commonFields,
 
     podselector: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const selector = item.spec?.podSelector?.matchLabels || {};
             if (Object.keys(selector).length === 0) return 'all';
             return Object.entries(selector)
@@ -21,12 +21,12 @@ export const networkPolicyFields = {
     },
 
     policytype: {
-        extractor: (item) => (item.spec?.policyTypes || ['Ingress']).join(' '),
+        extractor: (item: any) => (item.spec?.policyTypes || ['Ingress']).join(' '),
         aliases: ['policytypes', 'type', 'types']
     },
 
     ingress: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const rules = item.spec?.ingress || [];
             return rules.length > 0 ? 'true' : 'false';
         },
@@ -34,7 +34,7 @@ export const networkPolicyFields = {
     },
 
     egress: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const rules = item.spec?.egress || [];
             return rules.length > 0 ? 'true' : 'false';
         },
@@ -42,12 +42,12 @@ export const networkPolicyFields = {
     },
 
     ingresscount: {
-        extractor: (item) => String(item.spec?.ingress?.length || 0),
+        extractor: (item: any) => String(item.spec?.ingress?.length || 0),
         aliases: ['ingressrules']
     },
 
     egresscount: {
-        extractor: (item) => String(item.spec?.egress?.length || 0),
+        extractor: (item: any) => String(item.spec?.egress?.length || 0),
         aliases: ['egressrules']
     }
 };

@@ -7,7 +7,7 @@ export interface NetworkPolicyActionsReturn extends BaseResourceActionsReturn<K8
     handleDelete: (networkPolicy: K8sNetworkPolicy) => void;
 }
 
-export const useNetworkPolicyActions = (): NetworkPolicyActionsReturn => {
+export const useNetworkPolicyActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -22,7 +22,7 @@ export const useNetworkPolicyActions = (): NetworkPolicyActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (networkPolicy: K8sNetworkPolicy): Promise<void> => {
+        async (networkPolicy: any): Promise<void> => {
             await DeleteNetworkPolicy(networkPolicy.metadata.namespace, networkPolicy.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this network policy? This may affect pod network connectivity.' }

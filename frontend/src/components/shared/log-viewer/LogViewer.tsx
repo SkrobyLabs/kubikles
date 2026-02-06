@@ -42,12 +42,12 @@ export default function LogViewer({
     ownerName = '',
     podCreationTime = '',
     tabContext = ''
-}) {
+}: { namespace: any; pod: any; containers?: any; siblingPods?: any; podContainerMap?: any; ownerName?: any; podCreationTime?: any; tabContext?: any }) {
     const { currentContext } = useK8s();
     const { getConfig } = useConfig();
 
     // Helper to safely get config with validation and fallback
-    const getSafeConfig = useCallback((path, defaultValue, validator) => {
+    const getSafeConfig = useCallback((path: any, defaultValue: any, validator: any) => {
         try {
             const value = getConfig(path);
             if (value === undefined || value === null) return defaultValue;
@@ -56,7 +56,7 @@ export default function LogViewer({
                 return defaultValue;
             }
             return value;
-        } catch (e) {
+        } catch (e: any) {
             console.error(`Error reading config ${path}:`, e, '- using default:', defaultValue);
             return defaultValue;
         }
@@ -67,12 +67,12 @@ export default function LogViewer({
     const [selectedPod, setSelectedPod] = useState(pod);
     // Default to first container for the selected pod
     const [selectedContainer, setSelectedContainer] = useState(containers[0] || '');
-    const [wrapLines, setWrapLines] = useState(() => getSafeConfig('logs.lineWrap', true, v => typeof v === 'boolean'));
-    const [showTimestamps, setShowTimestamps] = useState(() => getSafeConfig('logs.showTimestamps', false, v => typeof v === 'boolean'));
+    const [wrapLines, setWrapLines] = useState(() => getSafeConfig('logs.lineWrap', true, (v: any) => typeof v === 'boolean'));
+    const [showTimestamps, setShowTimestamps] = useState(() => getSafeConfig('logs.showTimestamps', false, (v: any) => typeof v === 'boolean'));
     const [showPrevious, setShowPrevious] = useState(false);
     const [showTimeModal, setShowTimeModal] = useState(false);
     const [sinceTime, setSinceTime] = useState('');
-    const initialPosition = getSafeConfig('logs.position', 'end', v => ['start', 'end', 'all'].includes(v));
+    const initialPosition = getSafeConfig('logs.position', 'end', (v: any) => ['start', 'end', 'all'].includes(v));
     const [viewMode, setViewMode] = useState(initialPosition === 'all' ? 'start' : initialPosition);
     const [autoFollow, setAutoFollow] = useState(true);
     const [downloading, setDownloading] = useState(false);
@@ -80,7 +80,8 @@ export default function LogViewer({
 
     const showDebugDownload = getConfig('debug.showLogSourceMarkers');
 
-    const virtuosoRef = useRef(null);
+    const virtuosoRef = useRef<any>(null);
+    const logsContainerRef = useRef<HTMLDivElement>(null);
     const isAtBottomRef = useRef(true);
     const [isSelecting, setIsSelecting] = useState(false);
 
@@ -89,8 +90,8 @@ export default function LogViewer({
 
     // Get current containers for the selected pod (or first pod if "All Pods")
     const currentContainers = selectedPod === ALL_PODS
-        ? (podContainerMap[siblingPods[0]] || containers)
-        : (podContainerMap[selectedPod] || containers);
+        ? ((podContainerMap as Record<string, any>)[siblingPods[0]] || containers)
+        : ((podContainerMap as Record<string, any>)[selectedPod] || containers);
 
     // Log streaming hook
     const stream = useLogStream({
@@ -132,7 +133,7 @@ export default function LogViewer({
 
     // Keyboard shortcut for refresh
     useEffect(() => {
-        const handleKeyDown = (e) => {
+        const handleKeyDown = (e: any) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
                 if (namespace && selectedPod) {
                     stream.fetchLogs();
@@ -159,7 +160,7 @@ export default function LogViewer({
 
 
     // Virtuoso callbacks
-    const handleAtBottomStateChange = useCallback((atBottom) => {
+    const handleAtBottomStateChange = useCallback((atBottom: any) => {
         isAtBottomRef.current = atBottom;
         if (!atBottom && !stream.hasMoreAfter && !isFollowing && !stream.isAllLoaded) {
             stream.setHasMoreAfter(true);
@@ -176,7 +177,7 @@ export default function LogViewer({
         stream.loadNewerLogs();
     }, [stream.isAllLoaded, stream.hasMoreAfter, isFollowing, stream.loadNewerLogs]);
 
-    const followOutput = useCallback((isAtBottom) => {
+    const followOutput = useCallback((isAtBottom: any) => {
         if (isFollowing && isAtBottom) return 'smooth';
         return false;
     }, [isFollowing]);
@@ -184,12 +185,12 @@ export default function LogViewer({
     // Scroll helpers
     const scrollToTop = useCallback(() => {
         isAtBottomRef.current = false;
-        virtuosoRef.current?.scrollToIndex({ index: 0, behavior: 'auto' });
+        (virtuosoRef as any).current?.scrollToIndex({ index: 0, behavior: 'auto' });
     }, []);
 
     const scrollToBottom = useCallback(() => {
         isAtBottomRef.current = true;
-        virtuosoRef.current?.scrollToIndex({ index: 'LAST', behavior: 'auto' });
+        (virtuosoRef as any).current?.scrollToIndex({ index: 'LAST', behavior: 'auto' });
     }, []);
 
     // Navigation
@@ -227,7 +228,7 @@ export default function LogViewer({
         scrollToBottom();
     };
 
-    const handleTimeApply = (time) => {
+    const handleTimeApply = (time: any) => {
         setSinceTime(time);
         setViewMode('end');
         setShowTimeModal(false);
@@ -252,10 +253,10 @@ export default function LogViewer({
 
             if (selectedPod === ALL_PODS) {
                 // Build pod-container pairs for all pods
-                const podPairs = siblingPods.map(podName => ({
+                const podPairs = siblingPods.map((podName: any) => ({
                     podName,
                     containerNames: isAllContainers
-                        ? (podContainerMap[podName] || containers)
+                        ? ((podContainerMap as Record<string, any>)[podName] || containers)
                         : (selectedContainer ? [selectedContainer] : [])
                 }));
                 allLogs = await GetAllPodsLogsAll(namespace, podPairs, isAllContainers, showTimestamps, showPrevious);
@@ -265,7 +266,7 @@ export default function LogViewer({
                 allLogs = await GetAllPodLogs(namespace, selectedPod, selectedContainer, showTimestamps, showPrevious);
             }
             await SavePodLogs(allLogs, filename);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to save logs:', err);
         } finally {
             setDownloading(false);
@@ -283,18 +284,18 @@ export default function LogViewer({
             const podsToDownload = siblingPods.length > 0 ? siblingPods : [pod];
 
             for (const podName of podsToDownload) {
-                const podContainers = podContainerMap[podName] || containers;
+                const podContainers = (podContainerMap as Record<string, any>)[podName] || containers;
                 for (const containerName of podContainers) {
                     try {
                         const logs = await GetAllPodLogs(namespace, podName, containerName, showTimestamps, showPrevious);
                         entries.push({ podName, containerName, logs: logs || '' });
-                    } catch (err) {
+                    } catch (err: any) {
                         entries.push({ podName, containerName, logs: `Error fetching logs: ${err}` });
                     }
                 }
             }
             await SaveLogsBundle(entries, filename);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to save logs bundle:', err);
         } finally {
             setDownloadingBundle(false);
@@ -306,7 +307,7 @@ export default function LogViewer({
         const filename = `${selectedPod}-${timestamp}.log`;
         try {
             await SavePodLogs(logsToVisibleString(stream.logs, showTimestamps), filename);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to save visible logs:', err);
         }
     };
@@ -316,13 +317,13 @@ export default function LogViewer({
         const filename = `DEBUG-${selectedPod}-${timestamp}.log`;
         try {
             await SavePodLogs(logsToDebugString(stream.logs), filename);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to save debug logs:', err);
         }
     };
 
     // Render log item
-    const renderLogItem = useCallback((index) => {
+    const renderLogItem = useCallback((index: any) => {
         const entry = search.displayLogs[index];
         if (!entry) return null;
 
@@ -398,7 +399,7 @@ export default function LogViewer({
                                 onChange={setSelectedPod}
                                 placeholder="Select Pod..."
                                 className="text-xs"
-                                getOptionLabel={(opt) => opt === ALL_PODS ? 'All Pods' : opt}
+                                getOptionLabel={(opt: any) => opt === ALL_PODS ? 'All Pods' : opt}
                             />
                         </div>
                     </div>
@@ -415,7 +416,7 @@ export default function LogViewer({
                                     onChange={setSelectedContainer}
                                     placeholder="Select Container..."
                                     className="text-xs"
-                                    getOptionLabel={(opt) => opt === ALL_CONTAINERS ? 'All Containers' : opt}
+                                    getOptionLabel={(opt: any) => opt === ALL_CONTAINERS ? 'All Containers' : opt}
                                     disabled={!!stream.fetchError || stream.streamDisconnected}
                                 />
                             </div>
@@ -579,7 +580,7 @@ export default function LogViewer({
                             placeholder={search.isRegex ? (search.searchOnEnter ? "Search (regex, Enter)..." : "Search (regex)...") : (search.searchOnEnter ? "Search (Enter)..." : "Search...")}
                             className={`w-full bg-background border rounded-md pl-9 pr-8 py-1.5 text-sm text-white focus:outline-none transition-colors ${search.regexError ? 'border-red-500' : 'border-border focus:border-primary'}`}
                             value={search.searchInput}
-                            onChange={(e) => search.setSearchInput(e.target.value)}
+                            onChange={(e: any) => search.setSearchInput(e.target.value)}
                             onKeyDown={search.handleSearchKeyDown}
                             autoComplete="off"
                             autoCorrect="off"

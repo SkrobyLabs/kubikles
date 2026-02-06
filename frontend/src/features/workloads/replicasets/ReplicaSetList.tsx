@@ -16,13 +16,13 @@ import { getOwnerViewId } from '~/utils/owner-navigation';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 // Get controller from owner references
-function getController(item) {
+function getController(item: any) {
     const owners = item.metadata?.ownerReferences || [];
-    const controller = owners.find(owner => owner.controller);
+    const controller = owners.find((owner: any) => owner.controller);
     return controller ? { kind: controller.kind, name: controller.name, uid: controller.uid, apiVersion: controller.apiVersion } : null;
 }
 
-export default function ReplicaSetList({ isVisible }) {
+export default function ReplicaSetList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces, crds, ensureCRDsLoaded } = useK8s();
     const { navigateWithSearch } = useUI();
 
@@ -50,35 +50,35 @@ export default function ReplicaSetList({ isVisible }) {
         getYamlApi: GetReplicaSetYaml,
 
     });
-    const { replicaSets, loading } = useReplicaSets(currentContext, selectedNamespaces, isVisible);
+    const { replicaSets, loading } = useReplicaSets(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useReplicaSetActions();
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name, initialSort: 'asc' },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
         {
             key: 'desired',
             label: 'Desired',
-            render: (item) => item.spec?.replicas || 0,
-            getValue: (item) => item.spec?.replicas || 0
+            render: (item: any) => item.spec?.replicas || 0,
+            getValue: (item: any) => item.spec?.replicas || 0
         },
         {
             key: 'current',
             label: 'Current',
-            render: (item) => item.status?.replicas || 0,
-            getValue: (item) => item.status?.replicas || 0
+            render: (item: any) => item.status?.replicas || 0,
+            getValue: (item: any) => item.status?.replicas || 0
         },
         {
             key: 'ready',
             label: 'Ready',
-            render: (item) => item.status?.readyReplicas || 0,
-            getValue: (item) => item.status?.readyReplicas || 0
+            render: (item: any) => item.status?.readyReplicas || 0,
+            getValue: (item: any) => item.status?.readyReplicas || 0
         },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'controlledBy',
             label: 'Controlled By',
-            render: (item) => {
+            render: (item: any) => {
                 const controller = getController(item);
                 if (!controller) {
                     return <span className="text-gray-600">-</span>;
@@ -107,18 +107,18 @@ export default function ReplicaSetList({ isVisible }) {
                     </span>
                 );
             },
-            getValue: (item) => getController(item)?.kind || ''
+            getValue: (item: any) => getController(item)?.kind || ''
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <ReplicaSetActionsMenu
                     replicaSet={item}
                     isOpen={activeMenuId === `rs-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `rs-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `rs-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies(item)}
                     onDelete={() => openBulkDelete([item])}
@@ -153,7 +153,7 @@ export default function ReplicaSetList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

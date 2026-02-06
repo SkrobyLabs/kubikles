@@ -6,13 +6,13 @@ import { useUI } from '~/context';
 import { useNotification } from '~/context';
 import Logger from '~/utils/Logger';
 
-const formatDate = (timestamp) => {
+const formatDate = (timestamp: any) => {
     if (!timestamp) return '-';
     const date = new Date(timestamp);
     return date.toLocaleString();
 };
 
-const getStatusIcon = (status) => {
+const getStatusIcon = (status: any) => {
     const statusLower = status?.toLowerCase() || '';
     if (statusLower === 'deployed') {
         return <CheckCircleIcon className="h-4 w-4 text-green-400" />;
@@ -24,17 +24,17 @@ const getStatusIcon = (status) => {
     return null;
 };
 
-export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0 }) {
+export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0 }: any) {
     const { currentContext, lastRefresh, triggerRefresh } = useK8s();
     const { openModal, closeModal } = useUI();
     const { addNotification } = useNotification();
-    const [history, setHistory] = useState([]);
+    const [history, setHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<any>(null);
 
     // Determine current revision from history (the one with "deployed" status)
     // Falls back to release.revision if history not loaded yet
-    const currentRevision = history.find(h => h.status?.toLowerCase() === 'deployed')?.revision || release?.revision || 0;
+    const currentRevision = history.find((h: any) => h.status?.toLowerCase() === 'deployed')?.revision || release?.revision || 0;
 
     // Fetch history function
     const fetchHistory = useCallback(async () => {
@@ -46,7 +46,7 @@ export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0
             Logger.info("Fetching Helm release history", { namespace: release.namespace, name: release.name });
             const data = await GetHelmReleaseHistory(release.namespace, release.name);
             setHistory(data || []);
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to fetch Helm release history", err);
             setError(err.message || String(err));
         } finally {
@@ -59,7 +59,7 @@ export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0
         fetchHistory();
     }, [fetchHistory, lastRefresh, refreshKey]);
 
-    const handleRollback = (revision) => {
+    const handleRollback = (revision: any) => {
         openModal({
             title: `Rollback to Revision ${revision}?`,
             content: `Are you sure you want to rollback "${release.name}" to revision ${revision}? This will create a new revision.`,
@@ -91,7 +91,7 @@ export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0
                         // Refresh history immediately to show new revision
                         fetchHistory();
                     })
-                    .catch((err) => {
+                    .catch((err: any) => {
                         Logger.error("Failed to rollback", err);
                         addNotification({
                             type: 'error',

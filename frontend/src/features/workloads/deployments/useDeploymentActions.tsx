@@ -12,7 +12,7 @@ export interface DeploymentActionsReturn extends BaseResourceActionsReturn<K8sDe
     handleViewLogs: (deployment: K8sDeployment) => Promise<void>;
 }
 
-export const useDeploymentActions = (): DeploymentActionsReturn => {
+export const useDeploymentActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -21,6 +21,7 @@ export const useDeploymentActions = (): DeploymentActionsReturn => {
         openTab,
 
         addNotification,
+        currentContext,
     } = useBaseResourceActions({
         resourceType: 'deployment',
         resourceLabel: 'Deployment',
@@ -33,14 +34,14 @@ export const useDeploymentActions = (): DeploymentActionsReturn => {
         try {
             await RestartDeployment(deployment.metadata.namespace, deployment.metadata.name);
             Logger.info("Restart triggered successfully", { name: deployment.metadata.name });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to restart deployment", err);
             addNotification({ type: 'error', title: 'Failed to restart deployment', message: String(err) });
         }
     };
 
     const handleDelete = createDeleteHandler(
-        async (deployment: K8sDeployment): Promise<void> => {
+        async (deployment: any): Promise<void> => {
             await DeleteDeployment(deployment.metadata.namespace, deployment.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this deployment? This will also delete all associated pods.' }
@@ -54,7 +55,7 @@ export const useDeploymentActions = (): DeploymentActionsReturn => {
             const allPods: K8sPod[] = await ListPods('', namespace);
             const deploymentPods: K8sPod[] = allPods.filter((pod: K8sPod) => {
                 const ownerRefs = pod.metadata?.ownerReferences || [];
-                return ownerRefs.some(ref =>
+                return ownerRefs.some((ref: any) =>
                     ref.kind === 'ReplicaSet' &&
                     ref.name?.startsWith(deployment.metadata.name + '-')
                 );
@@ -67,15 +68,15 @@ export const useDeploymentActions = (): DeploymentActionsReturn => {
 
             const pod: K8sPod = deploymentPods[0];
             const containers: string[] = [
-                ...(pod.spec?.initContainers || []).map(c => c.name),
-                ...(pod.spec?.containers || []).map(c => c.name)
+                ...(pod.spec?.initContainers || []).map((c: any) => c.name),
+                ...(pod.spec?.containers || []).map((c: any) => c.name)
             ];
 
             const podContainerMap: Record<string, string[]> = {};
             for (const p of deploymentPods) {
                 podContainerMap[p.metadata.name] = [
-                    ...(p.spec?.initContainers || []).map(c => c.name),
-                    ...(p.spec?.containers || []).map(c => c.name)
+                    ...(p.spec?.initContainers || []).map((c: any) => c.name),
+                    ...(p.spec?.containers || []).map((c: any) => c.name)
                 ];
             }
 
@@ -88,7 +89,7 @@ export const useDeploymentActions = (): DeploymentActionsReturn => {
                         namespace={namespace}
                         pod={pod.metadata.name}
                         containers={containers}
-                        siblingPods={deploymentPods.map(p => p.metadata.name)}
+                        siblingPods={deploymentPods.map((p: any) => p.metadata.name)}
                         podContainerMap={podContainerMap}
                         ownerName={deployment.metadata.name}
                         tabContext={currentContext}

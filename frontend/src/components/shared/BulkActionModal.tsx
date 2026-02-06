@@ -28,12 +28,21 @@ export default function BulkActionModal({
     onConfirm,
     onExportYaml,
     progress = { current: 0, total: 0, status: 'idle', results: [] },
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    action: string;
+    actionLabel: string;
+    items?: any[];
+    onConfirm: (items: any[]) => void;
+    onExportYaml?: ((items: any[], opts: any) => Promise<void>) | null;
+    progress?: any;
 }) {
     const [detailsExpanded, setDetailsExpanded] = useState(false);
     const [copied, setCopied] = useState(false);
     const [backupProgress, setBackupProgress] = useState({ status: 'idle', current: 0, total: 0 });
-    const backupAbortRef = useRef(null);
-    const modalRef = useRef(null);
+    const backupAbortRef = useRef<any>(null);
+    const modalRef = useRef<HTMLDivElement>(null);
 
     // Get action-specific styles
     const getActionStyles = () => {
@@ -73,7 +82,7 @@ export default function BulkActionModal({
     useEffect(() => {
         if (!isOpen) return;
 
-        const handleKeyDown = (e) => {
+        const handleKeyDown = (e: any) => {
             if (e.key === 'Escape') {
                 cancelBackup();
                 onClose();
@@ -97,7 +106,7 @@ export default function BulkActionModal({
     // Copy results to clipboard
     const handleCopyResults = useCallback(() => {
         const text = progress.results
-            .map(r => `${r.success ? 'OK' : 'FAIL'} ${r.namespace}/${r.name}${r.message ? ': ' + r.message : ''}`)
+            .map((r: any) => `${r.success ? 'OK' : 'FAIL'} ${r.namespace}/${r.name}${r.message ? ': ' + r.message : ''}`)
             .join('\n');
         navigator.clipboard.writeText(text);
         setCopied(true);
@@ -128,7 +137,7 @@ export default function BulkActionModal({
         setBackupProgress({ status: 'inProgress', current: 0, total: items.length });
         try {
             await onExportYaml(items, {
-                onProgress: (current, total) => setBackupProgress({ status: 'inProgress', current, total }),
+                onProgress: (current: number, total: number) => setBackupProgress({ status: 'inProgress', current, total }),
                 signal: controller.signal,
             });
         } finally {
@@ -140,8 +149,8 @@ export default function BulkActionModal({
     if (!isOpen) return null;
 
     const progressPercent = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
-    const successCount = progress.results.filter(r => r.success).length;
-    const failCount = progress.results.filter(r => !r.success).length;
+    const successCount = progress.results.filter((r: any) => r.success).length;
+    const failCount = progress.results.filter((r: any) => !r.success).length;
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -186,7 +195,7 @@ export default function BulkActionModal({
                                 Affected resources ({items.length}):
                             </div>
                             <div className="bg-background rounded-lg border border-border max-h-48 overflow-auto">
-                                {items.map((item, idx) => (
+                                {items.map((item: any, idx: number) => (
                                     <div
                                         key={item.metadata?.uid || idx}
                                         className="px-3 py-2 border-b border-border last:border-b-0 text-sm"
@@ -230,7 +239,7 @@ export default function BulkActionModal({
 
                             {detailsExpanded && (
                                 <div className="bg-background rounded-lg border border-border max-h-48 overflow-auto">
-                                    {progress.results.map((result, idx) => (
+                                    {progress.results.map((result: any, idx: number) => (
                                         <div
                                             key={idx}
                                             className="px-3 py-2 border-b border-border last:border-b-0 text-sm flex items-start gap-2"
@@ -305,7 +314,7 @@ export default function BulkActionModal({
 
                             {detailsExpanded && (
                                 <div className="bg-background rounded-lg border border-border max-h-48 overflow-auto">
-                                    {progress.results.map((result, idx) => (
+                                    {progress.results.map((result: any, idx: number) => (
                                         <div
                                             key={idx}
                                             className="px-3 py-2 border-b border-border last:border-b-0 text-sm flex items-start gap-2"
@@ -365,7 +374,7 @@ export default function BulkActionModal({
                                         <ArrowDownTrayIcon className="h-4 w-4" />
                                         <span>Backup YAML</span>
                                     </button>
-                                ) : null}
+                                ) : undefined}
                             </div>
                             <div className="flex items-center gap-2">
                                 <button

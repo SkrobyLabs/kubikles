@@ -19,9 +19,9 @@ const actionHandlers = {
 const ZOOM_STORAGE_KEY = 'kubikles-zoom-level';
 const ZOOM_DEFAULT = 1.0;
 
-export default function ConfigSection({ section, config, onFieldChange, searchResults }) {
-    const sectionSchema = configSchema[section];
-    const [asyncValues, setAsyncValues] = useState({});
+export default function ConfigSection({ section, config, onFieldChange, searchResults }: { section: string; config: any; onFieldChange: any; searchResults: any }) {
+    const sectionSchema = (configSchema as Record<string, any>)[section];
+    const [asyncValues, setAsyncValues] = useState<Record<string, any>>({});
     const { currentTheme, themes, switchTheme } = useTheme();
 
     // Zoom level state (reads from localStorage, updates body style)
@@ -30,16 +30,16 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
         return saved ? parseFloat(saved) : ZOOM_DEFAULT;
     });
 
-    const setZoomLevel = useCallback((value) => {
+    const setZoomLevel = useCallback((value: any) => {
         const numValue = parseFloat(value);
         setZoomLevelState(numValue);
-        document.body.style.zoom = numValue;
+        (document.body.style as any).zoom = numValue;
         localStorage.setItem(ZOOM_STORAGE_KEY, numValue.toString());
     }, []);
 
     // Listen for zoom changes from scroll/other sources
     useEffect(() => {
-        const handleZoomChanged = (e) => {
+        const handleZoomChanged = (e: any) => {
             setZoomLevelState(e.detail);
         };
         window.addEventListener('zoom:changed', handleZoomChanged);
@@ -61,13 +61,13 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
 
         const loadAsyncValues = async () => {
             const { _meta, ...fields } = sectionSchema;
-            const newValues = {};
+            const newValues: Record<string, any> = {};
 
-            for (const [key, schema] of Object.entries(fields)) {
-                if (schema.asyncSource && asyncSources[schema.asyncSource]) {
+            for (const [key, schema] of Object.entries(fields) as [string, any][]) {
+                if (schema.asyncSource && (asyncSources as Record<string, any>)[schema.asyncSource]) {
                     try {
-                        newValues[key] = await asyncSources[schema.asyncSource]();
-                    } catch (err) {
+                        newValues[key] = await (asyncSources as Record<string, any>)[schema.asyncSource]();
+                    } catch (err: any) {
                         console.error(`Failed to load async value for ${key}:`, err);
                         newValues[key] = 'Error loading value';
                     }
@@ -82,9 +82,9 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
         loadAsyncValues();
     }, [section, sectionSchema]);
 
-    const handleAction = useCallback((action) => {
-        if (actionHandlers[action]) {
-            actionHandlers[action]().catch(err => {
+    const handleAction = useCallback((action: string) => {
+        if ((actionHandlers as Record<string, any>)[action]) {
+            (actionHandlers as Record<string, any>)[action]().catch((err: any) => {
                 console.error(`Action ${action} failed:`, err);
             });
         }
@@ -99,7 +99,7 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
     const showAllFields = !searchResults || matchingFields?.[0] === '*';
 
     // Check if a field matches search
-    const fieldMatches = (fieldKey, groupKey = null) => {
+    const fieldMatches = (fieldKey: string, groupKey: string | null = null) => {
         if (showAllFields) return true;
         if (!matchingFields) return false;
         const fullKey = groupKey ? `${groupKey}.${fieldKey}` : fieldKey;
@@ -107,19 +107,19 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
     };
 
     // Check if any field in a group matches
-    const groupHasMatches = (groupKey, groupFields) => {
+    const groupHasMatches = (groupKey: string, groupFields: Record<string, any>) => {
         if (showAllFields) return true;
         if (!matchingFields) return false;
-        return Object.keys(groupFields).some(fieldKey =>
+        return Object.keys(groupFields).some((fieldKey: any) =>
             matchingFields.includes(`${groupKey}.${fieldKey}`)
         );
     };
 
     // Separate top-level fields from nested groups
-    const topLevelFields = {};
-    const nestedGroups = {};
+    const topLevelFields: Record<string, any> = {};
+    const nestedGroups: Record<string, any> = {};
 
-    Object.entries(fields).forEach(([key, schema]) => {
+    Object.entries(fields).forEach(([key, schema]: [string, any]) => {
         if (schema._meta?.isNested) {
             nestedGroups[key] = schema;
         } else {
@@ -134,7 +134,7 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
 
     // Filter nested groups if searching
     const visibleNestedGroups = Object.entries(nestedGroups).filter(
-        ([groupKey, groupSchema]) => {
+        ([groupKey, groupSchema]: [string, any]) => {
             const { _meta: _, ...groupFields } = groupSchema;
             return groupHasMatches(groupKey, groupFields);
         }
@@ -153,14 +153,14 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
             {/* Top-level fields */}
             {visibleTopLevelFields.length > 0 && (
                 <div className="space-y-1">
-                    {visibleTopLevelFields.map(([key, schema]) => {
+                    {visibleTopLevelFields.map(([key, schema]: [string, any]) => {
                         const path = `${section}.${key}`;
 
                         // Handle theme-sourced fields (e.g., theme selector)
                         if (schema.source === 'theme') {
-                            const value = themeValues[key];
-                            const setter = themeSetters[key];
-                            const options = themeOptions[schema.optionsSource]?.map(t => ({
+                            const value = (themeValues as Record<string, any>)[key];
+                            const setter = (themeSetters as Record<string, any>)[key];
+                            const options = (themeOptions as Record<string, any>)[schema.optionsSource]?.map((t: any) => ({
                                 value: t.id,
                                 label: t.name
                             }));
@@ -172,14 +172,16 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
                                     value={value}
                                     onChange={setter}
                                     isModified={value !== schema.default}
+                                    asyncValue={undefined}
+                                    onAction={handleAction}
                                 />
                             );
                         }
 
                         // Handle zoom-sourced fields (e.g., zoom level)
                         if (schema.source === 'zoom') {
-                            const value = zoomValues[key];
-                            const setter = zoomSetters[key];
+                            const value = (zoomValues as Record<string, any>)[key];
+                            const setter = (zoomSetters as Record<string, any>)[key];
 
                             return (
                                 <ConfigField
@@ -188,6 +190,8 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
                                     value={value}
                                     onChange={setter}
                                     isModified={value !== schema.default}
+                                    asyncValue={undefined}
+                                    onAction={handleAction}
                                 />
                             );
                         }
@@ -199,7 +203,7 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
                                 key={key}
                                 schema={schema}
                                 value={value}
-                                onChange={(val) => onFieldChange(path, val)}
+                                onChange={(val: any) => onFieldChange(path, val)}
                                 isModified={isModified(path, value)}
                                 asyncValue={asyncValues[key]}
                                 onAction={handleAction}
@@ -210,7 +214,7 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
             )}
 
             {/* Nested groups */}
-            {visibleNestedGroups.map(([groupKey, groupSchema]) => {
+            {visibleNestedGroups.map(([groupKey, groupSchema]: [string, any]) => {
                 const { _meta: groupMeta, ...groupFields } = groupSchema;
                 const basePath = `${section}.${groupKey}`;
 

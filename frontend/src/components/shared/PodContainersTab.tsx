@@ -9,17 +9,17 @@ import { LazyTerminal as Terminal } from '../lazy';
 import EnvVarSection from './EnvVarDisplay';
 
 // Copy button component
-const CopyButton = ({ value }) => {
+const CopyButton = ({ value }: any) => {
     const [copied, setCopied] = useState(false);
 
-    const handleCopy = async (e) => {
+    const handleCopy = async (e: any) => {
         e.stopPropagation();
         if (!value) return;
         try {
             await navigator.clipboard.writeText(value);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     };
@@ -40,7 +40,7 @@ const CopyButton = ({ value }) => {
 };
 
 // Volume mount label with copy functionality
-const VolumeMountLabel = ({ mount }) => {
+const VolumeMountLabel = ({ mount }: any) => {
     const [copied, setCopied] = useState(false);
     const copyValue = `${mount.name}: ${mount.mountPath}`;
 
@@ -49,7 +49,7 @@ const VolumeMountLabel = ({ mount }) => {
             await navigator.clipboard.writeText(copyValue);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     };
@@ -85,7 +85,7 @@ const VolumeMountLabel = ({ mount }) => {
 };
 
 // Helper to extract image SHA from image ID
-const extractImageSha = (imageId, full = false) => {
+const extractImageSha = (imageId: any, full = false) => {
     if (!imageId) return 'N/A';
     // Format: docker://sha256:abc123... or docker-pullable://image@sha256:abc123
     const sha256Match = imageId.match(/sha256:([a-f0-9]+)/);
@@ -99,7 +99,7 @@ const extractImageSha = (imageId, full = false) => {
 };
 
 // Helper to format resource quantities
-const formatResources = (resources) => {
+const formatResources = (resources: any) => {
     if (!resources || Object.keys(resources).length === 0) {
         return 'Not set';
     }
@@ -111,7 +111,7 @@ const formatResources = (resources) => {
 };
 
 // Status badge component
-const StatusBadge = ({ state }) => {
+const StatusBadge = ({ state }: any) => {
     if (!state) return <span className="text-gray-500">Unknown</span>;
 
     if (state.running) {
@@ -140,7 +140,7 @@ const StatusBadge = ({ state }) => {
 };
 
 // Detail row component
-const DetailRow = ({ label, value, children }) => (
+const DetailRow = ({ label, value, children }: any) => (
     <div className="flex py-2 border-b border-border/50">
         <div className="w-32 text-xs font-medium text-gray-500 uppercase tracking-wider shrink-0">
             {label}
@@ -151,14 +151,14 @@ const DetailRow = ({ label, value, children }) => (
     </div>
 );
 
-export default function PodContainersTab({ pod, isStale }) {
+export default function PodContainersTab({ pod, isStale }: any) {
     const { currentContext } = useK8s();
     const { configs, activeForwards, startForward, stopForward, deleteConfig } = usePortForwards(currentContext, true);
     const { openModal, closeModal, openTab } = useUI();
 
     // Find port forward config for a specific port
-    const getPortForwardConfig = useCallback((containerPort) => {
-        return configs.find(c =>
+    const getPortForwardConfig = useCallback((containerPort: any) => {
+        return configs.find((c: any) =>
             c.resourceType === 'pod' &&
             c.resourceName === pod.metadata?.name &&
             c.namespace === pod.metadata?.namespace &&
@@ -167,13 +167,13 @@ export default function PodContainersTab({ pod, isStale }) {
     }, [configs, pod.metadata?.name, pod.metadata?.namespace]);
 
     // Get status for a config ID from activeForwards
-    const getConfigStatus = useCallback((configId) => {
-        const af = activeForwards.find(af => af.config?.id === configId);
+    const getConfigStatus = useCallback((configId: any) => {
+        const af = activeForwards.find((af: any) => af.config?.id === configId);
         return af?.status || 'stopped';
     }, [activeForwards]);
 
     // Get styling for a port based on port forward status
-    const getPortStyle = useCallback((containerPort) => {
+    const getPortStyle = useCallback((containerPort: any) => {
         const config = getPortForwardConfig(containerPort);
         if (!config) {
             // No rule - gray
@@ -206,7 +206,7 @@ export default function PodContainersTab({ pod, isStale }) {
     }, [getPortForwardConfig, getConfigStatus]);
 
     // Handle start/stop toggle for a port forward
-    const handleToggleForward = useCallback(async (e, config) => {
+    const handleToggleForward = useCallback(async (e: any, config: any) => {
         e.stopPropagation();
         const status = getConfigStatus(config.id);
         try {
@@ -215,13 +215,13 @@ export default function PodContainersTab({ pod, isStale }) {
             } else {
                 await startForward(config.id);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to toggle port forward:', err);
         }
     }, [getConfigStatus, startForward, stopForward]);
 
     // Handle delete for a port forward
-    const handleDeleteForward = useCallback((e, config) => {
+    const handleDeleteForward = useCallback((e: any, config: any) => {
         e.stopPropagation();
         openModal({
             title: 'Delete Port Forward',
@@ -236,7 +236,7 @@ export default function PodContainersTab({ pod, isStale }) {
                     }
                     await deleteConfig(config.id);
                     closeModal();
-                } catch (err) {
+                } catch (err: any) {
                     console.error('Failed to delete port forward:', err);
                 }
             }
@@ -244,14 +244,14 @@ export default function PodContainersTab({ pod, isStale }) {
     }, [openModal, closeModal, getConfigStatus, stopForward, deleteConfig]);
 
     // Handle open in browser
-    const handleOpenBrowser = useCallback((e, config) => {
+    const handleOpenBrowser = useCallback((e: any, config: any) => {
         e.stopPropagation();
         const protocol = config.https ? 'https' : 'http';
         BrowserOpenURL(`${protocol}://localhost:${config.localPort}`);
     }, []);
 
     // Handle shell into container
-    const handleShell = useCallback((containerName) => {
+    const handleShell = useCallback((containerName: any) => {
         const tabId = `terminal-pod-${pod.metadata?.name}-${containerName}`;
         openTab({
             id: tabId,
@@ -275,8 +275,8 @@ export default function PodContainersTab({ pod, isStale }) {
         const specContainers = pod.spec?.containers || [];
         const statusContainers = pod.status?.containerStatuses || [];
 
-        return specContainers.map((spec) => {
-            const status = statusContainers.find((s) => s.name === spec.name);
+        return specContainers.map((spec: any) => {
+            const status = statusContainers.find((s: any) => s.name === spec.name);
             return {
                 name: spec.name,
                 spec,
@@ -290,8 +290,8 @@ export default function PodContainersTab({ pod, isStale }) {
         const specContainers = pod.spec?.initContainers || [];
         const statusContainers = pod.status?.initContainerStatuses || [];
 
-        return specContainers.map((spec) => {
-            const status = statusContainers.find((s) => s.name === spec.name);
+        return specContainers.map((spec: any) => {
+            const status = statusContainers.find((s: any) => s.name === spec.name);
             return {
                 name: spec.name,
                 spec,
@@ -305,13 +305,13 @@ export default function PodContainersTab({ pod, isStale }) {
 
     const [selectedContainer, setSelectedContainer] = useState(containers[0]?.name || initContainers[0]?.name || '');
     const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [portForwardDialog, setPortForwardDialog] = useState({ open: false, port: null, existingConfig: null });
+    const [portForwardDialog, setPortForwardDialog] = useState<{ open: boolean; port: any; existingConfig: any }>({ open: false, port: null, existingConfig: null });
 
     const currentContainer = useMemo(() => {
         return allContainers.find((c) => c.name === selectedContainer) || allContainers[0];
     }, [allContainers, selectedContainer]);
 
-    const handlePortClick = useCallback((port) => {
+    const handlePortClick = useCallback((port: any) => {
         const existingConfig = getPortForwardConfig(port.containerPort);
         setPortForwardDialog({
             open: true,
@@ -422,7 +422,7 @@ export default function PodContainersTab({ pod, isStale }) {
                 <DetailRow label="Ports">
                     {ports.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
-                            {ports.map((port, idx) => {
+                            {ports.map((port: any, idx: number) => {
                                 const portStyle = getPortStyle(port.containerPort);
                                 const config = getPortForwardConfig(port.containerPort);
                                 const status = config ? getConfigStatus(config.id) : null;
@@ -482,7 +482,7 @@ export default function PodContainersTab({ pod, isStale }) {
                 {spec?.volumeMounts && spec.volumeMounts.length > 0 && (
                     <DetailRow label="Volumes">
                         <div className="flex flex-wrap gap-1.5">
-                            {spec.volumeMounts.map((mount, idx) => (
+                            {spec.volumeMounts.map((mount: any, idx: number) => (
                                 <VolumeMountLabel key={idx} mount={mount} />
                             ))}
                         </div>

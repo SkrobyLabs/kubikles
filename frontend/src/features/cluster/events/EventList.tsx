@@ -15,7 +15,7 @@ import { formatAge } from '~/utils/formatting';
 import { getOwnerViewId } from '~/utils/owner-navigation';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-function getEventTypeColor(type) {
+function getEventTypeColor(type: any) {
     switch (type) {
         case 'Normal':
             return 'text-green-400';
@@ -26,7 +26,7 @@ function getEventTypeColor(type) {
     }
 }
 
-export default function EventList({ isVisible }) {
+export default function EventList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces, crds, ensureCRDsLoaded } = useK8s();
     const { navigateWithSearch } = useUI();
 
@@ -55,29 +55,29 @@ export default function EventList({ isVisible }) {
         getYamlApi: GetEventYAML,
 
     });
-    const { events, loading } = useEventsList(currentContext, selectedNamespaces, isVisible);
+    const { events, loading } = useEventsList(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useEventActions();
 
     const columns = useMemo(() => [
         {
             key: 'type',
             label: 'Type',
-            render: (item) => {
+            render: (item: any) => {
                 const type = item.type || 'Unknown';
                 return <span className={getEventTypeColor(type)}>{type}</span>;
             },
-            getValue: (item) => item.type || ''
+            getValue: (item: any) => item.type || ''
         },
         {
             key: 'namespace',
             label: 'Namespace',
-            render: (item) => item.metadata?.namespace,
-            getValue: (item) => item.metadata?.namespace
+            render: (item: any) => item.metadata?.namespace,
+            getValue: (item: any) => item.metadata?.namespace
         },
         {
             key: 'involvedObject',
             label: 'Involved Object',
-            render: (item) => {
+            render: (item: any) => {
                 const obj = item.involvedObject;
                 if (!obj) {
                     return <span className="text-gray-600">-</span>;
@@ -107,70 +107,70 @@ export default function EventList({ isVisible }) {
                     </span>
                 );
             },
-            getValue: (item) => item.involvedObject ? `${item.involvedObject.kind}/${item.involvedObject.name}` : ''
+            getValue: (item: any) => item.involvedObject ? `${item.involvedObject.kind}/${item.involvedObject.name}` : ''
         },
         {
             key: 'message',
             label: 'Message',
-            render: (item) => item.message || '-',
-            getValue: (item) => item.message || ''
+            render: (item: any) => item.message || '-',
+            getValue: (item: any) => item.message || ''
         },
         {
             key: 'count',
             label: 'Count',
-            render: (item) => item.count || 1,
-            getValue: (item) => item.count || 1
+            render: (item: any) => item.count || 1,
+            getValue: (item: any) => item.count || 1
         },
         {
             key: 'age',
             label: 'Age',
-            render: (item) => formatAge(item.firstTimestamp || item.metadata?.creationTimestamp),
-            getValue: (item) => item.firstTimestamp || item.metadata?.creationTimestamp
+            render: (item: any) => formatAge(item.firstTimestamp || item.metadata?.creationTimestamp),
+            getValue: (item: any) => item.firstTimestamp || item.metadata?.creationTimestamp
         },
         {
             key: 'last',
             label: 'Last',
-            render: (item) => formatAge(item.lastTimestamp || item.metadata?.creationTimestamp),
-            getValue: (item) => item.lastTimestamp || item.metadata?.creationTimestamp
+            render: (item: any) => formatAge(item.lastTimestamp || item.metadata?.creationTimestamp),
+            getValue: (item: any) => item.lastTimestamp || item.metadata?.creationTimestamp
         },
         // Hidden by default columns
         {
             key: 'reason',
             label: 'Reason',
             defaultHidden: true,
-            render: (item) => item.reason || '-',
-            getValue: (item) => item.reason || '',
+            render: (item: any) => item.reason || '-',
+            getValue: (item: any) => item.reason || '',
         },
         {
             key: 'source',
             label: 'Source',
             defaultHidden: true,
-            render: (item) => {
+            render: (item: any) => {
                 const source = item.source || item.reportingController;
                 if (!source) return <span className="text-gray-500">-</span>;
                 const component = source.component || source;
                 const host = source.host;
                 return host ? `${component} (${host})` : component;
             },
-            getValue: (item) => item.source?.component || item.reportingController || '',
+            getValue: (item: any) => item.source?.component || item.reportingController || '',
         },
         {
             key: 'objectKind',
             label: 'Object Kind',
             defaultHidden: true,
-            render: (item) => item.involvedObject?.kind || '-',
-            getValue: (item) => item.involvedObject?.kind || '',
+            render: (item: any) => item.involvedObject?.kind || '-',
+            getValue: (item: any) => item.involvedObject?.kind || '',
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <EventActionsMenu
                     event={item}
                     isOpen={activeMenuId === `event-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `event-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `event-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={() => handleEditYaml(item)}
                     onDelete={() => openBulkDelete([item])}
                 />
@@ -202,7 +202,7 @@ export default function EventList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

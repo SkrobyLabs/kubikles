@@ -7,7 +7,7 @@ export interface PDBActionsReturn extends BaseResourceActionsReturn<K8sPodDisrup
     handleDelete: (pdb: K8sPodDisruptionBudget) => void;
 }
 
-export const usePDBActions = (): PDBActionsReturn => {
+export const usePDBActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -22,7 +22,7 @@ export const usePDBActions = (): PDBActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (pdb: K8sPodDisruptionBudget): Promise<void> => {
+        async (pdb: any): Promise<void> => {
             await DeletePDB(pdb.metadata.namespace, pdb.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this PodDisruptionBudget? Pod disruption protection will be removed.' }

@@ -12,7 +12,7 @@ export function useMenuPosition(menuWidth = 192) {
     const { activeMenuId, setActiveMenuId } = useMenu();
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
-    const handleMenuOpenChange = useCallback((isOpen, menuId, buttonElement) => {
+    const handleMenuOpenChange = useCallback((isOpen: boolean, menuId: string, buttonElement: HTMLElement | null) => {
         if (isOpen && buttonElement) {
             const rect = buttonElement.getBoundingClientRect();
             const viewportWidth = window.innerWidth;

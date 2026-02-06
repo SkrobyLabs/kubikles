@@ -16,13 +16,13 @@ const PRESET_IMAGES = [
 ];
 
 // Helper to wait for a pod to be running
-const waitForPodRunning = async (namespace, podName, timeoutMs = 60000, pollIntervalMs = 1000) => {
+const waitForPodRunning = async (namespace: any, podName: any, timeoutMs = 60000, pollIntervalMs = 1000) => {
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeoutMs) {
         try {
             const pods = await ListPods('', namespace);
-            const pod = pods.find(p => p.metadata.name === podName);
+            const pod = pods.find((p: any) => p.metadata.name === podName);
 
             if (pod) {
                 const phase = pod.status?.phase;
@@ -33,7 +33,7 @@ const waitForPodRunning = async (namespace, podName, timeoutMs = 60000, pollInte
                     throw new Error(`Pod entered ${phase} state`);
                 }
             }
-        } catch (err) {
+        } catch (err: any) {
             Logger.warn("Error checking pod status", err);
         }
 
@@ -43,16 +43,16 @@ const waitForPodRunning = async (namespace, podName, timeoutMs = 60000, pollInte
     throw new Error('Timeout waiting for pod to be running');
 };
 
-const NodeShellTab = ({ nodeName, context }) => {
+const NodeShellTab = ({ nodeName, context }: any) => {
     const { getConfig } = useConfig();
     const defaultImage = getConfig('kubernetes.nodeDebugImage') || 'alpine:latest';
 
     const [state, setState] = useState('selecting'); // selecting, loading, connected, error
     const [selectedImage, setSelectedImage] = useState(defaultImage);
     const [customImage, setCustomImage] = useState('');
-    const [debugPodInfo, setDebugPodInfo] = useState(null);
-    const [error, setError] = useState(null);
-    const debugPodInfoRef = useRef(null);
+    const [debugPodInfo, setDebugPodInfo] = useState<any>(null);
+    const [error, setError] = useState<any>(null);
+    const debugPodInfoRef = useRef<any>(null);
 
     const handleConnect = async () => {
         const imageToUse = customImage.trim() || selectedImage;
@@ -71,7 +71,7 @@ const NodeShellTab = ({ nodeName, context }) => {
 
             setState('connected');
             Logger.info("Shell opened successfully", { node: nodeName });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to open shell on node", err);
             setError(String(err));
             setState('error');
@@ -93,13 +93,13 @@ const NodeShellTab = ({ nodeName, context }) => {
                 Logger.info("Cleaning up debug pod", { podName: debugPodInfoRef.current.podName });
                 await DeletePod(debugPodInfoRef.current.namespace, debugPodInfoRef.current.podName);
                 Logger.info("Debug pod deleted successfully");
-            } catch (err) {
+            } catch (err: any) {
                 Logger.warn("Failed to cleanup debug pod", err);
             }
         }
     };
 
-    const handlePresetClick = (image) => {
+    const handlePresetClick = (image: any) => {
         setSelectedImage(image);
         setCustomImage('');
     };
@@ -139,7 +139,7 @@ const NodeShellTab = ({ nodeName, context }) => {
                         <input
                             type="text"
                             value={customImage}
-                            onChange={(e) => setCustomImage(e.target.value)}
+                            onChange={(e: any) => setCustomImage(e.target.value)}
                             placeholder="e.g., ubuntu:22.04"
                             className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />

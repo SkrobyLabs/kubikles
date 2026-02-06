@@ -11,7 +11,7 @@ interface JobActionsReturn extends BaseResourceActionsReturn<K8sJob> {
     handleViewLogs: (job: K8sJob) => Promise<void>;
 }
 
-export const useJobActions = (onRefresh?: () => void): JobActionsReturn => {
+export const useJobActions = (onRefresh?: () => void): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -21,6 +21,7 @@ export const useJobActions = (onRefresh?: () => void): JobActionsReturn => {
         closeModal,
 
         addNotification,
+        currentContext,
     } = useBaseResourceActions({
         resourceType: 'job',
         resourceLabel: 'Job',
@@ -40,7 +41,7 @@ export const useJobActions = (onRefresh?: () => void): JobActionsReturn => {
                     Logger.info("Job deleted successfully", { namespace, name: job.metadata.name });
                     closeModal();
                     if (onRefresh) onRefresh();
-                } catch (err) {
+                } catch (err: any) {
                     Logger.error("Failed to delete Job", err);
                     addNotification({ type: 'error', title: 'Failed to delete job', message: String(err.message || err) });
                 }
@@ -54,7 +55,7 @@ export const useJobActions = (onRefresh?: () => void): JobActionsReturn => {
 
         try {
             const allPods = await ListPods('', namespace);
-            const jobPods = allPods.filter(pod =>
+            const jobPods = allPods.filter((pod: any) =>
                 pod.metadata?.labels?.['job-name'] === job.metadata.name
             );
 
@@ -65,15 +66,15 @@ export const useJobActions = (onRefresh?: () => void): JobActionsReturn => {
 
             const pod = jobPods[0];
             const containers = [
-                ...(pod.spec?.initContainers || []).map(c => c.name),
-                ...(pod.spec?.containers || []).map(c => c.name)
+                ...(pod.spec?.initContainers || []).map((c: any) => c.name),
+                ...(pod.spec?.containers || []).map((c: any) => c.name)
             ];
 
-            const podContainerMap = {};
+            const podContainerMap: Record<string, string[]> = {};
             for (const p of jobPods) {
                 podContainerMap[p.metadata.name] = [
-                    ...(p.spec?.initContainers || []).map(c => c.name),
-                    ...(p.spec?.containers || []).map(c => c.name)
+                    ...(p.spec?.initContainers || []).map((c: any) => c.name),
+                    ...(p.spec?.containers || []).map((c: any) => c.name)
                 ];
             }
 
@@ -86,7 +87,7 @@ export const useJobActions = (onRefresh?: () => void): JobActionsReturn => {
                         namespace={namespace}
                         pod={pod.metadata.name}
                         containers={containers}
-                        siblingPods={jobPods.map(p => p.metadata.name)}
+                        siblingPods={jobPods.map((p: any) => p.metadata.name)}
                         podContainerMap={podContainerMap}
                         ownerName={job.metadata.name}
                         tabContext={currentContext}
@@ -94,7 +95,7 @@ export const useJobActions = (onRefresh?: () => void): JobActionsReturn => {
                 ),
                 resourceMeta: { kind: 'Job', name: job.metadata.name, namespace },
             });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to get pods for Job", err);
             addNotification({ type: 'error', title: 'Failed to get pods for job', message: String(err.message || err) });
         }

@@ -14,12 +14,12 @@ import { useResourceWatcher } from '~/hooks/useResourceWatcher';
 const TAB_BASIC = 'basic';
 const TAB_METRICS = 'metrics';
 
-export default function DeploymentDetails({ deployment: initialDeployment, tabContext = '' }) {
+export default function DeploymentDetails({ deployment: initialDeployment, tabContext = '' }: { deployment: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
     const { addNotification } = useNotification();
     const activeTab = getDetailTab('deployment', TAB_BASIC);
-    const setActiveTab = (tab) => setDetailTab('deployment', tab);
+    const setActiveTab = (tab: string) => setDetailTab('deployment', tab);
     const [showScaleModal, setShowScaleModal] = useState(false);
     const [optimisticReplicas, setOptimisticReplicas] = useState<number | null>(null);
 
@@ -120,7 +120,7 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
                 type: 'success',
                 message: `Scaled ${name} to ${newReplicas} replica${newReplicas !== 1 ? 's' : ''}`
             });
-        } catch (error) {
+        } catch (error: any) {
             addNotification({
                 type: 'error',
                 message: `Failed to scale ${name}: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -136,7 +136,7 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
         return 'error';
     };
 
-    const getConditionVariant = (condition) => {
+    const getConditionVariant = (condition: any) => {
         if (condition.status === 'True') return 'success';
         if (condition.status === 'False') return 'error';
         return 'warning';
@@ -188,7 +188,7 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -209,7 +209,7 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
                     namespace={namespace}
                     name={name}
                     controllerType="deployment"
-                    isStale={isStale}
+                    isStale={!!isStale}
                 />
             ) : (
             <div className="h-full overflow-auto p-4">
@@ -251,7 +251,7 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
                 {conditions.length > 0 && (
                     <DetailSection title="Conditions">
                         <div className="space-y-2">
-                            {conditions.map((condition, idx) => (
+                            {conditions.map((condition: any, idx: number) => (
                                 <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                                     <div className="flex items-center gap-2">
                                         <StatusBadge status={condition.type} variant={getConditionVariant(condition)} />

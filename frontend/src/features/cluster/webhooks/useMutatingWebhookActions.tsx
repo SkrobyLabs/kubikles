@@ -7,7 +7,7 @@ interface MutatingWebhookActionsReturn extends BaseResourceActionsReturn<K8sMuta
     handleDelete: (webhook: K8sMutatingWebhookConfiguration) => void;
 }
 
-export const useMutatingWebhookActions = (): MutatingWebhookActionsReturn => {
+export const useMutatingWebhookActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -22,7 +22,7 @@ export const useMutatingWebhookActions = (): MutatingWebhookActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (webhook: K8sMutatingWebhookConfiguration): Promise<void> => {
+        async (webhook: any): Promise<void> => {
             await DeleteMutatingWebhookConfiguration(webhook.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this mutating webhook configuration? This may affect resource mutations in the cluster.' }

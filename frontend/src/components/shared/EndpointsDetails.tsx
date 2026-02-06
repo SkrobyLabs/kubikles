@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function EndpointsDetails({ endpoints, tabContext = '' }) {
+export default function EndpointsDetails({ endpoints, tabContext = '' }: { endpoints: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -61,13 +61,13 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }) {
     ];
 
     const getAllAddresses = () => {
-        const ready = [];
-        const notReady = [];
-        subsets.forEach(subset => {
-            (subset.addresses || []).forEach(addr => {
+        const ready: any[] = [];
+        const notReady: any[] = [];
+        subsets.forEach((subset: any) => {
+            (subset.addresses || []).forEach((addr: any) => {
                 ready.push({ ...addr, ports: subset.ports });
             });
-            (subset.notReadyAddresses || []).forEach(addr => {
+            (subset.notReadyAddresses || []).forEach((addr: any) => {
                 notReady.push({ ...addr, ports: subset.ports });
             });
         });
@@ -76,9 +76,9 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }) {
 
     const { ready, notReady } = getAllAddresses();
 
-    const formatPorts = (ports) => {
+    const formatPorts = (ports: any) => {
         if (!ports || ports.length === 0) return '-';
-        return ports.map(p => `${p.port}/${p.protocol || 'TCP'}`).join(', ');
+        return ports.map((p: any) => `${p.port}/${p.protocol || 'TCP'}`).join(', ');
     };
 
     return (
@@ -95,7 +95,7 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }) {
                             onClick={handleEditYaml}
                             className={`p-1.5 rounded transition-colors ${isStale ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -135,7 +135,7 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }) {
                         <p className="text-sm text-gray-500">No ready addresses</p>
                     ) : (
                         <div className="space-y-2">
-                            {ready.map((addr, idx) => (
+                            {ready.map((addr: any, idx: number) => (
                                 <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -164,7 +164,7 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }) {
                             Not Ready Addresses ({notReady.length})
                         </h3>
                         <div className="space-y-2">
-                            {notReady.map((addr, idx) => (
+                            {notReady.map((addr: any, idx: number) => (
                                 <div key={idx} className="bg-gray-800/50 rounded-lg p-3 border-l-2 border-yellow-500">
                                     <div className="flex items-center justify-between">
                                         <div>

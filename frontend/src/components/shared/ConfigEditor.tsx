@@ -7,9 +7,9 @@ import { configSchema } from '~/config/configSchema';
 
 // Build flat description map from configSchema (single source of truth).
 // Walks the schema tree and collects "path → description" for every typed field.
-function buildDescriptions(schema, prefix = '') {
-    const map = {};
-    for (const [key, value] of Object.entries(schema)) {
+function buildDescriptions(schema: any, prefix = ''): Record<string, string> {
+    const map: Record<string, string> = {};
+    for (const [key, value] of Object.entries(schema) as [string, any][]) {
         if (key === '_meta') continue;
         const fullKey = prefix ? `${prefix}.${key}` : key;
         if (value._meta?.isNested) {
@@ -25,8 +25,8 @@ function buildDescriptions(schema, prefix = '') {
 const configDescriptions = buildDescriptions(configSchema);
 
 // Convert nested object to flat key=value format with comments
-const flattenConfig = (obj, prefix = '') => {
-    const lines = [];
+const flattenConfig = (obj: any, prefix = ''): string[] => {
+    const lines: string[] = [];
     for (const key in obj) {
         const fullKey = prefix ? `${prefix}.${key}` : key;
         const value = obj[key];
@@ -55,8 +55,8 @@ const flattenConfig = (obj, prefix = '') => {
 };
 
 // Convert flat key=value format back to nested object
-const unflattenConfig = (text) => {
-    const result = {};
+const unflattenConfig = (text: string) => {
+    const result: Record<string, any> = {};
     const lines = text.split('\n');
 
     for (const line of lines) {
@@ -103,7 +103,7 @@ const unflattenConfig = (text) => {
 
         // Set nested value
         const parts = key.split('.');
-        let current = result;
+        let current: Record<string, any> = result;
         for (let i = 0; i < parts.length - 1; i++) {
             if (!current[parts[i]]) {
                 current[parts[i]] = {};
@@ -130,11 +130,11 @@ export default function ConfigEditor() {
     const [content, setContent] = useState('');
     const [error, setError] = useState('');
     const [saved, setSaved] = useState(false);
-    const editorRef = useRef(null);
-    const monacoRef = useRef(null);
+    const editorRef = useRef<any>(null);
+    const monacoRef = useRef<any>(null);
 
     // Generate content based on mode
-    const generateContent = (cfg, targetMode) => {
+    const generateContent = (cfg: any, targetMode: string) => {
         if (targetMode === 'flat') {
             return flattenConfig(cfg).join('\n');
         }
@@ -151,7 +151,7 @@ export default function ConfigEditor() {
 
 
     // Switch between modes
-    const switchMode = (newMode) => {
+    const switchMode = (newMode: string) => {
         if (newMode === mode) return;
 
         setError('');
@@ -174,7 +174,7 @@ export default function ConfigEditor() {
                 }
                 updateConfig(parsed);
                 setMode(newMode);
-            } catch (e) {
+            } catch (e: any) {
                 setError(`Cannot switch mode: ${e.message}`);
             }
             return;
@@ -192,12 +192,12 @@ export default function ConfigEditor() {
             // Convert to new format
             setContent(generateContent(parsed, newMode));
             setMode(newMode);
-        } catch (e) {
+        } catch (e: any) {
             setError(`Cannot switch mode: ${e.message}`);
         }
     };
 
-    const handleEditorDidMount = (editor, monaco) => {
+    const handleEditorDidMount = (editor: any, monaco: any) => {
         editorRef.current = editor;
         monacoRef.current = monaco;
 
@@ -407,7 +407,7 @@ export default function ConfigEditor() {
             updateConfig(parsed);
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
-        } catch (e) {
+        } catch (e: any) {
             setError(`Invalid ${mode === 'flat' ? 'config' : 'JSON'}: ${e.message}`);
         }
     };
@@ -498,7 +498,7 @@ export default function ConfigEditor() {
                     height="100%"
                     language={editorLanguage}
                     value={content}
-                    onChange={(value) => setContent(value || '')}
+                    onChange={(value: any) => setContent(value || '')}
                     onMount={handleEditorDidMount}
                     theme="vs-dark"
                     options={{

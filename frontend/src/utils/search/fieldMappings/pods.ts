@@ -10,7 +10,7 @@ import { commonFields } from './common';
 /**
  * Get Pod status (replicates logic from k8s-helpers.js)
  */
-function getPodStatusForSearch(pod) {
+function getPodStatusForSearch(pod: any) {
     if (pod.metadata?.deletionTimestamp) return 'Terminating';
 
     // Check for init container failures
@@ -46,81 +46,81 @@ export const podFields = {
     ...commonFields,
 
     nodename: {
-        extractor: (pod) => pod.spec?.nodeName || '',
+        extractor: (pod: any) => pod.spec?.nodeName || '',
         aliases: ['node']
     },
 
     status: {
-        extractor: (pod) => getPodStatusForSearch(pod),
+        extractor: (pod: any) => getPodStatusForSearch(pod),
         aliases: ['phase', 's']
     },
 
     ip: {
-        extractor: (pod) => pod.status?.podIP || '',
+        extractor: (pod: any) => pod.status?.podIP || '',
         aliases: ['podip']
     },
 
     hostip: {
-        extractor: (pod) => pod.status?.hostIP || '',
+        extractor: (pod: any) => pod.status?.hostIP || '',
         aliases: []
     },
 
     restarts: {
-        extractor: (pod) => {
+        extractor: (pod: any) => {
             const count = (pod.status?.containerStatuses || [])
-                .reduce((acc, curr) => acc + (curr.restartCount || 0), 0);
+                .reduce((acc: any, curr: any) => acc + (curr.restartCount || 0), 0);
             return String(count);
         },
         aliases: ['restart']
     },
 
     controlledby: {
-        extractor: (pod) => {
+        extractor: (pod: any) => {
             const owners = pod.metadata?.ownerReferences || [];
-            const controller = owners.find(owner => owner.controller);
+            const controller = owners.find((owner: any) => owner.controller);
             return controller ? controller.kind : '';
         },
         aliases: ['controller', 'owner']
     },
 
     controllername: {
-        extractor: (pod) => {
+        extractor: (pod: any) => {
             const owners = pod.metadata?.ownerReferences || [];
-            const controller = owners.find(owner => owner.controller);
+            const controller = owners.find((owner: any) => owner.controller);
             return controller ? controller.name : '';
         },
         aliases: ['ownername']
     },
 
     container: {
-        extractor: (pod) => {
+        extractor: (pod: any) => {
             const containers = pod.spec?.containers || [];
             const initContainers = pod.spec?.initContainers || [];
             return [...containers, ...initContainers]
-                .map(c => c.name)
+                .map((c: any) => c.name)
                 .join(' ');
         },
         aliases: ['containers']
     },
 
     image: {
-        extractor: (pod) => {
+        extractor: (pod: any) => {
             const containers = pod.spec?.containers || [];
             const initContainers = pod.spec?.initContainers || [];
             return [...containers, ...initContainers]
-                .map(c => c.image)
+                .map((c: any) => c.image)
                 .join(' ');
         },
         aliases: ['images']
     },
 
     serviceaccount: {
-        extractor: (pod) => pod.spec?.serviceAccountName || pod.spec?.serviceAccount || '',
+        extractor: (pod: any) => pod.spec?.serviceAccountName || pod.spec?.serviceAccount || '',
         aliases: ['sa']
     },
 
     qos: {
-        extractor: (pod) => pod.status?.qosClass || '',
+        extractor: (pod: any) => pod.status?.qosClass || '',
         aliases: ['qosclass']
     }
 };

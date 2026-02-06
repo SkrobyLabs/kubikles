@@ -21,7 +21,7 @@ export const kindToViewName = {
 };
 
 // Parse a cr:GROUP:VERSION:RESOURCE:KIND string into its components
-export function parseCrKind(kind) {
+export function parseCrKind(kind: string) {
     if (!kind || !kind.startsWith('cr:')) return null;
     const segs = kind.split(':');
     if (segs.length < 4) return null; // need at least cr:GROUP:VERSION:RESOURCE

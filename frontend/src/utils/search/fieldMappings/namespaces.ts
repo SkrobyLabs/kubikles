@@ -7,12 +7,12 @@
 
 export const namespaceFields = {
     name: {
-        extractor: (item) => item.metadata?.name || '',
+        extractor: (item: any) => item.metadata?.name || '',
         aliases: ['n']
     },
 
     labels: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const labels = item.metadata?.labels || {};
             return Object.entries(labels)
                 .map(([k, v]) => `${k}=${v}`)
@@ -22,7 +22,7 @@ export const namespaceFields = {
     },
 
     annotations: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const annotations = item.metadata?.annotations || {};
             return Object.entries(annotations)
                 .map(([k, v]) => `${k}=${v}`)
@@ -32,17 +32,17 @@ export const namespaceFields = {
     },
 
     uid: {
-        extractor: (item) => item.metadata?.uid || '',
+        extractor: (item: any) => item.metadata?.uid || '',
         aliases: []
     },
 
     status: {
-        extractor: (item) => item.status?.phase || 'Unknown',
+        extractor: (item: any) => item.status?.phase || 'Unknown',
         aliases: ['phase', 'state']
     },
 
     finalizers: {
-        extractor: (item) => (item.spec?.finalizers || []).join(' '),
+        extractor: (item: any) => (item.spec?.finalizers || []).join(' '),
         aliases: ['finalizer']
     }
 };

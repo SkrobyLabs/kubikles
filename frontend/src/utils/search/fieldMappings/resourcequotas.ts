@@ -10,7 +10,7 @@ export const resourceQuotaFields = {
     ...commonFields,
 
     hard: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const hard = item.spec?.hard || {};
             return Object.entries(hard)
                 .map(([k, v]) => `${k}=${v}`)
@@ -20,7 +20,7 @@ export const resourceQuotaFields = {
     },
 
     used: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const used = item.status?.used || {};
             return Object.entries(used)
                 .map(([k, v]) => `${k}=${v}`)
@@ -30,12 +30,12 @@ export const resourceQuotaFields = {
     },
 
     scopes: {
-        extractor: (item) => (item.spec?.scopes || []).join(' '),
+        extractor: (item: any) => (item.spec?.scopes || []).join(' '),
         aliases: ['scope']
     },
 
     resourcecount: {
-        extractor: (item) => String(Object.keys(item.spec?.hard || {}).length),
+        extractor: (item: any) => String(Object.keys(item.spec?.hard || {}).length),
         aliases: ['count']
     }
 };

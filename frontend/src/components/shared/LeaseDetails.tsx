@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { CopyableLabel, LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function LeaseDetails({ lease, tabContext = '' }) {
+export default function LeaseDetails({ lease, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -53,14 +53,14 @@ export default function LeaseDetails({ lease, tabContext = '' }) {
         });
     };
 
-    const formatDuration = (seconds) => {
+    const formatDuration = (seconds: any) => {
         if (!seconds) return '-';
         if (seconds < 60) return `${seconds}s`;
         if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
         return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
     };
 
-    const formatTimestamp = (timestamp) => {
+    const formatTimestamp = (timestamp: any) => {
         if (!timestamp) return '-';
         const date = new Date(timestamp);
         return date.toLocaleString();

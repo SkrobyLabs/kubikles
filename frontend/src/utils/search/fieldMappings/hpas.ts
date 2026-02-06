@@ -10,7 +10,7 @@ export const hpaFields = {
     ...commonFields,
 
     target: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const ref = item.spec?.scaleTargetRef;
             if (!ref) return '';
             return `${ref.kind}/${ref.name}`;
@@ -19,39 +19,39 @@ export const hpaFields = {
     },
 
     targetkind: {
-        extractor: (item) => item.spec?.scaleTargetRef?.kind || '',
+        extractor: (item: any) => item.spec?.scaleTargetRef?.kind || '',
         aliases: ['kind', 'refkind']
     },
 
     targetname: {
-        extractor: (item) => item.spec?.scaleTargetRef?.name || '',
+        extractor: (item: any) => item.spec?.scaleTargetRef?.name || '',
         aliases: ['refname']
     },
 
     minreplicas: {
-        extractor: (item) => String(item.spec?.minReplicas ?? 1),
+        extractor: (item: any) => String(item.spec?.minReplicas ?? 1),
         aliases: ['min']
     },
 
     maxreplicas: {
-        extractor: (item) => String(item.spec?.maxReplicas || ''),
+        extractor: (item: any) => String(item.spec?.maxReplicas || ''),
         aliases: ['max']
     },
 
     currentreplicas: {
-        extractor: (item) => String(item.status?.currentReplicas ?? ''),
+        extractor: (item: any) => String(item.status?.currentReplicas ?? ''),
         aliases: ['current', 'replicas']
     },
 
     desiredreplicas: {
-        extractor: (item) => String(item.status?.desiredReplicas ?? ''),
+        extractor: (item: any) => String(item.status?.desiredReplicas ?? ''),
         aliases: ['desired']
     },
 
     metrics: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const metrics = item.spec?.metrics || [];
-            return metrics.map(m => m.type).join(' ');
+            return metrics.map((m: any) => m.type).join(' ');
         },
         aliases: ['metrictype']
     }

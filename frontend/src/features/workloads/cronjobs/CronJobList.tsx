@@ -14,7 +14,7 @@ import { DeleteCronJob, GetCronJobYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function CronJobList({ isVisible }) {
+export default function CronJobList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
@@ -34,11 +34,11 @@ export default function CronJobList({ isVisible }) {
         getYamlApi: GetCronJobYaml,
 
     });
-    const { cronJobs, loading } = useCronJobs(currentContext, selectedNamespaces, isVisible);
+    const { cronJobs, loading } = useCronJobs(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend } = useCronJobActions();
 
     // Format duration for future time (reverse of formatAge)
-    const formatDuration = (milliseconds) => {
+    const formatDuration = (milliseconds: number) => {
         const seconds = Math.floor(milliseconds / 1000);
         if (seconds < 60) return `${seconds}s`;
 
@@ -57,7 +57,7 @@ export default function CronJobList({ isVisible }) {
     };
 
     // Calculate next run time based on cron schedule
-    const calculateNextRun = (cronJob) => {
+    const calculateNextRun = (cronJob: any) => {
         const isSuspended = cronJob.spec?.suspend || false;
         if (isSuspended) return 'Suspended';
 
@@ -79,13 +79,13 @@ export default function CronJobList({ isVisible }) {
             const diff = nextRun.getTime() - now.getTime();
 
             return formatDuration(diff);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to parse cron schedule:', { schedule, error: err.message, stack: err.stack });
             return 'Invalid schedule';
         }
     };
 
-    const formatLastRun = (lastScheduleTime) => {
+    const formatLastRun = (lastScheduleTime: any) => {
         if (!lastScheduleTime) return 'Never';
         return formatAge(lastScheduleTime);
     };
@@ -94,28 +94,28 @@ export default function CronJobList({ isVisible }) {
         {
             key: 'name',
             label: 'Name',
-            render: (item) => item.metadata?.name,
-            getValue: (item) => item.metadata?.name,
+            render: (item: any) => item.metadata?.name,
+            getValue: (item: any) => item.metadata?.name,
             initialSort: 'asc'
         },
         {
             key: 'namespace',
             label: 'Namespace',
-            render: (item) => item.metadata?.namespace,
-            getValue: (item) => item.metadata?.namespace
+            render: (item: any) => item.metadata?.namespace,
+            getValue: (item: any) => item.metadata?.namespace
         },
         {
             key: 'schedule',
             label: 'Schedule',
-            render: (item) => (
+            render: (item: any) => (
                 <span className="font-mono text-xs">{item.spec?.schedule || '-'}</span>
             ),
-            getValue: (item) => item.spec?.schedule || ''
+            getValue: (item: any) => item.spec?.schedule || ''
         },
         {
             key: 'suspend',
             label: 'Suspended',
-            render: (item) => {
+            render: (item: any) => {
                 const isSuspended = item.spec?.suspend || false;
                 return isSuspended ? (
                     <CheckCircleIcon className="h-5 w-5 text-green-400" />
@@ -123,77 +123,77 @@ export default function CronJobList({ isVisible }) {
                     <span className="text-gray-500">-</span>
                 );
             },
-            getValue: (item) => item.spec?.suspend ? 'Yes' : 'No'
+            getValue: (item: any) => item.spec?.suspend ? 'Yes' : 'No'
         },
         {
             key: 'lastRun',
             label: 'Last Run',
-            render: (item) => formatLastRun(item.status?.lastScheduleTime),
-            getValue: (item) => item.status?.lastScheduleTime || ''
+            render: (item: any) => formatLastRun(item.status?.lastScheduleTime),
+            getValue: (item: any) => item.status?.lastScheduleTime || ''
         },
         {
             key: 'nextRun',
             label: 'Next Run',
-            render: (item) => calculateNextRun(item),
-            getValue: (item) => calculateNextRun(item)
+            render: (item: any) => calculateNextRun(item),
+            getValue: (item: any) => calculateNextRun(item)
         },
         {
             key: 'age',
             label: 'Age',
-            render: (item) => formatAge(item.metadata?.creationTimestamp),
-            getValue: (item) => item.metadata?.creationTimestamp
+            render: (item: any) => formatAge(item.metadata?.creationTimestamp),
+            getValue: (item: any) => item.metadata?.creationTimestamp
         },
         // Hidden by default columns
         {
             key: 'activeJobs',
             label: 'Active Jobs',
             defaultHidden: true,
-            render: (item) => (item.status?.active || []).length,
-            getValue: (item) => (item.status?.active || []).length,
+            render: (item: any) => (item.status?.active || []).length,
+            getValue: (item: any) => (item.status?.active || []).length,
         },
         {
             key: 'concurrencyPolicy',
             label: 'Concurrency',
             defaultHidden: true,
-            render: (item) => item.spec?.concurrencyPolicy || 'Allow',
-            getValue: (item) => item.spec?.concurrencyPolicy || 'Allow',
+            render: (item: any) => item.spec?.concurrencyPolicy || 'Allow',
+            getValue: (item: any) => item.spec?.concurrencyPolicy || 'Allow',
         },
         {
             key: 'successfulJobsLimit',
             label: 'Keep Success',
             defaultHidden: true,
-            render: (item) => item.spec?.successfulJobsHistoryLimit ?? 3,
-            getValue: (item) => item.spec?.successfulJobsHistoryLimit ?? 3,
+            render: (item: any) => item.spec?.successfulJobsHistoryLimit ?? 3,
+            getValue: (item: any) => item.spec?.successfulJobsHistoryLimit ?? 3,
         },
         {
             key: 'failedJobsLimit',
             label: 'Keep Failed',
             defaultHidden: true,
-            render: (item) => item.spec?.failedJobsHistoryLimit ?? 1,
-            getValue: (item) => item.spec?.failedJobsHistoryLimit ?? 1,
+            render: (item: any) => item.spec?.failedJobsHistoryLimit ?? 1,
+            getValue: (item: any) => item.spec?.failedJobsHistoryLimit ?? 1,
         },
         {
             key: 'image',
             label: 'Image',
             defaultHidden: true,
-            render: (item) => {
+            render: (item: any) => {
                 const containers = item.spec?.jobTemplate?.spec?.template?.spec?.containers || [];
                 if (containers.length === 0) return '-';
                 if (containers.length === 1) return <span title={containers[0].image}>{containers[0].image?.split('/').pop()}</span>;
-                return <span title={containers.map(c => c.image).join('\n')}>{containers.length} images</span>;
+                return <span title={containers.map((c: any) => c.image).join('\n')}>{containers.length} images</span>;
             },
-            getValue: (item) => item.spec?.jobTemplate?.spec?.template?.spec?.containers?.[0]?.image || '',
+            getValue: (item: any) => item.spec?.jobTemplate?.spec?.template?.spec?.containers?.[0]?.image || '',
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <CronJobActionsMenu
                     cronJob={item}
                     isOpen={activeMenuId === `cronjob-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `cronjob-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `cronjob-${item.metadata.uid}`, buttonElement)}
                     onViewLogs={() => handleViewLogs(item)}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies(item)}
@@ -230,7 +230,7 @@ export default function CronJobList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

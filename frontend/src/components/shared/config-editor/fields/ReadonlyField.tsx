@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ClipboardDocumentIcon, FolderOpenIcon, CheckIcon } from '@heroicons/react/24/outline';
 
-export default function ReadonlyField({ label, description, value, showCopy = true, showOpenFolder = false, onOpenFolder }) {
+export default function ReadonlyField({ label, description, value, showCopy = true, showOpenFolder = false, onOpenFolder }: any) {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
@@ -12,7 +12,7 @@ export default function ReadonlyField({ label, description, value, showCopy = tr
             await navigator.clipboard.writeText(textToCopy);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     };

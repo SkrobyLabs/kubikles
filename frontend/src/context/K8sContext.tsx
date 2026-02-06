@@ -115,7 +115,7 @@ const getPortForwardAutoStartMode = (): string => {
             const settings = JSON.parse(saved);
             return settings?.portForwards?.autoStartMode || 'favorites';
         }
-    } catch (e) {
+    } catch (e: any) {
         Logger.error('Failed to read port forward settings', e);
     }
     return 'favorites'; // Default
@@ -132,7 +132,7 @@ const getConnectionTestTimeout = (): number => {
                 return timeout;
             }
         }
-    } catch (e) {
+    } catch (e: any) {
         Logger.error('Failed to read connection test timeout setting', e);
     }
     return 5; // Default 5 seconds
@@ -276,7 +276,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (parsed.namespaces && Array.isArray(parsed.namespaces)) {
                     return { namespaces: parsed.namespaces };
                 }
-            } catch (e) {
+            } catch (e: any) {
                 Logger.error("Failed to parse saved state", e);
             }
         }
@@ -290,7 +290,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (existing) {
             try {
                 state = JSON.parse(existing);
-            } catch (e) { }
+            } catch (e: any) { }
         }
         // Save as array for multi-namespace support
         state.namespaces = Array.isArray(ns) ? ns : [ns];
@@ -349,7 +349,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     await SwitchContext(savedContext);
                     contextToUse = savedContext;
                     Logger.info("Successfully restored context", { context: contextToUse });
-                } catch (err) {
+                } catch (err: any) {
                     Logger.error("Failed to restore saved context, using current", err);
                 }
             } else if (savedContext === curr) {
@@ -369,7 +369,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 Logger.debug("Restored namespaces from saved state", { namespaces: savedState.namespaces });
             }
             // Connection test happens in the data loading effect when currentContext changes
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to fetch contexts", err);
             const parsed = parseConnectionError(err);
             setConnectionError({
@@ -397,7 +397,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
                 return prev;
             });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to refresh contexts", err);
         }
     }, []);
@@ -408,7 +408,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             Logger.debug("Fetching namespaces...", { context: currentContext });
             const list: Namespace[] = await ListNamespaces(currentContext);
             // Extract namespace names from objects
-            const namespaceNames = (list || []).map(ns => ns.metadata?.name || ns).filter(Boolean) as string[];
+            const namespaceNames = (list || []).map((ns: any) => ns.metadata?.name || ns).filter(Boolean) as string[];
             // Prepend "All Namespaces" option (empty string value)
             const namespacesWithAll = ['', ...namespaceNames];
             setNamespaces(namespacesWithAll);
@@ -416,7 +416,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // Note: Don't clear connectionError here - other API calls might still be failing.
             // Error is only cleared when a watcher successfully connects.
             setIsConnecting(false);
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to fetch namespaces", err);
             // Set connection error - this is the first actual cluster call
             const parsed = parseConnectionError(err);
@@ -456,7 +456,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             updateContextAccessTime(newContext);
             localStorage.setItem('kubikles_last_context', newContext);
             Logger.debug("Context switched, data loading will follow", { context: newContext });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to switch context", err);
             setIsConnecting(false);
             setIsLoadingNamespaces(false);
@@ -481,7 +481,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     setIsConnecting(false);
                     return;
                 }
-            } catch (err) {
+            } catch (err: any) {
                 Logger.error("Failed to check K8s init error", err);
             }
             // If no init error, proceed with normal loading
@@ -557,7 +557,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             try {
                 await StartPortForwardsWithMode(contextForThisEffect, autoStartMode);
                 Logger.debug("Started port forwards", { context: contextForThisEffect, mode: autoStartMode });
-            } catch (err) {
+            } catch (err: any) {
                 Logger.error("Failed to start port forwards", err);
             }
         };
@@ -581,7 +581,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Listen for watcher error and status events
     useEffect(() => {
-        if (!window.runtime) return;
+        if (!(window as any).runtime) return;
 
         const handleWatcherError = (event: WatcherErrorEvent): void => {
             const { resourceType, namespace, error, recoverable, context } = event;
@@ -711,7 +711,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCRDs(list || []);
             crdsLoadedForContext.current = currentContext;
             return list || [];
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to fetch CRDs", err);
             return [];
         }
@@ -727,7 +727,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const version = parts.length === 2 ? parts[1] : parts[0];
 
         // Find matching CRD
-        return crds.find(crd => {
+        return crds.find((crd: any) => {
             const crdGroup = crd.spec?.group || '';
             const crdKind = crd.spec?.names?.kind || '';
             // Match group and kind

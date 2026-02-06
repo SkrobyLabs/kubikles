@@ -27,7 +27,7 @@ export const useCRDs = (
                 const list = await ListCRDs();
                 setCRDs(list || []);
                 setError(null);
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Failed to fetch CRDs", err);
                 setError(err as Error);
             } finally {

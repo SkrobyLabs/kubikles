@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckIcon } from '@heroicons/react/24/outline';
 
-export default function BooleanField({ label, description, subtext, value, onChange, isModified }) {
+export default function BooleanField({ label, description, subtext, value, onChange, isModified }: any) {
     return (
         <div className="py-2">
             <div className="text-sm font-medium text-text mb-1">

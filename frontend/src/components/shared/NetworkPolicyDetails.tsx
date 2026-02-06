@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' }) {
+export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' }: { networkPolicy: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -53,7 +53,7 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' })
         });
     };
 
-    const formatLabelSelector = (selector) => {
+    const formatLabelSelector = (selector: any) => {
         if (!selector || Object.keys(selector.matchLabels || {}).length === 0) {
             return 'All Pods';
         }
@@ -62,14 +62,14 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' })
             .join(', ');
     };
 
-    const formatPort = (port) => {
+    const formatPort = (port: any) => {
         if (!port) return 'All';
         const protocol = port.protocol || 'TCP';
         const portNum = port.port || 'All';
         return `${portNum}/${protocol}`;
     };
 
-    const formatPeer = (peer) => {
+    const formatPeer = (peer: any) => {
         if (!peer) return 'Any';
         const parts = [];
         if (peer.ipBlock) {
@@ -118,7 +118,7 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' })
                             onClick={handleEditYaml}
                             className={`p-1.5 rounded transition-colors ${isStale ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -162,7 +162,7 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' })
                         </p>
                     ) : (
                         <div className="space-y-3">
-                            {ingressRules.map((rule, idx) => (
+                            {ingressRules.map((rule: any, idx: number) => (
                                 <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
                                     <div className="text-xs text-gray-400 mb-2">Rule {idx + 1}</div>
                                     <div className="space-y-2">
@@ -170,7 +170,7 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' })
                                             <span className="text-xs text-gray-500">From:</span>
                                             <div className="text-sm text-gray-300 ml-2">
                                                 {rule.from?.length > 0
-                                                    ? rule.from.map((peer, i) => (
+                                                    ? rule.from.map((peer: any, i: number) => (
                                                         <div key={i}>{formatPeer(peer)}</div>
                                                     ))
                                                     : 'Any source'}
@@ -204,7 +204,7 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' })
                         </p>
                     ) : (
                         <div className="space-y-3">
-                            {egressRules.map((rule, idx) => (
+                            {egressRules.map((rule: any, idx: number) => (
                                 <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
                                     <div className="text-xs text-gray-400 mb-2">Rule {idx + 1}</div>
                                     <div className="space-y-2">
@@ -212,7 +212,7 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' })
                                             <span className="text-xs text-gray-500">To:</span>
                                             <div className="text-sm text-gray-300 ml-2">
                                                 {rule.to?.length > 0
-                                                    ? rule.to.map((peer, i) => (
+                                                    ? rule.to.map((peer: any, i: number) => (
                                                         <div key={i}>{formatPeer(peer)}</div>
                                                     ))
                                                     : 'Any destination'}

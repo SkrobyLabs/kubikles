@@ -14,16 +14,16 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 const HELM_RELEASE_SECRET_TYPE = 'helm.sh/release.v1';
 
-export default function SecretList({ isVisible }) {
+export default function SecretList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { secrets, loading } = useSecrets(currentContext, selectedNamespaces, isVisible);
+    const { secrets, loading } = useSecrets(currentContext, selectedNamespaces, isVisible) as any;
     const [hideHelmSecrets, setHideHelmSecrets] = useState(true);
 
     // Filter out Helm release secrets if toggle is enabled
     const filteredSecrets = useMemo(() => {
         if (!hideHelmSecrets) return secrets;
-        return secrets.filter(secret => secret.type !== HELM_RELEASE_SECRET_TYPE);
+        return secrets.filter((secret: any) => secret.type !== HELM_RELEASE_SECRET_TYPE);
     }, [secrets, hideHelmSecrets]);
     const { handleEditYaml, handleEditKeyValue, handleShowDependencies } = useSecretActions();
     const selection = useSelection();
@@ -45,48 +45,48 @@ export default function SecretList({ isVisible }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
-        { key: 'type', label: 'Type', render: (item) => item.type, getValue: (item) => item.type },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
+        { key: 'type', label: 'Type', render: (item: any) => item.type, getValue: (item: any) => item.type },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         // Hidden by default columns
         {
             key: 'keys',
             label: 'Keys',
             defaultHidden: true,
-            render: (item) => {
+            render: (item: any) => {
                 const keys = Object.keys(item.data || {});
                 if (keys.length === 0) return <span className="text-gray-500">-</span>;
                 return <span title={keys.join('\n')}>{keys.length} key{keys.length > 1 ? 's' : ''}</span>;
             },
-            getValue: (item) => Object.keys(item.data || {}).join(','),
+            getValue: (item: any) => Object.keys(item.data || {}).join(','),
         },
         {
             key: 'size',
             label: 'Size',
             defaultHidden: true,
-            render: (item) => {
+            render: (item: any) => {
                 // Secrets data is base64 encoded, so actual size is ~75% of stored size
-                const total = Object.values(item.data || {}).reduce((sum, v) => sum + (v?.length || 0), 0);
+                const total = Object.values(item.data || {}).reduce((sum: any, v: any) => sum + (v?.length || 0), 0) as number;
                 const decoded = Math.floor(total * 0.75);
                 if (decoded < 1024) return `~${decoded} B`;
                 return `~${(decoded / 1024).toFixed(1)} KB`;
             },
-            getValue: (item) => Object.values(item.data || {}).reduce((sum, v) => sum + (v?.length || 0), 0),
+            getValue: (item: any) => Object.values(item.data || {}).reduce((sum: any, v: any) => sum + (v?.length || 0), 0),
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <SecretActionsMenu
                     secret={item}
                     isOpen={activeMenuId === `secret-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `secret-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `secret-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(item) => openBulkDelete([item])}
+                    onDelete={(item: any) => openBulkDelete([item])}
                 />
             ),
             getValue: () => '',
@@ -103,7 +103,7 @@ export default function SecretList({ isVisible }) {
             <input
                 type="checkbox"
                 checked={hideHelmSecrets}
-                onChange={(e) => setHideHelmSecrets(e.target.checked)}
+                onChange={(e: any) => setHideHelmSecrets(e.target.checked)}
             />
             <span className="whitespace-nowrap">Hide Helm</span>
         </label>
@@ -132,7 +132,7 @@ export default function SecretList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

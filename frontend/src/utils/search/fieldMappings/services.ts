@@ -11,59 +11,59 @@ export const serviceFields = {
     ...commonFields,
 
     type: {
-        extractor: (item) => item.spec?.type || 'ClusterIP',
+        extractor: (item: any) => item.spec?.type || 'ClusterIP',
         aliases: ['servicetype']
     },
 
     clusterip: {
-        extractor: (item) => item.spec?.clusterIP || '',
+        extractor: (item: any) => item.spec?.clusterIP || '',
         aliases: ['ip', 'cluster-ip']
     },
 
     externalip: {
-        extractor: (item) => (item.spec?.externalIPs || []).join(' '),
+        extractor: (item: any) => (item.spec?.externalIPs || []).join(' '),
         aliases: ['external-ip', 'extip']
     },
 
     loadbalancerip: {
-        extractor: (item) => item.status?.loadBalancer?.ingress?.map(i => i.ip || i.hostname).join(' ') || '',
+        extractor: (item: any) => item.status?.loadBalancer?.ingress?.map((i: any) => i.ip || i.hostname).join(' ') || '',
         aliases: ['lbip', 'loadbalancer']
     },
 
     port: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const ports = item.spec?.ports || [];
-            return ports.map(p => String(p.port)).join(' ');
+            return ports.map((p: any) => String(p.port)).join(' ');
         },
         aliases: ['ports']
     },
 
     targetport: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const ports = item.spec?.ports || [];
-            return ports.map(p => String(p.targetPort)).join(' ');
+            return ports.map((p: any) => String(p.targetPort)).join(' ');
         },
         aliases: ['targetports']
     },
 
     nodeport: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const ports = item.spec?.ports || [];
-            return ports.filter(p => p.nodePort).map(p => String(p.nodePort)).join(' ');
+            return ports.filter((p: any) => p.nodePort).map((p: any) => String(p.nodePort)).join(' ');
         },
         aliases: ['nodeports']
     },
 
     protocol: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const ports = item.spec?.ports || [];
-            return ports.map(p => p.protocol).join(' ');
+            return ports.map((p: any) => p.protocol).join(' ');
         },
         aliases: ['protocols']
     },
 
     selector: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const selector = item.spec?.selector || {};
             return Object.entries(selector)
                 .map(([k, v]) => `${k}=${v}`)
@@ -73,17 +73,17 @@ export const serviceFields = {
     },
 
     sessionaffinity: {
-        extractor: (item) => item.spec?.sessionAffinity || 'None',
+        extractor: (item: any) => item.spec?.sessionAffinity || 'None',
         aliases: ['affinity', 'session']
     },
 
     externalname: {
-        extractor: (item) => item.spec?.externalName || '',
+        extractor: (item: any) => item.spec?.externalName || '',
         aliases: ['extname']
     },
 
     headless: {
-        extractor: (item) => item.spec?.clusterIP === 'None' ? 'true' : 'false',
+        extractor: (item: any) => item.spec?.clusterIP === 'None' ? 'true' : 'false',
         aliases: []
     }
 };

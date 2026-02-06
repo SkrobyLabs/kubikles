@@ -39,16 +39,16 @@ export const createResourceEventHandler = <T extends K8sResource = K8sResource>(
         switch (type) {
             case 'ADDED':
                 // Avoid duplicates - check if resource already exists
-                if (prev.find(r => r.metadata?.uid === uid)) {
+                if (prev.find((r: any) => r.metadata?.uid === uid)) {
                     return prev;
                 }
                 return [...prev, resource];
 
             case 'MODIFIED': {
                 // Replace the existing resource, or add if not found (handles race condition)
-                const exists = prev.some(r => r.metadata?.uid === uid);
+                const exists = prev.some((r: any) => r.metadata?.uid === uid);
                 if (exists) {
-                    return prev.map(r => r.metadata?.uid === uid ? resource : r);
+                    return prev.map((r: any) => r.metadata?.uid === uid ? resource : r);
                 }
                 // MODIFIED arrived before ADDED - treat as add
                 return [...prev, resource];
@@ -56,7 +56,7 @@ export const createResourceEventHandler = <T extends K8sResource = K8sResource>(
 
             case 'DELETED':
                 // Remove the resource from the list
-                return prev.filter(r => r.metadata?.uid !== uid);
+                return prev.filter((r: any) => r.metadata?.uid !== uid);
 
             default:
                 return prev;
@@ -83,7 +83,7 @@ export const createNamespacedResourceEventHandler = <T extends K8sResource = K8s
     // Check if we should process this event based on namespace
     const shouldProcess = selectedNamespaces.includes('*') ||
         selectedNamespaces.length === 0 ||
-        selectedNamespaces.includes(eventNamespace);
+        selectedNamespaces.includes(eventNamespace || '');
 
     if (!shouldProcess) return;
 
@@ -93,23 +93,23 @@ export const createNamespacedResourceEventHandler = <T extends K8sResource = K8s
 
         switch (type) {
             case 'ADDED':
-                if (prev.find(r => r.metadata?.uid === uid)) {
+                if (prev.find((r: any) => r.metadata?.uid === uid)) {
                     return prev;
                 }
                 return [...prev, resource];
 
             case 'MODIFIED': {
                 // Replace the existing resource, or add if not found (handles race condition)
-                const exists = prev.some(r => r.metadata?.uid === uid);
+                const exists = prev.some((r: any) => r.metadata?.uid === uid);
                 if (exists) {
-                    return prev.map(r => r.metadata?.uid === uid ? resource : r);
+                    return prev.map((r: any) => r.metadata?.uid === uid ? resource : r);
                 }
                 // MODIFIED arrived before ADDED - treat as add
                 return [...prev, resource];
             }
 
             case 'DELETED':
-                return prev.filter(r => r.metadata?.uid !== uid);
+                return prev.filter((r: any) => r.metadata?.uid !== uid);
 
             default:
                 return prev;

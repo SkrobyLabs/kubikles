@@ -10,7 +10,7 @@ import 'xterm/css/xterm.css';
 // Get theme colors from CSS variables
 const getThemeColors = () => {
     const root = document.documentElement;
-    const getVar = (name, fallback) => getComputedStyle(root).getPropertyValue(name).trim() || fallback;
+    const getVar = (name: string, fallback: string) => getComputedStyle(root).getPropertyValue(name).trim() || fallback;
     return {
         background: getVar('--color-background', '#1e1e1e'),
         foreground: getVar('--color-text', '#cccccc'),
@@ -20,14 +20,14 @@ const getThemeColors = () => {
     };
 };
 
-const Terminal = ({ namespace, pod, container, context, command, onClose }) => {
-    const terminalRef = useRef(null);
-    const xtermRef = useRef(null);
-    const sessionIdRef = useRef(null);
-    const fitAddonRef = useRef(null);
-    const webglAddonRef = useRef(null);
+const Terminal = ({ namespace, pod, container, context, command, onClose }: { namespace: any; pod: any; container: any; context: any; command: any; onClose: any }) => {
+    const terminalRef = useRef<HTMLDivElement>(null);
+    const xtermRef = useRef<any>(null);
+    const sessionIdRef = useRef<any>(null);
+    const fitAddonRef = useRef<any>(null);
+    const webglAddonRef = useRef<any>(null);
     const onCloseRef = useRef(onClose);
-    const cleanupTimeoutRef = useRef(null);
+    const cleanupTimeoutRef = useRef<any>(null);
 
     // Keep onClose ref up to date without triggering effect re-runs
     useEffect(() => {
@@ -54,12 +54,12 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }) => {
         term.loadAddon(fitAddon);
         fitAddonRef.current = fitAddon;
 
-        term.open(terminalRef.current);
+        term.open(terminalRef.current!);
 
         // Load WebGL addon for GPU-accelerated rendering (Metal on macOS)
         try {
             const webglAddon = new WebglAddon();
-            webglAddon.onContextLost(() => {
+            (webglAddon as any).onContextLost(() => {
                 console.warn('WebGL context lost, falling back to canvas renderer');
                 webglAddon.dispose();
                 webglAddonRef.current = null;
@@ -67,8 +67,8 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }) => {
             term.loadAddon(webglAddon);
             webglAddonRef.current = webglAddon;
             console.log('Terminal using WebGL renderer (GPU accelerated)');
-        } catch (e) {
-            console.warn('WebGL addon failed to load, using canvas renderer:', e.message);
+        } catch (e: any) {
+            console.warn('WebGL addon failed to load, using canvas renderer:', (e as any).message);
         }
 
         // Slight delay to ensure container has dimensions
@@ -76,7 +76,7 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }) => {
             try {
                 fitAddon.fit();
                 console.log("Terminal fit complete", fitAddon.proposeDimensions());
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Terminal fit failed", e);
             }
         }, 100);
@@ -87,7 +87,7 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }) => {
         // Pass clientId for server mode session cleanup on disconnect
         const clientId = getClientId() || '';
         StartTerminalSession({ namespace, pod, container, context, command, clientId })
-            .then(sessionId => {
+            .then((sessionId: any) => {
                 sessionIdRef.current = sessionId;
                 term.write('\r\n\x1b[32mConnected to terminal...\x1b[0m\r\n');
 
@@ -99,12 +99,12 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }) => {
                     }
                 }, 150);
             })
-            .catch(err => {
+            .catch((err: any) => {
                 term.write(`\r\n\x1b[31mFailed to start terminal: ${err}\x1b[0m\r\n`);
             });
 
         // Listen for terminal output events
-        const handleTerminalOutput = (event) => {
+        const handleTerminalOutput = (event: any) => {
             if (!sessionIdRef.current || event.sessionId !== sessionIdRef.current) return;
 
             if (event.done) {
@@ -194,7 +194,7 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }) => {
                     if (clientWidth > 0 && clientHeight > 0) {
                         fitAddonRef.current.fit();
                     }
-                } catch (e) {
+                } catch (e: any) {
                     console.error("Fit failed", e);
                 }
             }

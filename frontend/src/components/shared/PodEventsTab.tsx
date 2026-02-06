@@ -6,16 +6,16 @@ import { useResourceWatcher } from '~/hooks/useResourceWatcher';
 import { formatAge } from '~/utils/formatting';
 
 // Event type indicator
-const EventTypeIcon = ({ type }) => {
+const EventTypeIcon = ({ type }: { type: string }) => {
     if (type === 'Warning') {
         return <ExclamationTriangleIcon className="w-4 h-4 text-yellow-400" />;
     }
     return <InformationCircleIcon className="w-4 h-4 text-green-400" />;
 };
 
-export default function PodEventsTab({ pod, isStale }) {
+export default function PodEventsTab({ pod, isStale }: { pod: any; isStale: any }) {
     const { currentContext, lastRefresh } = useK8s();
-    const [events, setEvents] = useState([]);
+    const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
     const namespace = pod.metadata?.namespace;
@@ -31,12 +31,12 @@ export default function PodEventsTab({ pod, isStale }) {
             try {
                 const list = await ListEvents('', namespace);
                 // Filter events related to this pod
-                const podEvents = (list || []).filter(event =>
+                const podEvents = (list || []).filter((event: any) =>
                     event.involvedObject?.uid === podUid ||
                     (event.involvedObject?.kind === 'Pod' && event.involvedObject?.name === podName)
                 );
                 setEvents(podEvents);
-            } catch (err) {
+            } catch (err: any) {
                 console.error('Failed to fetch events:', err);
             } finally {
                 setLoading(false);
@@ -47,7 +47,7 @@ export default function PodEventsTab({ pod, isStale }) {
     }, [currentContext, namespace, podUid, podName, isStale, lastRefresh]);
 
     // Handle real-time event updates
-    const handleEvent = useCallback((event) => {
+    const handleEvent = useCallback((event: any) => {
         const { type, resource } = event;
 
         // Only process events related to this pod
@@ -62,12 +62,12 @@ export default function PodEventsTab({ pod, isStale }) {
 
             switch (type) {
                 case 'ADDED':
-                    if (prev.find(e => e.metadata.uid === uid)) return prev;
+                    if (prev.find((e: any) => e.metadata.uid === uid)) return prev;
                     return [...prev, resource];
                 case 'MODIFIED':
-                    return prev.map(e => e.metadata.uid === uid ? resource : e);
+                    return prev.map((e: any) => e.metadata.uid === uid ? resource : e);
                 case 'DELETED':
-                    return prev.filter(e => e.metadata.uid !== uid);
+                    return prev.filter((e: any) => e.metadata.uid !== uid);
                 default:
                     return prev;
             }
@@ -85,8 +85,8 @@ export default function PodEventsTab({ pod, isStale }) {
     // Sort events by last timestamp (most recent first)
     const sortedEvents = useMemo(() => {
         return [...events].sort((a, b) => {
-            const timeA = new Date(a.lastTimestamp || a.metadata?.creationTimestamp || 0);
-            const timeB = new Date(b.lastTimestamp || b.metadata?.creationTimestamp || 0);
+            const timeA = new Date(a.lastTimestamp || a.metadata?.creationTimestamp || 0).getTime();
+            const timeB = new Date(b.lastTimestamp || b.metadata?.creationTimestamp || 0).getTime();
             return timeB - timeA;
         });
     }, [events]);

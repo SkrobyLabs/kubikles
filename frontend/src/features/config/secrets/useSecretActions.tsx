@@ -17,7 +17,7 @@ export interface SecretActionsReturn {
     handleDelete: (secret: K8sSecret) => void;
 }
 
-export const useSecretActions = (): SecretActionsReturn => {
+export const useSecretActions = (): any => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();
@@ -32,7 +32,7 @@ export const useSecretActions = (): SecretActionsReturn => {
             actionLabel: 'Edit',
             content: (
                 <SecretEditor
-                    namespace={secret.metadata.namespace}
+                    namespace={secret.metadata.namespace!}
                     resourceName={secret.metadata.name}
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}
@@ -52,7 +52,7 @@ export const useSecretActions = (): SecretActionsReturn => {
             actionLabel: 'Edit',
             content: (
                 <SecretEditor
-                    namespace={secret.metadata.namespace}
+                    namespace={secret.metadata.namespace!}
                     resourceName={secret.metadata.name}
                     onClose={() => closeTab(tabId)}
                     tabContext={currentContext}

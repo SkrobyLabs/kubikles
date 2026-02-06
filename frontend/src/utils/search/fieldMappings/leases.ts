@@ -10,17 +10,17 @@ export const leaseFields = {
     ...commonFields,
 
     holder: {
-        extractor: (item) => item.spec?.holderIdentity || '',
+        extractor: (item: any) => item.spec?.holderIdentity || '',
         aliases: ['holderidentity', 'leader', 'owner']
     },
 
     duration: {
-        extractor: (item) => String(item.spec?.leaseDurationSeconds || ''),
+        extractor: (item: any) => String(item.spec?.leaseDurationSeconds || ''),
         aliases: ['leaseduration', 'leasedurationseconds']
     },
 
     transitions: {
-        extractor: (item) => String(item.spec?.leaseTransitions || 0),
+        extractor: (item: any) => String(item.spec?.leaseTransitions || 0),
         aliases: ['leasetransitions', 'changes']
     }
 };

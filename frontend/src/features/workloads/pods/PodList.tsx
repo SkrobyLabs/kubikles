@@ -22,7 +22,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 import { usePodNotifications, warmUpAudio, playNotificationSound } from '~/hooks/usePodNotifications';
 import { ALL_PODS } from '~/components/shared/log-viewer';
 
-export default function PodList({ isVisible }) {
+export default function PodList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces, crds, ensureCRDsLoaded } = useK8s();
     const { navigateWithSearch } = useUI();
 
@@ -50,7 +50,8 @@ export default function PodList({ isVisible }) {
         getYamlApi: GetPodYaml,
 
     });
-    const { pods, loading } = usePods(currentContext, selectedNamespaces, isVisible);
+    const { pods: rawPods, loading } = usePods(currentContext, selectedNamespaces, isVisible) as any;
+    const pods: any[] = rawPods || [];
     // Delay metrics fetch until pods are loaded to prioritize showing pod list first
     const { metrics, available: metricsAvailable } = usePodMetrics(isVisible, !loading && pods.length > 0);
     const { openLogs, handleShell, handleFiles, handleEditYaml, handleShowDependencies, handleShowDetails } = usePodActions();
@@ -83,14 +84,14 @@ export default function PodList({ isVisible }) {
         catch { /* ignore */ }
     }, [notificationThrottle]);
 
-    const [filteredUids, setFilteredUids] = useState(null);
-    const handleFilteredUidsChange = useCallback((uids) => setFilteredUids(uids), []);
-    usePodNotifications(pods, notificationsEnabled, filteredUids, {
+    const [filteredUids, setFilteredUids] = useState<Set<string> | null>(null);
+    const handleFilteredUidsChange = useCallback((uids: any) => setFilteredUids(uids), []);
+    usePodNotifications(pods as any, notificationsEnabled, filteredUids, {
         soundKey: notificationSound,
         throttleSeconds: notificationThrottle,
     });
 
-    const handleBellClick = useCallback((e) => {
+    const handleBellClick = useCallback((e: any) => {
         if (e.shiftKey) {
             // Shift+click opens settings
             e.preventDefault();
@@ -103,22 +104,22 @@ export default function PodList({ isVisible }) {
         }
     }, []);
 
-    const handleBellRightClick = useCallback((e) => {
+    const handleBellRightClick = useCallback((e: any) => {
         e.preventDefault();
         setNotificationSettingsMenu({ open: true, x: e.clientX, y: e.clientY });
     }, []);
 
-    const handlePreviewSound = useCallback((soundKey) => {
+    const handlePreviewSound = useCallback((soundKey: string) => {
         warmUpAudio();
         playNotificationSound(soundKey);
     }, []);
 
     // Port forward state
-    const [portForwardDialog, setPortForwardDialog] = useState({ open: false, pod: null, port: null });
-    const [portSelectMenu, setPortSelectMenu] = useState({ open: false, pod: null, ports: [] });
+    const [portForwardDialog, setPortForwardDialog] = useState<{ open: boolean; pod: any; port: any }>({ open: false, pod: null, port: null });
+    const [portSelectMenu, setPortSelectMenu] = useState<{ open: boolean; pod: any; ports: any[] }>({ open: false, pod: null, ports: [] });
 
-    const handlePortForward = useCallback((pod) => {
-        const allPorts = [];
+    const handlePortForward = useCallback((pod: any) => {
+        const allPorts: any[] = [];
         const allContainers = [
             ...(pod.spec?.initContainers || []),
             ...(pod.spec?.containers || [])
@@ -137,15 +138,15 @@ export default function PodList({ isVisible }) {
     }, []);
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name, initialSort: 'asc' },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
         {
             key: 'cpu',
             label: 'CPU',
             filterType: 'numeric',
             numericHint: 'CPU usage % (0-100)',
             numericUnit: '%',
-            render: (item) => {
+            render: (item: any) => {
                 const key = `${item.metadata?.namespace}/${item.metadata?.name}`;
                 const m = metrics[key];
                 if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
@@ -165,11 +166,11 @@ export default function PodList({ isVisible }) {
                     />
                 );
             },
-            getValue: (item) => {
+            getValue: (item: any) => {
                 const key = `${item.metadata?.namespace}/${item.metadata?.name}`;
                 return metrics[key]?.cpuCommittedPercent ?? -1;
             },
-            getNumericValue: (item) => {
+            getNumericValue: (item: any) => {
                 const key = `${item.metadata?.namespace}/${item.metadata?.name}`;
                 return metrics[key]?.cpuPercent ?? NaN;
             }
@@ -180,7 +181,7 @@ export default function PodList({ isVisible }) {
             filterType: 'numeric',
             numericHint: 'Memory usage % (0-100)',
             numericUnit: '%',
-            render: (item) => {
+            render: (item: any) => {
                 const key = `${item.metadata?.namespace}/${item.metadata?.name}`;
                 const m = metrics[key];
                 if (metricsAvailable === false) return <span className="text-gray-500 italic text-xs">N/A</span>;
@@ -200,11 +201,11 @@ export default function PodList({ isVisible }) {
                     />
                 );
             },
-            getValue: (item) => {
+            getValue: (item: any) => {
                 const key = `${item.metadata?.namespace}/${item.metadata?.name}`;
                 return metrics[key]?.memCommittedPercent ?? -1;
             },
-            getNumericValue: (item) => {
+            getNumericValue: (item: any) => {
                 const key = `${item.metadata?.namespace}/${item.metadata?.name}`;
                 return metrics[key]?.memPercent ?? NaN;
             }
@@ -213,9 +214,9 @@ export default function PodList({ isVisible }) {
             key: 'containers',
             label: 'Containers',
             filterable: false,
-            render: (item) => (
+            render: (item: any) => (
                 <div className="flex gap-1">
-                    {(item.status?.containerStatuses || []).map((status, i) => (
+                    {(item.status?.containerStatuses || []).map((status: any, i: number) => (
                         <div
                             key={i}
                             className={`w-3 h-3 rounded-sm ${getContainerStatusColor(status)}`}
@@ -224,27 +225,27 @@ export default function PodList({ isVisible }) {
                     ))}
                 </div>
             ),
-            getValue: (item) => getPodStatusPriority(getPodStatus(item))
+            getValue: (item: any) => getPodStatusPriority(getPodStatus(item))
         },
         {
             key: 'status',
             label: 'Status',
-            render: (item) => {
+            render: (item: any) => {
                 const status = getPodStatus(item);
                 const colorClass = getPodStatusColor(status);
                 return <span className={`font-medium ${colorClass}`}>{status}</span>;
             },
-            getValue: (item) => getPodStatusPriority(getPodStatus(item)),
-            getFilterValue: (item) => getPodStatus(item),
+            getValue: (item: any) => getPodStatusPriority(getPodStatus(item)),
+            getFilterValue: (item: any) => getPodStatus(item),
         },
         {
             key: 'restarts',
             label: 'Restarts',
             filterType: 'numeric',
             numericHint: 'Total restart count',
-            render: (item) => item.status?.containerStatuses?.reduce((acc, curr) => acc + curr.restartCount, 0) || 0,
-            getValue: (item) => item.status?.containerStatuses?.reduce((acc, curr) => acc + curr.restartCount, 0) || 0,
-            getNumericValue: (item) => item.status?.containerStatuses?.reduce((acc, curr) => acc + curr.restartCount, 0) || 0
+            render: (item: any) => item.status?.containerStatuses?.reduce((acc: number, curr: any) => acc + curr.restartCount, 0) || 0,
+            getValue: (item: any) => item.status?.containerStatuses?.reduce((acc: number, curr: any) => acc + curr.restartCount, 0) || 0,
+            getNumericValue: (item: any) => item.status?.containerStatuses?.reduce((acc: number, curr: any) => acc + curr.restartCount, 0) || 0
         },
         {
             key: 'age',
@@ -252,9 +253,9 @@ export default function PodList({ isVisible }) {
             filterType: 'numeric',
             numericHint: 'Age in hours',
             numericUnit: 'h',
-            render: (item) => formatAge(item.metadata?.creationTimestamp),
-            getValue: (item) => item.metadata?.creationTimestamp,
-            getNumericValue: (item) => {
+            render: (item: any) => formatAge(item.metadata?.creationTimestamp),
+            getValue: (item: any) => item.metadata?.creationTimestamp,
+            getNumericValue: (item: any) => {
                 if (!item.metadata?.creationTimestamp) return NaN;
                 return (Date.now() - new Date(item.metadata.creationTimestamp).getTime()) / 3600000;
             }
@@ -262,7 +263,7 @@ export default function PodList({ isVisible }) {
         {
             key: 'controlledBy',
             label: 'Controlled By',
-            render: (item) => {
+            render: (item: any) => {
                 const controller = getPodController(item);
                 if (!controller) {
                     return <span className="text-gray-600">-</span>;
@@ -291,88 +292,88 @@ export default function PodList({ isVisible }) {
                     </span>
                 );
             },
-            getValue: (item) => getPodController(item)?.kind || ''
+            getValue: (item: any) => getPodController(item)?.kind || ''
         },
         // Hidden by default columns
         {
             key: 'qos',
             label: 'QoS',
             defaultHidden: true,
-            render: (item) => item.status?.qosClass || '-',
-            getValue: (item) => item.status?.qosClass || '',
+            render: (item: any) => item.status?.qosClass || '-',
+            getValue: (item: any) => item.status?.qosClass || '',
         },
         {
             key: 'node',
             label: 'Node',
             defaultHidden: true,
-            render: (item) => item.spec?.nodeName || <span className="text-gray-500">-</span>,
-            getValue: (item) => item.spec?.nodeName || '',
+            render: (item: any) => item.spec?.nodeName || <span className="text-gray-500">-</span>,
+            getValue: (item: any) => item.spec?.nodeName || '',
         },
         {
             key: 'podIP',
             label: 'Pod IP',
             defaultHidden: true,
-            render: (item) => item.status?.podIP || <span className="text-gray-500">-</span>,
-            getValue: (item) => item.status?.podIP || '',
+            render: (item: any) => item.status?.podIP || <span className="text-gray-500">-</span>,
+            getValue: (item: any) => item.status?.podIP || '',
         },
         {
             key: 'hostIP',
             label: 'Host IP',
             defaultHidden: true,
-            render: (item) => item.status?.hostIP || <span className="text-gray-500">-</span>,
-            getValue: (item) => item.status?.hostIP || '',
+            render: (item: any) => item.status?.hostIP || <span className="text-gray-500">-</span>,
+            getValue: (item: any) => item.status?.hostIP || '',
         },
         {
             key: 'serviceAccount',
             label: 'Service Account',
             defaultHidden: true,
-            render: (item) => item.spec?.serviceAccountName || 'default',
-            getValue: (item) => item.spec?.serviceAccountName || 'default',
+            render: (item: any) => item.spec?.serviceAccountName || 'default',
+            getValue: (item: any) => item.spec?.serviceAccountName || 'default',
         },
         {
             key: 'priorityClass',
             label: 'Priority Class',
             defaultHidden: true,
-            render: (item) => item.spec?.priorityClassName || <span className="text-gray-500">-</span>,
-            getValue: (item) => item.spec?.priorityClassName || '',
+            render: (item: any) => item.spec?.priorityClassName || <span className="text-gray-500">-</span>,
+            getValue: (item: any) => item.spec?.priorityClassName || '',
         },
         {
             key: 'image',
             label: 'Image',
             defaultHidden: true,
-            render: (item) => {
+            render: (item: any) => {
                 const containers = item.spec?.containers || [];
                 if (containers.length === 0) return '-';
                 if (containers.length === 1) return <span title={containers[0].image}>{containers[0].image?.split('/').pop()}</span>;
-                return <span title={containers.map(c => c.image).join('\n')}>{containers.length} images</span>;
+                return <span title={containers.map((c: any) => c.image).join('\n')}>{containers.length} images</span>;
             },
-            getValue: (item) => item.spec?.containers?.[0]?.image || '',
+            getValue: (item: any) => item.spec?.containers?.[0]?.image || '',
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <PodActionsMenu
                     pod={item}
                     isOpen={activeMenuId === `pod-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `pod-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `pod-${item.metadata.uid}`, buttonElement)}
                     onLogs={() => {
                         const containers = [
-                            ...(item.spec?.initContainers || []).map(c => c.name),
-                            ...(item.spec?.containers || []).map(c => c.name)
+                            ...(item.spec?.initContainers || []).map((c: any) => c.name),
+                            ...(item.spec?.containers || []).map((c: any) => c.name)
                         ];
 
                         const controller = getPodController(item);
                         let siblingPods = [];
                         if (controller) {
                             siblingPods = pods
-                                .filter(p => {
+                                .filter((p: any) => {
                                     const c = getPodController(p);
                                     return c && c.uid === controller.uid;
                                 })
-                                .map(p => p.metadata.name);
+                                .map((p: any) => p.metadata.name);
                         } else {
                             siblingPods = [item.metadata.name];
                         }
@@ -474,7 +475,7 @@ export default function PodList({ isVisible }) {
                         <div className="px-4 py-2 text-sm font-medium text-gray-300 border-b border-border">
                             Select port to forward
                         </div>
-                        {portSelectMenu.ports.map((port, idx) => (
+                        {portSelectMenu.ports.map((port: any, idx: number) => (
                             <button
                                 key={idx}
                                 onClick={() => {

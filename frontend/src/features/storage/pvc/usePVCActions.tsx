@@ -7,7 +7,7 @@ export interface PVCActionsReturn extends BaseResourceActionsReturn<K8sPersisten
     handleDelete: (pvc: K8sPersistentVolumeClaim) => void;
 }
 
-export const usePVCActions = (): PVCActionsReturn => {
+export const usePVCActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -20,7 +20,8 @@ export const usePVCActions = (): PVCActionsReturn => {
         detailsPropName: 'pvc',
     });
 
-    const handleDelete = createDeleteHandler(async (pvc: K8sPersistentVolumeClaim): Promise<void> => {
+    const handleDelete = createDeleteHandler(
+        async (pvc: any): Promise<void> => {
         await DeletePVC(pvc.metadata.namespace, pvc.metadata.name);
     });
 

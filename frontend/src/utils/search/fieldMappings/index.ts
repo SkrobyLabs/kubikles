@@ -75,8 +75,8 @@ const registry = {
  * @param {string} resourceType - The resource type (e.g., 'pods')
  * @returns {object} Field mappings object
  */
-export function getFieldsForResource(resourceType) {
-    return registry[resourceType] || commonFields;
+export function getFieldsForResource(resourceType: string): Record<string, any> {
+    return (registry as Record<string, any>)[resourceType] || commonFields;
 }
 
 /**
@@ -86,7 +86,7 @@ export function getFieldsForResource(resourceType) {
  * @param {string} fieldName - The field name or alias to look up
  * @returns {object|null} Field definition or null if not found
  */
-export function getFieldByName(resourceType, fieldName) {
+export function getFieldByName(resourceType: string, fieldName: string): any {
     const fields = getFieldsForResource(resourceType);
     const normalizedName = fieldName.toLowerCase();
 
@@ -96,7 +96,7 @@ export function getFieldByName(resourceType, fieldName) {
     }
 
     // Alias match
-    for (const [key, field] of Object.entries(fields)) {
+    for (const [key, field] of Object.entries(fields) as [string, any][]) {
         if (field.aliases && field.aliases.includes(normalizedName)) {
             return field;
         }
@@ -112,11 +112,11 @@ export function getFieldByName(resourceType, fieldName) {
  * @param {string} resourceType - The resource type
  * @returns {string[]} Array of field names and aliases
  */
-export function getAvailableFieldNames(resourceType) {
+export function getAvailableFieldNames(resourceType: string): string[] {
     const fields = getFieldsForResource(resourceType);
-    const names = [];
+    const names: string[] = [];
 
-    for (const [key, field] of Object.entries(fields)) {
+    for (const [key, field] of Object.entries(fields) as [string, any][]) {
         names.push(key);
         if (field.aliases) {
             names.push(...field.aliases);
@@ -132,10 +132,10 @@ export function getAvailableFieldNames(resourceType) {
  * @param {string} resourceType - The resource type
  * @returns {Array<{name: string, aliases: string[]}>}
  */
-export function getFieldsMetadata(resourceType) {
+export function getFieldsMetadata(resourceType: string): Array<{name: string, aliases: string[]}> {
     const fields = getFieldsForResource(resourceType);
 
-    return Object.entries(fields).map(([name, field]) => ({
+    return (Object.entries(fields) as [string, any][]).map(([name, field]) => ({
         name,
         aliases: field.aliases || []
     }));

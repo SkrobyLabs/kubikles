@@ -12,10 +12,10 @@ import { DeletePDB, GetPDBYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function PDBList({ isVisible }) {
+export default function PDBList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { pdbs, loading } = usePDBs(currentContext, selectedNamespaces, isVisible);
+    const { pdbs, loading } = usePDBs(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = usePDBActions();
     const selection = useSelection();
 
@@ -35,38 +35,38 @@ export default function PDBList({ isVisible }) {
 
     });
 
-    const getMinAvailable = (pdb) => {
+    const getMinAvailable = (pdb: any) => {
         return pdb.spec?.minAvailable ?? '-';
     };
 
-    const getMaxUnavailable = (pdb) => {
+    const getMaxUnavailable = (pdb: any) => {
         return pdb.spec?.maxUnavailable ?? '-';
     };
 
-    const getAllowedDisruptions = (pdb) => {
+    const getAllowedDisruptions = (pdb: any) => {
         return pdb.status?.disruptionsAllowed ?? '-';
     };
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
-        { key: 'minAvailable', label: 'Min Available', render: (item) => getMinAvailable(item), getValue: (item) => getMinAvailable(item) },
-        { key: 'maxUnavailable', label: 'Max Unavailable', render: (item) => getMaxUnavailable(item), getValue: (item) => getMaxUnavailable(item) },
-        { key: 'allowed', label: 'Allowed Disruptions', render: (item) => getAllowedDisruptions(item), getValue: (item) => getAllowedDisruptions(item) },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
+        { key: 'minAvailable', label: 'Min Available', render: (item: any) => getMinAvailable(item), getValue: (item: any) => getMinAvailable(item) },
+        { key: 'maxUnavailable', label: 'Max Unavailable', render: (item: any) => getMaxUnavailable(item), getValue: (item: any) => getMaxUnavailable(item) },
+        { key: 'allowed', label: 'Allowed Disruptions', render: (item: any) => getAllowedDisruptions(item), getValue: (item: any) => getAllowedDisruptions(item) },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <PDBActionsMenu
                     pdb={item}
                     isOpen={activeMenuId === `pdb-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `pdb-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `pdb-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(item) => openBulkDelete([item])}
+                    onDelete={(item: any) => openBulkDelete([item])}
                 />
             ),
             getValue: () => '',
@@ -98,7 +98,7 @@ export default function PDBList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

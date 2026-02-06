@@ -37,9 +37,9 @@ export default function AIPanel() {
     const [input, setInput] = useState('');
     const [copiedAll, setCopiedAll] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
-    const messagesEndRef = useRef(null);
-    const textareaRef = useRef(null);
-    const historyRef = useRef(null);
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const historyRef = useRef<HTMLDivElement | null>(null);
 
     const defaultWidth = getConfig('ai.panelWidth') || 384;
     const [width, setWidth] = useState(() => {
@@ -79,13 +79,13 @@ export default function AIPanel() {
     }, [width]);
 
     // Drag resize handlers
-    const handleDragStart = useCallback((e) => {
+    const handleDragStart = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
         isDragging.current = true;
         document.body.style.userSelect = 'none';
         document.body.style.cursor = 'col-resize';
 
-        const onMouseMove = (e) => {
+        const onMouseMove = (e: MouseEvent) => {
             if (!isDragging.current) return;
             const newWidth = window.innerWidth - e.clientX;
             setWidth(Math.min(Math.max(newWidth, MIN_WIDTH), MAX_WIDTH));
@@ -116,8 +116,8 @@ export default function AIPanel() {
     // Close history dropdown on click outside
     useEffect(() => {
         if (!showHistory) return;
-        const handleClickOutside = (e) => {
-            if (historyRef.current && !historyRef.current.contains(e.target)) {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (historyRef.current && !historyRef.current.contains(e.target as Node)) {
                 setShowHistory(false);
             }
         };
@@ -135,7 +135,7 @@ export default function AIPanel() {
         }
     }, [input, isStreaming, sendMessage]);
 
-    const handleKeyDown = useCallback((e) => {
+    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSend();
@@ -143,7 +143,7 @@ export default function AIPanel() {
     }, [handleSend]);
 
     // Auto-resize textarea
-    const handleInput = useCallback((e) => {
+    const handleInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setInput(e.target.value);
         const el = e.target;
         el.style.height = 'auto';
@@ -152,7 +152,7 @@ export default function AIPanel() {
 
     const handleCopyConversation = useCallback(() => {
         if (messages.length === 0) return;
-        const text = messages.map(m => {
+        const text = messages.map((m: any) => {
             if (m.role === 'thought') return `_${m.content}_`;
             const label = m.role === 'user' ? '## Me' : '## AI';
             return `${label}\n\n${m.content}`;
@@ -164,8 +164,8 @@ export default function AIPanel() {
     }, [messages]);
 
     // Build context status line
-    const activeTab = bottomTabs.find(t => t.id === activeTabId);
-    const meta = activeTab?.resourceMeta;
+    const activeTab = bottomTabs.find((t: any) => t.id === activeTabId);
+    const meta = (activeTab as any)?.resourceMeta;
     const contextLine = [
         currentContext || 'no context',
         meta?.namespace || (selectedNamespaces?.length > 0 ? selectedNamespaces.join(', ') : null),
@@ -260,7 +260,7 @@ export default function AIPanel() {
                                             No conversation history
                                         </div>
                                     ) : (
-                                        conversationHistory.map(conv => (
+                                        conversationHistory.map((conv: any) => (
                                             <div
                                                 key={conv.id}
                                                 className={`group flex items-center gap-2 px-3 py-2 hover:bg-white/5 cursor-pointer ${conv.id === conversationId ? 'bg-white/10' : ''}`}
@@ -317,7 +317,7 @@ export default function AIPanel() {
                 {messages.map((msg) => (
                     <MessageBubble key={msg.id} msg={msg} />
                 ))}
-                {isStreaming && !messages.some(m => m.streaming) && <ThinkingBubble />}
+                {isStreaming && !messages.some((m: any) => m.streaming) && <ThinkingBubble />}
                 <div ref={messagesEndRef} />
             </div>
 

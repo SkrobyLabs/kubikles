@@ -9,13 +9,13 @@ export const sourceOptions = [
 ];
 
 // Simple dropdown component matching SearchSelect styling
-const SourceSelect = ({ value, onChange, options }) => {
+const SourceSelect = ({ value, onChange, options }: { value: any; onChange: any; options: any[] }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const wrapperRef = useRef(null);
+    const wrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        function handleClickOutside(event) {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        function handleClickOutside(event: MouseEvent) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         }
@@ -23,9 +23,9 @@ const SourceSelect = ({ value, onChange, options }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const selectedOption = options.find(opt => opt.value === value) || options[0];
+    const selectedOption = options.find((opt: any) => opt.value === value) || options[0];
 
-    const handleSelect = (optValue) => {
+    const handleSelect = (optValue: any) => {
         onChange(optValue);
         setIsOpen(false);
     };
@@ -42,7 +42,7 @@ const SourceSelect = ({ value, onChange, options }) => {
 
             {isOpen && (
                 <div className="absolute z-50 w-full mt-1 bg-surface border border-border rounded shadow-lg">
-                    {options.map((option) => (
+                    {options.map((option: any) => (
                         <div
                             key={option.value}
                             className={`px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 ${

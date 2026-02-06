@@ -84,7 +84,7 @@ export default function ScaleModal({
                         break; // Use first matching PDB
                     }
                 }
-            } catch (err) {
+            } catch (err: any) {
                 // Silently fail - PDB check is optional
                 console.error('Failed to check PDBs:', err);
             }
@@ -134,7 +134,7 @@ export default function ScaleModal({
                                 <input
                                     type="number"
                                     value={form.values.replicas}
-                                    onChange={(e) => form.setValue('replicas', Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+                                    onChange={(e: any) => form.setValue('replicas', Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
                                     onBlur={() => form.setFieldTouched('replicas')}
                                     disabled={form.isSubmitting}
                                     className="flex-1 text-center text-2xl font-bold bg-background-dark border border-border rounded px-4 py-3 text-gray-200 focus:border-primary outline-none disabled:opacity-50"

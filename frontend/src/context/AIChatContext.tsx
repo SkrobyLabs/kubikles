@@ -141,14 +141,14 @@ function loadConversationHistory(): ConversationHistoryItem[] {
 function saveConversationHistory(conversations: ConversationHistoryItem[]): void {
     try {
         localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(conversations));
-    } catch (e) {
+    } catch (e: any) {
         console.error('Failed to save conversation history:', e);
     }
 }
 
 // Generate a title from the first user message
 function generateTitle(messages: ChatMessage[]): string {
-    const firstUserMsg = messages.find(m => m.role === 'user');
+    const firstUserMsg = messages.find((m: any) => m.role === 'user');
     if (!firstUserMsg) return 'New conversation';
     const text = firstUserMsg.content;
     return text.length > 50 ? text.slice(0, 50) + '…' : text;
@@ -186,7 +186,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
     const streamingMessageRef = useRef<string | null>(null);
     const lastChunkTimeRef = useRef<number | null>(null);
     const streamStartTimeRef = useRef<number | null>(null);
-    const autoExecutedNavRef = useRef<Set<string>>(new Set());
+    const autoExecutedNavRef = useRef<Set<string>>(new Set<any>());
     const generationRef = useRef<number>(0);
     const currentUsageRef = useRef<TokenUsage | null>(null); // track latest token usage
     const sessionIdRef = useRef<string | null>(sessionId);
@@ -212,7 +212,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
             const clientId = getClientId() || '';
             StartAISession(clientId).then((id: string) => {
                 if (id) setSessionId(id);
-            }).catch(err => console.error('Failed to start AI session:', err));
+            }).catch((err: any) => console.error('Failed to start AI session:', err));
         }
     }, [isOpen, sessionId, providerAvailable]);
 
@@ -229,7 +229,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
                     if (streamingMessageRef.current) {
                         const msgId = streamingMessageRef.current;
                         streamingMessageRef.current = null;
-                        return prev.map(m =>
+                        return prev.map((m: any) =>
                             m.id === msgId
                                 ? { ...m, content: m.content + '\n\n[Error: ' + event.error + ']', streaming: false, isError: true }
                                 : m
@@ -255,6 +255,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
                 const now = Date.now();
                 const lastTime = lastChunkTimeRef.current;
                 lastChunkTimeRef.current = now;
+                const chunk: string = event.chunk;
 
                 // Track usage for attaching to final message
                 if (event.usage) {
@@ -271,23 +272,23 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
                             const newMsgId = `msg-${++messageCounter}`;
                             streamingMessageRef.current = newMsgId;
                             return [
-                                ...prev.map(m => m.id === oldMsgId ? { ...m, streaming: false } : m),
-                                { id: thoughtId, role: 'thought', content: `Thought for ${pauseSec}s`, streaming: false, isError: false },
-                                { id: newMsgId, role: 'assistant', content: event.chunk, streaming: true, isError: false },
+                                ...prev.map((m: any) => m.id === oldMsgId ? { ...m, streaming: false } : m),
+                                { id: thoughtId, role: 'thought' as MessageRole, content: `Thought for ${pauseSec}s`, streaming: false, isError: false },
+                                { id: newMsgId, role: 'assistant' as MessageRole, content: chunk, streaming: true, isError: false },
                             ];
                         }
                         // Append to existing streaming message
                         const msgId = streamingMessageRef.current;
-                        return prev.map(m =>
+                        return prev.map((m: any) =>
                             m.id === msgId
-                                ? { ...m, content: m.content + event.chunk }
+                                ? { ...m, content: m.content + chunk }
                                 : m
                         );
                     }
                     // Create new assistant message
                     const newId = `msg-${++messageCounter}`;
                     streamingMessageRef.current = newId;
-                    const newMsg = { id: newId, role: 'assistant', content: event.chunk, streaming: true, isError: false };
+                    const newMsg: ChatMessage = { id: newId, role: 'assistant', content: chunk, streaming: true, isError: false };
 
                     // Record initial thinking time if significant
                     if (streamStartTimeRef.current && (now - streamStartTimeRef.current) > THINKING_THRESHOLD) {
@@ -295,7 +296,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
                         const thoughtId = `msg-${++messageCounter}`;
                         streamStartTimeRef.current = null;
                         return [...prev,
-                            { id: thoughtId, role: 'thought', content: `Thought for ${pauseSec}s`, streaming: false, isError: false },
+                            { id: thoughtId, role: 'thought' as MessageRole, content: `Thought for ${pauseSec}s`, streaming: false, isError: false },
                             newMsg,
                         ];
                     }
@@ -312,8 +313,8 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
                 // Finalize streaming message and attach final usage
                 if (streamingMessageRef.current) {
                     const msgId = streamingMessageRef.current;
-                    const finalUsage = event.usage || currentUsageRef.current;
-                    setMessages(prev => prev.map(m =>
+                    const finalUsage = event.usage || currentUsageRef.current || undefined;
+                    setMessages(prev => prev.map((m: any) =>
                         m.id === msgId ? { ...m, streaming: false, usage: finalUsage } : m
                     ));
                 }
@@ -339,7 +340,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
     // Auto-save current conversation to history when messages change
     useEffect(() => {
         // Only save if there are user messages (not just empty or only thought bubbles)
-        const hasUserMessages = messages.some(m => m.role === 'user');
+        const hasUserMessages = messages.some((m: any) => m.role === 'user');
         if (!hasUserMessages) return;
 
         // Don't save while streaming
@@ -354,12 +355,12 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
             const updatedConv: ConversationHistoryItem = {
                 id,
                 title: generateTitle(messages),
-                messages: messages.filter(m => m.role !== 'thought'), // Don't persist thought bubbles
+                messages: messages.filter((m: any) => m.role !== 'thought'), // Don't persist thought bubbles
                 updatedAt: Date.now()
             };
 
             // Update existing or add new
-            const existingIdx = prev.findIndex(c => c.id === id);
+            const existingIdx = prev.findIndex((c: any) => c.id === id);
             let updated: ConversationHistoryItem[];
             if (existingIdx >= 0) {
                 updated = [...prev];
@@ -412,9 +413,9 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
         // Add safety clause when dangerous CLI tools are enabled
         const dangerousTools = ['Bash', 'Write', 'Edit'];
         const allowedTools = (getConfig('ai.allowedTools') as string[] | undefined) || [];
-        const hasDangerousTools = dangerousTools.some(t => allowedTools.includes(t));
+        const hasDangerousTools = dangerousTools.some((t: any) => allowedTools.includes(t));
         if (hasDangerousTools) {
-            const enabled = dangerousTools.filter(t => allowedTools.includes(t)).join(', ');
+            const enabled = dangerousTools.filter((t: any) => allowedTools.includes(t)).join(', ');
             parts.push(
                 `SAFETY: The following powerful tools are enabled: ${enabled}. ` +
                 'Before executing any file modification or shell command, describe exactly what you intend to do and wait for the user to confirm. ' +
@@ -437,7 +438,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
             lines.push(`Resource list view: ${activeView}`);
         }
         // Describe the active bottom panel tab using structured resourceMeta when available
-        const activeTab = bottomTabs.find(t => t.id === activeTabId);
+        const activeTab = bottomTabs.find((t: any) => t.id === activeTabId);
         let tabAction = null;
         if (activeTab) {
             const meta = activeTab.resourceMeta;
@@ -445,14 +446,14 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
             tabAction = parsed?.action || null;
             if (meta) {
                 // Build a rich context line from structured resource metadata
-                const actionMap = { details: 'viewing details of', yaml: 'editing YAML of', logs: 'viewing logs of', deps: 'viewing dependencies of', terminal: 'shell into', files: 'browsing files of' };
+                const actionMap: Record<string, string> = { details: 'viewing details of', yaml: 'editing YAML of', logs: 'viewing logs of', deps: 'viewing dependencies of', terminal: 'shell into', files: 'browsing files of' };
                 const action = parsed?.action || activeTab.actionLabel?.toLowerCase() || 'viewing';
                 const actionDesc = actionMap[action] || `viewing ${action} of`;
                 const nsPart = meta.namespace ? ` in namespace "${meta.namespace}"` : ' (cluster-scoped)';
                 lines.push(`Open tab: ${actionDesc} ${meta.kind} "${meta.name}"${nsPart}`);
             } else if (parsed) {
-                const actionMap = { details: 'viewing details of', yaml: 'editing YAML of', logs: 'viewing logs of', deps: 'viewing dependencies of' };
-                const actionDesc = actionMap[parsed.action] || `viewing ${parsed.action} of`;
+                const actionMap2: Record<string, string> = { details: 'viewing details of', yaml: 'editing YAML of', logs: 'viewing logs of', deps: 'viewing dependencies of' };
+                const actionDesc = actionMap2[parsed.action] || `viewing ${parsed.action} of`;
                 lines.push(`Open tab: ${actionDesc} ${parsed.resourceType} "${activeTab.title}"`);
             } else {
                 lines.push(`Open tab: "${activeTab.title}"`);
@@ -460,14 +461,14 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
         }
 
         // Compute relevant tools from view + tab
-        const toolSet = new Set();
+        const toolSet = new Set<any>();
         const viewKey = activeView?.startsWith('cr:') ? 'cr:' : activeView;
         const viewTools = viewKey === 'cr:'
             ? ['list_custom_resources', 'get_custom_resource_yaml']
             : VIEW_TOOL_MAP[viewKey];
-        if (viewTools) viewTools.forEach(t => toolSet.add(t));
+        if (viewTools) viewTools.forEach((t: any) => toolSet.add(t));
         if (tabAction && TAB_ACTION_TOOL_MAP[tabAction]) {
-            TAB_ACTION_TOOL_MAP[tabAction].forEach(t => toolSet.add(t));
+            TAB_ACTION_TOOL_MAP[tabAction].forEach((t: any) => toolSet.add(t));
         }
         // Kind-specific metrics tools for detail tabs
         if (activeTab?.resourceMeta?.kind) {
@@ -518,7 +519,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
         // Short names without __ get the mcp__kubikles__ prefix
         const cliBuiltinTools = new Set(['Bash', 'WebSearch', 'Read', 'Write', 'Edit', 'Glob', 'Grep']);
         const allowedTools = ((getConfig('ai.allowedTools') as string[] | undefined) || [])
-            .map(t => t.includes('__') || cliBuiltinTools.has(t) ? t : `mcp__kubikles__${t}`);
+            .map((t: any) => t.includes('__') || cliBuiltinTools.has(t) ? t : `mcp__kubikles__${t}`);
 
         const timeoutSeconds = ((getConfig('ai.requestTimeout') as number | undefined) || 10) * 60;
 
@@ -531,7 +532,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
                 }
                 // If not successful, error event will be emitted by backend
             })
-            .catch(err => {
+            .catch((err: any) => {
                 console.error('Failed to send AI message:', err);
             });
     }, [sessionId, isStreaming, buildSystemPrompt, buildMessageContext, getConfig]);
@@ -542,7 +543,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
             setIsStreaming(false);
             if (streamingMessageRef.current) {
                 const msgId = streamingMessageRef.current;
-                setMessages(prev => prev.map(m =>
+                setMessages(prev => prev.map((m: any) =>
                     m.id === msgId ? { ...m, streaming: false, content: m.content + '\n\n[Cancelled]' } : m
                 ));
                 streamingMessageRef.current = null;
@@ -579,11 +580,11 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
 
     // Load a conversation from history
     const loadConversation = useCallback((convId: string) => {
-        const conv = conversationHistory.find(c => c.id === convId);
+        const conv = conversationHistory.find((c: any) => c.id === convId);
         if (!conv) return;
 
         // Reset message counter to avoid ID collisions
-        const maxMsgId = conv.messages.reduce((max, m) => {
+        const maxMsgId = conv.messages.reduce((max: any, m: any) => {
             const num = parseInt(m.id?.replace('msg-', '') || '0', 10);
             return num > max ? num : max;
         }, 0);
@@ -617,7 +618,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
     // Delete a conversation from history
     const deleteConversation = useCallback((convId: string) => {
         setConversationHistory(prev => {
-            const updated = prev.filter(c => c.id !== convId);
+            const updated = prev.filter((c: any) => c.id !== convId);
             saveConversationHistory(updated);
             return updated;
         });

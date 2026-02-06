@@ -21,12 +21,12 @@ export default function CreateResourceModal({
     onSuccess,
     title = 'Create Resource',
     template = '',
-}) {
+}: any) {
     const { addNotification } = useNotification();
     const [content, setContent] = useState(template);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<any>(null);
     const [creating, setCreating] = useState(false);
-    const editorRef = useRef(null);
+    const editorRef = useRef<any>(null);
 
     // Reset state when modal opens with new template
     React.useEffect(() => {
@@ -37,7 +37,7 @@ export default function CreateResourceModal({
         }
     }, [isOpen, template]);
 
-    const handleEditorDidMount = useCallback((editor, monaco) => {
+    const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
         editorRef.current = editor;
 
         editor.updateOptions({
@@ -74,7 +74,7 @@ export default function CreateResourceModal({
             });
             onSuccess?.();
             onClose();
-        } catch (err) {
+        } catch (err: any) {
             const errMessage = err?.message || String(err);
             setError(errMessage);
         } finally {
@@ -82,13 +82,13 @@ export default function CreateResourceModal({
         }
     };
 
-    const handleBackdropClick = useCallback((e) => {
+    const handleBackdropClick = useCallback((e: any) => {
         if (e.target === e.currentTarget && !creating) {
             onClose();
         }
     }, [creating, onClose]);
 
-    const handleKeyDown = useCallback((e) => {
+    const handleKeyDown = useCallback((e: any) => {
         if (e.key === 'Escape' && !creating) {
             onClose();
         }
@@ -141,7 +141,7 @@ export default function CreateResourceModal({
                         height="100%"
                         defaultLanguage="yaml"
                         value={content}
-                        onChange={(value) => setContent(value || '')}
+                        onChange={(value: any) => setContent(value || '')}
                         onMount={handleEditorDidMount}
                         theme="vs-dark"
                         options={{

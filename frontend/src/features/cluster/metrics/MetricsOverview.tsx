@@ -18,7 +18,7 @@ import { formatBytes, formatCpu } from '~/utils/formatting';
 const OVERCOMMIT_TOOLTIP = "Over-committed: Some containers are using more CPU/memory than their requests. This works because other pods aren't using their full reservations. Under contention, pods would be throttled to their guaranteed amounts.";
 
 // Percentage display with tooltip for over-committed values (>100%)
-const PercentValue = ({ value, className = "" }) => {
+const PercentValue = ({ value, className = "" }: any) => {
     const isOverCommitted = value > 100;
     return (
         <span
@@ -31,7 +31,7 @@ const PercentValue = ({ value, className = "" }) => {
 };
 
 // Metric row in the summary table
-const MetricRow = ({ label, usage, reserved, committed, capacity, formatFn, usagePercent, reservedPercent, committedPercent }) => (
+const MetricRow = ({ label, usage, reserved, committed, capacity, formatFn, usagePercent, reservedPercent, committedPercent }: any) => (
     <tr className="border-b border-border/50 last:border-0">
         <td className="py-3 text-sm font-medium text-text">{label}</td>
         <td className="py-3 text-sm text-right text-blue-400">{formatFn(usage)}</td>
@@ -51,7 +51,7 @@ const MetricRow = ({ label, usage, reserved, committed, capacity, formatFn, usag
 );
 
 // Cluster summary card with comprehensive stats
-const ClusterSummaryCard = ({ clusterTotals, loading }) => {
+const ClusterSummaryCard = ({ clusterTotals, loading }: any) => {
     return (
         <div className="bg-surface border border-border rounded-lg p-6">
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
@@ -147,7 +147,7 @@ const ClusterSummaryCard = ({ clusterTotals, loading }) => {
                                     label="Pods"
                                     usage={clusterTotals.podCount}
                                     capacity={clusterTotals.podCapacity}
-                                    formatFn={(v) => v}
+                                    formatFn={(v: any) => v}
                                     usagePercent={clusterTotals.podPercent}
                                 />
                             </tbody>
@@ -177,21 +177,21 @@ const ClusterSummaryCard = ({ clusterTotals, loading }) => {
 
 // Column definitions for nodes table
 const nodeColumns = [
-    { key: 'name', label: 'Node', align: 'left', getValue: (n) => n.name },
-    { key: 'cpuPercent', label: 'CPU Used', align: 'right', color: 'text-blue-400', getValue: (n) => n.cpuPercent },
-    { key: 'cpuReservedPercent', label: 'CPU Rsv', align: 'right', color: 'text-yellow-400', getValue: (n) => n.cpuReservedPercent },
-    { key: 'cpuCommittedPercent', label: 'CPU Comm', align: 'right', color: 'text-red-400', getValue: (n) => n.cpuCommittedPercent },
-    { key: 'memPercent', label: 'Mem Used', align: 'right', color: 'text-blue-400', getValue: (n) => n.memPercent },
-    { key: 'memReservedPercent', label: 'Mem Rsv', align: 'right', color: 'text-yellow-400', getValue: (n) => n.memReservedPercent },
-    { key: 'memCommittedPercent', label: 'Mem Comm', align: 'right', color: 'text-red-400', getValue: (n) => n.memCommittedPercent },
-    { key: 'podPercent', label: 'Pods', align: 'right', color: 'text-gray-300', getValue: (n) => n.podPercent },
+    { key: 'name', label: 'Node', align: 'left', getValue: (n: any) => n.name },
+    { key: 'cpuPercent', label: 'CPU Used', align: 'right', color: 'text-blue-400', getValue: (n: any) => n.cpuPercent },
+    { key: 'cpuReservedPercent', label: 'CPU Rsv', align: 'right', color: 'text-yellow-400', getValue: (n: any) => n.cpuReservedPercent },
+    { key: 'cpuCommittedPercent', label: 'CPU Comm', align: 'right', color: 'text-red-400', getValue: (n: any) => n.cpuCommittedPercent },
+    { key: 'memPercent', label: 'Mem Used', align: 'right', color: 'text-blue-400', getValue: (n: any) => n.memPercent },
+    { key: 'memReservedPercent', label: 'Mem Rsv', align: 'right', color: 'text-yellow-400', getValue: (n: any) => n.memReservedPercent },
+    { key: 'memCommittedPercent', label: 'Mem Comm', align: 'right', color: 'text-red-400', getValue: (n: any) => n.memCommittedPercent },
+    { key: 'podPercent', label: 'Pods', align: 'right', color: 'text-gray-300', getValue: (n: any) => n.podPercent },
 ];
 
 // Nodes table
-const NodesTable = ({ nodes, onNodeClick, onViewAll }) => {
+const NodesTable = ({ nodes, onNodeClick, onViewAll }: any) => {
     const [sortConfig, setSortConfig] = useState({ key: 'cpuCommittedPercent', direction: 'desc' });
 
-    const handleSort = (key) => {
+    const handleSort = (key: any) => {
         setSortConfig(prev => ({
             key,
             direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
@@ -199,7 +199,7 @@ const NodesTable = ({ nodes, onNodeClick, onViewAll }) => {
     };
 
     const sortedNodes = useMemo(() => {
-        const column = nodeColumns.find(c => c.key === sortConfig.key);
+        const column = nodeColumns.find((c: any) => c.key === sortConfig.key);
         if (!column) return nodes;
 
         return [...nodes].sort((a, b) => {
@@ -242,7 +242,7 @@ const NodesTable = ({ nodes, onNodeClick, onViewAll }) => {
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="text-xs text-gray-500 uppercase tracking-wider">
-                                {nodeColumns.map(col => (
+                                {nodeColumns.map((col: any) => (
                                     <th
                                         key={col.key}
                                         className={`pb-2 font-medium cursor-pointer hover:text-gray-300 transition-colors ${col.align === 'right' ? 'text-right' : 'text-left'}`}
@@ -262,13 +262,13 @@ const NodesTable = ({ nodes, onNodeClick, onViewAll }) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {sortedNodes.map((node) => (
+                            {sortedNodes.map((node: any) => (
                                 <tr
                                     key={node.name}
                                     onClick={() => onNodeClick(node.name)}
                                     className="border-t border-border/50 hover:bg-white/5 cursor-pointer transition-colors"
                                 >
-                                    {nodeColumns.map(col => {
+                                    {nodeColumns.map((col: any) => {
                                         const value = col.getValue(node);
                                         const isCommitted = col.key === 'cpuCommittedPercent' || col.key === 'memCommittedPercent';
                                         return (
@@ -320,7 +320,7 @@ const MetricsUnavailableMessage = () => (
     </div>
 );
 
-export default function MetricsOverview({ isVisible }) {
+export default function MetricsOverview({ isVisible }: { isVisible: boolean }) {
     const { navigateWithSearch, setActiveView } = useUI();
     const { getConfig, setConfig } = useConfig();
     const {
@@ -336,12 +336,12 @@ export default function MetricsOverview({ isVisible }) {
     const preferredSource = getConfig('metrics.preferredSource') ?? 'auto';
 
     // Handle source change - useEffect in useNodeMetrics will auto-refresh when config changes
-    const handleSourceChange = (newValue) => {
+    const handleSourceChange = (newValue: any) => {
         setConfig('metrics.preferredSource', newValue);
     };
 
     // Navigation handlers
-    const handleNodeClick = (nodeName) => {
+    const handleNodeClick = (nodeName: any) => {
         navigateWithSearch('nodes', `name:"${nodeName}"`);
     };
 

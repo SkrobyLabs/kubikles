@@ -9,6 +9,9 @@ interface BottomTab {
     content: React.ReactNode;
     pinned?: boolean;
     context?: string | null; // null = context-independent, undefined = use current context, string = specific context
+    keepAlive?: boolean;
+    actionLabel?: string;
+    resourceMeta?: { kind: string; name: string; namespace?: string };
 }
 
 // Modal configuration
@@ -17,6 +20,9 @@ interface ModalConfig {
     content: React.ReactNode;
     onClose?: () => void;
     width?: string | number;
+    confirmText?: string;
+    confirmStyle?: string;
+    onConfirm?: () => void | Promise<void>;
 }
 
 // Resource identifier for comparison source
@@ -213,14 +219,14 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
         // Find visible tabs for the new context
         // A tab is visible if: it's not stale (belongs to current context or is context-independent) OR it's pinned
-        const visibleTabs = bottomTabs.filter(tab => {
+        const visibleTabs = bottomTabs.filter((tab: any) => {
             const isStale = tab.context && tab.context !== currentContext;
             return !isStale || tab.pinned;
         });
 
         // Try to restore last active tab for this context
         const savedTabId = activeTabByContextRef.current[currentContext];
-        const savedTabStillVisible = savedTabId && visibleTabs.some(t => t.id === savedTabId);
+        const savedTabStillVisible = savedTabId && visibleTabs.some((t: any) => t.id === savedTabId);
 
         if (savedTabStillVisible) {
             // Restore the last active tab for this context
@@ -252,7 +258,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     // Tab Management (all callbacks memoized to prevent re-renders)
     const openTab = useCallback((tab: BottomTab): void => {
         setBottomTabs(prev => {
-            const existingIndex = prev.findIndex(t => t.id === tab.id);
+            const existingIndex = prev.findIndex((t: any) => t.id === tab.id);
             if (existingIndex >= 0) {
                 // Update existing tab - preserve original context
                 const newTabs = [...prev];
@@ -272,19 +278,19 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     }, [currentContext]);
 
     const updateTab = useCallback((tabId: string, updates: Partial<BottomTab>): void => {
-        setBottomTabs(prev => prev.map(t =>
+        setBottomTabs(prev => prev.map((t: any) =>
             t.id === tabId ? { ...t, ...updates } : t
         ));
     }, []);
 
     const togglePinTab = useCallback((tabId: string): void => {
         setBottomTabs(prev => {
-            const newTabs = prev.map(t =>
+            const newTabs = prev.map((t: any) =>
                 t.id === tabId ? { ...t, pinned: !t.pinned } : t
             );
             // Sort: pinned tabs first, then unpinned (preserve order within each group)
-            const pinned = newTabs.filter(t => t.pinned);
-            const unpinned = newTabs.filter(t => !t.pinned);
+            const pinned = newTabs.filter((t: any) => t.pinned);
+            const unpinned = newTabs.filter((t: any) => !t.pinned);
             return [...pinned, ...unpinned];
         });
     }, []);
@@ -292,11 +298,11 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const closeTab = useCallback((tabId: string): void => {
         setBottomTabs(prev => {
             // Don't close pinned tabs
-            const tab = prev.find(t => t.id === tabId);
+            const tab = prev.find((t: any) => t.id === tabId);
             if (tab?.pinned) return prev;
 
-            const closingIndex = prev.findIndex(t => t.id === tabId);
-            const newTabs = prev.filter(t => t.id !== tabId);
+            const closingIndex = prev.findIndex((t: any) => t.id === tabId);
+            const newTabs = prev.filter((t: any) => t.id !== tabId);
 
             // Update active tab if we're closing the active one
             setActiveTabId(currentActive => {
@@ -312,23 +318,23 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     }, []);
 
     const closeOtherTabs = useCallback((tabId: string): void => {
-        setBottomTabs(prev => prev.filter(t => t.id === tabId || t.pinned));
+        setBottomTabs(prev => prev.filter((t: any) => t.id === tabId || t.pinned));
         setActiveTabId(tabId);
     }, []);
 
     const closeTabsToRight = useCallback((tabId: string): void => {
         setBottomTabs(prev => {
-            const index = prev.findIndex(t => t.id === tabId);
+            const index = prev.findIndex((t: any) => t.id === tabId);
             if (index === -1) return prev;
             // Keep tabs to the left (including current) + any pinned tabs to the right
             const leftTabs = prev.slice(0, index + 1);
-            const rightPinned = prev.slice(index + 1).filter(t => t.pinned);
+            const rightPinned = prev.slice(index + 1).filter((t: any) => t.pinned);
             return [...leftTabs, ...rightPinned];
         });
     }, []);
 
     const closeAllTabs = useCallback((): void => {
-        setBottomTabs(prev => prev.filter(t => t.pinned));
+        setBottomTabs(prev => prev.filter((t: any) => t.pinned));
         setActiveTabId(prev => prev);
     }, []);
 

@@ -22,7 +22,7 @@ export const useLocalStorage = <T,>(
     try {
       const item = window.localStorage.getItem(key);
       return item ? (JSON.parse(item) as T) : initialValue;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error reading localStorage key "${key}":`, error);
       return initialValue;
     }
@@ -43,7 +43,7 @@ export const useLocalStorage = <T,>(
         if (typeof window !== 'undefined') {
           window.localStorage.setItem(key, JSON.stringify(valueToStore));
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error setting localStorage key "${key}":`, error);
       }
     },
@@ -57,7 +57,7 @@ export const useLocalStorage = <T,>(
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(key);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error removing localStorage key "${key}":`, error);
     }
   }, [key, initialValue]);
@@ -68,7 +68,7 @@ export const useLocalStorage = <T,>(
       if (e.key === key && e.newValue !== null) {
         try {
           setStoredValue(JSON.parse(e.newValue) as T);
-        } catch (error) {
+        } catch (error: any) {
           console.error(`Error parsing storage event for key "${key}":`, error);
         }
       }

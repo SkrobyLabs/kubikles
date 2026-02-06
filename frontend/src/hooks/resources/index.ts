@@ -8,10 +8,10 @@
  *   import { usePods, useDeployments } from '~/hooks/resources';
  *
  * Namespaced hooks signature:
- *   const { pods, loading, error, setPods } = usePods(currentContext, selectedNamespaces, isVisible);
+ *   const { pods, loading, error, setPods } = usePods(currentContext, selectedNamespaces, isVisible) as any;
  *
  * Cluster-scoped hooks signature:
- *   const { nodes, loading, error, refetch } = useNodes(currentContext, isVisible);
+ *   const { nodes, loading, error, refetch } = useNodes(currentContext, isVisible) as any;
  */
 
 import { createNamespacedResourceHook, createClusterScopedResourceHook } from '../useResource';

@@ -12,10 +12,10 @@ import { DeletePriorityClass, GetPriorityClassYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function PriorityClassList({ isVisible }) {
+export default function PriorityClassList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { priorityClasses, loading } = usePriorityClasses(currentContext, isVisible);
+    const { priorityClasses, loading } = usePriorityClasses(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = usePriorityClassActions();
     const selection = useSelection();
 
@@ -36,7 +36,7 @@ export default function PriorityClassList({ isVisible }) {
 
     });
 
-    const formatValue = (value) => {
+    const formatValue = (value: any) => {
         if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
         if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
         if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
@@ -44,45 +44,45 @@ export default function PriorityClassList({ isVisible }) {
     };
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
         {
             key: 'value',
             label: 'Value',
-            render: (item) => (
+            render: (item: any) => (
                 <span className="font-mono">{formatValue(item.value)}</span>
             ),
-            getValue: (item) => item.value || 0
+            getValue: (item: any) => item.value || 0
         },
         {
             key: 'globalDefault',
             label: 'Global Default',
-            render: (item) => (
+            render: (item: any) => (
                 <span className={item.globalDefault ? 'text-green-400' : 'text-gray-500'}>
                     {item.globalDefault ? 'Yes' : 'No'}
                 </span>
             ),
-            getValue: (item) => item.globalDefault ? 'Yes' : 'No'
+            getValue: (item: any) => item.globalDefault ? 'Yes' : 'No'
         },
         {
             key: 'preemption',
             label: 'Preemption',
-            render: (item) => item.preemptionPolicy || 'PreemptLowerPriority',
-            getValue: (item) => item.preemptionPolicy || 'PreemptLowerPriority'
+            render: (item: any) => item.preemptionPolicy || 'PreemptLowerPriority',
+            getValue: (item: any) => item.preemptionPolicy || 'PreemptLowerPriority'
         },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <PriorityClassActionsMenu
                     priorityClass={item}
                     isOpen={activeMenuId === `priorityclass-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `priorityclass-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `priorityclass-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(priorityClass) => openBulkDelete([priorityClass])}
+                    onDelete={(priorityClass: any) => openBulkDelete([priorityClass])}
                 />
             ),
             getValue: () => '',
@@ -110,7 +110,7 @@ export default function PriorityClassList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

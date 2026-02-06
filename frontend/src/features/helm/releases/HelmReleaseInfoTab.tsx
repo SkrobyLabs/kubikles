@@ -3,7 +3,7 @@ import { CheckIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, Arrow
 import { formatAge } from '~/utils/formatting';
 
 // Copyable label component
-const CopyableLabel = ({ value, copyValue, className = '' }) => {
+const CopyableLabel = ({ value, copyValue, className = '' }: any) => {
     const [copied, setCopied] = useState(false);
 
     const textToCopy = copyValue || value;
@@ -14,7 +14,7 @@ const CopyableLabel = ({ value, copyValue, className = '' }) => {
             await navigator.clipboard.writeText(textToCopy);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to copy:', err);
         }
     };
@@ -42,7 +42,7 @@ const CopyableLabel = ({ value, copyValue, className = '' }) => {
 };
 
 // Detail row component
-const DetailRow = ({ label, value, children }) => (
+const DetailRow = ({ label, value, children }: any) => (
     <div className="flex py-2 border-b border-border/50">
         <div className="w-32 text-xs font-medium text-gray-500 uppercase tracking-wider shrink-0">
             {label}
@@ -54,7 +54,7 @@ const DetailRow = ({ label, value, children }) => (
 );
 
 // Status icon helper
-const getStatusIcon = (status) => {
+const getStatusIcon = (status: any) => {
     const statusLower = status?.toLowerCase() || '';
     if (statusLower === 'deployed') {
         return <CheckCircleIcon className="h-4 w-4 text-green-400" />;
@@ -68,7 +68,7 @@ const getStatusIcon = (status) => {
     return null;
 };
 
-const getStatusClass = (status) => {
+const getStatusClass = (status: any) => {
     const statusLower = status?.toLowerCase() || '';
     if (statusLower === 'deployed') return 'text-green-400';
     if (statusLower === 'failed') return 'text-red-400';
@@ -76,8 +76,8 @@ const getStatusClass = (status) => {
     return 'text-gray-400';
 };
 
-export default function HelmReleaseInfoTab({ release }) {
-    const formatDate = (timestamp) => {
+export default function HelmReleaseInfoTab({ release }: any) {
+    const formatDate = (timestamp: any) => {
         if (!timestamp) return 'N/A';
         const date = new Date(timestamp);
         return date.toLocaleString();

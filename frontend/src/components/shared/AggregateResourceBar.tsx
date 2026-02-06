@@ -19,6 +19,21 @@ const OVERCOMMIT_TOOLTIP = "Over-committed: Some containers use more than their 
  * @param {number} capacityValue - Raw capacity value for tooltip display
  * @param {function} formatValue - Function to format raw values (e.g., formatCpu, formatBytes)
  */
+interface AggregateResourceBarProps {
+    usagePercent?: number;
+    reservedPercent?: number;
+    committedPercent?: number;
+    type?: string;
+    label?: string;
+    showPercent?: boolean;
+    barClassName?: string;
+    usageValue?: number;
+    reservedValue?: number;
+    committedValue?: number;
+    capacityValue?: number;
+    formatValue?: (val: any) => string;
+}
+
 const AggregateResourceBar = memo(function AggregateResourceBar({
     usagePercent = 0,
     reservedPercent,
@@ -32,7 +47,7 @@ const AggregateResourceBar = memo(function AggregateResourceBar({
     committedValue,
     capacityValue,
     formatValue
-}) {
+}: AggregateResourceBarProps) {
     // Clamp values
     const usage = Math.max(0, Math.min(100, usagePercent || 0));
     const reserved = reservedPercent != null ? Math.max(0, Math.min(100, reservedPercent)) : null;
@@ -49,7 +64,7 @@ const AggregateResourceBar = memo(function AggregateResourceBar({
     const isOverCommitted = committed != null && committed > 100;
 
     // Helper to format value if formatValue function is provided
-    const fmtVal = (val) => formatValue && val != null ? ` (${formatValue(val)})` : '';
+    const fmtVal = (val: any) => formatValue && val != null ? ` (${formatValue(val)})` : '';
 
     // Build tooltip lines
     const tooltipLines = [];

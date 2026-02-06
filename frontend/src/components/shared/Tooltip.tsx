@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
-export default function Tooltip({ children, content, position = 'bottom' }) {
+export default function Tooltip({ children, content, position = 'bottom' }: { children: React.ReactNode; content: React.ReactNode; position?: 'top' | 'bottom' }) {
     const [isVisible, setIsVisible] = useState(false);
     const [coords, setCoords] = useState({ top: 0, left: 0 });
-    const triggerRef = useRef(null);
-    const tooltipRef = useRef(null);
-    const timeoutRef = useRef(null);
+    const triggerRef = useRef<HTMLSpanElement>(null);
+    const tooltipRef = useRef<HTMLDivElement>(null);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const showTooltip = () => {
         timeoutRef.current = setTimeout(() => {

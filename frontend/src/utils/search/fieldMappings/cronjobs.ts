@@ -11,64 +11,64 @@ export const cronJobFields = {
     ...commonFields,
 
     schedule: {
-        extractor: (item) => item.spec?.schedule || '',
+        extractor: (item: any) => item.spec?.schedule || '',
         aliases: ['cron']
     },
 
     suspend: {
-        extractor: (item) => String(item.spec?.suspend || false),
+        extractor: (item: any) => String(item.spec?.suspend || false),
         aliases: ['suspended', 'paused']
     },
 
     concurrencypolicy: {
-        extractor: (item) => item.spec?.concurrencyPolicy || 'Allow',
+        extractor: (item: any) => item.spec?.concurrencyPolicy || 'Allow',
         aliases: ['concurrency']
     },
 
     lastscheduled: {
-        extractor: (item) => item.status?.lastScheduleTime || '',
+        extractor: (item: any) => item.status?.lastScheduleTime || '',
         aliases: ['lastrun', 'lastschedule']
     },
 
     successfuljobs: {
-        extractor: (item) => String(item.spec?.successfulJobsHistoryLimit ?? 3),
+        extractor: (item: any) => String(item.spec?.successfulJobsHistoryLimit ?? 3),
         aliases: ['successhistory']
     },
 
     failedjobs: {
-        extractor: (item) => String(item.spec?.failedJobsHistoryLimit ?? 1),
+        extractor: (item: any) => String(item.spec?.failedJobsHistoryLimit ?? 1),
         aliases: ['failhistory']
     },
 
     activejobs: {
-        extractor: (item) => String((item.status?.active || []).length),
+        extractor: (item: any) => String((item.status?.active || []).length),
         aliases: ['active', 'running']
     },
 
     image: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const containers = item.spec?.jobTemplate?.spec?.template?.spec?.containers || [];
             const initContainers = item.spec?.jobTemplate?.spec?.template?.spec?.initContainers || [];
             return [...containers, ...initContainers]
-                .map(c => c.image)
+                .map((c: any) => c.image)
                 .join(' ');
         },
         aliases: ['images']
     },
 
     container: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const containers = item.spec?.jobTemplate?.spec?.template?.spec?.containers || [];
             const initContainers = item.spec?.jobTemplate?.spec?.template?.spec?.initContainers || [];
             return [...containers, ...initContainers]
-                .map(c => c.name)
+                .map((c: any) => c.name)
                 .join(' ');
         },
         aliases: ['containers']
     },
 
     serviceaccount: {
-        extractor: (item) => item.spec?.jobTemplate?.spec?.template?.spec?.serviceAccountName || '',
+        extractor: (item: any) => item.spec?.jobTemplate?.spec?.template?.spec?.serviceAccountName || '',
         aliases: ['sa']
     }
 };

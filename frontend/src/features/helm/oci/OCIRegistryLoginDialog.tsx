@@ -7,7 +7,7 @@ import {
 import { useNotification } from '~/context';
 import { useForm, ociBasicLoginSchema } from '~/lib/validation';
 
-export default function OCIRegistryLoginDialog({ onClose, onSuccess }) {
+export default function OCIRegistryLoginDialog({ onClose, onSuccess }: any) {
     const { addNotification } = useNotification();
     const [azureLoading, setAzureLoading] = useState(false);
 
@@ -39,7 +39,7 @@ export default function OCIRegistryLoginDialog({ onClose, onSuccess }) {
                 message: `Successfully logged into ${form.values.registry}`
             });
             onSuccess();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to login via Azure CLI:', err);
             addNotification({
                 type: 'error',

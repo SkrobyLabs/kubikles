@@ -14,7 +14,7 @@ import { formatAge } from '~/utils/formatting';
 import { getDeploymentPods, getEffectivePodStatus, getPodStatusColor } from '~/utils/k8s-helpers';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-export default function StatefulSetList({ isVisible }) {
+export default function StatefulSetList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const selection = useSelection();
@@ -36,26 +36,26 @@ export default function StatefulSetList({ isVisible }) {
         getYamlApi: GetStatefulSetYaml,
 
     });
-    const { statefulSets, loading: statefulSetsLoading } = useStatefulSets(currentContext, selectedNamespaces, isVisible);
+    const { statefulSets, loading: statefulSetsLoading } = useStatefulSets(currentContext, selectedNamespaces, isVisible) as any;
     // Defer pods fetch until statefulsets are loaded to prioritize showing the list first
     const statefulSetsReady = !statefulSetsLoading && statefulSets.length > 0;
-    const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible && statefulSetsReady);
+    const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible && statefulSetsReady) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useStatefulSetActions();
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name, initialSort: 'asc' },
-        { key: 'namespace', label: 'Namespace', render: (item) => item.metadata?.namespace, getValue: (item) => item.metadata?.namespace },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name, initialSort: 'asc' },
+        { key: 'namespace', label: 'Namespace', render: (item: any) => item.metadata?.namespace, getValue: (item: any) => item.metadata?.namespace },
         {
             key: 'pods',
             label: 'Pods',
             filterable: false,
-            render: (item) => {
+            render: (item: any) => {
                 if (podsLoading && allPods.length === 0) {
                     const count = item.spec?.replicas ?? 1;
                     if (count === 0) return null;
                     return (
                         <div className="flex gap-1">
-                            {Array.from({ length: Math.min(count, 5) }).map((_, i) => (
+                            {Array.from({ length: Math.min(count, 5) }).map((_: any, i: number) => (
                                 <div
                                     key={i}
                                     className="w-3 h-3 rounded-sm bg-gray-700 animate-pulse"
@@ -82,67 +82,67 @@ export default function StatefulSetList({ isVisible }) {
                     </div>
                 );
             },
-            getValue: (item) => getDeploymentPods(item, allPods).length
+            getValue: (item: any) => getDeploymentPods(item, allPods).length
         },
-        { key: 'ready', label: 'Ready', render: (item) => `${item.status?.readyReplicas || 0}/${item.status?.replicas || 0}`, getValue: (item) => item.status?.readyReplicas || 0 },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'ready', label: 'Ready', render: (item: any) => `${item.status?.readyReplicas || 0}/${item.status?.replicas || 0}`, getValue: (item: any) => item.status?.readyReplicas || 0 },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         // Hidden by default columns
         {
             key: 'replicas',
             label: 'Replicas',
             defaultHidden: true,
-            render: (item) => item.spec?.replicas ?? 1,
-            getValue: (item) => item.spec?.replicas ?? 1,
+            render: (item: any) => item.spec?.replicas ?? 1,
+            getValue: (item: any) => item.spec?.replicas ?? 1,
         },
         {
             key: 'serviceName',
             label: 'Service Name',
             defaultHidden: true,
-            render: (item) => item.spec?.serviceName || <span className="text-gray-500">-</span>,
-            getValue: (item) => item.spec?.serviceName || '',
+            render: (item: any) => item.spec?.serviceName || <span className="text-gray-500">-</span>,
+            getValue: (item: any) => item.spec?.serviceName || '',
         },
         {
             key: 'updateStrategy',
             label: 'Update Strategy',
             defaultHidden: true,
-            render: (item) => item.spec?.updateStrategy?.type || 'RollingUpdate',
-            getValue: (item) => item.spec?.updateStrategy?.type || 'RollingUpdate',
+            render: (item: any) => item.spec?.updateStrategy?.type || 'RollingUpdate',
+            getValue: (item: any) => item.spec?.updateStrategy?.type || 'RollingUpdate',
         },
         {
             key: 'image',
             label: 'Image',
             defaultHidden: true,
-            render: (item) => {
+            render: (item: any) => {
                 const containers = item.spec?.template?.spec?.containers || [];
                 if (containers.length === 0) return '-';
                 if (containers.length === 1) return <span title={containers[0].image}>{containers[0].image?.split('/').pop()}</span>;
-                return <span title={containers.map(c => c.image).join('\n')}>{containers.length} images</span>;
+                return <span title={containers.map((c: any) => c.image).join('\n')}>{containers.length} images</span>;
             },
-            getValue: (item) => item.spec?.template?.spec?.containers?.[0]?.image || '',
+            getValue: (item: any) => item.spec?.template?.spec?.containers?.[0]?.image || '',
         },
         {
             key: 'volumeClaims',
             label: 'Volume Claims',
             defaultHidden: true,
-            render: (item) => {
+            render: (item: any) => {
                 const claims = item.spec?.volumeClaimTemplates || [];
                 return claims.length > 0 ? claims.length : <span className="text-gray-500">-</span>;
             },
-            getValue: (item) => (item.spec?.volumeClaimTemplates || []).length,
+            getValue: (item: any) => (item.spec?.volumeClaimTemplates || []).length,
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <StatefulSetActionsMenu
                     statefulSet={item}
                     isOpen={activeMenuId === `statefulset-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `statefulset-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `statefulset-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies(item)}
-                    onRestart={() => openBulkRestart([item])}
+                    onRestart={() => openBulkRestart?.([ item])}
                     onDelete={() => openBulkDelete([item])}
                     onViewLogs={() => handleViewLogs(item)}
                 />
@@ -177,11 +177,11 @@ export default function StatefulSetList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel={bulkActionModal.action === 'delete' ? 'Delete' : 'Restart'}
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}
-                onExportYaml={bulkActionModal.action === 'delete' ? exportYaml : null}
+                onExportYaml={bulkActionModal.action === 'delete' ? exportYaml : undefined}
                 progress={bulkProgress}
             />
         </>

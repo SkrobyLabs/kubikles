@@ -7,11 +7,11 @@ import { useState, useCallback, useMemo, useRef } from 'react';
  * @returns {Object} Selection state and methods
  */
 export function useSelection() {
-    const [selectedIds, setSelectedIds] = useState(new Set());
-    const lastSelectedIndexRef = useRef(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set<any>());
+    const lastSelectedIndexRef = useRef<number | null>(null);
 
     // Toggle selection of a single item
-    const toggleItem = useCallback((uid, index, items, shiftKey = false) => {
+    const toggleItem = useCallback((uid: string, index: number, items: any[], shiftKey = false) => {
         setSelectedIds(prev => {
             const next = new Set(prev);
 
@@ -44,7 +44,7 @@ export function useSelection() {
     }, []);
 
     // Select a single item (without toggle)
-    const selectItem = useCallback((uid) => {
+    const selectItem = useCallback((uid: string) => {
         setSelectedIds(prev => {
             const next = new Set(prev);
             next.add(uid);
@@ -53,7 +53,7 @@ export function useSelection() {
     }, []);
 
     // Deselect a single item
-    const deselectItem = useCallback((uid) => {
+    const deselectItem = useCallback((uid: string) => {
         setSelectedIds(prev => {
             const next = new Set(prev);
             next.delete(uid);
@@ -62,35 +62,35 @@ export function useSelection() {
     }, []);
 
     // Select all items
-    const selectAll = useCallback((items) => {
+    const selectAll = useCallback((items: any[]) => {
         const uids = items
-            .map(item => item?.metadata?.uid)
+            .map((item: any) => item?.metadata?.uid)
             .filter(Boolean);
         setSelectedIds(new Set(uids));
     }, []);
 
     // Deselect all items
     const deselectAll = useCallback(() => {
-        setSelectedIds(new Set());
+        setSelectedIds(new Set<any>());
         lastSelectedIndexRef.current = null;
     }, []);
 
     // Toggle between select all and deselect all
     // If any items are selected, deselect all; otherwise select all
-    const toggleAll = useCallback((items) => {
+    const toggleAll = useCallback((items: any[]) => {
         setSelectedIds(prev => {
             if (prev.size > 0) {
-                return new Set();
+                return new Set<string>();
             }
             const uids = items
-                .map(item => item?.metadata?.uid)
+                .map((item: any) => item?.metadata?.uid)
                 .filter(Boolean);
             return new Set(uids);
         });
     }, []);
 
     // Check if an item is selected
-    const isSelected = useCallback((uid) => {
+    const isSelected = useCallback((uid: string) => {
         return selectedIds.has(uid);
     }, [selectedIds]);
 
@@ -99,16 +99,16 @@ export function useSelection() {
 
     // Get selection state relative to a list of items
     // Returns 'none', 'some', or 'all'
-    const getSelectionState = useCallback((items) => {
+    const getSelectionState = useCallback((items: any[]) => {
         if (!items || items.length === 0) return 'none';
 
         const itemUids = items
-            .map(item => item?.metadata?.uid)
+            .map((item: any) => item?.metadata?.uid)
             .filter(Boolean);
 
         if (itemUids.length === 0) return 'none';
 
-        const selectedInList = itemUids.filter(uid => selectedIds.has(uid)).length;
+        const selectedInList = itemUids.filter((uid: string) => selectedIds.has(uid)).length;
 
         if (selectedInList === 0) return 'none';
         if (selectedInList === itemUids.length) return 'all';
@@ -116,20 +116,20 @@ export function useSelection() {
     }, [selectedIds]);
 
     // Get array of selected items from a list
-    const getSelectedItems = useCallback((items) => {
-        return items.filter(item => selectedIds.has(item?.metadata?.uid));
+    const getSelectedItems = useCallback((items: any[]) => {
+        return items.filter((item: any) => selectedIds.has(item?.metadata?.uid));
     }, [selectedIds]);
 
     // Clear selection for items that no longer exist in the list
-    const pruneSelection = useCallback((items) => {
+    const pruneSelection = useCallback((items: any[]) => {
         const validUids = new Set(
             items
-                .map(item => item?.metadata?.uid)
+                .map((item: any) => item?.metadata?.uid)
                 .filter(Boolean)
         );
 
         setSelectedIds(prev => {
-            const next = new Set();
+            const next = new Set<string>();
             for (const uid of prev) {
                 if (validUids.has(uid)) {
                     next.add(uid);

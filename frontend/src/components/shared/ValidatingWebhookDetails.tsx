@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function ValidatingWebhookDetails({ webhook, tabContext = '' }) {
+export default function ValidatingWebhookDetails({ webhook, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -58,12 +58,12 @@ export default function ValidatingWebhookDetails({ webhook, tabContext = '' }) {
         { label: 'Webhooks', value: webhooks.length.toString() },
     ];
 
-    const formatRules = (rules) => {
+    const formatRules = (rules: any) => {
         if (!rules || rules.length === 0) return 'None';
-        return rules.map(rule => {
+        return rules.map((rule: any) => {
             const ops = (rule.operations || []).join(', ');
             const resources = (rule.resources || []).join(', ');
-            const apiGroups = (rule.apiGroups || ['']).map(g => g || 'core').join(', ');
+            const apiGroups = (rule.apiGroups || ['']).map((g: any) => g || 'core').join(', ');
             return `${ops} on ${apiGroups}/${resources}`;
         }).join('; ');
     };
@@ -120,7 +120,7 @@ export default function ValidatingWebhookDetails({ webhook, tabContext = '' }) {
                         <p className="text-sm text-gray-500">No webhooks configured</p>
                     ) : (
                         <div className="space-y-3">
-                            {webhooks.map((wh, idx) => (
+                            {webhooks.map((wh: any, idx: number) => (
                                 <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
                                     <div className="text-sm font-medium text-gray-200 mb-2">{wh.name}</div>
                                     <div className="grid grid-cols-2 gap-2 text-xs">

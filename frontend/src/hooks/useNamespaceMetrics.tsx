@@ -9,7 +9,7 @@ import { usePodMetrics } from './usePodMetrics';
  * @param {boolean} isVisible - Whether the component is visible
  * @param {boolean} isReady - Whether to start fetching (e.g., after namespace list loads)
  */
-export const useNamespaceMetrics = (isVisible, isReady = true) => {
+export const useNamespaceMetrics = (isVisible: boolean, isReady = true) => {
     // Disable auto-polling - metrics loaded on demand
     const {
         metrics: nodeMetricsMap,
@@ -31,7 +31,7 @@ export const useNamespaceMetrics = (isVisible, isReady = true) => {
         if (nodes.length === 0) {
             return { cpuCapacity: 0, memCapacity: 0 };
         }
-        return nodes.reduce((acc, node) => ({
+        return nodes.reduce((acc: any, node: any) => ({
             cpuCapacity: acc.cpuCapacity + (node.cpuCapacity || 0),
             memCapacity: acc.memCapacity + (node.memCapacity || 0),
         }), { cpuCapacity: 0, memCapacity: 0 });
@@ -39,10 +39,10 @@ export const useNamespaceMetrics = (isVisible, isReady = true) => {
 
     // Aggregate pod metrics by namespace
     const namespaceMetrics = useMemo(() => {
-        const byNamespace = {};
+        const byNamespace: Record<string, any> = {};
 
         // Iterate through pod metrics and aggregate by namespace
-        for (const [key, pod] of Object.entries(podMetricsMap)) {
+        for (const [key, pod] of Object.entries(podMetricsMap) as [string, any][]) {
             const namespace = key.split('/')[0];
 
             if (!byNamespace[namespace]) {
@@ -67,8 +67,8 @@ export const useNamespaceMetrics = (isVisible, isReady = true) => {
         }
 
         // Calculate percentages against cluster capacity
-        const result = {};
-        for (const [namespace, metrics] of Object.entries(byNamespace)) {
+        const result: Record<string, any> = {};
+        for (const [namespace, metrics] of Object.entries(byNamespace) as [string, any][]) {
             result[namespace] = {
                 ...metrics,
                 cpuUsagePercent: clusterTotals.cpuCapacity > 0

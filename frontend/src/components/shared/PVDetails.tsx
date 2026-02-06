@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function PVDetails({ pv, tabContext = '' }) {
+export default function PVDetails({ pv, tabContext = '' }: { pv: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch } = useUI();
 
@@ -96,7 +96,7 @@ export default function PVDetails({ pv, tabContext = '' }) {
         }
     };
 
-    const getAccessModeColor = (mode) => {
+    const getAccessModeColor = (mode: string) => {
         switch (mode) {
             case 'ReadWriteOnce': return 'bg-blue-500/20 text-blue-400';
             case 'ReadOnlyMany': return 'bg-yellow-500/20 text-yellow-400';
@@ -124,7 +124,7 @@ export default function PVDetails({ pv, tabContext = '' }) {
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -153,7 +153,7 @@ export default function PVDetails({ pv, tabContext = '' }) {
                 <DetailSection title="Access Modes">
                     {accessModes.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
-                            {accessModes.map((mode, idx) => (
+                            {accessModes.map((mode: any, idx: number) => (
                                 <span
                                     key={idx}
                                     className={`px-2 py-1 text-xs rounded ${getAccessModeColor(mode)}`}

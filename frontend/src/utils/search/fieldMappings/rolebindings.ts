@@ -11,7 +11,7 @@ export const roleBindingFields = {
     ...commonFields,
 
     roleref: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const ref = item.roleRef || {};
             return `${ref.kind || ''}/${ref.name || ''}`;
         },
@@ -19,66 +19,66 @@ export const roleBindingFields = {
     },
 
     rolerefkind: {
-        extractor: (item) => item.roleRef?.kind || '',
+        extractor: (item: any) => item.roleRef?.kind || '',
         aliases: ['refkind']
     },
 
     rolerefname: {
-        extractor: (item) => item.roleRef?.name || '',
+        extractor: (item: any) => item.roleRef?.name || '',
         aliases: ['refname', 'rolename']
     },
 
     subjects: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const subjects = item.subjects || [];
-            return subjects.map(s => `${s.kind}/${s.name}`).join(' ');
+            return subjects.map((s: any) => `${s.kind}/${s.name}`).join(' ');
         },
         aliases: ['subject']
     },
 
     subjectcount: {
-        extractor: (item) => String((item.subjects || []).length),
+        extractor: (item: any) => String((item.subjects || []).length),
         aliases: ['subjectscount', 'numsubjects']
     },
 
     subjectkind: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const subjects = item.subjects || [];
-            const kinds = new Set(subjects.map(s => s.kind));
+            const kinds = new Set(subjects.map((s: any) => s.kind));
             return Array.from(kinds).join(' ');
         },
         aliases: ['subjectkinds']
     },
 
     subjectnames: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const subjects = item.subjects || [];
-            return subjects.map(s => s.name).join(' ');
+            return subjects.map((s: any) => s.name).join(' ');
         },
         aliases: ['subjectname']
     },
 
     users: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const subjects = item.subjects || [];
-            return subjects.filter(s => s.kind === 'User').map(s => s.name).join(' ');
+            return subjects.filter((s: any) => s.kind === 'User').map((s: any) => s.name).join(' ');
         },
         aliases: ['user']
     },
 
     groups: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const subjects = item.subjects || [];
-            return subjects.filter(s => s.kind === 'Group').map(s => s.name).join(' ');
+            return subjects.filter((s: any) => s.kind === 'Group').map((s: any) => s.name).join(' ');
         },
         aliases: ['group']
     },
 
     serviceaccounts: {
-        extractor: (item) => {
+        extractor: (item: any) => {
             const subjects = item.subjects || [];
-            return subjects.filter(s => s.kind === 'ServiceAccount')
-                .map(s => s.namespace ? `${s.namespace}/${s.name}` : s.name).join(' ');
+            return subjects.filter((s: any) => s.kind === 'ServiceAccount')
+                .map((s: any) => s.namespace ? `${s.namespace}/${s.name}` : s.name).join(' ');
         },
         aliases: ['serviceaccount', 'sa']
     }

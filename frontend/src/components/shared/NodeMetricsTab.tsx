@@ -4,7 +4,7 @@ import { DetectPrometheus, GetNodeMetricsHistory } from 'wailsjs/go/main/App';
 import { formatBytes } from '~/utils/formatting';
 
 // Format time for display
-const formatTime = (timestamp, duration) => {
+const formatTime = (timestamp: string, duration: string) => {
     const date = new Date(timestamp);
     if (duration === '30d' || duration === 'all') {
         return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -19,9 +19,9 @@ const formatTime = (timestamp, duration) => {
 // - Usage (blue), Allocatable (gray dashed), Uncommitted (green) visible by default
 // - Committed (orange) toggleable, off by default
 // Memoized to prevent re-renders when parent updates with same props
-const NodeResourceChart = React.memo(({ data, color, label, formatValue, duration }) => {
-    const containerRef = useRef(null);
-    const [hoveredIndex, setHoveredIndex] = useState(null);
+const NodeResourceChart = React.memo(({ data, color, label, formatValue, duration }: { data: any; color: string; label: string; formatValue: (value: number) => string; duration: string }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [showCommitted, setShowCommitted] = useState(true);
     const [showReserved, setShowReserved] = useState(false);
@@ -63,10 +63,10 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
 
     // Calculate Y-axis bounds
     const allValues = [
-        ...usage.map(d => d.value),
-        ...allocatable.map(d => d.value),
-        ...(showReserved ? reserved.map(d => d.value) : []),
-        ...(showCommitted ? committed.map(d => d.value) : [])
+        ...usage.map((d: any) => d.value),
+        ...allocatable.map((d: any) => d.value),
+        ...(showReserved ? reserved.map((d: any) => d.value) : []),
+        ...(showCommitted ? committed.map((d: any) => d.value) : [])
     ];
     const max = Math.max(...allValues) || 1;
     const min = 0;
@@ -86,8 +86,8 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
     const chartHeight = height - paddingTop - paddingBottom;
 
     // Generate points for lines
-    const generatePoints = (dataPoints) => {
-        return dataPoints.map((d, i) => {
+    const generatePoints = (dataPoints: any[]) => {
+        return dataPoints.map((d: any, i: number) => {
             const x = paddingLeft + (i / (dataPoints.length - 1)) * chartWidth;
             const y = paddingTop + chartHeight - ((d.value - yMin) / yRange) * chartHeight;
             return { x, y, value: d.value, timestamp: d.timestamp };
@@ -99,7 +99,7 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
     const reservedPoints = hasReserved ? generatePoints(reserved) : [];
     const committedPoints = hasCommitted ? generatePoints(committed) : [];
 
-    const createPath = (points) => points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const createPath = (points: any[]) => points.map((p: any, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
     const usagePath = createPath(usagePoints);
     const areaPath = `${usagePath} L ${usagePoints[usagePoints.length - 1].x} ${paddingTop + chartHeight} L ${paddingLeft} ${paddingTop + chartHeight} Z`;
@@ -113,14 +113,14 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
 
     // X axis ticks
     const xTickIndices = [0, Math.floor(usage.length / 2), usage.length - 1];
-    const xTicks = xTickIndices.map(i => ({
+    const xTicks = xTickIndices.map((i: any) => ({
         timestamp: usage[i]?.timestamp,
         x: paddingLeft + (i / (usage.length - 1)) * chartWidth
     }));
 
     const currentUsage = usage[usage.length - 1]?.value || 0;
 
-    const handleMouseMove = useCallback((e) => {
+    const handleMouseMove = useCallback((e: any) => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
         // Account for CSS zoom applied to document body
@@ -215,7 +215,7 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
             >
                 <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet" className="w-full h-full">
                     {/* Y axis grid lines */}
-                    {yTicks.map((tick, i) => (
+                    {yTicks.map((tick: any, i: number) => (
                         <g key={i}>
                             <line
                                 x1={paddingLeft}
@@ -239,7 +239,7 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                     ))}
 
                     {/* X axis labels */}
-                    {xTicks.map((tick, i) => (
+                    {xTicks.map((tick: any, i: number) => (
                         <text
                             key={i}
                             x={tick.x}
@@ -305,7 +305,7 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                     <div
                         className="absolute z-10 pointer-events-none bg-surface border border-border rounded-lg shadow-lg px-3 py-2"
                         style={{
-                            left: Math.min(mousePos.x + 10, containerRef.current?.offsetWidth - 170 || 0),
+                            left: Math.min(mousePos.x + 10, (containerRef.current?.offsetWidth ?? 0) - 170 || 0),
                             top: mousePos.y - 80
                         }}
                     >
@@ -333,9 +333,9 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
 
 // Pod count chart showing current vs capacity
 // Memoized to prevent re-renders when parent updates with same props
-const PodCountChart = React.memo(({ data, duration }) => {
-    const containerRef = useRef(null);
-    const [hoveredIndex, setHoveredIndex] = useState(null);
+const PodCountChart = React.memo(({ data, duration }: { data: any; duration: string }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [containerWidth, setContainerWidth] = useState(400);
 
@@ -369,7 +369,7 @@ const PodCountChart = React.memo(({ data, duration }) => {
     const running = data.running;
     const capacity = data.capacity || [];
 
-    const allValues = [...running.map(d => d.value), ...capacity.map(d => d.value)];
+    const allValues = [...running.map((d: any) => d.value), ...capacity.map((d: any) => d.value)];
     const max = Math.max(...allValues, 1);
     const yMax = max * 1.1;
     const yRange = yMax || 1;
@@ -383,8 +383,8 @@ const PodCountChart = React.memo(({ data, duration }) => {
     const chartWidth = width - paddingLeft - paddingRight;
     const chartHeight = height - paddingTop - paddingBottom;
 
-    const generatePoints = (dataPoints) => {
-        return dataPoints.map((d, i) => {
+    const generatePoints = (dataPoints: any[]) => {
+        return dataPoints.map((d: any, i: number) => {
             const x = paddingLeft + (i / (dataPoints.length - 1)) * chartWidth;
             const y = paddingTop + chartHeight - (d.value / yRange) * chartHeight;
             return { x, y, value: d.value, timestamp: d.timestamp };
@@ -394,9 +394,9 @@ const PodCountChart = React.memo(({ data, duration }) => {
     const runningPoints = generatePoints(running);
     const capacityPoints = hasCapacity ? generatePoints(capacity) : [];
 
-    const createPath = (points) => points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const createPath = (points: any[]) => points.map((p: any, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
-    const handleMouseMove = useCallback((e) => {
+    const handleMouseMove = useCallback((e: any) => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
         // Account for CSS zoom applied to document body
@@ -479,7 +479,7 @@ const PodCountChart = React.memo(({ data, duration }) => {
                 </svg>
                 {hoveredPoint && (
                     <div className="absolute z-10 pointer-events-none bg-surface border border-border rounded px-2 py-1 text-xs"
-                        style={{ left: Math.min(mousePos.x + 10, containerRef.current?.offsetWidth - 100 || 0), top: mousePos.y - 40 }}>
+                        style={{ left: Math.min(mousePos.x + 10, (containerRef.current?.offsetWidth ?? 0) - 100 || 0), top: mousePos.y - 40 }}>
                         <span className="text-green-400">Running: {Math.round(hoveredPoint.value)}</span>
                         {hoveredCapPoint && (
                             <span className="text-gray-400 ml-2">Capacity: {Math.round(hoveredCapPoint.value)}</span>
@@ -493,9 +493,9 @@ const PodCountChart = React.memo(({ data, duration }) => {
 
 // Network I/O chart with bandwidth and packets view toggle
 // Memoized to prevent re-renders when parent updates with same props
-const NetworkChart = React.memo(({ data, duration }) => {
-    const containerRef = useRef(null);
-    const [hoveredIndex, setHoveredIndex] = useState(null);
+const NetworkChart = React.memo(({ data, duration }: { data: any; duration: string }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [viewMode, setViewMode] = useState('bandwidth'); // 'bandwidth' or 'packets'
     const [containerWidth, setContainerWidth] = useState(400);
@@ -543,7 +543,7 @@ const NetworkChart = React.memo(({ data, duration }) => {
     const hasRx = isBandwidthView ? hasRxBytes : hasRxPackets;
     const hasTx = isBandwidthView ? hasTxBytes : hasTxPackets;
 
-    const allValues = [...rx.map(d => d.value), ...tx.map(d => d.value)];
+    const allValues = [...rx.map((d: any) => d.value), ...tx.map((d: any) => d.value)];
     const max = Math.max(...allValues, 1);
     const yMax = max * 1.1;
     const yRange = yMax || 1;
@@ -558,8 +558,8 @@ const NetworkChart = React.memo(({ data, duration }) => {
     const chartHeight = height - paddingTop - paddingBottom;
 
     const baseData = hasRx ? rx : tx;
-    const generatePoints = (dataPoints) => {
-        return dataPoints.map((d, i) => {
+    const generatePoints = (dataPoints: any[]) => {
+        return dataPoints.map((d: any, i: number) => {
             const x = paddingLeft + (i / (dataPoints.length - 1)) * chartWidth;
             const y = paddingTop + chartHeight - (d.value / yRange) * chartHeight;
             return { x, y, value: d.value, timestamp: d.timestamp };
@@ -569,9 +569,9 @@ const NetworkChart = React.memo(({ data, duration }) => {
     const rxPoints = hasRx ? generatePoints(rx) : [];
     const txPoints = hasTx ? generatePoints(tx) : [];
 
-    const createPath = (points) => points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const createPath = (points: any[]) => points.map((p: any, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
-    const handleMouseMove = useCallback((e) => {
+    const handleMouseMove = useCallback((e: any) => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
         // Account for CSS zoom applied to document body
@@ -600,12 +600,12 @@ const NetworkChart = React.memo(({ data, duration }) => {
         }
     }, [baseData.length, chartWidth]);
 
-    const formatRate = (value) => {
+    const formatRate = (value: number) => {
         if (value == null || isNaN(value)) return '-';
         return `${formatBytes(value)}/s`;
     };
 
-    const formatPacketRate = (value) => {
+    const formatPacketRate = (value: number) => {
         if (value == null || isNaN(value)) return '-';
         if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M/s`;
         if (value >= 1000) return `${(value / 1000).toFixed(1)}K/s`;
@@ -704,7 +704,7 @@ const NetworkChart = React.memo(({ data, duration }) => {
                 </svg>
                 {(hoveredRxPoint || hoveredTxPoint) && (
                     <div className="absolute z-10 pointer-events-none bg-surface border border-border rounded px-2 py-1 text-xs"
-                        style={{ left: Math.min(mousePos.x + 10, containerRef.current?.offsetWidth - 140 || 0), top: mousePos.y - 50 }}>
+                        style={{ left: Math.min(mousePos.x + 10, (containerRef.current?.offsetWidth ?? 0) - 140 || 0), top: mousePos.y - 50 }}>
                         {hoveredRxPoint && <div className="text-cyan-400">RX: {formatValue(hoveredRxPoint.value)}</div>}
                         {hoveredTxPoint && <div className="text-yellow-400">TX: {formatValue(hoveredTxPoint.value)}</div>}
                         {!isBandwidthView && (hoveredRxDropped || hoveredTxDropped) && (
@@ -728,12 +728,12 @@ const DURATIONS = [
     { value: 'all', label: 'All' },
 ];
 
-export default function NodeMetricsTab({ nodeName, isStale }) {
-    const [prometheusInfo, setPrometheusInfo] = useState(null);
+export default function NodeMetricsTab({ nodeName, isStale }: { nodeName: string; isStale: boolean }) {
+    const [prometheusInfo, setPrometheusInfo] = useState<any>(null);
     const [detecting, setDetecting] = useState(true);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [metricsData, setMetricsData] = useState(null);
+    const [error, setError] = useState<string | null>(null);
+    const [metricsData, setMetricsData] = useState<any>(null);
     const [duration, setDuration] = useState('1h');
     const requestIdRef = useRef(0); // Track current request to cancel stale ones
 
@@ -742,7 +742,7 @@ export default function NodeMetricsTab({ nodeName, isStale }) {
             try {
                 const info = await DetectPrometheus();
                 setPrometheusInfo(info);
-            } catch (err) {
+            } catch (err: any) {
                 setPrometheusInfo({ available: false });
             } finally {
                 setDetecting(false);
@@ -776,7 +776,7 @@ export default function NodeMetricsTab({ nodeName, isStale }) {
                     setMetricsData(data);
                     setLoading(false);
                 }
-            } catch (err) {
+            } catch (err: any) {
                 // Only update state if this request is still current
                 if (currentRequestId === requestIdRef.current) {
                     setError(err.toString());
@@ -794,7 +794,7 @@ export default function NodeMetricsTab({ nodeName, isStale }) {
         return metricsData;
     }, [metricsData]);
 
-    const formatCPU = (value) => {
+    const formatCPU = (value: number) => {
         if (value == null || isNaN(value)) return '-';
         if (value < 0.01) return `${(value * 1000).toFixed(0)}m`;
         return `${value.toFixed(2)} cores`;
@@ -838,7 +838,7 @@ export default function NodeMetricsTab({ nodeName, isStale }) {
             <div className="flex items-center gap-4 px-4 py-3 border-b border-border shrink-0">
                 <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1 bg-surface-light rounded-md p-0.5">
-                        {DURATIONS.map(d => (
+                        {DURATIONS.map((d: any) => (
                             <button
                                 key={d.value}
                                 onClick={() => setDuration(d.value)}

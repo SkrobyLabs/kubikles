@@ -17,13 +17,13 @@ import { getJobConditionColor } from '~/utils/k8s-helpers';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 // Get controller from owner references
-function getController(item) {
+function getController(item: any) {
     const owners = item.metadata?.ownerReferences || [];
-    const controller = owners.find(owner => owner.controller);
+    const controller = owners.find((owner: any) => owner.controller);
     return controller ? { kind: controller.kind, name: controller.name, uid: controller.uid, apiVersion: controller.apiVersion } : null;
 }
 
-export default function JobList({ isVisible }) {
+export default function JobList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, namespaces, setSelectedNamespaces, crds, ensureCRDsLoaded } = useK8s();
     const { navigateWithSearch } = useUI();
 
@@ -51,16 +51,16 @@ export default function JobList({ isVisible }) {
         getYamlApi: GetJobYaml,
 
     });
-    const { jobs, loading } = useJobs(currentContext, selectedNamespaces, isVisible);
+    const { jobs, loading } = useJobs(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useJobActions();
 
-    const getCompletions = (job) => {
+    const getCompletions = (job: any) => {
         const succeeded = job.status?.succeeded || 0;
         const completions = job.spec?.completions || '?';
         return `${succeeded}/${completions}`;
     };
 
-    const getCondition = (job) => {
+    const getCondition = (job: any) => {
         const conditions = job.status?.conditions || [];
         if (conditions.length === 0) return '-';
         const lastCondition = conditions[conditions.length - 1];
@@ -72,24 +72,24 @@ export default function JobList({ isVisible }) {
             key: 'name',
             label: 'Name',
             width: '25%',
-            render: (job) => job.metadata.name
+            render: (job: any) => job.metadata.name
         },
         {
             key: 'namespace',
             label: 'Namespace',
-            render: (job) => job.metadata?.namespace
+            render: (job: any) => job.metadata?.namespace
         },
         {
             key: 'completions',
             label: 'Completions',
             width: '20%',
-            render: (job) => getCompletions(job)
+            render: (job: any) => getCompletions(job)
         },
         {
             key: 'condition',
             label: 'Condition',
             width: '20%',
-            render: (job) => {
+            render: (job: any) => {
                 const condition = getCondition(job);
                 return <span className={getJobConditionColor(condition)}>{condition}</span>;
             }
@@ -97,13 +97,13 @@ export default function JobList({ isVisible }) {
         {
             key: 'age',
             label: 'Age',
-            render: (job) => formatAge(job.metadata?.creationTimestamp),
-            getValue: (job) => job.metadata?.creationTimestamp
+            render: (job: any) => formatAge(job.metadata?.creationTimestamp),
+            getValue: (job: any) => job.metadata?.creationTimestamp
         },
         {
             key: 'controlledBy',
             label: 'Controlled By',
-            render: (item) => {
+            render: (item: any) => {
                 const controller = getController(item);
                 if (!controller) {
                     return <span className="text-gray-600">-</span>;
@@ -132,83 +132,83 @@ export default function JobList({ isVisible }) {
                     </span>
                 );
             },
-            getValue: (item) => getController(item)?.kind || ''
+            getValue: (item: any) => getController(item)?.kind || ''
         },
         // Hidden by default columns
         {
             key: 'parallelism',
             label: 'Parallelism',
             defaultHidden: true,
-            render: (job) => job.spec?.parallelism ?? 1,
-            getValue: (job) => job.spec?.parallelism ?? 1,
+            render: (job: any) => job.spec?.parallelism ?? 1,
+            getValue: (job: any) => job.spec?.parallelism ?? 1,
         },
         {
             key: 'backoffLimit',
             label: 'Backoff Limit',
             defaultHidden: true,
-            render: (job) => job.spec?.backoffLimit ?? 6,
-            getValue: (job) => job.spec?.backoffLimit ?? 6,
+            render: (job: any) => job.spec?.backoffLimit ?? 6,
+            getValue: (job: any) => job.spec?.backoffLimit ?? 6,
         },
         {
             key: 'activeDeadline',
             label: 'Deadline (s)',
             defaultHidden: true,
-            render: (job) => job.spec?.activeDeadlineSeconds ?? <span className="text-gray-500">-</span>,
-            getValue: (job) => job.spec?.activeDeadlineSeconds ?? 0,
+            render: (job: any) => job.spec?.activeDeadlineSeconds ?? <span className="text-gray-500">-</span>,
+            getValue: (job: any) => job.spec?.activeDeadlineSeconds ?? 0,
         },
         {
             key: 'startTime',
             label: 'Start Time',
             defaultHidden: true,
-            render: (job) => job.status?.startTime ? formatAge(job.status.startTime) + ' ago' : <span className="text-gray-500">-</span>,
-            getValue: (job) => job.status?.startTime || '',
+            render: (job: any) => job.status?.startTime ? formatAge(job.status.startTime) + ' ago' : <span className="text-gray-500">-</span>,
+            getValue: (job: any) => job.status?.startTime || '',
         },
         {
             key: 'duration',
             label: 'Duration',
             defaultHidden: true,
-            render: (job) => {
+            render: (job: any) => {
                 const start = job.status?.startTime;
                 const end = job.status?.completionTime;
                 if (!start) return <span className="text-gray-500">-</span>;
                 const endTime = end ? new Date(end) : new Date();
-                const duration = Math.floor((endTime - new Date(start)) / 1000);
+                const duration = Math.floor((endTime.getTime() - new Date(start).getTime()) / 1000);
                 if (duration < 60) return `${duration}s`;
                 if (duration < 3600) return `${Math.floor(duration / 60)}m ${duration % 60}s`;
                 return `${Math.floor(duration / 3600)}h ${Math.floor((duration % 3600) / 60)}m`;
             },
-            getValue: (job) => {
+            getValue: (job: any) => {
                 const start = job.status?.startTime;
                 const end = job.status?.completionTime;
                 if (!start) return 0;
-                return (end ? new Date(end) : new Date()) - new Date(start);
+                return (end ? new Date(end) : new Date()).getTime() - new Date(start).getTime();
             },
         },
         {
             key: 'image',
             label: 'Image',
             defaultHidden: true,
-            render: (job) => {
+            render: (job: any) => {
                 const containers = job.spec?.template?.spec?.containers || [];
                 if (containers.length === 0) return '-';
                 if (containers.length === 1) return <span title={containers[0].image}>{containers[0].image?.split('/').pop()}</span>;
-                return <span title={containers.map(c => c.image).join('\n')}>{containers.length} images</span>;
+                return <span title={containers.map((c: any) => c.image).join('\n')}>{containers.length} images</span>;
             },
-            getValue: (job) => job.spec?.template?.spec?.containers?.[0]?.image || '',
+            getValue: (job: any) => job.spec?.template?.spec?.containers?.[0]?.image || '',
         },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (job) => (
+            render: (job: any) => (
                 <JobActionsMenu
                     job={job}
                     isOpen={activeMenuId === `job-${job.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `job-${job.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `job-${job.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
                     onShowDependencies={handleShowDependencies}
-                    onDelete={(job) => openBulkDelete([job])}
+                    onDelete={(job: any) => openBulkDelete([job])}
                     onViewLogs={handleViewLogs}
                 />
             ),
@@ -239,7 +239,7 @@ export default function JobList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

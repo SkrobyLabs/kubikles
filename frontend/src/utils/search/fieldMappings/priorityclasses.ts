@@ -10,22 +10,22 @@ export const priorityClassFields = {
     ...commonFields,
 
     value: {
-        extractor: (item) => String(item.value || 0),
+        extractor: (item: any) => String(item.value || 0),
         aliases: ['priority', 'priorityvalue']
     },
 
     globaldefault: {
-        extractor: (item) => item.globalDefault ? 'true' : 'false',
+        extractor: (item: any) => item.globalDefault ? 'true' : 'false',
         aliases: ['default', 'isdefault']
     },
 
     preemption: {
-        extractor: (item) => item.preemptionPolicy || 'PreemptLowerPriority',
+        extractor: (item: any) => item.preemptionPolicy || 'PreemptLowerPriority',
         aliases: ['preemptionpolicy', 'preemptlowerpriority']
     },
 
     description: {
-        extractor: (item) => item.description || '',
+        extractor: (item: any) => item.description || '',
         aliases: ['desc']
     }
 };

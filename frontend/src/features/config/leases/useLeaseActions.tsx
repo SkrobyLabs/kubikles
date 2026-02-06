@@ -7,7 +7,7 @@ export interface LeaseActionsReturn extends BaseResourceActionsReturn<K8sLease> 
     handleDelete: (lease: K8sLease) => void;
 }
 
-export const useLeaseActions = (): LeaseActionsReturn => {
+export const useLeaseActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -22,7 +22,7 @@ export const useLeaseActions = (): LeaseActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (lease: K8sLease): Promise<void> => {
+        async (lease: any): Promise<void> => {
             await DeleteLease(lease.metadata.namespace, lease.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this Lease? This may affect leader election in the cluster.' }

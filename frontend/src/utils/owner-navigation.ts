@@ -99,7 +99,7 @@ export function getOwnerViewId(owner: OwnerReference | null | undefined, crds: C
     const version = parts.length === 2 ? parts[1] : parts[0];
 
     // Find matching CRD
-    const crd = crds.find(c => {
+    const crd = crds.find((c: any) => {
         const crdGroup = c.spec?.group || '';
         const crdKind = c.spec?.names?.kind || '';
         return crdGroup === group && crdKind === owner.kind;

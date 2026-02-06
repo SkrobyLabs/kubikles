@@ -34,7 +34,7 @@ import CreateResourceModal from '~/components/shared/CreateResourceModal';
 import ConnectionError from '~/components/shared/ConnectionError';
 
 // Resource templates by view
-const resourceTemplates = {
+const resourceTemplates: Record<string, (ns?: string) => string> = {
     pods: (ns) => `apiVersion: v1
 kind: Pod
 metadata:
@@ -340,7 +340,7 @@ spec:
 };
 
 // Get template for current view
-const getResourceTemplate = (viewId, namespace) => {
+const getResourceTemplate = (viewId: string, namespace: string) => {
     const templateFn = resourceTemplates[viewId];
     if (templateFn) {
         return templateFn(namespace);
@@ -350,8 +350,8 @@ const getResourceTemplate = (viewId, namespace) => {
 };
 
 // Get modal title for current view
-const getCreateModalTitle = (viewId) => {
-    const titles = {
+const getCreateModalTitle = (viewId: string) => {
+    const titles: Record<string, string> = {
         pods: 'Create Pod',
         configmaps: 'Create ConfigMap',
         secrets: 'Create Secret',
@@ -469,7 +469,7 @@ function MainLayout() {
     useEffect(() => {
         if (!scrollZoomEnabled) return;
 
-        const handleWheel = (e) => {
+        const handleWheel = (e: WheelEvent) => {
             if (e.metaKey || e.ctrlKey) {
                 e.preventDefault();
                 const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
@@ -494,7 +494,7 @@ function MainLayout() {
     }, [apiTimeoutMs]);
 
     // Resizing Logic
-    const handleMouseDown = (e) => {
+    const handleMouseDown = (e: React.MouseEvent) => {
         e.preventDefault();
         isDragging.current = true;
         document.body.style.userSelect = 'none';
@@ -503,7 +503,7 @@ function MainLayout() {
         document.addEventListener('mouseup', handleMouseUp);
     };
 
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: MouseEvent) => {
         if (!isDragging.current) return;
         const windowHeight = window.innerHeight;
         const newHeight = ((windowHeight - e.clientY) / windowHeight) * 100;
@@ -523,7 +523,7 @@ function MainLayout() {
 
     // Global Keyboard Shortcuts
     useEffect(() => {
-        const handleKeyDown = (e) => {
+        const handleKeyDown = (e: KeyboardEvent) => {
             // Cmd+Shift+P / Ctrl+Shift+P - Command Palette
             if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
                 e.preventDefault();
@@ -543,7 +543,7 @@ function MainLayout() {
                 e.preventDefault();
                 const msg = "Refresh triggered via shortcut";
                 console.log(msg);
-                LogMessage(msg).catch(err => console.error("Failed to log debug:", err));
+                LogMessage(msg).catch((err: any) => console.error("Failed to log debug:", err));
 
                 refreshContexts();
                 refreshNamespaces();

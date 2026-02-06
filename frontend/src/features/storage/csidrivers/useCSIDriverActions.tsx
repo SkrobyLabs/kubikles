@@ -7,7 +7,7 @@ export interface CSIDriverActionsReturn extends BaseResourceActionsReturn<K8sCSI
     handleDelete: (csiDriver: K8sCSIDriver) => void;
 }
 
-export const useCSIDriverActions = (): CSIDriverActionsReturn => {
+export const useCSIDriverActions = (): any => {
     const {
         handleShowDetails,
         handleEditYaml,
@@ -20,7 +20,7 @@ export const useCSIDriverActions = (): CSIDriverActionsReturn => {
     });
 
     const handleDelete = createDeleteHandler(
-        async (csiDriver: K8sCSIDriver): Promise<void> => {
+        async (csiDriver: any): Promise<void> => {
             await DeleteCSIDriver(csiDriver.metadata.name);
         },
         { confirmMessage: 'Are you sure you want to delete this CSI Driver? Storage provisioning may be affected.' }

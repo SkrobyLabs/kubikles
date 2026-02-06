@@ -13,7 +13,7 @@ export function TimePickerModal({
     sinceTime,
     getFirstTimestamp,
     podCreationTime
-}) {
+}: { show: any; onClose: any; onApply: any; sinceTime: any; getFirstTimestamp: any; podCreationTime: any }) {
     const prevShowRef = useRef(false);
 
     const form = useForm({
@@ -53,8 +53,8 @@ export function TimePickerModal({
                 <p className="text-xs text-gray-400 mb-3">Show logs starting from this time (server time).</p>
                 <input
                     type="text"
-                    {...form.getFieldProps('inputTime')}
-                    onKeyDown={(e) => {
+                    {...form.getFieldProps('inputTime') as any}
+                    onKeyDown={(e: any) => {
                         if (e.key === 'Enter') form.handleSubmit();
                         if (e.key === 'Escape') onClose();
                     }}

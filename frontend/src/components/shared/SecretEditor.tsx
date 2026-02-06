@@ -11,8 +11,8 @@ const MODE_YAML = 'yaml';
 const MODE_KEYVALUE = 'keyvalue';
 
 // Convert object to array with stable IDs
-const objectToEntries = (obj) => {
-    return Object.entries(obj || {}).map(([key, value], index) => ({
+const objectToEntries = (obj: Record<string, any>) => {
+    return Object.entries(obj || {}).map(([key, value]: [string, any], index: number) => ({
         id: `entry-${Date.now()}-${index}`,
         key,
         value
@@ -20,35 +20,35 @@ const objectToEntries = (obj) => {
 };
 
 // Convert array back to object for saving
-const entriesToObject = (entries) => {
-    const result = {};
-    entries.forEach(({ key, value }) => {
+const entriesToObject = (entries: any[]) => {
+    const result: Record<string, any> = {};
+    entries.forEach(({ key, value }: { key: string; value: any }) => {
         if (key) result[key] = value;
     });
     return result;
 };
 
-export default function SecretEditor({ namespace, resourceName, onClose, tabContext = '', initialMode = MODE_YAML }) {
+export default function SecretEditor({ namespace, resourceName, onClose, tabContext = '', initialMode = MODE_YAML }: { namespace: string; resourceName: string; onClose: () => void; tabContext?: string; initialMode?: string }) {
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();
     const [mode, setMode] = useState(initialMode);
     const [yamlContent, setYamlContent] = useState('');
-    const [secretEntries, setSecretEntries] = useState([]);
+    const [secretEntries, setSecretEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [showBase64, setShowBase64] = useState(true);
     const [keySearchTerm, setKeySearchTerm] = useState('');
-    const editorRef = useRef(null);
+    const editorRef = useRef<any>(null);
     const nextIdRef = useRef(0);
-    const [certInfoCache, setCertInfoCache] = useState({});
-    const [selectedCert, setSelectedCert] = useState(null); // { certificates: [], pemData } for modal
+    const [certInfoCache, setCertInfoCache] = useState<Record<string, any>>({});
+    const [selectedCert, setSelectedCert] = useState<any>(null); // { certificates: [], pemData } for modal
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
 
     // Check if a value looks like a PEM certificate
-    const isPEMCertificate = (value) => value?.includes('-----BEGIN CERTIFICATE-----');
+    const isPEMCertificate = (value: string) => value?.includes('-----BEGIN CERTIFICATE-----');
 
     // Load certificate info for entries that look like certificates
     useEffect(() => {
@@ -60,7 +60,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                         if (info?.isCertificate) {
                             setCertInfoCache(prev => ({ ...prev, [entry.id]: info }));
                         }
-                    } catch (err) {
+                    } catch (err: any) {
                         Logger.debug("Failed to parse certificate", { key: entry.key, error: err });
                     }
                 }
@@ -72,7 +72,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
     }, [secretEntries, mode]);
 
     // Handle opening certificate modal
-    const handleViewCertificate = async (entry) => {
+    const handleViewCertificate = async (entry: any) => {
         try {
             // Fetch all certificates in the chain
             const certificates = await GetAllCertificateInfo(entry.value);
@@ -83,14 +83,14 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                 }
                 setSelectedCert({ certificates, pemData: entry.value });
             }
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to get certificate info", err);
             addNotification({ type: 'error', title: 'Failed to parse certificate', message: String(err) });
         }
     };
 
     // Get expiry badge color based on days until expiry
-    const getExpiryBadgeStyle = (certInfo) => {
+    const getExpiryBadgeStyle = (certInfo: any) => {
         if (!certInfo) return null;
         if (certInfo.isExpired || certInfo.daysUntilExpiry < 7) {
             return 'bg-red-600/20 text-red-400 border-red-500/30';
@@ -102,7 +102,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
     };
 
     // Format expiry text
-    const getExpiryText = (certInfo) => {
+    const getExpiryText = (certInfo: any) => {
         if (!certInfo) return '';
         if (certInfo.isExpired) return 'Expired';
         if (certInfo.daysUntilExpiry === 0) return 'Expires today';
@@ -111,7 +111,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
     };
 
     // Get first SAN or subject for display
-    const getCertSummary = (certInfo) => {
+    const getCertSummary = (certInfo: any) => {
         if (!certInfo) return '';
         if (certInfo.dnsNames?.length > 0) {
             const first = certInfo.dnsNames[0];
@@ -145,7 +145,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
             setYamlContent(yaml);
             setSecretEntries(objectToEntries(data));
             Logger.info("Secret data fetched successfully", { namespace, name: resourceName });
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to load secret", err);
             setError(`Failed to load secret: ${err}`);
         } finally {
@@ -159,11 +159,11 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
         try {
             await UpdateSecretYaml(namespace, resourceName, yamlContent);
             Logger.info("YAML saved successfully", { namespace, name: resourceName });
-            addNotification({ type: 'success', title: 'Secret saved successfully' });
+            addNotification({ type: 'success', title: 'Secret saved successfully', message: '' });
             // Refresh key-value data after YAML save
             const data = await GetSecretData(namespace, resourceName);
             setSecretEntries(objectToEntries(data));
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to save secret", err);
             addNotification({ type: 'error', title: 'Failed to save secret', message: String(err) });
         } finally {
@@ -178,11 +178,11 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
             const dataToSave = entriesToObject(secretEntries);
             await UpdateSecretData(namespace, resourceName, dataToSave);
             Logger.info("Secret data saved successfully", { namespace, name: resourceName });
-            addNotification({ type: 'success', title: 'Secret saved successfully' });
+            addNotification({ type: 'success', title: 'Secret saved successfully', message: '' });
             // Refresh YAML after key-value save
             const yaml = await GetSecretYaml(namespace, resourceName);
             setYamlContent(yaml);
-        } catch (err) {
+        } catch (err: any) {
             Logger.error("Failed to save secret", err);
             addNotification({ type: 'error', title: 'Failed to save secret', message: String(err) });
         } finally {
@@ -198,7 +198,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
         }
     };
 
-    const handleEditorDidMount = (editor, monaco) => {
+    const handleEditorDidMount = (editor: any, monaco: any) => {
         editorRef.current = editor;
         editor.updateOptions({
             minimap: { enabled: true },
@@ -216,28 +216,28 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
         });
     };
 
-    const handleKeyChange = (id, newKey) => {
+    const handleKeyChange = (id: string, newKey: string) => {
         setSecretEntries(entries =>
-            entries.map(entry =>
+            entries.map((entry: any) =>
                 entry.id === id ? { ...entry, key: newKey } : entry
             )
         );
     };
 
-    const handleValueChange = (id, newValue) => {
+    const handleValueChange = (id: string, newValue: string) => {
         setSecretEntries(entries =>
-            entries.map(entry =>
+            entries.map((entry: any) =>
                 entry.id === id ? { ...entry, value: newValue } : entry
             )
         );
     };
 
-    const handleDeleteEntry = (id) => {
-        setSecretEntries(entries => entries.filter(entry => entry.id !== id));
+    const handleDeleteEntry = (id: string) => {
+        setSecretEntries(entries => entries.filter((entry: any) => entry.id !== id));
     };
 
     const handleAddKey = () => {
-        const existingKeys = new Set(secretEntries.map(e => e.key));
+        const existingKeys = new Set(secretEntries.map((e: any) => e.key));
         let newKey = 'NEW_KEY';
         let counter = 1;
         while (existingKeys.has(newKey)) {
@@ -247,7 +247,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
         setSecretEntries([...secretEntries, { id: generateId(), key: newKey, value: '' }]);
     };
 
-    const encodeBase64 = (str) => {
+    const encodeBase64 = (str: string) => {
         try {
             return btoa(str);
         } catch {
@@ -256,7 +256,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
         }
     };
 
-    const decodeBase64 = (str) => {
+    const decodeBase64 = (str: string) => {
         try {
             return atob(str);
         } catch {
@@ -264,14 +264,14 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
         }
     };
 
-    const getDisplayValue = (value) => {
+    const getDisplayValue = (value: string) => {
         if (showBase64) {
             return encodeBase64(value);
         }
         return value;
     };
 
-    const setValueFromDisplay = (id, displayValue) => {
+    const setValueFromDisplay = (id: string, displayValue: string) => {
         if (showBase64) {
             handleValueChange(id, decodeBase64(displayValue));
         } else {
@@ -368,7 +368,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                                 <input
                                     type="text"
                                     value={keySearchTerm}
-                                    onChange={(e) => setKeySearchTerm(e.target.value)}
+                                    onChange={(e: any) => setKeySearchTerm(e.target.value)}
                                     placeholder="Filter keys..."
                                     className="w-full bg-background border border-border rounded-md pl-8 pr-3 py-1 text-xs text-text focus:outline-none focus:border-primary transition-colors"
                                     autoComplete="off"
@@ -388,7 +388,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                     </button>
                     <button
                         onClick={handleSave}
-                        disabled={saving || isStale}
+                        disabled={saving || !!isStale}
                         title={isStale ? "Cannot save - tab is from a different context" : "Save changes"}
                         className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -404,12 +404,12 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                         height="100%"
                         defaultLanguage="yaml"
                         value={yamlContent}
-                        onChange={(value) => !isStale && setYamlContent(value || '')}
+                        onChange={(value: any) => !isStale && setYamlContent(value || '')}
                         onMount={handleEditorDidMount}
                         theme="vs-dark"
                         options={{
                             automaticLayout: true,
-                            readOnly: isStale,
+                            readOnly: !!isStale,
                             scrollbar: {
                                 vertical: 'auto',
                                 horizontal: 'auto',
@@ -420,7 +420,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                     <div className="h-full overflow-auto p-4">
                         <div className="space-y-2">
                             {secretEntries
-                                .filter(entry => !keySearchTerm || entry.key.toLowerCase().includes(keySearchTerm.toLowerCase()))
+                                .filter((entry: any) => !keySearchTerm || entry.key.toLowerCase().includes(keySearchTerm.toLowerCase()))
                                 .map((entry) => {
                                     const isCert = isPEMCertificate(entry.value);
                                     const certInfo = certInfoCache[entry.id];
@@ -429,8 +429,8 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                                                 <input
                                                     type="text"
                                                     value={entry.key}
-                                                    onChange={(e) => !isStale && handleKeyChange(entry.id, e.target.value)}
-                                                    disabled={isStale}
+                                                    onChange={(e: any) => !isStale && handleKeyChange(entry.id, e.target.value)}
+                                                    disabled={!!isStale}
                                                     className={`w-48 shrink-0 px-2 py-1.5 text-sm bg-background border border-border rounded text-gray-200 focus:outline-none focus:border-primary ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
                                                     placeholder="Key"
                                                     autoComplete="off"
@@ -441,8 +441,8 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                                                 <div className="flex-1 min-w-0">
                                                     <textarea
                                                         value={getDisplayValue(entry.value)}
-                                                        onChange={(e) => !isStale && setValueFromDisplay(entry.id, e.target.value)}
-                                                        disabled={isStale}
+                                                        onChange={(e: any) => !isStale && setValueFromDisplay(entry.id, e.target.value)}
+                                                        disabled={!!isStale}
                                                         className={`w-full min-h-[60px] px-2 py-1.5 text-sm bg-background border border-border rounded text-gray-200 font-mono focus:outline-none focus:border-primary resize-y ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
                                                         placeholder="Value"
                                                         autoComplete="off"
@@ -475,7 +475,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                                                     )}
                                                     <button
                                                         onClick={() => !isStale && handleDeleteEntry(entry.id)}
-                                                        disabled={isStale}
+                                                        disabled={!!isStale}
                                                         className={`p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors ${isStale ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                         title="Delete key"
                                                     >
@@ -490,7 +490,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                                     No secret data. Click "Add Key" to create one.
                                 </div>
                             )}
-                            {secretEntries.length > 0 && keySearchTerm && secretEntries.filter(e => e.key.toLowerCase().includes(keySearchTerm.toLowerCase())).length === 0 && (
+                            {secretEntries.length > 0 && keySearchTerm && secretEntries.filter((e: any) => e.key.toLowerCase().includes(keySearchTerm.toLowerCase())).length === 0 && (
                                 <div className="text-gray-500 text-sm text-center py-8">
                                     No keys match "{keySearchTerm}"
                                 </div>

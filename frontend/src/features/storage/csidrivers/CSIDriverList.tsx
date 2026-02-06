@@ -12,17 +12,17 @@ import { DeleteCSIDriver, GetCSIDriverYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
-const BooleanIcon = ({ value }) => {
+const BooleanIcon = ({ value }: any) => {
     if (value === true) {
         return <CheckCircleIcon className="h-5 w-5 text-green-400" />;
     }
     return <XCircleIcon className="h-5 w-5 text-gray-500" />;
 };
 
-export default function CSIDriverList({ isVisible }) {
+export default function CSIDriverList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { csiDrivers, loading } = useCSIDrivers(currentContext, isVisible);
+    const { csiDrivers, loading } = useCSIDrivers(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useCSIDriverActions();
     const selection = useSelection();
 
@@ -43,60 +43,60 @@ export default function CSIDriverList({ isVisible }) {
 
     });
 
-    const getAttachRequired = (driver) => {
+    const getAttachRequired = (driver: any) => {
         return driver.spec?.attachRequired ?? true;
     };
 
-    const getPodInfoOnMount = (driver) => {
+    const getPodInfoOnMount = (driver: any) => {
         return driver.spec?.podInfoOnMount ?? false;
     };
 
-    const getStorageCapacity = (driver) => {
+    const getStorageCapacity = (driver: any) => {
         return driver.spec?.storageCapacity ?? false;
     };
 
-    const getVolumeModes = (driver) => {
+    const getVolumeModes = (driver: any) => {
         const modes = driver.spec?.volumeLifecycleModes || [];
         return modes.length > 0 ? modes.join(', ') : '-';
     };
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (item) => item.metadata?.name, getValue: (item) => item.metadata?.name },
+        { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
         {
             key: 'attachRequired',
             label: 'Attach Required',
-            render: (item) => <BooleanIcon value={getAttachRequired(item)} />,
-            getValue: (item) => getAttachRequired(item) ? 'Yes' : 'No',
+            render: (item: any) => <BooleanIcon value={getAttachRequired(item)} />,
+            getValue: (item: any) => getAttachRequired(item) ? 'Yes' : 'No',
             align: 'center'
         },
         {
             key: 'podInfoOnMount',
             label: 'Pod Info on Mount',
-            render: (item) => <BooleanIcon value={getPodInfoOnMount(item)} />,
-            getValue: (item) => getPodInfoOnMount(item) ? 'Yes' : 'No',
+            render: (item: any) => <BooleanIcon value={getPodInfoOnMount(item)} />,
+            getValue: (item: any) => getPodInfoOnMount(item) ? 'Yes' : 'No',
             align: 'center'
         },
         {
             key: 'storageCapacity',
             label: 'Storage Capacity',
-            render: (item) => <BooleanIcon value={getStorageCapacity(item)} />,
-            getValue: (item) => getStorageCapacity(item) ? 'Yes' : 'No',
+            render: (item: any) => <BooleanIcon value={getStorageCapacity(item)} />,
+            getValue: (item: any) => getStorageCapacity(item) ? 'Yes' : 'No',
             align: 'center'
         },
-        { key: 'volumeModes', label: 'Volume Modes', render: (item) => getVolumeModes(item), getValue: (item) => getVolumeModes(item) },
-        { key: 'age', label: 'Age', render: (item) => formatAge(item.metadata?.creationTimestamp), getValue: (item) => item.metadata?.creationTimestamp },
+        { key: 'volumeModes', label: 'Volume Modes', render: (item: any) => getVolumeModes(item), getValue: (item: any) => getVolumeModes(item) },
+        { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         {
             key: 'actions',
             label: <EllipsisVerticalIcon className="h-5 w-5" />,
             align: 'center',
-            render: (item) => (
+            render: (item: any) => (
                 <CSIDriverActionsMenu
                     csiDriver={item}
                     isOpen={activeMenuId === `csidriver-${item.metadata.uid}`}
                     menuPosition={menuPosition}
-                    onOpenChange={(isOpen, buttonElement) => handleMenuOpenChange(isOpen, `csidriver-${item.metadata.uid}`, buttonElement)}
+                    onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `csidriver-${item.metadata.uid}`, buttonElement)}
                     onEditYaml={handleEditYaml}
-                    onDelete={(csiDriver) => openBulkDelete([csiDriver])}
+                    onDelete={(csiDriver: any) => openBulkDelete([csiDriver])}
                 />
             ),
             getValue: () => '',
@@ -123,7 +123,7 @@ export default function CSIDriverList({ isVisible }) {
             <BulkActionModal
                 isOpen={bulkActionModal.isOpen}
                 onClose={closeBulkAction}
-                action={bulkActionModal.action}
+                action={bulkActionModal.action || ''}
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={confirmBulkAction}

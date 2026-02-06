@@ -239,7 +239,7 @@ const getDiff = (current: any, defaults: any): any => {
 
 // Get nested value by path (e.g., "logs.search.debounceMs")
 const getByPath = (obj: any, path: string): any => {
-    return path.split('.').reduce((acc, part) => acc?.[part], obj);
+    return path.split('.').reduce((acc: any, part: any) => acc?.[part], obj);
 };
 
 // Set nested value by path
@@ -284,7 +284,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 // Merge with defaults to handle new config keys
                 return deepMerge(defaultConfig, migrated);
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error('Failed to load config from localStorage:', e);
         }
         return defaultConfig;
@@ -302,7 +302,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 // No differences - remove stored config so defaults are used
                 localStorage.removeItem(CONFIG_STORAGE_KEY);
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error('Failed to save config to localStorage:', e);
         }
     }, [config]);
@@ -310,7 +310,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Sync request cancellation setting to backend
     useEffect(() => {
         const enabled = config.performance?.enableRequestCancellation ?? true;
-        SetRequestCancellationEnabled(enabled).catch(err => {
+        SetRequestCancellationEnabled(enabled).catch((err: any) => {
             console.error('Failed to set request cancellation setting:', err);
         });
     }, [config.performance?.enableRequestCancellation]);
@@ -318,7 +318,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Sync HTTP protocol setting to backend
     useEffect(() => {
         const forceHttp1 = config.performance?.forceHttp1 ?? false;
-        SetForceHTTP1(forceHttp1).catch(err => {
+        SetForceHTTP1(forceHttp1).catch((err: any) => {
             console.error('Failed to set HTTP/1 setting:', err);
         });
     }, [config.performance?.forceHttp1]);
@@ -326,7 +326,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Sync client pool size setting to backend
     useEffect(() => {
         const poolSize = config.performance?.clientPoolSize ?? 0;
-        SetClientPoolSize(poolSize).catch(err => {
+        SetClientPoolSize(poolSize).catch((err: any) => {
             console.error('Failed to set client pool size:', err);
         });
     }, [config.performance?.clientPoolSize]);

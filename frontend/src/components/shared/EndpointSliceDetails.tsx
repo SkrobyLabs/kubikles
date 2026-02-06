@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function EndpointSliceDetails({ endpointSlice, tabContext = '' }) {
+export default function EndpointSliceDetails({ endpointSlice, tabContext = '' }: { endpointSlice: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
@@ -67,7 +67,7 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' })
         return metadata.labels?.['kubernetes.io/service-name'] || '-';
     };
 
-    const getEndpointStatus = (endpoint) => {
+    const getEndpointStatus = (endpoint: any) => {
         const conditions = endpoint.conditions || {};
         if (conditions.ready === true) return { text: 'Ready', color: 'text-green-400' };
         if (conditions.ready === false) return { text: 'Not Ready', color: 'text-yellow-400' };
@@ -89,7 +89,7 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' })
                             onClick={handleEditYaml}
                             className={`p-1.5 rounded transition-colors ${isStale ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -134,7 +134,7 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' })
                                 <span>Port</span>
                                 <span>Protocol</span>
                             </div>
-                            {ports.map((port, idx) => (
+                            {ports.map((port: any, idx: number) => (
                                 <div key={idx} className="grid grid-cols-3 gap-2 text-sm text-gray-200 py-1">
                                     <span className="font-mono">{port.name || '-'}</span>
                                     <span className="font-mono">{port.port}</span>
@@ -154,7 +154,7 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' })
                         <p className="text-sm text-gray-500">No endpoints</p>
                     ) : (
                         <div className="space-y-2">
-                            {endpoints.map((endpoint, idx) => {
+                            {endpoints.map((endpoint: any, idx: number) => {
                                 const status = getEndpointStatus(endpoint);
                                 return (
                                     <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
@@ -176,7 +176,7 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' })
                                             )}
                                         </div>
                                         <div className="space-y-1">
-                                            {(endpoint.addresses || []).map((addr, addrIdx) => (
+                                            {(endpoint.addresses || []).map((addr: any, addrIdx: number) => (
                                                 <div key={addrIdx} className="text-sm text-gray-200 font-mono">
                                                     {addr}
                                                 </div>
@@ -189,7 +189,7 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' })
                                         )}
                                         {endpoint.hints?.forZones && endpoint.hints.forZones.length > 0 && (
                                             <div className="text-xs text-gray-500 mt-1">
-                                                Hint Zones: {endpoint.hints.forZones.map(z => z.name).join(', ')}
+                                                Hint Zones: {endpoint.hints.forZones.map((z: any) => z.name).join(', ')}
                                             </div>
                                         )}
                                     </div>

@@ -4,7 +4,7 @@ import { AddHelmRepository } from 'wailsjs/go/main/App';
 import { useNotification } from '~/context';
 import { useForm, helmRepoSchema } from '~/lib/validation';
 
-export default function HelmRepoAddDialog({ onClose, onSuccess }) {
+export default function HelmRepoAddDialog({ onClose, onSuccess }: any) {
     const { addNotification } = useNotification();
 
     const form = useForm({
@@ -29,7 +29,7 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }) {
         { name: 'ingress-nginx', url: 'https://kubernetes.github.io/ingress-nginx' },
     ];
 
-    const handleQuickAdd = (repo) => {
+    const handleQuickAdd = (repo: any) => {
         form.setValues({ name: repo.name, url: repo.url });
     };
 
@@ -115,7 +115,7 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }) {
                             type="number"
                             min="0"
                             value={form.values.priority}
-                            onChange={(e) => form.setValue('priority', parseInt(e.target.value) || 0)}
+                            onChange={(e: any) => form.setValue('priority', parseInt(e.target.value) || 0)}
                             onBlur={() => form.setFieldTouched('priority')}
                             className="w-24"
                             disabled={form.isSubmitting}

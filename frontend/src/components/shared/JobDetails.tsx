@@ -6,7 +6,7 @@ import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function JobDetails({ job, tabContext = '' }) {
+export default function JobDetails({ job, tabContext = '' }: { job: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch } = useUI();
 
@@ -31,7 +31,7 @@ export default function JobDetails({ job, tabContext = '' }) {
     const failed = status.failed ?? 0;
     const conditions = status.conditions || [];
 
-    const controller = ownerReferences.find(ref => ref.controller);
+    const controller = ownerReferences.find((ref: any) => ref.controller);
 
     const handleEditYaml = () => {
         const tabId = `yaml-job-${job.metadata.uid}`;
@@ -75,7 +75,7 @@ export default function JobDetails({ job, tabContext = '' }) {
             const kindToView = {
                 'CronJob': 'cronjobs',
             };
-            const viewName = kindToView[controller.kind];
+            const viewName = (kindToView as Record<string, string>)[controller.kind];
             if (viewName) {
                 navigateWithSearch(viewName, `uid:"${controller.uid}"`);
             }
@@ -83,8 +83,8 @@ export default function JobDetails({ job, tabContext = '' }) {
     };
 
     const getJobStatus = () => {
-        const completeCondition = conditions.find(c => c.type === 'Complete' && c.status === 'True');
-        const failedCondition = conditions.find(c => c.type === 'Failed' && c.status === 'True');
+        const completeCondition = conditions.find((c: any) => c.type === 'Complete' && c.status === 'True');
+        const failedCondition = conditions.find((c: any) => c.type === 'Failed' && c.status === 'True');
 
         if (completeCondition) return { status: 'Complete', variant: 'success' };
         if (failedCondition) return { status: 'Failed', variant: 'error' };
@@ -94,7 +94,7 @@ export default function JobDetails({ job, tabContext = '' }) {
 
     const jobStatus = getJobStatus();
 
-    const getConditionVariant = (condition) => {
+    const getConditionVariant = (condition: any) => {
         if (condition.type === 'Complete' && condition.status === 'True') return 'success';
         if (condition.type === 'Failed' && condition.status === 'True') return 'error';
         return 'default';
@@ -129,7 +129,7 @@ export default function JobDetails({ job, tabContext = '' }) {
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -184,7 +184,7 @@ export default function JobDetails({ job, tabContext = '' }) {
                 {conditions.length > 0 && (
                     <DetailSection title="Conditions">
                         <div className="space-y-2">
-                            {conditions.map((condition, idx) => (
+                            {conditions.map((condition: any, idx: number) => (
                                 <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                                     <div className="flex items-center gap-2">
                                         <StatusBadge status={condition.type} variant={getConditionVariant(condition)} />

@@ -2,7 +2,7 @@ import React from 'react';
 import { useUI } from '~/context';
 
 // Volume type badge
-const VolumeTypeBadge = ({ type }) => {
+const VolumeTypeBadge = ({ type }: { type: string }) => {
     const colors = {
         emptyDir: 'bg-gray-500/10 text-gray-400 border-gray-500/30',
         secret: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
@@ -15,14 +15,14 @@ const VolumeTypeBadge = ({ type }) => {
     };
 
     return (
-        <span className={`px-2 py-0.5 text-xs rounded border ${colors[type] || 'bg-gray-500/10 text-gray-400 border-gray-500/30'}`}>
+        <span className={`px-2 py-0.5 text-xs rounded border ${(colors as Record<string, string>)[type] || 'bg-gray-500/10 text-gray-400 border-gray-500/30'}`}>
             {type}
         </span>
     );
 };
 
 // Get volume type and details from volume spec
-const getVolumeInfo = (volume) => {
+const getVolumeInfo = (volume: any) => {
     if (volume.emptyDir !== undefined) {
         return {
             type: 'emptyDir',
@@ -82,17 +82,17 @@ const getVolumeInfo = (volume) => {
         };
     }
     // Generic fallback for other types
-    const type = Object.keys(volume).find(k => k !== 'name');
-    return { type: type || 'unknown', raw: volume[type] };
+    const type = Object.keys(volume).find((k: any) => k !== 'name');
+    return { type: type || 'unknown', raw: volume[type as string] };
 };
 
 // Render projected sources
-const ProjectedSources = ({ sources }) => {
+const ProjectedSources = ({ sources }: { sources: any[] }) => {
     if (!sources || sources.length === 0) return null;
 
     return (
         <div className="mt-2 ml-4 space-y-1">
-            {sources.map((source, idx) => {
+            {sources.map((source: any, idx: number) => {
                 if (source.serviceAccountToken) {
                     return (
                         <div key={idx} className="text-xs text-gray-500">
@@ -105,7 +105,7 @@ const ProjectedSources = ({ sources }) => {
                     return (
                         <div key={idx} className="text-xs text-gray-500">
                             <span className="text-gray-400">configMap:</span> {source.configMap.name}
-                            {source.configMap.items && ` (${source.configMap.items.map(i => i.key).join(', ')})`}
+                            {source.configMap.items && ` (${source.configMap.items.map((i: any) => i.key).join(', ')})`}
                         </div>
                     );
                 }
@@ -113,14 +113,14 @@ const ProjectedSources = ({ sources }) => {
                     return (
                         <div key={idx} className="text-xs text-gray-500">
                             <span className="text-gray-400">secret:</span> {source.secret.name}
-                            {source.secret.items && ` (${source.secret.items.map(i => i.key).join(', ')})`}
+                            {source.secret.items && ` (${source.secret.items.map((i: any) => i.key).join(', ')})`}
                         </div>
                     );
                 }
                 if (source.downwardAPI) {
                     return (
                         <div key={idx} className="text-xs text-gray-500">
-                            <span className="text-gray-400">downwardAPI:</span> {source.downwardAPI.items?.map(i => i.path).join(', ')}
+                            <span className="text-gray-400">downwardAPI:</span> {source.downwardAPI.items?.map((i: any) => i.path).join(', ')}
                         </div>
                     );
                 }
@@ -131,18 +131,18 @@ const ProjectedSources = ({ sources }) => {
 };
 
 // Volume card component
-const VolumeCard = ({ volume, namespace, onNavigate }) => {
+const VolumeCard = ({ volume, namespace, onNavigate }: { volume: any; namespace: any; onNavigate: any }) => {
     const info = getVolumeInfo(volume);
 
-    const handlePVCClick = (claimName) => {
+    const handlePVCClick = (claimName: any) => {
         onNavigate('pvcs', `name:"${claimName}" namespace:"${namespace}"`);
     };
 
-    const handleSecretClick = (secretName) => {
+    const handleSecretClick = (secretName: any) => {
         onNavigate('secrets', `name:"${secretName}" namespace:"${namespace}"`);
     };
 
-    const handleConfigMapClick = (configMapName) => {
+    const handleConfigMapClick = (configMapName: any) => {
         onNavigate('configmaps', `name:"${configMapName}" namespace:"${namespace}"`);
     };
 
@@ -233,7 +233,7 @@ const VolumeCard = ({ volume, namespace, onNavigate }) => {
 
                 {info.type === 'downwardAPI' && info.items && (
                     <div className="text-gray-500">
-                        Items: {info.items.map(i => i.path).join(', ')}
+                        Items: {info.items.map((i: any) => i.path).join(', ')}
                     </div>
                 )}
 
@@ -247,7 +247,7 @@ const VolumeCard = ({ volume, namespace, onNavigate }) => {
     );
 };
 
-export default function PodVolumesTab({ pod }) {
+export default function PodVolumesTab({ pod }: { pod: any }) {
     const { navigateWithSearch } = useUI();
     const volumes = pod.spec?.volumes || [];
     const namespace = pod.metadata?.namespace;
@@ -263,7 +263,7 @@ export default function PodVolumesTab({ pod }) {
     return (
         <div className="flex flex-col h-full overflow-auto p-4">
             <div className="grid gap-3">
-                {volumes.map((volume, idx) => (
+                {volumes.map((volume: any, idx: number) => (
                     <VolumeCard
                         key={volume.name || idx}
                         volume={volume}
