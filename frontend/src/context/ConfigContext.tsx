@@ -218,8 +218,17 @@ const getDiff = (current: any, defaults: any): any => {
                 diff[key] = nestedDiff;
             }
         } else if (Array.isArray(currentVal)) {
-            if (JSON.stringify([...(currentVal)].sort()) !== JSON.stringify([...(defaultVal || [])].sort())) {
-                diff[key] = currentVal;
+            // For arrays of primitives (strings), sorted comparison is fine.
+            // For arrays of objects, compare by JSON serialization (order matters).
+            const hasObjects = currentVal.length > 0 && typeof currentVal[0] === 'object';
+            if (hasObjects) {
+                if (JSON.stringify(currentVal) !== JSON.stringify(defaultVal || [])) {
+                    diff[key] = currentVal;
+                }
+            } else {
+                if (JSON.stringify([...(currentVal)].sort()) !== JSON.stringify([...(defaultVal || [])].sort())) {
+                    diff[key] = currentVal;
+                }
             }
         } else if (currentVal !== defaultVal) {
             diff[key] = currentVal;

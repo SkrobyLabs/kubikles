@@ -42,7 +42,7 @@ const sidebarLayoutSectionSchema = z.object({
   title: z.string(),
   items: z.array(z.string()),
   isCustom: z.boolean().optional(),
-  itemLabels: z.record(z.string()).optional(),
+  itemLabels: z.record(z.string(), z.string()).optional(),
 });
 
 // Sidebar config

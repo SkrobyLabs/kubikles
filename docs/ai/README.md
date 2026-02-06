@@ -124,7 +124,8 @@ kubikles/
 │   ├── hooks/              # ~25 hooks: useResource.tsx, useResourceWatcher.tsx,
 │   │                       # usePortForwards.tsx, useIngressForward.tsx, etc.
 │   ├── constants/
-│   │   └── menuStructure.ts # Sidebar menu items, default sections, reconciliation
+│   │   ├── menuStructure.ts      # Sidebar menu items, default sections, reconciliation
+│   │   └── sidebarLayoutUtils.ts # Pure sidebar layout manipulation functions
 │   ├── types/
 │   │   └── k8s.ts          # TypeScript K8s resource type definitions
 │   └── utils/

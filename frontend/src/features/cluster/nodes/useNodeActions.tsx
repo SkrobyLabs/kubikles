@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { useK8s } from '~/context';
 import { DeleteNode, SetNodeSchedulable } from 'wailsjs/go/main/App';
 import NodeDetails from '~/components/shared/NodeDetails';
 import NodeShellTab from './NodeShellTab';
@@ -14,6 +15,7 @@ export interface NodeActionsReturn extends BaseResourceActionsReturn<K8sNode> {
 }
 
 export const useNodeActions = (refetch?: () => void): NodeActionsReturn => {
+    const { currentContext } = useK8s();
     const {
         handleShowDetails,
         handleEditYaml,

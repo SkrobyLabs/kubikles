@@ -123,6 +123,7 @@ Read the AI reference documentation for full project context:
 | Purpose | File |
 |---------|------|
 | Menu structure | `frontend/src/constants/menuStructure.ts` |
+| Sidebar layout utils | `frontend/src/constants/sidebarLayoutUtils.ts` |
 
 ### Shared Components
 | Purpose | File |

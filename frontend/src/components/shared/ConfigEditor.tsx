@@ -32,14 +32,22 @@ const flattenConfig = (obj, prefix = '') => {
         const value = obj[key];
         if (value && typeof value === 'object' && !Array.isArray(value)) {
             lines.push(...flattenConfig(value, fullKey));
-        } else {
+        } else if (value !== undefined) {
             // Add description comment if available
             const description = configDescriptions[fullKey];
             if (description) {
                 lines.push(`# ${description}`);
             }
             // Format value based on type
-            const formattedValue = typeof value === 'string' ? `"${value}"` : String(value);
+            let formattedValue;
+            if (typeof value === 'string') {
+                formattedValue = `"${value}"`;
+            } else if (Array.isArray(value)) {
+                // Serialize arrays as JSON to preserve structure
+                formattedValue = JSON.stringify(value);
+            } else {
+                formattedValue = String(value);
+            }
             lines.push(`${fullKey} = ${formattedValue}`);
         }
     }
@@ -74,6 +82,13 @@ const unflattenConfig = (text) => {
             value = false;
         } else if (trimmedValue === 'null') {
             value = null;
+        } else if (trimmedValue.startsWith('[') || trimmedValue.startsWith('{')) {
+            // Parse JSON arrays and objects
+            try {
+                value = JSON.parse(trimmedValue);
+            } catch {
+                value = trimmedValue;
+            }
         } else if (/^-?\d+$/.test(trimmedValue)) {
             value = parseInt(trimmedValue, 10);
         } else if (/^-?\d*\.\d+$/.test(trimmedValue)) {

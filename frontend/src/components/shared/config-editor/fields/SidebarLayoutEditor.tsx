@@ -35,11 +35,20 @@ import {
 } from '@heroicons/react/24/outline';
 import {
     ALL_MENU_ITEMS,
-    DEFAULT_MENU_SECTIONS,
     FIXED_SECTION_IDS,
     getDefaultLayout,
     type SidebarLayoutSection,
 } from '~/constants/menuStructure';
+import {
+    removeItemFromLayout,
+    renameItemInLayout,
+    addItemToLayout,
+    addGroupToLayout as addGroupToLayoutUtil,
+    deleteSectionFromLayout,
+    renameSectionInLayout,
+    isDefaultLayout,
+    getAvailableGroups,
+} from '~/constants/sidebarLayoutUtils';
 
 // ---- Insertion indicator line ----
 
@@ -310,46 +319,17 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
     );
 
-    const visibleItemIds = useMemo(() => {
-        const ids = new Set<string>();
-        for (const section of layout) {
-            for (const itemId of section.items) ids.add(itemId);
-        }
-        return ids;
+    const availableGroups = useMemo(() => {
+        const groups = getAvailableGroups(layout);
+        // Enrich with icon from ALL_MENU_ITEMS for rendering
+        return groups.map(g => ({
+            ...g,
+            items: g.items.map(item => ({ ...item, icon: ALL_MENU_ITEMS[item.id]?.icon })),
+        }));
     }, [layout]);
 
-    const availableGroups = useMemo(() => {
-        const hiddenIds = Object.keys(ALL_MENU_ITEMS)
-            .filter(id => id !== 'crds' && !visibleItemIds.has(id));
-        if (hiddenIds.length === 0) return [];
-
-        // Group by default section, preserving default section order
-        const bySection = new Map<string, { id: string; label: string; icon?: React.ComponentType<any> }[]>();
-        for (const id of hiddenIds) {
-            const def = ALL_MENU_ITEMS[id];
-            const sectionId = def.defaultSection;
-            if (!bySection.has(sectionId)) bySection.set(sectionId, []);
-            bySection.get(sectionId)!.push({ id, label: def.label, icon: def.icon });
-        }
-
-        return DEFAULT_MENU_SECTIONS
-            .filter(s => bySection.has(s.id))
-            .map(s => ({ sectionId: s.id, title: s.title, items: bySection.get(s.id)! }));
-    }, [visibleItemIds]);
-
     const updateLayout = useCallback((newLayout: SidebarLayoutSection[]) => {
-        const defaults = getDefaultLayout();
-        const isDefault = defaults.length === newLayout.length &&
-            defaults.every((defSection, i) => {
-                const section = newLayout[i];
-                return section.id === defSection.id &&
-                    section.title === defSection.title &&
-                    !section.isCustom &&
-                    (!section.itemLabels || Object.keys(section.itemLabels).length === 0) &&
-                    section.items.length === defSection.items.length &&
-                    section.items.every((item, j) => item === defSection.items[j]);
-            });
-        onChange(isDefault ? undefined : newLayout);
+        onChange(isDefaultLayout(newLayout) ? undefined : newLayout);
     }, [onChange]);
 
     // ---- Helpers ----
@@ -552,59 +532,23 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
     // ---- Actions ----
 
     const removeItem = (sectionIdx: number, itemId: string) => {
-        const newLayout = layout.map((s, i) => {
-            if (i !== sectionIdx) return s;
-            const items = s.items.filter(id => id !== itemId);
-            if (!s.itemLabels?.[itemId]) return { ...s, items };
-            const labels = { ...s.itemLabels };
-            delete labels[itemId];
-            return { ...s, items, itemLabels: Object.keys(labels).length > 0 ? labels : undefined };
-        });
-        updateLayout(newLayout);
+        updateLayout(removeItemFromLayout(layout, sectionIdx, itemId));
     };
 
     const renameItem = (sectionIdx: number, itemId: string, newLabel: string) => {
-        const originalLabel = ALL_MENU_ITEMS[itemId]?.label;
-        const newLayout = layout.map((s, i) => {
-            if (i !== sectionIdx) return s;
-            const labels = { ...(s.itemLabels || {}) };
-            if (!newLabel || newLabel === originalLabel) {
-                delete labels[itemId];
-            } else {
-                labels[itemId] = newLabel;
-            }
-            return { ...s, itemLabels: Object.keys(labels).length > 0 ? labels : undefined };
-        });
-        updateLayout(newLayout);
+        updateLayout(renameItemInLayout(layout, sectionIdx, itemId, newLabel));
     };
 
     const addItemToSection = (itemId: string, sectionIdx?: number) => {
-        const targetIdx = sectionIdx ?? layout.findIndex(s => !FIXED_SECTION_IDS.has(s.id));
-        if (targetIdx === -1 || layout.length === 0) return;
-        const newLayout = layout.map((s, i) =>
-            i === targetIdx ? { ...s, items: [...s.items, itemId] } : s
-        );
-        updateLayout(newLayout);
+        updateLayout(addItemToLayout(layout, itemId, sectionIdx));
     };
 
     const addGroupToLayout = (sectionId: string, itemIds: string[]) => {
-        // Find or create the section in the layout, then add all items
         const existingIdx = layout.findIndex(s => s.id === sectionId);
-        if (existingIdx !== -1) {
-            const newLayout = layout.map((s, i) =>
-                i === existingIdx ? { ...s, items: [...s.items, ...itemIds] } : s
-            );
-            updateLayout(newLayout);
-        } else {
-            const defaultSec = DEFAULT_MENU_SECTIONS.find(s => s.id === sectionId);
-            const newSection: SidebarLayoutSection = {
-                id: sectionId,
-                title: defaultSec?.title || sectionId,
-                items: itemIds,
-            };
+        if (existingIdx === -1) {
             setExpandedSections(prev => new Set([...prev, sectionId]));
-            updateLayout([...layout, newSection]);
         }
+        updateLayout(addGroupToLayoutUtil(layout, sectionId, itemIds));
     };
 
     const addCustomSection = () => {
@@ -615,12 +559,11 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
     };
 
     const deleteSection = (sectionIdx: number) => {
-        if (FIXED_SECTION_IDS.has(layout[sectionIdx].id)) return;
-        updateLayout(layout.filter((_, i) => i !== sectionIdx));
+        updateLayout(deleteSectionFromLayout(layout, sectionIdx));
     };
 
     const renameSection = (sectionIdx: number, newTitle: string) => {
-        updateLayout(layout.map((s, i) => i === sectionIdx ? { ...s, title: newTitle } : s));
+        updateLayout(renameSectionInLayout(layout, sectionIdx, newTitle));
     };
 
     const handleReset = () => {

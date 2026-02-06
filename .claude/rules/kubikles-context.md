@@ -90,6 +90,7 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 | AI Chat | `frontend/src/context/AIChatContext.tsx` |
 | Sidebar nav | `frontend/src/components/layout/Sidebar.tsx` |
 | Menu structure | `frontend/src/constants/menuStructure.ts` |
+| Sidebar layout utils | `frontend/src/constants/sidebarLayoutUtils.ts` |
 | Resource table | `frontend/src/components/shared/ResourceList.tsx` |
 
 ### Feature Modules
