@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GetCRDPrinterColumns } from '../../wailsjs/go/main/App';
+import { GetCRDPrinterColumns } from 'wailsjs/go/main/App';
 
 export interface CRDPrinterColumn {
     name: string;

@@ -1,18 +1,18 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
-import { useConfigMaps } from '../../../hooks/resources';
-import { useK8s } from '../../../context';
-import { useNotification } from '../../../context';
-import { useMenu } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { DeleteConfigMap, GetConfigMapYaml, SaveYamlBackup } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
+import { useConfigMaps } from '~/hooks/resources';
+import { useK8s } from '~/context';
+import { useNotification } from '~/context';
+import { useMenu } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { DeleteConfigMap, GetConfigMapYaml, SaveYamlBackup } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ConfigMapActionsMenu from './ConfigMapActionsMenu';
 import { useConfigMapActions } from './useConfigMapActions';
-import Logger from '../../../utils/Logger';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import Logger from '~/utils/Logger';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 // System ConfigMaps auto-created by Kubernetes in every namespace
 const SYSTEM_CONFIGMAP_NAMES = ['kube-root-ca.crt'];

@@ -1,11 +1,11 @@
 import React from 'react';
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteCronJob, TriggerCronJob, SuspendCronJob, ListJobs, ListPods } from '../../../../wailsjs/go/main/App';
-import { useK8s } from '../../../context';
-import CronJobDetails from '../../../components/shared/CronJobDetails';
-import LogViewer from '../../../components/shared/log-viewer';
-import Logger from '../../../utils/Logger';
-import { K8sCronJob } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteCronJob, TriggerCronJob, SuspendCronJob, ListJobs, ListPods } from 'wailsjs/go/main/App';
+import { useK8s } from '~/context';
+import CronJobDetails from '~/components/shared/CronJobDetails';
+import LogViewer from '~/components/shared/log-viewer';
+import Logger from '~/utils/Logger';
+import { K8sCronJob } from '~/types/k8s';
 
 interface CronJobActionsReturn extends BaseResourceActionsReturn<K8sCronJob> {
     handleViewLogs: (cronJob: K8sCronJob) => Promise<void>;
@@ -23,7 +23,7 @@ export const useCronJobActions = (): CronJobActionsReturn => {
         openTab,
         openModal,
         closeModal,
-        currentContext,
+
         addNotification,
     } = useBaseResourceActions({
         resourceType: 'cronjob',

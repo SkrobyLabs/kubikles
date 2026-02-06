@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
-import { ListEvents, GetHelmReleaseResources } from '../../../../wailsjs/go/main/App';
-import { useK8s } from '../../../context';
-import { useResourceWatcher } from '../../../hooks/useResourceWatcher';
-import { formatAge } from '../../../utils/formatting';
-import Logger from '../../../utils/Logger';
+import { ListEvents, GetHelmReleaseResources } from 'wailsjs/go/main/App';
+import { useK8s } from '~/context';
+import { useResourceWatcher } from '~/hooks/useResourceWatcher';
+import { formatAge } from '~/utils/formatting';
+import Logger from '~/utils/Logger';
 
 // Event type indicator
 const EventTypeIcon = ({ type }) => {
@@ -47,7 +47,7 @@ export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 
                 // Fetch events from all relevant namespaces
                 let allEvents = [];
                 for (const ns of resourceNamespaces) {
-                    const nsEvents = await ListEvents(ns);
+                    const nsEvents = await ListEvents('', ns);
                     allEvents = allEvents.concat(nsEvents || []);
                 }
 

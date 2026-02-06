@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import LimitRangeActionsMenu from './LimitRangeActionsMenu';
-import { useLimitRanges } from '../../../hooks/resources';
+import { useLimitRanges } from '~/hooks/resources';
 import { useLimitRangeActions } from './useLimitRangeActions';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteLimitRange, GetLimitRangeYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteLimitRange, GetLimitRangeYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function LimitRangeList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
@@ -32,7 +32,7 @@ export default function LimitRangeList({ isVisible }) {
         isNamespaced: true,
         deleteApi: DeleteLimitRange,
         getYamlApi: GetLimitRangeYaml,
-        currentContext,
+
     });
 
     const getLimitCount = (lr) => {

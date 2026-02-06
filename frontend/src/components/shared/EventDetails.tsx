@@ -1,8 +1,8 @@
 import React from 'react';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
-import { useK8s } from '../../context';
-import { useUI } from '../../context';
-import { formatAge } from '../../utils/formatting';
+import { useK8s } from '~/context';
+import { useUI } from '~/context';
+import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, StatusBadge, CopyableTextBlock, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor } from '../lazy';
 

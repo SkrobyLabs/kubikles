@@ -1,19 +1,19 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import EventActionsMenu from './EventActionsMenu';
-import { useEventsList } from '../../../hooks/resources';
+import { useEventsList } from '~/hooks/resources';
 import { useEventActions } from './useEventActions';
-import { useK8s } from '../../../context';
-import { useUI } from '../../../context';
-import { useMenu } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteEvent, GetEventYAML } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { getOwnerViewId } from '../../../utils/owner-navigation';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useUI } from '~/context';
+import { useMenu } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteEvent, GetEventYAML } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { getOwnerViewId } from '~/utils/owner-navigation';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 function getEventTypeColor(type) {
     switch (type) {
@@ -53,7 +53,7 @@ export default function EventList({ isVisible }) {
         isNamespaced: true,
         deleteApi: DeleteEvent,
         getYamlApi: GetEventYAML,
-        currentContext,
+
     });
     const { events, loading } = useEventsList(currentContext, selectedNamespaces, isVisible);
     const { handleShowDetails, handleEditYaml } = useEventActions();

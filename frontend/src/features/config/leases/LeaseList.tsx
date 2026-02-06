@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import LeaseActionsMenu from './LeaseActionsMenu';
-import { useLeases } from '../../../hooks/resources';
+import { useLeases } from '~/hooks/resources';
 import { useLeaseActions } from './useLeaseActions';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteLease, GetLeaseYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteLease, GetLeaseYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function LeaseList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
@@ -32,7 +32,7 @@ export default function LeaseList({ isVisible }) {
         isNamespaced: true,
         deleteApi: DeleteLease,
         getYamlApi: GetLeaseYaml,
-        currentContext,
+
     });
 
     const getHolderIdentity = (lease) => {

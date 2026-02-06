@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
-import { useK8s } from '../../context';
-import { useUI } from '../../context';
-import { GetNamespaceResourceCounts } from '../../../wailsjs/go/main/App';
-import { formatAge } from '../../utils/formatting';
+import { useK8s } from '~/context';
+import { useUI } from '~/context';
+import { GetNamespaceResourceCounts } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, ResourceCountBadge } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor } from '../lazy';
 import NamespaceMetricsTab from './NamespaceMetricsTab';

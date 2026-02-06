@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useUI } from '../context';
 import { useConfig } from '../context';
 import PerformancePanel from '../components/shared/PerformancePanel';
-import { GetPerformanceMetrics } from '../../wailsjs/go/main/App';
-import { main } from '../../wailsjs/go/models';
+import { GetPerformanceMetrics } from 'wailsjs/go/main/App';
+import { main } from 'wailsjs/go/models';
 
 export const usePerformancePanel = (): {
     openPerformancePanel: () => void;

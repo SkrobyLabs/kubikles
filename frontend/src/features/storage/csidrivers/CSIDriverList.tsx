@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import CSIDriverActionsMenu from './CSIDriverActionsMenu';
-import { useCSIDrivers } from '../../../hooks/resources';
+import { useCSIDrivers } from '~/hooks/resources';
 import { useCSIDriverActions } from './useCSIDriverActions';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteCSIDriver, GetCSIDriverYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteCSIDriver, GetCSIDriverYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 const BooleanIcon = ({ value }) => {
     if (value === true) {
@@ -40,7 +40,7 @@ export default function CSIDriverList({ isVisible }) {
         isNamespaced: false,
         deleteApi: DeleteCSIDriver,
         getYamlApi: GetCSIDriverYaml,
-        currentContext,
+
     });
 
     const getAttachRequired = (driver) => {

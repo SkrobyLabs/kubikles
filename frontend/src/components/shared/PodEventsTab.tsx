@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
-import { ListEvents } from '../../../wailsjs/go/main/App';
-import { useK8s } from '../../context';
-import { useResourceWatcher } from '../../hooks/useResourceWatcher';
-import { formatAge } from '../../utils/formatting';
+import { ListEvents } from 'wailsjs/go/main/App';
+import { useK8s } from '~/context';
+import { useResourceWatcher } from '~/hooks/useResourceWatcher';
+import { formatAge } from '~/utils/formatting';
 
 // Event type indicator
 const EventTypeIcon = ({ type }) => {
@@ -29,7 +29,7 @@ export default function PodEventsTab({ pod, isStale }) {
         const fetchEvents = async () => {
             setLoading(true);
             try {
-                const list = await ListEvents(namespace);
+                const list = await ListEvents('', namespace);
                 // Filter events related to this pod
                 const podEvents = (list || []).filter(event =>
                     event.involvedObject?.uid === podUid ||

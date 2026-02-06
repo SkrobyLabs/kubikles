@@ -1,10 +1,10 @@
 import React from 'react';
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteReplicaSet, ListPods } from '../../../../wailsjs/go/main/App';
-import ReplicaSetDetails from '../../../components/shared/ReplicaSetDetails';
-import LogViewer from '../../../components/shared/log-viewer';
-import Logger from '../../../utils/Logger';
-import { K8sReplicaSet, K8sPod } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteReplicaSet, ListPods } from 'wailsjs/go/main/App';
+import ReplicaSetDetails from '~/components/shared/ReplicaSetDetails';
+import LogViewer from '~/components/shared/log-viewer';
+import Logger from '~/utils/Logger';
+import { K8sReplicaSet, K8sPod } from '~/types/k8s';
 
 export interface ReplicaSetActionsReturn extends BaseResourceActionsReturn<K8sReplicaSet> {
     handleDelete: (replicaSet: K8sReplicaSet) => void;
@@ -102,7 +102,7 @@ export const useReplicaSetActions = (): ReplicaSetActionsReturn => {
         closeTab,
         openModal,
         closeModal,
-        currentContext,
+
         addNotification,
         createDeleteHandler,
     };

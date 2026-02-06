@@ -1,7 +1,7 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteMutatingWebhookConfiguration } from '../../../../wailsjs/go/main/App';
-import MutatingWebhookDetails from '../../../components/shared/MutatingWebhookDetails';
-import { K8sMutatingWebhookConfiguration } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteMutatingWebhookConfiguration } from 'wailsjs/go/main/App';
+import MutatingWebhookDetails from '~/components/shared/MutatingWebhookDetails';
+import { K8sMutatingWebhookConfiguration } from '~/types/k8s';
 
 interface MutatingWebhookActionsReturn extends BaseResourceActionsReturn<K8sMutatingWebhookConfiguration> {
     handleDelete: (webhook: K8sMutatingWebhookConfiguration) => void;
@@ -13,7 +13,7 @@ export const useMutatingWebhookActions = (): MutatingWebhookActionsReturn => {
         handleEditYaml,
         handleShowDependencies,
         createDeleteHandler,
-        currentContext,
+
     } = useBaseResourceActions<K8sMutatingWebhookConfiguration>({
         resourceType: 'mutatingwebhookconfiguration',
         resourceLabel: 'Mutating Webhook Configuration',

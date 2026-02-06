@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import { SetRequestCancellationEnabled, SetForceHTTP1, SetClientPoolSize } from '../../wailsjs/go/main/App';
+import { SetRequestCancellationEnabled, SetForceHTTP1, SetClientPoolSize } from 'wailsjs/go/main/App';
+import { validateConfig } from '~/lib/validation';
 
 interface LogSearchConfig {
     debounceMs: number;
@@ -258,6 +259,13 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
             if (saved) {
                 const parsed = JSON.parse(saved);
+
+                // Validate parsed config with Zod
+                const validation = validateConfig(parsed);
+                if (!validation.valid) {
+                    console.warn('Config validation failed, using defaults for invalid fields:', validation.issues);
+                }
+
                 // Migrate old config structure if needed
                 const migrated = migrateConfig(parsed);
                 // Merge with defaults to handle new config keys

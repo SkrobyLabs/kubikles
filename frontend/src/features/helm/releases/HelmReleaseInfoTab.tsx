@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CheckIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import { formatAge } from '../../../utils/formatting';
+import { formatAge } from '~/utils/formatting';
 
 // Copyable label component
 const CopyableLabel = ({ value, copyValue, className = '' }) => {

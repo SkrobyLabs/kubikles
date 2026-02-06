@@ -4,15 +4,27 @@ import (
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
+
+	"kubikles/pkg/k8s"
 )
 
 // =============================================================================
 // Events
 // =============================================================================
 
-func (a *App) ListEvents(namespace string) ([]v1.Event, error) {
+func (a *App) ListEvents(requestId, namespace string) ([]v1.Event, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListEventsWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListEvents(namespace)
 }

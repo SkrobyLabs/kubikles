@@ -7,9 +7,9 @@ import {
     StopIngressForward,
     RefreshIngressHostnames,
     GetManagedHosts
-} from '../../wailsjs/go/main/App';
-import { main } from '../../wailsjs/go/models';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
+} from 'wailsjs/go/main/App';
+import { main } from 'wailsjs/go/models';
+import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
 
 // Ingress forward event structure
 interface IngressForwardEvent {

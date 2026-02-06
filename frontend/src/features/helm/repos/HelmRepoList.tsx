@@ -13,7 +13,7 @@ import {
     CheckCircleIcon,
     XCircleIcon
 } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
+import ResourceList from '~/components/shared/ResourceList';
 import {
     ListHelmRepositories,
     RemoveHelmRepository,
@@ -25,11 +25,11 @@ import {
     LogoutOCIRegistry,
     SetOCIRegistryPriority,
     RemoveOCIRegistry
-} from '../../../../wailsjs/go/main/App';
+} from 'wailsjs/go/main/App';
 import HelmRepoAddDialog from './HelmRepoAddDialog';
 import { OCIRegistryLoginDialog } from '../oci';
-import { useNotification } from '../../../context';
-import { useUI } from '../../../context';
+import { useNotification } from '~/context';
+import { useUI } from '~/context';
 
 export default function HelmRepoList({ isVisible }) {
     const [repos, setRepos] = useState([]);

@@ -5,15 +5,27 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+
+	"kubikles/pkg/k8s"
 )
 
 // =============================================================================
 // RBAC & Access Control
 // =============================================================================
 
-func (a *App) ListServiceAccounts(namespace string) ([]v1.ServiceAccount, error) {
+func (a *App) ListServiceAccounts(requestId, namespace string) ([]v1.ServiceAccount, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListServiceAccountsWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListServiceAccounts(namespace)
 }
@@ -44,9 +56,19 @@ func (a *App) DeleteServiceAccount(namespace, name string) error {
 }
 
 // Role operations (namespaced)
-func (a *App) ListRoles(namespace string) ([]rbacv1.Role, error) {
+func (a *App) ListRoles(requestId, namespace string) ([]rbacv1.Role, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListRolesWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListRoles(namespace)
 }
@@ -77,9 +99,19 @@ func (a *App) DeleteRole(namespace, name string) error {
 }
 
 // ClusterRole operations (cluster-scoped)
-func (a *App) ListClusterRoles() ([]rbacv1.ClusterRole, error) {
+func (a *App) ListClusterRoles(requestId string) ([]rbacv1.ClusterRole, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListClusterRolesWithContext(ctx)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListClusterRoles()
 }
@@ -110,9 +142,19 @@ func (a *App) DeleteClusterRole(name string) error {
 }
 
 // RoleBinding operations (namespaced)
-func (a *App) ListRoleBindings(namespace string) ([]rbacv1.RoleBinding, error) {
+func (a *App) ListRoleBindings(requestId, namespace string) ([]rbacv1.RoleBinding, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListRoleBindingsWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListRoleBindings(namespace)
 }
@@ -143,9 +185,19 @@ func (a *App) DeleteRoleBinding(namespace, name string) error {
 }
 
 // ClusterRoleBinding operations (cluster-scoped)
-func (a *App) ListClusterRoleBindings() ([]rbacv1.ClusterRoleBinding, error) {
+func (a *App) ListClusterRoleBindings(requestId string) ([]rbacv1.ClusterRoleBinding, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListClusterRoleBindingsWithContext(ctx)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListClusterRoleBindings()
 }

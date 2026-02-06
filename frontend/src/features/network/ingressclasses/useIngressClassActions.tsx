@@ -1,11 +1,11 @@
 import React from 'react';
-import { useUI } from '../../../context';
-import { useK8s } from '../../../context';
-import { DeleteIngressClass } from '../../../../wailsjs/go/main/App';
-import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
-import Logger from '../../../utils/Logger';
+import { useUI } from '~/context';
+import { useK8s } from '~/context';
+import { DeleteIngressClass } from 'wailsjs/go/main/App';
+import { LazyYamlEditor as YamlEditor } from '~/components/lazy';
+import Logger from '~/utils/Logger';
 import { TagIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
-import { K8sIngressClass } from '../../../types/k8s';
+import { K8sIngressClass } from '~/types/k8s';
 
 export interface IngressClassActionsReturn {
     handleEditYaml: (ingressClass: K8sIngressClass) => void;

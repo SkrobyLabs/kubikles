@@ -4,15 +4,27 @@ import (
 	"fmt"
 
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+
+	"kubikles/pkg/k8s"
 )
 
 // =============================================================================
 // Webhooks & Admission Control
 // =============================================================================
 
-func (a *App) ListValidatingWebhookConfigurations() ([]admissionregistrationv1.ValidatingWebhookConfiguration, error) {
+func (a *App) ListValidatingWebhookConfigurations(requestId string) ([]admissionregistrationv1.ValidatingWebhookConfiguration, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListValidatingWebhookConfigurationsWithContext(ctx)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListValidatingWebhookConfigurations()
 }
@@ -43,9 +55,19 @@ func (a *App) DeleteValidatingWebhookConfiguration(name string) error {
 }
 
 // MutatingWebhookConfiguration operations (cluster-scoped)
-func (a *App) ListMutatingWebhookConfigurations() ([]admissionregistrationv1.MutatingWebhookConfiguration, error) {
+func (a *App) ListMutatingWebhookConfigurations(requestId string) ([]admissionregistrationv1.MutatingWebhookConfiguration, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListMutatingWebhookConfigurationsWithContext(ctx)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListMutatingWebhookConfigurations()
 }

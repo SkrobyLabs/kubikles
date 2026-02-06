@@ -1,7 +1,7 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch lint lint-go lint-fix fmt profile build-pgo
+.PHONY: help dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind
 
 .DEFAULT_GOAL := help
 
@@ -56,6 +56,13 @@ help:
 	@echo "  build-mac-arm-pgo  Build Apple Silicon release with PGO"
 	@echo "  clean-pgo          Remove PGO profile files"
 	@echo ""
+	@echo "Local Test Cluster:"
+	@echo "  cluster-up         Start a local K8s cluster (kind or minikube)"
+	@echo "  cluster-down       Stop and delete the local cluster"
+	@echo "  cluster-status     Show cluster status"
+	@echo "  cluster-load       Load sample resources into cluster"
+	@echo "  install-kind       Install kind (Kubernetes IN Docker)"
+	@echo ""
 	@echo "Utilities:"
 	@echo "  clean              Remove build artifacts"
 	@echo ""
@@ -67,8 +74,11 @@ else
     DETECTED_OS := $(shell uname -s)
 endif
 
-# Use wails directly (should be in PATH after go install)
-WAILS := wails
+# Find wails - check PATH first, then common Go bin locations
+WAILS := $(shell command -v wails 2>/dev/null || echo "$(HOME)/go/bin/wails")
+ifeq (,$(wildcard $(WAILS)))
+    $(error wails not found. Run 'make install-wails' or add ~/go/bin to PATH)
+endif
 PGO_FILE := default.pgo
 
 # Version info from git
@@ -238,7 +248,7 @@ fmt:
 #   3. Press Ctrl+C to stop and save profile
 profile:
 	@echo "Building with profiling enabled..."
-	$(WAILS) build -tags "profiling"
+	$(WAILS) build -tags "profiling" -skipbindings
 	@echo ""
 	@echo "=== PGO Profile Collection ==="
 	@echo "1. App will start with pprof enabled on port 6060"
@@ -280,3 +290,118 @@ endif
 # Clean PGO profile
 clean-pgo:
 	rm -f $(PGO_FILE) cpu.pprof
+
+# =============================================================================
+# Local Test Cluster
+# =============================================================================
+
+CLUSTER_NAME := kubikles-dev
+# Find kind - check PATH first, then ~/go/bin
+KIND := $(shell command -v kind 2>/dev/null || (test -x "$(HOME)/go/bin/kind" && echo "$(HOME)/go/bin/kind"))
+
+# Install kind if not present (requires Docker to run)
+install-kind:
+	@if [ -n "$(KIND)" ]; then \
+		echo "kind is already installed: $$($(KIND) version)"; \
+	else \
+		echo "Installing kind..."; \
+		CGO_ENABLED=0 go install sigs.k8s.io/kind@latest; \
+		echo "kind installed to ~/go/bin/kind"; \
+		echo "Note: kind requires Docker to create clusters."; \
+	fi
+
+# Start local cluster - prefers kind (requires Docker), falls back to minikube
+cluster-up:
+	@if [ -n "$(KIND)" ]; then \
+		if ! docker info >/dev/null 2>&1; then \
+			echo "Error: Docker is not running (required for kind)"; \
+			echo ""; \
+			echo "Install Docker via one of:"; \
+			echo "  - Docker Desktop: https://docker.com/products/docker-desktop"; \
+			echo "  - OrbStack (macOS): https://orbstack.dev"; \
+			echo "  - Colima (macOS): brew install colima && colima start"; \
+			echo ""; \
+			echo "Or use minikube with a VM driver."; \
+			exit 1; \
+		fi; \
+		echo "Starting kind cluster '$(CLUSTER_NAME)'..."; \
+		if $(KIND) get clusters 2>/dev/null | grep -q "^$(CLUSTER_NAME)$$"; then \
+			echo "Cluster already exists. Use 'make cluster-down' to remove it first."; \
+		else \
+			$(KIND) create cluster --name $(CLUSTER_NAME) --wait 60s && \
+			echo "" && \
+			echo "Cluster ready! Context set to: kind-$(CLUSTER_NAME)" && \
+			kubectl cluster-info --context kind-$(CLUSTER_NAME); \
+		fi; \
+	elif command -v minikube >/dev/null 2>&1; then \
+		echo "Starting minikube cluster '$(CLUSTER_NAME)'..."; \
+		if minikube status -p $(CLUSTER_NAME) 2>/dev/null | grep -q "Running"; then \
+			echo "Cluster already running."; \
+		else \
+			minikube start -p $(CLUSTER_NAME) --memory=2048 --cpus=2 && \
+			echo "" && \
+			echo "Cluster ready! Context set to: $(CLUSTER_NAME)"; \
+		fi; \
+	else \
+		echo "Error: Neither kind nor minikube found."; \
+		echo "Install kind with: make install-kind (requires Docker)"; \
+		echo "Or install minikube from: https://minikube.sigs.k8s.io/"; \
+		exit 1; \
+	fi
+
+# Stop and delete local cluster
+cluster-down:
+	@if [ -n "$(KIND)" ] && $(KIND) get clusters 2>/dev/null | grep -q "^$(CLUSTER_NAME)$$"; then \
+		echo "Deleting kind cluster '$(CLUSTER_NAME)'..."; \
+		$(KIND) delete cluster --name $(CLUSTER_NAME); \
+	elif command -v minikube >/dev/null 2>&1 && minikube status -p $(CLUSTER_NAME) >/dev/null 2>&1; then \
+		echo "Deleting minikube cluster '$(CLUSTER_NAME)'..."; \
+		minikube delete -p $(CLUSTER_NAME); \
+	else \
+		echo "No cluster '$(CLUSTER_NAME)' found."; \
+	fi
+
+# Show cluster status
+cluster-status:
+	@echo "=== Cluster Status ==="
+	@if [ -n "$(KIND)" ] && $(KIND) get clusters 2>/dev/null | grep -q "^$(CLUSTER_NAME)$$"; then \
+		echo "Kind cluster '$(CLUSTER_NAME)' exists"; \
+		kubectl cluster-info --context kind-$(CLUSTER_NAME) 2>/dev/null || echo "  (not reachable)"; \
+	elif command -v minikube >/dev/null 2>&1; then \
+		minikube status -p $(CLUSTER_NAME) 2>/dev/null || echo "Minikube cluster '$(CLUSTER_NAME)' not found"; \
+	else \
+		echo "No cluster tools (kind/minikube) found"; \
+	fi
+	@echo ""
+	@echo "=== Current Context ==="
+	@kubectl config current-context 2>/dev/null || echo "No context set"
+	@echo ""
+	@echo "=== Namespaces ==="
+	@kubectl get namespaces 2>/dev/null || echo "Cannot reach cluster"
+
+# Load sample resources for testing
+cluster-load:
+	@echo "Creating sample resources in cluster..."
+	@kubectl create namespace demo --dry-run=client -o yaml | kubectl apply -f -
+	@kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
+	@echo ""
+	@echo "Creating sample deployment..."
+	@kubectl create deployment nginx --image=nginx:alpine -n demo --dry-run=client -o yaml | kubectl apply -f -
+	@kubectl scale deployment nginx -n demo --replicas=3
+	@echo ""
+	@echo "Creating sample service..."
+	@kubectl expose deployment nginx -n demo --port=80 --dry-run=client -o yaml | kubectl apply -f -
+	@echo ""
+	@echo "Creating sample configmap..."
+	@kubectl create configmap app-config -n demo --from-literal=env=development --from-literal=debug=true --dry-run=client -o yaml | kubectl apply -f -
+	@echo ""
+	@echo "Creating sample secret..."
+	@kubectl create secret generic app-secret -n demo --from-literal=api-key=test123 --dry-run=client -o yaml | kubectl apply -f -
+	@echo ""
+	@echo "Creating sample cronjob..."
+	@kubectl create cronjob hello -n demo --image=busybox --schedule="*/5 * * * *" -- echo "Hello from CronJob" --dry-run=client -o yaml | kubectl apply -f -
+	@echo ""
+	@echo "=== Resources Created ==="
+	@kubectl get all,configmaps,secrets -n demo
+	@echo ""
+	@echo "Sample resources loaded! Run 'make dev' to test Kubikles."

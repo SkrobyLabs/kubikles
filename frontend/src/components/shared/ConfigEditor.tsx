@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
-import { useConfig } from '../../context';
+import { useConfig } from '~/context';
 import { XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import ConfigEditorUI from './config-editor/ConfigEditorUI';
-import { configSchema } from '../../config/configSchema';
+import { configSchema } from '~/config/configSchema';
 
 // Build flat description map from configSchema (single source of truth).
 // Walks the schema tree and collects "path → description" for every typed field.

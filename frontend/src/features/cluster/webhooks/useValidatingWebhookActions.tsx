@@ -1,7 +1,7 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteValidatingWebhookConfiguration } from '../../../../wailsjs/go/main/App';
-import ValidatingWebhookDetails from '../../../components/shared/ValidatingWebhookDetails';
-import { K8sValidatingWebhookConfiguration } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteValidatingWebhookConfiguration } from 'wailsjs/go/main/App';
+import ValidatingWebhookDetails from '~/components/shared/ValidatingWebhookDetails';
+import { K8sValidatingWebhookConfiguration } from '~/types/k8s';
 
 interface ValidatingWebhookActionsReturn extends BaseResourceActionsReturn<K8sValidatingWebhookConfiguration> {
     handleDelete: (webhook: K8sValidatingWebhookConfiguration) => void;
@@ -13,7 +13,7 @@ export const useValidatingWebhookActions = (): ValidatingWebhookActionsReturn =>
         handleEditYaml,
         handleShowDependencies,
         createDeleteHandler,
-        currentContext,
+
     } = useBaseResourceActions<K8sValidatingWebhookConfiguration>({
         resourceType: 'validatingwebhookconfiguration',
         resourceLabel: 'Validating Webhook Configuration',

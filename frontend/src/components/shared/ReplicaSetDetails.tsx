@@ -1,15 +1,15 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { PencilSquareIcon, DocumentTextIcon, ShareIcon, CubeIcon } from '@heroicons/react/24/outline';
-import { useK8s } from '../../context';
-import { useUI } from '../../context';
-import { useNotification } from '../../context';
-import { formatAge } from '../../utils/formatting';
+import { useK8s } from '~/context';
+import { useUI } from '~/context';
+import { useNotification } from '~/context';
+import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 import ControllerMetricsTab from './ControllerMetricsTab';
 import ScaleModal from './ScaleModal';
-import { ScaleReplicaSet } from '../../lib/wailsjs-adapter/go/main/App';
-import { useResourceWatcher } from '../../hooks/useResourceWatcher';
+import { ScaleReplicaSet } from '~/lib/wailsjs-adapter/go/main/App';
+import { useResourceWatcher } from '~/hooks/useResourceWatcher';
 
 const TAB_BASIC = 'basic';
 const TAB_METRICS = 'metrics';

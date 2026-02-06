@@ -1,12 +1,12 @@
 import React from 'react';
-import { useUI } from '../../../context';
-import { useK8s } from '../../../context';
-import { useNotification } from '../../../context';
-import { DeleteCRD } from '../../../../wailsjs/go/main/App';
-import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
-import Logger from '../../../utils/Logger';
-import { K8sCustomResourceDefinition } from '../../../types/k8s';
-import { BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
+import { useUI } from '~/context';
+import { useK8s } from '~/context';
+import { useNotification } from '~/context';
+import { DeleteCRD } from 'wailsjs/go/main/App';
+import { LazyYamlEditor as YamlEditor } from '~/components/lazy';
+import Logger from '~/utils/Logger';
+import { K8sCustomResourceDefinition } from '~/types/k8s';
+import { BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
 
 /**
  * Return type for useCRDActions

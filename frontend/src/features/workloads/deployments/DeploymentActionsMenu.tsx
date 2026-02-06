@@ -1,18 +1,46 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
-import ComparisonMenuItems from '../../../components/shared/ComparisonMenuItems';
+import ComparisonMenuItems from '~/components/shared/ComparisonMenuItems';
+import type { K8sDeployment } from '~/types/k8s';
 
-export default function DeploymentActionsMenu({ deployment, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onRestart, onDelete, onViewLogs }) {
-    const buttonRef = useRef(null);
-    const menuRef = useRef(null);
+interface MenuPosition {
+    top: number;
+    left: number;
+}
+
+interface DeploymentActionsMenuProps {
+    deployment: K8sDeployment;
+    isOpen: boolean;
+    menuPosition: MenuPosition;
+    onOpenChange: (isOpen: boolean, buttonEl?: HTMLElement | null) => void;
+    onEditYaml: (deployment: K8sDeployment) => void;
+    onShowDependencies: (deployment: K8sDeployment) => void;
+    onRestart: (deployment: K8sDeployment) => void;
+    onDelete: (deployment: K8sDeployment) => void;
+    onViewLogs: (deployment: K8sDeployment) => void;
+}
+
+export default function DeploymentActionsMenu({
+    deployment,
+    isOpen,
+    menuPosition,
+    onOpenChange,
+    onEditYaml,
+    onShowDependencies,
+    onRestart,
+    onDelete,
+    onViewLogs
+}: DeploymentActionsMenuProps) {
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!isOpen) return;
 
-        const handleClickOutside = (event) => {
-            if (buttonRef.current && !buttonRef.current.contains(event.target) &&
-                menuRef.current && !menuRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (buttonRef.current && !buttonRef.current.contains(event.target as Node) &&
+                menuRef.current && !menuRef.current.contains(event.target as Node)) {
                 onOpenChange(false);
             }
         };
@@ -30,12 +58,12 @@ export default function DeploymentActionsMenu({ deployment, isOpen, menuPosition
         };
     }, [isOpen, onOpenChange]);
 
-    const toggleMenu = (e) => {
+    const toggleMenu = (e: React.MouseEvent) => {
         e.stopPropagation();
         onOpenChange(!isOpen, buttonRef.current);
     };
 
-    const handleAction = (action) => {
+    const handleAction = (action: () => void) => {
         onOpenChange(false);
         action();
     };

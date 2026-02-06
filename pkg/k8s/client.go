@@ -505,6 +505,10 @@ func (c *Client) WatchResource(ctx context.Context, resourceType, namespace, res
 	// Storage API (v1)
 	case "storageclasses":
 		return cs.StorageV1().StorageClasses().Watch(ctx, opts)
+	case "csidrivers":
+		return cs.StorageV1().CSIDrivers().Watch(ctx, opts)
+	case "csinodes":
+		return cs.StorageV1().CSINodes().Watch(ctx, opts)
 
 	// Autoscaling API (v2)
 	case "hpas":
@@ -543,6 +547,10 @@ func (c *Client) WatchResource(ctx context.Context, resourceType, namespace, res
 	// Scheduling API (v1)
 	case "priorityclasses":
 		return cs.SchedulingV1().PriorityClasses().Watch(ctx, opts)
+
+	// Coordination API (v1)
+	case "leases":
+		return cs.CoordinationV1().Leases(namespace).Watch(ctx, opts)
 
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
@@ -1941,6 +1949,21 @@ func (c *Client) ListIngresses(namespace string) ([]networkingv1.Ingress, error)
 	return ingresses.Items, nil
 }
 
+func (c *Client) ListIngressesWithContext(ctx context.Context, namespace string) ([]networkingv1.Ingress, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	ingresses, err := cs.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return ingresses.Items, nil
+}
+
 // ListIngressesForContext lists ingresses for a specific kubeconfig context
 func (c *Client) ListIngressesForContext(contextName, namespace string) ([]networkingv1.Ingress, error) {
 	cs, err := c.getClientForContext(contextName)
@@ -2014,6 +2037,21 @@ func (c *Client) ListIngressClasses(contextName string) ([]networkingv1.IngressC
 	defer cancel()
 	ingressClasses, err := cs.NetworkingV1().IngressClasses().List(ctx, metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return ingressClasses.Items, nil
+}
+
+func (c *Client) ListIngressClassesWithContext(ctx context.Context, contextName string) ([]networkingv1.IngressClass, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ingressClasses, err := cs.NetworkingV1().IngressClasses().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return ingressClasses.Items, nil
@@ -4479,6 +4517,21 @@ func (c *Client) ListPVCs(contextName, namespace string) ([]v1.PersistentVolumeC
 	return pvcs.Items, nil
 }
 
+func (c *Client) ListPVCsWithContext(ctx context.Context, contextName, namespace string) ([]v1.PersistentVolumeClaim, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	pvcs, err := cs.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return pvcs.Items, nil
+}
+
 func (c *Client) GetPVCYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -4578,6 +4631,21 @@ func (c *Client) ListPVs(contextName string) ([]v1.PersistentVolume, error) {
 	return pvs.Items, nil
 }
 
+func (c *Client) ListPVsWithContext(ctx context.Context, contextName string) ([]v1.PersistentVolume, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	pvs, err := cs.CoreV1().PersistentVolumes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return pvs.Items, nil
+}
+
 func (c *Client) GetPVYaml(name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -4649,6 +4717,21 @@ func (c *Client) ListStorageClasses(contextName string) ([]storagev1.StorageClas
 	defer cancel()
 	scs, err := cs.StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return scs.Items, nil
+}
+
+func (c *Client) ListStorageClassesWithContext(ctx context.Context, contextName string) ([]storagev1.StorageClass, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	scs, err := cs.StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return scs.Items, nil
@@ -5112,6 +5195,21 @@ func (c *Client) ListServiceAccounts(namespace string) ([]v1.ServiceAccount, err
 	return list.Items, nil
 }
 
+func (c *Client) ListServiceAccountsWithContext(ctx context.Context, namespace string) ([]v1.ServiceAccount, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.CoreV1().ServiceAccounts(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 // ListServiceAccountsForContext lists service accounts for a specific kubeconfig context
 func (c *Client) ListServiceAccountsForContext(contextName, namespace string) ([]v1.ServiceAccount, error) {
 	cs, err := c.getClientForContext(contextName)
@@ -5182,6 +5280,21 @@ func (c *Client) ListRoles(namespace string) ([]rbacv1.Role, error) {
 	defer cancel()
 	list, err := cs.RbacV1().Roles(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) ListRolesWithContext(ctx context.Context, namespace string) ([]rbacv1.Role, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.RbacV1().Roles(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return list.Items, nil
@@ -5347,6 +5460,21 @@ func (c *Client) ListRoleBindings(namespace string) ([]rbacv1.RoleBinding, error
 	defer cancel()
 	list, err := cs.RbacV1().RoleBindings(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) ListRoleBindingsWithContext(ctx context.Context, namespace string) ([]rbacv1.RoleBinding, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.RbacV1().RoleBindings(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return list.Items, nil
@@ -5607,6 +5735,21 @@ func (c *Client) ListHPAs(namespace string) ([]autoscalingv2.HorizontalPodAutosc
 	return list.Items, nil
 }
 
+func (c *Client) ListHPAsWithContext(ctx context.Context, namespace string) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 // ListHPAsForContext lists HPAs for a specific kubeconfig context
 func (c *Client) ListHPAsForContext(contextName, namespace string) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
 	cs, err := c.getClientForContext(contextName)
@@ -5682,6 +5825,21 @@ func (c *Client) ListPDBs(namespace string) ([]policyv1.PodDisruptionBudget, err
 	return list.Items, nil
 }
 
+func (c *Client) ListPDBsWithContext(ctx context.Context, namespace string) ([]policyv1.PodDisruptionBudget, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.PolicyV1().PodDisruptionBudgets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 func (c *Client) GetPDBYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -5737,6 +5895,21 @@ func (c *Client) ListResourceQuotas(namespace string) ([]v1.ResourceQuota, error
 	defer cancel()
 	list, err := cs.CoreV1().ResourceQuotas(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) ListResourceQuotasWithContext(ctx context.Context, namespace string) ([]v1.ResourceQuota, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.CoreV1().ResourceQuotas(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return list.Items, nil
@@ -5802,6 +5975,21 @@ func (c *Client) ListLimitRanges(namespace string) ([]v1.LimitRange, error) {
 	return list.Items, nil
 }
 
+func (c *Client) ListLimitRangesWithContext(ctx context.Context, namespace string) ([]v1.LimitRange, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.CoreV1().LimitRanges(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 func (c *Client) GetLimitRangeYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -5857,6 +6045,21 @@ func (c *Client) ListEndpoints(namespace string) ([]v1.Endpoints, error) {
 	defer cancel()
 	list, err := cs.CoreV1().Endpoints(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) ListEndpointsWithContext(ctx context.Context, namespace string) ([]v1.Endpoints, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.CoreV1().Endpoints(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return list.Items, nil
@@ -5922,6 +6125,21 @@ func (c *Client) ListEndpointSlices(namespace string) ([]discoveryv1.EndpointSli
 	return list.Items, nil
 }
 
+func (c *Client) ListEndpointSlicesWithContext(ctx context.Context, namespace string) ([]discoveryv1.EndpointSlice, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.DiscoveryV1().EndpointSlices(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 func (c *Client) GetEndpointSliceYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -5977,6 +6195,21 @@ func (c *Client) ListValidatingWebhookConfigurations() ([]admissionregistrationv
 	defer cancel()
 	list, err := cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) ListValidatingWebhookConfigurationsWithContext(ctx context.Context) ([]admissionregistrationv1.ValidatingWebhookConfiguration, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return list.Items, nil
@@ -6042,6 +6275,21 @@ func (c *Client) ListMutatingWebhookConfigurations() ([]admissionregistrationv1.
 	return list.Items, nil
 }
 
+func (c *Client) ListMutatingWebhookConfigurationsWithContext(ctx context.Context) ([]admissionregistrationv1.MutatingWebhookConfiguration, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 func (c *Client) GetMutatingWebhookConfigurationYaml(name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {
@@ -6097,6 +6345,21 @@ func (c *Client) ListPriorityClasses() ([]schedulingv1.PriorityClass, error) {
 	defer cancel()
 	list, err := cs.SchedulingV1().PriorityClasses().List(ctx, metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) ListPriorityClassesWithContext(ctx context.Context) ([]schedulingv1.PriorityClass, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	list, err := cs.SchedulingV1().PriorityClasses().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return list.Items, nil
@@ -6165,6 +6428,21 @@ func (c *Client) ListLeases(contextName, namespace string) ([]coordinationv1.Lea
 	return list.Items, nil
 }
 
+func (c *Client) ListLeasesWithContext(ctx context.Context, contextName, namespace string) ([]coordinationv1.Lease, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	list, err := cs.CoordinationV1().Leases(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 func (c *Client) GetLeaseYaml(contextName, namespace, name string) (string, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
@@ -6227,6 +6505,21 @@ func (c *Client) ListCSIDrivers(contextName string) ([]storagev1.CSIDriver, erro
 	return list.Items, nil
 }
 
+func (c *Client) ListCSIDriversWithContext(ctx context.Context, contextName string) ([]storagev1.CSIDriver, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	list, err := cs.StorageV1().CSIDrivers().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 func (c *Client) GetCSIDriverYaml(contextName, name string) (string, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
@@ -6284,6 +6577,21 @@ func (c *Client) ListCSINodes(contextName string) ([]storagev1.CSINode, error) {
 	defer cancel()
 	list, err := cs.StorageV1().CSINodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+func (c *Client) ListCSINodesWithContext(ctx context.Context, contextName string) ([]storagev1.CSINode, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	list, err := cs.StorageV1().CSINodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
 	return list.Items, nil

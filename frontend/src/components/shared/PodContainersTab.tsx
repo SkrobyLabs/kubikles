@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { ChevronDownIcon, SignalIcon, ClipboardDocumentIcon, CheckIcon, PlayIcon, StopIcon, TrashIcon, ArrowTopRightOnSquareIcon, CommandLineIcon, CubeIcon } from '@heroicons/react/24/outline';
-import { useK8s } from '../../context';
-import { usePortForwards } from '../../hooks/usePortForwards';
-import { useUI } from '../../context';
-import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
+import { useK8s } from '~/context';
+import { usePortForwards } from '~/hooks/usePortForwards';
+import { useUI } from '~/context';
+import { BrowserOpenURL } from 'wailsjs/runtime/runtime';
 import PodPortForwardDialog from './PodPortForwardDialog';
 import { LazyTerminal as Terminal } from '../lazy';
 import EnvVarSection from './EnvVarDisplay';

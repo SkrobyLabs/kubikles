@@ -5,7 +5,7 @@
  * with a factory pattern that eliminates code duplication.
  *
  * Usage:
- *   import { usePods, useDeployments } from '../../hooks/resources';
+ *   import { usePods, useDeployments } from '~/hooks/resources';
  *
  * Namespaced hooks signature:
  *   const { pods, loading, error, setPods } = usePods(currentContext, selectedNamespaces, isVisible);
@@ -54,7 +54,7 @@ import {
     ListLeases,
     ListCSIDrivers,
     ListCSINodes,
-} from '../../../wailsjs/go/main/App';
+} from 'wailsjs/go/main/App';
 
 // =============================================================================
 // NAMESPACED RESOURCES

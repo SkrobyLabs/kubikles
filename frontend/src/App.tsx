@@ -8,63 +8,30 @@ import {
     NotificationProvider,
     ThemeProvider,
     AIChatProvider, useAIChat
-} from './context';
-import Sidebar from './components/layout/Sidebar';
-import BottomPanel from './components/layout/BottomPanel';
-import AIPanel from './components/layout/AIPanel';
-import ToastContainer from './components/shared/ToastContainer';
-import PodList from './features/workloads/pods/PodList';
-import DeploymentList from './features/workloads/deployments/DeploymentList';
-import StatefulSetList from './features/workloads/statefulsets/StatefulSetList';
-import DaemonSetList from './features/workloads/daemonsets/DaemonSetList';
-import ReplicaSetList from './features/workloads/replicasets/ReplicaSetList';
-import NodeList from './features/cluster/nodes/NodeList';
-import NamespaceList from './features/cluster/namespaces/NamespaceList';
-import EventList from './features/cluster/events/EventList';
-import MetricsList from './features/cluster/metrics/MetricsList';
-import MetricsOverview from './features/cluster/metrics/MetricsOverview';
-import ServiceList from './features/network/services/ServiceList';
-import IngressList from './features/network/ingresses/IngressList';
-import IngressClassList from './features/network/ingressclasses/IngressClassList';
-import ConfigMapList from './features/config/configmaps/ConfigMapList';
-import SecretList from './features/config/secrets/SecretList';
-import JobList from './features/workloads/jobs/JobList';
-import CronJobList from './features/workloads/cronjobs/CronJobList';
-import PVCList from './features/storage/pvc/PVCList';
-import PVList from './features/storage/pv/PVList';
-import StorageClassList from './features/storage/storageclass/StorageClassList';
-import CRDList from './features/customresources/definitions/CRDList';
-import CustomResourceList from './features/customresources/instances/CustomResourceList';
-import PortForwardList from './features/portforwards/PortForwardList';
-import { HelmReleaseList } from './features/helm/releases';
-import { HelmRepoList } from './features/helm/repos';
-import ServiceAccountList from './features/access-control/serviceaccounts/ServiceAccountList';
-import RoleList from './features/access-control/roles/RoleList';
-import ClusterRoleList from './features/access-control/clusterroles/ClusterRoleList';
-import RoleBindingList from './features/access-control/rolebindings/RoleBindingList';
-import ClusterRoleBindingList from './features/access-control/clusterrolebindings/ClusterRoleBindingList';
-import NetworkPolicyList from './features/network/networkpolicies/NetworkPolicyList';
-import EndpointsList from './features/network/endpoints/EndpointsList';
-import EndpointSliceList from './features/network/endpointslices/EndpointSliceList';
-import HPAList from './features/config/hpas/HPAList';
-import PDBList from './features/config/pdbs/PDBList';
-import ResourceQuotaList from './features/config/resourcequotas/ResourceQuotaList';
-import LimitRangeList from './features/config/limitranges/LimitRangeList';
-import ValidatingWebhookList from './features/cluster/webhooks/ValidatingWebhookList';
-import MutatingWebhookList from './features/cluster/webhooks/MutatingWebhookList';
-import PriorityClassList from './features/cluster/priorityclasses/PriorityClassList';
-import LeaseList from './features/config/leases/LeaseList';
-import CSIDriverList from './features/storage/csidrivers/CSIDriverList';
-import CSINodeList from './features/storage/csinodes/CSINodeList';
-import { FlowTimeline, MultiLogViewer, ResourceDiff, RBACChecker } from './features/diagnostics';
-import { usePerformancePanel } from './hooks/usePerformancePanel';
-import { LogMessage, SetEventCoalescerFrameInterval, SetK8sAPITimeout } from '../wailsjs/go/main/App';
-import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
-import ConfirmModal from './components/shared/ConfirmModal';
-import ConfigEditor from './components/shared/ConfigEditor';
-import CommandPalette from './components/shared/CommandPalette';
-import CreateResourceModal from './components/shared/CreateResourceModal';
-import ConnectionError from './components/shared/ConnectionError';
+} from '~/context';
+import Sidebar from '~/components/layout/Sidebar';
+import BottomPanel from '~/components/layout/BottomPanel';
+import AIPanel from '~/components/layout/AIPanel';
+import ToastContainer from '~/components/shared/ToastContainer';
+// Feature imports - organized by category
+import { PodList, DeploymentList, StatefulSetList, DaemonSetList, ReplicaSetList, JobList, CronJobList } from '~/features/workloads';
+import { NodeList, NamespaceList, EventList, MetricsList, MetricsOverview, ValidatingWebhookList, MutatingWebhookList, PriorityClassList } from '~/features/cluster';
+import { ServiceList, IngressList, IngressClassList, NetworkPolicyList, EndpointsList, EndpointSliceList } from '~/features/network';
+import { ConfigMapList, SecretList, HPAList, PDBList, ResourceQuotaList, LimitRangeList, LeaseList } from '~/features/config';
+import { PVCList, PVList, StorageClassList, CSIDriverList, CSINodeList } from '~/features/storage';
+import { ServiceAccountList, RoleList, ClusterRoleList, RoleBindingList, ClusterRoleBindingList } from '~/features/access-control';
+import { CRDList, CustomResourceList } from '~/features/customresources';
+import { HelmReleaseList, HelmRepoList } from '~/features/helm';
+import { PortForwardList } from '~/features/portforwards';
+import { FlowTimeline, MultiLogViewer, ResourceDiff, RBACChecker } from '~/features/diagnostics';
+import { usePerformancePanel } from '~/hooks/usePerformancePanel';
+import { LogMessage, SetEventCoalescerFrameInterval, SetK8sAPITimeout } from 'wailsjs/go/main/App';
+import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
+import ConfirmModal from '~/components/shared/ConfirmModal';
+import ConfigEditor from '~/components/shared/ConfigEditor';
+import CommandPalette from '~/components/shared/CommandPalette';
+import CreateResourceModal from '~/components/shared/CreateResourceModal';
+import ConnectionError from '~/components/shared/ConnectionError';
 
 // Resource templates by view
 const resourceTemplates = {

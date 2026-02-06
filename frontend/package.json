@@ -28,7 +28,8 @@
     "react-dom": "^18.2.0",
     "react-virtuoso": "^4.17.0",
     "xterm": "^5.3.0",
-    "xterm-addon-fit": "^0.8.0"
+    "xterm-addon-fit": "^0.8.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",

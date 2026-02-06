@@ -1,4 +1,4 @@
-import { LogMessage } from '../../wailsjs/go/main/App';
+import { LogMessage } from 'wailsjs/go/main/App';
 
 const formatMessage = (message: string, data: unknown): string => {
     if (data) {

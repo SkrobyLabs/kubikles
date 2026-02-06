@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BookmarkIcon } from '@heroicons/react/24/solid';
 import { PencilSquareIcon, ShareIcon, DocumentTextIcon, CommandLineIcon, FolderIcon } from '@heroicons/react/24/outline';
-import { useConfig } from '../../context';
-import { getTabIcon } from '../../utils/resourceIcons';
+import { useConfig } from '~/context';
+import { getTabIcon } from '~/utils/resourceIcons';
 
 // Map action labels to icons
 const actionIconMap = {

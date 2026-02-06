@@ -1,7 +1,7 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeletePDB } from '../../../../wailsjs/go/main/App';
-import PDBDetails from '../../../components/shared/PDBDetails';
-import { K8sPodDisruptionBudget } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeletePDB } from 'wailsjs/go/main/App';
+import PDBDetails from '~/components/shared/PDBDetails';
+import { K8sPodDisruptionBudget } from '~/types/k8s';
 
 export interface PDBActionsReturn extends BaseResourceActionsReturn<K8sPodDisruptionBudget> {
     handleDelete: (pdb: K8sPodDisruptionBudget) => void;
@@ -13,7 +13,7 @@ export const usePDBActions = (): PDBActionsReturn => {
         handleEditYaml,
         handleShowDependencies,
         createDeleteHandler,
-        currentContext,
+
     } = useBaseResourceActions({
         resourceType: 'pdb',
         resourceLabel: 'PodDisruptionBudget',

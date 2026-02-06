@@ -10,11 +10,11 @@ import {
     ListIngresses,
     ListJobs,
     ListCronJobs
-} from '../../../wailsjs/go/main/App';
-import { useK8s } from '../../context';
-import Tooltip from '../../components/shared/Tooltip';
-import SearchSelect from '../../components/shared/SearchSelect';
-import { converter, normalizeAnsiCodes } from '../../components/shared/log-viewer/logUtils';
+} from 'wailsjs/go/main/App';
+import { useK8s } from '~/context';
+import Tooltip from '~/components/shared/Tooltip';
+import SearchSelect from '~/components/shared/SearchSelect';
+import { converter, normalizeAnsiCodes } from '~/components/shared/log-viewer/logUtils';
 import {
     MagnifyingGlassIcon,
     ClockIcon,
@@ -48,8 +48,7 @@ const fetchResourcesByType = async (type, namespace) => {
         case 'deployment':
             return ListDeployments(requestId, namespace);
         case 'statefulset':
-            // ListStatefulSets has signature (requestId, contextName, namespace) - pass empty context for current
-            return ListStatefulSets(requestId, '', namespace);
+            return ListStatefulSets(requestId, namespace);
         case 'daemonset':
             return ListDaemonSets(requestId, namespace);
         case 'pod':
@@ -57,8 +56,7 @@ const fetchResourcesByType = async (type, namespace) => {
         case 'service':
             return ListServices(requestId, namespace);
         case 'ingress':
-            // ListIngresses has signature (namespace)
-            return ListIngresses(namespace);
+            return ListIngresses(requestId, namespace);
         case 'job':
             return ListJobs(requestId, namespace);
         case 'cronjob':

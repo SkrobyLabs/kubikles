@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
-import { useServiceAccounts } from '../../../hooks/resources';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteServiceAccount, GetServiceAccountYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
+import { useServiceAccounts } from '~/hooks/resources';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteServiceAccount, GetServiceAccountYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ServiceAccountActionsMenu from './ServiceAccountActionsMenu';
 import { useServiceAccountActions } from './useServiceAccountActions';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function ServiceAccountList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
@@ -33,7 +33,7 @@ export default function ServiceAccountList({ isVisible }) {
         isNamespaced: true,
         deleteApi: (context, namespace, name) => DeleteServiceAccount(namespace, name),
         getYamlApi: GetServiceAccountYaml,
-        currentContext,
+
     });
 
     const columns = useMemo(() => [

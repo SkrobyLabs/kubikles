@@ -1,13 +1,13 @@
 import React from 'react';
-import { useUI } from '../../../context';
-import { useK8s } from '../../../context';
-import { useNotification } from '../../../context';
-import { DeleteConfigMap } from '../../../../wailsjs/go/main/App';
-import ConfigMapEditor from '../../../components/shared/ConfigMapEditor';
-import DependencyGraph from '../../../components/shared/DependencyGraph';
-import Logger from '../../../utils/Logger';
+import { useUI } from '~/context';
+import { useK8s } from '~/context';
+import { useNotification } from '~/context';
+import { DeleteConfigMap } from 'wailsjs/go/main/App';
+import ConfigMapEditor from '~/components/shared/ConfigMapEditor';
+import DependencyGraph from '~/components/shared/DependencyGraph';
+import Logger from '~/utils/Logger';
 import { DocumentTextIcon, PencilSquareIcon, ShareIcon } from '@heroicons/react/24/outline';
-import { K8sConfigMap } from '../../../types/k8s';
+import { K8sConfigMap } from '~/types/k8s';
 
 export interface ConfigMapActionsReturn {
     handleEditYaml: (configMap: K8sConfigMap) => void;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ListCRDs } from '../../wailsjs/go/main/App';
+import { ListCRDs } from 'wailsjs/go/main/App';
 import { useK8s } from '../context';
 import { K8sCustomResourceDefinition } from '../types/k8s';
 

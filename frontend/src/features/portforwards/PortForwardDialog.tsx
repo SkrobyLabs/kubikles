@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import { GetRandomAvailablePort, GetPodPorts, GetServicePorts } from '../../../wailsjs/go/main/App';
+import { GetRandomAvailablePort, GetPodPorts, GetServicePorts } from 'wailsjs/go/main/App';
+import { useForm, portForwardConfigSchema } from '~/lib/validation';
 
 export default function PortForwardDialog({
     open,
@@ -11,33 +12,38 @@ export default function PortForwardDialog({
     contexts,
     currentContext
 }) {
-    const [formData, setFormData] = useState({
-        id: '',
-        context: currentContext || '',
-        namespace: '',
-        resourceType: 'pod',
-        resourceName: '',
-        localPort: 0,
-        remotePort: 0,
-        label: '',
-        favorite: false,
-        https: false,
-        autoStart: true,
-        openInBrowser: false
-    });
-    const [error, setError] = useState('');
-    const [saving, setSaving] = useState(false);
     const [availablePorts, setAvailablePorts] = useState([]);
     const [loadingPorts, setLoadingPorts] = useState(false);
 
     const isEditing = !!config;
+
+    const form = useForm({
+        schema: portForwardConfigSchema,
+        initialValues: {
+            id: '',
+            context: currentContext || '',
+            namespace: '',
+            resourceType: 'pod' as const,
+            resourceName: '',
+            localPort: 0,
+            remotePort: 0,
+            label: '',
+            favorite: false,
+            https: false,
+            autoStart: true,
+            openInBrowser: false
+        },
+        onSubmit: async (values) => {
+            await onSave(values);
+        },
+    });
 
     // Initialize form when dialog opens
     useEffect(() => {
         if (open) {
             if (config) {
                 // Editing existing config
-                setFormData({
+                form.reset({
                     id: config.id || '',
                     context: config.context || currentContext || '',
                     namespace: config.namespace || '',
@@ -47,12 +53,14 @@ export default function PortForwardDialog({
                     remotePort: config.remotePort || 0,
                     label: config.label || '',
                     favorite: config.favorite || false,
-                    https: config.https || false
+                    https: config.https || false,
+                    autoStart: true,
+                    openInBrowser: false
                 });
                 setAvailablePorts([]);
             } else {
                 // New config
-                setFormData({
+                form.reset({
                     id: '',
                     context: currentContext || '',
                     namespace: '',
@@ -68,17 +76,16 @@ export default function PortForwardDialog({
                 });
                 // Get a random available port
                 GetRandomAvailablePort()
-                    .then(port => setFormData(prev => ({ ...prev, localPort: port })))
+                    .then(port => form.setValue('localPort', port))
                     .catch(console.error);
                 setAvailablePorts([]);
             }
-            setError('');
         }
     }, [open, config, currentContext]);
 
     // Fetch available ports when resource changes
     const fetchResourcePorts = useCallback(async () => {
-        if (!formData.namespace || !formData.resourceName) {
+        if (!form.values.namespace || !form.values.resourceName) {
             setAvailablePorts([]);
             return;
         }
@@ -86,15 +93,15 @@ export default function PortForwardDialog({
         setLoadingPorts(true);
         try {
             let ports;
-            if (formData.resourceType === 'pod') {
-                ports = await GetPodPorts(formData.namespace, formData.resourceName);
+            if (form.values.resourceType === 'pod') {
+                ports = await GetPodPorts(form.values.namespace, form.values.resourceName);
             } else {
-                ports = await GetServicePorts(formData.namespace, formData.resourceName);
+                ports = await GetServicePorts(form.values.namespace, form.values.resourceName);
             }
             setAvailablePorts(ports || []);
             // Auto-select first port if none selected
-            if (ports && ports.length > 0 && !formData.remotePort) {
-                setFormData(prev => ({ ...prev, remotePort: ports[0] }));
+            if (ports && ports.length > 0 && !form.values.remotePort) {
+                form.setValue('remotePort', ports[0]);
             }
         } catch (err) {
             console.error('Failed to fetch ports:', err);
@@ -102,54 +109,13 @@ export default function PortForwardDialog({
         } finally {
             setLoadingPorts(false);
         }
-    }, [formData.namespace, formData.resourceName, formData.resourceType]);
+    }, [form.values.namespace, form.values.resourceName, form.values.resourceType]);
 
     useEffect(() => {
-        if (open && formData.resourceName) {
+        if (open && form.values.resourceName) {
             fetchResourcePorts();
         }
-    }, [open, formData.resourceName, fetchResourcePorts]);
-
-    const handleChange = (field, value) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-        setError('');
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-
-        // Validation
-        if (!formData.context) {
-            setError('Context is required');
-            return;
-        }
-        if (!formData.namespace) {
-            setError('Namespace is required');
-            return;
-        }
-        if (!formData.resourceName) {
-            setError('Resource name is required');
-            return;
-        }
-        if (!formData.localPort || formData.localPort < 1 || formData.localPort > 65535) {
-            setError('Local port must be between 1 and 65535');
-            return;
-        }
-        if (!formData.remotePort || formData.remotePort < 1 || formData.remotePort > 65535) {
-            setError('Remote port must be between 1 and 65535');
-            return;
-        }
-
-        setSaving(true);
-        try {
-            await onSave(formData);
-        } catch (err) {
-            setError(err.message || 'Failed to save port forward');
-        } finally {
-            setSaving(false);
-        }
-    };
+    }, [open, form.values.resourceName, fetchResourcePorts]);
 
     const handleClose = () => {
         onOpenChange(false);
@@ -158,7 +124,7 @@ export default function PortForwardDialog({
     const randomizePort = useCallback(async () => {
         try {
             const port = await GetRandomAvailablePort();
-            setFormData(prev => ({ ...prev, localPort: port }));
+            form.setValue('localPort', port);
         } catch (err) {
             console.error('Failed to get random port:', err);
         }
@@ -182,7 +148,7 @@ export default function PortForwardDialog({
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={form.handleSubmit} className="space-y-4">
                     {isEditing ? (
                         /* Edit mode - show resource info as read-only */
                         <>
@@ -190,15 +156,15 @@ export default function PortForwardDialog({
                             <div className="bg-surface-light rounded-lg p-3 space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-500">Resource</span>
-                                    <span className="text-gray-200 capitalize">{formData.resourceType}: {formData.resourceName}</span>
+                                    <span className="text-gray-200 capitalize">{form.values.resourceType}: {form.values.resourceName}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-500">Namespace</span>
-                                    <span className="text-gray-200">{formData.namespace}</span>
+                                    <span className="text-gray-200">{form.values.namespace}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-500">Remote Port</span>
-                                    <span className="text-gray-200 font-mono">{formData.remotePort}</span>
+                                    <span className="text-gray-200 font-mono">{form.values.remotePort}</span>
                                 </div>
                             </div>
 
@@ -209,8 +175,7 @@ export default function PortForwardDialog({
                                 </label>
                                 <input
                                     type="text"
-                                    value={formData.label}
-                                    onChange={(e) => handleChange('label', e.target.value)}
+                                    {...form.getFieldProps('label')}
                                     placeholder="My Port Forward"
                                     className="w-full"
                                 />
@@ -231,13 +196,17 @@ export default function PortForwardDialog({
                                 </label>
                                 <input
                                     type="number"
-                                    value={formData.localPort || ''}
-                                    onChange={(e) => handleChange('localPort', parseInt(e.target.value) || 0)}
+                                    value={form.values.localPort || ''}
+                                    onChange={(e) => form.setValue('localPort', parseInt(e.target.value) || 0)}
+                                    onBlur={() => form.setFieldTouched('localPort')}
                                     placeholder="8080"
                                     min="1"
                                     max="65535"
                                     className="w-full"
                                 />
+                                {form.touched.localPort && form.errors.localPort && (
+                                    <span className="text-red-400 text-xs mt-1 block">{form.errors.localPort}</span>
+                                )}
                             </div>
                         </>
                     ) : (
@@ -250,8 +219,7 @@ export default function PortForwardDialog({
                                 </label>
                                 <input
                                     type="text"
-                                    value={formData.label}
-                                    onChange={(e) => handleChange('label', e.target.value)}
+                                    {...form.getFieldProps('label')}
                                     placeholder="My Port Forward"
                                     className="w-full"
                                 />
@@ -263,8 +231,9 @@ export default function PortForwardDialog({
                                     Context
                                 </label>
                                 <select
-                                    value={formData.context}
-                                    onChange={(e) => handleChange('context', e.target.value)}
+                                    value={form.values.context}
+                                    onChange={(e) => form.setValue('context', e.target.value)}
+                                    onBlur={() => form.setFieldTouched('context')}
                                     className="w-full"
                                 >
                                     <option value="">Select context...</option>
@@ -272,6 +241,9 @@ export default function PortForwardDialog({
                                         <option key={ctx} value={ctx}>{ctx}</option>
                                     ))}
                                 </select>
+                                {form.touched.context && form.errors.context && (
+                                    <span className="text-red-400 text-xs mt-1 block">{form.errors.context}</span>
+                                )}
                             </div>
 
                             {/* Namespace */}
@@ -281,11 +253,13 @@ export default function PortForwardDialog({
                                 </label>
                                 <input
                                     type="text"
-                                    value={formData.namespace}
-                                    onChange={(e) => handleChange('namespace', e.target.value)}
+                                    {...form.getFieldProps('namespace')}
                                     placeholder="default"
                                     className="w-full"
                                 />
+                                {form.touched.namespace && form.errors.namespace && (
+                                    <span className="text-red-400 text-xs mt-1 block">{form.errors.namespace}</span>
+                                )}
                             </div>
 
                             {/* Resource Type */}
@@ -299,8 +273,8 @@ export default function PortForwardDialog({
                                             type="radio"
                                             name="resourceType"
                                             value="pod"
-                                            checked={formData.resourceType === 'pod'}
-                                            onChange={(e) => handleChange('resourceType', e.target.value)}
+                                            checked={form.values.resourceType === 'pod'}
+                                            onChange={(e) => form.setValue('resourceType', e.target.value as 'pod' | 'service')}
                                         />
                                         <span>Pod</span>
                                     </label>
@@ -309,8 +283,8 @@ export default function PortForwardDialog({
                                             type="radio"
                                             name="resourceType"
                                             value="service"
-                                            checked={formData.resourceType === 'service'}
-                                            onChange={(e) => handleChange('resourceType', e.target.value)}
+                                            checked={form.values.resourceType === 'service'}
+                                            onChange={(e) => form.setValue('resourceType', e.target.value as 'pod' | 'service')}
                                         />
                                         <span>Service</span>
                                     </label>
@@ -320,15 +294,17 @@ export default function PortForwardDialog({
                             {/* Resource Name */}
                             <div>
                                 <label className="block font-medium text-gray-300 mb-1">
-                                    {formData.resourceType === 'pod' ? 'Pod Name' : 'Service Name'}
+                                    {form.values.resourceType === 'pod' ? 'Pod Name' : 'Service Name'}
                                 </label>
                                 <input
                                     type="text"
-                                    value={formData.resourceName}
-                                    onChange={(e) => handleChange('resourceName', e.target.value)}
-                                    placeholder={formData.resourceType === 'pod' ? 'my-pod-abc123' : 'my-service'}
+                                    {...form.getFieldProps('resourceName')}
+                                    placeholder={form.values.resourceType === 'pod' ? 'my-pod-abc123' : 'my-service'}
                                     className="w-full"
                                 />
+                                {form.touched.resourceName && form.errors.resourceName && (
+                                    <span className="text-red-400 text-xs mt-1 block">{form.errors.resourceName}</span>
+                                )}
                             </div>
                         </>
                     )}
@@ -350,13 +326,17 @@ export default function PortForwardDialog({
                             </label>
                             <input
                                 type="number"
-                                value={formData.localPort || ''}
-                                onChange={(e) => handleChange('localPort', parseInt(e.target.value) || 0)}
+                                value={form.values.localPort || ''}
+                                onChange={(e) => form.setValue('localPort', parseInt(e.target.value) || 0)}
+                                onBlur={() => form.setFieldTouched('localPort')}
                                 placeholder="8080"
                                 min="1"
                                 max="65535"
                                 className="w-full"
                             />
+                            {form.touched.localPort && form.errors.localPort && (
+                                <span className="text-red-400 text-xs mt-1 block">{form.errors.localPort}</span>
+                            )}
                         </div>
                         <div>
                             <label className="block font-medium text-gray-300 mb-1">
@@ -365,8 +345,9 @@ export default function PortForwardDialog({
                             </label>
                             {availablePorts.length > 0 ? (
                                 <select
-                                    value={formData.remotePort || ''}
-                                    onChange={(e) => handleChange('remotePort', parseInt(e.target.value) || 0)}
+                                    value={form.values.remotePort || ''}
+                                    onChange={(e) => form.setValue('remotePort', parseInt(e.target.value) || 0)}
+                                    onBlur={() => form.setFieldTouched('remotePort')}
                                     className="w-full"
                                 >
                                     <option value="">Select port...</option>
@@ -377,13 +358,17 @@ export default function PortForwardDialog({
                             ) : (
                                 <input
                                     type="number"
-                                    value={formData.remotePort || ''}
-                                    onChange={(e) => handleChange('remotePort', parseInt(e.target.value) || 0)}
+                                    value={form.values.remotePort || ''}
+                                    onChange={(e) => form.setValue('remotePort', parseInt(e.target.value) || 0)}
+                                    onBlur={() => form.setFieldTouched('remotePort')}
                                     placeholder="80"
                                     min="1"
                                     max="65535"
                                     className="w-full"
                                 />
+                            )}
+                            {form.touched.remotePort && form.errors.remotePort && (
+                                <span className="text-red-400 text-xs mt-1 block">{form.errors.remotePort}</span>
                             )}
                         </div>
                     </div>
@@ -396,17 +381,17 @@ export default function PortForwardDialog({
                                 <label className="flex items-center gap-2">
                                     <input
                                         type="checkbox"
-                                        checked={formData.autoStart}
-                                        onChange={(e) => handleChange('autoStart', e.target.checked)}
+                                        {...form.getFieldProps('autoStart')}
+                                        checked={form.values.autoStart}
                                     />
                                     <span className="text-gray-300">Start immediately</span>
                                 </label>
-                                <label className={`flex items-center gap-2 ${!formData.autoStart && 'opacity-50'}`}>
+                                <label className={`flex items-center gap-2 ${!form.values.autoStart && 'opacity-50'}`}>
                                     <input
                                         type="checkbox"
-                                        checked={formData.openInBrowser}
-                                        onChange={(e) => handleChange('openInBrowser', e.target.checked)}
-                                        disabled={!formData.autoStart}
+                                        {...form.getFieldProps('openInBrowser')}
+                                        checked={form.values.openInBrowser}
+                                        disabled={!form.values.autoStart}
                                     />
                                     <span className="text-gray-300">Open in browser</span>
                                 </label>
@@ -416,16 +401,16 @@ export default function PortForwardDialog({
                             <label className="flex items-center gap-2">
                                 <input
                                     type="checkbox"
-                                    checked={formData.https}
-                                    onChange={(e) => handleChange('https', e.target.checked)}
+                                    {...form.getFieldProps('https')}
+                                    checked={form.values.https}
                                 />
                                 <span className="text-gray-300">Use HTTPS</span>
                             </label>
                             <label className="flex items-center gap-2">
                                 <input
                                     type="checkbox"
-                                    checked={formData.favorite}
-                                    onChange={(e) => handleChange('favorite', e.target.checked)}
+                                    {...form.getFieldProps('favorite')}
+                                    checked={form.values.favorite}
                                 />
                                 <span className="text-gray-300">Favorite</span>
                             </label>
@@ -433,9 +418,9 @@ export default function PortForwardDialog({
                     </div>
 
                     {/* Error */}
-                    {error && (
+                    {form.submitError && (
                         <div className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded">
-                            {error}
+                            {form.submitError}
                         </div>
                     )}
 
@@ -450,10 +435,10 @@ export default function PortForwardDialog({
                         </button>
                         <button
                             type="submit"
-                            disabled={saving}
+                            disabled={form.isSubmitting || !form.isValid}
                             className="px-4 py-2 text-sm bg-primary hover:bg-primary/80 text-white rounded transition-colors disabled:opacity-50"
                         >
-                            {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Port Forward'}
+                            {form.isSubmitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Port Forward'}
                         </button>
                     </div>
                 </form>

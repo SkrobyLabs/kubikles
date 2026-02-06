@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  */
 
 // Mock the Wails backend function
-vi.mock('../../../wailsjs/go/main/App', () => ({
+vi.mock('wailsjs/go/main/App', () => ({
     ListResourceNamesForContext: vi.fn((context, type, namespace) => {
         // Return mock data based on resource type
         const mockData = {
@@ -35,7 +35,7 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
     }),
 }));
 
-import { ListResourceNamesForContext } from '../../../wailsjs/go/main/App';
+import { ListResourceNamesForContext } from 'wailsjs/go/main/App';
 
 // Replicate the fetchResourceNamesByType helper from ResourceDiff
 // This uses the generic ListResourceNamesForContext for all types

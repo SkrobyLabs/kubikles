@@ -1,14 +1,14 @@
 import React from 'react';
-import { useUI } from '../../../context';
-import { useK8s } from '../../../context';
-import { useNotification } from '../../../context';
-import { DeleteSecret } from '../../../../wailsjs/go/main/App';
-import SecretEditor from '../../../components/shared/SecretEditor';
-import { LazyDependencyGraph as DependencyGraph } from '../../../components/lazy';
-import Logger from '../../../utils/Logger';
+import { useUI } from '~/context';
+import { useK8s } from '~/context';
+import { useNotification } from '~/context';
+import { DeleteSecret } from 'wailsjs/go/main/App';
+import SecretEditor from '~/components/shared/SecretEditor';
+import { LazyDependencyGraph as DependencyGraph } from '~/components/lazy';
+import Logger from '~/utils/Logger';
 import { LockClosedIcon, PencilSquareIcon, ShareIcon } from '@heroicons/react/24/outline';
-import { K8sSecret } from '../../../types/k8s';
-import { BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
+import { K8sSecret } from '~/types/k8s';
+import { BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
 
 export interface SecretActionsReturn {
     handleEditYaml: (secret: K8sSecret) => void;

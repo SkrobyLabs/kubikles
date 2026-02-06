@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
-import ComparisonMenuItems from '../../../components/shared/ComparisonMenuItems';
+import ComparisonMenuItems from '~/components/shared/ComparisonMenuItems';
 
 export default function StatefulSetActionsMenu({ statefulSet, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onRestart, onDelete, onViewLogs }) {
     const buttonRef = useRef(null);

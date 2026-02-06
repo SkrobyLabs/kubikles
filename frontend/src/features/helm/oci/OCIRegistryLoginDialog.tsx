@@ -3,53 +3,40 @@ import { XMarkIcon, CloudIcon } from '@heroicons/react/24/outline';
 import {
     LoginOCIRegistry,
     LoginACRWithAzureCLI
-} from '../../../../wailsjs/go/main/App';
-import { useNotification } from '../../../context';
+} from 'wailsjs/go/main/App';
+import { useNotification } from '~/context';
+import { useForm, ociBasicLoginSchema } from '~/lib/validation';
 
 export default function OCIRegistryLoginDialog({ onClose, onSuccess }) {
-    const [registry, setRegistry] = useState('');
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
     const { addNotification } = useNotification();
+    const [azureLoading, setAzureLoading] = useState(false);
 
-    const isACR = registry.includes('.azurecr.io');
-
-    const handleSubmit = useCallback(async (e) => {
-        e.preventDefault();
-        if (!registry.trim()) return;
-
-        setLoading(true);
-        try {
-            await LoginOCIRegistry(registry.trim(), username.trim(), password);
+    const form = useForm({
+        schema: ociBasicLoginSchema,
+        initialValues: { registry: '', username: '', password: '' },
+        onSubmit: async (values) => {
+            await LoginOCIRegistry(values.registry.trim(), values.username.trim(), values.password);
             addNotification({
                 type: 'success',
                 title: 'Logged in',
-                message: `Successfully logged into ${registry}`
+                message: `Successfully logged into ${values.registry}`
             });
             onSuccess();
-        } catch (err) {
-            console.error('Failed to login:', err);
-            addNotification({
-                type: 'error',
-                title: 'Login failed',
-                message: err?.message || String(err)
-            });
-        } finally {
-            setLoading(false);
-        }
-    }, [registry, username, password, addNotification, onSuccess]);
+        },
+    });
+
+    const isACR = form.values.registry.includes('.azurecr.io');
 
     const handleAzureLogin = useCallback(async () => {
-        if (!registry.trim()) return;
+        if (!form.values.registry.trim()) return;
 
-        setLoading(true);
+        setAzureLoading(true);
         try {
-            await LoginACRWithAzureCLI(registry.trim());
+            await LoginACRWithAzureCLI(form.values.registry.trim());
             addNotification({
                 type: 'success',
                 title: 'Logged in via Azure CLI',
-                message: `Successfully logged into ${registry}`
+                message: `Successfully logged into ${form.values.registry}`
             });
             onSuccess();
         } catch (err) {
@@ -60,9 +47,11 @@ export default function OCIRegistryLoginDialog({ onClose, onSuccess }) {
                 message: err?.message || String(err)
             });
         } finally {
-            setLoading(false);
+            setAzureLoading(false);
         }
-    }, [registry, addNotification, onSuccess]);
+    }, [form.values.registry, addNotification, onSuccess]);
+
+    const loading = form.isSubmitting || azureLoading;
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
@@ -80,19 +69,21 @@ export default function OCIRegistryLoginDialog({ onClose, onSuccess }) {
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                <form onSubmit={form.handleSubmit} className="p-4 space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">
                             Registry URL
                         </label>
                         <input
                             type="text"
-                            value={registry}
-                            onChange={(e) => setRegistry(e.target.value)}
+                            {...form.getFieldProps('registry')}
                             placeholder="e.g., myregistry.azurecr.io"
                             className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                             autoFocus
                         />
+                        {form.touched.registry && form.errors.registry && (
+                            <span className="text-red-400 text-xs mt-1 block">{form.errors.registry}</span>
+                        )}
                         {isACR && (
                             <p className="mt-1 text-xs text-blue-400 flex items-center gap-1">
                                 <CloudIcon className="h-3 w-3" />
@@ -109,11 +100,11 @@ export default function OCIRegistryLoginDialog({ onClose, onSuccess }) {
                             <button
                                 type="button"
                                 onClick={handleAzureLogin}
-                                disabled={loading || !registry.trim()}
+                                disabled={loading || !form.values.registry.trim()}
                                 className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-md transition-colors disabled:opacity-50"
                             >
                                 <CloudIcon className="h-4 w-4" />
-                                {loading ? 'Logging in...' : 'Login with Azure CLI'}
+                                {azureLoading ? 'Logging in...' : 'Login with Azure CLI'}
                             </button>
                         </div>
                     )}
@@ -130,10 +121,12 @@ export default function OCIRegistryLoginDialog({ onClose, onSuccess }) {
                                 </label>
                                 <input
                                     type="text"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
+                                    {...form.getFieldProps('username')}
                                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                                 />
+                                {form.touched.username && form.errors.username && (
+                                    <span className="text-red-400 text-xs mt-1 block">{form.errors.username}</span>
+                                )}
                             </div>
 
                             <div>
@@ -142,13 +135,21 @@ export default function OCIRegistryLoginDialog({ onClose, onSuccess }) {
                                 </label>
                                 <input
                                     type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    {...form.getFieldProps('password')}
                                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                                 />
+                                {form.touched.password && form.errors.password && (
+                                    <span className="text-red-400 text-xs mt-1 block">{form.errors.password}</span>
+                                )}
                             </div>
                         </div>
                     </div>
+
+                    {form.submitError && (
+                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-md text-red-400 text-sm">
+                            {form.submitError}
+                        </div>
+                    )}
 
                     <div className="flex justify-end gap-2 pt-2">
                         <button
@@ -160,10 +161,10 @@ export default function OCIRegistryLoginDialog({ onClose, onSuccess }) {
                         </button>
                         <button
                             type="submit"
-                            disabled={loading || !registry.trim() || !username.trim() || !password}
+                            disabled={form.isSubmitting || !form.isValid}
                             className="px-4 py-2 text-sm bg-primary hover:bg-primary/80 text-white rounded-md transition-colors disabled:opacity-50"
                         >
-                            {loading ? 'Logging in...' : 'Login'}
+                            {form.isSubmitting ? 'Logging in...' : 'Login'}
                         </button>
                     </div>
                 </form>

@@ -1,8 +1,8 @@
 import React from 'react';
 import { PencilSquareIcon, ShareIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
-import { useK8s } from '../../context';
-import { useUI } from '../../context';
-import { formatAge } from '../../utils/formatting';
+import { useK8s } from '~/context';
+import { useUI } from '~/context';
+import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 

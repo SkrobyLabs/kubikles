@@ -6,14 +6,21 @@ import SearchSelect from './SearchSelect';
 import BulkActionBar from './BulkActionBar';
 import ColumnConfigurator from './ColumnConfigurator';
 import SavedViewsDropdown from './SavedViewsDropdown';
-import { createFilter, getFieldsMetadata } from '../../utils/search';
-import { useSavedViews } from '../../hooks/useSavedViews';
-import { useUI } from '../../context';
-import { useConfig } from '../../context';
+import { createFilter, getFieldsMetadata } from '~/utils/search';
+import { useSavedViews } from '~/hooks/useSavedViews';
+import { useUI } from '~/context';
+import { useConfig } from '~/context';
+
+// Tri-state checkbox props
+interface TriStateCheckboxProps {
+    state: 'none' | 'some' | 'all';
+    onChange: () => void;
+    disabled?: boolean;
+}
 
 // Tri-state checkbox component for header (memoized to prevent re-renders)
-const TriStateCheckbox = React.memo(({ state, onChange, disabled = false }) => {
-    const handleChange = (e) => {
+const TriStateCheckbox = React.memo(({ state, onChange, disabled = false }: TriStateCheckboxProps) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         e.stopPropagation();
         if (!disabled) onChange();
     };
@@ -30,9 +37,16 @@ const TriStateCheckbox = React.memo(({ state, onChange, disabled = false }) => {
     );
 });
 
+// Row checkbox props
+interface RowCheckboxProps {
+    checked: boolean;
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    disabled?: boolean;
+}
+
 // Row checkbox component (memoized to prevent re-renders on scroll)
-const RowCheckbox = React.memo(({ checked, onChange, disabled = false }) => {
-    const handleChange = (e) => {
+const RowCheckbox = React.memo(({ checked, onChange, disabled = false }: RowCheckboxProps) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         e.stopPropagation();
         if (!disabled) onChange(e);
     };
@@ -49,7 +63,7 @@ const RowCheckbox = React.memo(({ checked, onChange, disabled = false }) => {
 });
 
 // Minimum column widths - ensure columns never get too narrow
-const MIN_COLUMN_WIDTHS = {
+const MIN_COLUMN_WIDTHS: Record<string, number> = {
     _selection: 44,
     name: 150,
     namespace: 120,
@@ -94,7 +108,7 @@ const MIN_COLUMN_WIDTHS = {
 };
 
 // Default column widths for common columns (fallback if not calculated)
-const DEFAULT_COLUMN_WIDTHS = {
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
     cpu: 100,
     memory: 100,
     containers: 150,
@@ -127,15 +141,33 @@ const CHAR_WIDTH_PX = 7.5;
 // Padding for cells (px on each side)
 const CELL_PADDING_PX = 24;
 
+// Column definition interface
+interface ColumnDef {
+    key: string;
+    label?: string | React.ReactNode;
+    render?: (item: any) => React.ReactNode;
+    getValue?: (item: any) => any;
+    isColumnSelector?: boolean;
+    isSelectionColumn?: boolean;
+    defaultHidden?: boolean;
+    filterable?: boolean;
+    disableSort?: boolean;
+    align?: 'left' | 'center' | 'right';
+    initialSort?: 'asc' | 'desc';
+}
+
+// Column widths map type
+type ColumnWidths = Record<string, number>;
+
 // Calculate width needed for a string value
-const calculateTextWidth = (text) => {
+const calculateTextWidth = (text: unknown): number => {
     if (!text) return 0;
     const str = String(text);
     return Math.ceil(str.length * CHAR_WIDTH_PX) + CELL_PADDING_PX;
 };
 
 // Calculate column widths based on data - finds width that covers ~95% of values
-const calculateColumnWidths = (columns, data, savedWidths) => {
+const calculateColumnWidths = (columns: ColumnDef[], data: any[], savedWidths: ColumnWidths): ColumnWidths => {
     if (!data || data.length === 0) return {};
 
     const calculatedWidths = {};

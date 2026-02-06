@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
+import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
 import { getClientId } from '../lib/wailsjs-adapter/runtime/runtime';
-import { CheckAIProvider, StartAISession, SendAIMessage, CancelAIRequest, ClearAISession, CloseAISession } from '../../wailsjs/go/main/App';
+import { CheckAIProvider, StartAISession, SendAIMessage, CancelAIRequest, ClearAISession, CloseAISession } from 'wailsjs/go/main/App';
 import { useK8s } from './K8sContext';
 import { useUI } from './UIContext';
 import { useConfig } from './ConfigContext';

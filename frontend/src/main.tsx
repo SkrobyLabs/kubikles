@@ -1,7 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import loader from '@monaco-editor/loader'
-import { WindowToggleMaximise } from '../wailsjs/runtime/runtime'
+import { WindowToggleMaximise } from 'wailsjs/runtime/runtime'
 import './index.css'
 import App from './App'
 import ErrorBoundary from './components/shared/ErrorBoundary'

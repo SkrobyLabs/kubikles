@@ -1,7 +1,7 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteLease } from '../../../../wailsjs/go/main/App';
-import LeaseDetails from '../../../components/shared/LeaseDetails';
-import { K8sLease } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteLease } from 'wailsjs/go/main/App';
+import LeaseDetails from '~/components/shared/LeaseDetails';
+import { K8sLease } from '~/types/k8s';
 
 export interface LeaseActionsReturn extends BaseResourceActionsReturn<K8sLease> {
     handleDelete: (lease: K8sLease) => void;
@@ -13,7 +13,7 @@ export const useLeaseActions = (): LeaseActionsReturn => {
         handleEditYaml,
         handleShowDependencies,
         createDeleteHandler,
-        currentContext,
+
     } = useBaseResourceActions({
         resourceType: 'lease',
         resourceLabel: 'Lease',

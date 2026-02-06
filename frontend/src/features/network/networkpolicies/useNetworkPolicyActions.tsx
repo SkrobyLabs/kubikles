@@ -1,7 +1,7 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteNetworkPolicy } from '../../../../wailsjs/go/main/App';
-import NetworkPolicyDetails from '../../../components/shared/NetworkPolicyDetails';
-import { K8sNetworkPolicy } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteNetworkPolicy } from 'wailsjs/go/main/App';
+import NetworkPolicyDetails from '~/components/shared/NetworkPolicyDetails';
+import { K8sNetworkPolicy } from '~/types/k8s';
 
 export interface NetworkPolicyActionsReturn extends BaseResourceActionsReturn<K8sNetworkPolicy> {
     handleDelete: (networkPolicy: K8sNetworkPolicy) => void;
@@ -13,7 +13,7 @@ export const useNetworkPolicyActions = (): NetworkPolicyActionsReturn => {
         handleEditYaml,
         handleShowDependencies,
         createDeleteHandler,
-        currentContext,
+
     } = useBaseResourceActions({
         resourceType: 'networkpolicy',
         resourceLabel: 'Network Policy',

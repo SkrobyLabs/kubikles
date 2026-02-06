@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useConfig } from '../../../context';
-import { useUI } from '../../../context';
+import { useConfig } from '~/context';
+import { useUI } from '~/context';
 import { XMarkIcon, ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import ConfigSidebar from './ConfigSidebar';
 import ConfigSection from './ConfigSection';
-import { getSortedSections, searchFields, getModifiedFields } from '../../../config/configSchema';
+import { getSortedSections, searchFields, getModifiedFields } from '~/config/configSchema';
 
 export default function ConfigEditorUI({ onSwitchMode }) {
     const { config, setConfig, resetConfig, closeConfigEditor } = useConfig();

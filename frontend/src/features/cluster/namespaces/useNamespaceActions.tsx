@@ -1,8 +1,8 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteNamespace } from '../../../../wailsjs/go/main/App';
-import NamespaceDetails from '../../../components/shared/NamespaceDetails';
-import Logger from '../../../utils/Logger';
-import { K8sNamespace } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteNamespace } from 'wailsjs/go/main/App';
+import NamespaceDetails from '~/components/shared/NamespaceDetails';
+import Logger from '~/utils/Logger';
+import { K8sNamespace } from '~/types/k8s';
 
 /**
  * Return type for useNamespaceActions

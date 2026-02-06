@@ -1,17 +1,17 @@
 import React, { useMemo, useState, useCallback, memo } from 'react';
-import ResourceList from '../../../components/shared/ResourceList';
-import AggregateResourceBar from '../../../components/shared/AggregateResourceBar';
-import ResourceBar from '../../../components/shared/ResourceBar';
-import { useNodes } from '../../../hooks/resources';
-import { useNodeMetrics } from '../../../hooks/useNodeMetrics';
-import { useK8s } from '../../../context';
-import { useUI } from '../../../context';
-import { useMenu } from '../../../context';
-import { formatAge, formatBytes, formatCpu } from '../../../utils/formatting';
+import ResourceList from '~/components/shared/ResourceList';
+import AggregateResourceBar from '~/components/shared/AggregateResourceBar';
+import ResourceBar from '~/components/shared/ResourceBar';
+import { useNodes } from '~/hooks/resources';
+import { useNodeMetrics } from '~/hooks/useNodeMetrics';
+import { useK8s } from '~/context';
+import { useUI } from '~/context';
+import { useMenu } from '~/context';
+import { formatAge, formatBytes, formatCpu } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import NodeActionsMenu from './NodeActionsMenu';
 import { useNodeActions } from './useNodeActions';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 // Helper to get node conditions summary
 const getConditionsSummary = (node) => {

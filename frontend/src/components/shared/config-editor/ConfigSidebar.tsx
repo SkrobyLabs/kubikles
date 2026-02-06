@@ -1,5 +1,5 @@
 import React from 'react';
-import { configSchema, getSortedSections } from '../../../config/configSchema';
+import { configSchema, getSortedSections } from '~/config/configSchema';
 
 export default function ConfigSidebar({ activeSection, onSectionChange, searchResults }) {
     const allSections = getSortedSections();

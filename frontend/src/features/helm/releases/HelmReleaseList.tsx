@@ -1,18 +1,18 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon, ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import HelmReleaseActionsMenu from './HelmReleaseActionsMenu';
 import HelmUpgradeDialog from './HelmUpgradeDialog';
-import { useHelmReleases } from '../../../hooks/useHelmReleases';
+import { useHelmReleases } from '~/hooks/useHelmReleases';
 import { useHelmReleaseActions } from './useHelmReleaseActions';
-import { useK8s } from '../../../context';
-import { useUI } from '../../../context';
-import { useNotification } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { ForceHelmReleaseStatus, UninstallHelmRelease, GetHelmReleaseValues } from '../../../../wailsjs/go/main/App';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useUI } from '~/context';
+import { useNotification } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { ForceHelmReleaseStatus, UninstallHelmRelease, GetHelmReleaseValues } from 'wailsjs/go/main/App';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 const formatAge = (timestamp) => {
     if (!timestamp) return '-';
@@ -111,7 +111,7 @@ export default function HelmReleaseList({ isVisible }) {
         isNamespaced: true,
         deleteApi: uninstallApi,
         getYamlApi: GetHelmReleaseValues,
-        currentContext,
+
     });
 
     // Wrap closeBulkAction to also refresh the list

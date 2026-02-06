@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { GetResourceDiff, GetDependencyGraph, GetFlowTimeline } from '../../wailsjs/go/main/App';
+import { GetResourceDiff, GetDependencyGraph, GetFlowTimeline } from 'wailsjs/go/main/App';
 
 interface DiagnosticsError {
   message: string;

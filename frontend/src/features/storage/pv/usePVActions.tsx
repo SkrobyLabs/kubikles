@@ -1,7 +1,7 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeletePV } from '../../../../wailsjs/go/main/App';
-import PVDetails from '../../../components/shared/PVDetails';
-import { K8sPersistentVolume } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeletePV } from 'wailsjs/go/main/App';
+import PVDetails from '~/components/shared/PVDetails';
+import { K8sPersistentVolume } from '~/types/k8s';
 
 export interface PVActionsReturn extends BaseResourceActionsReturn<K8sPersistentVolume> {
     handleDelete: (pv: K8sPersistentVolume) => void;

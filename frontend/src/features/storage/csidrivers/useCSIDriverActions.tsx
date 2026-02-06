@@ -1,7 +1,7 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteCSIDriver } from '../../../../wailsjs/go/main/App';
-import CSIDriverDetails from '../../../components/shared/CSIDriverDetails';
-import { K8sCSIDriver } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteCSIDriver } from 'wailsjs/go/main/App';
+import CSIDriverDetails from '~/components/shared/CSIDriverDetails';
+import { K8sCSIDriver } from '~/types/k8s';
 
 export interface CSIDriverActionsReturn extends BaseResourceActionsReturn<K8sCSIDriver> {
     handleDelete: (csiDriver: K8sCSIDriver) => void;

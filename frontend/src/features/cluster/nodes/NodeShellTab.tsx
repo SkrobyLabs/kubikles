@@ -1,12 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { LazyTerminal as Terminal } from '../../../components/lazy';
+import { LazyTerminal as Terminal } from '~/components/lazy';
 import {
     CreateNodeDebugPod,
     DeletePod,
     ListPods
-} from '../../../../wailsjs/go/main/App';
-import { useConfig } from '../../../context';
-import Logger from '../../../utils/Logger';
+} from 'wailsjs/go/main/App';
+import { useConfig } from '~/context';
+import Logger from '~/utils/Logger';
 
 // Preset debug images
 const PRESET_IMAGES = [

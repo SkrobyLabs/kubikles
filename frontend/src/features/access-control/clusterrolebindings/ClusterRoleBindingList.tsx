@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
-import { useClusterRoleBindings } from '../../../hooks/resources';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteClusterRoleBinding, GetClusterRoleBindingYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
+import { useClusterRoleBindings } from '~/hooks/resources';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteClusterRoleBinding, GetClusterRoleBindingYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ClusterRoleBindingActionsMenu from './ClusterRoleBindingActionsMenu';
 import { useClusterRoleBindingActions } from './useClusterRoleBindingActions';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function ClusterRoleBindingList({ isVisible }) {
     const { currentContext } = useK8s();
@@ -33,7 +33,7 @@ export default function ClusterRoleBindingList({ isVisible }) {
         isNamespaced: false,
         deleteApi: (context, name) => DeleteClusterRoleBinding(name),
         getYamlApi: GetClusterRoleBindingYaml,
-        currentContext,
+
     });
 
     const columns = useMemo(() => [

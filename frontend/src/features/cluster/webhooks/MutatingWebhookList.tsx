@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import MutatingWebhookActionsMenu from './MutatingWebhookActionsMenu';
-import { useMutatingWebhookConfigurations } from '../../../hooks/resources';
+import { useMutatingWebhookConfigurations } from '~/hooks/resources';
 import { useMutatingWebhookActions } from './useMutatingWebhookActions';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteMutatingWebhookConfiguration, GetMutatingWebhookConfigurationYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteMutatingWebhookConfiguration, GetMutatingWebhookConfigurationYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function MutatingWebhookList({ isVisible }) {
     const { currentContext } = useK8s();
@@ -33,7 +33,7 @@ export default function MutatingWebhookList({ isVisible }) {
         isNamespaced: false,
         deleteApi: DeleteMutatingWebhookConfiguration,
         getYamlApi: GetMutatingWebhookConfigurationYaml,
-        currentContext,
+
     });
 
     const getWebhookCount = (config) => {

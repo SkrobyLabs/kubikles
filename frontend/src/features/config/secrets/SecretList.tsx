@@ -1,16 +1,16 @@
 import React, { useMemo, useState } from 'react';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
-import { useSecrets } from '../../../hooks/resources';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteSecret, GetSecretYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
+import { useSecrets } from '~/hooks/resources';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteSecret, GetSecretYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import SecretActionsMenu from './SecretActionsMenu';
 import { useSecretActions } from './useSecretActions';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 const HELM_RELEASE_SECRET_TYPE = 'helm.sh/release.v1';
 
@@ -41,7 +41,7 @@ export default function SecretList({ isVisible }) {
         isNamespaced: true,
         deleteApi: DeleteSecret,
         getYamlApi: GetSecretYaml,
-        currentContext,
+
     });
 
     const columns = useMemo(() => [

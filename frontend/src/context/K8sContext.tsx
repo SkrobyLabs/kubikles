@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespaces, StartPortForwardsWithMode, ListCRDs, GetK8sInitError } from '../../wailsjs/go/main/App';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
+import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespaces, StartPortForwardsWithMode, ListCRDs, GetK8sInitError } from 'wailsjs/go/main/App';
+import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
 
 // ============================================================================

@@ -4,15 +4,27 @@ import (
 	"fmt"
 
 	networkingv1 "k8s.io/api/networking/v1"
+
+	"kubikles/pkg/k8s"
 )
 
 // =============================================================================
 // Ingresses
 // =============================================================================
 
-func (a *App) ListIngresses(namespace string) ([]networkingv1.Ingress, error) {
+func (a *App) ListIngresses(requestId, namespace string) ([]networkingv1.Ingress, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListIngressesWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListIngresses(namespace)
 }
@@ -43,11 +55,21 @@ func (a *App) DeleteIngress(namespace, name string) error {
 }
 
 // IngressClass operations (cluster-scoped)
-func (a *App) ListIngressClasses() ([]networkingv1.IngressClass, error) {
+func (a *App) ListIngressClasses(requestId string) ([]networkingv1.IngressClass, error) {
 	currentContext := a.GetCurrentContext()
 	a.logDebug("ListIngressClasses called: context=%s", currentContext)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListIngressClassesWithContext(ctx, currentContext)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListIngressClasses(currentContext)
 }

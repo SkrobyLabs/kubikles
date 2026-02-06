@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { SaveYamlBackup } from '../../wailsjs/go/main/App';
-import { main } from '../../wailsjs/go/models';
+import { SaveYamlBackup } from 'wailsjs/go/main/App';
+import { main } from 'wailsjs/go/models';
 import Logger from '../utils/Logger';
 
 // Resource metadata interface matching K8s ObjectMeta

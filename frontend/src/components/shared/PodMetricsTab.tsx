@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { ChartBarIcon, ExclamationTriangleIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
-import { DetectPrometheus, GetPodMetricsHistory } from '../../../wailsjs/go/main/App';
-import { formatBytes } from '../../utils/formatting';
+import { DetectPrometheus, GetPodMetricsHistory } from 'wailsjs/go/main/App';
+import { formatBytes } from '~/utils/formatting';
 
 // Parse Kubernetes CPU quantity (e.g., "100m", "0.5", "1") to millicores
 const parseCPU = (value) => {

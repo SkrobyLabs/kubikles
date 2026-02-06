@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Environment } from '../../../wailsjs/runtime/runtime';
-import { isInServerMode } from '../../lib/wailsjs-adapter/runtime/runtime';
-import appIcon from '../../assets/images/logo-universal.png';
+import { Environment } from 'wailsjs/runtime/runtime';
+import { isInServerMode } from '~/lib/wailsjs-adapter/runtime/runtime';
+import appIcon from '~/assets/images/logo-universal.png';
 import {
     CubeIcon,
     ServerIcon,
@@ -41,13 +41,13 @@ import {
     BugAntIcon,
     SparklesIcon
 } from '@heroicons/react/24/outline';
-import { useConfig } from '../../context';
-import { useAIChat } from '../../context';
-import { usePerformancePanel } from '../../hooks/usePerformancePanel';
-import { useDebugLogs } from '../../hooks/useDebugLogs';
+import { useConfig } from '~/context';
+import { useAIChat } from '~/context';
+import { usePerformancePanel } from '~/hooks/usePerformancePanel';
+import { useDebugLogs } from '~/hooks/useDebugLogs';
 import SearchSelect from '../shared/SearchSelect';
-import Logger from '../../utils/Logger';
-import { ListCRDs, GetVersionInfo } from '../../../wailsjs/go/main/App';
+import Logger from '~/utils/Logger';
+import { ListCRDs, GetVersionInfo } from 'wailsjs/go/main/App';
 
 export default function Sidebar({
     activeView,

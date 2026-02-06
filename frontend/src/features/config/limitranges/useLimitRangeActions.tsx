@@ -1,7 +1,7 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteLimitRange } from '../../../../wailsjs/go/main/App';
-import LimitRangeDetails from '../../../components/shared/LimitRangeDetails';
-import { K8sLimitRange } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteLimitRange } from 'wailsjs/go/main/App';
+import LimitRangeDetails from '~/components/shared/LimitRangeDetails';
+import { K8sLimitRange } from '~/types/k8s';
 
 export interface LimitRangeActionsReturn extends BaseResourceActionsReturn<K8sLimitRange> {
     handleDelete: (limitRange: K8sLimitRange) => void;
@@ -13,7 +13,7 @@ export const useLimitRangeActions = (): LimitRangeActionsReturn => {
         handleEditYaml,
         handleShowDependencies,
         createDeleteHandler,
-        currentContext,
+
     } = useBaseResourceActions({
         resourceType: 'limitrange',
         resourceLabel: 'LimitRange',

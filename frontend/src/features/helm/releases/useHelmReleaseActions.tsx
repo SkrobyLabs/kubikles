@@ -1,11 +1,11 @@
 import React, { useCallback } from 'react';
-import { useUI } from '../../../context';
-import { useK8s } from '../../../context';
-import { useNotification } from '../../../context';
-import { UninstallHelmRelease } from '../../../../wailsjs/go/main/App';
+import { useUI } from '~/context';
+import { useK8s } from '~/context';
+import { useNotification } from '~/context';
+import { UninstallHelmRelease } from 'wailsjs/go/main/App';
 import HelmReleaseDetails from './HelmReleaseDetails';
-import Logger from '../../../utils/Logger';
-import { K8sHelmRelease } from '../../../types/k8s';
+import Logger from '~/utils/Logger';
+import { K8sHelmRelease } from '~/types/k8s';
 
 /**
  * Return type for useHelmReleaseActions

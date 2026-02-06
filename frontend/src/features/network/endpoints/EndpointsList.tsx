@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import EndpointsActionsMenu from './EndpointsActionsMenu';
-import { useEndpoints } from '../../../hooks/resources';
+import { useEndpoints } from '~/hooks/resources';
 import { useEndpointsActions } from './useEndpointsActions';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteEndpoints, GetEndpointsYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteEndpoints, GetEndpointsYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function EndpointsList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
@@ -32,7 +32,7 @@ export default function EndpointsList({ isVisible }) {
         isNamespaced: true,
         deleteApi: DeleteEndpoints,
         getYamlApi: GetEndpointsYaml,
-        currentContext,
+
     });
 
     const getAddressCount = (ep) => {

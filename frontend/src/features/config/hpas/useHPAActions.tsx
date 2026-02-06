@@ -1,7 +1,7 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteHPA } from '../../../../wailsjs/go/main/App';
-import HPADetails from '../../../components/shared/HPADetails';
-import { K8sHorizontalPodAutoscaler } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteHPA } from 'wailsjs/go/main/App';
+import HPADetails from '~/components/shared/HPADetails';
+import { K8sHorizontalPodAutoscaler } from '~/types/k8s';
 
 export interface HPAActionsReturn extends BaseResourceActionsReturn<K8sHorizontalPodAutoscaler> {
     handleDelete: (hpa: K8sHorizontalPodAutoscaler) => void;
@@ -13,7 +13,7 @@ export const useHPAActions = (): HPAActionsReturn => {
         handleEditYaml,
         handleShowDependencies,
         createDeleteHandler,
-        currentContext,
+
     } = useBaseResourceActions({
         resourceType: 'hpa',
         resourceLabel: 'HorizontalPodAutoscaler',

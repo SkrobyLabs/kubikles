@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Virtuoso } from 'react-virtuoso';
-import { GetMultiPodLogs, ListPods } from '../../../wailsjs/go/main/App';
-import { useK8s } from '../../context';
-import SearchSelect from '../../components/shared/SearchSelect';
-import Tooltip from '../../components/shared/Tooltip';
-import { converter, normalizeAnsiCodes, stripAnsiCodes } from '../../components/shared/log-viewer/logUtils';
+import { GetMultiPodLogs, ListPods } from 'wailsjs/go/main/App';
+import { useK8s } from '~/context';
+import SearchSelect from '~/components/shared/SearchSelect';
+import Tooltip from '~/components/shared/Tooltip';
+import { converter, normalizeAnsiCodes, stripAnsiCodes } from '~/components/shared/log-viewer/logUtils';
 import {
     MagnifyingGlassIcon,
     ArrowPathIcon,

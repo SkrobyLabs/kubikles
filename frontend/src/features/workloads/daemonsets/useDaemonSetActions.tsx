@@ -1,10 +1,10 @@
 import React from 'react';
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteDaemonSet, RestartDaemonSet, ListPods } from '../../../../wailsjs/go/main/App';
-import DaemonSetDetails from '../../../components/shared/DaemonSetDetails';
-import LogViewer from '../../../components/shared/log-viewer';
-import Logger from '../../../utils/Logger';
-import { K8sDaemonSet } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteDaemonSet, RestartDaemonSet, ListPods } from 'wailsjs/go/main/App';
+import DaemonSetDetails from '~/components/shared/DaemonSetDetails';
+import LogViewer from '~/components/shared/log-viewer';
+import Logger from '~/utils/Logger';
+import { K8sDaemonSet } from '~/types/k8s';
 
 interface DaemonSetActionsReturn extends BaseResourceActionsReturn<K8sDaemonSet> {
     handleRestart: (daemonSet: K8sDaemonSet) => Promise<void>;
@@ -19,7 +19,7 @@ export const useDaemonSetActions = (): DaemonSetActionsReturn => {
         handleShowDependencies,
         createDeleteHandler,
         openTab,
-        currentContext,
+
         addNotification,
     } = useBaseResourceActions({
         resourceType: 'daemonset',

@@ -1,10 +1,10 @@
 import React, { useCallback } from 'react';
 import { ShieldCheckIcon } from '@heroicons/react/24/outline';
-import { useUI } from '../../context';
-import { useK8s } from '../../context';
-import { getPodController } from '../../utils/k8s-helpers';
-import { formatAge } from '../../utils/formatting';
-import { getOwnerViewId } from '../../utils/owner-navigation';
+import { useUI } from '~/context';
+import { useK8s } from '~/context';
+import { getPodController } from '~/utils/k8s-helpers';
+import { formatAge } from '~/utils/formatting';
+import { getOwnerViewId } from '~/utils/owner-navigation';
 import { CopyableLabel, DetailRow } from './DetailComponents';
 import Tooltip from './Tooltip';
 

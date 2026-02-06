@@ -1,17 +1,17 @@
 import React, { useMemo, useCallback } from 'react';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
-import { useCustomResources } from '../../../hooks/useCustomResources';
-import { useCRDPrinterColumns } from '../../../hooks/useCRDPrinterColumns';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteCustomResource, GetCustomResourceYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
+import { useCustomResources } from '~/hooks/useCustomResources';
+import { useCRDPrinterColumns } from '~/hooks/useCRDPrinterColumns';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteCustomResource, GetCustomResourceYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import CustomResourceActionsMenu from './CustomResourceActionsMenu';
 import { useCustomResourceActions } from './useCustomResourceActions';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 /**
  * Evaluates a JSONPath expression against an object.
@@ -134,7 +134,7 @@ export default function CustomResourceList({ crdInfo, isVisible }) {
         isNamespaced: crdInfo.namespaced,
         deleteApi,
         getYamlApi,
-        currentContext,
+
     });
 
     // Fetch CRD printer columns

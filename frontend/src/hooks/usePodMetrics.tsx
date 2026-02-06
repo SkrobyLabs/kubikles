@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { GetPodMetrics, GetPodMetricsFromPrometheus, DetectPrometheus } from '../../wailsjs/go/main/App';
+import { GetPodMetrics, GetPodMetricsFromPrometheus, DetectPrometheus } from 'wailsjs/go/main/App';
 import { useK8s } from '../context';
 import { useConfig } from '../context';
-import { k8s } from '../../wailsjs/go/models';
+import { k8s } from 'wailsjs/go/models';
 
 interface PodMetricData {
     cpuPercent: number;

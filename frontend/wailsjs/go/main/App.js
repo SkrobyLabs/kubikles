@@ -666,24 +666,24 @@ export function ListCRDs() {
   return window['go']['main']['App']['ListCRDs']();
 }
 
-export function ListCSIDrivers() {
-  return window['go']['main']['App']['ListCSIDrivers']();
+export function ListCSIDrivers(arg1) {
+  return window['go']['main']['App']['ListCSIDrivers'](arg1);
 }
 
-export function ListCSINodes() {
-  return window['go']['main']['App']['ListCSINodes']();
+export function ListCSINodes(arg1) {
+  return window['go']['main']['App']['ListCSINodes'](arg1);
 }
 
 export function ListChartSources() {
   return window['go']['main']['App']['ListChartSources']();
 }
 
-export function ListClusterRoleBindings() {
-  return window['go']['main']['App']['ListClusterRoleBindings']();
+export function ListClusterRoleBindings(arg1) {
+  return window['go']['main']['App']['ListClusterRoleBindings'](arg1);
 }
 
-export function ListClusterRoles() {
-  return window['go']['main']['App']['ListClusterRoles']();
+export function ListClusterRoles(arg1) {
+  return window['go']['main']['App']['ListClusterRoles'](arg1);
 }
 
 export function ListConfigMaps(arg1, arg2) {
@@ -714,20 +714,20 @@ export function ListDeploymentsForContext(arg1, arg2) {
   return window['go']['main']['App']['ListDeploymentsForContext'](arg1, arg2);
 }
 
-export function ListEndpointSlices(arg1) {
-  return window['go']['main']['App']['ListEndpointSlices'](arg1);
+export function ListEndpointSlices(arg1, arg2) {
+  return window['go']['main']['App']['ListEndpointSlices'](arg1, arg2);
 }
 
-export function ListEndpoints(arg1) {
-  return window['go']['main']['App']['ListEndpoints'](arg1);
+export function ListEndpoints(arg1, arg2) {
+  return window['go']['main']['App']['ListEndpoints'](arg1, arg2);
 }
 
-export function ListEvents(arg1) {
-  return window['go']['main']['App']['ListEvents'](arg1);
+export function ListEvents(arg1, arg2) {
+  return window['go']['main']['App']['ListEvents'](arg1, arg2);
 }
 
-export function ListHPAs(arg1) {
-  return window['go']['main']['App']['ListHPAs'](arg1);
+export function ListHPAs(arg1, arg2) {
+  return window['go']['main']['App']['ListHPAs'](arg1, arg2);
 }
 
 export function ListHelmReleases(arg1) {
@@ -738,28 +738,28 @@ export function ListHelmRepositories() {
   return window['go']['main']['App']['ListHelmRepositories']();
 }
 
-export function ListIngressClasses() {
-  return window['go']['main']['App']['ListIngressClasses']();
+export function ListIngressClasses(arg1) {
+  return window['go']['main']['App']['ListIngressClasses'](arg1);
 }
 
-export function ListIngresses(arg1) {
-  return window['go']['main']['App']['ListIngresses'](arg1);
+export function ListIngresses(arg1, arg2) {
+  return window['go']['main']['App']['ListIngresses'](arg1, arg2);
 }
 
 export function ListJobs(arg1, arg2) {
   return window['go']['main']['App']['ListJobs'](arg1, arg2);
 }
 
-export function ListLeases(arg1) {
-  return window['go']['main']['App']['ListLeases'](arg1);
+export function ListLeases(arg1, arg2) {
+  return window['go']['main']['App']['ListLeases'](arg1, arg2);
 }
 
-export function ListLimitRanges(arg1) {
-  return window['go']['main']['App']['ListLimitRanges'](arg1);
+export function ListLimitRanges(arg1, arg2) {
+  return window['go']['main']['App']['ListLimitRanges'](arg1, arg2);
 }
 
-export function ListMutatingWebhookConfigurations() {
-  return window['go']['main']['App']['ListMutatingWebhookConfigurations']();
+export function ListMutatingWebhookConfigurations(arg1) {
+  return window['go']['main']['App']['ListMutatingWebhookConfigurations'](arg1);
 }
 
 export function ListNamespaces(arg1) {
@@ -770,8 +770,8 @@ export function ListNamespacesForContext(arg1) {
   return window['go']['main']['App']['ListNamespacesForContext'](arg1);
 }
 
-export function ListNetworkPolicies(arg1) {
-  return window['go']['main']['App']['ListNetworkPolicies'](arg1);
+export function ListNetworkPolicies(arg1, arg2) {
+  return window['go']['main']['App']['ListNetworkPolicies'](arg1, arg2);
 }
 
 export function ListNodes(arg1) {
@@ -782,16 +782,16 @@ export function ListOCIRegistries() {
   return window['go']['main']['App']['ListOCIRegistries']();
 }
 
-export function ListPDBs(arg1) {
-  return window['go']['main']['App']['ListPDBs'](arg1);
+export function ListPDBs(arg1, arg2) {
+  return window['go']['main']['App']['ListPDBs'](arg1, arg2);
 }
 
-export function ListPVCs(arg1) {
-  return window['go']['main']['App']['ListPVCs'](arg1);
+export function ListPVCs(arg1, arg2) {
+  return window['go']['main']['App']['ListPVCs'](arg1, arg2);
 }
 
-export function ListPVs() {
-  return window['go']['main']['App']['ListPVs']();
+export function ListPVs(arg1) {
+  return window['go']['main']['App']['ListPVs'](arg1);
 }
 
 export function ListPodFiles(arg1, arg2, arg3, arg4) {
@@ -806,8 +806,8 @@ export function ListPodsForContext(arg1, arg2) {
   return window['go']['main']['App']['ListPodsForContext'](arg1, arg2);
 }
 
-export function ListPriorityClasses() {
-  return window['go']['main']['App']['ListPriorityClasses']();
+export function ListPriorityClasses(arg1) {
+  return window['go']['main']['App']['ListPriorityClasses'](arg1);
 }
 
 export function ListPrometheusInstalls() {
@@ -822,16 +822,16 @@ export function ListResourceNamesForContext(arg1, arg2, arg3) {
   return window['go']['main']['App']['ListResourceNamesForContext'](arg1, arg2, arg3);
 }
 
-export function ListResourceQuotas(arg1) {
-  return window['go']['main']['App']['ListResourceQuotas'](arg1);
+export function ListResourceQuotas(arg1, arg2) {
+  return window['go']['main']['App']['ListResourceQuotas'](arg1, arg2);
 }
 
-export function ListRoleBindings(arg1) {
-  return window['go']['main']['App']['ListRoleBindings'](arg1);
+export function ListRoleBindings(arg1, arg2) {
+  return window['go']['main']['App']['ListRoleBindings'](arg1, arg2);
 }
 
-export function ListRoles(arg1) {
-  return window['go']['main']['App']['ListRoles'](arg1);
+export function ListRoles(arg1, arg2) {
+  return window['go']['main']['App']['ListRoles'](arg1, arg2);
 }
 
 export function ListSecrets(arg1, arg2) {
@@ -842,24 +842,24 @@ export function ListSecretsMetadata(arg1, arg2) {
   return window['go']['main']['App']['ListSecretsMetadata'](arg1, arg2);
 }
 
-export function ListServiceAccounts(arg1) {
-  return window['go']['main']['App']['ListServiceAccounts'](arg1);
+export function ListServiceAccounts(arg1, arg2) {
+  return window['go']['main']['App']['ListServiceAccounts'](arg1, arg2);
 }
 
 export function ListServices(arg1, arg2) {
   return window['go']['main']['App']['ListServices'](arg1, arg2);
 }
 
-export function ListStatefulSets(arg1, arg2, arg3) {
-  return window['go']['main']['App']['ListStatefulSets'](arg1, arg2, arg3);
+export function ListStatefulSets(arg1, arg2) {
+  return window['go']['main']['App']['ListStatefulSets'](arg1, arg2);
 }
 
-export function ListStorageClasses() {
-  return window['go']['main']['App']['ListStorageClasses']();
+export function ListStorageClasses(arg1) {
+  return window['go']['main']['App']['ListStorageClasses'](arg1);
 }
 
-export function ListValidatingWebhookConfigurations() {
-  return window['go']['main']['App']['ListValidatingWebhookConfigurations']();
+export function ListValidatingWebhookConfigurations(arg1) {
+  return window['go']['main']['App']['ListValidatingWebhookConfigurations'](arg1);
 }
 
 export function LogDebug(arg1) {

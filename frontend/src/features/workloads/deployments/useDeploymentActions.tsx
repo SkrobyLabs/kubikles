@@ -1,10 +1,10 @@
 import React from 'react';
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteDeployment, RestartDeployment, ListPods } from '../../../../wailsjs/go/main/App';
-import DeploymentDetails from '../../../components/shared/DeploymentDetails';
-import LogViewer from '../../../components/shared/log-viewer';
-import Logger from '../../../utils/Logger';
-import { K8sDeployment, K8sPod } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteDeployment, RestartDeployment, ListPods } from 'wailsjs/go/main/App';
+import DeploymentDetails from '~/components/shared/DeploymentDetails';
+import LogViewer from '~/components/shared/log-viewer';
+import Logger from '~/utils/Logger';
+import { K8sDeployment, K8sPod } from '~/types/k8s';
 
 export interface DeploymentActionsReturn extends BaseResourceActionsReturn<K8sDeployment> {
     handleRestart: (deployment: K8sDeployment) => Promise<void>;
@@ -19,7 +19,7 @@ export const useDeploymentActions = (): DeploymentActionsReturn => {
         handleShowDependencies,
         createDeleteHandler,
         openTab,
-        currentContext,
+
         addNotification,
     } = useBaseResourceActions({
         resourceType: 'deployment',

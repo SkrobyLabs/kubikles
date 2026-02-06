@@ -13,11 +13,21 @@ import (
 // Storage
 // =============================================================================
 
-func (a *App) ListPVCs(namespace string) ([]v1.PersistentVolumeClaim, error) {
+func (a *App) ListPVCs(requestId, namespace string) ([]v1.PersistentVolumeClaim, error) {
 	currentContext := a.GetCurrentContext()
 	a.logDebug("ListPVCs called: context=%s, ns=%s", currentContext, namespace)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListPVCsWithContext(ctx, currentContext, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListPVCs(currentContext, namespace)
 }
@@ -57,11 +67,21 @@ func (a *App) ResizePVC(namespace, name, newSize string) error {
 }
 
 // PersistentVolume operations (cluster-scoped)
-func (a *App) ListPVs() ([]v1.PersistentVolume, error) {
+func (a *App) ListPVs(requestId string) ([]v1.PersistentVolume, error) {
 	currentContext := a.GetCurrentContext()
 	a.logDebug("ListPVs called: context=%s", currentContext)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListPVsWithContext(ctx, currentContext)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListPVs(currentContext)
 }
@@ -92,11 +112,21 @@ func (a *App) DeletePV(name string) error {
 }
 
 // StorageClass operations (cluster-scoped)
-func (a *App) ListStorageClasses() ([]storagev1.StorageClass, error) {
+func (a *App) ListStorageClasses(requestId string) ([]storagev1.StorageClass, error) {
 	currentContext := a.GetCurrentContext()
 	a.logDebug("ListStorageClasses called: context=%s", currentContext)
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListStorageClassesWithContext(ctx, currentContext)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListStorageClasses(currentContext)
 }

@@ -1,7 +1,7 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeletePVC } from '../../../../wailsjs/go/main/App';
-import PVCDetails from '../../../components/shared/PVCDetails';
-import { K8sPersistentVolumeClaim } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeletePVC } from 'wailsjs/go/main/App';
+import PVCDetails from '~/components/shared/PVCDetails';
+import { K8sPersistentVolumeClaim } from '~/types/k8s';
 
 export interface PVCActionsReturn extends BaseResourceActionsReturn<K8sPersistentVolumeClaim> {
     handleDelete: (pvc: K8sPersistentVolumeClaim) => void;

@@ -341,15 +341,15 @@ export function IsRequestCancellationEnabled():Promise<boolean>;
 
 export function ListCRDs():Promise<Array<v1.CustomResourceDefinition>>;
 
-export function ListCSIDrivers():Promise<Array<v1.CSIDriver>>;
+export function ListCSIDrivers(arg1:string):Promise<Array<v1.CSIDriver>>;
 
-export function ListCSINodes():Promise<Array<v1.CSINode>>;
+export function ListCSINodes(arg1:string):Promise<Array<v1.CSINode>>;
 
 export function ListChartSources():Promise<Array<helm.ChartSourceInfo>>;
 
-export function ListClusterRoleBindings():Promise<Array<v1.ClusterRoleBinding>>;
+export function ListClusterRoleBindings(arg1:string):Promise<Array<v1.ClusterRoleBinding>>;
 
-export function ListClusterRoles():Promise<Array<v1.ClusterRole>>;
+export function ListClusterRoles(arg1:string):Promise<Array<v1.ClusterRole>>;
 
 export function ListConfigMaps(arg1:string,arg2:string):Promise<Array<v1.ConfigMap>>;
 
@@ -365,45 +365,45 @@ export function ListDeployments(arg1:string,arg2:string):Promise<Array<v1.Deploy
 
 export function ListDeploymentsForContext(arg1:string,arg2:string):Promise<Array<v1.Deployment>>;
 
-export function ListEndpointSlices(arg1:string):Promise<Array<v1.EndpointSlice>>;
+export function ListEndpointSlices(arg1:string,arg2:string):Promise<Array<v1.EndpointSlice>>;
 
-export function ListEndpoints(arg1:string):Promise<Array<v1.Endpoints>>;
+export function ListEndpoints(arg1:string,arg2:string):Promise<Array<v1.Endpoints>>;
 
-export function ListEvents(arg1:string):Promise<Array<v1.Event>>;
+export function ListEvents(arg1:string,arg2:string):Promise<Array<v1.Event>>;
 
-export function ListHPAs(arg1:string):Promise<Array<v2.HorizontalPodAutoscaler>>;
+export function ListHPAs(arg1:string,arg2:string):Promise<Array<v2.HorizontalPodAutoscaler>>;
 
 export function ListHelmReleases(arg1:Array<string>):Promise<Array<helm.Release>>;
 
 export function ListHelmRepositories():Promise<Array<helm.Repository>>;
 
-export function ListIngressClasses():Promise<Array<v1.IngressClass>>;
+export function ListIngressClasses(arg1:string):Promise<Array<v1.IngressClass>>;
 
-export function ListIngresses(arg1:string):Promise<Array<v1.Ingress>>;
+export function ListIngresses(arg1:string,arg2:string):Promise<Array<v1.Ingress>>;
 
 export function ListJobs(arg1:string,arg2:string):Promise<Array<v1.Job>>;
 
-export function ListLeases(arg1:string):Promise<Array<v1.Lease>>;
+export function ListLeases(arg1:string,arg2:string):Promise<Array<v1.Lease>>;
 
-export function ListLimitRanges(arg1:string):Promise<Array<v1.LimitRange>>;
+export function ListLimitRanges(arg1:string,arg2:string):Promise<Array<v1.LimitRange>>;
 
-export function ListMutatingWebhookConfigurations():Promise<Array<v1.MutatingWebhookConfiguration>>;
+export function ListMutatingWebhookConfigurations(arg1:string):Promise<Array<v1.MutatingWebhookConfiguration>>;
 
 export function ListNamespaces(arg1:string):Promise<Array<v1.Namespace>>;
 
 export function ListNamespacesForContext(arg1:string):Promise<Array<v1.Namespace>>;
 
-export function ListNetworkPolicies(arg1:string):Promise<Array<v1.NetworkPolicy>>;
+export function ListNetworkPolicies(arg1:string,arg2:string):Promise<Array<v1.NetworkPolicy>>;
 
 export function ListNodes(arg1:string):Promise<Array<v1.Node>>;
 
 export function ListOCIRegistries():Promise<Array<helm.OCIRegistry>>;
 
-export function ListPDBs(arg1:string):Promise<Array<v1.PodDisruptionBudget>>;
+export function ListPDBs(arg1:string,arg2:string):Promise<Array<v1.PodDisruptionBudget>>;
 
-export function ListPVCs(arg1:string):Promise<Array<v1.PersistentVolumeClaim>>;
+export function ListPVCs(arg1:string,arg2:string):Promise<Array<v1.PersistentVolumeClaim>>;
 
-export function ListPVs():Promise<Array<v1.PersistentVolume>>;
+export function ListPVs(arg1:string):Promise<Array<v1.PersistentVolume>>;
 
 export function ListPodFiles(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Array<main.PodFileInfo>>;
 
@@ -411,7 +411,7 @@ export function ListPods(arg1:string,arg2:string):Promise<Array<v1.Pod>>;
 
 export function ListPodsForContext(arg1:string,arg2:string):Promise<Array<v1.Pod>>;
 
-export function ListPriorityClasses():Promise<Array<v1.PriorityClass>>;
+export function ListPriorityClasses(arg1:string):Promise<Array<v1.PriorityClass>>;
 
 export function ListPrometheusInstalls():Promise<Array<k8s.PrometheusInstall>>;
 
@@ -419,25 +419,25 @@ export function ListReplicaSets(arg1:string,arg2:string):Promise<Array<v1.Replic
 
 export function ListResourceNamesForContext(arg1:string,arg2:string,arg3:string):Promise<Array<main.ResourceNameItem>>;
 
-export function ListResourceQuotas(arg1:string):Promise<Array<v1.ResourceQuota>>;
+export function ListResourceQuotas(arg1:string,arg2:string):Promise<Array<v1.ResourceQuota>>;
 
-export function ListRoleBindings(arg1:string):Promise<Array<v1.RoleBinding>>;
+export function ListRoleBindings(arg1:string,arg2:string):Promise<Array<v1.RoleBinding>>;
 
-export function ListRoles(arg1:string):Promise<Array<v1.Role>>;
+export function ListRoles(arg1:string,arg2:string):Promise<Array<v1.Role>>;
 
 export function ListSecrets(arg1:string,arg2:string):Promise<Array<v1.Secret>>;
 
 export function ListSecretsMetadata(arg1:string,arg2:string):Promise<Array<k8s.SecretListItem>>;
 
-export function ListServiceAccounts(arg1:string):Promise<Array<v1.ServiceAccount>>;
+export function ListServiceAccounts(arg1:string,arg2:string):Promise<Array<v1.ServiceAccount>>;
 
 export function ListServices(arg1:string,arg2:string):Promise<Array<v1.Service>>;
 
-export function ListStatefulSets(arg1:string,arg2:string,arg3:string):Promise<Array<v1.StatefulSet>>;
+export function ListStatefulSets(arg1:string,arg2:string):Promise<Array<v1.StatefulSet>>;
 
-export function ListStorageClasses():Promise<Array<v1.StorageClass>>;
+export function ListStorageClasses(arg1:string):Promise<Array<v1.StorageClass>>;
 
-export function ListValidatingWebhookConfigurations():Promise<Array<v1.ValidatingWebhookConfiguration>>;
+export function ListValidatingWebhookConfigurations(arg1:string):Promise<Array<v1.ValidatingWebhookConfiguration>>;
 
 export function LogDebug(arg1:string):Promise<void>;
 

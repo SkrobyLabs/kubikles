@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
-import { GetCurrentTheme, GetThemes, SetTheme } from '../../wailsjs/go/main/App';
-import { main } from '../../wailsjs/go/models';
+import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
+import { GetCurrentTheme, GetThemes, SetTheme } from 'wailsjs/go/main/App';
+import { main } from 'wailsjs/go/models';
 
 // Type aliases for clarity
 type Theme = main.Theme;

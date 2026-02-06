@@ -42,7 +42,7 @@ import {
     GetLeaseYaml, UpdateLeaseYaml,
     GetCSIDriverYaml, UpdateCSIDriverYaml,
     GetCSINodeYaml, UpdateCSINodeYaml,
-} from '../../wailsjs/go/main/App';
+} from 'wailsjs/go/main/App';
 
 const registry = {
     pod: {

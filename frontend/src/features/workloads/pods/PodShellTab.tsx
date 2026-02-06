@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { LazyTerminal as Terminal } from '../../../components/lazy';
-import ContainerSelector from '../../../components/shared/ContainerSelector';
+import { LazyTerminal as Terminal } from '~/components/lazy';
+import ContainerSelector from '~/components/shared/ContainerSelector';
 
 /**
  * Get container name from container (supports both string and object format)

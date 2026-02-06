@@ -7,7 +7,7 @@ import {
     GetHelmReleaseHistory,
     UninstallHelmRelease,
     RollbackHelmRelease
-} from '../../wailsjs/go/main/App';
+} from 'wailsjs/go/main/App';
 import { useK8s } from '../context';
 import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 import { K8sHelmRelease } from '../types/k8s';

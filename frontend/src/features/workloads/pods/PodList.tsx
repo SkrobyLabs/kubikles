@@ -1,25 +1,26 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { EllipsisVerticalIcon, BellAlertIcon, BellSlashIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import AggregateResourceBar from '../../../components/shared/AggregateResourceBar';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
-import PodPortForwardDialog from '../../../components/shared/PodPortForwardDialog';
-import NotificationSettingsMenu from '../../../components/shared/NotificationSettingsMenu';
+import ResourceList from '~/components/shared/ResourceList';
+import AggregateResourceBar from '~/components/shared/AggregateResourceBar';
+import BulkActionModal from '~/components/shared/BulkActionModal';
+import PodPortForwardDialog from '~/components/shared/PodPortForwardDialog';
+import NotificationSettingsMenu from '~/components/shared/NotificationSettingsMenu';
 import PodActionsMenu from './PodActionsMenu';
-import { usePods } from '../../../hooks/resources';
-import { usePodMetrics } from '../../../hooks/usePodMetrics';
+import { usePods } from '~/hooks/resources';
+import { usePodMetrics } from '~/hooks/usePodMetrics';
 import { usePodActions } from './usePodActions';
-import { useK8s } from '../../../context';
-import { useUI } from '../../../context';
-import { useMenu } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeletePod, GetPodYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge, formatBytes, formatCpu } from '../../../utils/formatting';
-import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusPriority, getPodController } from '../../../utils/k8s-helpers';
-import { getOwnerViewId } from '../../../utils/owner-navigation';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
-import { usePodNotifications, warmUpAudio, playNotificationSound } from '../../../hooks/usePodNotifications';
+import { useK8s } from '~/context';
+import { useUI } from '~/context';
+import { useMenu } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeletePod, GetPodYaml } from 'wailsjs/go/main/App';
+import { formatAge, formatBytes, formatCpu } from '~/utils/formatting';
+import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusPriority, getPodController } from '~/utils/k8s-helpers';
+import { getOwnerViewId } from '~/utils/owner-navigation';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
+import { usePodNotifications, warmUpAudio, playNotificationSound } from '~/hooks/usePodNotifications';
+import { ALL_PODS } from '~/components/shared/log-viewer';
 
 export default function PodList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces, crds, ensureCRDsLoaded } = useK8s();
@@ -47,7 +48,7 @@ export default function PodList({ isVisible }) {
         isNamespaced: true,
         deleteApi: DeletePod,
         getYamlApi: GetPodYaml,
-        currentContext,
+
     });
     const { pods, loading } = usePods(currentContext, selectedNamespaces, isVisible);
     // Delay metrics fetch until pods are loaded to prioritize showing pod list first

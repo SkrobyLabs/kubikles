@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { GetNodeMetrics, GetNodeMetricsFromPrometheus, DetectPrometheus } from '../../wailsjs/go/main/App';
+import { GetNodeMetrics, GetNodeMetricsFromPrometheus, DetectPrometheus } from 'wailsjs/go/main/App';
 import { useK8s } from '../context';
 import { useConfig } from '../context';
-import { k8s } from '../../wailsjs/go/models';
+import { k8s } from 'wailsjs/go/models';
 
 interface NodeMetricData {
     cpuPercent: number;

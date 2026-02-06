@@ -1,10 +1,10 @@
 import React from 'react';
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteJob, ListPods } from '../../../../wailsjs/go/main/App';
-import JobDetails from '../../../components/shared/JobDetails';
-import LogViewer from '../../../components/shared/log-viewer';
-import Logger from '../../../utils/Logger';
-import { K8sJob } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteJob, ListPods } from 'wailsjs/go/main/App';
+import JobDetails from '~/components/shared/JobDetails';
+import LogViewer from '~/components/shared/log-viewer';
+import Logger from '~/utils/Logger';
+import { K8sJob } from '~/types/k8s';
 
 interface JobActionsReturn extends BaseResourceActionsReturn<K8sJob> {
     handleDelete: (job: K8sJob) => void;
@@ -19,7 +19,7 @@ export const useJobActions = (onRefresh?: () => void): JobActionsReturn => {
         openTab,
         openModal,
         closeModal,
-        currentContext,
+
         addNotification,
     } = useBaseResourceActions({
         resourceType: 'job',

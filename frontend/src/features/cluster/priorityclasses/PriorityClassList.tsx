@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import PriorityClassActionsMenu from './PriorityClassActionsMenu';
-import { usePriorityClasses } from '../../../hooks/resources';
+import { usePriorityClasses } from '~/hooks/resources';
 import { usePriorityClassActions } from './usePriorityClassActions';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeletePriorityClass, GetPriorityClassYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeletePriorityClass, GetPriorityClassYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function PriorityClassList({ isVisible }) {
     const { currentContext } = useK8s();
@@ -33,7 +33,7 @@ export default function PriorityClassList({ isVisible }) {
         isNamespaced: false,
         deleteApi: DeletePriorityClass,
         getYamlApi: GetPriorityClassYaml,
-        currentContext,
+
     });
 
     const formatValue = (value) => {

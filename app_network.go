@@ -8,15 +8,27 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
+
+	"kubikles/pkg/k8s"
 )
 
 // =============================================================================
 // Network Resources
 // =============================================================================
 
-func (a *App) ListNetworkPolicies(namespace string) ([]networkingv1.NetworkPolicy, error) {
+func (a *App) ListNetworkPolicies(requestId, namespace string) ([]networkingv1.NetworkPolicy, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListNetworkPoliciesWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListNetworkPolicies(namespace)
 }
@@ -47,9 +59,19 @@ func (a *App) DeleteNetworkPolicy(namespace, name string) error {
 }
 
 // HorizontalPodAutoscaler operations (namespaced)
-func (a *App) ListHPAs(namespace string) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
+func (a *App) ListHPAs(requestId, namespace string) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListHPAsWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListHPAs(namespace)
 }
@@ -80,9 +102,19 @@ func (a *App) DeleteHPA(namespace, name string) error {
 }
 
 // PodDisruptionBudget operations (namespaced)
-func (a *App) ListPDBs(namespace string) ([]policyv1.PodDisruptionBudget, error) {
+func (a *App) ListPDBs(requestId, namespace string) ([]policyv1.PodDisruptionBudget, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListPDBsWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListPDBs(namespace)
 }
@@ -113,9 +145,19 @@ func (a *App) DeletePDB(namespace, name string) error {
 }
 
 // ResourceQuota operations (namespaced)
-func (a *App) ListResourceQuotas(namespace string) ([]v1.ResourceQuota, error) {
+func (a *App) ListResourceQuotas(requestId, namespace string) ([]v1.ResourceQuota, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListResourceQuotasWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListResourceQuotas(namespace)
 }
@@ -146,9 +188,19 @@ func (a *App) DeleteResourceQuota(namespace, name string) error {
 }
 
 // LimitRange operations (namespaced)
-func (a *App) ListLimitRanges(namespace string) ([]v1.LimitRange, error) {
+func (a *App) ListLimitRanges(requestId, namespace string) ([]v1.LimitRange, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListLimitRangesWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListLimitRanges(namespace)
 }
@@ -178,9 +230,19 @@ func (a *App) DeleteLimitRange(namespace, name string) error {
 	return a.k8sClient.DeleteLimitRange(currentContext, namespace, name)
 }
 
-func (a *App) ListEndpoints(namespace string) ([]v1.Endpoints, error) {
+func (a *App) ListEndpoints(requestId, namespace string) ([]v1.Endpoints, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListEndpointsWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListEndpoints(namespace)
 }
@@ -211,9 +273,19 @@ func (a *App) DeleteEndpoints(namespace, name string) error {
 }
 
 // EndpointSlice operations (namespaced, discovery.k8s.io/v1)
-func (a *App) ListEndpointSlices(namespace string) ([]discoveryv1.EndpointSlice, error) {
+func (a *App) ListEndpointSlices(requestId, namespace string) ([]discoveryv1.EndpointSlice, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	if requestId != "" {
+		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		defer a.listRequestManager.CompleteRequest(requestId, seq)
+
+		result, err := a.k8sClient.ListEndpointSlicesWithContext(ctx, namespace)
+		if err == k8s.ErrRequestCancelled {
+			return nil, nil
+		}
+		return result, err
 	}
 	return a.k8sClient.ListEndpointSlices(namespace)
 }

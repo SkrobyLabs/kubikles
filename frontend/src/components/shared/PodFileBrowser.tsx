@@ -8,10 +8,10 @@ import {
     UploadFileToPod,
     CreatePodDirectory,
     DeletePodFile
-} from '../../../wailsjs/go/main/App';
-import { EventsOn, EventsOff, OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime/runtime';
-import { useK8s } from '../../context';
-import { useUI } from '../../context';
+} from 'wailsjs/go/main/App';
+import { EventsOn, EventsOff, OnFileDrop, OnFileDropOff } from 'wailsjs/runtime/runtime';
+import { useK8s } from '~/context';
+import { useUI } from '~/context';
 import ContainerSelector from './ContainerSelector';
 import SearchSelect from './SearchSelect';
 import Tooltip from './Tooltip';

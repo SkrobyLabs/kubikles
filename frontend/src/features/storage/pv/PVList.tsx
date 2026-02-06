@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
-import { usePVs } from '../../../hooks/resources';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeletePV, GetPVYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
+import { usePVs } from '~/hooks/resources';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeletePV, GetPVYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import PVActionsMenu from './PVActionsMenu';
 import { usePVActions } from './usePVActions';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 const getStatusColor = (phase) => {
     switch (phase) {
@@ -87,7 +87,7 @@ export default function PVList({ isVisible }) {
         isNamespaced: false,
         deleteApi: DeletePV,
         getYamlApi: GetPVYaml,
-        currentContext,
+
     });
 
     const columns = useMemo(() => [

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { XMarkIcon, SignalIcon, ArrowPathIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
-import { AddPortForwardConfig, UpdatePortForwardConfig, GetRandomAvailablePort, StartPortForward } from '../../../wailsjs/go/main/App';
-import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
+import { AddPortForwardConfig, UpdatePortForwardConfig, GetRandomAvailablePort, StartPortForward } from 'wailsjs/go/main/App';
+import { BrowserOpenURL } from 'wailsjs/runtime/runtime';
+import { useForm, podPortForwardSchema } from '~/lib/validation';
 
 export default function PodPortForwardDialog({
     open,
@@ -13,72 +14,22 @@ export default function PodPortForwardDialog({
     existingConfig = null  // Pass existing config for edit mode
 }) {
     const isEditing = !!existingConfig;
-    const [localPort, setLocalPort] = useState(0);
-    const [label, setLabel] = useState('');
-    const [https, setHttps] = useState(false);
-    const [favorite, setFavorite] = useState(false);
-    const [autoStart, setAutoStart] = useState(true);
-    const [openInBrowser, setOpenInBrowser] = useState(false);
-    const [error, setError] = useState('');
-    const [saving, setSaving] = useState(false);
 
     const remotePort = containerPort?.containerPort || 0;
     const portName = containerPort?.name || '';
 
-    // Initialize form when dialog opens
-    useEffect(() => {
-        if (open && containerPort) {
-            if (isEditing && existingConfig) {
-                // Edit mode - populate from existing config
-                setLabel(existingConfig.label || '');
-                setLocalPort(existingConfig.localPort || remotePort);
-                setHttps(existingConfig.https || false);
-                setFavorite(existingConfig.favorite || false);
-                setAutoStart(false);  // Don't auto-start when editing
-                setOpenInBrowser(false);
-            } else {
-                // Create mode - generate defaults
-                const defaultLabel = portName
-                    ? `${pod.metadata?.name}:${portName}`
-                    : `${pod.metadata?.name}:${remotePort}`;
-                setLabel(defaultLabel);
-
-                // Get a random available local port (avoiding well-known ports)
-                GetRandomAvailablePort()
-                    .then(port => setLocalPort(port))
-                    .catch(err => {
-                        console.error('Failed to get available port:', err);
-                        setLocalPort(remotePort);
-                    });
-
-                setHttps(false);
-                setFavorite(false);
-                setAutoStart(true);
-                setOpenInBrowser(false);
-            }
-            setError('');
-        }
-    }, [open, containerPort, pod, remotePort, portName, isEditing, existingConfig]);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-
-        if (!localPort || localPort < 1 || localPort > 65535) {
-            setError('Local port must be between 1 and 65535');
-            return;
-        }
-
-        setSaving(true);
-        try {
+    const form = useForm({
+        schema: podPortForwardSchema,
+        initialValues: { localPort: 0, label: '', https: false, favorite: false, autoStart: true, openInBrowser: false },
+        onSubmit: async (values) => {
             if (isEditing && existingConfig) {
                 // Update existing config
                 const updatedConfig = {
                     ...existingConfig,
-                    localPort: localPort,
-                    label: label,
-                    favorite: favorite,
-                    https: https
+                    localPort: values.localPort,
+                    label: values.label,
+                    favorite: values.favorite,
+                    https: values.https
                 };
                 await UpdatePortForwardConfig(updatedConfig);
             } else {
@@ -88,23 +39,23 @@ export default function PodPortForwardDialog({
                     namespace: pod.metadata?.namespace,
                     resourceType: 'pod',
                     resourceName: pod.metadata?.name,
-                    localPort: localPort,
+                    localPort: values.localPort,
                     remotePort: remotePort,
-                    label: label,
-                    favorite: favorite,
-                    https: https
+                    label: values.label,
+                    favorite: values.favorite,
+                    https: values.https
                 };
 
                 const result = await AddPortForwardConfig(config);
 
                 // Auto-start if requested
-                if (autoStart && result?.id) {
+                if (values.autoStart && result?.id) {
                     try {
                         await StartPortForward(result.id);
                         // Open in browser if requested
-                        if (openInBrowser) {
-                            const protocol = https ? 'https' : 'http';
-                            BrowserOpenURL(`${protocol}://localhost:${localPort}`);
+                        if (values.openInBrowser) {
+                            const protocol = values.https ? 'https' : 'http';
+                            BrowserOpenURL(`${protocol}://localhost:${values.localPort}`);
                         }
                     } catch (startErr) {
                         console.error('Failed to auto-start port forward:', startErr);
@@ -114,12 +65,47 @@ export default function PodPortForwardDialog({
             }
 
             onOpenChange(false);
-        } catch (err) {
-            setError(err.message || (isEditing ? 'Failed to update port forward' : 'Failed to create port forward'));
-        } finally {
-            setSaving(false);
+        },
+    });
+
+    // Initialize form when dialog opens
+    useEffect(() => {
+        if (open && containerPort) {
+            if (isEditing && existingConfig) {
+                // Edit mode - populate from existing config
+                form.reset({
+                    label: existingConfig.label || '',
+                    localPort: existingConfig.localPort || remotePort,
+                    https: existingConfig.https || false,
+                    favorite: existingConfig.favorite || false,
+                    autoStart: false,  // Don't auto-start when editing
+                    openInBrowser: false
+                });
+            } else {
+                // Create mode - generate defaults
+                const defaultLabel = portName
+                    ? `${pod.metadata?.name}:${portName}`
+                    : `${pod.metadata?.name}:${remotePort}`;
+
+                form.reset({
+                    label: defaultLabel,
+                    localPort: 0,
+                    https: false,
+                    favorite: false,
+                    autoStart: true,
+                    openInBrowser: false
+                });
+
+                // Get a random available local port (avoiding well-known ports)
+                GetRandomAvailablePort()
+                    .then(port => form.setValue('localPort', port))
+                    .catch(err => {
+                        console.error('Failed to get available port:', err);
+                        form.setValue('localPort', remotePort);
+                    });
+            }
         }
-    };
+    }, [open, containerPort, pod, remotePort, portName, isEditing, existingConfig]);
 
     const handleClose = useCallback(() => {
         onOpenChange(false);
@@ -128,16 +114,16 @@ export default function PodPortForwardDialog({
     const randomizePort = useCallback(async () => {
         try {
             const port = await GetRandomAvailablePort();
-            setLocalPort(port);
+            form.setValue('localPort', port);
         } catch (err) {
             console.error('Failed to get random port:', err);
         }
     }, []);
 
     const handleOpenBrowser = useCallback(() => {
-        const protocol = https ? 'https' : 'http';
-        BrowserOpenURL(`${protocol}://localhost:${localPort}`);
-    }, [https, localPort]);
+        const protocol = form.values.https ? 'https' : 'http';
+        BrowserOpenURL(`${protocol}://localhost:${form.values.localPort}`);
+    }, [form.values.https, form.values.localPort]);
 
     if (!open) return null;
 
@@ -164,7 +150,7 @@ export default function PodPortForwardDialog({
                     <div className="text-white font-medium">{pod.metadata?.namespace}/{pod.metadata?.name}</div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={form.handleSubmit} className="space-y-4">
                     {/* Label */}
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -172,8 +158,7 @@ export default function PodPortForwardDialog({
                         </label>
                         <input
                             type="text"
-                            value={label}
-                            onChange={(e) => setLabel(e.target.value)}
+                            {...form.getFieldProps('label')}
                             className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
                         />
                     </div>
@@ -196,7 +181,7 @@ export default function PodPortForwardDialog({
                                         type="button"
                                         onClick={handleOpenBrowser}
                                         className="p-0.5 text-gray-500 hover:text-primary transition-colors"
-                                        title={`Open ${https ? 'https' : 'http'}://localhost:${localPort}`}
+                                        title={`Open ${form.values.https ? 'https' : 'http'}://localhost:${form.values.localPort}`}
                                     >
                                         <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
                                     </button>
@@ -204,12 +189,16 @@ export default function PodPortForwardDialog({
                             </label>
                             <input
                                 type="number"
-                                value={localPort || ''}
-                                onChange={(e) => setLocalPort(parseInt(e.target.value) || 0)}
+                                value={form.values.localPort || ''}
+                                onChange={(e) => form.setValue('localPort', parseInt(e.target.value) || 0)}
+                                onBlur={() => form.setFieldTouched('localPort')}
                                 min="1"
                                 max="65535"
                                 className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
                             />
+                            {form.touched.localPort && form.errors.localPort && (
+                                <span className="text-red-400 text-xs mt-1 block">{form.errors.localPort}</span>
+                            )}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -231,18 +220,18 @@ export default function PodPortForwardDialog({
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
-                                        checked={autoStart}
-                                        onChange={(e) => setAutoStart(e.target.checked)}
+                                        {...form.getFieldProps('autoStart')}
+                                        checked={form.values.autoStart}
                                         className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                                     />
                                     <span className="text-sm text-gray-300">Start immediately</span>
                                 </label>
-                                <label className={`flex items-center gap-2 ${autoStart ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
+                                <label className={`flex items-center gap-2 ${form.values.autoStart ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
                                     <input
                                         type="checkbox"
-                                        checked={openInBrowser}
-                                        onChange={(e) => setOpenInBrowser(e.target.checked)}
-                                        disabled={!autoStart}
+                                        {...form.getFieldProps('openInBrowser')}
+                                        checked={form.values.openInBrowser}
+                                        disabled={!form.values.autoStart}
                                         className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                                     />
                                     <span className="text-sm text-gray-300">Open in browser</span>
@@ -252,8 +241,8 @@ export default function PodPortForwardDialog({
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input
                                 type="checkbox"
-                                checked={https}
-                                onChange={(e) => setHttps(e.target.checked)}
+                                {...form.getFieldProps('https')}
+                                checked={form.values.https}
                                 className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                             />
                             <span className="text-sm text-gray-300">Use HTTPS for browser</span>
@@ -261,8 +250,8 @@ export default function PodPortForwardDialog({
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input
                                 type="checkbox"
-                                checked={favorite}
-                                onChange={(e) => setFavorite(e.target.checked)}
+                                {...form.getFieldProps('favorite')}
+                                checked={form.values.favorite}
                                 className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                             />
                             <span className="text-sm text-gray-300">Add to favorites</span>
@@ -270,9 +259,9 @@ export default function PodPortForwardDialog({
                     </div>
 
                     {/* Error */}
-                    {error && (
+                    {form.submitError && (
                         <div className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded">
-                            {error}
+                            {form.submitError}
                         </div>
                     )}
 
@@ -287,10 +276,10 @@ export default function PodPortForwardDialog({
                         </button>
                         <button
                             type="submit"
-                            disabled={saving}
+                            disabled={form.isSubmitting || !form.isValid}
                             className="px-4 py-2 text-sm bg-primary hover:bg-primary/80 text-white rounded transition-colors disabled:opacity-50"
                         >
-                            {saving ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save' : 'Create Port Forward')}
+                            {form.isSubmitting ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save' : 'Create Port Forward')}
                         </button>
                     </div>
                 </form>

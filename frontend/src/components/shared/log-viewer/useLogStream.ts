@@ -6,8 +6,8 @@ import {
     GetAllContainersLogsBefore, GetAllContainersLogsAfter, StartAllContainersLogStream,
     GetAllPodsLogs, GetAllPodsLogsAll, GetAllPodsLogsFromStart,
     GetAllPodsLogsBefore, GetAllPodsLogsAfter, StartAllPodsLogStream
-} from '../../../../wailsjs/go/main/App';
-import { EventsOn, EventsOff } from '../../../../wailsjs/runtime/runtime';
+} from 'wailsjs/go/main/App';
+import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
 import { parseLogLines } from './logUtils';
 
 // Special constants for "All" modes

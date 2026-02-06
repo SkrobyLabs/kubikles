@@ -3,8 +3,8 @@ import { useUI } from '../context';
 import { useDebug } from '../context';
 import { useNotification } from '../context';
 import DebugLogViewer from '../components/shared/DebugLogViewer';
-import { SaveLogFile } from '../../wailsjs/go/main/App';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
+import { SaveLogFile } from 'wailsjs/go/main/App';
+import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
 
 type DebugLogSubscriber = (msg: string) => void;
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { ChartBarIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { DetectPrometheus, GetNamespaceMetricsHistory } from '../../../wailsjs/go/main/App';
-import { formatBytes } from '../../utils/formatting';
+import { DetectPrometheus, GetNamespaceMetricsHistory } from 'wailsjs/go/main/App';
+import { formatBytes } from '~/utils/formatting';
 
 // Format time for display
 const formatTime = (timestamp, duration) => {

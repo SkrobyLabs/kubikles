@@ -1,7 +1,7 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteResourceQuota } from '../../../../wailsjs/go/main/App';
-import ResourceQuotaDetails from '../../../components/shared/ResourceQuotaDetails';
-import { K8sResourceQuota } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteResourceQuota } from 'wailsjs/go/main/App';
+import ResourceQuotaDetails from '~/components/shared/ResourceQuotaDetails';
+import { K8sResourceQuota } from '~/types/k8s';
 
 export interface ResourceQuotaActionsReturn extends BaseResourceActionsReturn<K8sResourceQuota> {
     handleDelete: (quota: K8sResourceQuota) => void;
@@ -13,7 +13,7 @@ export const useResourceQuotaActions = (): ResourceQuotaActionsReturn => {
         handleEditYaml,
         handleShowDependencies,
         createDeleteHandler,
-        currentContext,
+
     } = useBaseResourceActions({
         resourceType: 'resourcequota',
         resourceLabel: 'ResourceQuota',

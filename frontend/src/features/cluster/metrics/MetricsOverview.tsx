@@ -7,12 +7,12 @@ import {
     ExclamationTriangleIcon,
     ArrowPathIcon,
 } from '@heroicons/react/24/outline';
-import AggregateResourceBar from '../../../components/shared/AggregateResourceBar';
-import SourceSelect, { sourceOptions } from '../../../components/shared/SourceSelect';
-import { useClusterMetrics } from '../../../hooks/useClusterMetrics';
-import { useUI } from '../../../context';
-import { useConfig } from '../../../context';
-import { formatBytes, formatCpu } from '../../../utils/formatting';
+import AggregateResourceBar from '~/components/shared/AggregateResourceBar';
+import SourceSelect, { sourceOptions } from '~/components/shared/SourceSelect';
+import { useClusterMetrics } from '~/hooks/useClusterMetrics';
+import { useUI } from '~/context';
+import { useConfig } from '~/context';
+import { formatBytes, formatCpu } from '~/utils/formatting';
 
 // Tooltip text for over-committed resources
 const OVERCOMMIT_TOOLTIP = "Over-committed: Some containers are using more CPU/memory than their requests. This works because other pods aren't using their full reservations. Under contention, pods would be throttled to their guaranteed amounts.";

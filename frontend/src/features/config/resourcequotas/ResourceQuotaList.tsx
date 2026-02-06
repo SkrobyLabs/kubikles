@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import ResourceQuotaActionsMenu from './ResourceQuotaActionsMenu';
-import { useResourceQuotas } from '../../../hooks/resources';
+import { useResourceQuotas } from '~/hooks/resources';
 import { useResourceQuotaActions } from './useResourceQuotaActions';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteResourceQuota, GetResourceQuotaYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteResourceQuota, GetResourceQuotaYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function ResourceQuotaList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
@@ -32,7 +32,7 @@ export default function ResourceQuotaList({ isVisible }) {
         isNamespaced: true,
         deleteApi: DeleteResourceQuota,
         getYamlApi: GetResourceQuotaYaml,
-        currentContext,
+
     });
 
     const getResourceCount = (quota) => {

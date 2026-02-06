@@ -1,9 +1,2 @@
+// Public API only - internal components (Details, Tabs, Dialogs) are imported directly within this feature
 export { default as HelmReleaseList } from './HelmReleaseList';
-export { default as HelmReleaseActionsMenu } from './HelmReleaseActionsMenu';
-export { default as HelmReleaseDetails } from './HelmReleaseDetails';
-export { default as HelmReleaseInfoTab } from './HelmReleaseInfoTab';
-export { default as HelmReleaseHistoryTab } from './HelmReleaseHistoryTab';
-export { default as HelmReleaseValuesTab } from './HelmReleaseValuesTab';
-export { default as HelmReleaseEventsTab } from './HelmReleaseEventsTab';
-export { default as HelmUpgradeDialog } from './HelmUpgradeDialog';
-export { useHelmReleaseActions } from './useHelmReleaseActions';

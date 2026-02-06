@@ -1,48 +1,25 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { AddHelmRepository } from '../../../../wailsjs/go/main/App';
-import { useNotification } from '../../../context';
+import { AddHelmRepository } from 'wailsjs/go/main/App';
+import { useNotification } from '~/context';
+import { useForm, helmRepoSchema } from '~/lib/validation';
 
 export default function HelmRepoAddDialog({ onClose, onSuccess }) {
     const { addNotification } = useNotification();
-    const [name, setName] = useState('');
-    const [url, setUrl] = useState('');
-    const [priority, setPriority] = useState(100);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
 
-    const handleSubmit = useCallback(async (e) => {
-        e.preventDefault();
-        setError(null);
-
-        if (!name.trim() || !url.trim()) {
-            setError('Name and URL are required');
-            return;
-        }
-
-        // Basic URL validation
-        try {
-            new URL(url);
-        } catch {
-            setError('Please enter a valid URL');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            await AddHelmRepository(name.trim(), url.trim(), priority);
+    const form = useForm({
+        schema: helmRepoSchema,
+        initialValues: { name: '', url: '', priority: 100 },
+        onSubmit: async (values) => {
+            await AddHelmRepository(values.name.trim(), values.url.trim(), values.priority);
             addNotification({
                 type: 'success',
                 title: 'Repository added',
-                message: `Successfully added ${name.trim()}`
+                message: `Successfully added ${values.name.trim()}`
             });
             onSuccess();
-        } catch (err) {
-            setError(err?.message || String(err));
-        } finally {
-            setLoading(false);
-        }
-    }, [name, url, priority, onSuccess, addNotification]);
+        },
+    });
 
     const popularRepos = [
         { name: 'bitnami', url: 'https://charts.bitnami.com/bitnami' },
@@ -53,8 +30,7 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }) {
     ];
 
     const handleQuickAdd = (repo) => {
-        setName(repo.name);
-        setUrl(repo.url);
+        form.setValues({ name: repo.name, url: repo.url });
     };
 
     return (
@@ -72,7 +48,7 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }) {
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={form.handleSubmit} className="p-6 space-y-4">
                     {/* Quick Add */}
                     <div>
                         <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
@@ -100,12 +76,14 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }) {
                         <input
                             id="repo-name"
                             type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            {...form.getFieldProps('name')}
                             placeholder="e.g., my-repo"
                             className="w-full"
-                            disabled={loading}
+                            disabled={form.isSubmitting}
                         />
+                        {form.touched.name && form.errors.name && (
+                            <span className="text-red-400 text-xs mt-1 block">{form.errors.name}</span>
+                        )}
                     </div>
 
                     {/* URL */}
@@ -116,12 +94,14 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }) {
                         <input
                             id="repo-url"
                             type="text"
-                            value={url}
-                            onChange={(e) => setUrl(e.target.value)}
+                            {...form.getFieldProps('url')}
                             placeholder="https://charts.example.com"
                             className="w-full"
-                            disabled={loading}
+                            disabled={form.isSubmitting}
                         />
+                        {form.touched.url && form.errors.url && (
+                            <span className="text-red-400 text-xs mt-1 block">{form.errors.url}</span>
+                        )}
                     </div>
 
                     {/* Priority */}
@@ -134,17 +114,21 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }) {
                             id="repo-priority"
                             type="number"
                             min="0"
-                            value={priority}
-                            onChange={(e) => setPriority(parseInt(e.target.value) || 0)}
+                            value={form.values.priority}
+                            onChange={(e) => form.setValue('priority', parseInt(e.target.value) || 0)}
+                            onBlur={() => form.setFieldTouched('priority')}
                             className="w-24"
-                            disabled={loading}
+                            disabled={form.isSubmitting}
                         />
+                        {form.touched.priority && form.errors.priority && (
+                            <span className="text-red-400 text-xs mt-1 block">{form.errors.priority}</span>
+                        )}
                     </div>
 
                     {/* Error */}
-                    {error && (
+                    {form.submitError && (
                         <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-md text-red-400 text-sm">
-                            {error}
+                            {form.submitError}
                         </div>
                     )}
 
@@ -153,17 +137,17 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }) {
                         <button
                             type="button"
                             onClick={onClose}
-                            disabled={loading}
+                            disabled={form.isSubmitting}
                             className="px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            disabled={loading || !name.trim() || !url.trim()}
+                            disabled={form.isSubmitting || !form.isValid}
                             className="px-4 py-2 text-sm bg-primary hover:bg-primary/80 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
-                            {loading && (
+                            {form.isSubmitting && (
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                             )}
                             Add Repository

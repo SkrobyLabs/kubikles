@@ -1,7 +1,7 @@
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteEvent } from '../../../../wailsjs/go/main/App';
-import EventDetails from '../../../components/shared/EventDetails';
-import { K8sEvent } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteEvent } from 'wailsjs/go/main/App';
+import EventDetails from '~/components/shared/EventDetails';
+import { K8sEvent } from '~/types/k8s';
 
 export interface EventActionsReturn extends BaseResourceActionsReturn<K8sEvent> {
     handleDelete: (event: K8sEvent) => void;

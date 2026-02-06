@@ -1,15 +1,15 @@
 import React from 'react';
-import { useUI } from '../../../context';
-import { useK8s } from '../../../context';
-import { useNotification } from '../../../context';
-import { DeletePod, ForceDeletePod } from '../../../../wailsjs/go/main/App';
-import LogViewer from '../../../components/shared/log-viewer';
-import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph, LazyPodFileBrowser as PodFileBrowser } from '../../../components/lazy';
+import { useUI } from '~/context';
+import { useK8s } from '~/context';
+import { useNotification } from '~/context';
+import { DeletePod, ForceDeletePod } from 'wailsjs/go/main/App';
+import LogViewer from '~/components/shared/log-viewer';
+import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph, LazyPodFileBrowser as PodFileBrowser } from '~/components/lazy';
 import PodShellTab from './PodShellTab';
-import PodDetails from '../../../components/shared/PodDetails';
-import Logger from '../../../utils/Logger';
+import PodDetails from '~/components/shared/PodDetails';
+import Logger from '~/utils/Logger';
 import { CubeIcon } from '@heroicons/react/24/outline';
-import { K8sPod, K8sContainerStatus } from '../../../../types/k8s';
+import { K8sPod, K8sContainerStatus } from '~/types/k8s';
 
 interface ContainerWithStatus {
     name: string;

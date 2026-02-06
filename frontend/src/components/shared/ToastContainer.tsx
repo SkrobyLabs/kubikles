@@ -9,7 +9,7 @@ import {
     ClipboardIcon,
     ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
-import { useNotification } from '../../context';
+import { useNotification } from '~/context';
 
 const typeStyles = {
     success: {

@@ -1,13 +1,13 @@
 import React, { useCallback } from 'react';
 import { ArrowTopRightOnSquareIcon, CubeIcon } from '@heroicons/react/24/outline';
-import { useK8s } from '../../context';
-import { useUI } from '../../context';
-import { useConfig } from '../../context';
+import { useK8s } from '~/context';
+import { useUI } from '~/context';
+import { useConfig } from '~/context';
 import { LazyYamlEditor } from '../lazy';
 import LogViewer from '../shared/log-viewer';
-import { getResourceIcon } from '../../utils/resourceIcons';
-import { configSchema } from '../../config/configSchema';
-import { GetCustomResourceYaml, UpdateCustomResourceYaml } from '../../../wailsjs/go/main/App';
+import { getResourceIcon } from '~/utils/resourceIcons';
+import { configSchema } from '~/config/configSchema';
+import { GetCustomResourceYaml, UpdateCustomResourceYaml } from 'wailsjs/go/main/App';
 import { parseCrKind, kindToViewName } from './navUtils';
 
 // Execute a nav:// link — shared by NavLink click handler and auto-execution

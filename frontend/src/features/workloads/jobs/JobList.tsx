@@ -1,20 +1,20 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
-import { useJobs } from '../../../hooks/resources';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
+import { useJobs } from '~/hooks/resources';
 import { useJobActions } from './useJobActions';
-import { useK8s } from '../../../context';
-import { useUI } from '../../../context';
-import { useMenu } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteJob, GetJobYaml } from '../../../../wailsjs/go/main/App';
+import { useK8s } from '~/context';
+import { useUI } from '~/context';
+import { useMenu } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteJob, GetJobYaml } from 'wailsjs/go/main/App';
 import JobActionsMenu from './JobActionsMenu';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import { formatAge } from '../../../utils/formatting';
-import { getOwnerViewId } from '../../../utils/owner-navigation';
-import { getJobConditionColor } from '../../../utils/k8s-helpers';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { formatAge } from '~/utils/formatting';
+import { getOwnerViewId } from '~/utils/owner-navigation';
+import { getJobConditionColor } from '~/utils/k8s-helpers';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 // Get controller from owner references
 function getController(item) {
@@ -49,7 +49,7 @@ export default function JobList({ isVisible }) {
         isNamespaced: true,
         deleteApi: DeleteJob,
         getYamlApi: GetJobYaml,
-        currentContext,
+
     });
     const { jobs, loading } = useJobs(currentContext, selectedNamespaces, isVisible);
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useJobActions();

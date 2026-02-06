@@ -24,7 +24,9 @@
     // Path mapping (match vite.config.js aliases)
     "baseUrl": ".",
     "paths": {
+      "~/*": ["./src/*"],
       "wailsjs/go/main/App": ["./src/lib/wailsjs-adapter/go/main/App"],
+      "wailsjs/go/models": ["./wailsjs/go/models"],
       "wailsjs/runtime/runtime": ["./src/lib/wailsjs-adapter/runtime/runtime"]
     }
   },

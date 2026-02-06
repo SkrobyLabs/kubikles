@@ -1,18 +1,18 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import StatefulSetActionsMenu from './StatefulSetActionsMenu';
-import { useStatefulSets, usePods } from '../../../hooks/resources';
+import { useStatefulSets, usePods } from '~/hooks/resources';
 import { useStatefulSetActions } from './useStatefulSetActions';
-import { useK8s } from '../../../context';
-import { useMenu } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteStatefulSet, RestartStatefulSet, GetStatefulSetYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { getDeploymentPods, getEffectivePodStatus, getPodStatusColor } from '../../../utils/k8s-helpers';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useMenu } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteStatefulSet, RestartStatefulSet, GetStatefulSetYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { getDeploymentPods, getEffectivePodStatus, getPodStatusColor } from '~/utils/k8s-helpers';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function StatefulSetList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
@@ -34,7 +34,7 @@ export default function StatefulSetList({ isVisible }) {
         deleteApi: DeleteStatefulSet,
         restartApi: RestartStatefulSet,
         getYamlApi: GetStatefulSetYaml,
-        currentContext,
+
     });
     const { statefulSets, loading: statefulSetsLoading } = useStatefulSets(currentContext, selectedNamespaces, isVisible);
     // Defer pods fetch until statefulsets are loaded to prioritize showing the list first

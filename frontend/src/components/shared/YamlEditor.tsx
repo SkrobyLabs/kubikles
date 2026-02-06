@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
-import { getResource, getResourceByKind } from '../../utils/resourceRegistry';
-import Logger from '../../utils/Logger';
-import { useUI } from '../../context';
-import { useK8s } from '../../context';
-import { useNotification } from '../../context';
+import { getResource, getResourceByKind } from '~/utils/resourceRegistry';
+import Logger from '~/utils/Logger';
+import { useUI } from '~/context';
+import { useK8s } from '~/context';
+import { useNotification } from '~/context';
 import { ExclamationTriangleIcon, InformationCircleIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 
 // Extract controller owner from YAML content

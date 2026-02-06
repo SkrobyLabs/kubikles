@@ -1,11 +1,11 @@
 import React, { useCallback } from 'react';
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteNode, SetNodeSchedulable } from '../../../../wailsjs/go/main/App';
-import NodeDetails from '../../../components/shared/NodeDetails';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteNode, SetNodeSchedulable } from 'wailsjs/go/main/App';
+import NodeDetails from '~/components/shared/NodeDetails';
 import NodeShellTab from './NodeShellTab';
-import Logger from '../../../utils/Logger';
+import Logger from '~/utils/Logger';
 import { ServerIcon, CommandLineIcon } from '@heroicons/react/24/outline';
-import { K8sNode } from '../../../types/k8s';
+import { K8sNode } from '~/types/k8s';
 
 export interface NodeActionsReturn extends BaseResourceActionsReturn<K8sNode> {
     handleCordonUncordon: (node: K8sNode) => Promise<void>;
@@ -19,7 +19,7 @@ export const useNodeActions = (refetch?: () => void): NodeActionsReturn => {
         handleEditYaml,
         createDeleteHandler,
         openTab,
-        currentContext,
+
         addNotification,
     } = useBaseResourceActions<K8sNode>({
         resourceType: 'node',

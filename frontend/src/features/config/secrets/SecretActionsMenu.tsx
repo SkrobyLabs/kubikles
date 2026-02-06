@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon, ShareIcon } from '@heroicons/react/24/outline';
-import ComparisonMenuItems from '../../../components/shared/ComparisonMenuItems';
+import ComparisonMenuItems from '~/components/shared/ComparisonMenuItems';
 
 export default function SecretActionsMenu({ secret, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onDelete }) {
     const buttonRef = useRef(null);

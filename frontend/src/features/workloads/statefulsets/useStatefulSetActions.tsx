@@ -1,10 +1,10 @@
 import React from 'react';
-import { useBaseResourceActions, BaseResourceActionsReturn } from '../../../hooks/useBaseResourceActions';
-import { DeleteStatefulSet, RestartStatefulSet, ListPods } from '../../../../wailsjs/go/main/App';
-import StatefulSetDetails from '../../../components/shared/StatefulSetDetails';
-import LogViewer from '../../../components/shared/log-viewer';
-import Logger from '../../../utils/Logger';
-import { K8sStatefulSet, K8sPod } from '../../../types/k8s';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
+import { DeleteStatefulSet, RestartStatefulSet, ListPods } from 'wailsjs/go/main/App';
+import StatefulSetDetails from '~/components/shared/StatefulSetDetails';
+import LogViewer from '~/components/shared/log-viewer';
+import Logger from '~/utils/Logger';
+import { K8sStatefulSet, K8sPod } from '~/types/k8s';
 
 export interface StatefulSetActionsReturn extends BaseResourceActionsReturn<K8sStatefulSet> {
     handleRestart: (statefulSet: K8sStatefulSet) => Promise<void>;
@@ -19,7 +19,7 @@ export const useStatefulSetActions = (): StatefulSetActionsReturn => {
         handleShowDependencies,
         createDeleteHandler,
         openTab,
-        currentContext,
+
         addNotification,
     } = useBaseResourceActions<K8sStatefulSet>({
         resourceType: 'statefulset',

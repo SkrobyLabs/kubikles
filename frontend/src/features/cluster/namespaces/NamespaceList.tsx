@@ -1,19 +1,19 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import AggregateResourceBar from '../../../components/shared/AggregateResourceBar';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import AggregateResourceBar from '~/components/shared/AggregateResourceBar';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import NamespaceActionsMenu from './NamespaceActionsMenu';
-import { useNamespacesList } from '../../../hooks/resources';
+import { useNamespacesList } from '~/hooks/resources';
 import { useNamespaceActions } from './useNamespaceActions';
-import { useNamespaceMetrics } from '../../../hooks/useNamespaceMetrics';
-import { useK8s } from '../../../context';
-import { useMenu } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteNamespace, GetNamespaceYAML } from '../../../../wailsjs/go/main/App';
-import { formatAge, formatBytes, formatCpu } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useNamespaceMetrics } from '~/hooks/useNamespaceMetrics';
+import { useK8s } from '~/context';
+import { useMenu } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteNamespace, GetNamespaceYAML } from 'wailsjs/go/main/App';
+import { formatAge, formatBytes, formatCpu } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 // Get namespace status from conditions
 function getNamespaceStatus(namespace) {
@@ -53,7 +53,7 @@ export default function NamespaceList({ isVisible }) {
         isNamespaced: false,
         deleteApi: DeleteNamespace,
         getYamlApi: GetNamespaceYAML,
-        currentContext,
+
     });
     const { namespaces, loading } = useNamespacesList(currentContext, isVisible);
     const { handleShowDetails, handleEditYaml } = useNamespaceActions();

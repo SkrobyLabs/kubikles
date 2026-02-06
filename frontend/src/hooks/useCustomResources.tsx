@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ListCustomResources } from '../../wailsjs/go/main/App';
+import { ListCustomResources } from 'wailsjs/go/main/App';
 import { useK8s } from '../context';
 import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 import { K8sResource } from '../types/k8s';

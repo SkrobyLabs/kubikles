@@ -1,17 +1,17 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { EllipsisVerticalIcon, PlayIcon, StopIcon, ArrowPathIcon, ExclamationTriangleIcon, CheckCircleIcon, SignalIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import IngressActionsMenu from './IngressActionsMenu';
-import { useIngresses } from '../../../hooks/resources';
+import { useIngresses } from '~/hooks/resources';
 import { useIngressActions } from './useIngressActions';
-import { useIngressForward } from '../../../hooks/useIngressForward';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteIngress, GetIngressYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useIngressForward } from '~/hooks/useIngressForward';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteIngress, GetIngressYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function IngressList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
@@ -33,7 +33,7 @@ export default function IngressList({ isVisible }) {
         isNamespaced: true,
         deleteApi: DeleteIngress,
         getYamlApi: GetIngressYaml,
-        currentContext,
+
     });
 
     // Ingress forwarding state

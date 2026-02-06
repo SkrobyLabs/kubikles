@@ -1,13 +1,13 @@
 import React from 'react';
-import { useUI } from '../../../context';
-import { useK8s } from '../../../context';
+import { useUI } from '~/context';
+import { useK8s } from '~/context';
 import {
     GetCustomResourceYaml,
     UpdateCustomResourceYaml,
     DeleteCustomResource
-} from '../../../../wailsjs/go/main/App';
-import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
-import { K8sResource } from '../../../types/k8s';
+} from 'wailsjs/go/main/App';
+import { LazyYamlEditor as YamlEditor } from '~/components/lazy';
+import { K8sResource } from '~/types/k8s';
 
 /**
  * CRD Information for custom resource operations

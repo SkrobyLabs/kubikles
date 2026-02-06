@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Virtuoso } from 'react-virtuoso';
-import { GetAllPodLogs, SavePodLogs, SaveLogsBundle } from '../../../../wailsjs/go/main/App';
-import { useK8s, useConfig } from '../../../context';
+import { GetAllPodLogs, SavePodLogs, SaveLogsBundle } from 'wailsjs/go/main/App';
+import { useK8s, useConfig } from '~/context';
 import {
     ArrowDownTrayIcon,
     ArchiveBoxArrowDownIcon,
@@ -31,7 +31,7 @@ import { useLogSearch } from './useLogSearch';
 import { LogLine, Spinner } from './LogLine';
 import { TimePickerModal } from './TimePickerModal';
 import { logsToVisibleString, logsToDebugString } from './logUtils';
-import { GetAllContainersLogsAll, GetAllPodsLogsAll } from '../../../../wailsjs/go/main/App';
+import { GetAllContainersLogsAll, GetAllPodsLogsAll } from 'wailsjs/go/main/App';
 
 export default function LogViewer({
     namespace,

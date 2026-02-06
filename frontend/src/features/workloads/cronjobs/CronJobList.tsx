@@ -1,18 +1,18 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { CronExpressionParser } from 'cron-parser';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import CronJobActionsMenu from './CronJobActionsMenu';
-import { useCronJobs } from '../../../hooks/resources';
+import { useCronJobs } from '~/hooks/resources';
 import { useCronJobActions } from './useCronJobActions';
-import { useK8s } from '../../../context';
-import { useMenu } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteCronJob, GetCronJobYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useMenu } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteCronJob, GetCronJobYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function CronJobList({ isVisible }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
@@ -32,7 +32,7 @@ export default function CronJobList({ isVisible }) {
         isNamespaced: true,
         deleteApi: DeleteCronJob,
         getYamlApi: GetCronJobYaml,
-        currentContext,
+
     });
     const { cronJobs, loading } = useCronJobs(currentContext, selectedNamespaces, isVisible);
     const { handleShowDetails, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend } = useCronJobActions();

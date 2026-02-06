@@ -3,7 +3,7 @@ import { useK8s } from '../context';
 import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 import { useResourceWatcher } from './useResourceWatcher';
 import { createResourceEventHandler, createNamespacedResourceEventHandler } from './useResourceEventHandler';
-import { CancelListRequest } from '../../wailsjs/go/main/App';
+import { CancelListRequest } from 'wailsjs/go/main/App';
 
 // K8s resource with metadata
 interface K8sResource {

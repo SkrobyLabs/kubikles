@@ -8,9 +8,9 @@ import {
     StartPortForward,
     StopPortForward,
     GetAvailablePort
-} from '../../wailsjs/go/main/App';
-import { main } from '../../wailsjs/go/models';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
+} from 'wailsjs/go/main/App';
+import { main } from 'wailsjs/go/models';
+import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
 
 // Port forward event types
 type PortForwardEventType = 'config_added' | 'config_updated' | 'config_removed' | 'started' | 'error' | 'stopped';

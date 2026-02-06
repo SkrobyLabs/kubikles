@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import CSINodeActionsMenu from './CSINodeActionsMenu';
-import { useCSINodes } from '../../../hooks/resources';
+import { useCSINodes } from '~/hooks/resources';
 import { useCSINodeActions } from './useCSINodeActions';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteCSINode, GetCSINodeYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteCSINode, GetCSINodeYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function CSINodeList({ isVisible }) {
     const { currentContext } = useK8s();
@@ -33,7 +33,7 @@ export default function CSINodeList({ isVisible }) {
         isNamespaced: false,
         deleteApi: DeleteCSINode,
         getYamlApi: GetCSINodeYaml,
-        currentContext,
+
     });
 
     const getDriverCount = (csiNode) => {

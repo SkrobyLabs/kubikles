@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import IngressClassActionsMenu from './IngressClassActionsMenu';
-import { useIngressClasses } from '../../../hooks/resources';
+import { useIngressClasses } from '~/hooks/resources';
 import { useIngressClassActions } from './useIngressClassActions';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteIngressClass, GetIngressClassYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteIngressClass, GetIngressClassYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function IngressClassList({ isVisible }) {
     const { currentContext } = useK8s();
@@ -32,7 +32,7 @@ export default function IngressClassList({ isVisible }) {
         isNamespaced: false,
         deleteApi: DeleteIngressClass,
         getYamlApi: GetIngressClassYaml,
-        currentContext,
+
     });
 
     const isDefault = (ingressClass) => {

@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
-import { useCRDs } from '../../../hooks/useCRDs';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteCRD, GetCRDYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
+import { useCRDs } from '~/hooks/useCRDs';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteCRD, GetCRDYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import CRDActionsMenu from './CRDActionsMenu';
 import { useCRDActions } from './useCRDActions';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 export default function CRDList({ isVisible }) {
     const { currentContext } = useK8s();
@@ -36,7 +36,7 @@ export default function CRDList({ isVisible }) {
         isNamespaced: false,
         deleteApi,
         getYamlApi,
-        currentContext,
+
     });
 
     // Get the served versions as a comma-separated string

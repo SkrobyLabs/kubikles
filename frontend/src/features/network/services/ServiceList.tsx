@@ -1,16 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import ResourceList from '../../../components/shared/ResourceList';
-import BulkActionModal from '../../../components/shared/BulkActionModal';
+import ResourceList from '~/components/shared/ResourceList';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import ServiceActionsMenu from './ServiceActionsMenu';
-import { useServices } from '../../../hooks/resources';
+import { useServices } from '~/hooks/resources';
 import { useServiceActions } from './useServiceActions';
-import { useK8s } from '../../../context';
-import { useSelection } from '../../../hooks/useSelection';
-import { useBulkActions } from '../../../hooks/useBulkActions';
-import { DeleteService, GetServiceYaml } from '../../../../wailsjs/go/main/App';
-import { formatAge } from '../../../utils/formatting';
-import { useMenuPosition } from '../../../hooks/useMenuPosition';
+import { useK8s } from '~/context';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
+import { DeleteService, GetServiceYaml } from 'wailsjs/go/main/App';
+import { formatAge } from '~/utils/formatting';
+import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 // Helper to format ports display (avoids duplicate computation in render/getValue)
 const getPortsDisplay = (item) => item.spec?.ports?.map(p => `${p.port}/${p.protocol}`).join(', ') || '';
@@ -35,7 +35,7 @@ export default function ServiceList({ isVisible }) {
         isNamespaced: true,
         deleteApi: DeleteService,
         getYamlApi: GetServiceYaml,
-        currentContext,
+
     });
 
     const columns = useMemo(() => [

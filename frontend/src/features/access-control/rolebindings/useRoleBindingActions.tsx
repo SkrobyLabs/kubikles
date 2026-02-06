@@ -1,11 +1,11 @@
 import React from 'react';
-import { useUI } from '../../../context';
-import { useK8s } from '../../../context';
-import { useNotification } from '../../../context';
-import { DeleteRoleBinding } from '../../../../wailsjs/go/main/App';
-import { LazyYamlEditor as YamlEditor } from '../../../components/lazy';
-import Logger from '../../../utils/Logger';
-import { K8sRoleBinding } from '../../../types/k8s';
+import { useUI } from '~/context';
+import { useK8s } from '~/context';
+import { useNotification } from '~/context';
+import { DeleteRoleBinding } from 'wailsjs/go/main/App';
+import { LazyYamlEditor as YamlEditor } from '~/components/lazy';
+import Logger from '~/utils/Logger';
+import { K8sRoleBinding } from '~/types/k8s';
 
 interface RoleBindingActionsReturn {
     handleEditYaml: (roleBinding: K8sRoleBinding) => void;

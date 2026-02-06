@@ -9,11 +9,11 @@ import {
     CommandLineIcon,
     ClockIcon
 } from '@heroicons/react/24/outline';
-import { useK8s } from '../../context';
-import { useUI } from '../../context';
-import { usePodActions } from '../../features/workloads/pods/usePodActions';
-import { ListPods } from '../../../wailsjs/go/main/App';
-import { getPodController } from '../../utils/k8s-helpers';
+import { useK8s } from '~/context';
+import { useUI } from '~/context';
+import { usePodActions } from '~/features/workloads/pods/usePodActions';
+import { ListPods } from 'wailsjs/go/main/App';
+import { getPodController } from '~/utils/k8s-helpers';
 import Tooltip from './Tooltip';
 import PodInfoTab from './PodInfoTab';
 import PodVolumesTab from './PodVolumesTab';
