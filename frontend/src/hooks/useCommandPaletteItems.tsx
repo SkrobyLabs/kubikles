@@ -1,17 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ListCRDs } from 'wailsjs/go/main/App';
-import { useK8s } from '../context';
+import { useK8s, useConfig } from '../context';
 import { K8sCustomResourceDefinition } from '../types/k8s';
-
-interface MenuItem {
-    id: string;
-    label: string;
-}
-
-interface MenuGroup {
-    title: string;
-    items: MenuItem[];
-}
+import {
+    ALL_MENU_ITEMS,
+    DEFAULT_MENU_SECTIONS,
+    reconcileLayout,
+    getVisibleItemIds,
+} from '~/constants/menuStructure';
 
 export interface CommandPaletteItem {
     id: string;
@@ -28,98 +24,9 @@ interface UseCommandPaletteItemsResult {
     error: Error | null;
 }
 
-// Static menu structure matching Sidebar.jsx
-const menuGroups: MenuGroup[] = [
-    {
-        title: 'Metrics',
-        items: [
-            { id: 'metrics-overview', label: 'Overview' },
-            { id: 'metrics-settings', label: 'Settings' },
-        ]
-    },
-    {
-        title: 'Cluster',
-        items: [
-            { id: 'nodes', label: 'Nodes' },
-            { id: 'namespaces', label: 'Namespaces' },
-            { id: 'events', label: 'Events' },
-            { id: 'priorityclasses', label: 'Priority Classes' },
-        ]
-    },
-    {
-        title: 'Workloads',
-        items: [
-            { id: 'pods', label: 'Pods' },
-            { id: 'deployments', label: 'Deployments' },
-            { id: 'statefulsets', label: 'StatefulSets' },
-            { id: 'daemonsets', label: 'DaemonSets' },
-            { id: 'replicasets', label: 'ReplicaSets' },
-            { id: 'jobs', label: 'Jobs' },
-            { id: 'cronjobs', label: 'CronJobs' },
-        ]
-    },
-    {
-        title: 'Config',
-        items: [
-            { id: 'configmaps', label: 'ConfigMaps' },
-            { id: 'secrets', label: 'Secrets' },
-            { id: 'hpas', label: 'HPAs' },
-            { id: 'pdbs', label: 'PDBs' },
-            { id: 'resourcequotas', label: 'Resource Quotas' },
-            { id: 'limitranges', label: 'Limit Ranges' },
-            { id: 'leases', label: 'Leases' },
-        ]
-    },
-    {
-        title: 'Network',
-        items: [
-            { id: 'services', label: 'Services' },
-            { id: 'endpoints', label: 'Endpoints' },
-            { id: 'endpointslices', label: 'Endpoint Slices' },
-            { id: 'ingresses', label: 'Ingresses' },
-            { id: 'ingressclasses', label: 'Ingress Classes' },
-            { id: 'networkpolicies', label: 'Network Policies' },
-            { id: 'portforwards', label: 'Port Forwards' },
-        ]
-    },
-    {
-        title: 'Storage',
-        items: [
-            { id: 'pvcs', label: 'PVCs' },
-            { id: 'pvs', label: 'PVs' },
-            { id: 'storageclasses', label: 'Storage Classes' },
-            { id: 'csidrivers', label: 'CSI Drivers' },
-            { id: 'csinodes', label: 'CSI Nodes' },
-        ]
-    },
-    {
-        title: 'Helm',
-        items: [
-            { id: 'helmreleases', label: 'Releases' },
-            { id: 'helmrepos', label: 'Chart Sources' },
-        ]
-    },
-    {
-        title: 'Access Control',
-        items: [
-            { id: 'serviceaccounts', label: 'Service Accounts' },
-            { id: 'roles', label: 'Roles' },
-            { id: 'clusterroles', label: 'Cluster Roles' },
-            { id: 'rolebindings', label: 'Role Bindings' },
-            { id: 'clusterrolebindings', label: 'Cluster Role Bindings' },
-        ]
-    },
-    {
-        title: 'Admission Control',
-        items: [
-            { id: 'validatingwebhooks', label: 'Validating Webhooks' },
-            { id: 'mutatingwebhooks', label: 'Mutating Webhooks' },
-        ]
-    }
-];
-
 export const useCommandPaletteItems = (): UseCommandPaletteItemsResult => {
     const { currentContext } = useK8s();
+    const { config } = useConfig();
     const [crds, setCRDs] = useState<K8sCustomResourceDefinition[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
@@ -146,24 +53,50 @@ export const useCommandPaletteItems = (): UseCommandPaletteItemsResult => {
         fetchCRDs();
     }, [currentContext]);
 
+    // Compute effective layout and visible items
+    const sidebarLayout = config?.ui?.sidebar?.layout;
+
     // Build flat list of all navigable items
     const items = useMemo((): CommandPaletteItem[] => {
         const result: CommandPaletteItem[] = [];
 
-        // Add static menu items
-        for (const group of menuGroups) {
-            for (const item of group.items) {
-                result.push({
-                    id: item.id,
-                    label: item.label,
-                    path: `${group.title} > ${item.label}`,
-                    viewId: item.id,
-                    type: 'builtin'
-                });
+        // Get effective sections for path building and visibility
+        const sections = sidebarLayout
+            ? reconcileLayout(sidebarLayout)
+            : DEFAULT_MENU_SECTIONS.map(s => ({ id: s.id, title: s.title, items: [...s.items] }));
+
+        // Only show items that are visible in the current layout
+        const visibleIds = getVisibleItemIds(sections);
+
+        // Build lookups for section title and custom item labels
+        const itemToSection = new Map<string, string>();
+        const itemToLabel = new Map<string, string>();
+        for (const section of sections) {
+            for (const itemId of section.items) {
+                itemToSection.set(itemId, section.title);
+                if (section.itemLabels?.[itemId]) {
+                    itemToLabel.set(itemId, section.itemLabels[itemId]);
+                }
             }
         }
 
-        // Add CRD definitions link
+        // Add static menu items (only visible ones)
+        for (const [itemId, def] of Object.entries(ALL_MENU_ITEMS)) {
+            if (itemId === 'crds') continue; // handled separately below
+            if (!visibleIds.has(itemId)) continue;
+
+            const label = itemToLabel.get(itemId) || def.label;
+            const sectionTitle = itemToSection.get(itemId) || def.defaultSection;
+            result.push({
+                id: itemId,
+                label,
+                path: `${sectionTitle} > ${label}`,
+                viewId: itemId,
+                type: 'builtin'
+            });
+        }
+
+        // Add CRD definitions link (always visible, part of Custom Resources)
         result.push({
             id: 'crds',
             label: 'Definitions',
@@ -195,7 +128,7 @@ export const useCommandPaletteItems = (): UseCommandPaletteItemsResult => {
         }
 
         return result;
-    }, [crds]);
+    }, [crds, sidebarLayout]);
 
     return { items, loading, error };
 };

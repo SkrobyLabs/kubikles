@@ -123,6 +123,8 @@ kubikles/
 │   │                       # Terminal.tsx, DependencyGraph.tsx, ConfigEditor/
 │   ├── hooks/              # ~25 hooks: useResource.tsx, useResourceWatcher.tsx,
 │   │                       # usePortForwards.tsx, useIngressForward.tsx, etc.
+│   ├── constants/
+│   │   └── menuStructure.ts # Sidebar menu items, default sections, reconciliation
 │   ├── types/
 │   │   └── k8s.ts          # TypeScript K8s resource type definitions
 │   └── utils/

@@ -36,12 +36,27 @@ const aiConfigSchema = z.object({
   allowedTools: z.array(z.string()).optional(),
 });
 
+// Sidebar layout section
+const sidebarLayoutSectionSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  items: z.array(z.string()),
+  isCustom: z.boolean().optional(),
+  itemLabels: z.record(z.string()).optional(),
+});
+
+// Sidebar config
+const sidebarConfigSchema = z.object({
+  layout: z.array(sidebarLayoutSectionSchema).optional(),
+});
+
 // UI config
 const uiConfigSchema = z.object({
   searchDebounceMs: z.number().int().min(0).max(1000).optional(),
   copyFeedbackMs: z.number().int().min(500).max(5000).optional(),
   scrollZoomEnabled: z.boolean().optional(),
   showTabIcons: z.boolean().optional(),
+  sidebar: sidebarConfigSchema.optional(),
 });
 
 // Kubernetes config

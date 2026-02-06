@@ -119,6 +119,11 @@ Read the AI reference documentation for full project context:
 | Notifications | `frontend/src/context/NotificationContext.tsx` |
 | AI Chat | `frontend/src/context/AIChatContext.tsx` |
 
+### Constants
+| Purpose | File |
+|---------|------|
+| Menu structure | `frontend/src/constants/menuStructure.ts` |
+
 ### Shared Components
 | Purpose | File |
 |---------|------|

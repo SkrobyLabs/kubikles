@@ -322,6 +322,15 @@ export const configSchema = {
             label: 'Show Tab Icons',
             description: 'Display resource type icons in tab titles',
             default: true
+        },
+        sidebar: {
+            _meta: { label: 'Sidebar', isNested: true },
+            layout: {
+                type: 'sidebarLayout',
+                label: 'Menu Layout',
+                description: 'Customize which sections and items appear in the sidebar, their order, and create custom groupings.',
+                default: undefined
+            }
         }
     },
     debug: {

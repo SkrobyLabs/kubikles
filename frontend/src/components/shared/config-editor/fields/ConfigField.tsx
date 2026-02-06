@@ -5,6 +5,7 @@ import EnumField from './EnumField';
 import TextField from './TextField';
 import ReadonlyField from './ReadonlyField';
 import CheckboxGroupField from './CheckboxGroupField';
+import SidebarLayoutEditor from './SidebarLayoutEditor';
 
 export default function ConfigField({ schema, value, onChange, isModified, asyncValue, onAction }) {
     const { type, label, description } = schema;
@@ -58,6 +59,15 @@ export default function ConfigField({ schema, value, onChange, isModified, async
                     onChange={onChange}
                     isModified={isModified}
                     options={schema.options}
+                />
+            );
+
+        case 'sidebarLayout':
+            return (
+                <SidebarLayoutEditor
+                    value={value}
+                    onChange={onChange}
+                    isModified={isModified}
                 />
             );
 

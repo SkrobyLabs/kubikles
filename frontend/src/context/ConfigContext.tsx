@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { SetRequestCancellationEnabled, SetForceHTTP1, SetClientPoolSize } from 'wailsjs/go/main/App';
 import { validateConfig } from '~/lib/validation';
+import type { SidebarLayoutSection } from '~/constants/menuStructure';
 
 interface LogSearchConfig {
     debounceMs: number;
@@ -33,6 +34,9 @@ interface UIConfig {
     copyFeedbackMs: number;
     scrollZoomEnabled: boolean;
     showTabIcons: boolean;
+    sidebar?: {
+        layout?: SidebarLayoutSection[];
+    };
 }
 
 interface KubernetesConfig {

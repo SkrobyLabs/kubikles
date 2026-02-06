@@ -4,45 +4,22 @@ import { Environment } from 'wailsjs/runtime/runtime';
 import { isInServerMode } from '~/lib/wailsjs-adapter/runtime/runtime';
 import appIcon from '~/assets/images/logo-universal.png';
 import {
-    CubeIcon,
-    ServerIcon,
-    GlobeAltIcon,
-    DocumentTextIcon,
-    LockClosedIcon,
-    RocketLaunchIcon,
-    ServerStackIcon,
-    Square2StackIcon,
-    CircleStackIcon,
-    CommandLineIcon,
-    CpuChipIcon,
-    ClockIcon,
-    FolderIcon,
-    BellAlertIcon,
     ChevronDownIcon,
     ChevronRightIcon,
     PuzzlePieceIcon,
-    ArrowsRightLeftIcon,
-    TagIcon,
     Cog6ToothIcon,
-    SignalIcon,
-    WrenchScrewdriverIcon,
-    ArchiveBoxIcon,
-    UserIcon,
-    KeyIcon,
-    LinkIcon,
-    ShieldCheckIcon,
-    ArrowsPointingOutIcon,
-    ShieldExclamationIcon,
     ChartBarIcon,
-    AdjustmentsHorizontalIcon,
-    QueueListIcon,
-    FingerPrintIcon,
-    BoltIcon,
     BugAntIcon,
     SparklesIcon
 } from '@heroicons/react/24/outline';
 import { useConfig } from '~/context';
 import { useAIChat } from '~/context';
+import {
+    ALL_MENU_ITEMS,
+    DEFAULT_MENU_SECTIONS,
+    reconcileLayout,
+    type SidebarLayoutSection,
+} from '~/constants/menuStructure';
 import { usePerformancePanel } from '~/hooks/usePerformancePanel';
 import { useDebugLogs } from '~/hooks/useDebugLogs';
 import SearchSelect from '../shared/SearchSelect';
@@ -57,7 +34,7 @@ export default function Sidebar({
     onContextChange,
     onContextSelectorOpen
 }) {
-    const { openConfigEditor } = useConfig();
+    const { openConfigEditor, config } = useConfig();
     const { isOpen: aiOpen, togglePanel: toggleAI, providerAvailable } = useAIChat();
     const { openPerformancePanel } = usePerformancePanel();
     const { toggleDebug } = useDebugLogs();
@@ -195,103 +172,27 @@ export default function Sidebar({
         }));
     };
 
-    const menuGroups = [
-        {
-            title: 'Metrics',
-            items: [
-                { id: 'metrics-overview', label: 'Overview', icon: ChartBarIcon },
-                { id: 'metrics-settings', label: 'Settings', icon: Cog6ToothIcon },
-            ]
-        },
-        {
-            title: 'Cluster',
-            items: [
-                { id: 'nodes', label: 'Nodes', icon: ServerIcon },
-                { id: 'namespaces', label: 'Namespaces', icon: FolderIcon },
-                { id: 'events', label: 'Events', icon: BellAlertIcon },
-                { id: 'priorityclasses', label: 'Priority Classes', icon: BoltIcon },
-            ]
-        },
-        {
-            title: 'Workloads',
-            items: [
-                { id: 'pods', label: 'Pods', icon: CubeIcon },
-                { id: 'deployments', label: 'Deployments', icon: RocketLaunchIcon },
-                { id: 'statefulsets', label: 'StatefulSets', icon: CircleStackIcon },
-                { id: 'daemonsets', label: 'DaemonSets', icon: CpuChipIcon },
-                { id: 'replicasets', label: 'ReplicaSets', icon: Square2StackIcon },
-                { id: 'jobs', label: 'Jobs', icon: CommandLineIcon },
-                { id: 'cronjobs', label: 'CronJobs', icon: ClockIcon },
-            ]
-        },
-        {
-            title: 'Config',
-            items: [
-                { id: 'configmaps', label: 'ConfigMaps', icon: DocumentTextIcon },
-                { id: 'secrets', label: 'Secrets', icon: LockClosedIcon },
-                { id: 'hpas', label: 'HPAs', icon: ChartBarIcon },
-                { id: 'pdbs', label: 'PDBs', icon: ShieldExclamationIcon },
-                { id: 'resourcequotas', label: 'Resource Quotas', icon: AdjustmentsHorizontalIcon },
-                { id: 'limitranges', label: 'Limit Ranges', icon: ArrowsPointingOutIcon },
-                { id: 'leases', label: 'Leases', icon: ClockIcon },
-            ]
-        },
-        {
-            title: 'Network',
-            items: [
-                { id: 'services', label: 'Services', icon: GlobeAltIcon },
-                { id: 'endpoints', label: 'Endpoints', icon: QueueListIcon },
-                { id: 'endpointslices', label: 'Endpoint Slices', icon: QueueListIcon },
-                { id: 'ingresses', label: 'Ingresses', icon: ArrowsRightLeftIcon },
-                { id: 'ingressclasses', label: 'Ingress Classes', icon: TagIcon },
-                { id: 'networkpolicies', label: 'Network Policies', icon: ShieldCheckIcon },
-                { id: 'portforwards', label: 'Port Forwards', icon: SignalIcon },
-            ]
-        },
-        {
-            title: 'Storage',
-            items: [
-                { id: 'pvcs', label: 'PVCs', icon: CircleStackIcon },
-                { id: 'pvs', label: 'PVs', icon: ServerStackIcon },
-                { id: 'storageclasses', label: 'Storage Classes', icon: ServerIcon },
-                { id: 'csidrivers', label: 'CSI Drivers', icon: CpuChipIcon },
-                { id: 'csinodes', label: 'CSI Nodes', icon: ServerIcon },
-            ]
-        },
-        {
-            title: 'Helm',
-            items: [
-                { id: 'helmreleases', label: 'Releases', icon: WrenchScrewdriverIcon },
-                { id: 'helmrepos', label: 'Chart Sources', icon: ArchiveBoxIcon },
-            ]
-        },
-        {
-            title: 'Access Control',
-            items: [
-                { id: 'serviceaccounts', label: 'Service Accounts', icon: UserIcon },
-                { id: 'roles', label: 'Roles', icon: KeyIcon },
-                { id: 'clusterroles', label: 'Cluster Roles', icon: KeyIcon },
-                { id: 'rolebindings', label: 'Role Bindings', icon: LinkIcon },
-                { id: 'clusterrolebindings', label: 'Cluster Role Bindings', icon: LinkIcon },
-            ]
-        },
-        {
-            title: 'Admission Control',
-            items: [
-                { id: 'validatingwebhooks', label: 'Validating Webhooks', icon: ShieldCheckIcon },
-                { id: 'mutatingwebhooks', label: 'Mutating Webhooks', icon: FingerPrintIcon },
-            ]
-        },
-        {
-            title: 'Diagnostics',
-            items: [
-                { id: 'flow-timeline', label: 'Flow Timeline', icon: ClockIcon },
-                { id: 'multi-log-viewer', label: 'Multi-Pod Logs', icon: DocumentTextIcon },
-                { id: 'resource-diff', label: 'Resource Diff', icon: ArrowsRightLeftIcon },
-                { id: 'rbac-checker', label: 'RBAC Checker', icon: ShieldCheckIcon },
-            ]
-        }
-    ];
+    // Compute effective sidebar layout from config or defaults
+    const sidebarLayout = config?.ui?.sidebar?.layout;
+    const menuGroups = useMemo(() => {
+        const sections: SidebarLayoutSection[] = sidebarLayout
+            ? reconcileLayout(sidebarLayout)
+            : DEFAULT_MENU_SECTIONS.map(s => ({ id: s.id, title: s.title, items: [...s.items] }));
+
+        // Convert to renderable format with icon/label lookups
+        return sections
+            .map(section => ({
+                id: section.id,
+                title: section.title,
+                items: section.items
+                    .filter(id => ALL_MENU_ITEMS[id])
+                    .map(id => {
+                        const def = ALL_MENU_ITEMS[id];
+                        return { id: def.id, label: section.itemLabels?.[id] || def.label, icon: def.icon };
+                    }),
+            }))
+            .filter(group => group.id === 'custom-resources' || group.items.length > 0);
+    }, [sidebarLayout]);
 
     // Collapsed categories state with localStorage persistence
     // Custom Resources and Diagnostics are collapsed by default
@@ -370,6 +271,88 @@ export default function Sidebar({
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto py-4">
                 {menuGroups.map((group) => {
+                    if (group.id === 'custom-resources') {
+                        const isCollapsed = collapsedGroups['Custom Resources'];
+                        return (
+                            <div key="custom-resources" className="mb-2">
+                                <button
+                                    onClick={() => toggleGroup('Custom Resources')}
+                                    className="w-full px-4 py-1.5 flex items-center justify-between hover:bg-white/5 transition-colors"
+                                >
+                                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                        Custom Resources
+                                    </span>
+                                    {isCollapsed ? (
+                                        <ChevronRightIcon className="h-3.5 w-3.5 text-gray-400" />
+                                    ) : (
+                                        <ChevronDownIcon className="h-3.5 w-3.5 text-gray-400" />
+                                    )}
+                                </button>
+                                {!isCollapsed && (
+                                    <div className="px-2 mt-1">
+                                        <button
+                                            ref={activeView === 'crds' ? activeItemRef : null}
+                                            onClick={() => handleViewChange('crds')}
+                                            className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${activeView === 'crds'
+                                                ? 'bg-primary/10 text-primary font-medium'
+                                                : 'text-gray-400 hover:text-text hover:bg-white/5'
+                                                }`}
+                                        >
+                                            <PuzzlePieceIcon className="h-5 w-5" />
+                                            Definitions
+                                        </button>
+                                        {crdsLoading && (
+                                            <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400">
+                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                                                Loading...
+                                            </div>
+                                        )}
+                                        {!crdsLoading && Object.keys(crdGroups).map((groupName) => {
+                                            const isExpanded = expandedCRDGroups[groupName];
+                                            const resources = crdGroups[groupName];
+                                            return (
+                                                <div key={groupName} className="mt-1">
+                                                    <button
+                                                        onClick={() => toggleCRDGroup(groupName)}
+                                                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs rounded-md transition-colors text-gray-300 hover:text-white hover:bg-white/5"
+                                                    >
+                                                        {isExpanded ? (
+                                                            <ChevronDownIcon className="h-3 w-3" />
+                                                        ) : (
+                                                            <ChevronRightIcon className="h-3 w-3" />
+                                                        )}
+                                                        <span className="truncate" title={groupName}>{groupName}</span>
+                                                    </button>
+                                                    {isExpanded && (
+                                                        <ul className="ml-2 space-y-0.5">
+                                                            {resources.map((res) => {
+                                                                const viewId = `cr:${res.group}:${res.version}:${res.plural}:${res.kind}:${res.namespaced}`;
+                                                                return (
+                                                                    <li key={res.kind}>
+                                                                        <button
+                                                                            ref={activeView === viewId ? activeItemRef : null}
+                                                                            onClick={() => handleViewChange(viewId)}
+                                                                            className={`w-full flex items-center pl-7 pr-2 py-1.5 text-sm rounded-md transition-colors ${activeView === viewId
+                                                                                ? 'bg-primary/10 text-primary font-medium'
+                                                                                : 'text-gray-400 hover:text-text hover:bg-white/5'
+                                                                                }`}
+                                                                        >
+                                                                            {res.kind}
+                                                                        </button>
+                                                                    </li>
+                                                                );
+                                                            })}
+                                                        </ul>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+
                     const isCollapsed = collapsedGroups[group.title];
                     return (
                         <div key={group.title} className="mb-2">
@@ -411,89 +394,6 @@ export default function Sidebar({
                         </div>
                     );
                 })}
-
-                {/* Custom Resources Section */}
-                <div className="mb-2">
-                    <button
-                        onClick={() => toggleGroup('Custom Resources')}
-                        className="w-full px-4 py-1.5 flex items-center justify-between hover:bg-white/5 transition-colors"
-                    >
-                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                            Custom Resources
-                        </span>
-                        {collapsedGroups['Custom Resources'] ? (
-                            <ChevronRightIcon className="h-3.5 w-3.5 text-gray-400" />
-                        ) : (
-                            <ChevronDownIcon className="h-3.5 w-3.5 text-gray-400" />
-                        )}
-                    </button>
-                    {!collapsedGroups['Custom Resources'] && (
-                        <div className="px-2 mt-1">
-                            {/* Definitions link */}
-                            <button
-                                ref={activeView === 'crds' ? activeItemRef : null}
-                                onClick={() => handleViewChange('crds')}
-                                className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${activeView === 'crds'
-                                    ? 'bg-primary/10 text-primary font-medium'
-                                    : 'text-gray-400 hover:text-text hover:bg-white/5'
-                                    }`}
-                            >
-                                <PuzzlePieceIcon className="h-5 w-5" />
-                                Definitions
-                            </button>
-
-                            {/* Loading indicator */}
-                            {crdsLoading && (
-                                <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                                    Loading...
-                                </div>
-                            )}
-
-                            {/* CRD Groups */}
-                            {!crdsLoading && Object.keys(crdGroups).map((groupName) => {
-                                const isExpanded = expandedCRDGroups[groupName];
-                                const resources = crdGroups[groupName];
-                                return (
-                                    <div key={groupName} className="mt-1">
-                                        <button
-                                            onClick={() => toggleCRDGroup(groupName)}
-                                            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs rounded-md transition-colors text-gray-300 hover:text-white hover:bg-white/5"
-                                        >
-                                            {isExpanded ? (
-                                                <ChevronDownIcon className="h-3 w-3" />
-                                            ) : (
-                                                <ChevronRightIcon className="h-3 w-3" />
-                                            )}
-                                            <span className="truncate" title={groupName}>{groupName}</span>
-                                        </button>
-                                        {isExpanded && (
-                                            <ul className="ml-2 space-y-0.5">
-                                                {resources.map((res) => {
-                                                    const viewId = `cr:${res.group}:${res.version}:${res.plural}:${res.kind}:${res.namespaced}`;
-                                                    return (
-                                                        <li key={res.kind}>
-                                                            <button
-                                                                ref={activeView === viewId ? activeItemRef : null}
-                                                                onClick={() => handleViewChange(viewId)}
-                                                                className={`w-full flex items-center pl-7 pr-2 py-1.5 text-sm rounded-md transition-colors ${activeView === viewId
-                                                                    ? 'bg-primary/10 text-primary font-medium'
-                                                                    : 'text-gray-400 hover:text-text hover:bg-white/5'
-                                                                    }`}
-                                                            >
-                                                                {res.kind}
-                                                            </button>
-                                                        </li>
-                                                    );
-                                                })}
-                                            </ul>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
             </nav>
 
             {/* Footer */}
