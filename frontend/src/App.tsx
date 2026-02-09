@@ -7,7 +7,8 @@ import {
     ConfigProvider, useConfig,
     NotificationProvider,
     ThemeProvider,
-    AIChatProvider, useAIChat
+    AIChatProvider, useAIChat,
+    IssueDetectorProvider
 } from '~/context';
 import Sidebar from '~/components/layout/Sidebar';
 import BottomPanel from '~/components/layout/BottomPanel';
@@ -23,7 +24,7 @@ import { ServiceAccountList, RoleList, ClusterRoleList, RoleBindingList, Cluster
 import { CRDList, CustomResourceList } from '~/features/customresources';
 import { HelmReleaseList, HelmRepoList } from '~/features/helm';
 import { PortForwardList } from '~/features/portforwards';
-import { FlowTimeline, MultiLogViewer, ResourceDiff, RBACChecker } from '~/features/diagnostics';
+import { FlowTimeline, MultiLogViewer, ResourceDiff, RBACChecker, IssueDetector } from '~/features/diagnostics';
 import { usePerformancePanel } from '~/hooks/usePerformancePanel';
 import { LogMessage, SetEventCoalescerFrameInterval, SetK8sAPITimeout } from 'wailsjs/go/main/App';
 import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
@@ -606,6 +607,7 @@ function MainLayout() {
             case 'multi-log-viewer': return <MultiLogViewer {...(diagnosticParams || {})} onClose={undefined} />;
             case 'resource-diff': return <ResourceDiff {...(diagnosticParams || {})} onClose={undefined} />;
             case 'rbac-checker': return <RBACChecker {...(diagnosticParams || {})} onClose={undefined} />;
+            case 'issue-detector': return <IssueDetector onClose={undefined} />;
             case 'services': return <ServiceList isVisible={true} />;
             case 'ingresses': return <IngressList isVisible={true} />;
             case 'ingressclasses': return <IngressClassList isVisible={true} />;
@@ -735,10 +737,12 @@ function App() {
                         <K8sProvider>
                             <UIProvider>
                                 <AIChatProvider>
+                                    <IssueDetectorProvider>
                                     <MenuProvider>
                                         <MainLayout />
                                         <ToastContainer />
                                     </MenuProvider>
+                                    </IssueDetectorProvider>
                                 </AIChatProvider>
                             </UIProvider>
                         </K8sProvider>

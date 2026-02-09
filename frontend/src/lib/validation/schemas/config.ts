@@ -48,6 +48,7 @@ const sidebarLayoutSectionSchema = z.object({
 // Sidebar config
 const sidebarConfigSchema = z.object({
   layout: z.array(sidebarLayoutSectionSchema).optional(),
+  excludedItems: z.array(z.string()).optional(),
 });
 
 // UI config

@@ -16,6 +16,7 @@ import (
 	"kubikles/pkg/crashlog"
 	"kubikles/pkg/events"
 	"kubikles/pkg/helm"
+	"kubikles/pkg/issuedetector"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/server"
 	"kubikles/pkg/terminal"
@@ -41,6 +42,7 @@ type App struct {
 	eventCoalescer        *EventCoalescer
 	logCoalescer          *LogCoalescer
 	themeManager          *ThemeManager
+	scanEngine            *issuedetector.ScanEngine
 	// Log streaming
 	logStreams      map[string]context.CancelFunc
 	logStreamsMutex sync.Mutex
@@ -122,6 +124,12 @@ func (a *App) startup(ctx context.Context) {
 	configDir, _ := os.UserConfigDir()
 	appDir := filepath.Join(configDir, "kubikles")
 	a.themeManager = NewThemeManager(a, appDir)
+	// Initialize issue detector
+	rulesDir := filepath.Join(appDir, "rules")
+	os.MkdirAll(rulesDir, 0755)
+	a.scanEngine = issuedetector.NewScanEngine(rulesDir, func(p issuedetector.ScanProgress) {
+		a.emitEvent("issuedetector:progress", p)
+	})
 	// Initialize event tracking
 	a.eventStats = make(map[string]*WatcherEventStats)
 	a.eventWindowStart = time.Now().UnixMilli()
@@ -167,6 +175,12 @@ func (a *App) startupServerMode(ctx context.Context) {
 	configDir, _ := os.UserConfigDir()
 	appDir := filepath.Join(configDir, "kubikles")
 	a.themeManager = NewThemeManager(a, appDir)
+	// Initialize issue detector
+	rulesDir := filepath.Join(appDir, "rules")
+	os.MkdirAll(rulesDir, 0755)
+	a.scanEngine = issuedetector.NewScanEngine(rulesDir, func(p issuedetector.ScanProgress) {
+		a.emitEvent("issuedetector:progress", p)
+	})
 
 	// Initialize event tracking
 	a.eventStats = make(map[string]*WatcherEventStats)

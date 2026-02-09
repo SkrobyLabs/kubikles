@@ -36,6 +36,7 @@ interface UIConfig {
     showTabIcons: boolean;
     sidebar?: {
         layout?: SidebarLayoutSection[];
+        excludedItems?: string[];
     };
 }
 

@@ -450,6 +450,10 @@ export function GetIngressYaml(arg1, arg2) {
   return window['go']['main']['App']['GetIngressYaml'](arg1, arg2);
 }
 
+export function GetIssueRulesDir() {
+  return window['go']['main']['App']['GetIssueRulesDir']();
+}
+
 export function GetJobYaml(arg1, arg2) {
   return window['go']['main']['App']['GetJobYaml'](arg1, arg2);
 }
@@ -746,6 +750,10 @@ export function ListIngresses(arg1, arg2) {
   return window['go']['main']['App']['ListIngresses'](arg1, arg2);
 }
 
+export function ListIssueRules() {
+  return window['go']['main']['App']['ListIssueRules']();
+}
+
 export function ListJobs(arg1, arg2) {
   return window['go']['main']['App']['ListJobs'](arg1, arg2);
 }
@@ -886,12 +894,20 @@ export function OpenCrashLogDir() {
   return window['go']['main']['App']['OpenCrashLogDir']();
 }
 
+export function OpenIssueRulesDir() {
+  return window['go']['main']['App']['OpenIssueRulesDir']();
+}
+
 export function OpenThemesDir() {
   return window['go']['main']['App']['OpenThemesDir']();
 }
 
 export function RefreshIngressHostnames(arg1) {
   return window['go']['main']['App']['RefreshIngressHostnames'](arg1);
+}
+
+export function ReloadIssueRules() {
+  return window['go']['main']['App']['ReloadIssueRules']();
 }
 
 export function ReloadThemes() {
@@ -928,6 +944,10 @@ export function RestartStatefulSet(arg1, arg2) {
 
 export function RollbackHelmRelease(arg1, arg2, arg3) {
   return window['go']['main']['App']['RollbackHelmRelease'](arg1, arg2, arg3);
+}
+
+export function RunIssueScan(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['RunIssueScan'](arg1, arg2, arg3, arg4);
 }
 
 export function SaveLogFile(arg1) {

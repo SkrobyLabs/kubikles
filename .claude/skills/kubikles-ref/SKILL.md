@@ -66,6 +66,7 @@ Read the AI reference documentation for full project context:
 | Prometheus | `app_prometheus.go` |
 | Certificates | `app_certificates.go` |
 | Diagnostics | `app_diagnostics.go` |
+| Issue detection | `app_issuedetector.go` |
 | AI assistant | `app_ai.go` |
 | K8s context switching | `app_context.go` |
 | Config settings | `app_config.go` |
@@ -101,6 +102,18 @@ Read the AI reference documentation for full project context:
 | AI integration | `pkg/ai/` |
 | Claude CLI | `pkg/ai/claude_cli.go` |
 | AI manager | `pkg/ai/manager.go` |
+| Issue detector types | `pkg/issuedetector/types.go` |
+| Issue detector rule interface | `pkg/issuedetector/rule.go` |
+| Issue detector resource cache | `pkg/issuedetector/resourcecache.go` |
+| Issue detector engine | `pkg/issuedetector/engine.go` |
+| Issue detector YAML loader | `pkg/issuedetector/yamlloader.go` |
+| Issue detector built-in rules | `pkg/issuedetector/rules_builtin.go` |
+| Issue detector networking rules | `pkg/issuedetector/rules_networking.go` |
+| Issue detector workload rules | `pkg/issuedetector/rules_workloads.go` |
+| Issue detector storage rules | `pkg/issuedetector/rules_storage.go` |
+| Issue detector security rules | `pkg/issuedetector/rules_security.go` |
+| Issue detector config rules | `pkg/issuedetector/rules_config.go` |
+| Issue detector deprecation rules | `pkg/issuedetector/rules_deprecation.go` |
 | MCP server | `pkg/mcp/server.go` |
 | Tool registry | `pkg/tools/registry.go` |
 | Server API | `pkg/server/api.go` |
@@ -118,6 +131,7 @@ Read the AI reference documentation for full project context:
 | Debug logging | `frontend/src/context/DebugContext.tsx` |
 | Notifications | `frontend/src/context/NotificationContext.tsx` |
 | AI Chat | `frontend/src/context/AIChatContext.tsx` |
+| Issue Detection | `frontend/src/context/IssueDetectorContext.tsx` |
 
 ### Constants
 | Purpose | File |
@@ -158,7 +172,7 @@ Read the AI reference documentation for full project context:
 | access-control | roles, clusterroles, rolebindings, clusterrolebindings, serviceaccounts |
 | customresources | definitions, instances |
 | helm | releases, repos, oci |
-| diagnostics | resource comparison and diagnostics |
+| diagnostics | resource comparison, diagnostics, issue detection |
 | portforwards | port forward management UI |
 
 Path pattern: `frontend/src/features/{category}/{resource}/`
@@ -182,3 +196,4 @@ Path pattern: `frontend/src/features/{category}/{resource}/`
 | `useSelection.tsx` | Selection state |
 | `useCommandPaletteItems.tsx` | Command palette items |
 | `useBaseResourceActions.tsx` | Base action handlers for all resources |
+| `useIssueDetector.tsx` | Issue detection scan state and actions |

@@ -31,6 +31,7 @@ import {
     QueueListIcon,
     FingerPrintIcon,
     BoltIcon,
+    BugAntIcon,
 } from '@heroicons/react/24/outline';
 
 // ---- Types ----
@@ -40,6 +41,8 @@ export interface MenuItemDef {
     label: string;
     icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
     defaultSection: string;
+    /** If true, new items are excluded (hidden) by default instead of auto-injected */
+    defaultHidden?: boolean;
 }
 
 export interface MenuSectionDef {
@@ -115,7 +118,7 @@ export const DEFAULT_MENU_SECTIONS: MenuSectionDef[] = [
     {
         id: 'diagnostics',
         title: 'Diagnostics',
-        items: ['flow-timeline', 'multi-log-viewer', 'resource-diff', 'rbac-checker'],
+        items: ['flow-timeline', 'multi-log-viewer', 'resource-diff', 'rbac-checker', 'issue-detector'],
     },
 ];
 
@@ -167,21 +170,34 @@ export const ALL_MENU_ITEMS: Record<string, MenuItemDef> = {
     'multi-log-viewer':      { id: 'multi-log-viewer',      label: 'Multi-Pod Logs',         icon: DocumentTextIcon,          defaultSection: 'diagnostics' },
     'resource-diff':         { id: 'resource-diff',         label: 'Resource Diff',          icon: ArrowsRightLeftIcon,       defaultSection: 'diagnostics' },
     'rbac-checker':          { id: 'rbac-checker',          label: 'RBAC Checker',           icon: ShieldCheckIcon,           defaultSection: 'diagnostics' },
+    'issue-detector':        { id: 'issue-detector',        label: 'Issue Detector',         icon: BugAntIcon,                defaultSection: 'diagnostics' },
     // Custom Resources "Definitions" is a special entry
     'crds':                  { id: 'crds',                  label: 'Definitions',            icon: PuzzlePieceIcon,           defaultSection: 'custom-resources' },
 };
 
 // ---- Reconciliation ----
 
+export interface ReconcileResult {
+    sections: SidebarLayoutSection[];
+    /** Items that were new and defaultHidden — caller should persist these into excludedItems */
+    newExcluded: string[];
+}
+
 /**
  * Reconcile a stored layout with the current item registry.
  * - Removed items (no longer in registry) are pruned.
- * - Items not in the layout are considered intentionally hidden.
+ * - Items in excludedItems are treated as intentionally hidden (not re-injected).
+ * - Truly new items (not in layout, not in excludedItems):
+ *   - defaultHidden → added to newExcluded (caller should persist)
+ *   - otherwise → auto-injected into their default section
  * - Fixed sections are always present.
  */
 export function reconcileLayout(
     storedLayout: SidebarLayoutSection[],
-): SidebarLayoutSection[] {
+    excludedItems?: string[],
+): ReconcileResult {
+    const excluded = new Set(excludedItems ?? []);
+
     const result = storedLayout
         .map(section => ({
             ...section,
@@ -203,7 +219,28 @@ export function reconcileLayout(
         }
     }
 
-    return result;
+    // Collect IDs already in sections
+    const resultItemIds = new Set<string>();
+    for (const section of result) {
+        for (const id of section.items) resultItemIds.add(id);
+    }
+
+    // For each registry item, decide: visible, excluded, or truly new
+    const newExcluded: string[] = [];
+    for (const [id, def] of Object.entries(ALL_MENU_ITEMS)) {
+        if (resultItemIds.has(id) || excluded.has(id) || id === 'crds') continue;
+        // Truly new item
+        if (def.defaultHidden) {
+            newExcluded.push(id);
+        } else {
+            const targetSection = result.find(s => s.id === def.defaultSection);
+            if (targetSection) {
+                targetSection.items.push(id);
+            }
+        }
+    }
+
+    return { sections: result, newExcluded };
 }
 
 /**

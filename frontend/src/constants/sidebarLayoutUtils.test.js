@@ -9,7 +9,7 @@ import {
     isDefaultLayout,
     getAvailableGroups,
 } from './sidebarLayoutUtils';
-import { getDefaultLayout, ALL_MENU_ITEMS, DEFAULT_MENU_SECTIONS } from './menuStructure';
+import { getDefaultLayout, ALL_MENU_ITEMS, DEFAULT_MENU_SECTIONS, reconcileLayout } from './menuStructure';
 
 // Helper: create a minimal layout for tests
 function makeLayout(sections) {
@@ -234,6 +234,21 @@ describe('isDefaultLayout', () => {
         layout[0].itemLabels = { [layout[0].items[0]]: 'Custom' };
         expect(isDefaultLayout(layout)).toBe(false);
     });
+
+    it('returns false when excludedItems has entries', () => {
+        const layout = getDefaultLayout();
+        expect(isDefaultLayout(layout, ['pods'])).toBe(false);
+    });
+
+    it('returns true when excludedItems is empty array', () => {
+        const layout = getDefaultLayout();
+        expect(isDefaultLayout(layout, [])).toBe(true);
+    });
+
+    it('returns true when excludedItems is undefined', () => {
+        const layout = getDefaultLayout();
+        expect(isDefaultLayout(layout, undefined)).toBe(true);
+    });
 });
 
 describe('getAvailableGroups', () => {
@@ -288,5 +303,81 @@ describe('getAvailableGroups', () => {
             const deploymentsItem = workloadsGroup.items.find(i => i.id === 'deployments');
             expect(deploymentsItem?.label).toBe(ALL_MENU_ITEMS['deployments'].label);
         }
+    });
+});
+
+describe('reconcileLayout', () => {
+    it('prunes items no longer in registry', () => {
+        const layout = makeLayout([
+            { id: 'workloads', title: 'Workloads', items: ['pods', 'nonexistent-item'] },
+        ]);
+        const { sections } = reconcileLayout(layout);
+        expect(sections[0].items).not.toContain('nonexistent-item');
+        expect(sections[0].items).toContain('pods');
+    });
+
+    it('does not re-inject excluded items', () => {
+        // Layout with only pods — 'deployments' is excluded
+        const layout = makeLayout([
+            { id: 'workloads', title: 'Workloads', items: ['pods'] },
+        ]);
+        const { sections } = reconcileLayout(layout, ['deployments']);
+        const workloads = sections.find(s => s.id === 'workloads');
+        expect(workloads.items).not.toContain('deployments');
+    });
+
+    it('auto-injects truly new items (not in layout, not excluded)', () => {
+        // All items except 'pods' are not in layout or excluded
+        const allIds = Object.keys(ALL_MENU_ITEMS).filter(id => id !== 'crds');
+        const layout = makeLayout([
+            { id: 'workloads', title: 'Workloads', items: ['pods'] },
+        ]);
+        const { sections } = reconcileLayout(layout, []);
+        const allResultItems = sections.flatMap(s => s.items);
+        // deployments should have been auto-injected into its default section
+        expect(allResultItems).toContain('deployments');
+    });
+
+    it('returns newExcluded for defaultHidden items', () => {
+        // Temporarily make 'pods' defaultHidden to test
+        const orig = ALL_MENU_ITEMS['pods'].defaultHidden;
+        ALL_MENU_ITEMS['pods'].defaultHidden = true;
+        try {
+            // Layout without pods, pods not in excludedItems
+            const layout = makeLayout([
+                { id: 'workloads', title: 'Workloads', items: ['deployments'] },
+            ]);
+            const { sections, newExcluded } = reconcileLayout(layout, []);
+            expect(newExcluded).toContain('pods');
+            // pods should NOT be in any section
+            const allResultItems = sections.flatMap(s => s.items);
+            expect(allResultItems).not.toContain('pods');
+        } finally {
+            ALL_MENU_ITEMS['pods'].defaultHidden = orig;
+        }
+    });
+
+    it('returns empty newExcluded when no new defaultHidden items', () => {
+        const layout = getDefaultLayout();
+        const { newExcluded } = reconcileLayout(layout, []);
+        expect(newExcluded).toEqual([]);
+    });
+
+    it('ensures fixed sections are always present', () => {
+        const layout = makeLayout([
+            { id: 'workloads', title: 'Workloads', items: ['pods'] },
+        ]);
+        const { sections } = reconcileLayout(layout, []);
+        expect(sections.find(s => s.id === 'custom-resources')).toBeDefined();
+    });
+
+    it('treats undefined excludedItems as empty array', () => {
+        const layout = makeLayout([
+            { id: 'workloads', title: 'Workloads', items: ['pods'] },
+        ]);
+        const withUndefined = reconcileLayout(layout, undefined);
+        const withEmpty = reconcileLayout(layout, []);
+        // Should produce same sections
+        expect(withUndefined.sections.map(s => s.id)).toEqual(withEmpty.sections.map(s => s.id));
     });
 });

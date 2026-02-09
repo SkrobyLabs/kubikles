@@ -6,6 +6,7 @@ import {helm} from '../models';
 import {v1} from '../models';
 import {tools} from '../models';
 import {v2} from '../models';
+import {issuedetector} from '../models';
 import {events} from '../models';
 import {terminal} from '../models';
 
@@ -233,6 +234,8 @@ export function GetIngressForwardState():Promise<main.IngressForwardState>;
 
 export function GetIngressYaml(arg1:string,arg2:string):Promise<string>;
 
+export function GetIssueRulesDir():Promise<string>;
+
 export function GetJobYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetK8sInitError():Promise<string>;
@@ -381,6 +384,8 @@ export function ListIngressClasses(arg1:string):Promise<Array<v1.IngressClass>>;
 
 export function ListIngresses(arg1:string,arg2:string):Promise<Array<v1.Ingress>>;
 
+export function ListIssueRules():Promise<Array<issuedetector.RuleInfo>>;
+
 export function ListJobs(arg1:string,arg2:string):Promise<Array<v1.Job>>;
 
 export function ListLeases(arg1:string,arg2:string):Promise<Array<v1.Lease>>;
@@ -451,9 +456,13 @@ export function LogoutOCIRegistry(arg1:string):Promise<void>;
 
 export function OpenCrashLogDir():Promise<void>;
 
+export function OpenIssueRulesDir():Promise<void>;
+
 export function OpenThemesDir():Promise<void>;
 
 export function RefreshIngressHostnames(arg1:Array<string>):Promise<void>;
+
+export function ReloadIssueRules():Promise<Array<issuedetector.RuleInfo>>;
 
 export function ReloadThemes():Promise<Array<main.Theme>>;
 
@@ -472,6 +481,8 @@ export function RestartDeployment(arg1:string,arg2:string):Promise<void>;
 export function RestartStatefulSet(arg1:string,arg2:string):Promise<void>;
 
 export function RollbackHelmRelease(arg1:string,arg2:string,arg3:number):Promise<void>;
+
+export function RunIssueScan(arg1:Array<string>,arg2:Array<string>,arg3:Array<string>,arg4:boolean):Promise<issuedetector.ScanResult>;
 
 export function SaveLogFile(arg1:string):Promise<void>;
 

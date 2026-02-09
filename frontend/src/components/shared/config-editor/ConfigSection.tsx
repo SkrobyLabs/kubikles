@@ -2,17 +2,19 @@ import React, { useEffect, useState, useCallback } from 'react';
 import ConfigField from './fields/ConfigField';
 import ConfigFieldGroup from './ConfigFieldGroup';
 import { configSchema, isModified } from '~/config/configSchema';
-import { GetCrashLogPath, OpenCrashLogDir } from 'wailsjs/go/main/App';
+import { GetCrashLogPath, OpenCrashLogDir, GetIssueRulesDir, OpenIssueRulesDir } from 'wailsjs/go/main/App';
 import { useTheme } from '~/context';
 
 // Async value sources
 const asyncSources = {
-    crashLogPath: GetCrashLogPath
+    crashLogPath: GetCrashLogPath,
+    issueRulesDir: GetIssueRulesDir,
 };
 
 // Action handlers
 const actionHandlers = {
-    openCrashLogDir: OpenCrashLogDir
+    openCrashLogDir: OpenCrashLogDir,
+    openIssueRulesDir: OpenIssueRulesDir,
 };
 
 // Zoom constants (must match App.jsx)

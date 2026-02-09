@@ -193,6 +193,7 @@ export function GetHelmReleaseValues(...args) { return AppProxy.GetHelmReleaseVa
 export function GetIngressClassYaml(...args) { return AppProxy.GetIngressClassYaml(...args); }
 export function GetIngressForwardState(...args) { return AppProxy.GetIngressForwardState(...args); }
 export function GetIngressYaml(...args) { return AppProxy.GetIngressYaml(...args); }
+export function GetIssueRulesDir(...args) { return AppProxy.GetIssueRulesDir(...args); }
 export function GetJobYaml(...args) { return AppProxy.GetJobYaml(...args); }
 export function GetK8sInitError(...args) { return AppProxy.GetK8sInitError(...args); }
 export function GetLeaseYaml(...args) { return AppProxy.GetLeaseYaml(...args); }
@@ -266,6 +267,7 @@ export function ListHelmReleases(...args) { return AppProxy.ListHelmReleases(...
 export function ListHelmRepositories(...args) { return AppProxy.ListHelmRepositories(...args); }
 export function ListIngressClasses(...args) { return AppProxy.ListIngressClasses(...args); }
 export function ListIngresses(...args) { return AppProxy.ListIngresses(...args); }
+export function ListIssueRules(...args) { return AppProxy.ListIssueRules(...args); }
 export function ListJobs(...args) { return AppProxy.ListJobs(...args); }
 export function ListLeases(...args) { return AppProxy.ListLeases(...args); }
 export function ListLimitRanges(...args) { return AppProxy.ListLimitRanges(...args); }
@@ -302,8 +304,10 @@ export function LoginACRWithAzureCLI(...args) { return AppProxy.LoginACRWithAzur
 export function LoginOCIRegistry(...args) { return AppProxy.LoginOCIRegistry(...args); }
 export function LogoutOCIRegistry(...args) { return AppProxy.LogoutOCIRegistry(...args); }
 export function OpenCrashLogDir(...args) { return AppProxy.OpenCrashLogDir(...args); }
+export function OpenIssueRulesDir(...args) { return AppProxy.OpenIssueRulesDir(...args); }
 export function OpenThemesDir(...args) { return AppProxy.OpenThemesDir(...args); }
 export function RefreshIngressHostnames(...args) { return AppProxy.RefreshIngressHostnames(...args); }
+export function ReloadIssueRules(...args) { return AppProxy.ReloadIssueRules(...args); }
 export function ReloadThemes(...args) { return AppProxy.ReloadThemes(...args); }
 export function RemoveHelmRepository(...args) { return AppProxy.RemoveHelmRepository(...args); }
 export function RemoveOCIRegistry(...args) { return AppProxy.RemoveOCIRegistry(...args); }
@@ -313,6 +317,7 @@ export function RestartDaemonSet(...args) { return AppProxy.RestartDaemonSet(...
 export function RestartDeployment(...args) { return AppProxy.RestartDeployment(...args); }
 export function RestartStatefulSet(...args) { return AppProxy.RestartStatefulSet(...args); }
 export function RollbackHelmRelease(...args) { return AppProxy.RollbackHelmRelease(...args); }
+export function RunIssueScan(...args) { return AppProxy.RunIssueScan(...args); }
 export function SaveLogFile(...args) { return AppProxy.SaveLogFile(...args); }
 export function SaveLogsBundle(...args) { return AppProxy.SaveLogsBundle(...args); }
 export function SavePodLogs(...args) { return AppProxy.SavePodLogs(...args); }

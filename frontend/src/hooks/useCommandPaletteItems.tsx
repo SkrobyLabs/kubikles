@@ -63,7 +63,7 @@ export const useCommandPaletteItems = (): UseCommandPaletteItemsResult => {
 
         // Get effective sections for path building and visibility
         const sections = sidebarLayout
-            ? reconcileLayout(sidebarLayout)
+            ? reconcileLayout(sidebarLayout).sections
             : DEFAULT_MENU_SECTIONS.map((s: any) => ({ id: s.id, title: s.title, items: [...s.items] } as SidebarLayoutSection));
 
         // Only show items that are visible in the current layout

@@ -37,6 +37,7 @@ import {
     ALL_MENU_ITEMS,
     FIXED_SECTION_IDS,
     getDefaultLayout,
+    reconcileLayout,
     type SidebarLayoutSection,
 } from '~/constants/menuStructure';
 import {
@@ -49,6 +50,7 @@ import {
     isDefaultLayout,
     getAvailableGroups,
 } from '~/constants/sidebarLayoutUtils';
+import { useConfig } from '~/context';
 
 // ---- Insertion indicator line ----
 
@@ -296,12 +298,22 @@ const customCollision: CollisionDetection = (args) => {
 };
 
 export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEditorProps) {
-    const isModified = value !== undefined && value !== null;
+    const { config, setConfig } = useConfig();
+    const excludedItems: string[] = config?.ui?.sidebar?.excludedItems ?? [];
+
+    const isModified = (value !== undefined && value !== null) || excludedItems.length > 0;
 
     const layout = useMemo((): SidebarLayoutSection[] => {
-        if (value && value.length > 0) return value;
+        if (value && value.length > 0) {
+            const { sections, newExcluded } = reconcileLayout(value, excludedItems);
+            if (newExcluded.length > 0) {
+                // Persist newly discovered defaultHidden items
+                setConfig('ui.sidebar.excludedItems', [...excludedItems, ...newExcluded]);
+            }
+            return sections;
+        }
         return getDefaultLayout();
-    }, [value]);
+    }, [value, excludedItems]);
 
     const [expandedSections, setExpandedSections] = useState<Set<string>>(() =>
         new Set(layout.map((s: any) => s.id))
@@ -329,8 +341,8 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
     }, [layout]);
 
     const updateLayout = useCallback((newLayout: SidebarLayoutSection[]) => {
-        onChange(isDefaultLayout(newLayout) ? undefined : newLayout);
-    }, [onChange]);
+        onChange(isDefaultLayout(newLayout, excludedItems) ? undefined : newLayout);
+    }, [onChange, excludedItems]);
 
     // ---- Helpers ----
 
@@ -475,6 +487,9 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
                 return { ...s, items: newItems };
             });
             updateLayout(newLayout);
+            if (excludedItems.includes(dragItemId)) {
+                setConfig('ui.sidebar.excludedItems', excludedItems.filter(id => id !== dragItemId));
+            }
             return;
         }
 
@@ -487,6 +502,9 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
                     i === sectionIdx ? { ...s, items: s.items.filter((id: any) => id !== dragItemId) } : s
                 );
                 updateLayout(newLayout);
+                if (!excludedItems.includes(dragItemId)) {
+                    setConfig('ui.sidebar.excludedItems', [...excludedItems, dragItemId]);
+                }
                 return;
             }
         }
@@ -533,6 +551,9 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
 
     const removeItem = (sectionIdx: number, itemId: string) => {
         updateLayout(removeItemFromLayout(layout, sectionIdx, itemId));
+        if (!excludedItems.includes(itemId)) {
+            setConfig('ui.sidebar.excludedItems', [...excludedItems, itemId]);
+        }
     };
 
     const renameItem = (sectionIdx: number, itemId: string, newLabel: string) => {
@@ -540,7 +561,12 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
     };
 
     const addItemToSection = (itemId: string, sectionIdx?: number) => {
-        updateLayout(addItemToLayout(layout, itemId, sectionIdx));
+        // Default to the item's original section if no target specified
+        const targetIdx = sectionIdx ?? layout.findIndex(s => s.id === ALL_MENU_ITEMS[itemId]?.defaultSection);
+        updateLayout(addItemToLayout(layout, itemId, targetIdx !== -1 ? targetIdx : undefined));
+        if (excludedItems.includes(itemId)) {
+            setConfig('ui.sidebar.excludedItems', excludedItems.filter(id => id !== itemId));
+        }
     };
 
     const addGroupToLayout = (sectionId: string, itemIds: string[]) => {
@@ -549,6 +575,11 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
             setExpandedSections(prev => new Set([...prev, sectionId]));
         }
         updateLayout(addGroupToLayoutUtil(layout, sectionId, itemIds));
+        const itemSet = new Set(itemIds);
+        const remaining = excludedItems.filter(id => !itemSet.has(id));
+        if (remaining.length !== excludedItems.length) {
+            setConfig('ui.sidebar.excludedItems', remaining);
+        }
     };
 
     const addCustomSection = () => {
@@ -568,6 +599,7 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
 
     const handleReset = () => {
         onChange(undefined);
+        setConfig('ui.sidebar.excludedItems', undefined);
         setExpandedSections(new Set(getDefaultLayout().map((s: any) => s.id)));
     };
 

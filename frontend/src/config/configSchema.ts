@@ -10,6 +10,15 @@ export const configSchema: Record<string, any> = {
             showCopy: true,
             showOpenFolder: true,
             action: 'openCrashLogDir'
+        },
+        issueRulesDir: {
+            type: 'readonly',
+            label: 'Issue Rules Directory',
+            description: 'Custom YAML rules for the Issue Detector are loaded from this directory',
+            asyncSource: 'issueRulesDir',
+            showCopy: true,
+            showOpenFolder: true,
+            action: 'openIssueRulesDir'
         }
     },
     logs: {

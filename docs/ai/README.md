@@ -41,6 +41,7 @@ kubikles/
 │   ├── app_logs.go         # Log streaming
 │   ├── app_terminal.go     # Terminal sessions
 │   ├── app_ai.go           # AI assistant
+│   ├── app_issuedetector.go # Issue detection Wails bindings
 │   └── ...                 # (see rule file for complete list)
 ├── runtime_darwin_arm64.go # Apple Silicon runtime tuning
 ├── runtime_other.go        # Other platform runtime
@@ -75,6 +76,20 @@ kubikles/
 │   │   ├── claude_cli.go   # Claude CLI integration
 │   │   ├── manager.go      # AI session manager
 │   │   └── provider.go     # Provider abstraction
+│   ├── issuedetector/       # Cluster issue detection engine
+│   │   ├── types.go         # Core types (Finding, ScanResult, ScanProgress, RuleInfo)
+│   │   ├── rule.go          # Rule interface and base helper
+│   │   ├── resourcecache.go # Parallel resource fetching with typed getters
+│   │   ├── engine.go        # ScanEngine orchestration
+│   │   ├── yamlloader.go    # YAML rule file parser (6 check types)
+│   │   ├── rules_builtin.go # Built-in rule registration
+│   │   ├── rules_networking.go    # NET001-NET005
+│   │   ├── rules_workloads.go     # WRK001-WRK004
+│   │   ├── rules_storage.go       # STR001-STR002
+│   │   ├── rules_security.go      # SEC001-SEC002
+│   │   ├── rules_config.go        # CFG001-CFG002
+│   │   ├── rules_deprecation.go   # DEP001-DEP005
+│   │   └── engine_test.go         # Unit tests
 │   ├── mcp/                # MCP server
 │   │   └── server.go       # MCP protocol implementation
 │   ├── tools/              # Tool registry for AI
@@ -115,14 +130,14 @@ kubikles/
 │   │   │                   # clusterrolebindings/, serviceaccounts/
 │   │   ├── customresources/ # CRDs and custom instances
 │   │   ├── helm/           # Helm releases, repos, OCI
-│   │   ├── diagnostics/    # Resource comparison, diagnostics
+│   │   ├── diagnostics/    # Resource comparison, diagnostics, issue detection
 │   │   └── portforwards/   # Port forward management UI
 │   ├── components/
 │   │   ├── layout/         # Sidebar.tsx, BottomPanel.tsx
 │   │   └── shared/         # ResourceList.tsx, YamlEditor.tsx, LogViewer.tsx,
 │   │                       # Terminal.tsx, DependencyGraph.tsx, ConfigEditor/
-│   ├── hooks/              # ~25 hooks: useResource.tsx, useResourceWatcher.tsx,
-│   │                       # usePortForwards.tsx, useIngressForward.tsx, etc.
+│   ├── hooks/              # useResource.tsx, useResourceWatcher.tsx,
+│   │                       # usePortForwards.tsx, useIssueDetector.tsx, etc.
 │   ├── constants/
 │   │   ├── menuStructure.ts      # Sidebar menu items, default sections, reconciliation
 │   │   └── sidebarLayoutUtils.ts # Pure sidebar layout manipulation functions
@@ -186,6 +201,9 @@ Supports HTTP/1.1 vs HTTP/2 selection. Avoids HTTP/2 flow control bottlenecks. C
 ### 7. AI Integration (`pkg/ai/`)
 Integrates AI assistants (Claude) for K8s operations. MCP server provides tools for AI interactions. Supports headless and server modes for programmatic access.
 
+### 8. Issue Detector (`pkg/issuedetector/`)
+Rule-based cluster scanning engine. Built-in Go rules cover networking (NET), workloads (WRK), storage (STR), security (SEC), config (CFG), and deprecation (DEP) categories. YAML-based custom rules support 6 check types. Engine uses parallel resource caching, emits progress events during scans, and returns findings with severity/category/remediation.
+
 ## Context Providers
 
 ```js
@@ -205,6 +223,9 @@ const { theme, setTheme, themes } = useTheme();
 
 // AIChatContext
 const { messages, sendMessage, isLoading } = useAIChat();
+
+// IssueDetectorContext
+const { scanning, result, rules, runScan, groupBy, setGroupBy } = useIssueDetector();
 ```
 
 ## Data Fetching Pattern
@@ -263,6 +284,7 @@ Each resource type (`features/[category]/[resource]/`):
 | Helm operations | `app_helm.go` + `pkg/helm/` |
 | Dependency graph | `pkg/k8s/dependencies.go` + `DependencyGraph.tsx` |
 | AI integration | `app_ai.go` + `pkg/ai/` + `AIChatContext.tsx` |
+| Issue detection | `app_issuedetector.go` + `pkg/issuedetector/` + `hooks/useIssueDetector.tsx` |
 | MCP server | `pkg/mcp/server.go` |
 | Watcher infrastructure | `app_watchermgr.go` + `app_watchers.go` |
 | Performance metrics | `app_perfmetrics.go` |

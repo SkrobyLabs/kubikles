@@ -26,6 +26,7 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 | K8s API operations | `pkg/k8s/client.go` |
 | Event batching | `eventcoalescer.go` |
 | AI integration | `pkg/ai/` |
+| Issue detection engine | `pkg/issuedetector/` |
 | MCP server | `pkg/mcp/server.go` |
 
 ### App Domain Files (split from app.go)
@@ -62,6 +63,7 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 | Prometheus | `app_prometheus.go` |
 | Certificates | `app_certificates.go` |
 | Diagnostics | `app_diagnostics.go` |
+| Issue detection | `app_issuedetector.go` |
 | AI assistant | `app_ai.go` |
 | K8s context | `app_context.go` |
 | Config settings | `app_config.go` |
@@ -80,6 +82,23 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 | RBAC operations | `pkg/k8s/rbac.go` |
 | File operations | `pkg/k8s/fileops.go` |
 
+### Issue Detector Package (`pkg/issuedetector/`)
+| Purpose | File |
+|---------|------|
+| Core types (Finding, ScanResult, etc.) | `pkg/issuedetector/types.go` |
+| Rule interface & base helper | `pkg/issuedetector/rule.go` |
+| Parallel resource cache | `pkg/issuedetector/resourcecache.go` |
+| ScanEngine orchestration | `pkg/issuedetector/engine.go` |
+| YAML rule parser (6 check types) | `pkg/issuedetector/yamlloader.go` |
+| Built-in rule registration | `pkg/issuedetector/rules_builtin.go` |
+| Networking rules (NET001-NET005) | `pkg/issuedetector/rules_networking.go` |
+| Workload rules (WRK001-WRK004) | `pkg/issuedetector/rules_workloads.go` |
+| Storage rules (STR001-STR002) | `pkg/issuedetector/rules_storage.go` |
+| Security rules (SEC001-SEC002) | `pkg/issuedetector/rules_security.go` |
+| Config rules (CFG001-CFG002) | `pkg/issuedetector/rules_config.go` |
+| Deprecation rules (DEP001-DEP005) | `pkg/issuedetector/rules_deprecation.go` |
+| Unit tests | `pkg/issuedetector/engine_test.go` |
+
 ### Frontend Core
 | Purpose | File |
 |---------|------|
@@ -88,6 +107,7 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 | UI state | `frontend/src/context/UIContext.tsx` |
 | Config state | `frontend/src/context/ConfigContext.tsx` |
 | AI Chat | `frontend/src/context/AIChatContext.tsx` |
+| Issue Detection | `frontend/src/context/IssueDetectorContext.tsx` |
 | Sidebar nav | `frontend/src/components/layout/Sidebar.tsx` |
 | Menu structure | `frontend/src/constants/menuStructure.ts` |
 | Sidebar layout utils | `frontend/src/constants/sidebarLayoutUtils.ts` |
@@ -103,7 +123,7 @@ Resources are at `frontend/src/features/{category}/{resource}/`:
 - **access-control**: roles, clusterroles, rolebindings, clusterrolebindings, serviceaccounts
 - **customresources**: definitions, instances
 - **helm**: releases, repos, oci
-- **diagnostics**: resource comparison and diagnostics
+- **diagnostics**: resource comparison, diagnostics, issue detection
 - **portforwards**: port forward management UI
 
 ## Adding New K8s Resource

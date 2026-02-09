@@ -99,7 +99,8 @@ export function renameSectionInLayout(
 }
 
 /** Check if a layout matches the defaults (for deciding undefined vs value) */
-export function isDefaultLayout(layout: SidebarLayoutSection[]): boolean {
+export function isDefaultLayout(layout: SidebarLayoutSection[], excludedItems?: string[]): boolean {
+    if (excludedItems && excludedItems.length > 0) return false;
     const defaults = getDefaultLayout();
     return defaults.length === layout.length &&
         defaults.every((defSection, i) => {

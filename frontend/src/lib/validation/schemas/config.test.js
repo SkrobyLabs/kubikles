@@ -123,4 +123,67 @@ describe('sidebar layout validation', () => {
         const result = appConfigSchema.safeParse(config);
         expect(result.success).toBe(false);
     });
+
+    it('accepts excludedItems as string array', () => {
+        const config = {
+            ui: {
+                sidebar: {
+                    excludedItems: ['pods', 'services'],
+                },
+            },
+        };
+        const result = appConfigSchema.safeParse(config);
+        expect(result.success).toBe(true);
+    });
+
+    it('accepts empty excludedItems array', () => {
+        const config = {
+            ui: {
+                sidebar: {
+                    excludedItems: [],
+                },
+            },
+        };
+        const result = appConfigSchema.safeParse(config);
+        expect(result.success).toBe(true);
+    });
+
+    it('accepts undefined excludedItems', () => {
+        const config = {
+            ui: {
+                sidebar: {
+                    excludedItems: undefined,
+                },
+            },
+        };
+        const result = appConfigSchema.safeParse(config);
+        expect(result.success).toBe(true);
+    });
+
+    it('rejects non-string values in excludedItems', () => {
+        const config = {
+            ui: {
+                sidebar: {
+                    excludedItems: [123],
+                },
+            },
+        };
+        const result = appConfigSchema.safeParse(config);
+        expect(result.success).toBe(false);
+    });
+
+    it('accepts layout and excludedItems together', () => {
+        const config = {
+            ui: {
+                sidebar: {
+                    layout: [
+                        { id: 'workloads', title: 'Workloads', items: ['pods'] },
+                    ],
+                    excludedItems: ['services', 'nodes'],
+                },
+            },
+        };
+        const result = appConfigSchema.safeParse(config);
+        expect(result.success).toBe(true);
+    });
 });

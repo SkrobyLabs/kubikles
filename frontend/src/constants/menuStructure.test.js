@@ -13,8 +13,12 @@ describe('reconcileLayout', () => {
         const layout = [
             { id: 'workloads', title: 'Workloads', items: ['pods', 'nonexistent-item', 'deployments'] },
         ];
-        const result = reconcileLayout(layout);
-        expect(result[0].items).toEqual(['pods', 'deployments']);
+        const { sections: result } = reconcileLayout(layout);
+        const workloads = result.find(s => s.id === 'workloads');
+        // nonexistent-item should be removed, pods and deployments kept
+        expect(workloads.items).toContain('pods');
+        expect(workloads.items).toContain('deployments');
+        expect(workloads.items).not.toContain('nonexistent-item');
     });
 
     it('keeps sections with remaining items after pruning', () => {
@@ -22,7 +26,7 @@ describe('reconcileLayout', () => {
             { id: 'workloads', title: 'Workloads', items: ['pods'] },
             { id: 'cluster', title: 'Cluster', items: ['nonexistent'] },
         ];
-        const result = reconcileLayout(layout);
+        const { sections: result } = reconcileLayout(layout);
         // workloads stays (has items), cluster removed (no items and not custom/fixed)
         const sectionIds = result.map(s => s.id);
         expect(sectionIds).toContain('workloads');
@@ -33,7 +37,7 @@ describe('reconcileLayout', () => {
         const layout = [
             { id: 'workloads', title: 'Workloads', items: ['nonexistent'] },
         ];
-        const result = reconcileLayout(layout);
+        const { sections: result } = reconcileLayout(layout);
         const nonFixed = result.filter(s => !FIXED_SECTION_IDS.has(s.id));
         expect(nonFixed.filter(s => s.id === 'workloads')).toHaveLength(0);
     });
@@ -42,7 +46,7 @@ describe('reconcileLayout', () => {
         const layout = [
             { id: 'my-custom', title: 'My Custom', items: [], isCustom: true },
         ];
-        const result = reconcileLayout(layout);
+        const { sections: result } = reconcileLayout(layout);
         expect(result.find(s => s.id === 'my-custom')).toBeDefined();
     });
 
@@ -50,7 +54,7 @@ describe('reconcileLayout', () => {
         const layout = [
             { id: 'custom-resources', title: 'Custom Resources', items: [] },
         ];
-        const result = reconcileLayout(layout);
+        const { sections: result } = reconcileLayout(layout);
         expect(result.find(s => s.id === 'custom-resources')).toBeDefined();
     });
 
@@ -58,7 +62,7 @@ describe('reconcileLayout', () => {
         const layout = [
             { id: 'workloads', title: 'Workloads', items: ['pods'] },
         ];
-        const result = reconcileLayout(layout);
+        const { sections: result } = reconcileLayout(layout);
         expect(result.find(s => s.id === 'custom-resources')).toBeDefined();
     });
 
@@ -67,17 +71,39 @@ describe('reconcileLayout', () => {
             { id: 'network', title: 'Network', items: ['services'] },
             { id: 'workloads', title: 'Workloads', items: ['pods'] },
         ];
-        const result = reconcileLayout(layout);
-        const nonFixed = result.filter(s => !FIXED_SECTION_IDS.has(s.id));
-        expect(nonFixed[0].id).toBe('network');
-        expect(nonFixed[1].id).toBe('workloads');
+        const { sections: result } = reconcileLayout(layout);
+        const networkIdx = result.findIndex(s => s.id === 'network');
+        const workloadsIdx = result.findIndex(s => s.id === 'workloads');
+        expect(networkIdx).toBeLessThan(workloadsIdx);
+    });
+
+    it('auto-injects new items not present in stored layout', () => {
+        // Layout has only 'pods' — all other items that were never in the stored layout
+        // should be auto-injected into their default sections
+        const layout = [
+            { id: 'workloads', title: 'Workloads', items: ['pods'] },
+        ];
+        const { sections: result } = reconcileLayout(layout);
+        const workloads = result.find(s => s.id === 'workloads');
+        // 'deployments' was never in stored layout, should be auto-injected
+        expect(workloads.items).toContain('deployments');
+    });
+
+    it('does not re-inject items that exist in stored layout sections', () => {
+        // 'pods' is already present in the stored layout, so it should NOT be
+        // duplicated into its default section by auto-injection
+        const layout = getDefaultLayout();
+        const { sections: result } = reconcileLayout(layout);
+        const workloads = result.find(s => s.id === 'workloads');
+        const podCount = workloads.items.filter(id => id === 'pods').length;
+        expect(podCount).toBe(1);
     });
 
     it('preserves itemLabels on sections', () => {
         const layout = [
             { id: 'workloads', title: 'Workloads', items: ['pods'], itemLabels: { pods: 'My Pods' } },
         ];
-        const result = reconcileLayout(layout);
+        const { sections: result } = reconcileLayout(layout);
         const section = result.find(s => s.id === 'workloads');
         expect(section.itemLabels).toEqual({ pods: 'My Pods' });
     });

@@ -50,7 +50,7 @@ export default function Sidebar({
     onContextChange,
     onContextSelectorOpen
 }: SidebarProps) {
-    const { openConfigEditor, config } = useConfig();
+    const { openConfigEditor, config, setConfig } = useConfig();
     const { isOpen: aiOpen, togglePanel: toggleAI, providerAvailable } = useAIChat();
     const { openPerformancePanel } = usePerformancePanel();
     const { toggleDebug } = useDebugLogs();
@@ -190,10 +190,30 @@ export default function Sidebar({
 
     // Compute effective sidebar layout from config or defaults
     const sidebarLayout = config?.ui?.sidebar?.layout;
+    const excludedItems = config?.ui?.sidebar?.excludedItems;
     const menuGroups = useMemo(() => {
-        const sections: SidebarLayoutSection[] = sidebarLayout
-            ? reconcileLayout(sidebarLayout)
-            : DEFAULT_MENU_SECTIONS.map((s: any) => ({ id: s.id, title: s.title, items: [...s.items] }));
+        if (!sidebarLayout) {
+            const defaultSections = DEFAULT_MENU_SECTIONS.map((s: any) => ({ id: s.id, title: s.title, items: [...s.items] }));
+            // Convert to renderable format with icon/label lookups
+            return defaultSections
+                .map((section: any) => ({
+                    id: section.id,
+                    title: section.title,
+                    items: section.items
+                        .filter((id: any) => ALL_MENU_ITEMS[id])
+                        .map((id: any) => {
+                            const def = ALL_MENU_ITEMS[id];
+                            return { id: def.id, label: def.label, icon: def.icon };
+                        }),
+                }))
+                .filter((group: any) => group.id === 'custom-resources' || group.items.length > 0);
+        }
+
+        const { sections, newExcluded } = reconcileLayout(sidebarLayout, excludedItems);
+        if (newExcluded.length > 0) {
+            // Persist newly discovered defaultHidden items
+            setConfig('ui.sidebar.excludedItems', [...(excludedItems ?? []), ...newExcluded]);
+        }
 
         // Convert to renderable format with icon/label lookups
         return sections
@@ -208,7 +228,7 @@ export default function Sidebar({
                     }),
             }))
             .filter((group: any) => group.id === 'custom-resources' || group.items.length > 0);
-    }, [sidebarLayout]);
+    }, [sidebarLayout, excludedItems]);
 
     // Collapsed categories state with localStorage persistence
     // Custom Resources and Diagnostics are collapsed by default
