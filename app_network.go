@@ -9,6 +9,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -34,7 +35,7 @@ func (a *App) ListNetworkPolicies(requestId, namespace string) ([]networkingv1.N
 }
 
 func (a *App) GetNetworkPolicyYaml(namespace, name string) (string, error) {
-	a.logDebug("GetNetworkPolicyYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetNetworkPolicyYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -42,7 +43,7 @@ func (a *App) GetNetworkPolicyYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateNetworkPolicyYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateNetworkPolicyYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateNetworkPolicyYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -51,7 +52,7 @@ func (a *App) UpdateNetworkPolicyYaml(namespace, name, yamlContent string) error
 
 func (a *App) DeleteNetworkPolicy(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteNetworkPolicy called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteNetworkPolicy called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -77,7 +78,7 @@ func (a *App) ListHPAs(requestId, namespace string) ([]autoscalingv2.HorizontalP
 }
 
 func (a *App) GetHPAYaml(namespace, name string) (string, error) {
-	a.logDebug("GetHPAYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetHPAYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -85,7 +86,7 @@ func (a *App) GetHPAYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateHPAYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateHPAYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateHPAYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -94,7 +95,7 @@ func (a *App) UpdateHPAYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteHPA(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteHPA called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteHPA called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -120,7 +121,7 @@ func (a *App) ListPDBs(requestId, namespace string) ([]policyv1.PodDisruptionBud
 }
 
 func (a *App) GetPDBYaml(namespace, name string) (string, error) {
-	a.logDebug("GetPDBYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetPDBYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -128,7 +129,7 @@ func (a *App) GetPDBYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdatePDBYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdatePDBYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdatePDBYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -137,7 +138,7 @@ func (a *App) UpdatePDBYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeletePDB(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeletePDB called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeletePDB called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -163,7 +164,7 @@ func (a *App) ListResourceQuotas(requestId, namespace string) ([]v1.ResourceQuot
 }
 
 func (a *App) GetResourceQuotaYaml(namespace, name string) (string, error) {
-	a.logDebug("GetResourceQuotaYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetResourceQuotaYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -171,7 +172,7 @@ func (a *App) GetResourceQuotaYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateResourceQuotaYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateResourceQuotaYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateResourceQuotaYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -180,7 +181,7 @@ func (a *App) UpdateResourceQuotaYaml(namespace, name, yamlContent string) error
 
 func (a *App) DeleteResourceQuota(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteResourceQuota called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteResourceQuota called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -206,7 +207,7 @@ func (a *App) ListLimitRanges(requestId, namespace string) ([]v1.LimitRange, err
 }
 
 func (a *App) GetLimitRangeYaml(namespace, name string) (string, error) {
-	a.logDebug("GetLimitRangeYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetLimitRangeYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -214,7 +215,7 @@ func (a *App) GetLimitRangeYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateLimitRangeYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateLimitRangeYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateLimitRangeYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -223,7 +224,7 @@ func (a *App) UpdateLimitRangeYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteLimitRange(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteLimitRange called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteLimitRange called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -248,7 +249,7 @@ func (a *App) ListEndpoints(requestId, namespace string) ([]v1.Endpoints, error)
 }
 
 func (a *App) GetEndpointsYaml(namespace, name string) (string, error) {
-	a.logDebug("GetEndpointsYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetEndpointsYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -256,7 +257,7 @@ func (a *App) GetEndpointsYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateEndpointsYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateEndpointsYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateEndpointsYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -265,7 +266,7 @@ func (a *App) UpdateEndpointsYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteEndpoints(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteEndpoints called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteEndpoints called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -291,7 +292,7 @@ func (a *App) ListEndpointSlices(requestId, namespace string) ([]discoveryv1.End
 }
 
 func (a *App) GetEndpointSliceYaml(namespace, name string) (string, error) {
-	a.logDebug("GetEndpointSliceYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetEndpointSliceYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -299,7 +300,7 @@ func (a *App) GetEndpointSliceYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateEndpointSliceYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateEndpointSliceYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateEndpointSliceYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -308,7 +309,7 @@ func (a *App) UpdateEndpointSliceYaml(namespace, name, yamlContent string) error
 
 func (a *App) DeleteEndpointSlice(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteEndpointSlice called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteEndpointSlice called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

@@ -116,7 +116,7 @@ const getPortForwardAutoStartMode = (): string => {
             return settings?.portForwards?.autoStartMode || 'favorites';
         }
     } catch (e: any) {
-        Logger.error('Failed to read port forward settings', e);
+        Logger.error('Failed to read port forward settings', e, 'k8s');
     }
     return 'favorites'; // Default
 };
@@ -133,7 +133,7 @@ const getConnectionTestTimeout = (): number => {
             }
         }
     } catch (e: any) {
-        Logger.error('Failed to read connection test timeout setting', e);
+        Logger.error('Failed to read connection test timeout setting', e, 'k8s');
     }
     return 5; // Default 5 seconds
 };
@@ -277,7 +277,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     return { namespaces: parsed.namespaces };
                 }
             } catch (e: any) {
-                Logger.error("Failed to parse saved state", e);
+                Logger.error("Failed to parse saved state", e, 'k8s');
             }
         }
         return { namespaces: ['default'] };
@@ -326,7 +326,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsConnecting(true);
         // Don't clear connectionError here - only clear it when we have confirmed connectivity
         try {
-            Logger.debug("Fetching contexts...");
+            Logger.debug("Fetching contexts...", undefined, 'k8s');
             const list: string[] = await ListContexts();
             const curr: string = await GetCurrentContext();
             const sortedList = (list || []).sort((a, b) => a.localeCompare(b));
@@ -338,39 +338,39 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 savedContext,
                 currentKubectlContext: curr,
                 availableContexts: sortedList
-            });
+            }, 'k8s');
 
             let contextToUse = curr;
 
             // If we have a saved context and it exists in the list, switch to it
             if (savedContext && sortedList.includes(savedContext) && savedContext !== curr) {
-                Logger.info("Restoring last used context", { saved: savedContext, current: curr });
+                Logger.info("Restoring last used context", { saved: savedContext, current: curr }, 'k8s');
                 try {
                     await SwitchContext(savedContext);
                     contextToUse = savedContext;
-                    Logger.info("Successfully restored context", { context: contextToUse });
+                    Logger.info("Successfully restored context", { context: contextToUse }, 'k8s');
                 } catch (err: any) {
-                    Logger.error("Failed to restore saved context, using current", err);
+                    Logger.error("Failed to restore saved context, using current", err, 'k8s');
                 }
             } else if (savedContext === curr) {
-                Logger.debug("Saved context matches current kubectl context, no switch needed");
+                Logger.debug("Saved context matches current kubectl context, no switch needed", undefined, 'k8s');
             } else if (!savedContext) {
-                Logger.debug("No saved context found, using current kubectl context");
+                Logger.debug("No saved context found, using current kubectl context", undefined, 'k8s');
             }
 
             setCurrentContext(contextToUse);
             updateContextAccessTime(contextToUse);
-            Logger.info("Contexts fetched", { count: sortedList.length, current: contextToUse });
+            Logger.info("Contexts fetched", { count: sortedList.length, current: contextToUse }, 'k8s');
 
             // Load saved namespaces for this context (will be overwritten by data loading effect)
             const savedState = loadContextState(contextToUse);
             if (savedState.namespaces && savedState.namespaces.length > 0) {
                 setSelectedNamespaces(savedState.namespaces);
-                Logger.debug("Restored namespaces from saved state", { namespaces: savedState.namespaces });
+                Logger.debug("Restored namespaces from saved state", { namespaces: savedState.namespaces }, 'k8s');
             }
             // Connection test happens in the data loading effect when currentContext changes
         } catch (err: any) {
-            Logger.error("Failed to fetch contexts", err);
+            Logger.error("Failed to fetch contexts", err, 'k8s');
             const parsed = parseConnectionError(err);
             setConnectionError({
                 ...parsed,
@@ -392,32 +392,32 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const lengthChanged = prev.length !== sortedList.length;
                 const contentChanged = sortedList.some((ctx, i) => ctx !== prev[i]);
                 if (lengthChanged || contentChanged) {
-                    Logger.debug("Kubeconfig contexts changed", { previous: prev, current: sortedList });
+                    Logger.debug("Kubeconfig contexts changed", { previous: prev, current: sortedList }, 'k8s');
                     return sortedList;
                 }
                 return prev;
             });
         } catch (err: any) {
-            Logger.error("Failed to refresh contexts", err);
+            Logger.error("Failed to refresh contexts", err, 'k8s');
         }
     }, []);
 
     const fetchNamespaces = useCallback(async (): Promise<void> => {
         if (!currentContext) return;
         try {
-            Logger.debug("Fetching namespaces...", { context: currentContext });
+            Logger.debug("Fetching namespaces...", { context: currentContext }, 'k8s');
             const list: Namespace[] = await ListNamespaces(currentContext);
             // Extract namespace names from objects
             const namespaceNames = (list || []).map((ns: any) => ns.metadata?.name || ns).filter(Boolean) as string[];
             // Prepend "All Namespaces" option (empty string value)
             const namespacesWithAll = ['', ...namespaceNames];
             setNamespaces(namespacesWithAll);
-            Logger.info("Namespaces fetched", { count: namespaceNames.length });
+            Logger.info("Namespaces fetched", { count: namespaceNames.length }, 'k8s');
             // Note: Don't clear connectionError here - other API calls might still be failing.
             // Error is only cleared when a watcher successfully connects.
             setIsConnecting(false);
         } catch (err: any) {
-            Logger.error("Failed to fetch namespaces", err);
+            Logger.error("Failed to fetch namespaces", err, 'k8s');
             // Set connection error - this is the first actual cluster call
             const parsed = parseConnectionError(err);
             setConnectionError({
@@ -430,7 +430,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const switchContext = useCallback(async (newContext: string): Promise<void> => {
         try {
-            Logger.info("Switching context...", { from: currentContext, to: newContext });
+            Logger.info("Switching context...", { from: currentContext, to: newContext }, 'k8s');
 
             // Update ref IMMEDIATELY so any in-flight requests see the new context
             // and ignore their stale results. This must happen before any async calls.
@@ -455,9 +455,9 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCurrentContext(newContext);
             updateContextAccessTime(newContext);
             localStorage.setItem('kubikles_last_context', newContext);
-            Logger.debug("Context switched, data loading will follow", { context: newContext });
+            Logger.debug("Context switched, data loading will follow", { context: newContext }, 'k8s');
         } catch (err: any) {
-            Logger.error("Failed to switch context", err);
+            Logger.error("Failed to switch context", err, 'k8s');
             setIsConnecting(false);
             setIsLoadingNamespaces(false);
         }
@@ -470,7 +470,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             try {
                 const initError: string = await GetK8sInitError();
                 if (initError) {
-                    Logger.error("K8s client initialization failed", { error: initError });
+                    Logger.error("K8s client initialization failed", { error: initError }, 'k8s');
                     setConnectionError({
                         title: 'Kubernetes Client Failed to Initialize',
                         message: initError,
@@ -482,7 +482,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     return;
                 }
             } catch (err: any) {
-                Logger.error("Failed to check K8s init error", err);
+                Logger.error("Failed to check K8s init error", err, 'k8s');
             }
             // If no init error, proceed with normal loading
             fetchContexts();
@@ -503,7 +503,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             // Quick connectivity check - fail fast if cluster unreachable
             const connectionTimeout = getConnectionTestTimeout();
-            Logger.debug("Testing connection to cluster...", { context: contextForThisEffect, timeoutSeconds: connectionTimeout });
+            Logger.debug("Testing connection to cluster...", { context: contextForThisEffect, timeoutSeconds: connectionTimeout }, 'k8s');
             try {
                 await TestConnection(connectionTimeout);
                 // Check if context changed while we were waiting
@@ -511,20 +511,20 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     Logger.debug("Connection test completed but context changed, ignoring", {
                         testedContext: contextForThisEffect,
                         currentContext: currentContextRef.current
-                    });
+                    }, 'k8s');
                     return;
                 }
-                Logger.info("Connection test passed", { context: contextForThisEffect });
+                Logger.info("Connection test passed", { context: contextForThisEffect }, 'k8s');
             } catch (connErr) {
                 // Check if context changed while we were waiting
                 if (cancelled || currentContextRef.current !== contextForThisEffect) {
                     Logger.debug("Connection test failed but context changed, ignoring", {
                         testedContext: contextForThisEffect,
                         currentContext: currentContextRef.current
-                    });
+                    }, 'k8s');
                     return;
                 }
-                Logger.error("Connection test failed", { context: contextForThisEffect, error: connErr });
+                Logger.error("Connection test failed", { context: contextForThisEffect, error: connErr }, 'k8s');
                 const parsed = parseConnectionError(String(connErr));
                 setConnectionError({
                     ...parsed,
@@ -539,7 +539,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             // Check again after namespace fetch
             if (cancelled || currentContextRef.current !== contextForThisEffect) {
-                Logger.debug("Namespace fetch completed but context changed, ignoring");
+                Logger.debug("Namespace fetch completed but context changed, ignoring", undefined, 'k8s');
                 return;
             }
 
@@ -547,7 +547,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const savedState = loadContextState(contextForThisEffect);
             if (savedState.namespaces && savedState.namespaces.length > 0) {
                 setSelectedNamespaces(savedState.namespaces);
-                Logger.debug("Restored namespaces after context switch", { namespaces: savedState.namespaces });
+                Logger.debug("Restored namespaces after context switch", { namespaces: savedState.namespaces }, 'k8s');
             }
             setIsLoadingNamespaces(false);
             setIsConnecting(false);
@@ -556,9 +556,9 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const autoStartMode = getPortForwardAutoStartMode();
             try {
                 await StartPortForwardsWithMode(contextForThisEffect, autoStartMode);
-                Logger.debug("Started port forwards", { context: contextForThisEffect, mode: autoStartMode });
+                Logger.debug("Started port forwards", { context: contextForThisEffect, mode: autoStartMode }, 'k8s');
             } catch (err: any) {
-                Logger.error("Failed to start port forwards", err);
+                Logger.error("Failed to start port forwards", err, 'k8s');
             }
         };
 
@@ -575,7 +575,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     useEffect(() => {
         if (currentContext && !isLoadingNamespaces) {
             saveContextState(currentContext, selectedNamespaces);
-            Logger.debug("Namespaces changed", { context: currentContext, namespaces: selectedNamespaces });
+            Logger.debug("Namespaces changed", { context: currentContext, namespaces: selectedNamespaces }, 'k8s');
         }
     }, [currentContext, selectedNamespaces, isLoadingNamespaces]);
 
@@ -588,11 +588,11 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             // Ignore errors from a different context (stale events after context switch)
             if (context && context !== currentContextRef.current) {
-                Logger.debug("Ignoring stale watcher error from old context", { context, currentContext: currentContextRef.current });
+                Logger.debug("Ignoring stale watcher error from old context", { context, currentContext: currentContextRef.current }, 'k8s');
                 return;
             }
 
-            Logger.warn("Watcher error received", { resourceType, namespace, error, recoverable });
+            Logger.warn("Watcher error received", { resourceType, namespace, error, recoverable }, 'k8s');
             setWatcherStatus(prev => ({
                 ...prev,
                 [resourceType]: { status: 'error', error, namespace, recoverable }
@@ -624,11 +624,11 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             // Ignore status from a different context (stale events after context switch)
             if (context && context !== currentContextRef.current) {
-                Logger.debug("Ignoring stale watcher status from old context", { context, currentContext: currentContextRef.current });
+                Logger.debug("Ignoring stale watcher status from old context", { context, currentContext: currentContextRef.current }, 'k8s');
                 return;
             }
 
-            Logger.debug("Watcher status changed", { resourceType, namespace, status });
+            Logger.debug("Watcher status changed", { resourceType, namespace, status }, 'k8s');
             setWatcherStatus(prev => ({
                 ...prev,
                 [resourceType]: { status, namespace, error: null }
@@ -662,11 +662,11 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const triggerRefresh = useCallback((): void => {
         setLastRefresh(Date.now());
-        Logger.debug("Triggered resource refresh");
+        Logger.debug("Triggered resource refresh", undefined, 'k8s');
     }, []);
 
     const retryConnection = useCallback((): void => {
-        Logger.info("Retrying connection...");
+        Logger.info("Retrying connection...", undefined, 'k8s');
         fetchContexts();
     }, [fetchContexts]);
 
@@ -706,13 +706,13 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         try {
-            Logger.debug("Fetching CRDs for owner resolution...");
+            Logger.debug("Fetching CRDs for owner resolution...", undefined, 'k8s');
             const list: CRD[] = await ListCRDs();
             setCRDs(list || []);
             crdsLoadedForContext.current = currentContext;
             return list || [];
         } catch (err: any) {
-            Logger.error("Failed to fetch CRDs", err);
+            Logger.error("Failed to fetch CRDs", err, 'k8s');
             return [];
         }
     }, [currentContext, crds]);

@@ -90,6 +90,8 @@ kubikles/
 │   │   ├── rules_config.go        # CFG001-CFG002
 │   │   ├── rules_deprecation.go   # DEP001-DEP005
 │   │   └── engine_test.go         # Unit tests
+│   ├── debug/              # Structured debug logging
+│   │   └── logger.go       # Debug logger with categories, emits events
 │   ├── mcp/                # MCP server
 │   │   └── server.go       # MCP protocol implementation
 │   ├── tools/              # Tool registry for AI

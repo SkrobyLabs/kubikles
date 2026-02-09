@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"kubikles/pkg/debug"
 )
 
 // =============================================================================
@@ -44,7 +46,7 @@ func (a *App) SwitchContext(name string) error {
 	// Stop all existing watchers before switching context
 	// This prevents stale events from the old context being processed
 	if a.watcherManager != nil {
-		a.logDebug("SwitchContext: Stopping all watchers before context switch")
+		debug.LogK8s("SwitchContext: Stopping all watchers before context switch", nil)
 		a.watcherManager.StopAll()
 	}
 

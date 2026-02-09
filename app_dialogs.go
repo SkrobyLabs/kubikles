@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"kubikles/pkg/debug"
+
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -23,7 +25,7 @@ func (a *App) ConfirmDialog(title, message string) bool {
 		CancelButton:  "Cancel",
 	})
 	if err != nil {
-		a.logDebug("ConfirmDialog error: %v", err)
+		debug.LogUI("ConfirmDialog error", map[string]interface{}{"error": err.Error()})
 		return false
 	}
 	return result == "Delete"

@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -21,19 +22,19 @@ func (a *App) loadPrometheusConfigs() {
 	data, err := os.ReadFile(a.prometheusConfigPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			a.logDebug("Prometheus: Failed to read config file: %v", err)
+			debug.LogPerformance("Prometheus: Failed to read config file", map[string]interface{}{"error": err.Error()})
 		}
 		return
 	}
 
 	var configs map[string]*k8s.PrometheusInfo
 	if err := json.Unmarshal(data, &configs); err != nil {
-		a.logDebug("Prometheus: Failed to parse config file: %v", err)
+		debug.LogPerformance("Prometheus: Failed to parse config file", map[string]interface{}{"error": err.Error()})
 		return
 	}
 
 	a.prometheusConfigs = configs
-	a.logDebug("Prometheus: Loaded %d saved configurations", len(configs))
+	debug.LogPerformance("Prometheus: Loaded saved configurations", map[string]interface{}{"count": len(configs)})
 }
 
 // savePrometheusConfigs saves Prometheus configurations to disk
@@ -68,7 +69,7 @@ func (a *App) GetCachedPrometheusConfig() *k8s.PrometheusInfo {
 // SavePrometheusConfig saves a Prometheus configuration for the current context
 func (a *App) SavePrometheusConfig(namespace, service string, port int) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("SavePrometheusConfig called: context=%s, endpoint=%s/%s:%d", currentContext, namespace, service, port)
+	debug.LogPerformance("SavePrometheusConfig called", map[string]interface{}{"context": currentContext, "namespace": namespace, "service": service, "port": port})
 
 	config := &k8s.PrometheusInfo{
 		Available:       true,
@@ -83,18 +84,18 @@ func (a *App) SavePrometheusConfig(namespace, service string, port int) error {
 	a.prometheusConfigMutex.Unlock()
 
 	if err := a.savePrometheusConfigs(); err != nil {
-		a.logDebug("Prometheus: Failed to save config: %v", err)
+		debug.LogPerformance("Prometheus: Failed to save config", map[string]interface{}{"error": err.Error()})
 		return err
 	}
 
-	a.logDebug("Prometheus: Saved config for context %s", currentContext)
+	debug.LogPerformance("Prometheus: Saved config", map[string]interface{}{"context": currentContext})
 	return nil
 }
 
 // ClearPrometheusConfig clears the cached Prometheus config for the current context
 func (a *App) ClearPrometheusConfig() error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("ClearPrometheusConfig called: context=%s", currentContext)
+	debug.LogPerformance("ClearPrometheusConfig called", map[string]interface{}{"context": currentContext})
 
 	a.prometheusConfigMutex.Lock()
 	delete(a.prometheusConfigs, currentContext)
@@ -107,11 +108,11 @@ func (a *App) ClearPrometheusConfig() error {
 // First checks for cached config, then falls back to auto-detection
 func (a *App) DetectPrometheus() (*k8s.PrometheusInfo, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DetectPrometheus called: context=%s", currentContext)
+	debug.LogPerformance("DetectPrometheus called", map[string]interface{}{"context": currentContext})
 
 	// Check cached config first
 	if cached := a.GetCachedPrometheusConfig(); cached != nil {
-		a.logDebug("DetectPrometheus: Using cached config for context %s", currentContext)
+		debug.LogPerformance("DetectPrometheus: Using cached config", map[string]interface{}{"context": currentContext})
 		// Verify it's still reachable
 		if a.k8sClient != nil {
 			err := a.k8sClient.TestPrometheusEndpoint(currentContext, k8s.PrometheusEndpoint{
@@ -122,7 +123,7 @@ func (a *App) DetectPrometheus() (*k8s.PrometheusInfo, error) {
 			if err == nil {
 				return cached, nil
 			}
-			a.logDebug("DetectPrometheus: Cached config no longer reachable, will re-detect")
+			debug.LogPerformance("DetectPrometheus: Cached config no longer reachable, will re-detect", nil)
 		}
 	}
 
@@ -150,7 +151,7 @@ func (a *App) DetectPrometheus() (*k8s.PrometheusInfo, error) {
 // ListPrometheusInstalls returns all Prometheus installations found in the cluster
 func (a *App) ListPrometheusInstalls() ([]k8s.PrometheusInstall, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("ListPrometheusInstalls called: context=%s", currentContext)
+	debug.LogPerformance("ListPrometheusInstalls called", map[string]interface{}{"context": currentContext})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -160,7 +161,7 @@ func (a *App) ListPrometheusInstalls() ([]k8s.PrometheusInstall, error) {
 // TestPrometheusEndpoint tests a custom Prometheus endpoint
 func (a *App) TestPrometheusEndpoint(namespace, service string, port int) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("TestPrometheusEndpoint called: context=%s, endpoint=%s/%s:%d", currentContext, namespace, service, port)
+	debug.LogPerformance("TestPrometheusEndpoint called", map[string]interface{}{"context": currentContext, "namespace": namespace, "service": service, "port": port})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -174,7 +175,7 @@ func (a *App) TestPrometheusEndpoint(namespace, service string, port int) error 
 // GetPodMetricsHistory retrieves historical metrics for a pod from Prometheus
 func (a *App) GetPodMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, pod, container, duration string) (*k8s.PodMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetPodMetricsHistory called: context=%s, pod=%s/%s, duration=%s, requestId=%s", currentContext, namespace, pod, duration, requestId)
+	debug.LogPerformance("GetPodMetricsHistory called", map[string]interface{}{"context": currentContext, "namespace": namespace, "pod": pod, "duration": duration, "requestId": requestId})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -216,7 +217,7 @@ func (a *App) GetPodMetricsHistory(requestId, prometheusNamespace, prometheusSer
 // GetControllerMetricsHistory retrieves historical metrics for a controller (deployment, statefulset, etc.)
 func (a *App) GetControllerMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, name, controllerType, duration string) (*k8s.ControllerMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetControllerMetricsHistory called: context=%s, controller=%s/%s, type=%s, duration=%s, requestId=%s", currentContext, namespace, name, controllerType, duration, requestId)
+	debug.LogPerformance("GetControllerMetricsHistory called", map[string]interface{}{"context": currentContext, "namespace": namespace, "name": name, "controllerType": controllerType, "duration": duration, "requestId": requestId})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -257,7 +258,7 @@ func (a *App) GetControllerMetricsHistory(requestId, prometheusNamespace, promet
 // GetNodeMetricsHistory retrieves historical metrics for a node
 func (a *App) GetNodeMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, nodeName, duration string) (*k8s.NodeMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetNodeMetricsHistory called: context=%s, node=%s, duration=%s, requestId=%s", currentContext, nodeName, duration, requestId)
+	debug.LogPerformance("GetNodeMetricsHistory called", map[string]interface{}{"context": currentContext, "node": nodeName, "duration": duration, "requestId": requestId})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -298,7 +299,7 @@ func (a *App) GetNodeMetricsHistory(requestId, prometheusNamespace, prometheusSe
 // GetNamespaceMetricsHistory retrieves historical metrics for a namespace
 func (a *App) GetNamespaceMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, duration string) (*k8s.NamespaceMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetNamespaceMetricsHistory called: context=%s, namespace=%s, duration=%s, requestId=%s", currentContext, namespace, duration, requestId)
+	debug.LogPerformance("GetNamespaceMetricsHistory called", map[string]interface{}{"context": currentContext, "namespace": namespace, "duration": duration, "requestId": requestId})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -362,7 +363,7 @@ func (a *App) GetListRequestStats() ListRequestStats {
 // but stale results are ignored via sequence tracking.
 func (a *App) SetRequestCancellationEnabled(enabled bool) {
 	a.listRequestManager.SetCancellationEnabled(enabled)
-	a.logDebug("Request cancellation enabled: %v", enabled)
+	debug.LogPerformance("Request cancellation enabled", map[string]interface{}{"enabled": enabled})
 }
 
 // IsRequestCancellationEnabled returns whether HTTP request cancellation is enabled.

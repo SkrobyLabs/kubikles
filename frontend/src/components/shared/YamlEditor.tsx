@@ -85,7 +85,7 @@ export default function YamlEditor({
 
         const ownerResource = getResourceByKind(controllerOwner.kind);
         if (!ownerResource) {
-            Logger.warn("Unknown controller kind", { kind: controllerOwner.kind });
+            Logger.warn("Unknown controller kind", { kind: controllerOwner.kind }, 'k8s');
             return;
         }
 
@@ -152,13 +152,13 @@ export default function YamlEditor({
         setLoading(true);
         setError(null);
         setHasConflict(false);
-        Logger.debug("Fetching YAML...", { resourceType, namespace, name: resourceName });
+        Logger.debug("Fetching YAML...", { resourceType, namespace, name: resourceName }, 'k8s');
         try {
             const yaml = await getYaml();
             setContent(yaml);
-            Logger.info("YAML fetched successfully", { resourceType, namespace, name: resourceName });
+            Logger.info("YAML fetched successfully", { resourceType, namespace, name: resourceName }, 'k8s');
         } catch (err: any) {
-            Logger.error("Failed to load YAML", err);
+            Logger.error("Failed to load YAML", err, 'k8s');
             setError(`Failed to load YAML: ${err}`);
         } finally {
             setLoading(false);
@@ -171,9 +171,9 @@ export default function YamlEditor({
             const yaml = await getYaml();
             setContent(yaml);
             setHasConflict(false);
-            Logger.info("YAML reloaded", { resourceType, namespace, name: resourceName });
+            Logger.info("YAML reloaded", { resourceType, namespace, name: resourceName }, 'k8s');
         } catch (err: any) {
-            Logger.error("Failed to reload YAML", err);
+            Logger.error("Failed to reload YAML", err, 'k8s');
             addNotification({ type: 'error', title: 'Failed to reload YAML', message: String(err) });
         }
     };
@@ -185,7 +185,7 @@ export default function YamlEditor({
         }
 
         setSaving(true);
-        Logger.info("Saving YAML...", { resourceType, namespace, name: resourceName });
+        Logger.info("Saving YAML...", { resourceType, namespace, name: resourceName }, 'k8s');
 
         // Save editor state for cursor restoration
         const savedState = getEditorState();
@@ -197,7 +197,7 @@ export default function YamlEditor({
                 await resource!.updateYaml(namespace, resourceName, content);
             }
 
-            Logger.info("YAML saved successfully", { resourceType, namespace, name: resourceName });
+            Logger.info("YAML saved successfully", { resourceType, namespace, name: resourceName }, 'k8s');
 
             // Refresh YAML to get updated resourceVersion
             try {
@@ -208,18 +208,18 @@ export default function YamlEditor({
                 // Restore cursor position after content update
                 requestAnimationFrame(() => restoreEditorState(savedState));
             } catch (refreshErr) {
-                Logger.warn("Failed to refresh YAML after save", refreshErr);
+                Logger.warn("Failed to refresh YAML after save", refreshErr, 'k8s');
             }
 
             addNotification({ type: 'success', title: 'YAML saved successfully', message: '' });
         } catch (err: any) {
-            Logger.error("Failed to save YAML", err);
+            Logger.error("Failed to save YAML", err, 'k8s');
 
             // Check for 409 Conflict (stale resourceVersion)
             const errStr = (err as any).toString().toLowerCase();
             if (errStr.includes('409') || errStr.includes('conflict') || errStr.includes('modified')) {
                 setHasConflict(true);
-                Logger.warn("Conflict detected - resource was modified externally", { resourceType, namespace, name: resourceName });
+                Logger.warn("Conflict detected - resource was modified externally", { resourceType, namespace, name: resourceName }, 'k8s');
             } else {
                 addNotification({ type: 'error', title: 'Failed to save YAML', message: String(err) });
             }

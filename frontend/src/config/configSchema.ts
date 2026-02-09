@@ -344,6 +344,13 @@ export const configSchema: Record<string, any> = {
     },
     debug: {
         _meta: { label: 'Debug', description: 'Developer and debugging options' },
+        showDebugIcon: {
+            type: 'boolean',
+            label: 'Show Debug Icon',
+            description: 'Show the debug log icon in the sidebar footer',
+            subtext: 'When disabled, the bug icon is hidden from the bottom bar. You can still toggle debug mode via the command palette.',
+            default: false
+        },
         showLogSourceMarkers: {
             type: 'boolean',
             label: 'Show Log Source Markers',

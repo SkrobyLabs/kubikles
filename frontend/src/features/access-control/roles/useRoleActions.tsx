@@ -18,7 +18,7 @@ export const useRoleActions = (): any => {
     const { addNotification } = useNotification();
 
     const handleEditYaml = (role: K8sRole): void => {
-        Logger.info("Opening Role editor", { namespace: role.metadata.namespace, name: role.metadata.name });
+        Logger.info("Opening Role editor", { namespace: role.metadata.namespace, name: role.metadata.name }, 'k8s');
         const tabId = `role-${role.metadata.uid}`;
         openTab({
             id: tabId,
@@ -39,7 +39,7 @@ export const useRoleActions = (): any => {
     const handleDelete = (role: K8sRole): void => {
         const name = role.metadata.name;
         const namespace = role.metadata.namespace;
-        Logger.info("Delete Role requested", { namespace, name });
+        Logger.info("Delete Role requested", { namespace, name }, 'k8s');
 
         openModal({
             title: `Delete Role ${name}?`,
@@ -49,10 +49,10 @@ export const useRoleActions = (): any => {
             onConfirm: async (): Promise<void> => {
                 try {
                     await DeleteRole(namespace, name);
-                    Logger.info("Role deleted successfully", { namespace, name });
+                    Logger.info("Role deleted successfully", { namespace, name }, 'k8s');
                     closeModal();
                 } catch (err: any) {
-                    Logger.error("Failed to delete Role", err);
+                    Logger.error("Failed to delete Role", err, 'k8s');
                     addNotification({ type: 'error', title: 'Failed to delete role', message: String(err) });
                 }
             }

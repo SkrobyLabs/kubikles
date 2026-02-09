@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 
 	v1 "k8s.io/api/core/v1"
@@ -46,9 +47,9 @@ func (a *App) GetPodMetrics() (*k8s.PodMetricsResult, error) {
 // GetNodeMetricsFromPrometheus fetches node metrics from Prometheus (fallback when metrics-server unavailable)
 func (a *App) GetNodeMetricsFromPrometheus(prometheusNamespace, prometheusService string, prometheusPort int) (*k8s.NodeMetricsResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetNodeMetricsFromPrometheus called: context=%s, prometheus=%s/%s:%d", currentContext, prometheusNamespace, prometheusService, prometheusPort)
+	debug.LogK8s("GetNodeMetricsFromPrometheus called", map[string]interface{}{"context": currentContext, "prometheusNs": prometheusNamespace, "prometheusService": prometheusService, "prometheusPort": prometheusPort})
 	if a.k8sClient == nil {
-		a.logDebug("GetNodeMetricsFromPrometheus: k8s client not initialized")
+		debug.LogK8s("GetNodeMetricsFromPrometheus: k8s client not initialized", nil)
 		return &k8s.NodeMetricsResult{Available: false}, nil
 	}
 
@@ -61,9 +62,9 @@ func (a *App) GetNodeMetricsFromPrometheus(prometheusNamespace, prometheusServic
 
 	result, err := a.k8sClient.GetNodeMetricsFromPrometheus(currentContext, info)
 	if err != nil {
-		a.logDebug("GetNodeMetricsFromPrometheus error: %v", err)
+		debug.LogK8s("GetNodeMetricsFromPrometheus error", map[string]interface{}{"error": err.Error()})
 	} else {
-		a.logDebug("GetNodeMetricsFromPrometheus result: available=%v, metrics_count=%d, error=%s", result.Available, len(result.Metrics), result.Error)
+		debug.LogK8s("GetNodeMetricsFromPrometheus result", map[string]interface{}{"available": result.Available, "metrics_count": len(result.Metrics), "error": result.Error})
 	}
 	return result, err
 }
@@ -71,9 +72,9 @@ func (a *App) GetNodeMetricsFromPrometheus(prometheusNamespace, prometheusServic
 // GetPodMetricsFromPrometheus fetches pod metrics from Prometheus (fallback when metrics-server unavailable)
 func (a *App) GetPodMetricsFromPrometheus(prometheusNamespace, prometheusService string, prometheusPort int) (*k8s.PodMetricsResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetPodMetricsFromPrometheus called: context=%s, prometheus=%s/%s:%d", currentContext, prometheusNamespace, prometheusService, prometheusPort)
+	debug.LogK8s("GetPodMetricsFromPrometheus called", map[string]interface{}{"context": currentContext, "prometheusNs": prometheusNamespace, "prometheusService": prometheusService, "prometheusPort": prometheusPort})
 	if a.k8sClient == nil {
-		a.logDebug("GetPodMetricsFromPrometheus: k8s client not initialized")
+		debug.LogK8s("GetPodMetricsFromPrometheus: k8s client not initialized", nil)
 		return &k8s.PodMetricsResult{Available: false}, nil
 	}
 
@@ -86,15 +87,15 @@ func (a *App) GetPodMetricsFromPrometheus(prometheusNamespace, prometheusService
 
 	result, err := a.k8sClient.GetPodMetricsFromPrometheus(currentContext, info)
 	if err != nil {
-		a.logDebug("GetPodMetricsFromPrometheus error: %v", err)
+		debug.LogK8s("GetPodMetricsFromPrometheus error", map[string]interface{}{"error": err.Error()})
 	} else {
-		a.logDebug("GetPodMetricsFromPrometheus result: available=%v, metrics_count=%d, error=%s", result.Available, len(result.Metrics), result.Error)
+		debug.LogK8s("GetPodMetricsFromPrometheus result", map[string]interface{}{"available": result.Available, "metrics_count": len(result.Metrics), "error": result.Error})
 	}
 	return result, err
 }
 
 func (a *App) GetNodeYaml(name string) (string, error) {
-	a.logDebug("GetNodeYaml called: name=%s", name)
+	debug.LogK8s("GetNodeYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -102,7 +103,7 @@ func (a *App) GetNodeYaml(name string) (string, error) {
 }
 
 func (a *App) UpdateNodeYaml(name, yamlContent string) error {
-	a.logDebug("UpdateNodeYaml called: name=%s", name)
+	debug.LogK8s("UpdateNodeYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -111,7 +112,7 @@ func (a *App) UpdateNodeYaml(name, yamlContent string) error {
 
 func (a *App) DeleteNode(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteNode called: context=%s, name=%s", currentContext, name)
+	debug.LogK8s("DeleteNode called", map[string]interface{}{"context": currentContext, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -120,7 +121,7 @@ func (a *App) DeleteNode(name string) error {
 
 func (a *App) SetNodeSchedulable(name string, schedulable bool) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("SetNodeSchedulable called: context=%s, name=%s, schedulable=%v", currentContext, name, schedulable)
+	debug.LogK8s("SetNodeSchedulable called", map[string]interface{}{"context": currentContext, "name": name, "schedulable": schedulable})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -135,7 +136,7 @@ type NodeDebugPodResult struct {
 
 func (a *App) CreateNodeDebugPod(nodeName, image string) (*NodeDebugPodResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("CreateNodeDebugPod called: context=%s, nodeName=%s, image=%s", currentContext, nodeName, image)
+	debug.LogK8s("CreateNodeDebugPod called", map[string]interface{}{"context": currentContext, "nodeName": nodeName, "image": image})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}

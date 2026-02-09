@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/terminal"
 )
 
@@ -12,8 +13,7 @@ import (
 
 // StartTerminalSession starts a new terminal session and returns the session ID
 func (a *App) StartTerminalSession(opts terminal.SessionOptions) (string, error) {
-	a.logDebug("StartTerminalSession called: context=%s, ns=%s, pod=%s, container=%s, cmd=%s",
-		opts.Context, opts.Namespace, opts.Pod, opts.Container, opts.Command)
+	debug.LogTerminal("StartTerminalSession called", map[string]interface{}{"context": opts.Context, "ns": opts.Namespace, "pod": opts.Pod, "container": opts.Container, "cmd": opts.Command})
 	if a.terminalManager == nil {
 		return "", fmt.Errorf("terminal manager not initialized")
 	}
@@ -38,7 +38,7 @@ func (a *App) ResizeTerminal(sessionID string, cols, rows int) error {
 
 // CloseTerminalSession closes a terminal session
 func (a *App) CloseTerminalSession(sessionID string) error {
-	a.logDebug("CloseTerminalSession called: sessionID=%s", sessionID)
+	debug.LogTerminal("CloseTerminalSession called", map[string]interface{}{"sessionID": sessionID})
 	if a.terminalManager == nil {
 		return fmt.Errorf("terminal manager not initialized")
 	}

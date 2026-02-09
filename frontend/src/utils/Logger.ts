@@ -1,4 +1,4 @@
-import { LogMessage } from 'wailsjs/go/main/App';
+import type { DebugCategory } from '../context/DebugContext';
 
 const formatMessage = (message: string, data: unknown): string => {
     if (data) {
@@ -11,21 +11,28 @@ const formatMessage = (message: string, data: unknown): string => {
     return message;
 };
 
+const dispatchDebugEvent = (level: string, message: string, data: unknown, category: DebugCategory): void => {
+    const details = data != null ? { level, data } : { level };
+    window.dispatchEvent(new CustomEvent('frontend-debug-log', {
+        detail: { category, message, details }
+    }));
+};
+
 interface Logger {
-    info: (message: string, data?: unknown) => void;
-    error: (message: string, error?: Error | unknown) => void;
-    debug: (message: string, data?: unknown) => void;
-    warn: (message: string, data?: unknown) => void;
+    info: (message: string, data?: unknown, category?: DebugCategory) => void;
+    error: (message: string, error?: Error | unknown, category?: DebugCategory) => void;
+    debug: (message: string, data?: unknown, category?: DebugCategory) => void;
+    warn: (message: string, data?: unknown, category?: DebugCategory) => void;
 }
 
 const Logger: Logger = {
-    info: (message: string, data: unknown = null) => {
+    info: (message: string, data: unknown = null, category: DebugCategory = 'ui') => {
         const formatted = formatMessage(message, data);
         console.log(`[INFO] ${formatted}`);
-        LogMessage(`[INFO] ${formatted}`).catch((err: any) => console.error("Failed to send log to backend:", err));
+        dispatchDebugEvent('INFO', message, data, category);
     },
 
-    error: (message: string, error: Error | unknown = null) => {
+    error: (message: string, error: Error | unknown = null, category: DebugCategory = 'ui') => {
         let errorMsg = '';
         if (error) {
             if (error instanceof Error) {
@@ -36,21 +43,19 @@ const Logger: Logger = {
         }
         const formatted = `${message}${errorMsg}`;
         console.error(`[ERROR] ${formatted}`);
-        LogMessage(`[ERROR] ${formatted}`).catch((err: any) => console.error("Failed to send log to backend:", err));
+        dispatchDebugEvent('ERROR', message, error, category);
     },
 
-    debug: (message: string, data: unknown = null) => {
+    debug: (message: string, data: unknown = null, category: DebugCategory = 'ui') => {
         const formatted = formatMessage(message, data);
         console.debug(`[DEBUG] ${formatted}`);
-        // Optional: only send debug logs to backend if verbose mode is on?
-        // For now, let's send them as LogMessage is intended for debug.
-        LogMessage(`[DEBUG] ${formatted}`).catch((err: any) => console.error("Failed to send log to backend:", err));
+        dispatchDebugEvent('DEBUG', message, data, category);
     },
 
-    warn: (message: string, data: unknown = null) => {
+    warn: (message: string, data: unknown = null, category: DebugCategory = 'ui') => {
         const formatted = formatMessage(message, data);
         console.warn(`[WARN] ${formatted}`);
-        LogMessage(`[WARN] ${formatted}`).catch((err: any) => console.error("Failed to send log to backend:", err));
+        dispatchDebugEvent('WARN', message, data, category);
     }
 };
 

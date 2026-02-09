@@ -60,7 +60,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                             setCertInfoCache(prev => ({ ...prev, [entry.id]: info }));
                         }
                     } catch (err: any) {
-                        Logger.debug("Failed to parse certificate", { key: entry.key, error: err });
+                        Logger.debug("Failed to parse certificate", { key: entry.key, error: err }, 'config');
                     }
                 }
             }
@@ -81,7 +81,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                 setSelectedCert({ certificates, pemData: entry.value });
             }
         } catch (err: any) {
-            Logger.error("Failed to get certificate info", err);
+            Logger.error("Failed to get certificate info", err, 'config');
             addNotification({ type: 'error', title: 'Failed to parse certificate', message: String(err) });
         }
     };
@@ -132,7 +132,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
     const fetchData = async () => {
         setLoading(true);
         setError(null);
-        Logger.debug("Fetching configmap data...", { namespace, name: resourceName });
+        Logger.debug("Fetching configmap data...", { namespace, name: resourceName }, 'config');
         try {
             const [yaml, data] = await Promise.all([
                 GetConfigMapYaml(namespace, resourceName),
@@ -140,9 +140,9 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
             ]);
             setYamlContent(yaml);
             setConfigMapEntries(objectToEntries(data));
-            Logger.info("ConfigMap data fetched successfully", { namespace, name: resourceName });
+            Logger.info("ConfigMap data fetched successfully", { namespace, name: resourceName }, 'config');
         } catch (err: any) {
-            Logger.error("Failed to load configmap", err);
+            Logger.error("Failed to load configmap", err, 'config');
             setError(`Failed to load configmap: ${err}`);
         } finally {
             setLoading(false);
@@ -151,16 +151,16 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
 
     const handleSaveYaml = async () => {
         setSaving(true);
-        Logger.info("Saving YAML...", { namespace, name: resourceName });
+        Logger.info("Saving YAML...", { namespace, name: resourceName }, 'config');
         try {
             await UpdateConfigMapYaml(namespace, resourceName, yamlContent);
-            Logger.info("YAML saved successfully", { namespace, name: resourceName });
+            Logger.info("YAML saved successfully", { namespace, name: resourceName }, 'config');
             addNotification({ type: 'success', title: 'ConfigMap saved successfully', message: '' });
             // Refresh key-value data after YAML save
             const data = await GetConfigMapData(namespace, resourceName);
             setConfigMapEntries(objectToEntries(data));
         } catch (err: any) {
-            Logger.error("Failed to save configmap", err);
+            Logger.error("Failed to save configmap", err, 'config');
             addNotification({ type: 'error', title: 'Failed to save ConfigMap', message: String(err) });
         } finally {
             setSaving(false);
@@ -169,17 +169,17 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
 
     const handleSaveKeyValue = async () => {
         setSaving(true);
-        Logger.info("Saving configmap data...", { namespace, name: resourceName });
+        Logger.info("Saving configmap data...", { namespace, name: resourceName }, 'config');
         try {
             const dataToSave = entriesToObject(configMapEntries);
             await UpdateConfigMapData(namespace, resourceName, dataToSave);
-            Logger.info("ConfigMap data saved successfully", { namespace, name: resourceName });
+            Logger.info("ConfigMap data saved successfully", { namespace, name: resourceName }, 'config');
             addNotification({ type: 'success', title: 'ConfigMap saved successfully', message: '' });
             // Refresh YAML after key-value save
             const yaml = await GetConfigMapYaml(namespace, resourceName);
             setYamlContent(yaml);
         } catch (err: any) {
-            Logger.error("Failed to save configmap", err);
+            Logger.error("Failed to save configmap", err, 'config');
             addNotification({ type: 'error', title: 'Failed to save ConfigMap', message: String(err) });
         } finally {
             setSaving(false);

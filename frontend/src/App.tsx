@@ -29,7 +29,7 @@ import { usePerformancePanel } from '~/hooks/usePerformancePanel';
 import { LogMessage, SetEventCoalescerFrameInterval, SetK8sAPITimeout } from 'wailsjs/go/main/App';
 import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
 import ConfirmModal from '~/components/shared/ConfirmModal';
-import ConfigEditor from '~/components/shared/ConfigEditor';
+import ConfigEditorDialog from '~/components/shared/ConfigEditorDialog';
 import CommandPalette from '~/components/shared/CommandPalette';
 import CreateResourceModal from '~/components/shared/CreateResourceModal';
 import ConnectionError from '~/components/shared/ConnectionError';
@@ -421,7 +421,7 @@ function MainLayout() {
         retryConnection
     } = useK8s();
 
-    const { showConfigEditor, closeConfigEditor, getConfig } = useConfig();
+    const { getConfig } = useConfig();
     const { openPerformancePanel } = usePerformancePanel();
     const { isOpen: aiIsOpen, togglePanel: toggleAI } = useAIChat();
     const isDragging = useRef(false);
@@ -556,13 +556,6 @@ function MainLayout() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [refreshContexts, refreshNamespaces, triggerRefresh, openPerformancePanel]);
 
-    // Close config editor when view changes
-    useEffect(() => {
-        if (showConfigEditor) {
-            closeConfigEditor();
-        }
-    }, [activeView]);
-
     // Parse custom resource view ID: cr:{group}:{version}:{plural}:{kind}:{namespaced}
     const parsedCRView = useMemo(() => {
         if (!activeView?.startsWith('cr:')) return null;
@@ -654,9 +647,7 @@ function MainLayout() {
                     onContextSelectorOpen={refreshContextsIfChanged}
                 />
                 <main className="flex-1 flex flex-col overflow-hidden">
-                    {showConfigEditor ? (
-                        <ConfigEditor />
-                    ) : isConnecting && !connectionError ? (
+                    {isConnecting && !connectionError ? (
                         <div className="flex-1 flex items-center justify-center">
                             <div className="text-center">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
@@ -711,6 +702,7 @@ function MainLayout() {
                 {aiIsOpen && <AIPanel />}
             </div>
             <ConfirmModal />
+            <ConfigEditorDialog />
             <CommandPalette
                 isOpen={commandPaletteOpen}
                 onClose={() => setCommandPaletteOpen(false)}

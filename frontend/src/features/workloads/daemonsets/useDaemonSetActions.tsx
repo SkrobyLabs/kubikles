@@ -30,12 +30,12 @@ export const useDaemonSetActions = (): any => {
     });
 
     const handleRestart = async (daemonSet: K8sDaemonSet): Promise<void> => {
-        Logger.info("Restart DaemonSet requested", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name });
+        Logger.info("Restart DaemonSet requested", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name }, 'k8s');
         try {
             await RestartDaemonSet(daemonSet.metadata.namespace, daemonSet.metadata.name);
-            Logger.info("DaemonSet restarted successfully", { name: daemonSet.metadata.name });
+            Logger.info("DaemonSet restarted successfully", { name: daemonSet.metadata.name }, 'k8s');
         } catch (err: any) {
-            Logger.error("Failed to restart DaemonSet", err);
+            Logger.error("Failed to restart DaemonSet", err, 'k8s');
             addNotification({ type: 'error', title: 'Failed to restart daemonset', message: String(err.message || err) });
         }
     };
@@ -48,7 +48,7 @@ export const useDaemonSetActions = (): any => {
     );
 
     const handleViewLogs = async (daemonSet: K8sDaemonSet): Promise<void> => {
-        Logger.info("View logs for DaemonSet", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name });
+        Logger.info("View logs for DaemonSet", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name }, 'k8s');
         const namespace = daemonSet.metadata.namespace;
 
         try {
@@ -97,7 +97,7 @@ export const useDaemonSetActions = (): any => {
                 resourceMeta: { kind: 'DaemonSet', name: daemonSet.metadata.name, namespace },
             });
         } catch (err: any) {
-            Logger.error("Failed to get pods for DaemonSet", err);
+            Logger.error("Failed to get pods for DaemonSet", err, 'k8s');
             addNotification({ type: 'error', title: 'Failed to get pods for daemonset', message: String(err.message || err) });
         }
     };

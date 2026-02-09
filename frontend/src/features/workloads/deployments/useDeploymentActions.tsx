@@ -30,12 +30,12 @@ export const useDeploymentActions = (): any => {
     });
 
     const handleRestart = async (deployment: K8sDeployment): Promise<void> => {
-        Logger.info("Restarting deployment", { namespace: deployment.metadata.namespace, name: deployment.metadata.name });
+        Logger.info("Restarting deployment", { namespace: deployment.metadata.namespace, name: deployment.metadata.name }, 'k8s');
         try {
             await RestartDeployment(deployment.metadata.namespace, deployment.metadata.name);
-            Logger.info("Restart triggered successfully", { name: deployment.metadata.name });
+            Logger.info("Restart triggered successfully", { name: deployment.metadata.name }, 'k8s');
         } catch (err: any) {
-            Logger.error("Failed to restart deployment", err);
+            Logger.error("Failed to restart deployment", err, 'k8s');
             addNotification({ type: 'error', title: 'Failed to restart deployment', message: String(err) });
         }
     };
@@ -48,7 +48,7 @@ export const useDeploymentActions = (): any => {
     );
 
     const handleViewLogs = async (deployment: K8sDeployment): Promise<void> => {
-        Logger.info("View logs for Deployment", { namespace: deployment.metadata.namespace, name: deployment.metadata.name });
+        Logger.info("View logs for Deployment", { namespace: deployment.metadata.namespace, name: deployment.metadata.name }, 'k8s');
         const namespace = deployment.metadata.namespace;
 
         try {
@@ -98,7 +98,7 @@ export const useDeploymentActions = (): any => {
                 resourceMeta: { kind: 'Deployment', name: deployment.metadata.name, namespace },
             });
         } catch (err: any) {
-            Logger.error("Failed to get pods for Deployment", err);
+            Logger.error("Failed to get pods for Deployment", err, 'k8s');
             addNotification({ type: 'error', title: 'Failed to get pods for deployment', message: String(err.message || err) });
         }
     };

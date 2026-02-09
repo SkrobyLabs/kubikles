@@ -1,6 +1,7 @@
 package main
 
 import (
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 
 	"fmt"
@@ -14,7 +15,7 @@ import (
 
 func (a *App) ListJobs(requestId, namespace string) ([]batchv1.Job, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("ListJobs called: context=%s, ns=%s", currentContext, namespace)
+	debug.LogK8s("ListJobs called", map[string]interface{}{"context": currentContext, "namespace": namespace})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -32,7 +33,7 @@ func (a *App) ListJobs(requestId, namespace string) ([]batchv1.Job, error) {
 }
 
 func (a *App) GetJobYaml(namespace, name string) (string, error) {
-	a.logDebug("GetJobYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetJobYaml called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -40,7 +41,7 @@ func (a *App) GetJobYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateJobYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateJobYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateJobYaml called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -49,7 +50,7 @@ func (a *App) UpdateJobYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteJob(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteJob called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteJob called", map[string]interface{}{"context": currentContext, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -58,7 +59,7 @@ func (a *App) DeleteJob(namespace, name string) error {
 
 func (a *App) ListCronJobs(requestId, namespace string) ([]batchv1.CronJob, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("ListCronJobs called: context=%s, ns=%s", currentContext, namespace)
+	debug.LogK8s("ListCronJobs called", map[string]interface{}{"context": currentContext, "namespace": namespace})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -76,7 +77,7 @@ func (a *App) ListCronJobs(requestId, namespace string) ([]batchv1.CronJob, erro
 }
 
 func (a *App) GetCronJobYaml(namespace, name string) (string, error) {
-	a.logDebug("GetCronJobYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetCronJobYaml called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -84,7 +85,7 @@ func (a *App) GetCronJobYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateCronJobYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateCronJobYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateCronJobYaml called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -93,7 +94,7 @@ func (a *App) UpdateCronJobYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteCronJob(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteCronJob called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteCronJob called", map[string]interface{}{"context": currentContext, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -102,7 +103,7 @@ func (a *App) DeleteCronJob(namespace, name string) error {
 
 func (a *App) TriggerCronJob(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("TriggerCronJob called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("TriggerCronJob called", map[string]interface{}{"context": currentContext, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -111,7 +112,7 @@ func (a *App) TriggerCronJob(namespace, name string) error {
 
 func (a *App) SuspendCronJob(namespace, name string, suspend bool) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("SuspendCronJob called: context=%s, ns=%s, name=%s, suspend=%v", currentContext, namespace, name, suspend)
+	debug.LogK8s("SuspendCronJob called", map[string]interface{}{"context": currentContext, "namespace": namespace, "name": name, "suspend": suspend})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

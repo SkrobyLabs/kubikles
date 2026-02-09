@@ -18,7 +18,7 @@ export const useRoleBindingActions = (): any => {
     const { addNotification } = useNotification();
 
     const handleEditYaml = (roleBinding: K8sRoleBinding): void => {
-        Logger.info("Opening RoleBinding editor", { namespace: roleBinding.metadata.namespace, name: roleBinding.metadata.name });
+        Logger.info("Opening RoleBinding editor", { namespace: roleBinding.metadata.namespace, name: roleBinding.metadata.name }, 'k8s');
         const tabId = `rolebinding-${roleBinding.metadata.uid}`;
         openTab({
             id: tabId,
@@ -39,7 +39,7 @@ export const useRoleBindingActions = (): any => {
     const handleDelete = (roleBinding: K8sRoleBinding): void => {
         const name = roleBinding.metadata.name;
         const namespace = roleBinding.metadata.namespace;
-        Logger.info("Delete RoleBinding requested", { namespace, name });
+        Logger.info("Delete RoleBinding requested", { namespace, name }, 'k8s');
 
         openModal({
             title: `Delete RoleBinding ${name}?`,
@@ -49,10 +49,10 @@ export const useRoleBindingActions = (): any => {
             onConfirm: async (): Promise<void> => {
                 try {
                     await DeleteRoleBinding(namespace, name);
-                    Logger.info("RoleBinding deleted successfully", { namespace, name });
+                    Logger.info("RoleBinding deleted successfully", { namespace, name }, 'k8s');
                     closeModal();
                 } catch (err: any) {
-                    Logger.error("Failed to delete RoleBinding", err);
+                    Logger.error("Failed to delete RoleBinding", err, 'k8s');
                     addNotification({ type: 'error', title: 'Failed to delete role binding', message: String(err) });
                 }
             }

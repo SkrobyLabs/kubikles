@@ -323,7 +323,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
         const currentOffset = expansionOffsets[summaryId] || 5;
 
         try {
-            Logger.info('Expanding summary node', { summaryId, offset: currentOffset });
+            Logger.info('Expanding summary node', { summaryId, offset: currentOffset }, 'k8s');
             const expandedGraph = await ExpandDependencyNode(
                 resourceType,
                 namespace || '',
@@ -333,7 +333,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             );
 
             if (!expandedGraph || !expandedGraph.nodes) {
-                Logger.warn('No expanded nodes returned');
+                Logger.warn('No expanded nodes returned', undefined, 'k8s');
                 return;
             }
 
@@ -408,7 +408,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             }));
 
         } catch (err: any) {
-            Logger.error('Failed to expand summary node', err);
+            Logger.error('Failed to expand summary node', err, 'k8s');
         }
     }, [resourceType, namespace, resourceName, expansionOffsets, handleNodeContextMenu]);
 
@@ -426,7 +426,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             setError(null);
 
             try {
-                Logger.info('Loading dependencies', { resourceType, namespace, resourceName });
+                Logger.info('Loading dependencies', { resourceType, namespace, resourceName }, 'k8s');
                 const graph = await GetResourceDependencies(resourceType, namespace || '', resourceName);
 
                 if (!graph || !graph.nodes || graph.nodes.length === 0) {
@@ -483,7 +483,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                 setEdges(layoutedEdges);
                 setLoading(false);
             } catch (err: any) {
-                Logger.error('Failed to load dependencies', err);
+                Logger.error('Failed to load dependencies', err, 'k8s');
                 setError(err.message || 'Failed to load dependencies');
                 setLoading(false);
             }

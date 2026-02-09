@@ -5,6 +5,7 @@ import (
 
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -30,7 +31,7 @@ func (a *App) ListValidatingWebhookConfigurations(requestId string) ([]admission
 }
 
 func (a *App) GetValidatingWebhookConfigurationYaml(name string) (string, error) {
-	a.logDebug("GetValidatingWebhookConfigurationYaml called: name=%s", name)
+	debug.LogK8s("GetValidatingWebhookConfigurationYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -38,7 +39,7 @@ func (a *App) GetValidatingWebhookConfigurationYaml(name string) (string, error)
 }
 
 func (a *App) UpdateValidatingWebhookConfigurationYaml(name, yamlContent string) error {
-	a.logDebug("UpdateValidatingWebhookConfigurationYaml called: name=%s", name)
+	debug.LogK8s("UpdateValidatingWebhookConfigurationYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -47,7 +48,7 @@ func (a *App) UpdateValidatingWebhookConfigurationYaml(name, yamlContent string)
 
 func (a *App) DeleteValidatingWebhookConfiguration(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteValidatingWebhookConfiguration called: context=%s, name=%s", currentContext, name)
+	debug.LogK8s("DeleteValidatingWebhookConfiguration called", map[string]interface{}{"context": currentContext, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -73,7 +74,7 @@ func (a *App) ListMutatingWebhookConfigurations(requestId string) ([]admissionre
 }
 
 func (a *App) GetMutatingWebhookConfigurationYaml(name string) (string, error) {
-	a.logDebug("GetMutatingWebhookConfigurationYaml called: name=%s", name)
+	debug.LogK8s("GetMutatingWebhookConfigurationYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -81,7 +82,7 @@ func (a *App) GetMutatingWebhookConfigurationYaml(name string) (string, error) {
 }
 
 func (a *App) UpdateMutatingWebhookConfigurationYaml(name, yamlContent string) error {
-	a.logDebug("UpdateMutatingWebhookConfigurationYaml called: name=%s", name)
+	debug.LogK8s("UpdateMutatingWebhookConfigurationYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -90,7 +91,7 @@ func (a *App) UpdateMutatingWebhookConfigurationYaml(name, yamlContent string) e
 
 func (a *App) DeleteMutatingWebhookConfiguration(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteMutatingWebhookConfiguration called: context=%s, name=%s", currentContext, name)
+	debug.LogK8s("DeleteMutatingWebhookConfiguration called", map[string]interface{}{"context": currentContext, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

@@ -85,7 +85,7 @@ export function useBaseResourceActions<T extends K8sResource = K8sResource>(
   const handleShowDetails = (resource: T): void => {
     const name = resource.metadata?.name;
     const namespace = resource.metadata?.namespace;
-    Logger.info(`Opening ${resourceLabel} details`, { namespace, name });
+    Logger.info(`Opening ${resourceLabel} details`, { namespace, name }, 'k8s');
 
     const tabId = `details-${resourceType}-${resource.metadata.uid}`;
     const props = {
@@ -108,7 +108,7 @@ export function useBaseResourceActions<T extends K8sResource = K8sResource>(
   const handleEditYaml = (resource: T): void => {
     const name = resource.metadata?.name;
     const namespace = resource.metadata?.namespace;
-    Logger.info(`Opening ${resourceLabel} YAML editor`, { namespace, name });
+    Logger.info(`Opening ${resourceLabel} YAML editor`, { namespace, name }, 'k8s');
 
     const tabId = `yaml-${resourceType}-${resource.metadata.uid}`;
     openTab({
@@ -139,7 +139,7 @@ export function useBaseResourceActions<T extends K8sResource = K8sResource>(
         Logger.info(`Opening ${resourceLabel} dependency graph`, {
           namespace,
           name,
-        });
+        }, 'k8s');
 
         const tabId = `deps-${resourceType}-${resource.metadata.uid}`;
         openTab({
@@ -173,7 +173,7 @@ export function useBaseResourceActions<T extends K8sResource = K8sResource>(
     return (resource: T): void => {
       const name = resource.metadata?.name;
       const namespace = resource.metadata?.namespace;
-      Logger.info(`Delete ${resourceLabel} requested`, { namespace, name });
+      Logger.info(`Delete ${resourceLabel} requested`, { namespace, name }, 'k8s');
 
       const confirmMessage =
         options.confirmMessage ||
@@ -190,10 +190,10 @@ export function useBaseResourceActions<T extends K8sResource = K8sResource>(
             Logger.info(`${resourceLabel} deleted successfully`, {
               namespace,
               name,
-            });
+            }, 'k8s');
             closeModal();
           } catch (err: any) {
-            Logger.error(`Failed to delete ${resourceLabel}`, err);
+            Logger.error(`Failed to delete ${resourceLabel}`, err, 'k8s');
             addNotification({
               type: 'error',
               title: `Failed to delete ${resourceLabel.toLowerCase()}`,

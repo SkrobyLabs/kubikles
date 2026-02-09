@@ -950,6 +950,10 @@ export function RunIssueScan(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['RunIssueScan'](arg1, arg2, arg3, arg4);
 }
 
+export function SaveDebugLogs(arg1, arg2) {
+  return window['go']['main']['App']['SaveDebugLogs'](arg1, arg2);
+}
+
 export function SaveLogFile(arg1) {
   return window['go']['main']['App']['SaveLogFile'](arg1);
 }
@@ -1000,6 +1004,10 @@ export function SendTerminalInput(arg1, arg2) {
 
 export function SetClientPoolSize(arg1) {
   return window['go']['main']['App']['SetClientPoolSize'](arg1);
+}
+
+export function SetDebugEnabled(arg1) {
+  return window['go']['main']['App']['SetDebugEnabled'](arg1);
 }
 
 export function SetEmitter(arg1) {

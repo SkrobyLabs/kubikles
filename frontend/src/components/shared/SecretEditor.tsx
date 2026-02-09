@@ -61,7 +61,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                             setCertInfoCache(prev => ({ ...prev, [entry.id]: info }));
                         }
                     } catch (err: any) {
-                        Logger.debug("Failed to parse certificate", { key: entry.key, error: err });
+                        Logger.debug("Failed to parse certificate", { key: entry.key, error: err }, 'config');
                     }
                 }
             }
@@ -84,7 +84,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                 setSelectedCert({ certificates, pemData: entry.value });
             }
         } catch (err: any) {
-            Logger.error("Failed to get certificate info", err);
+            Logger.error("Failed to get certificate info", err, 'config');
             addNotification({ type: 'error', title: 'Failed to parse certificate', message: String(err) });
         }
     };
@@ -136,7 +136,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
     const fetchData = async () => {
         setLoading(true);
         setError(null);
-        Logger.debug("Fetching secret data...", { namespace, name: resourceName });
+        Logger.debug("Fetching secret data...", { namespace, name: resourceName }, 'config');
         try {
             const [yaml, data] = await Promise.all([
                 GetSecretYaml(namespace, resourceName),
@@ -144,9 +144,9 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
             ]);
             setYamlContent(yaml);
             setSecretEntries(objectToEntries(data));
-            Logger.info("Secret data fetched successfully", { namespace, name: resourceName });
+            Logger.info("Secret data fetched successfully", { namespace, name: resourceName }, 'config');
         } catch (err: any) {
-            Logger.error("Failed to load secret", err);
+            Logger.error("Failed to load secret", err, 'config');
             setError(`Failed to load secret: ${err}`);
         } finally {
             setLoading(false);
@@ -155,16 +155,16 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
 
     const handleSaveYaml = async () => {
         setSaving(true);
-        Logger.info("Saving YAML...", { namespace, name: resourceName });
+        Logger.info("Saving YAML...", { namespace, name: resourceName }, 'config');
         try {
             await UpdateSecretYaml(namespace, resourceName, yamlContent);
-            Logger.info("YAML saved successfully", { namespace, name: resourceName });
+            Logger.info("YAML saved successfully", { namespace, name: resourceName }, 'config');
             addNotification({ type: 'success', title: 'Secret saved successfully', message: '' });
             // Refresh key-value data after YAML save
             const data = await GetSecretData(namespace, resourceName);
             setSecretEntries(objectToEntries(data));
         } catch (err: any) {
-            Logger.error("Failed to save secret", err);
+            Logger.error("Failed to save secret", err, 'config');
             addNotification({ type: 'error', title: 'Failed to save secret', message: String(err) });
         } finally {
             setSaving(false);
@@ -173,17 +173,17 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
 
     const handleSaveKeyValue = async () => {
         setSaving(true);
-        Logger.info("Saving secret data...", { namespace, name: resourceName });
+        Logger.info("Saving secret data...", { namespace, name: resourceName }, 'config');
         try {
             const dataToSave = entriesToObject(secretEntries);
             await UpdateSecretData(namespace, resourceName, dataToSave);
-            Logger.info("Secret data saved successfully", { namespace, name: resourceName });
+            Logger.info("Secret data saved successfully", { namespace, name: resourceName }, 'config');
             addNotification({ type: 'success', title: 'Secret saved successfully', message: '' });
             // Refresh YAML after key-value save
             const yaml = await GetSecretYaml(namespace, resourceName);
             setYamlContent(yaml);
         } catch (err: any) {
-            Logger.error("Failed to save secret", err);
+            Logger.error("Failed to save secret", err, 'config');
             addNotification({ type: 'error', title: 'Failed to save secret', message: String(err) });
         } finally {
             setSaving(false);

@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"runtime/debug"
+	rtdebug "runtime/debug"
 	"strings"
 	"time"
 
 	"kubikles/pkg/crashlog"
+	"kubikles/pkg/debug"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -46,7 +47,7 @@ type WatcherStatusEvent struct {
 // SubscribeResourceWatcher subscribes to a resource watcher, returning the watcher key
 func (a *App) SubscribeResourceWatcher(resourceType, namespace string) string {
 	if a.watcherManager == nil {
-		a.logDebug("SubscribeResourceWatcher: watcher manager not initialized")
+		debug.LogWatcher("SubscribeResourceWatcher: watcher manager not initialized", nil)
 		return ""
 	}
 	return a.watcherManager.Subscribe(resourceType, namespace)
@@ -55,7 +56,7 @@ func (a *App) SubscribeResourceWatcher(resourceType, namespace string) string {
 // SubscribeCRDWatcher subscribes to a CRD watcher using GVR, returning the watcher key
 func (a *App) SubscribeCRDWatcher(group, version, resource, namespace string) string {
 	if a.watcherManager == nil {
-		a.logDebug("SubscribeCRDWatcher: watcher manager not initialized")
+		debug.LogWatcher("SubscribeCRDWatcher: watcher manager not initialized", nil)
 		return ""
 	}
 	return a.watcherManager.SubscribeCRD(group, version, resource, namespace)
@@ -64,7 +65,7 @@ func (a *App) SubscribeCRDWatcher(group, version, resource, namespace string) st
 // UnsubscribeWatcher unsubscribes from a watcher by key
 func (a *App) UnsubscribeWatcher(watcherKey string) {
 	if a.watcherManager == nil {
-		a.logDebug("UnsubscribeWatcher: watcher manager not initialized")
+		debug.LogWatcher("UnsubscribeWatcher: watcher manager not initialized", nil)
 		return
 	}
 	a.watcherManager.Unsubscribe(watcherKey)
@@ -73,7 +74,7 @@ func (a *App) UnsubscribeWatcher(watcherKey string) {
 // StopAllWatchers stops all active watchers (called on context switch)
 func (a *App) StopAllWatchers() {
 	if a.watcherManager == nil {
-		a.logDebug("StopAllWatchers: watcher manager not initialized")
+		debug.LogWatcher("StopAllWatchers: watcher manager not initialized", nil)
 		return
 	}
 	a.watcherManager.StopAll()
@@ -88,9 +89,9 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 	defer func() {
 		if r := recover(); r != nil {
 			crashlog.LogError("PANIC in watchResourceLoop: type=%s, namespace=%s, panic=%v\nStack: %s",
-				resourceType, namespace, r, string(debug.Stack()))
+				resourceType, namespace, r, string(rtdebug.Stack()))
 		}
-		a.logDebug("Resource watcher stopped: type=%s, namespace=%s", resourceType, namespace)
+		debug.LogWatcher("Resource watcher stopped", map[string]interface{}{"type": resourceType, "namespace": namespace})
 		a.emitEvent("watcher-status", WatcherStatusEvent{
 			ResourceType: resourceType,
 			Namespace:    namespace,
@@ -100,7 +101,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 	}()
 
 	if a.k8sClient == nil {
-		a.logDebug("watchResourceLoop: k8s client not initialized")
+		debug.LogWatcher("watchResourceLoop: k8s client not initialized", nil)
 		return
 	}
 
@@ -160,11 +161,11 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 		watcher, err := a.k8sClient.WatchResource(ctx, resourceType, namespace, resourceVersion)
 		if err != nil {
 			consecutiveFailures++
-			a.logDebug("Failed to start resource watcher: type=%s, err=%v, failures=%d", resourceType, err, consecutiveFailures)
+			debug.LogWatcher("Failed to start resource watcher", map[string]interface{}{"type": resourceType, "error": err.Error(), "failures": consecutiveFailures})
 
 			// If we have a stale resourceVersion, clear it and retry fresh
 			if resourceVersion != "" && (strings.Contains(err.Error(), "too old") || strings.Contains(err.Error(), "expired")) {
-				a.logDebug("ResourceVersion too old, resetting: type=%s", resourceType)
+				debug.LogWatcher("ResourceVersion too old, resetting", map[string]interface{}{"type": resourceType})
 				clearResourceVersion()
 			}
 
@@ -216,7 +217,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 				return
 			case event, ok := <-watcher.ResultChan():
 				if !ok {
-					a.logDebug("Resource watcher channel closed: type=%s, will reconnect", resourceType)
+					debug.LogWatcher("Resource watcher channel closed, will reconnect", map[string]interface{}{"type": resourceType})
 					watcher.Stop()
 					watcherDone = true
 					// Add a small delay before reconnecting to avoid tight loops
@@ -230,10 +231,10 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 
 				// Handle ERROR events from the watch stream
 				if event.Type == "ERROR" {
-					a.logDebug("Resource watcher received ERROR event: type=%s", resourceType)
+					debug.LogWatcher("Resource watcher received ERROR event", map[string]interface{}{"type": resourceType})
 					// Check if it's a "too old" resourceVersion error
 					if status, ok := event.Object.(*metav1.Status); ok {
-						a.logDebug("Watch ERROR status: %s - %s", status.Reason, status.Message)
+						debug.LogWatcher("Watch ERROR status", map[string]interface{}{"reason": status.Reason, "message": status.Message})
 						if status.Reason == metav1.StatusReasonExpired || status.Reason == metav1.StatusReasonGone {
 							// Clear the stale resourceVersion
 							clearResourceVersion()
@@ -248,7 +249,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 				// Convert to unstructured map to extract resourceVersion
 				resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
 				if err != nil {
-					a.logDebug("Failed to convert resource to map: %v", err)
+					debug.LogWatcher("Failed to convert resource to map", map[string]interface{}{"error": err.Error()})
 					continue
 				}
 
@@ -300,9 +301,9 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 	defer func() {
 		if r := recover(); r != nil {
 			crashlog.LogError("PANIC in watchCRDLoop: gvr=%s/%s/%s, namespace=%s, panic=%v\nStack: %s",
-				group, version, resource, namespace, r, string(debug.Stack()))
+				group, version, resource, namespace, r, string(rtdebug.Stack()))
 		}
-		a.logDebug("CRD watcher stopped: gvr=%s/%s/%s, namespace=%s", group, version, resource, namespace)
+		debug.LogWatcher("CRD watcher stopped", map[string]interface{}{"group": group, "version": version, "resource": resource, "namespace": namespace})
 		a.emitEvent("watcher-status", WatcherStatusEvent{
 			ResourceType: crdResourceType,
 			Namespace:    namespace,
@@ -312,7 +313,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 	}()
 
 	if a.k8sClient == nil {
-		a.logDebug("watchCRDLoop: k8s client not initialized")
+		debug.LogWatcher("watchCRDLoop: k8s client not initialized", nil)
 		return
 	}
 
@@ -372,11 +373,11 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 		watcher, err := a.k8sClient.WatchCRD(ctx, group, version, resource, namespace, resourceVersion)
 		if err != nil {
 			consecutiveFailures++
-			a.logDebug("Failed to start CRD watcher: gvr=%s/%s/%s, err=%v, failures=%d", group, version, resource, err, consecutiveFailures)
+			debug.LogWatcher("Failed to start CRD watcher", map[string]interface{}{"group": group, "version": version, "resource": resource, "error": err.Error(), "failures": consecutiveFailures})
 
 			// If we have a stale resourceVersion, clear it and retry fresh
 			if resourceVersion != "" && (strings.Contains(err.Error(), "too old") || strings.Contains(err.Error(), "expired")) {
-				a.logDebug("CRD ResourceVersion too old, resetting: gvr=%s/%s/%s", group, version, resource)
+				debug.LogWatcher("CRD ResourceVersion too old, resetting", map[string]interface{}{"group": group, "version": version, "resource": resource})
 				clearResourceVersion()
 			}
 
@@ -428,7 +429,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 				return
 			case event, ok := <-watcher.ResultChan():
 				if !ok {
-					a.logDebug("CRD watcher channel closed: gvr=%s/%s/%s, will reconnect", group, version, resource)
+					debug.LogWatcher("CRD watcher channel closed, will reconnect", map[string]interface{}{"group": group, "version": version, "resource": resource})
 					watcher.Stop()
 					watcherDone = true
 					// Add a small delay before reconnecting to avoid tight loops
@@ -442,10 +443,10 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 
 				// Handle ERROR events from the watch stream
 				if event.Type == "ERROR" {
-					a.logDebug("CRD watcher received ERROR event: gvr=%s/%s/%s", group, version, resource)
+					debug.LogWatcher("CRD watcher received ERROR event", map[string]interface{}{"group": group, "version": version, "resource": resource})
 					// Check if it's a "too old" resourceVersion error
 					if status, ok := event.Object.(*metav1.Status); ok {
-						a.logDebug("CRD Watch ERROR status: %s - %s", status.Reason, status.Message)
+						debug.LogWatcher("CRD Watch ERROR status", map[string]interface{}{"reason": status.Reason, "message": status.Message})
 						if status.Reason == metav1.StatusReasonExpired || status.Reason == metav1.StatusReasonGone {
 							// Clear the stale resourceVersion
 							clearResourceVersion()
@@ -460,7 +461,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 				// Convert to unstructured map to extract resourceVersion
 				resourceMap, err := k8s.RuntimeObjectToMap(event.Object)
 				if err != nil {
-					a.logDebug("Failed to convert CRD to map: %v", err)
+					debug.LogWatcher("Failed to convert CRD to map", map[string]interface{}{"error": err.Error()})
 					continue
 				}
 
@@ -503,7 +504,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 }
 
 func (a *App) GetDeploymentYaml(namespace, name string) (string, error) {
-	a.logDebug("GetDeploymentYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogWatcher("GetDeploymentYaml called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -511,7 +512,7 @@ func (a *App) GetDeploymentYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateDeploymentYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateDeploymentYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogWatcher("UpdateDeploymentYaml called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -520,30 +521,30 @@ func (a *App) UpdateDeploymentYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteDeployment(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.logDebug("DeleteDeployment called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	debug.LogWatcher("DeleteDeployment called", map[string]interface{}{"context": contextName, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	err := a.k8sClient.DeleteDeployment(contextName, namespace, name)
 	if err != nil {
-		a.logDebug("DeleteDeployment error: %v", err)
+		debug.LogWatcher("DeleteDeployment error", map[string]interface{}{"error": err.Error()})
 	} else {
-		a.logDebug("DeleteDeployment success")
+		debug.LogWatcher("DeleteDeployment success", nil)
 	}
 	return err
 }
 
 func (a *App) RestartDeployment(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.logDebug("RestartDeployment called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	debug.LogWatcher("RestartDeployment called", map[string]interface{}{"context": contextName, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	err := a.k8sClient.RestartDeployment(contextName, namespace, name)
 	if err != nil {
-		a.logDebug("RestartDeployment error: %v", err)
+		debug.LogWatcher("RestartDeployment error", map[string]interface{}{"error": err.Error()})
 	} else {
-		a.logDebug("RestartDeployment success")
+		debug.LogWatcher("RestartDeployment success", nil)
 	}
 	return err
 }

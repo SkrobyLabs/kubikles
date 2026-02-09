@@ -32,7 +32,7 @@ export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 
             setLoading(true);
             setError(null);
             try {
-                Logger.info("Fetching Helm release resources", { namespace, name: releaseName });
+                Logger.info("Fetching Helm release resources", { namespace, name: releaseName }, 'helm');
 
                 // First get the resources managed by this release
                 const releaseResources = await GetHelmReleaseResources(namespace, releaseName);
@@ -65,7 +65,7 @@ export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 
 
                 setEvents(releaseEvents);
             } catch (err: any) {
-                Logger.error("Failed to fetch release events", err);
+                Logger.error("Failed to fetch release events", err, 'helm');
                 setError(err.message || String(err));
             } finally {
                 setLoading(false);

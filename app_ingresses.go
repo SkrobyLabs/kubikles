@@ -5,6 +5,7 @@ import (
 
 	networkingv1 "k8s.io/api/networking/v1"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -30,7 +31,7 @@ func (a *App) ListIngresses(requestId, namespace string) ([]networkingv1.Ingress
 }
 
 func (a *App) GetIngressYaml(namespace, name string) (string, error) {
-	a.logDebug("GetIngressYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetIngressYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -38,7 +39,7 @@ func (a *App) GetIngressYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateIngressYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateIngressYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateIngressYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -47,7 +48,7 @@ func (a *App) UpdateIngressYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteIngress(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteIngress called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteIngress called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -57,7 +58,7 @@ func (a *App) DeleteIngress(namespace, name string) error {
 // IngressClass operations (cluster-scoped)
 func (a *App) ListIngressClasses(requestId string) ([]networkingv1.IngressClass, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("ListIngressClasses called: context=%s", currentContext)
+	debug.LogK8s("ListIngressClasses called", map[string]interface{}{"context": currentContext})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -75,7 +76,7 @@ func (a *App) ListIngressClasses(requestId string) ([]networkingv1.IngressClass,
 }
 
 func (a *App) GetIngressClassYaml(name string) (string, error) {
-	a.logDebug("GetIngressClassYaml called: name=%s", name)
+	debug.LogK8s("GetIngressClassYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -83,7 +84,7 @@ func (a *App) GetIngressClassYaml(name string) (string, error) {
 }
 
 func (a *App) UpdateIngressClassYaml(name, yamlContent string) error {
-	a.logDebug("UpdateIngressClassYaml called: name=%s", name)
+	debug.LogK8s("UpdateIngressClassYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -92,7 +93,7 @@ func (a *App) UpdateIngressClassYaml(name, yamlContent string) error {
 
 func (a *App) DeleteIngressClass(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteIngressClass called: context=%s, name=%s", currentContext, name)
+	debug.LogK8s("DeleteIngressClass called", map[string]interface{}{"context": currentContext, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

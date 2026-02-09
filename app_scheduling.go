@@ -6,6 +6,7 @@ import (
 	coordinationv1 "k8s.io/api/coordination/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -31,7 +32,7 @@ func (a *App) ListPriorityClasses(requestId string) ([]schedulingv1.PriorityClas
 }
 
 func (a *App) GetPriorityClassYaml(name string) (string, error) {
-	a.logDebug("GetPriorityClassYaml called: name=%s", name)
+	debug.LogK8s("GetPriorityClassYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -39,7 +40,7 @@ func (a *App) GetPriorityClassYaml(name string) (string, error) {
 }
 
 func (a *App) UpdatePriorityClassYaml(name, yamlContent string) error {
-	a.logDebug("UpdatePriorityClassYaml called: name=%s", name)
+	debug.LogK8s("UpdatePriorityClassYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -48,7 +49,7 @@ func (a *App) UpdatePriorityClassYaml(name, yamlContent string) error {
 
 func (a *App) DeletePriorityClass(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeletePriorityClass called: context=%s, name=%s", currentContext, name)
+	debug.LogK8s("DeletePriorityClass called", map[string]interface{}{"context": currentContext, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -76,7 +77,7 @@ func (a *App) ListLeases(requestId, namespace string) ([]coordinationv1.Lease, e
 
 func (a *App) GetLeaseYaml(namespace, name string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetLeaseYaml called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("GetLeaseYaml called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -85,7 +86,7 @@ func (a *App) GetLeaseYaml(namespace, name string) (string, error) {
 
 func (a *App) UpdateLeaseYaml(namespace, name, yamlContent string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("UpdateLeaseYaml called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("UpdateLeaseYaml called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -94,7 +95,7 @@ func (a *App) UpdateLeaseYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteLease(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteLease called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteLease called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

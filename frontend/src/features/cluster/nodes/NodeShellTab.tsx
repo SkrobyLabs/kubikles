@@ -34,7 +34,7 @@ const waitForPodRunning = async (namespace: any, podName: any, timeoutMs = 60000
                 }
             }
         } catch (err: any) {
-            Logger.warn("Error checking pod status", err);
+            Logger.warn("Error checking pod status", err, 'terminal');
         }
 
         await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
@@ -59,20 +59,20 @@ const NodeShellTab = ({ nodeName, context }: any) => {
         setState('loading');
 
         try {
-            Logger.info("Creating debug pod for node shell", { node: nodeName, image: imageToUse });
+            Logger.info("Creating debug pod for node shell", { node: nodeName, image: imageToUse }, 'terminal');
             const podInfo = await CreateNodeDebugPod(nodeName, imageToUse);
             debugPodInfoRef.current = podInfo;
             setDebugPodInfo(podInfo);
-            Logger.info("Debug pod created", { podName: podInfo.podName, namespace: podInfo.namespace });
+            Logger.info("Debug pod created", { podName: podInfo.podName, namespace: podInfo.namespace }, 'terminal');
 
-            Logger.info("Waiting for debug pod to be running...");
+            Logger.info("Waiting for debug pod to be running...", undefined, 'terminal');
             await waitForPodRunning(podInfo.namespace, podInfo.podName);
-            Logger.info("Debug pod is running");
+            Logger.info("Debug pod is running", undefined, 'terminal');
 
             setState('connected');
-            Logger.info("Shell opened successfully", { node: nodeName });
+            Logger.info("Shell opened successfully", { node: nodeName }, 'terminal');
         } catch (err: any) {
-            Logger.error("Failed to open shell on node", err);
+            Logger.error("Failed to open shell on node", err, 'terminal');
             setError(String(err));
             setState('error');
 
@@ -81,7 +81,7 @@ const NodeShellTab = ({ nodeName, context }: any) => {
                 try {
                     await DeletePod(debugPodInfoRef.current.namespace, debugPodInfoRef.current.podName);
                 } catch (cleanupErr) {
-                    Logger.warn("Failed to cleanup debug pod after error", cleanupErr);
+                    Logger.warn("Failed to cleanup debug pod after error", cleanupErr, 'terminal');
                 }
             }
         }
@@ -90,11 +90,11 @@ const NodeShellTab = ({ nodeName, context }: any) => {
     const handleTerminalClose = async () => {
         if (debugPodInfoRef.current) {
             try {
-                Logger.info("Cleaning up debug pod", { podName: debugPodInfoRef.current.podName });
+                Logger.info("Cleaning up debug pod", { podName: debugPodInfoRef.current.podName }, 'terminal');
                 await DeletePod(debugPodInfoRef.current.namespace, debugPodInfoRef.current.podName);
-                Logger.info("Debug pod deleted successfully");
+                Logger.info("Debug pod deleted successfully", undefined, 'terminal');
             } catch (err: any) {
-                Logger.warn("Failed to cleanup debug pod", err);
+                Logger.warn("Failed to cleanup debug pod", err, 'terminal');
             }
         }
     };

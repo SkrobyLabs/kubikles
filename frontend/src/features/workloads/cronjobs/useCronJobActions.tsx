@@ -34,7 +34,7 @@ export const useCronJobActions = (): any => {
     });
 
     const handleViewLogs = async (cronJob: K8sCronJob): Promise<void> => {
-        Logger.info("View logs for CronJob", { namespace: cronJob.metadata.namespace, name: cronJob.metadata.name });
+        Logger.info("View logs for CronJob", { namespace: cronJob.metadata.namespace, name: cronJob.metadata.name }, 'k8s');
         const namespace = cronJob.metadata.namespace;
 
         try {
@@ -98,7 +98,7 @@ export const useCronJobActions = (): any => {
                 resourceMeta: { kind: 'CronJob', name: cronJob.metadata.name, namespace },
             });
         } catch (err: any) {
-            Logger.error("Failed to get logs for CronJob", err);
+            Logger.error("Failed to get logs for CronJob", err, 'k8s');
             addNotification({ type: 'error', title: 'Failed to get logs for cronjob', message: String(err.message || err) });
         }
     };
@@ -107,12 +107,12 @@ export const useCronJobActions = (): any => {
         try {
             const name = cronJob.metadata.name;
             const namespace = cronJob.metadata.namespace;
-            Logger.info("Run now requested for CronJob", { namespace, name });
+            Logger.info("Run now requested for CronJob", { namespace, name }, 'k8s');
             await TriggerCronJob(namespace, name);
-            Logger.info("TriggerCronJob returned successfully", { namespace, name });
+            Logger.info("TriggerCronJob returned successfully", { namespace, name }, 'k8s');
             triggerRefresh();
         } catch (err: any) {
-            Logger.error("Failed to trigger CronJob", err);
+            Logger.error("Failed to trigger CronJob", err, 'k8s');
             addNotification({ type: 'error', title: 'Failed to trigger cronjob', message: String(err.message || err) });
         }
     };
@@ -124,13 +124,13 @@ export const useCronJobActions = (): any => {
             const name = cronJob.metadata.name;
             const namespace = cronJob.metadata.namespace;
 
-            Logger.info(`${action} requested for CronJob`, { namespace, name });
+            Logger.info(`${action} requested for CronJob`, { namespace, name }, 'k8s');
             await SuspendCronJob(namespace, name, !isSuspended);
-            Logger.info(`CronJob ${action.toLowerCase()}d successfully`, { namespace, name });
+            Logger.info(`CronJob ${action.toLowerCase()}d successfully`, { namespace, name }, 'k8s');
             triggerRefresh();
         } catch (err: any) {
             const action = cronJob.spec?.suspend ? "resume" : "suspend";
-            Logger.error(`Failed to ${action} CronJob`, err);
+            Logger.error(`Failed to ${action} CronJob`, err, 'k8s');
             addNotification({ type: 'error', title: `Failed to ${action} cronjob`, message: String(err.message || err) });
         }
     };
@@ -138,7 +138,7 @@ export const useCronJobActions = (): any => {
     const handleDelete = (cronJob: K8sCronJob): void => {
         const name = cronJob.metadata.name;
         const namespace = cronJob.metadata.namespace;
-        Logger.info("Delete CronJob requested", { namespace, name });
+        Logger.info("Delete CronJob requested", { namespace, name }, 'k8s');
 
         openModal({
             title: `Delete CronJob ${name}?`,
@@ -148,11 +148,11 @@ export const useCronJobActions = (): any => {
             onConfirm: async () => {
                 try {
                     await DeleteCronJob(namespace, name);
-                    Logger.info("CronJob deleted successfully", { namespace, name });
+                    Logger.info("CronJob deleted successfully", { namespace, name }, 'k8s');
                     closeModal();
                     triggerRefresh();
                 } catch (err: any) {
-                    Logger.error("Failed to delete CronJob", err);
+                    Logger.error("Failed to delete CronJob", err, 'k8s');
                     addNotification({ type: 'error', title: 'Failed to delete cronjob', message: String(err.message || err) });
                 }
             }

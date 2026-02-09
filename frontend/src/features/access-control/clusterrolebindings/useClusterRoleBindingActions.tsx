@@ -21,7 +21,7 @@ export const useClusterRoleBindingActions = (): any => {
     const { addNotification } = useNotification();
 
     const handleEditYaml = (clusterRoleBinding: K8sClusterRoleBinding): void => {
-        Logger.info("Opening ClusterRoleBinding editor", { name: clusterRoleBinding.metadata.name });
+        Logger.info("Opening ClusterRoleBinding editor", { name: clusterRoleBinding.metadata.name }, 'k8s');
         const tabId = `clusterrolebinding-${clusterRoleBinding.metadata.uid}`;
         openTab({
             id: tabId,
@@ -40,7 +40,7 @@ export const useClusterRoleBindingActions = (): any => {
 
     const handleDelete = (clusterRoleBinding: K8sClusterRoleBinding): void => {
         const name = clusterRoleBinding.metadata.name;
-        Logger.info("Delete ClusterRoleBinding requested", { name });
+        Logger.info("Delete ClusterRoleBinding requested", { name }, 'k8s');
 
         openModal({
             title: `Delete ClusterRoleBinding ${name}?`,
@@ -50,10 +50,10 @@ export const useClusterRoleBindingActions = (): any => {
             onConfirm: async (): Promise<void> => {
                 try {
                     await DeleteClusterRoleBinding(name);
-                    Logger.info("ClusterRoleBinding deleted successfully", { name });
+                    Logger.info("ClusterRoleBinding deleted successfully", { name }, 'k8s');
                     closeModal();
                 } catch (err: any) {
-                    Logger.error("Failed to delete ClusterRoleBinding", err);
+                    Logger.error("Failed to delete ClusterRoleBinding", err, 'k8s');
                     addNotification({ type: 'error', title: 'Failed to delete cluster role binding', message: String(err) });
                 }
             }

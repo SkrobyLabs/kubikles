@@ -22,7 +22,7 @@ export const useConfigMapActions = (): any => {
     const { addNotification } = useNotification();
 
     const handleEditYaml = (configMap: K8sConfigMap): void => {
-        Logger.info("Opening configmap editor", { namespace: configMap.metadata.namespace, configMap: configMap.metadata.name });
+        Logger.info("Opening configmap editor", { namespace: configMap.metadata.namespace, configMap: configMap.metadata.name }, 'config');
         const tabId = `configmap-${configMap.metadata.uid}`;
         openTab({
             id: tabId,
@@ -42,7 +42,7 @@ export const useConfigMapActions = (): any => {
     };
 
     const handleEditKeyValue = (configMap: K8sConfigMap): void => {
-        Logger.info("Opening configmap editor (key-value)", { namespace: configMap.metadata.namespace, configMap: configMap.metadata.name });
+        Logger.info("Opening configmap editor (key-value)", { namespace: configMap.metadata.namespace, configMap: configMap.metadata.name }, 'config');
         const tabId = `configmap-${configMap.metadata.uid}`;
         openTab({
             id: tabId,
@@ -63,7 +63,7 @@ export const useConfigMapActions = (): any => {
     };
 
     const handleShowDependencies = (configMap: K8sConfigMap): void => {
-        Logger.info("Opening dependency graph", { namespace: configMap.metadata.namespace, configMap: configMap.metadata.name });
+        Logger.info("Opening dependency graph", { namespace: configMap.metadata.namespace, configMap: configMap.metadata.name }, 'config');
         const tabId = `deps-configmap-${configMap.metadata.uid}`;
         openTab({
             id: tabId,
@@ -84,7 +84,7 @@ export const useConfigMapActions = (): any => {
     const handleDelete = (configMap: K8sConfigMap): void => {
         const name = configMap.metadata.name;
         const namespace = configMap.metadata.namespace;
-        Logger.info("Delete ConfigMap requested", { namespace, name });
+        Logger.info("Delete ConfigMap requested", { namespace, name }, 'config');
 
         openModal({
             title: `Delete ConfigMap ${name}?`,
@@ -94,10 +94,10 @@ export const useConfigMapActions = (): any => {
             onConfirm: async (): Promise<void> => {
                 try {
                     await (DeleteConfigMap as (namespace: string, name: string) => Promise<void>)(namespace!, name);
-                    Logger.info("ConfigMap deleted successfully", { namespace, name });
+                    Logger.info("ConfigMap deleted successfully", { namespace, name }, 'config');
                     closeModal();
                 } catch (err: unknown) {
-                    Logger.error("Failed to delete configmap", err);
+                    Logger.error("Failed to delete configmap", err, 'config');
                     addNotification({ type: 'error', title: 'Failed to delete configmap', message: String(err) });
                 }
             }

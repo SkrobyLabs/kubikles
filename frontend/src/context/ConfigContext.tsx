@@ -60,6 +60,7 @@ interface PerformanceConfig {
 }
 
 interface DebugConfig {
+    showDebugIcon: boolean;
     showLogSourceMarkers: boolean;
 }
 
@@ -169,6 +170,7 @@ const defaultConfig: AppConfig = {
         // Show debug download button in log viewer. Downloads logs with source
         // markers indicating how each line was fetched: [INITIAL], [STREAM],
         // [BEFORE], [AFTER]. Useful for debugging log viewer pagination issues.
+        showDebugIcon: false,
         showLogSourceMarkers: false
     }
 };

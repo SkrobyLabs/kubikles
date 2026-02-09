@@ -7,6 +7,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -72,7 +73,7 @@ func (a *App) ListSecretsMetadata(requestId, namespace string) ([]k8s.SecretList
 
 // ConfigMap YAML operations
 func (a *App) GetConfigMapYaml(namespace, name string) (string, error) {
-	a.logDebug("GetConfigMapYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogConfig("GetConfigMapYaml called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -80,7 +81,7 @@ func (a *App) GetConfigMapYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateConfigMapYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateConfigMapYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogConfig("UpdateConfigMapYaml called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -89,7 +90,7 @@ func (a *App) UpdateConfigMapYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteConfigMap(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.logDebug("DeleteConfigMap called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	debug.LogConfig("DeleteConfigMap called", map[string]interface{}{"context": contextName, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -97,7 +98,7 @@ func (a *App) DeleteConfigMap(namespace, name string) error {
 }
 
 func (a *App) GetConfigMapData(namespace, name string) (map[string]string, error) {
-	a.logDebug("GetConfigMapData called: ns=%s, name=%s", namespace, name)
+	debug.LogConfig("GetConfigMapData called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -105,7 +106,7 @@ func (a *App) GetConfigMapData(namespace, name string) (map[string]string, error
 }
 
 func (a *App) UpdateConfigMapData(namespace, name string, data map[string]string) error {
-	a.logDebug("UpdateConfigMapData called: ns=%s, name=%s", namespace, name)
+	debug.LogConfig("UpdateConfigMapData called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -114,7 +115,7 @@ func (a *App) UpdateConfigMapData(namespace, name string, data map[string]string
 
 // Secret YAML operations
 func (a *App) GetSecretYaml(namespace, name string) (string, error) {
-	a.logDebug("GetSecretYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogConfig("GetSecretYaml called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -122,7 +123,7 @@ func (a *App) GetSecretYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateSecretYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateSecretYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogConfig("UpdateSecretYaml called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -131,7 +132,7 @@ func (a *App) UpdateSecretYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteSecret(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.logDebug("DeleteSecret called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	debug.LogConfig("DeleteSecret called", map[string]interface{}{"context": contextName, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -139,7 +140,7 @@ func (a *App) DeleteSecret(namespace, name string) error {
 }
 
 func (a *App) GetSecretData(namespace, name string) (map[string]string, error) {
-	a.logDebug("GetSecretData called: ns=%s, name=%s", namespace, name)
+	debug.LogConfig("GetSecretData called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -147,7 +148,7 @@ func (a *App) GetSecretData(namespace, name string) (map[string]string, error) {
 }
 
 func (a *App) UpdateSecretData(namespace, name string, data map[string]string) error {
-	a.logDebug("UpdateSecretData called: ns=%s, name=%s", namespace, name)
+	debug.LogConfig("UpdateSecretData called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

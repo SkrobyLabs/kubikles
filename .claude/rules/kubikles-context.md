@@ -82,6 +82,11 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 | RBAC operations | `pkg/k8s/rbac.go` |
 | File operations | `pkg/k8s/fileops.go` |
 
+### Debug Package (`pkg/debug/`)
+| Purpose | File |
+|---------|------|
+| Structured debug logging with categories | `pkg/debug/logger.go` |
+
 ### Issue Detector Package (`pkg/issuedetector/`)
 | Purpose | File |
 |---------|------|

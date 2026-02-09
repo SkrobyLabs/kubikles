@@ -102,6 +102,7 @@ Read the AI reference documentation for full project context:
 | AI integration | `pkg/ai/` |
 | Claude CLI | `pkg/ai/claude_cli.go` |
 | AI manager | `pkg/ai/manager.go` |
+| Debug logging | `pkg/debug/logger.go` |
 | Issue detector types | `pkg/issuedetector/types.go` |
 | Issue detector rule interface | `pkg/issuedetector/rule.go` |
 | Issue detector resource cache | `pkg/issuedetector/resourcecache.go` |

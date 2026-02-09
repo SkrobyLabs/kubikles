@@ -318,6 +318,7 @@ export function RestartDeployment(...args) { return AppProxy.RestartDeployment(.
 export function RestartStatefulSet(...args) { return AppProxy.RestartStatefulSet(...args); }
 export function RollbackHelmRelease(...args) { return AppProxy.RollbackHelmRelease(...args); }
 export function RunIssueScan(...args) { return AppProxy.RunIssueScan(...args); }
+export function SaveDebugLogs(...args) { return AppProxy.SaveDebugLogs(...args); }
 export function SaveLogFile(...args) { return AppProxy.SaveLogFile(...args); }
 export function SaveLogsBundle(...args) { return AppProxy.SaveLogsBundle(...args); }
 export function SavePodLogs(...args) { return AppProxy.SavePodLogs(...args); }
@@ -331,6 +332,7 @@ export function SearchHelmChart(...args) { return AppProxy.SearchHelmChart(...ar
 export function SendAIMessage(...args) { return AppProxy.SendAIMessage(...args); }
 export function SendTerminalInput(...args) { return AppProxy.SendTerminalInput(...args); }
 export function SetClientPoolSize(...args) { return AppProxy.SetClientPoolSize(...args); }
+export function SetDebugEnabled(...args) { return AppProxy.SetDebugEnabled(...args); }
 export function SetEventCoalescerFrameInterval(...args) { return AppProxy.SetEventCoalescerFrameInterval(...args); }
 export function SetEmitter(...args) { return AppProxy.SetEmitter(...args); }
 export function SetForceHTTP1(...args) { return AppProxy.SetForceHTTP1(...args); }

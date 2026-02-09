@@ -6,6 +6,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -31,7 +32,7 @@ func (a *App) ListServiceAccounts(requestId, namespace string) ([]v1.ServiceAcco
 }
 
 func (a *App) GetServiceAccountYaml(namespace, name string) (string, error) {
-	a.logDebug("GetServiceAccountYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetServiceAccountYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -39,7 +40,7 @@ func (a *App) GetServiceAccountYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateServiceAccountYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateServiceAccountYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateServiceAccountYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -48,7 +49,7 @@ func (a *App) UpdateServiceAccountYaml(namespace, name, yamlContent string) erro
 
 func (a *App) DeleteServiceAccount(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteServiceAccount called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteServiceAccount called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -74,7 +75,7 @@ func (a *App) ListRoles(requestId, namespace string) ([]rbacv1.Role, error) {
 }
 
 func (a *App) GetRoleYaml(namespace, name string) (string, error) {
-	a.logDebug("GetRoleYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetRoleYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -82,7 +83,7 @@ func (a *App) GetRoleYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateRoleYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateRoleYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateRoleYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -91,7 +92,7 @@ func (a *App) UpdateRoleYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteRole(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteRole called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteRole called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -117,7 +118,7 @@ func (a *App) ListClusterRoles(requestId string) ([]rbacv1.ClusterRole, error) {
 }
 
 func (a *App) GetClusterRoleYaml(name string) (string, error) {
-	a.logDebug("GetClusterRoleYaml called: name=%s", name)
+	debug.LogK8s("GetClusterRoleYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -125,7 +126,7 @@ func (a *App) GetClusterRoleYaml(name string) (string, error) {
 }
 
 func (a *App) UpdateClusterRoleYaml(name, yamlContent string) error {
-	a.logDebug("UpdateClusterRoleYaml called: name=%s", name)
+	debug.LogK8s("UpdateClusterRoleYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -134,7 +135,7 @@ func (a *App) UpdateClusterRoleYaml(name, yamlContent string) error {
 
 func (a *App) DeleteClusterRole(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteClusterRole called: context=%s, name=%s", currentContext, name)
+	debug.LogK8s("DeleteClusterRole called", map[string]interface{}{"context": currentContext, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -160,7 +161,7 @@ func (a *App) ListRoleBindings(requestId, namespace string) ([]rbacv1.RoleBindin
 }
 
 func (a *App) GetRoleBindingYaml(namespace, name string) (string, error) {
-	a.logDebug("GetRoleBindingYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetRoleBindingYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -168,7 +169,7 @@ func (a *App) GetRoleBindingYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateRoleBindingYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateRoleBindingYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateRoleBindingYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -177,7 +178,7 @@ func (a *App) UpdateRoleBindingYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteRoleBinding(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteRoleBinding called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteRoleBinding called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -203,7 +204,7 @@ func (a *App) ListClusterRoleBindings(requestId string) ([]rbacv1.ClusterRoleBin
 }
 
 func (a *App) GetClusterRoleBindingYaml(name string) (string, error) {
-	a.logDebug("GetClusterRoleBindingYaml called: name=%s", name)
+	debug.LogK8s("GetClusterRoleBindingYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -211,7 +212,7 @@ func (a *App) GetClusterRoleBindingYaml(name string) (string, error) {
 }
 
 func (a *App) UpdateClusterRoleBindingYaml(name, yamlContent string) error {
-	a.logDebug("UpdateClusterRoleBindingYaml called: name=%s", name)
+	debug.LogK8s("UpdateClusterRoleBindingYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -220,7 +221,7 @@ func (a *App) UpdateClusterRoleBindingYaml(name, yamlContent string) error {
 
 func (a *App) DeleteClusterRoleBinding(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteClusterRoleBinding called: context=%s, name=%s", currentContext, name)
+	debug.LogK8s("DeleteClusterRoleBinding called", map[string]interface{}{"context": currentContext, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

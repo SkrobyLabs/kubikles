@@ -9,6 +9,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -337,7 +338,7 @@ func (a *App) ListResourceNamesForContext(contextName, resourceType, namespace s
 }
 
 func (a *App) GetNamespaceResourceCounts(namespace string) (*k8s.NamespaceResourceCounts, error) {
-	a.logDebug("GetNamespaceResourceCounts called: namespace=%s", namespace)
+	debug.LogK8s("GetNamespaceResourceCounts called", map[string]interface{}{"namespace": namespace})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -346,7 +347,7 @@ func (a *App) GetNamespaceResourceCounts(namespace string) (*k8s.NamespaceResour
 
 func (a *App) DeleteNamespace(name string) error {
 	contextName := a.GetCurrentContext()
-	a.logDebug("DeleteNamespace called: context=%s, name=%s", contextName, name)
+	debug.LogK8s("DeleteNamespace called", map[string]interface{}{"context": contextName, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -354,7 +355,7 @@ func (a *App) DeleteNamespace(name string) error {
 }
 
 func (a *App) GetNamespaceYAML(name string) (string, error) {
-	a.logDebug("GetNamespaceYAML called: name=%s", name)
+	debug.LogK8s("GetNamespaceYAML called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -362,7 +363,7 @@ func (a *App) GetNamespaceYAML(name string) (string, error) {
 }
 
 func (a *App) UpdateNamespaceYAML(name string, yamlContent string) error {
-	a.logDebug("UpdateNamespaceYAML called: name=%s", name)
+	debug.LogK8s("UpdateNamespaceYAML called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

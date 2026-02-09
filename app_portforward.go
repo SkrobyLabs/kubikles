@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+
+	"kubikles/pkg/debug"
 )
 
 // =============================================================================
@@ -10,7 +12,7 @@ import (
 
 // GetPortForwardConfigs returns all port forward configurations, optionally filtered by context
 func (a *App) GetPortForwardConfigs(contextFilter string) []PortForwardConfig {
-	a.logDebug("GetPortForwardConfigs called: contextFilter=%s", contextFilter)
+	debug.LogPortforward("GetPortForwardConfigs called", map[string]interface{}{"contextFilter": contextFilter})
 	if a.portForwardManager == nil {
 		return []PortForwardConfig{}
 	}
@@ -19,7 +21,7 @@ func (a *App) GetPortForwardConfigs(contextFilter string) []PortForwardConfig {
 
 // GetActivePortForwards returns all active port forwards
 func (a *App) GetActivePortForwards() []ActivePortForward {
-	a.logDebug("GetActivePortForwards called")
+	debug.LogPortforward("GetActivePortForwards called", nil)
 	if a.portForwardManager == nil {
 		return []ActivePortForward{}
 	}
@@ -28,8 +30,7 @@ func (a *App) GetActivePortForwards() []ActivePortForward {
 
 // AddPortForwardConfig adds a new port forward configuration
 func (a *App) AddPortForwardConfig(cfg PortForwardConfig) (*PortForwardConfig, error) {
-	a.logDebug("AddPortForwardConfig called: context=%s, ns=%s, type=%s, name=%s, ports=%d:%d",
-		cfg.Context, cfg.Namespace, cfg.ResourceType, cfg.ResourceName, cfg.LocalPort, cfg.RemotePort)
+	debug.LogPortforward("AddPortForwardConfig called", map[string]interface{}{"context": cfg.Context, "namespace": cfg.Namespace, "type": cfg.ResourceType, "name": cfg.ResourceName, "localPort": cfg.LocalPort, "remotePort": cfg.RemotePort})
 	if a.portForwardManager == nil {
 		return nil, fmt.Errorf("port forward manager not initialized")
 	}
@@ -38,7 +39,7 @@ func (a *App) AddPortForwardConfig(cfg PortForwardConfig) (*PortForwardConfig, e
 
 // UpdatePortForwardConfig updates an existing port forward configuration
 func (a *App) UpdatePortForwardConfig(cfg PortForwardConfig) error {
-	a.logDebug("UpdatePortForwardConfig called: id=%s", cfg.ID)
+	debug.LogPortforward("UpdatePortForwardConfig called", map[string]interface{}{"id": cfg.ID})
 	if a.portForwardManager == nil {
 		return fmt.Errorf("port forward manager not initialized")
 	}
@@ -47,7 +48,7 @@ func (a *App) UpdatePortForwardConfig(cfg PortForwardConfig) error {
 
 // DeletePortForwardConfig deletes a port forward configuration
 func (a *App) DeletePortForwardConfig(configID string) error {
-	a.logDebug("DeletePortForwardConfig called: id=%s", configID)
+	debug.LogPortforward("DeletePortForwardConfig called", map[string]interface{}{"id": configID})
 	if a.portForwardManager == nil {
 		return fmt.Errorf("port forward manager not initialized")
 	}
@@ -56,7 +57,7 @@ func (a *App) DeletePortForwardConfig(configID string) error {
 
 // StartPortForward starts a port forward
 func (a *App) StartPortForward(configID string) error {
-	a.logDebug("StartPortForward called: id=%s", configID)
+	debug.LogPortforward("StartPortForward called", map[string]interface{}{"id": configID})
 	if a.portForwardManager == nil {
 		return fmt.Errorf("port forward manager not initialized")
 	}
@@ -65,7 +66,7 @@ func (a *App) StartPortForward(configID string) error {
 
 // StopPortForward stops a port forward
 func (a *App) StopPortForward(configID string) error {
-	a.logDebug("StopPortForward called: id=%s", configID)
+	debug.LogPortforward("StopPortForward called", map[string]interface{}{"id": configID})
 	if a.portForwardManager == nil {
 		return fmt.Errorf("port forward manager not initialized")
 	}
@@ -74,7 +75,7 @@ func (a *App) StopPortForward(configID string) error {
 
 // StopAllPortForwards stops all active port forwards
 func (a *App) StopAllPortForwards() {
-	a.logDebug("StopAllPortForwards called")
+	debug.LogPortforward("StopAllPortForwards called", nil)
 	if a.portForwardManager == nil {
 		return
 	}
@@ -83,7 +84,7 @@ func (a *App) StopAllPortForwards() {
 
 // GetAvailablePort finds an available local port
 func (a *App) GetAvailablePort(preferred int) int {
-	a.logDebug("GetAvailablePort called: preferred=%d", preferred)
+	debug.LogPortforward("GetAvailablePort called", map[string]interface{}{"preferred": preferred})
 	if a.portForwardManager == nil {
 		return 0
 	}
@@ -92,7 +93,7 @@ func (a *App) GetAvailablePort(preferred int) int {
 
 // GetRandomAvailablePort gets a random available port avoiding well-known and configured ports
 func (a *App) GetRandomAvailablePort() int {
-	a.logDebug("GetRandomAvailablePort called")
+	debug.LogPortforward("GetRandomAvailablePort called", nil)
 	if a.portForwardManager == nil {
 		return 0
 	}
@@ -101,7 +102,7 @@ func (a *App) GetRandomAvailablePort() int {
 
 // StartFavoritePortForwards starts all favorite port forwards for a context
 func (a *App) StartFavoritePortForwards(contextName string) {
-	a.logDebug("StartFavoritePortForwards called: context=%s", contextName)
+	debug.LogPortforward("StartFavoritePortForwards called", map[string]interface{}{"context": contextName})
 	if a.portForwardManager == nil {
 		return
 	}
@@ -112,7 +113,7 @@ func (a *App) StartFavoritePortForwards(contextName string) {
 // mode can be: "all", "favorites", "none"
 // Only starts forwards that were running when the app was closed
 func (a *App) StartPortForwardsWithMode(contextName, mode string) {
-	a.logDebug("StartPortForwardsWithMode called: context=%s, mode=%s", contextName, mode)
+	debug.LogPortforward("StartPortForwardsWithMode called", map[string]interface{}{"context": contextName, "mode": mode})
 	if a.portForwardManager == nil {
 		return
 	}

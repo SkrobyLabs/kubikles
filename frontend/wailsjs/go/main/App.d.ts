@@ -484,6 +484,8 @@ export function RollbackHelmRelease(arg1:string,arg2:string,arg3:number):Promise
 
 export function RunIssueScan(arg1:Array<string>,arg2:Array<string>,arg3:Array<string>,arg4:boolean):Promise<issuedetector.ScanResult>;
 
+export function SaveDebugLogs(arg1:string,arg2:string):Promise<void>;
+
 export function SaveLogFile(arg1:string):Promise<void>;
 
 export function SaveLogsBundle(arg1:Array<main.PodLogEntry>,arg2:string):Promise<void>;
@@ -509,6 +511,8 @@ export function SendAIMessage(arg1:string,arg2:string,arg3:string,arg4:string,ar
 export function SendTerminalInput(arg1:string,arg2:string):Promise<void>;
 
 export function SetClientPoolSize(arg1:number):Promise<void>;
+
+export function SetDebugEnabled(arg1:boolean):Promise<void>;
 
 export function SetEmitter(arg1:events.Emitter):Promise<void>;
 

@@ -17,7 +17,7 @@ export const useIngressClassActions = (): any => {
     const { currentContext, triggerRefresh } = useK8s();
 
     const handleEditYaml = (ingressClass: K8sIngressClass): void => {
-        Logger.info("Opening YAML editor for IngressClass", { name: ingressClass.metadata.name });
+        Logger.info("Opening YAML editor for IngressClass", { name: ingressClass.metadata.name }, 'k8s');
         const tabId = `yaml-ingressclass-${ingressClass.metadata.uid}`;
         openTab({
             id: tabId,
@@ -38,7 +38,7 @@ export const useIngressClassActions = (): any => {
     };
 
     const handleDelete = (ingressClass: K8sIngressClass): void => {
-        Logger.info("Delete requested for IngressClass", { name: ingressClass.metadata.name });
+        Logger.info("Delete requested for IngressClass", { name: ingressClass.metadata.name }, 'k8s');
         openModal({
             title: 'Delete Ingress Class',
             content: `Are you sure you want to delete ingress class "${ingressClass.metadata.name}"?`,
@@ -47,10 +47,10 @@ export const useIngressClassActions = (): any => {
             onConfirm: async (): Promise<void> => {
                 try {
                     await DeleteIngressClass(ingressClass.metadata.name);
-                    Logger.info("IngressClass deleted successfully", { name: ingressClass.metadata.name });
+                    Logger.info("IngressClass deleted successfully", { name: ingressClass.metadata.name }, 'k8s');
                     triggerRefresh();
                 } catch (err: any) {
-                    Logger.error("Failed to delete ingress class", { error: err });
+                    Logger.error("Failed to delete ingress class", { error: err }, 'k8s');
                 }
             }
         });

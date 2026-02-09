@@ -5,6 +5,7 @@ import (
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -14,7 +15,7 @@ import (
 
 func (a *App) ListCRDs() ([]apiextensionsv1.CustomResourceDefinition, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("ListCRDs called: context=%s", currentContext)
+	debug.LogK8s("ListCRDs called", map[string]interface{}{"context": currentContext})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -23,7 +24,7 @@ func (a *App) ListCRDs() ([]apiextensionsv1.CustomResourceDefinition, error) {
 
 func (a *App) GetCRDYaml(name string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetCRDYaml called: name=%s", name)
+	debug.LogK8s("GetCRDYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -32,7 +33,7 @@ func (a *App) GetCRDYaml(name string) (string, error) {
 
 func (a *App) UpdateCRDYaml(name, yamlContent string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("UpdateCRDYaml called: name=%s", name)
+	debug.LogK8s("UpdateCRDYaml called", map[string]interface{}{"name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -41,7 +42,7 @@ func (a *App) UpdateCRDYaml(name, yamlContent string) error {
 
 func (a *App) DeleteCRD(name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteCRD called: context=%s, name=%s", currentContext, name)
+	debug.LogK8s("DeleteCRD called", map[string]interface{}{"context": currentContext, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -51,7 +52,7 @@ func (a *App) DeleteCRD(name string) error {
 // GetCRDPrinterColumns returns the additional printer columns for a CRD
 func (a *App) GetCRDPrinterColumns(crdName string) ([]k8s.PrinterColumn, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetCRDPrinterColumns called: context=%s, crdName=%s", currentContext, crdName)
+	debug.LogK8s("GetCRDPrinterColumns called", map[string]interface{}{"context": currentContext, "crdName": crdName})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -61,7 +62,7 @@ func (a *App) GetCRDPrinterColumns(crdName string) ([]k8s.PrinterColumn, error) 
 // Custom Resource instance operations (dynamic)
 func (a *App) ListCustomResources(group, version, resource, namespace string) ([]map[string]interface{}, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("ListCustomResources called: context=%s, gvr=%s/%s/%s, ns=%s", currentContext, group, version, resource, namespace)
+	debug.LogK8s("ListCustomResources called", map[string]interface{}{"context": currentContext, "group": group, "version": version, "resource": resource, "namespace": namespace})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -70,7 +71,7 @@ func (a *App) ListCustomResources(group, version, resource, namespace string) ([
 
 func (a *App) GetCustomResourceYaml(group, version, resource, namespace, name string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetCustomResourceYaml called: gvr=%s/%s/%s, ns=%s, name=%s", group, version, resource, namespace, name)
+	debug.LogK8s("GetCustomResourceYaml called", map[string]interface{}{"group": group, "version": version, "resource": resource, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -79,7 +80,7 @@ func (a *App) GetCustomResourceYaml(group, version, resource, namespace, name st
 
 func (a *App) UpdateCustomResourceYaml(group, version, resource, namespace, name, yamlContent string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("UpdateCustomResourceYaml called: gvr=%s/%s/%s, ns=%s, name=%s", group, version, resource, namespace, name)
+	debug.LogK8s("UpdateCustomResourceYaml called", map[string]interface{}{"group": group, "version": version, "resource": resource, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -88,7 +89,7 @@ func (a *App) UpdateCustomResourceYaml(group, version, resource, namespace, name
 
 func (a *App) DeleteCustomResource(group, version, resource, namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteCustomResource called: context=%s, gvr=%s/%s/%s, ns=%s, name=%s", currentContext, group, version, resource, namespace, name)
+	debug.LogK8s("DeleteCustomResource called", map[string]interface{}{"context": currentContext, "group": group, "version": version, "resource": resource, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

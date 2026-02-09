@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"time"
+
+	"kubikles/pkg/debug"
 )
 
 // =============================================================================
@@ -33,7 +35,7 @@ func (a *App) SetK8sAPITimeout(ms int) {
 func (a *App) SetForceHTTP1(enabled bool) {
 	if a.k8sClient != nil {
 		a.k8sClient.SetForceHTTP1(enabled)
-		a.logDebug("Force HTTP/1.1: %v", enabled)
+		debug.LogConfig("Force HTTP/1.1", map[string]interface{}{"enabled": enabled})
 	}
 }
 
@@ -43,7 +45,7 @@ func (a *App) SetForceHTTP1(enabled bool) {
 func (a *App) SetClientPoolSize(size int) {
 	if a.k8sClient != nil {
 		a.k8sClient.SetClientPoolSize(size)
-		a.logDebug("Client pool size: %d", size)
+		debug.LogConfig("Client pool size", map[string]interface{}{"size": size})
 	}
 }
 
@@ -54,5 +56,5 @@ func (a *App) Greet(name string) string {
 
 // TestEmit emits a test debug log event
 func (a *App) TestEmit() {
-	a.logDebug("TestEmit called from frontend")
+	debug.LogConfig("TestEmit called from frontend", nil)
 }

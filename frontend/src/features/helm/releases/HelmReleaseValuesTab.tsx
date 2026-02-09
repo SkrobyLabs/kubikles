@@ -29,13 +29,13 @@ export default function HelmReleaseValuesTab({ release, isStale, refreshKey = 0 
             setLoading(true);
             setError(null);
             try {
-                Logger.info("Fetching Helm release values", { namespace: release.namespace, name: release.name, userOnly: showUserOnly });
+                Logger.info("Fetching Helm release values", { namespace: release.namespace, name: release.name, userOnly: showUserOnly }, 'helm');
                 const values = showUserOnly
                     ? await GetHelmReleaseValues(release.namespace, release.name)
                     : await GetHelmReleaseAllValues(release.namespace, release.name);
                 setRawValues(values || {});
             } catch (err: any) {
-                Logger.error("Failed to fetch Helm release values", err);
+                Logger.error("Failed to fetch Helm release values", err, 'helm');
                 setError(err.message || String(err));
             } finally {
                 setLoading(false);
@@ -61,7 +61,7 @@ export default function HelmReleaseValuesTab({ release, isStale, refreshKey = 0 
                 setContent(JSON.stringify(rawValues, null, 2));
             }
         } catch (err: any) {
-            Logger.error("Failed to format values", err);
+            Logger.error("Failed to format values", err, 'helm');
             setContent(JSON.stringify(rawValues, null, 2));
         }
     }, [rawValues, format]);

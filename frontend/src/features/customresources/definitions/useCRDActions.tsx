@@ -21,7 +21,7 @@ export const useCRDActions = (): any => {
     const { addNotification } = useNotification();
 
     const handleEditYaml = (crd: K8sCustomResourceDefinition): void => {
-        Logger.info("Opening CRD YAML editor", { name: crd.metadata.name });
+        Logger.info("Opening CRD YAML editor", { name: crd.metadata.name }, 'k8s');
         const tabId = `crd-${crd.metadata.uid}`;
         openTab({
             id: tabId,
@@ -40,7 +40,7 @@ export const useCRDActions = (): any => {
 
     const handleDelete = (crd: K8sCustomResourceDefinition): void => {
         const name = crd.metadata.name;
-        Logger.info("Delete CRD requested", { name });
+        Logger.info("Delete CRD requested", { name }, 'k8s');
 
         openModal({
             title: `Delete CRD ${name}?`,
@@ -50,10 +50,10 @@ export const useCRDActions = (): any => {
             onConfirm: async (): Promise<void> => {
                 try {
                     await DeleteCRD(name);
-                    Logger.info("CRD deleted successfully", { name });
+                    Logger.info("CRD deleted successfully", { name }, 'k8s');
                     closeModal();
                 } catch (err: any) {
-                    Logger.error("Failed to delete CRD", err);
+                    Logger.error("Failed to delete CRD", err, 'k8s');
                     addNotification({ type: 'error', title: 'Failed to delete CRD', message: String(err) });
                 }
             }

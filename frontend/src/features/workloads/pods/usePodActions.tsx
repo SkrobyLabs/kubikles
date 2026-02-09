@@ -49,7 +49,7 @@ export const usePodActions = (): any => {
         ownerName: string = '',
         podCreationTime: string = ''
     ): void => {
-        Logger.info("Opening logs", { namespace, pod: podName });
+        Logger.info("Opening logs", { namespace, pod: podName }, 'k8s');
         const isAllPods = podName === '__ALL_PODS__';
         const tabId = isAllPods ? `logs-all-${ownerName || namespace}` : `logs-pod-${podName}`;
         openTab({
@@ -103,7 +103,7 @@ export const usePodActions = (): any => {
     const handleShell = (pod: K8sPod): void => {
         const namespace = pod.metadata?.namespace;
         const podName = pod.metadata?.name;
-        Logger.info("Opening shell", { namespace, pod: podName });
+        Logger.info("Opening shell", { namespace, pod: podName }, 'k8s');
 
         const containers = getContainersWithStatus(pod);
 
@@ -124,13 +124,13 @@ export const usePodActions = (): any => {
             ),
             resourceMeta: { kind: 'Pod', name: podName, namespace },
         });
-        Logger.info("Shell opened successfully", { namespace, pod: podName });
+        Logger.info("Shell opened successfully", { namespace, pod: podName }, 'k8s');
     };
 
     const handleFiles = (pod: K8sPod): void => {
         const namespace = pod.metadata?.namespace;
         const podName = pod.metadata?.name;
-        Logger.info("Opening file browser", { namespace, pod: podName });
+        Logger.info("Opening file browser", { namespace, pod: podName }, 'k8s');
 
         const containers = getContainersWithStatus(pod);
 
@@ -155,7 +155,7 @@ export const usePodActions = (): any => {
     };
 
     const handleEditYaml = (pod: K8sPod): void => {
-        Logger.info("Opening YAML editor", { namespace: pod.metadata.namespace, pod: pod.metadata.name });
+        Logger.info("Opening YAML editor", { namespace: pod.metadata.namespace, pod: pod.metadata.name }, 'k8s');
         const tabId = `yaml-pod-${pod.metadata.uid}`;
         openTab({
             id: tabId,
@@ -176,7 +176,7 @@ export const usePodActions = (): any => {
     };
 
     const handleShowDependencies = (pod: K8sPod): void => {
-        Logger.info("Opening dependency graph", { namespace: pod.metadata.namespace, pod: pod.metadata.name });
+        Logger.info("Opening dependency graph", { namespace: pod.metadata.namespace, pod: pod.metadata.name }, 'k8s');
         const tabId = `deps-pod-${pod.metadata.uid}`;
         openTab({
             id: tabId,
@@ -196,7 +196,7 @@ export const usePodActions = (): any => {
     };
 
     const handleShowDetails = (pod: K8sPod): void => {
-        Logger.info("Opening pod details", { namespace: pod.metadata.namespace, pod: pod.metadata.name });
+        Logger.info("Opening pod details", { namespace: pod.metadata.namespace, pod: pod.metadata.name }, 'k8s');
         const tabId = `details-pod-${pod.metadata.uid}`;
         openTab({
             id: tabId,
@@ -214,7 +214,7 @@ export const usePodActions = (): any => {
 
     const handleDelete = (namespace: string, name: string, isTerminating: boolean = false): void => {
         const actionType = isTerminating ? 'Force Delete' : 'Delete';
-        Logger.info(`Action: ${actionType} Pod`, { namespace, name, context: currentContext });
+        Logger.info(`Action: ${actionType} Pod`, { namespace, name, context: currentContext }, 'k8s');
 
         openModal({
             title: `${actionType} Pod ${name}?`,
@@ -230,10 +230,10 @@ export const usePodActions = (): any => {
                     } else {
                         await DeletePod(namespace, name);
                     }
-                    Logger.info(`Pod ${actionType.toLowerCase()}d successfully`, { namespace, name });
+                    Logger.info(`Pod ${actionType.toLowerCase()}d successfully`, { namespace, name }, 'k8s');
                     closeModal();
                 } catch (err: any) {
-                    Logger.error(`Failed to ${actionType.toLowerCase()} pod`, err);
+                    Logger.error(`Failed to ${actionType.toLowerCase()} pod`, err, 'k8s');
                     addNotification({ type: 'error', title: `Failed to ${actionType.toLowerCase()} pod`, message: String(err) });
                 }
             }

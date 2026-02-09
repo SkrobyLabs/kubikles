@@ -30,7 +30,7 @@ export const useNamespaceActions = (): any => {
     // Custom delete handler for namespace-specific warning
     const handleDelete = (namespace: K8sNamespace): void => {
         const name = namespace.metadata.name;
-        Logger.info("Delete Namespace requested", { name });
+        Logger.info("Delete Namespace requested", { name }, 'k8s');
 
         const systemNamespaces = ['default', 'kube-system', 'kube-public', 'kube-node-lease'];
         const isSystemNamespace = systemNamespaces.includes(name);
@@ -45,10 +45,10 @@ export const useNamespaceActions = (): any => {
             onConfirm: async (): Promise<void> => {
                 try {
                     await DeleteNamespace(name);
-                    Logger.info("Namespace deleted successfully", { name });
+                    Logger.info("Namespace deleted successfully", { name }, 'k8s');
                     closeModal();
                 } catch (err: any) {
-                    Logger.error("Failed to delete namespace", err);
+                    Logger.error("Failed to delete namespace", err, 'k8s');
                     addNotification({ type: 'error', title: 'Failed to delete namespace', message: String(err) });
                 }
             }

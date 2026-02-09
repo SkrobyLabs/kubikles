@@ -21,7 +21,7 @@ export const useServiceAccountActions = (): any => {
     const { addNotification } = useNotification();
 
     const handleEditYaml = (serviceAccount: K8sServiceAccount): void => {
-        Logger.info("Opening ServiceAccount editor", { namespace: serviceAccount.metadata.namespace, name: serviceAccount.metadata.name });
+        Logger.info("Opening ServiceAccount editor", { namespace: serviceAccount.metadata.namespace, name: serviceAccount.metadata.name }, 'k8s');
         const tabId = `serviceaccount-${serviceAccount.metadata.uid}`;
         openTab({
             id: tabId,
@@ -42,7 +42,7 @@ export const useServiceAccountActions = (): any => {
     const handleDelete = (serviceAccount: K8sServiceAccount): void => {
         const name = serviceAccount.metadata.name;
         const namespace = serviceAccount.metadata.namespace;
-        Logger.info("Delete ServiceAccount requested", { namespace, name });
+        Logger.info("Delete ServiceAccount requested", { namespace, name }, 'k8s');
 
         openModal({
             title: `Delete ServiceAccount ${name}?`,
@@ -52,10 +52,10 @@ export const useServiceAccountActions = (): any => {
             onConfirm: async (): Promise<void> => {
                 try {
                     await DeleteServiceAccount(namespace, name);
-                    Logger.info("ServiceAccount deleted successfully", { namespace, name });
+                    Logger.info("ServiceAccount deleted successfully", { namespace, name }, 'k8s');
                     closeModal();
                 } catch (err: any) {
-                    Logger.error("Failed to delete ServiceAccount", err);
+                    Logger.error("Failed to delete ServiceAccount", err, 'k8s');
                     addNotification({ type: 'error', title: 'Failed to delete service account', message: String(err) });
                 }
             }

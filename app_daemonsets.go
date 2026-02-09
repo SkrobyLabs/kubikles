@@ -1,6 +1,7 @@
 package main
 
 import (
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 
 	"fmt"
@@ -14,7 +15,7 @@ import (
 
 func (a *App) ListDaemonSets(requestId, namespace string) ([]appsv1.DaemonSet, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("ListDaemonSets called: context=%s, ns=%s", currentContext, namespace)
+	debug.LogK8s("ListDaemonSets called", map[string]interface{}{"context": currentContext, "ns": namespace})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -32,7 +33,7 @@ func (a *App) ListDaemonSets(requestId, namespace string) ([]appsv1.DaemonSet, e
 }
 
 func (a *App) GetDaemonSetYaml(namespace, name string) (string, error) {
-	a.logDebug("GetDaemonSetYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetDaemonSetYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -40,7 +41,7 @@ func (a *App) GetDaemonSetYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateDaemonSetYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateDaemonSetYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateDaemonSetYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -49,7 +50,7 @@ func (a *App) UpdateDaemonSetYaml(namespace, name, yamlContent string) error {
 
 func (a *App) RestartDaemonSet(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("RestartDaemonSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("RestartDaemonSet called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -58,7 +59,7 @@ func (a *App) RestartDaemonSet(namespace, name string) error {
 
 func (a *App) DeleteDaemonSet(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteDaemonSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteDaemonSet called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

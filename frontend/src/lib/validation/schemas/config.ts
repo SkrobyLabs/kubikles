@@ -84,6 +84,7 @@ const performanceConfigSchema = z.object({
 
 // Debug config
 const debugConfigSchema = z.object({
+  showDebugIcon: z.boolean().optional(),
   showLogSourceMarkers: z.boolean().optional(),
 });
 

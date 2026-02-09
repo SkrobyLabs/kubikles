@@ -31,18 +31,18 @@ export const useJobActions = (onRefresh?: () => void): any => {
 
     const handleDelete = (job: K8sJob): void => {
         const namespace = job.metadata.namespace;
-        Logger.info("Delete Job requested", { namespace, name: job.metadata.name });
+        Logger.info("Delete Job requested", { namespace, name: job.metadata.name }, 'k8s');
         openModal({
             title: 'Confirm Delete',
             content: `Are you sure you want to delete job "${job.metadata.name}"?`,
             onConfirm: async () => {
                 try {
                     await DeleteJob(namespace, job.metadata.name);
-                    Logger.info("Job deleted successfully", { namespace, name: job.metadata.name });
+                    Logger.info("Job deleted successfully", { namespace, name: job.metadata.name }, 'k8s');
                     closeModal();
                     if (onRefresh) onRefresh();
                 } catch (err: any) {
-                    Logger.error("Failed to delete Job", err);
+                    Logger.error("Failed to delete Job", err, 'k8s');
                     addNotification({ type: 'error', title: 'Failed to delete job', message: String(err.message || err) });
                 }
             }
@@ -51,7 +51,7 @@ export const useJobActions = (onRefresh?: () => void): any => {
 
     const handleViewLogs = async (job: K8sJob): Promise<void> => {
         const namespace = job.metadata.namespace;
-        Logger.info("View logs for Job", { namespace, name: job.metadata.name });
+        Logger.info("View logs for Job", { namespace, name: job.metadata.name }, 'k8s');
 
         try {
             const allPods = await ListPods('', namespace);
@@ -96,7 +96,7 @@ export const useJobActions = (onRefresh?: () => void): any => {
                 resourceMeta: { kind: 'Job', name: job.metadata.name, namespace },
             });
         } catch (err: any) {
-            Logger.error("Failed to get pods for Job", err);
+            Logger.error("Failed to get pods for Job", err, 'k8s');
             addNotification({ type: 'error', title: 'Failed to get pods for job', message: String(err.message || err) });
         }
     };

@@ -33,7 +33,7 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
     }, []);
 
     const handleBulkActionConfirm = useCallback(async (items: any) => {
-        Logger.info('Bulk delete started', { count: items.length });
+        Logger.info('Bulk delete started', { count: items.length }, 'config');
         setBulkProgress((prev: any) => ({ ...prev, status: 'inProgress', results: [] }));
 
         const results: any[] = [];
@@ -45,10 +45,10 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
             try {
                 await DeleteConfigMap(namespace, name);
                 results.push({ name, namespace, success: true, message: '' });
-                Logger.info('ConfigMap deleted', { namespace, name });
+                Logger.info('ConfigMap deleted', { namespace, name }, 'config');
             } catch (err: any) {
                 results.push({ name, namespace, success: false, message: err.toString() });
-                Logger.error('Failed to delete configmap', { namespace, name, error: err });
+                Logger.error('Failed to delete configmap', { namespace, name, error: err }, 'config');
             }
 
             setBulkProgress((prev: any) => ({ ...prev, current: i + 1, results: [...results] }));
@@ -63,7 +63,7 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
     }, []);
 
     const handleExportYaml = useCallback(async (items: any, { onProgress, signal }: any = {}) => {
-        Logger.info('Exporting YAML backup', { count: items.length });
+        Logger.info('Exporting YAML backup', { count: items.length }, 'config');
         const entries = [];
         for (let i = 0; i < items.length; i++) {
             if (signal?.aborted) break;

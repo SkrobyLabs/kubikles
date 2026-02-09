@@ -25,7 +25,7 @@ export const useHelmReleaseActions = (): any => {
 
     // Open details tab with specific initial tab
     const handleOpenDetails = useCallback((release: K8sHelmRelease, initialTab: string = 'basic'): void => {
-        Logger.info("Open details for Helm release", { namespace: release.namespace, name: release.name, initialTab });
+        Logger.info("Open details for Helm release", { namespace: release.namespace, name: release.name, initialTab }, 'helm');
         const tabId = `helm-details-${release.namespace}-${release.name}`;
         openTab({
             id: tabId,
@@ -42,20 +42,20 @@ export const useHelmReleaseActions = (): any => {
     }, [openTab, currentContext]);
 
     const handleViewValues = useCallback((release: K8sHelmRelease): void => {
-        Logger.info("View values for Helm release", { namespace: release.namespace, name: release.name });
+        Logger.info("View values for Helm release", { namespace: release.namespace, name: release.name }, 'helm');
         // Open details tab with values tab active
         handleOpenDetails(release, 'values');
     }, [handleOpenDetails]);
 
     const handleViewHistory = useCallback((release: K8sHelmRelease): void => {
-        Logger.info("View history for Helm release", { namespace: release.namespace, name: release.name });
+        Logger.info("View history for Helm release", { namespace: release.namespace, name: release.name }, 'helm');
         // Open details tab with history tab active
         handleOpenDetails(release, 'history');
     }, [handleOpenDetails]);
 
     // Rollback now just opens the history tab where user can select a revision
     const handleRollback = useCallback((release: K8sHelmRelease): void => {
-        Logger.info("Rollback requested for Helm release", { namespace: release.namespace, name: release.name });
+        Logger.info("Rollback requested for Helm release", { namespace: release.namespace, name: release.name }, 'helm');
         // Open details tab with history tab active - user can pick revision there
         handleOpenDetails(release, 'history');
     }, [handleOpenDetails]);
@@ -63,7 +63,7 @@ export const useHelmReleaseActions = (): any => {
     const handleUninstall = useCallback((release: K8sHelmRelease): void => {
         const name = release.name;
         const namespace = release.namespace;
-        Logger.info("Uninstall Helm release requested", { namespace, name });
+        Logger.info("Uninstall Helm release requested", { namespace, name }, 'helm');
 
         openModal({
             title: `Uninstall ${name}?`,
@@ -73,11 +73,11 @@ export const useHelmReleaseActions = (): any => {
             onConfirm: async (): Promise<void> => {
                 try {
                     await UninstallHelmRelease(namespace, name);
-                    Logger.info("Helm release uninstalled successfully", { namespace, name });
+                    Logger.info("Helm release uninstalled successfully", { namespace, name }, 'helm');
                     closeModal();
                     triggerRefresh();
                 } catch (err: any) {
-                    Logger.error("Failed to uninstall Helm release", err);
+                    Logger.error("Failed to uninstall Helm release", err, 'helm');
                     addNotification({ type: 'error', title: 'Failed to uninstall', message: String(err.message || err) });
                 }
             }

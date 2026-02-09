@@ -434,7 +434,7 @@ export default function ConfigEditor() {
     return (
         <div className="h-full flex flex-col bg-background">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0 titlebar-drag">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
                 <h2 className="text-sm font-semibold text-text">Settings</h2>
                 <div className="flex items-center gap-3">
                     {/* Error/Success Message */}

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { Environment } from 'wailsjs/runtime/runtime';
 import { isInServerMode } from '~/lib/wailsjs-adapter/runtime/runtime';
 // @ts-ignore
@@ -55,9 +54,6 @@ export default function Sidebar({
     const { openPerformancePanel } = usePerformancePanel();
     const { toggleDebug } = useDebugLogs();
     const isServerMode = isInServerMode();
-    // Settings menu state
-    const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
-
     // Version info
     const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
     const [isMac, setIsMac] = useState(true); // default true to avoid layout shift on macOS
@@ -66,8 +62,6 @@ export default function Sidebar({
         GetVersionInfo().then(setVersionInfo).catch(() => {});
         Environment().then((env: any) => setIsMac(env.platform === 'darwin')).catch(() => {});
     }, []);
-    const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
-    const settingsMenuRef = useRef<HTMLDivElement | null>(null);
     const activeItemRef = useRef<HTMLButtonElement | null>(null);
 
     // Scroll active menu item into view when it changes
@@ -79,21 +73,6 @@ export default function Sidebar({
             });
         }
     }, [activeView]);
-
-    // Close settings menu on click outside
-    useEffect(() => {
-        if (!settingsMenuOpen) return;
-
-        const handleClickOutside = (event: MouseEvent) => {
-            if (settingsButtonRef.current && !settingsButtonRef.current.contains(event.target as Node) &&
-                settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
-                setSettingsMenuOpen(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [settingsMenuOpen]);
 
     // Fetch CRDs for dynamic menu (lazy loaded)
     const [crds, setCRDs] = useState<any[]>([]);
@@ -433,7 +412,7 @@ export default function Sidebar({
             </nav>
 
             {/* Footer */}
-            <div className="p-4 border-t border-border shrink-0">
+            <div className="py-2 px-4 border-t border-border shrink-0">
                 <div className="flex items-center justify-center gap-2 relative">
                     {/* Version display */}
                     <span
@@ -446,17 +425,28 @@ export default function Sidebar({
                         )}
                     </span>
                     <button
-                        ref={settingsButtonRef}
-                        onClick={() => setSettingsMenuOpen(!settingsMenuOpen)}
-                        className={`p-1 rounded transition-colors ${
-                            settingsMenuOpen
-                                ? 'text-white bg-white/10'
-                                : 'text-gray-500 hover:text-white hover:bg-white/10'
-                        }`}
+                        onClick={openConfigEditor}
+                        className="p-1 rounded transition-colors text-gray-500 hover:text-white hover:bg-white/10"
                         title="Settings"
                     >
                         <Cog6ToothIcon className="w-4 h-4" />
                     </button>
+                    <button
+                        onClick={openPerformancePanel}
+                        className="p-1 rounded transition-colors text-gray-500 hover:text-white hover:bg-white/10"
+                        title="Performance"
+                    >
+                        <ChartBarIcon className="w-4 h-4" />
+                    </button>
+                    {config?.debug?.showDebugIcon && (
+                        <button
+                            onClick={toggleDebug}
+                            className="p-1 rounded transition-colors text-gray-500 hover:text-white hover:bg-white/10"
+                            title="Debug"
+                        >
+                            <BugAntIcon className="w-4 h-4" />
+                        </button>
+                    )}
                     {providerAvailable && (
                         <button
                             onClick={toggleAI}
@@ -469,51 +459,6 @@ export default function Sidebar({
                         >
                             <SparklesIcon className="w-4 h-4" />
                         </button>
-                    )}
-
-                    {/* Settings Dropdown Menu */}
-                    {settingsMenuOpen && createPortal(
-                        <div
-                            ref={settingsMenuRef}
-                            className="fixed w-44 bg-surface-light border border-border rounded-md shadow-lg py-1 z-[100]"
-                            style={{
-                                bottom: '52px',
-                                left: (settingsButtonRef.current?.getBoundingClientRect()?.left ?? 60) - 60 || 0
-                            }}
-                        >
-                            <button
-                                onClick={() => {
-                                    setSettingsMenuOpen(false);
-                                    openConfigEditor();
-                                }}
-                                className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
-                            >
-                                <Cog6ToothIcon className="h-4 w-4" />
-                                Settings
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setSettingsMenuOpen(false);
-                                    openPerformancePanel();
-                                }}
-                                className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
-                            >
-                                <ChartBarIcon className="h-4 w-4" />
-                                <span className="flex-1">Performance</span>
-                                <span className="text-xs text-gray-500">Opt+P</span>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setSettingsMenuOpen(false);
-                                    toggleDebug();
-                                }}
-                                className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
-                            >
-                                <BugAntIcon className="h-4 w-4" />
-                                <span className="flex-1">Debug</span>
-                            </button>
-                        </div>,
-                        document.body
                     )}
                 </div>
             </div>

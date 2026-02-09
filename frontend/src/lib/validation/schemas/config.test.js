@@ -187,3 +187,32 @@ describe('sidebar layout validation', () => {
         expect(result.success).toBe(true);
     });
 });
+
+describe('debug config validation', () => {
+    it('accepts showDebugIcon as true', () => {
+        const result = appConfigSchema.safeParse({ debug: { showDebugIcon: true } });
+        expect(result.success).toBe(true);
+    });
+
+    it('accepts showDebugIcon as false', () => {
+        const result = appConfigSchema.safeParse({ debug: { showDebugIcon: false } });
+        expect(result.success).toBe(true);
+    });
+
+    it('accepts omitted showDebugIcon (optional)', () => {
+        const result = appConfigSchema.safeParse({ debug: {} });
+        expect(result.success).toBe(true);
+    });
+
+    it('rejects non-boolean showDebugIcon', () => {
+        const result = appConfigSchema.safeParse({ debug: { showDebugIcon: 'yes' } });
+        expect(result.success).toBe(false);
+    });
+
+    it('accepts showLogSourceMarkers alongside showDebugIcon', () => {
+        const result = appConfigSchema.safeParse({
+            debug: { showDebugIcon: true, showLogSourceMarkers: true },
+        });
+        expect(result.success).toBe(true);
+    });
+});

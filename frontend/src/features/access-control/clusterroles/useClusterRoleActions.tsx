@@ -18,7 +18,7 @@ export const useClusterRoleActions = (): any => {
     const { addNotification } = useNotification();
 
     const handleEditYaml = (clusterRole: K8sClusterRole): void => {
-        Logger.info("Opening ClusterRole editor", { name: clusterRole.metadata.name });
+        Logger.info("Opening ClusterRole editor", { name: clusterRole.metadata.name }, 'k8s');
         const tabId = `clusterrole-${clusterRole.metadata.uid}`;
         openTab({
             id: tabId,
@@ -37,7 +37,7 @@ export const useClusterRoleActions = (): any => {
 
     const handleDelete = (clusterRole: K8sClusterRole): void => {
         const name = clusterRole.metadata.name;
-        Logger.info("Delete ClusterRole requested", { name });
+        Logger.info("Delete ClusterRole requested", { name }, 'k8s');
 
         openModal({
             title: `Delete ClusterRole ${name}?`,
@@ -47,10 +47,10 @@ export const useClusterRoleActions = (): any => {
             onConfirm: async (): Promise<void> => {
                 try {
                     await DeleteClusterRole(name);
-                    Logger.info("ClusterRole deleted successfully", { name });
+                    Logger.info("ClusterRole deleted successfully", { name }, 'k8s');
                     closeModal();
                 } catch (err: any) {
-                    Logger.error("Failed to delete ClusterRole", err);
+                    Logger.error("Failed to delete ClusterRole", err, 'k8s');
                     addNotification({ type: 'error', title: 'Failed to delete cluster role', message: String(err) });
                 }
             }

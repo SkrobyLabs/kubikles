@@ -119,7 +119,7 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
      */
     const openBulkRestart = useCallback((items: Resource[]): void => {
         if (!restartApi) {
-            Logger.warn('Restart not supported for this resource type');
+            Logger.warn('Restart not supported for this resource type', undefined, 'k8s');
             return;
         }
         setBulkActionModal({ isOpen: true, action: 'restart', items });
@@ -142,11 +142,11 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
         const api = action === 'delete' ? deleteApi : restartApi;
 
         if (!api) {
-            Logger.error(`No API configured for action: ${action}`);
+            Logger.error(`No API configured for action: ${action}`, undefined, 'k8s');
             return;
         }
 
-        Logger.info(`Bulk ${action} started`, { resourceType, count: items.length });
+        Logger.info(`Bulk ${action} started`, { resourceType, count: items.length }, 'k8s');
         setBulkProgress(prev => ({ ...prev, status: 'inProgress', results: [] }));
 
         const results: BulkActionResult[] = [];
@@ -156,7 +156,7 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
             const name = item.metadata?.name;
 
             if (!name) {
-                Logger.error('Item missing name in metadata', { item });
+                Logger.error('Item missing name in metadata', { item }, 'k8s');
                 continue;
             }
 
@@ -167,11 +167,11 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
                     await (api as ClusterScopedApiFn)(name);
                 }
                 results.push({ name, namespace: namespace || '', success: true, message: '' });
-                Logger.info(`${resourceLabel} ${action}d`, { namespace, name });
+                Logger.info(`${resourceLabel} ${action}d`, { namespace, name }, 'k8s');
             } catch (err: any) {
                 const errorMessage = err instanceof Error ? err.message : String(err);
                 results.push({ name, namespace: namespace || '', success: false, message: errorMessage });
-                Logger.error(`Failed to ${action} ${resourceLabel.toLowerCase()}`, { namespace, name, error: err });
+                Logger.error(`Failed to ${action} ${resourceLabel.toLowerCase()}`, { namespace, name, error: err }, 'k8s');
             }
 
             setBulkProgress(prev => ({ ...prev, current: i + 1, results: [...results] }));
@@ -183,7 +183,7 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
             total: items.length,
             success: results.filter((r: any) => r.success).length,
             failed: results.filter((r: any) => !r.success).length,
-        });
+        }, 'k8s');
     }, [bulkActionModal.action, deleteApi, restartApi, isNamespaced, resourceLabel, resourceType]);
 
     /**
@@ -191,7 +191,7 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
      */
     const exportYaml = useCallback(async (items: Resource[], options: ExportYamlOptions = {}): Promise<void> => {
         const { onProgress, signal } = options;
-        Logger.info('Exporting YAML backup', { resourceType, count: items.length });
+        Logger.info('Exporting YAML backup', { resourceType, count: items.length }, 'k8s');
 
         const entries: main.YamlBackupEntry[] = [];
         for (let i = 0; i < items.length; i++) {
@@ -202,7 +202,7 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
             const name = item.metadata?.name;
 
             if (!name) {
-                Logger.error('Item missing name in metadata', { item });
+                Logger.error('Item missing name in metadata', { item }, 'k8s');
                 continue;
             }
 
@@ -220,10 +220,10 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
                     yaml
                 });
                 entries.push(entry);
-                Logger.info('Fetched YAML for backup', { namespace, name });
+                Logger.info('Fetched YAML for backup', { namespace, name }, 'k8s');
             } catch (err: any) {
                 const errorMessage = err instanceof Error ? err.message : String(err);
-                Logger.error('Failed to get YAML for backup', { namespace, name, error: err });
+                Logger.error('Failed to get YAML for backup', { namespace, name, error: err }, 'k8s');
                 const entry = new main.YamlBackupEntry({
                     namespace: namespace || '',
                     name,
@@ -243,13 +243,13 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
 
         try {
             await SaveYamlBackup(entries, filename);
-            Logger.info('YAML backup saved', { filename, partial: signal?.aborted });
+            Logger.info('YAML backup saved', { filename, partial: signal?.aborted }, 'k8s');
         } catch (err: any) {
-            Logger.error('Failed to save YAML backup', { error: err });
+            Logger.error('Failed to save YAML backup', { error: err }, 'k8s');
             if (err) {
                 const errorMessage = err instanceof Error ? err.message : String(err);
                 if (errorMessage !== '') {
-                    Logger.error('Backup save failed', { error: errorMessage });
+                    Logger.error('Backup save failed', { error: errorMessage }, 'k8s');
                 }
             }
         }

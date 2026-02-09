@@ -10,6 +10,7 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -30,7 +31,7 @@ type PodFileInfo struct {
 
 // ListPodFiles lists files in a directory inside a pod
 func (a *App) ListPodFiles(namespace, pod, container, path string) ([]PodFileInfo, error) {
-	a.logDebug("ListPodFiles called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, path)
+	debug.LogK8s("ListPodFiles called", map[string]interface{}{"namespace": namespace, "pod": pod, "container": container, "path": path})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -59,7 +60,7 @@ func (a *App) ListPodFiles(namespace, pod, container, path string) ([]PodFileInf
 
 // DownloadPodFile downloads a file from a pod to local filesystem with save dialog
 func (a *App) DownloadPodFile(namespace, pod, container, remotePath string) error {
-	a.logDebug("DownloadPodFile called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, remotePath)
+	debug.LogK8s("DownloadPodFile called", map[string]interface{}{"namespace": namespace, "pod": pod, "container": container, "path": remotePath})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -126,7 +127,7 @@ func (a *App) DownloadPodFile(namespace, pod, container, remotePath string) erro
 
 // DownloadPodFolder downloads a folder from a pod as a tar.gz file
 func (a *App) DownloadPodFolder(namespace, pod, container, remotePath string) error {
-	a.logDebug("DownloadPodFolder called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, remotePath)
+	debug.LogK8s("DownloadPodFolder called", map[string]interface{}{"namespace": namespace, "pod": pod, "container": container, "path": remotePath})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -144,7 +145,7 @@ func (a *App) DownloadPodFolder(namespace, pod, container, remotePath string) er
 	for _, ext := range []string{".app", ".bundle", ".framework", ".plugin", ".kext"} {
 		if strings.HasSuffix(strings.ToLower(safeFilename), ext) {
 			safeFilename = safeFilename[:len(safeFilename)-len(ext)] + strings.ReplaceAll(ext, ".", "_")
-			a.logDebug("DownloadPodFolder: renamed %s to %s to avoid macOS save dialog crash", folderName, safeFilename)
+			debug.LogK8s("DownloadPodFolder renamed to avoid macOS save dialog crash", map[string]interface{}{"original": folderName, "renamed": safeFilename})
 		}
 	}
 
@@ -198,7 +199,7 @@ func (a *App) DownloadPodFolder(namespace, pod, container, remotePath string) er
 
 // DownloadPodFiles downloads multiple files/folders from a pod as a single tar.gz archive
 func (a *App) DownloadPodFiles(namespace, pod, container, basePath string, names []string) error {
-	a.logDebug("DownloadPodFiles called: ns=%s, pod=%s, container=%s, basePath=%s, count=%d", namespace, pod, container, basePath, len(names))
+	debug.LogK8s("DownloadPodFiles called", map[string]interface{}{"namespace": namespace, "pod": pod, "container": container, "basePath": basePath, "count": len(names)})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -254,7 +255,7 @@ func (a *App) DownloadPodFiles(namespace, pod, container, basePath string, names
 
 // UploadToPod uploads a file to a pod using file picker dialog
 func (a *App) UploadToPod(namespace, pod, container, remotePath string) error {
-	a.logDebug("UploadToPod called: ns=%s, pod=%s, container=%s, remotePath=%s", namespace, pod, container, remotePath)
+	debug.LogK8s("UploadToPod called", map[string]interface{}{"namespace": namespace, "pod": pod, "container": container, "remotePath": remotePath})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -275,7 +276,7 @@ func (a *App) UploadToPod(namespace, pod, container, remotePath string) error {
 
 // UploadFileToPod uploads a file from a specific local path (for drag & drop)
 func (a *App) UploadFileToPod(namespace, pod, container, localPath, remotePath string) error {
-	a.logDebug("UploadFileToPod called: ns=%s, pod=%s, container=%s, local=%s, remote=%s", namespace, pod, container, localPath, remotePath)
+	debug.LogK8s("UploadFileToPod called", map[string]interface{}{"namespace": namespace, "pod": pod, "container": container, "localPath": localPath, "remotePath": remotePath})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -346,7 +347,7 @@ func (a *App) uploadFileInternal(namespace, pod, container, localPath, remotePat
 
 // CreatePodDirectory creates a directory in a pod
 func (a *App) CreatePodDirectory(namespace, pod, container, dirPath string) error {
-	a.logDebug("CreatePodDirectory called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, dirPath)
+	debug.LogK8s("CreatePodDirectory called", map[string]interface{}{"namespace": namespace, "pod": pod, "container": container, "path": dirPath})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -355,7 +356,7 @@ func (a *App) CreatePodDirectory(namespace, pod, container, dirPath string) erro
 
 // DeletePodFile deletes a file or directory in a pod
 func (a *App) DeletePodFile(namespace, pod, container, filePath string) error {
-	a.logDebug("DeletePodFile called: ns=%s, pod=%s, container=%s, path=%s", namespace, pod, container, filePath)
+	debug.LogK8s("DeletePodFile called", map[string]interface{}{"namespace": namespace, "pod": pod, "container": container, "path": filePath})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

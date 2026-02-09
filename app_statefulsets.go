@@ -1,6 +1,7 @@
 package main
 
 import (
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 
 	"fmt"
@@ -30,7 +31,7 @@ func (a *App) ListStatefulSets(requestId, namespace string) ([]appsv1.StatefulSe
 }
 
 func (a *App) GetStatefulSetYaml(namespace, name string) (string, error) {
-	a.logDebug("GetStatefulSetYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetStatefulSetYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -38,7 +39,7 @@ func (a *App) GetStatefulSetYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateStatefulSetYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateStatefulSetYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateStatefulSetYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -46,7 +47,7 @@ func (a *App) UpdateStatefulSetYaml(namespace, name, yamlContent string) error {
 }
 
 func (a *App) ScaleStatefulSet(namespace, name string, replicas int32) error {
-	a.logDebug("ScaleStatefulSet called: ns=%s, name=%s, replicas=%d", namespace, name, replicas)
+	debug.LogK8s("ScaleStatefulSet called", map[string]interface{}{"ns": namespace, "name": name, "replicas": replicas})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

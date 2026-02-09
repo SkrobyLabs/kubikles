@@ -43,11 +43,11 @@ export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0
         setLoading(true);
         setError(null);
         try {
-            Logger.info("Fetching Helm release history", { namespace: release.namespace, name: release.name });
+            Logger.info("Fetching Helm release history", { namespace: release.namespace, name: release.name }, 'helm');
             const data = await GetHelmReleaseHistory(release.namespace, release.name);
             setHistory(data || []);
         } catch (err: any) {
-            Logger.error("Failed to fetch Helm release history", err);
+            Logger.error("Failed to fetch Helm release history", err, 'helm');
             setError(err.message || String(err));
         } finally {
             setLoading(false);
@@ -77,12 +77,12 @@ export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0
                     duration: 3000
                 });
 
-                Logger.info("Rolling back Helm release", { namespace: release.namespace, name: release.name, revision });
+                Logger.info("Rolling back Helm release", { namespace: release.namespace, name: release.name, revision }, 'helm');
 
                 // Run rollback asynchronously without blocking
                 RollbackHelmRelease(release.namespace, release.name, revision)
                     .then(() => {
-                        Logger.info("Rollback successful");
+                        Logger.info("Rollback successful", undefined, 'helm');
                         addNotification({
                             type: 'success',
                             title: 'Rollback complete',
@@ -92,7 +92,7 @@ export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0
                         fetchHistory();
                     })
                     .catch((err: any) => {
-                        Logger.error("Failed to rollback", err);
+                        Logger.error("Failed to rollback", err, 'helm');
                         addNotification({
                             type: 'error',
                             title: 'Rollback failed',

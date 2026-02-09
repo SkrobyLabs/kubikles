@@ -37,14 +37,14 @@ export const useNodeActions = (refetch?: () => void): any => {
         const action = isUnschedulable ? 'Uncordon' : 'Cordon';
         const name = node.metadata.name;
 
-        Logger.info(`${action}ing node`, { name });
+        Logger.info(`${action}ing node`, { name }, 'k8s');
 
         try {
             await SetNodeSchedulable(name, isUnschedulable);
-            Logger.info(`Node ${action.toLowerCase()}ed successfully`, { name });
+            Logger.info(`Node ${action.toLowerCase()}ed successfully`, { name }, 'k8s');
             if (refetch) refetch();
         } catch (err: any) {
-            Logger.error(`Failed to ${action.toLowerCase()} node`, err);
+            Logger.error(`Failed to ${action.toLowerCase()} node`, err, 'k8s');
             addNotification({ type: 'error', title: `Failed to ${action.toLowerCase()} node`, message: String(err) });
         }
     }, [refetch, addNotification]);
@@ -52,7 +52,7 @@ export const useNodeActions = (refetch?: () => void): any => {
     const handleShell = useCallback((node: K8sNode): void => {
         const nodeName = node.metadata.name;
         const tabId = `terminal-node-${node.metadata.uid}`;
-        Logger.info("Opening shell on node", { node: nodeName });
+        Logger.info("Opening shell on node", { node: nodeName }, 'k8s');
 
         openTab({
             id: tabId,

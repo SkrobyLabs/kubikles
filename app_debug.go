@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
@@ -10,6 +11,9 @@ import (
 	"runtime/debug"
 
 	"kubikles/pkg/crashlog"
+	pkgdebug "kubikles/pkg/debug"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // =============================================================================
@@ -34,6 +38,32 @@ func (a *App) LogDebug(msg string) {
 // LogMessage is an alias for LogDebug for frontend compatibility
 func (a *App) LogMessage(message string) {
 	a.logDebug("%s", message)
+}
+
+// SetDebugEnabled enables or disables structured debug logging
+func (a *App) SetDebugEnabled(enabled bool) {
+	pkgdebug.SetEnabled(enabled)
+}
+
+// SaveDebugLogs opens a native save dialog and writes JSON debug logs to the selected file
+func (a *App) SaveDebugLogs(jsonContent, defaultFilename string) error {
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: defaultFilename,
+		Title:           "Save Debug Logs",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "JSON Files (*.json)",
+				Pattern:     "*.json",
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if filePath == "" {
+		return nil // User canceled
+	}
+	return os.WriteFile(filePath, []byte(jsonContent), 0644) //nolint:gosec // User-exported file
 }
 
 // GetCrashLogPath returns the path to the crash log file
@@ -84,36 +114,36 @@ func (a *App) OpenCrashLogDir() error {
 
 func (a *App) DeletePod(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.logDebug("DeletePod called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	pkgdebug.LogK8s("DeletePod called", map[string]interface{}{"context": contextName, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	err := a.k8sClient.DeletePod(contextName, namespace, name)
 	if err != nil {
-		a.logDebug("DeletePod error: %v", err)
+		pkgdebug.LogK8s("DeletePod error", map[string]interface{}{"error": err.Error()})
 	} else {
-		a.logDebug("DeletePod success")
+		pkgdebug.LogK8s("DeletePod success", nil)
 	}
 	return err
 }
 
 func (a *App) ForceDeletePod(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.logDebug("ForceDeletePod called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	pkgdebug.LogK8s("ForceDeletePod called", map[string]interface{}{"context": contextName, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	err := a.k8sClient.ForceDeletePod(contextName, namespace, name)
 	if err != nil {
-		a.logDebug("ForceDeletePod error: %v", err)
+		pkgdebug.LogK8s("ForceDeletePod error", map[string]interface{}{"error": err.Error()})
 	} else {
-		a.logDebug("ForceDeletePod success")
+		pkgdebug.LogK8s("ForceDeletePod success", nil)
 	}
 	return err
 }
 
 func (a *App) GetPodYaml(namespace, name string) (string, error) {
-	a.logDebug("GetPodYaml called: ns=%s, name=%s", namespace, name)
+	pkgdebug.LogK8s("GetPodYaml called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -121,7 +151,7 @@ func (a *App) GetPodYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdatePodYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdatePodYaml called: ns=%s, name=%s", namespace, name)
+	pkgdebug.LogK8s("UpdatePodYaml called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

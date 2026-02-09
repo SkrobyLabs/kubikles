@@ -5,6 +5,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -30,7 +31,7 @@ func (a *App) ListEvents(requestId, namespace string) ([]v1.Event, error) {
 }
 
 func (a *App) GetEventYAML(namespace, name string) (string, error) {
-	a.logDebug("GetEventYAML called: namespace=%s, name=%s", namespace, name)
+	debug.LogK8s("GetEventYAML called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -38,7 +39,7 @@ func (a *App) GetEventYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateEventYAML(namespace, name string, yamlContent string) error {
-	a.logDebug("UpdateEventYAML called: namespace=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateEventYAML called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -47,7 +48,7 @@ func (a *App) UpdateEventYAML(namespace, name string, yamlContent string) error 
 
 func (a *App) DeleteEvent(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.logDebug("DeleteEvent called: context=%s, namespace=%s, name=%s", contextName, namespace, name)
+	debug.LogK8s("DeleteEvent called", map[string]interface{}{"context": contextName, "namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

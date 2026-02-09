@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 
 	v1 "k8s.io/api/core/v1"
@@ -30,7 +31,7 @@ func (a *App) ListServices(requestId, namespace string) ([]v1.Service, error) {
 }
 
 func (a *App) GetServiceYaml(namespace, name string) (string, error) {
-	a.logDebug("GetServiceYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetServiceYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -38,7 +39,7 @@ func (a *App) GetServiceYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateServiceYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateServiceYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateServiceYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -47,7 +48,7 @@ func (a *App) UpdateServiceYaml(namespace, name, yamlContent string) error {
 
 func (a *App) DeleteService(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteService called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteService called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

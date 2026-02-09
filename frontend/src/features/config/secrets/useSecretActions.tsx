@@ -23,7 +23,7 @@ export const useSecretActions = (): any => {
     const { addNotification } = useNotification();
 
     const handleEditYaml = (secret: K8sSecret): void => {
-        Logger.info("Opening secret editor", { namespace: secret.metadata.namespace, secret: secret.metadata.name });
+        Logger.info("Opening secret editor", { namespace: secret.metadata.namespace, secret: secret.metadata.name }, 'config');
         const tabId = `secret-${secret.metadata.uid}`;
         openTab({
             id: tabId,
@@ -43,7 +43,7 @@ export const useSecretActions = (): any => {
     };
 
     const handleEditKeyValue = (secret: K8sSecret): void => {
-        Logger.info("Opening secret editor (key-value)", { namespace: secret.metadata.namespace, secret: secret.metadata.name });
+        Logger.info("Opening secret editor (key-value)", { namespace: secret.metadata.namespace, secret: secret.metadata.name }, 'config');
         const tabId = `secret-${secret.metadata.uid}`;
         openTab({
             id: tabId,
@@ -64,7 +64,7 @@ export const useSecretActions = (): any => {
     };
 
     const handleShowDependencies = (secret: K8sSecret): void => {
-        Logger.info("Opening dependency graph", { namespace: secret.metadata.namespace, secret: secret.metadata.name });
+        Logger.info("Opening dependency graph", { namespace: secret.metadata.namespace, secret: secret.metadata.name }, 'config');
         const tabId = `deps-secret-${secret.metadata.uid}`;
         openTab({
             id: tabId,
@@ -85,7 +85,7 @@ export const useSecretActions = (): any => {
     const handleDelete = (secret: K8sSecret): void => {
         const name = secret.metadata.name;
         const namespace = secret.metadata.namespace;
-        Logger.info("Delete Secret requested", { namespace, name });
+        Logger.info("Delete Secret requested", { namespace, name }, 'config');
 
         openModal({
             title: `Delete Secret ${name}?`,
@@ -95,10 +95,10 @@ export const useSecretActions = (): any => {
             onConfirm: async () => {
                 try {
                     await DeleteSecret(namespace, name);
-                    Logger.info("Secret deleted successfully", { namespace, name });
+                    Logger.info("Secret deleted successfully", { namespace, name }, 'config');
                     closeModal();
                 } catch (err: any) {
-                    Logger.error("Failed to delete secret", err);
+                    Logger.error("Failed to delete secret", err, 'config');
                     addNotification({ type: 'error', title: 'Failed to delete secret', message: String(err.message || err) });
                 }
             }

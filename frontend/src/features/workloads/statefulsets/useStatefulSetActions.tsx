@@ -30,12 +30,12 @@ export const useStatefulSetActions = (): any => {
     });
 
     const handleRestart = async (statefulSet: K8sStatefulSet): Promise<void> => {
-        Logger.info("Restarting statefulset", { namespace: statefulSet.metadata.namespace, name: statefulSet.metadata.name });
+        Logger.info("Restarting statefulset", { namespace: statefulSet.metadata.namespace, name: statefulSet.metadata.name }, 'k8s');
         try {
             await RestartStatefulSet(statefulSet.metadata.namespace!, statefulSet.metadata.name);
-            Logger.info("Restart triggered successfully", { name: statefulSet.metadata.name });
+            Logger.info("Restart triggered successfully", { name: statefulSet.metadata.name }, 'k8s');
         } catch (err: any) {
-            Logger.error("Failed to restart statefulset", err);
+            Logger.error("Failed to restart statefulset", err, 'k8s');
             addNotification({ type: 'error', title: 'Failed to restart statefulset', message: String(err) });
         }
     };
@@ -48,7 +48,7 @@ export const useStatefulSetActions = (): any => {
     );
 
     const handleViewLogs = async (statefulSet: K8sStatefulSet): Promise<void> => {
-        Logger.info("View logs for StatefulSet", { namespace: statefulSet.metadata.namespace, name: statefulSet.metadata.name });
+        Logger.info("View logs for StatefulSet", { namespace: statefulSet.metadata.namespace, name: statefulSet.metadata.name }, 'k8s');
         const namespace = statefulSet.metadata.namespace!;
 
         try {
@@ -97,7 +97,7 @@ export const useStatefulSetActions = (): any => {
                 resourceMeta: { kind: 'StatefulSet', name: statefulSet.metadata.name, namespace },
             });
         } catch (err: any) {
-            Logger.error("Failed to get pods for StatefulSet", err);
+            Logger.error("Failed to get pods for StatefulSet", err, 'k8s');
             addNotification({ type: 'error', title: 'Failed to get pods for statefulset', message: String(err.message || err) });
         }
     };

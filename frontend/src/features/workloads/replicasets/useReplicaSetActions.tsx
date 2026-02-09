@@ -38,7 +38,7 @@ export const useReplicaSetActions = (): any => {
     );
 
     const handleViewLogs = async (replicaSet: K8sReplicaSet): Promise<void> => {
-        Logger.info("View logs for ReplicaSet", { namespace: replicaSet.metadata.namespace, name: replicaSet.metadata.name });
+        Logger.info("View logs for ReplicaSet", { namespace: replicaSet.metadata.namespace, name: replicaSet.metadata.name }, 'k8s');
         const namespace = replicaSet.metadata.namespace!;
 
         try {
@@ -87,7 +87,7 @@ export const useReplicaSetActions = (): any => {
                 resourceMeta: { kind: 'ReplicaSet', name: replicaSet.metadata.name, namespace },
             });
         } catch (err: any) {
-            Logger.error("Failed to get pods for ReplicaSet", err);
+            Logger.error("Failed to get pods for ReplicaSet", err, 'k8s');
             addNotification({ type: 'error', title: 'Failed to get pods for replicaset', message: String(err.message || err) });
         }
     };

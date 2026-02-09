@@ -5,6 +5,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -30,7 +31,7 @@ func (a *App) ListDeployments(requestId, namespace string) ([]appsv1.Deployment,
 }
 
 func (a *App) ScaleDeployment(namespace, name string, replicas int32) error {
-	a.logDebug("ScaleDeployment called: ns=%s, name=%s, replicas=%d", namespace, name, replicas)
+	debug.LogK8s("ScaleDeployment called", map[string]interface{}{"ns": namespace, "name": name, "replicas": replicas})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}

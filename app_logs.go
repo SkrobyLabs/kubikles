@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -16,7 +17,7 @@ import (
 
 func (a *App) GetPodLogs(namespace, podName, containerName string, timestamps bool, previous bool, sinceTime string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetPodLogs called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v, previous=%v, sinceTime=%s", currentContext, namespace, podName, containerName, timestamps, previous, sinceTime)
+	debug.LogK8s("GetPodLogs called", map[string]interface{}{"context": currentContext, "ns": namespace, "pod": podName, "container": containerName, "timestamps": timestamps, "previous": previous, "sinceTime": sinceTime})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -25,7 +26,7 @@ func (a *App) GetPodLogs(namespace, podName, containerName string, timestamps bo
 
 func (a *App) GetAllPodLogs(namespace, podName, containerName string, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetAllPodLogs called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v, previous=%v", currentContext, namespace, podName, containerName, timestamps, previous)
+	debug.LogK8s("GetAllPodLogs called", map[string]interface{}{"context": currentContext, "ns": namespace, "pod": podName, "container": containerName, "timestamps": timestamps, "previous": previous})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -34,7 +35,7 @@ func (a *App) GetAllPodLogs(namespace, podName, containerName string, timestamps
 
 func (a *App) GetPodLogsFromStart(namespace, podName, containerName string, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetPodLogsFromStart called: context=%s, ns=%s, pod=%s, container=%s, timestamps=%v, previous=%v", currentContext, namespace, podName, containerName, timestamps, previous)
+	debug.LogK8s("GetPodLogsFromStart called", map[string]interface{}{"context": currentContext, "ns": namespace, "pod": podName, "container": containerName, "timestamps": timestamps, "previous": previous})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -49,7 +50,7 @@ type LogChunkResult struct {
 
 func (a *App) GetPodLogsBefore(namespace, podName, containerName string, timestamps bool, previous bool, beforeTime string, limit int) (*LogChunkResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetPodLogsBefore called: context=%s, ns=%s, pod=%s, container=%s, beforeTime=%s, limit=%d", currentContext, namespace, podName, containerName, beforeTime, limit)
+	debug.LogK8s("GetPodLogsBefore called", map[string]interface{}{"context": currentContext, "ns": namespace, "pod": podName, "container": containerName, "beforeTime": beforeTime, "limit": limit})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -62,7 +63,7 @@ func (a *App) GetPodLogsBefore(namespace, podName, containerName string, timesta
 
 func (a *App) GetPodLogsAfter(namespace, podName, containerName string, timestamps bool, previous bool, afterTime string, limit int) (*LogChunkResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetPodLogsAfter called: context=%s, ns=%s, pod=%s, container=%s, afterTime=%s, limit=%d", currentContext, namespace, podName, containerName, afterTime, limit)
+	debug.LogK8s("GetPodLogsAfter called", map[string]interface{}{"context": currentContext, "ns": namespace, "pod": podName, "container": containerName, "afterTime": afterTime, "limit": limit})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -76,7 +77,7 @@ func (a *App) GetPodLogsAfter(namespace, podName, containerName string, timestam
 // GetAllContainersLogs fetches logs from all containers in a pod, merged by timestamp
 func (a *App) GetAllContainersLogs(namespace, podName string, containerNames []string, timestamps bool, previous bool, sinceTime string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetAllContainersLogs called: context=%s, ns=%s, pod=%s, containers=%v, timestamps=%v, previous=%v, sinceTime=%s", currentContext, namespace, podName, containerNames, timestamps, previous, sinceTime)
+	debug.LogK8s("GetAllContainersLogs called", map[string]interface{}{"context": currentContext, "ns": namespace, "pod": podName, "containers": containerNames, "timestamps": timestamps, "previous": previous, "sinceTime": sinceTime})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -86,7 +87,7 @@ func (a *App) GetAllContainersLogs(namespace, podName string, containerNames []s
 // GetAllContainersLogsAll fetches all logs from all containers, merged by timestamp
 func (a *App) GetAllContainersLogsAll(namespace, podName string, containerNames []string, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetAllContainersLogsAll called: context=%s, ns=%s, pod=%s, containers=%v, timestamps=%v, previous=%v", currentContext, namespace, podName, containerNames, timestamps, previous)
+	debug.LogK8s("GetAllContainersLogsAll called", map[string]interface{}{"context": currentContext, "ns": namespace, "pod": podName, "containers": containerNames, "timestamps": timestamps, "previous": previous})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -96,7 +97,7 @@ func (a *App) GetAllContainersLogsAll(namespace, podName string, containerNames 
 // GetAllContainersLogsFromStart fetches the first N lines from all containers, merged by timestamp
 func (a *App) GetAllContainersLogsFromStart(namespace, podName string, containerNames []string, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetAllContainersLogsFromStart called: context=%s, ns=%s, pod=%s, containers=%v, timestamps=%v, previous=%v", currentContext, namespace, podName, containerNames, timestamps, previous)
+	debug.LogK8s("GetAllContainersLogsFromStart called", map[string]interface{}{"context": currentContext, "ns": namespace, "pod": podName, "containers": containerNames, "timestamps": timestamps, "previous": previous})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -106,7 +107,7 @@ func (a *App) GetAllContainersLogsFromStart(namespace, podName string, container
 // GetAllContainersLogsBefore fetches logs before a given timestamp from all containers
 func (a *App) GetAllContainersLogsBefore(namespace, podName string, containerNames []string, timestamps bool, previous bool, beforeTime string, limit int) (*LogChunkResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetAllContainersLogsBefore called: context=%s, ns=%s, pod=%s, containers=%v, beforeTime=%s, limit=%d", currentContext, namespace, podName, containerNames, beforeTime, limit)
+	debug.LogK8s("GetAllContainersLogsBefore called", map[string]interface{}{"context": currentContext, "ns": namespace, "pod": podName, "containers": containerNames, "beforeTime": beforeTime, "limit": limit})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -120,7 +121,7 @@ func (a *App) GetAllContainersLogsBefore(namespace, podName string, containerNam
 // GetAllContainersLogsAfter fetches logs after a given timestamp from all containers
 func (a *App) GetAllContainersLogsAfter(namespace, podName string, containerNames []string, timestamps bool, previous bool, afterTime string, limit int) (*LogChunkResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetAllContainersLogsAfter called: context=%s, ns=%s, pod=%s, containers=%v, afterTime=%s, limit=%d", currentContext, namespace, podName, containerNames, afterTime, limit)
+	debug.LogK8s("GetAllContainersLogsAfter called", map[string]interface{}{"context": currentContext, "ns": namespace, "pod": podName, "containers": containerNames, "afterTime": afterTime, "limit": limit})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -146,7 +147,7 @@ func (a *App) StartAllContainersLogStream(namespace, podName string, containerNa
 	sb.WriteString("/__ALL__-")
 	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
 	streamID := sb.String()
-	a.logDebug("StartAllContainersLogStream: streamID=%s, containers=%v", streamID, containerNames)
+	debug.LogK8s("StartAllContainersLogStream", map[string]interface{}{"streamID": streamID, "containers": containerNames})
 
 	// Create a cancellable context for this stream
 	ctx, cancel := context.WithCancel(context.Background())
@@ -173,7 +174,7 @@ func (a *App) StartAllContainersLogStream(namespace, podName string, containerNa
 		})
 
 		if err != nil && err != context.Canceled {
-			a.logDebug("All containers log stream error: %v", err)
+			debug.LogK8s("All containers log stream error", map[string]interface{}{"error": err.Error()})
 			a.logCoalescer.EmitError(streamID, err.Error())
 		}
 	}()
@@ -190,7 +191,7 @@ type PodContainerPair struct {
 // GetAllPodsLogs fetches logs from multiple pods, merged by timestamp
 func (a *App) GetAllPodsLogs(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, sinceTime string) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetAllPodsLogs called: context=%s, ns=%s, pods=%d, allContainers=%v, timestamps=%v, previous=%v", currentContext, namespace, len(pods), allContainers, timestamps, previous)
+	debug.LogK8s("GetAllPodsLogs called", map[string]interface{}{"context": currentContext, "ns": namespace, "pods": len(pods), "allContainers": allContainers, "timestamps": timestamps, "previous": previous})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -205,7 +206,7 @@ func (a *App) GetAllPodsLogs(namespace string, pods []PodContainerPair, allConta
 // GetAllPodsLogsAll fetches all logs from multiple pods, merged by timestamp
 func (a *App) GetAllPodsLogsAll(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetAllPodsLogsAll called: context=%s, ns=%s, pods=%d, allContainers=%v", currentContext, namespace, len(pods), allContainers)
+	debug.LogK8s("GetAllPodsLogsAll called", map[string]interface{}{"context": currentContext, "ns": namespace, "pods": len(pods), "allContainers": allContainers})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -219,7 +220,7 @@ func (a *App) GetAllPodsLogsAll(namespace string, pods []PodContainerPair, allCo
 // GetAllPodsLogsFromStart fetches the first N lines from multiple pods, merged by timestamp
 func (a *App) GetAllPodsLogsFromStart(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool) (string, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetAllPodsLogsFromStart called: context=%s, ns=%s, pods=%d, allContainers=%v", currentContext, namespace, len(pods), allContainers)
+	debug.LogK8s("GetAllPodsLogsFromStart called", map[string]interface{}{"context": currentContext, "ns": namespace, "pods": len(pods), "allContainers": allContainers})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -233,7 +234,7 @@ func (a *App) GetAllPodsLogsFromStart(namespace string, pods []PodContainerPair,
 // GetAllPodsLogsBefore fetches logs before a given timestamp from multiple pods
 func (a *App) GetAllPodsLogsBefore(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, beforeTime string, limit int) (*LogChunkResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetAllPodsLogsBefore called: context=%s, ns=%s, pods=%d, allContainers=%v, beforeTime=%s", currentContext, namespace, len(pods), allContainers, beforeTime)
+	debug.LogK8s("GetAllPodsLogsBefore called", map[string]interface{}{"context": currentContext, "ns": namespace, "pods": len(pods), "allContainers": allContainers, "beforeTime": beforeTime})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -251,7 +252,7 @@ func (a *App) GetAllPodsLogsBefore(namespace string, pods []PodContainerPair, al
 // GetAllPodsLogsAfter fetches logs after a given timestamp from multiple pods
 func (a *App) GetAllPodsLogsAfter(namespace string, pods []PodContainerPair, allContainers bool, timestamps bool, previous bool, afterTime string, limit int) (*LogChunkResult, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("GetAllPodsLogsAfter called: context=%s, ns=%s, pods=%d, allContainers=%v, afterTime=%s", currentContext, namespace, len(pods), allContainers, afterTime)
+	debug.LogK8s("GetAllPodsLogsAfter called", map[string]interface{}{"context": currentContext, "ns": namespace, "pods": len(pods), "allContainers": allContainers, "afterTime": afterTime})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -278,7 +279,7 @@ func (a *App) StartAllPodsLogStream(namespace string, pods []PodContainerPair, a
 	sb.WriteString("/__ALL_PODS__-")
 	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
 	streamID := sb.String()
-	a.logDebug("StartAllPodsLogStream: streamID=%s, pods=%d, allContainers=%v", streamID, len(pods), allContainers)
+	debug.LogK8s("StartAllPodsLogStream", map[string]interface{}{"streamID": streamID, "pods": len(pods), "allContainers": allContainers})
 
 	k8sPods := make([]k8s.PodContainerPair, len(pods))
 	for i, p := range pods {
@@ -304,7 +305,7 @@ func (a *App) StartAllPodsLogStream(namespace string, pods []PodContainerPair, a
 		})
 
 		if err != nil && err != context.Canceled {
-			a.logDebug("All pods log stream error: %v", err)
+			debug.LogK8s("All pods log stream error", map[string]interface{}{"error": err.Error()})
 			a.logCoalescer.EmitError(streamID, err.Error())
 		}
 	}()
@@ -338,7 +339,7 @@ func (a *App) StartLogStream(namespace, podName, containerName string, timestamp
 	sb.WriteByte('-')
 	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
 	streamID := sb.String()
-	a.logDebug("StartLogStream: streamID=%s", streamID)
+	debug.LogK8s("StartLogStream", map[string]interface{}{"streamID": streamID})
 
 	// Create a cancellable context for this stream
 	ctx, cancel := context.WithCancel(context.Background())
@@ -366,7 +367,7 @@ func (a *App) StartLogStream(namespace, podName, containerName string, timestamp
 		})
 
 		if err != nil && err != context.Canceled {
-			a.logDebug("Log stream error: %v", err)
+			debug.LogK8s("Log stream error", map[string]interface{}{"error": err.Error()})
 			a.logCoalescer.EmitError(streamID, err.Error())
 		}
 	}()
@@ -376,7 +377,7 @@ func (a *App) StartLogStream(namespace, podName, containerName string, timestamp
 
 // StopLogStream stops an active log stream
 func (a *App) StopLogStream(streamID string) {
-	a.logDebug("StopLogStream: streamID=%s", streamID)
+	debug.LogK8s("StopLogStream", map[string]interface{}{"streamID": streamID})
 	a.logStreamsMutex.Lock()
 	defer a.logStreamsMutex.Unlock()
 

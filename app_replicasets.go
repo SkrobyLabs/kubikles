@@ -1,9 +1,10 @@
 package main
 
 import (
-	"kubikles/pkg/k8s"
-
 	"fmt"
+
+	"kubikles/pkg/debug"
+	"kubikles/pkg/k8s"
 
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -14,7 +15,7 @@ import (
 
 func (a *App) ListReplicaSets(requestId, namespace string) ([]appsv1.ReplicaSet, error) {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("ListReplicaSets called: context=%s, ns=%s", currentContext, namespace)
+	debug.LogK8s("ListReplicaSets called", map[string]interface{}{"context": currentContext, "ns": namespace})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -32,7 +33,7 @@ func (a *App) ListReplicaSets(requestId, namespace string) ([]appsv1.ReplicaSet,
 }
 
 func (a *App) GetReplicaSetYaml(namespace, name string) (string, error) {
-	a.logDebug("GetReplicaSetYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("GetReplicaSetYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
@@ -40,7 +41,7 @@ func (a *App) GetReplicaSetYaml(namespace, name string) (string, error) {
 }
 
 func (a *App) UpdateReplicaSetYaml(namespace, name, yamlContent string) error {
-	a.logDebug("UpdateReplicaSetYaml called: ns=%s, name=%s", namespace, name)
+	debug.LogK8s("UpdateReplicaSetYaml called", map[string]interface{}{"ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -48,7 +49,7 @@ func (a *App) UpdateReplicaSetYaml(namespace, name, yamlContent string) error {
 }
 
 func (a *App) ScaleReplicaSet(namespace, name string, replicas int32) error {
-	a.logDebug("ScaleReplicaSet called: ns=%s, name=%s, replicas=%d", namespace, name, replicas)
+	debug.LogK8s("ScaleReplicaSet called", map[string]interface{}{"ns": namespace, "name": name, "replicas": replicas})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -57,7 +58,7 @@ func (a *App) ScaleReplicaSet(namespace, name string, replicas int32) error {
 
 func (a *App) DeleteReplicaSet(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
-	a.logDebug("DeleteReplicaSet called: context=%s, ns=%s, name=%s", currentContext, namespace, name)
+	debug.LogK8s("DeleteReplicaSet called", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
@@ -66,30 +67,30 @@ func (a *App) DeleteReplicaSet(namespace, name string) error {
 
 func (a *App) RestartStatefulSet(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.logDebug("RestartStatefulSet called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	debug.LogK8s("RestartStatefulSet called", map[string]interface{}{"context": contextName, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	err := a.k8sClient.RestartStatefulSet(contextName, namespace, name)
 	if err != nil {
-		a.logDebug("RestartStatefulSet error: %v", err)
+		debug.LogK8s("RestartStatefulSet error", map[string]interface{}{"error": err.Error()})
 	} else {
-		a.logDebug("RestartStatefulSet success")
+		debug.LogK8s("RestartStatefulSet success", nil)
 	}
 	return err
 }
 
 func (a *App) DeleteStatefulSet(namespace, name string) error {
 	contextName := a.GetCurrentContext()
-	a.logDebug("DeleteStatefulSet called: context=%s, ns=%s, name=%s", contextName, namespace, name)
+	debug.LogK8s("DeleteStatefulSet called", map[string]interface{}{"context": contextName, "ns": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
 	err := a.k8sClient.DeleteStatefulSet(contextName, namespace, name)
 	if err != nil {
-		a.logDebug("DeleteStatefulSet error: %v", err)
+		debug.LogK8s("DeleteStatefulSet error", map[string]interface{}{"error": err.Error()})
 	} else {
-		a.logDebug("DeleteStatefulSet success")
+		debug.LogK8s("DeleteStatefulSet success", nil)
 	}
 	return err
 }

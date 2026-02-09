@@ -14,6 +14,7 @@ import (
 
 	"kubikles/pkg/ai"
 	"kubikles/pkg/crashlog"
+	"kubikles/pkg/debug"
 	"kubikles/pkg/events"
 	"kubikles/pkg/helm"
 	"kubikles/pkg/issuedetector"
@@ -113,6 +114,8 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	// Set up Wails emitter for desktop mode
 	a.emitter = events.NewWailsEmitter(ctx)
+	// Initialize structured debug logger
+	debug.Init(a.emitter)
 
 	a.watcherManager = NewResourceWatcherManager(ctx, a)
 	a.portForwardManager = NewPortForwardManager(a)
@@ -164,6 +167,10 @@ func (a *App) startupServerMode(ctx context.Context) {
 	crashlog.Log("App startup initiated (server mode)")
 
 	a.ctx = ctx
+	// Initialize structured debug logger (emitter set via SetEmitter before this call)
+	if a.emitter != nil {
+		debug.Init(a.emitter)
+	}
 	a.watcherManager = NewResourceWatcherManager(ctx, a)
 	a.portForwardManager = NewPortForwardManager(a)
 	a.ingressForwardManager = NewIngressForwardManager(a)
@@ -237,7 +244,7 @@ func (a *App) openBrowserURL(url string) {
 
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
-	a.logDebug("App shutdown initiated")
+	debug.LogWails("App shutdown initiated", nil)
 
 	// Flush any pending coalesced events
 	if a.eventCoalescer != nil {
@@ -269,7 +276,7 @@ func (a *App) shutdown(ctx context.Context) {
 		a.aiManager.CloseAllSessions()
 	}
 
-	a.logDebug("App shutdown complete")
+	debug.LogWails("App shutdown complete", nil)
 }
 
 // AI: see app_ai.go
