@@ -28,6 +28,7 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 | AI integration | `pkg/ai/` |
 | Issue detection engine | `pkg/issuedetector/` |
 | MCP server | `pkg/mcp/server.go` |
+| Tool registry & implementations | `pkg/tools/` |
 
 ### App Domain Files (split from app.go)
 | Domain | File |

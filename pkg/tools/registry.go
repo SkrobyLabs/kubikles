@@ -135,6 +135,10 @@ func (r *ToolRegistry) initMetadata() {
 		RelevantActions: []string{"details"},
 		Category:        "diagnostics",
 	}
+
+	r.metadata["run_command"] = ToolMeta{
+		Category: "commands",
+	}
 }
 
 // GetAllTools returns all registered tool definitions.

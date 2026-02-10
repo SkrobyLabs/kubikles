@@ -159,6 +159,32 @@ function ToolMention({ toolName }: { toolName: string }) {
     );
 }
 
+// Inline toggle button for allowing/disallowing a command prefix in the command allowlist
+function CommandMention({ prefix }: { prefix: string }) {
+    const { getConfig, setConfig } = useConfig();
+    const allowedCommands = (getConfig('ai.commandAllowlist') as string[] | undefined) || [];
+    const isAllowed = allowedCommands.includes(prefix);
+
+    const toggle = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const updated = isAllowed
+            ? allowedCommands.filter((c: string) => c !== prefix)
+            : [...allowedCommands, prefix];
+        setConfig('ai.commandAllowlist', updated);
+    };
+
+    return (
+        <span className="inline-flex items-center gap-1">
+            <code className="px-1 py-0.5 rounded bg-black/30 font-mono text-[11px]">{prefix}</code>
+            <button onClick={toggle} className={isAllowed
+                ? "text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400"
+                : "text-[10px] px-1.5 py-0.5 rounded bg-primary/20 text-primary hover:bg-primary/30"}>
+                {isAllowed ? '\u2713 Allowed' : 'Allow'}
+            </button>
+        </span>
+    );
+}
+
 // Render inline markdown: **bold**, `code`, [nav links](nav://...)
 const inlinePatterns = [
     { regex: /\*\*(.+?)\*\*/, type: 'bold' },
@@ -170,6 +196,11 @@ const mcpToolPattern = /^mcp__\w+__\w+$/;
 // Known kubikles short tool names for broader detection
 const knownToolNames = new Set(
     (configSchema.ai?.allowedTools?.options || []).map((o: any) => o.value)
+);
+
+// Known command prefixes from config — enables inline Allow buttons for command allowlist
+const knownCommandPrefixes = new Set(
+    (configSchema.ai?.commandAllowlist?.options || []).map((o: any) => o.value as string)
 );
 
 function renderInline(text: string): any {
@@ -202,6 +233,8 @@ function renderInline(text: string): any {
             case 'code':
                 if (mcpToolPattern.test(match[1]) || knownToolNames.has(match[1])) {
                     parts.push(<ToolMention key={key++} toolName={match[1]} />);
+                } else if (knownCommandPrefixes.has(match[1])) {
+                    parts.push(<CommandMention key={key++} prefix={match[1]} />);
                 } else {
                     parts.push(<code key={key++} className="px-1 py-0.5 rounded bg-black/30 font-mono text-[11px]">{match[1]}</code>);
                 }

@@ -159,6 +159,15 @@ export function EventsOffAll() {
     return window.runtime.EventsOffAll();
 }
 
+// Test-only: dispatch an event locally to all registered listeners (server mode only).
+// Mirrors the ws.onmessage dispatch path for unit testing event subscription lifecycle.
+export function _testDispatchEvent(eventName, data) {
+    const listeners = eventListeners.get(eventName);
+    if (listeners) {
+        listeners.forEach(cb => { try { cb(data); } catch (_) {} });
+    }
+}
+
 export function EventsOnce(eventName, callback) {
     return EventsOnMultiple(eventName, callback, 1);
 }

@@ -247,7 +247,8 @@ export const configSchema: Record<string, any> = {
                 { value: 'get_pod_metrics', label: 'Get Pod Metrics' },
                 { value: 'get_namespace_summary', label: 'Get Namespace Summary' },
                 { value: 'get_resource_dependencies', label: 'Get Resource Dependencies' },
-                { value: 'Bash', label: 'Bash (run shell commands)', warn: true },
+                { value: 'run_command', label: 'Run Command (controlled shell)', warn: true },
+                { value: 'Bash', label: 'Bash (unrestricted shell)', warn: true },
                 { value: 'WebSearch', label: 'Web Search', warn: true },
                 { value: 'Read', label: 'Read Files', warn: true },
                 { value: 'Write', label: 'Write Files', warn: true },
@@ -258,6 +259,37 @@ export const configSchema: Record<string, any> = {
                 'list_custom_resources', 'get_custom_resource_yaml',
                 'get_cluster_metrics', 'get_pod_metrics',
                 'get_namespace_summary', 'get_resource_dependencies'
+            ]
+        },
+        commandAllowlist: {
+            type: 'checkboxGroup',
+            label: 'Command Allowlist',
+            description: 'Command prefixes the run_command tool is allowed to execute. Only commands starting with these prefixes will run. Add custom prefixes in the input below.',
+            options: [
+                { value: 'kubectl get', label: 'kubectl get' },
+                { value: 'kubectl describe', label: 'kubectl describe' },
+                { value: 'kubectl logs', label: 'kubectl logs' },
+                { value: 'kubectl top', label: 'kubectl top' },
+                { value: 'kubectl explain', label: 'kubectl explain' },
+                { value: 'kubectl api-resources', label: 'kubectl api-resources' },
+                { value: 'kubectl api-versions', label: 'kubectl api-versions' },
+                { value: 'kubectl version', label: 'kubectl version' },
+                { value: 'kubectl config get-contexts', label: 'kubectl config get-contexts' },
+                { value: 'kubectl config current-context', label: 'kubectl config current-context' },
+                { value: 'helm list', label: 'helm list' },
+                { value: 'helm status', label: 'helm status' },
+                { value: 'helm get', label: 'helm get' },
+                { value: 'helm history', label: 'helm history' },
+                { value: 'helm search', label: 'helm search' },
+                { value: 'helm show', label: 'helm show' },
+            ],
+            default: [
+                'kubectl get', 'kubectl describe', 'kubectl logs',
+                'kubectl top', 'kubectl explain', 'kubectl api-resources',
+                'kubectl api-versions', 'kubectl version',
+                'kubectl config get-contexts', 'kubectl config current-context',
+                'helm list', 'helm status', 'helm get',
+                'helm history', 'helm search', 'helm show'
             ]
         }
     },

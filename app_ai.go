@@ -42,7 +42,7 @@ func (a *App) StartAISession(clientID string) string {
 
 // SendAIMessage sends a message in an AI session. Streams response via ai:response events.
 // Returns true if the request was successfully initiated, false if it failed immediately.
-func (a *App) SendAIMessage(sessionID, message, systemPrompt, model string, allowedTools []string, timeoutSeconds int) bool {
+func (a *App) SendAIMessage(sessionID, message, systemPrompt, model string, allowedTools []string, allowedCommands []string, timeoutSeconds int) bool {
 	if a.aiManager == nil {
 		a.emitEvent("ai:response", ai.AIResponseEvent{
 			SessionID: sessionID, Error: "AI is not configured", Done: true,
@@ -53,7 +53,7 @@ func (a *App) SendAIMessage(sessionID, message, systemPrompt, model string, allo
 	if a.k8sClient != nil {
 		k8sCtx = a.k8sClient.GetCurrentContext()
 	}
-	return a.aiManager.SendMessage(sessionID, message, systemPrompt, model, k8sCtx, allowedTools, timeoutSeconds)
+	return a.aiManager.SendMessage(sessionID, message, systemPrompt, model, k8sCtx, allowedTools, allowedCommands, timeoutSeconds)
 }
 
 // CancelAIRequest cancels the in-progress AI request for a session

@@ -21,6 +21,41 @@ func TestClaudeCLIProvider_SupportsSession(t *testing.T) {
 	}
 }
 
+func TestClaudeCLISession_IsAlive_NewSession(t *testing.T) {
+	session := newClaudeCLISession("test", func(e StreamEvent) {})
+	if !session.IsAlive() {
+		t.Error("expected new session to be alive")
+	}
+}
+
+func TestClaudeCLISession_IsAlive_AfterClose(t *testing.T) {
+	session := newClaudeCLISession("test", func(e StreamEvent) {})
+	session.Close()
+	if session.IsAlive() {
+		t.Error("expected closed session to not be alive")
+	}
+}
+
+func TestClaudeCLISession_IsAlive_DoubleClose(t *testing.T) {
+	session := newClaudeCLISession("test", func(e StreamEvent) {})
+	session.Close()
+	session.Close() // should not panic (stopOnce)
+	if session.IsAlive() {
+		t.Error("expected closed session to not be alive")
+	}
+}
+
+func TestMockSession_IsAlive(t *testing.T) {
+	mock := &MockSession{}
+	if !mock.IsAlive() {
+		t.Error("expected new MockSession to be alive")
+	}
+	mock.Close()
+	if mock.IsAlive() {
+		t.Error("expected closed MockSession to not be alive")
+	}
+}
+
 func TestStreamParser_ParseAssistantMessage(t *testing.T) {
 	parser := &streamParser{}
 

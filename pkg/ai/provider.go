@@ -11,7 +11,7 @@ type Provider interface {
 	SupportsSession() bool
 	// StartSession creates a persistent session for bidirectional streaming.
 	// Returns nil if SupportsSession() is false.
-	StartSession(sessionID, systemPrompt, model, k8sContext string, allowedTools []string, onEvent func(StreamEvent)) (Session, error)
+	StartSession(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error)
 	// Capabilities returns the provider's capabilities for feature detection.
 	Capabilities() ProviderCapabilities
 }
@@ -36,14 +36,15 @@ type Message struct {
 
 // Request represents a message to send to the AI provider.
 type Request struct {
-	SessionID    string
-	Message      string
-	SystemPrompt string
-	Model        string
-	IsResume     bool      // true for follow-up messages (Claude CLI uses --resume)
-	History      []Message // full conversation history for stateless providers
-	K8sContext   string    // current K8s context name for MCP server
-	AllowedTools []string  // fully-qualified tool names for --allowedTools
+	SessionID       string
+	Message         string
+	SystemPrompt    string
+	Model           string
+	IsResume        bool      // true for follow-up messages (Claude CLI uses --resume)
+	History         []Message // full conversation history for stateless providers
+	K8sContext      string    // current K8s context name for MCP server
+	AllowedTools    []string  // fully-qualified tool names for --allowedTools
+	AllowedCommands []string  // command prefixes for run_command tool allowlist
 }
 
 // StreamEvent represents a streaming response chunk from the AI provider.

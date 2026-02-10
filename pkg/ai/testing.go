@@ -13,18 +13,19 @@ type MockProvider struct {
 	supportsSession   bool
 	capabilities      ProviderCapabilities
 	sendMessageFunc   func(ctx context.Context, req Request, onChunk func(StreamEvent)) error
-	startSessionFunc  func(sessionID, systemPrompt, model, k8sContext string, allowedTools []string, onEvent func(StreamEvent)) (Session, error)
+	startSessionFunc  func(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error)
 	mu                sync.Mutex
 	sendMessageCalls  []Request
 	startSessionCalls []mockStartSessionCall
 }
 
 type mockStartSessionCall struct {
-	SessionID    string
-	SystemPrompt string
-	Model        string
-	K8sContext   string
-	AllowedTools []string
+	SessionID       string
+	SystemPrompt    string
+	Model           string
+	K8sContext      string
+	AllowedTools    []string
+	AllowedCommands []string
 }
 
 // NewMockProvider creates a new mock provider with default settings.
@@ -86,25 +87,26 @@ func (m *MockProvider) SetSendMessageFunc(fn func(ctx context.Context, req Reque
 	m.sendMessageFunc = fn
 }
 
-func (m *MockProvider) StartSession(sessionID, systemPrompt, model, k8sContext string, allowedTools []string, onEvent func(StreamEvent)) (Session, error) {
+func (m *MockProvider) StartSession(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error) {
 	m.mu.Lock()
 	m.startSessionCalls = append(m.startSessionCalls, mockStartSessionCall{
-		SessionID:    sessionID,
-		SystemPrompt: systemPrompt,
-		Model:        model,
-		K8sContext:   k8sContext,
-		AllowedTools: allowedTools,
+		SessionID:       sessionID,
+		SystemPrompt:    systemPrompt,
+		Model:           model,
+		K8sContext:      k8sContext,
+		AllowedTools:    allowedTools,
+		AllowedCommands: allowedCommands,
 	})
 	m.mu.Unlock()
 
 	if m.startSessionFunc != nil {
-		return m.startSessionFunc(sessionID, systemPrompt, model, k8sContext, allowedTools, onEvent)
+		return m.startSessionFunc(sessionID, systemPrompt, model, k8sContext, allowedTools, allowedCommands, onEvent)
 	}
 
 	return NewMockSession(onEvent), nil
 }
 
-func (m *MockProvider) SetStartSessionFunc(fn func(sessionID, systemPrompt, model, k8sContext string, allowedTools []string, onEvent func(StreamEvent)) (Session, error)) {
+func (m *MockProvider) SetStartSessionFunc(fn func(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error)) {
 	m.startSessionFunc = fn
 }
 
@@ -182,6 +184,12 @@ func (s *MockSession) Close() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.closed = true
+}
+
+func (s *MockSession) IsAlive() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return !s.closed
 }
 
 // IsClosed returns whether the session has been closed.

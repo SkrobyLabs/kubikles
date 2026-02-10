@@ -117,6 +117,7 @@ Read the AI reference documentation for full project context:
 | Issue detector deprecation rules | `pkg/issuedetector/rules_deprecation.go` |
 | MCP server | `pkg/mcp/server.go` |
 | Tool registry | `pkg/tools/registry.go` |
+| Command execution tool | `pkg/tools/run_command.go` |
 | Server API | `pkg/server/api.go` |
 
 ## Frontend (React)

@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Terminal as XTerm } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
-import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
+import { EventsOn } from 'wailsjs/runtime/runtime';
 import { getClientId } from '~/lib/wailsjs-adapter/runtime/runtime';
 import { StartTerminalSession, SendTerminalInput, ResizeTerminal, CloseTerminalSession } from 'wailsjs/go/main/App';
 import 'xterm/css/xterm.css';
@@ -123,7 +123,7 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }: { na
             }
         };
 
-        EventsOn('terminal:output', handleTerminalOutput);
+        const cancelTerminalOutput = EventsOn('terminal:output', handleTerminalOutput);
 
         // Send input to terminal
         term.onData((data) => {
@@ -156,7 +156,7 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }: { na
         // Cleanup
         return () => {
             window.removeEventListener('resize', handleResize);
-            EventsOff('terminal:output');
+            cancelTerminalOutput();
 
             // Close the terminal session
             if (sessionIdRef.current) {

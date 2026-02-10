@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
+import { EventsOn } from 'wailsjs/runtime/runtime';
 import { getClientId } from '../lib/wailsjs-adapter/runtime/runtime';
 import { CheckAIProvider, StartAISession, SendAIMessage, CancelAIRequest, ClearAISession, CloseAISession } from 'wailsjs/go/main/App';
 import { useK8s } from './K8sContext';
@@ -324,8 +324,8 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
             }
         };
 
-        EventsOn('ai:response', handler);
-        return () => EventsOff('ai:response');
+        const cancel = EventsOn('ai:response', handler);
+        return () => cancel();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps — uses sessionIdRef to avoid re-registering
 
     // Clean up session on unmount
@@ -387,7 +387,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
             'The user may reference resources they are currently viewing. Use the context provided with each message to understand what they are looking at.',
             'You have tools to query this cluster directly — use them immediately to answer questions with real data instead of suggesting kubectl commands. All provided tools are pre-approved by the user; call them directly without asking first. Do not say "Would you like me to fetch…" or "Shall I check…" — just call the tool and present the results.',
             'Each message includes a "Relevant tools:" hint listing the best tools for the user\'s current view — prefer those tools when answering.',
-            'If a tool is not available or fails with a permission error, mention its full MCP name in backticks (e.g. `mcp__kubikles__get_cluster_metrics`) so the user can enable it via the inline toggle. Do not ask for permission in prose — just reference the tool name in backticks and the UI will show an enable button.',
+            'If a tool is not available or fails with a permission error, mention the tool name in backticks (e.g. `get_cluster_metrics` or `mcp__kubikles__get_cluster_metrics`) so the user can enable it via the inline toggle that appears automatically. Do not ask for permission in prose — the user cannot grant approval that way. Just reference the tool name in backticks and the UI will show an enable button. For running shell commands (kubectl, helm, etc.), the tool to use is `run_command` — never suggest `Bash` for kubectl/helm commands.',
             'IMPORTANT: Never modify, delete, or update cluster resources without explicitly asking the user first and receiving confirmation. Read-only operations (get, list, describe) are always safe and pre-approved. For any mutating action (edit, delete, scale, patch, apply, restart), present the options and wait for the user to choose.',
             'You can create navigation links that are automatically executed when your response completes. Use markdown links with the nav:// scheme:' +
                 '\n- Navigate to a list view: [Show pods](nav://view/pods)' +
@@ -412,14 +412,27 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
         ];
         // Add safety clause when dangerous CLI tools are enabled
         const dangerousTools = ['Bash', 'Write', 'Edit'];
-        const allowedTools = (getConfig('ai.allowedTools') as string[] | undefined) || [];
-        const hasDangerousTools = dangerousTools.some((t: any) => allowedTools.includes(t));
+        const allowedToolsForSafety = (getConfig('ai.allowedTools') as string[] | undefined) || [];
+        const hasDangerousTools = dangerousTools.some((t: any) => allowedToolsForSafety.includes(t));
         if (hasDangerousTools) {
-            const enabled = dangerousTools.filter((t: any) => allowedTools.includes(t)).join(', ');
+            const enabled = dangerousTools.filter((t: any) => allowedToolsForSafety.includes(t)).join(', ');
             parts.push(
                 `SAFETY: The following powerful tools are enabled: ${enabled}. ` +
                 'Before executing any file modification or shell command, describe exactly what you intend to do and wait for the user to confirm. ' +
                 'Never run destructive commands (rm, kubectl delete, DROP, etc.) without explicit user approval.'
+            );
+        }
+        if (allowedToolsForSafety.includes('run_command')) {
+            parts.push(
+                'The `run_command` tool is enabled. When the user asks to run a kubectl or helm command, call run_command immediately with the full command string — do not describe the command in prose or ask for approval. ' +
+                'The tool enforces a server-side allowlist of safe command prefixes; disallowed commands are automatically rejected. ' +
+                'If run_command rejects a command because its prefix is not in the allowlist, mention the command prefix in backticks (e.g. `kubectl logs` or `helm status`) so the user can enable it via the inline toggle. ' +
+                'Always use run_command instead of Bash for kubectl/helm commands.'
+            );
+        } else {
+            parts.push(
+                'To run kubectl or helm commands directly, the `run_command` tool is needed but not yet enabled. ' +
+                'If the user asks to run a shell command, mention `run_command` in backticks so they can enable it. Do not suggest `Bash` for kubectl/helm commands.'
             );
         }
         if (currentContext) {
@@ -521,10 +534,13 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
         const allowedTools = ((getConfig('ai.allowedTools') as string[] | undefined) || [])
             .map((t: any) => t.includes('__') || cliBuiltinTools.has(t) ? t : `mcp__kubikles__${t}`);
 
+        // Read command allowlist for run_command tool
+        const allowedCommands = (getConfig('ai.commandAllowlist') as string[] | undefined) || [];
+
         const timeoutSeconds = ((getConfig('ai.requestTimeout') as number | undefined) || 10) * 60;
 
         // Only set isStreaming if request was successfully initiated
-        SendAIMessage(sessionId, fullMessage, systemPrompt, model, allowedTools, timeoutSeconds)
+        SendAIMessage(sessionId, fullMessage, systemPrompt, model, allowedTools, allowedCommands, timeoutSeconds)
             .then((success: boolean) => {
                 if (success) {
                     setIsStreaming(true);

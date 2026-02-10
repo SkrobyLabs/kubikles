@@ -96,6 +96,7 @@ kubikles/
 │   │   └── server.go       # MCP protocol implementation
 │   ├── tools/              # Tool registry for AI
 │   │   ├── registry.go     # Tool registration
+│   │   ├── run_command.go  # Controlled shell command execution with prefix allowlist
 │   │   └── tools.go        # Tool implementations
 │   ├── server/             # Server mode
 │   │   ├── api.go          # REST API handlers

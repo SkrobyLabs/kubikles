@@ -34,6 +34,7 @@ const aiConfigSchema = z.object({
   panelWidth: z.number().int().min(280).max(800).optional(),
   requestTimeout: z.number().int().min(1).max(60).optional(),
   allowedTools: z.array(z.string()).optional(),
+  commandAllowlist: z.array(z.string()).optional(),
 });
 
 // Sidebar layout section

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
+import { EventsOn } from 'wailsjs/runtime/runtime';
 import { GetCurrentTheme, GetThemes, SetTheme } from 'wailsjs/go/main/App';
 import { main } from 'wailsjs/go/models';
 

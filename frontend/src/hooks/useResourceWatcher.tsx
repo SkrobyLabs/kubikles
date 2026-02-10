@@ -1,6 +1,6 @@
 import { useEffect, useRef, useMemo } from 'react';
 import { SubscribeResourceWatcher, SubscribeCRDWatcher, UnsubscribeWatcher } from 'wailsjs/go/main/App';
-import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
+import { EventsOn } from 'wailsjs/runtime/runtime';
 
 // Resource event structure
 interface ResourceEvent {
@@ -89,16 +89,15 @@ export const useResourceWatcher = (
             }
         };
 
-        EventsOn("resource-event", handleEvent);
-        EventsOn("resource-events-batch", handleBatchEvents);
+        const cancelEvent = EventsOn("resource-event", handleEvent);
+        const cancelBatch = EventsOn("resource-events-batch", handleBatchEvents);
 
-        // Cleanup: unsubscribe all watchers
+        // Cleanup: cancel only our listeners, then unsubscribe backend watchers
         return () => {
             isMounted = false;
-            EventsOff("resource-event", handleEvent);
-            EventsOff("resource-events-batch", handleBatchEvents);
+            cancelEvent();
+            cancelBatch();
 
-            // Unsubscribe all keys that were subscribed during this effect
             subscribedKeys.forEach((key: any) => {
                 UnsubscribeWatcher(key).catch((err: any) => {
                     console.error(`Failed to unsubscribe watcher ${key}:`, err);
@@ -177,14 +176,14 @@ export const useCRDWatcher = (
             }
         };
 
-        EventsOn("resource-event", handleEvent);
-        EventsOn("resource-events-batch", handleBatchEvents);
+        const cancelEvent = EventsOn("resource-event", handleEvent);
+        const cancelBatch = EventsOn("resource-events-batch", handleBatchEvents);
 
-        // Cleanup
+        // Cleanup: cancel only our listeners, then unsubscribe backend watchers
         return () => {
             isMounted = false;
-            EventsOff("resource-event", handleEvent);
-            EventsOff("resource-events-batch", handleBatchEvents);
+            cancelEvent();
+            cancelBatch();
 
             subscribedKeys.forEach((key: any) => {
                 UnsubscribeWatcher(key).catch((err: any) => {

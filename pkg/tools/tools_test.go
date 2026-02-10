@@ -8,9 +8,9 @@ import (
 func TestAllToolDefs_Count(t *testing.T) {
 	defs := AllToolDefs()
 
-	// Verify expected number of tools (16: 12 original + 4 diagnostic tools)
-	if len(defs) != 16 {
-		t.Errorf("expected 16 tools, got %d", len(defs))
+	// Verify expected number of tools (17: 12 original + 4 diagnostic tools + 1 run_command)
+	if len(defs) != 17 {
+		t.Errorf("expected 17 tools, got %d", len(defs))
 	}
 }
 
@@ -63,6 +63,8 @@ func TestAllToolDefs_ExpectedTools(t *testing.T) {
 		"get_multi_pod_logs",
 		"diff_resources",
 		"check_rbac_access",
+		// Command execution
+		"run_command",
 	}
 
 	toolMap := make(map[string]bool)
@@ -345,5 +347,201 @@ data:
 				t.Errorf("redactSecretYaml() mismatch:\ngot:\n%s\n\nwant:\n%s", result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestValidateCommand(t *testing.T) {
+	prefixes := []string{
+		"kubectl get",
+		"kubectl describe",
+		"kubectl logs",
+		"helm list",
+		"helm status",
+	}
+
+	tests := []struct {
+		name    string
+		command string
+		allowed bool
+	}{
+		{"exact prefix match", "kubectl get", true},
+		{"prefix with args", "kubectl get pods -n default", true},
+		{"different subcommand", "kubectl describe pod my-pod", true},
+		{"helm allowed", "helm list --all-namespaces", true},
+		{"helm status", "helm status my-release", true},
+		{"disallowed command", "kubectl delete pod my-pod", false},
+		{"disallowed binary", "rm -rf /", false},
+		{"partial token match rejected", "kubectlget pods", false},
+		{"empty command", "", false},
+		{"single token no match", "curl", false},
+		{"kubectl without subcommand", "kubectl", false},
+		{"logs with namespace", "kubectl logs my-pod -n kube-system", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tokens := strings.Fields(tt.command)
+			result := ValidateCommand(tokens, prefixes)
+			if result != tt.allowed {
+				t.Errorf("ValidateCommand(%q) = %v, want %v", tt.command, result, tt.allowed)
+			}
+		})
+	}
+}
+
+func TestToolRunCommand_DisallowedCommand(t *testing.T) {
+	prefixes := []string{"kubectl get"}
+
+	args := map[string]interface{}{
+		"command": "kubectl delete pod my-pod",
+	}
+	result, isErr := toolRunCommand(args, prefixes)
+
+	if !isErr {
+		t.Error("expected error for disallowed command")
+	}
+	if !strings.Contains(result, "not allowed") {
+		t.Errorf("expected 'not allowed' message, got: %s", result)
+	}
+}
+
+func TestToolRunCommand_EmptyCommand(t *testing.T) {
+	prefixes := []string{"kubectl get"}
+
+	args := map[string]interface{}{
+		"command": "",
+	}
+	result, isErr := toolRunCommand(args, prefixes)
+
+	if !isErr {
+		t.Error("expected error for empty command")
+	}
+	if !strings.Contains(result, "command is required") {
+		t.Errorf("expected 'command is required', got: %s", result)
+	}
+}
+
+func TestToolRunCommand_MissingCommand(t *testing.T) {
+	prefixes := []string{"kubectl get"}
+
+	args := map[string]interface{}{}
+	result, isErr := toolRunCommand(args, prefixes)
+
+	if !isErr {
+		t.Error("expected error for missing command")
+	}
+	if !strings.Contains(result, "command is required") {
+		t.Errorf("expected 'command is required', got: %s", result)
+	}
+}
+
+func TestToolRunCommand_ExecutesAllowedCommand(t *testing.T) {
+	// "echo" is not in default prefixes, but we can test with a custom prefix
+	prefixes := []string{"echo"}
+
+	args := map[string]interface{}{
+		"command": "echo hello world",
+	}
+	result, isErr := toolRunCommand(args, prefixes)
+
+	if isErr {
+		t.Errorf("expected no error, got: %s", result)
+	}
+	if !strings.Contains(result, "hello world") {
+		t.Errorf("expected 'hello world' in output, got: %s", result)
+	}
+}
+
+func TestCallTool_RunCommand_Allowed(t *testing.T) {
+	// Save and restore package-level allowlist
+	prev := AllowedCommandPrefixes
+	AllowedCommandPrefixes = []string{"echo"}
+	defer func() { AllowedCommandPrefixes = prev }()
+
+	result, isErr := CallTool(nil, "run_command", map[string]interface{}{
+		"command": "echo hello from CallTool",
+	})
+
+	if isErr {
+		t.Errorf("expected no error, got: %s", result)
+	}
+	if !strings.Contains(result, "hello from CallTool") {
+		t.Errorf("expected output to contain 'hello from CallTool', got: %s", result)
+	}
+}
+
+func TestCallTool_RunCommand_Rejected(t *testing.T) {
+	prev := AllowedCommandPrefixes
+	AllowedCommandPrefixes = []string{"kubectl get"}
+	defer func() { AllowedCommandPrefixes = prev }()
+
+	result, isErr := CallTool(nil, "run_command", map[string]interface{}{
+		"command": "rm -rf /",
+	})
+
+	if !isErr {
+		t.Error("expected error for disallowed command")
+	}
+	if !strings.Contains(result, "not allowed") {
+		t.Errorf("expected 'not allowed' in result, got: %s", result)
+	}
+}
+
+func TestCallTool_RunCommand_NilPrefixes(t *testing.T) {
+	// When AllowedCommandPrefixes is nil, should use empty list (nothing allowed)
+	prev := AllowedCommandPrefixes
+	AllowedCommandPrefixes = nil
+	defer func() { AllowedCommandPrefixes = prev }()
+
+	result, isErr := CallTool(nil, "run_command", map[string]interface{}{
+		"command": "echo should be rejected",
+	})
+
+	if !isErr {
+		t.Error("expected error when prefixes are nil (no commands allowed)")
+	}
+	if !strings.Contains(result, "not allowed") {
+		t.Errorf("expected 'not allowed' in result, got: %s", result)
+	}
+}
+
+func TestValidateCommand_DefaultPrefixes(t *testing.T) {
+	// Verify defaults allow common read-only commands
+	allowedCommands := []string{
+		"kubectl get pods",
+		"kubectl describe deployment my-deploy",
+		"kubectl logs my-pod -c container",
+		"kubectl top pods",
+		"kubectl explain deployment",
+		"helm list",
+		"helm status my-release",
+		"helm get values my-release",
+		"helm history my-release",
+	}
+
+	for _, cmd := range allowedCommands {
+		tokens := strings.Fields(cmd)
+		if !ValidateCommand(tokens, DefaultAllowedCommandPrefixes) {
+			t.Errorf("expected default prefixes to allow %q", cmd)
+		}
+	}
+
+	// Verify defaults reject mutating commands
+	rejectedCommands := []string{
+		"kubectl delete pod my-pod",
+		"kubectl apply -f manifest.yaml",
+		"kubectl edit deployment my-deploy",
+		"helm install my-release chart",
+		"helm upgrade my-release chart",
+		"helm uninstall my-release",
+		"rm -rf /",
+		"curl http://example.com",
+	}
+
+	for _, cmd := range rejectedCommands {
+		tokens := strings.Fields(cmd)
+		if ValidateCommand(tokens, DefaultAllowedCommandPrefixes) {
+			t.Errorf("expected default prefixes to reject %q", cmd)
+		}
 	}
 }

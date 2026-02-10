@@ -27,7 +27,7 @@ import { PortForwardList } from '~/features/portforwards';
 import { FlowTimeline, MultiLogViewer, ResourceDiff, RBACChecker, IssueDetector } from '~/features/diagnostics';
 import { usePerformancePanel } from '~/hooks/usePerformancePanel';
 import { LogMessage, SetEventCoalescerFrameInterval, SetK8sAPITimeout } from 'wailsjs/go/main/App';
-import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
+import { EventsOn } from 'wailsjs/runtime/runtime';
 import ConfirmModal from '~/components/shared/ConfirmModal';
 import ConfigEditorDialog from '~/components/shared/ConfigEditorDialog';
 import CommandPalette from '~/components/shared/CommandPalette';
@@ -454,14 +454,14 @@ function MainLayout() {
             setZoomLevel(ZOOM_DEFAULT);
         };
 
-        EventsOn('zoom:in', handleZoomIn);
-        EventsOn('zoom:out', handleZoomOut);
-        EventsOn('zoom:reset', handleZoomReset);
+        const cancelZoomIn = EventsOn('zoom:in', handleZoomIn);
+        const cancelZoomOut = EventsOn('zoom:out', handleZoomOut);
+        const cancelZoomReset = EventsOn('zoom:reset', handleZoomReset);
 
         return () => {
-            EventsOff('zoom:in');
-            EventsOff('zoom:out');
-            EventsOff('zoom:reset');
+            cancelZoomIn();
+            cancelZoomOut();
+            cancelZoomReset();
         };
     }, []);
 

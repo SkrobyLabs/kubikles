@@ -26,6 +26,7 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--mcp-server" {
 		k8sContext := ""
 		var allowedTools []string
+		var allowedCommands []string
 		for i := 2; i < len(os.Args); i++ {
 			if os.Args[i] == "--k8s-context" && i+1 < len(os.Args) {
 				k8sContext = os.Args[i+1]
@@ -33,9 +34,16 @@ func main() {
 			} else if os.Args[i] == "--allowed-tools" && i+1 < len(os.Args) {
 				allowedTools = strings.Split(os.Args[i+1], ",")
 				i++
+			} else if os.Args[i] == "--allowed-commands" && i+1 < len(os.Args) {
+				if val := os.Args[i+1]; val != "" {
+					allowedCommands = strings.Split(val, "|")
+				} else {
+					allowedCommands = []string{} // explicitly empty = no commands allowed
+				}
+				i++
 			}
 		}
-		if err := mcp.Run(k8sContext, allowedTools); err != nil {
+		if err := mcp.RunWithOptions(k8sContext, allowedTools, false, allowedCommands); err != nil {
 			os.Exit(1)
 		}
 		return

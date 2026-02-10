@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
+import { EventsOn } from 'wailsjs/runtime/runtime';
 import { SetDebugEnabled } from 'wailsjs/go/main/App';
 
 const DEBUG_STORAGE_KEY = 'kubikles-debug-enabled';
@@ -162,8 +162,8 @@ export const DebugProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             if (!isDebugModeRef.current) return;
             addLogEntry(DEBUG_SOURCE.BACKEND, category as DebugCategory, message, details || null);
         };
-        EventsOn('debug:log', handler);
-        return () => { EventsOff('debug:log'); };
+        const cancel = EventsOn('debug:log', handler);
+        return () => { cancel(); };
     }, [addLogEntry]);
 
     // Listen for frontend debug events (CustomEvent "frontend-debug-log")

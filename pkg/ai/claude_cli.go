@@ -66,14 +66,14 @@ func (c *ClaudeCLIProvider) Capabilities() ProviderCapabilities {
 
 // StartSession creates a persistent Claude CLI session for bidirectional streaming.
 // This avoids the startup overhead of spawning a new process per message.
-func (c *ClaudeCLIProvider) StartSession(sessionID, systemPrompt, model, k8sContext string, allowedTools []string, onEvent func(StreamEvent)) (Session, error) {
+func (c *ClaudeCLIProvider) StartSession(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error) {
 	cliPath, err := c.resolveCLI()
 	if err != nil {
 		return nil, fmt.Errorf("claude CLI not found: %w", err)
 	}
 
 	session := newClaudeCLISession(sessionID, onEvent)
-	if err := session.Start(cliPath, sessionID, systemPrompt, model, k8sContext, allowedTools); err != nil {
+	if err := session.Start(cliPath, sessionID, systemPrompt, model, k8sContext, allowedTools, allowedCommands); err != nil {
 		return nil, err
 	}
 
@@ -93,7 +93,7 @@ func (c *ClaudeCLIProvider) SendMessage(ctx context.Context, req Request, onChun
 	}
 
 	// Generate MCP config for K8s tools and clean up after CLI exits
-	mcpConfigPath, err := writeMCPConfig(req.K8sContext, req.AllowedTools)
+	mcpConfigPath, err := writeMCPConfig(req.K8sContext, req.AllowedTools, req.AllowedCommands)
 	if err != nil {
 		// Fall back to no-tools mode if MCP config fails
 		args = append(args, "--allowedTools", "")
@@ -316,7 +316,8 @@ func findClaudeCLI() (string, error) {
 // The caller must defer os.Remove on the returned path.
 // allowedTools is the list of fully-qualified tool names (e.g. mcp__kubikles__get_pod_logs);
 // short names are extracted and passed to the MCP server for server-side enforcement.
-func writeMCPConfig(k8sContext string, allowedTools []string) (string, error) {
+// allowedCommands are command prefixes for the run_command tool.
+func writeMCPConfig(k8sContext string, allowedTools []string, allowedCommands []string) (string, error) {
 	exePath, err := os.Executable()
 	if err != nil {
 		return "", fmt.Errorf("failed to get executable path: %w", err)
@@ -338,6 +339,11 @@ func writeMCPConfig(k8sContext string, allowedTools []string) (string, error) {
 	if len(shortNames) > 0 {
 		mcpArgs = append(mcpArgs, "--allowed-tools", strings.Join(shortNames, ","))
 	}
+
+	// Always pass command allowlist to MCP server so it doesn't fall back to defaults.
+	// Use pipe separator since command prefixes contain spaces.
+	// An empty value means no commands are allowed.
+	mcpArgs = append(mcpArgs, "--allowed-commands", strings.Join(allowedCommands, "|"))
 
 	config := map[string]interface{}{
 		"mcpServers": map[string]interface{}{

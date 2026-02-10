@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespaces, StartPortForwardsWithMode, ListCRDs, GetK8sInitError } from 'wailsjs/go/main/App';
-import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
+import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
 
 // ============================================================================
@@ -641,12 +641,12 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
         };
 
-        EventsOn("watcher-error", handleWatcherError);
-        EventsOn("watcher-status", handleWatcherStatus);
+        const cancelError = EventsOn("watcher-error", handleWatcherError);
+        const cancelStatus = EventsOn("watcher-status", handleWatcherStatus);
 
         return () => {
-            EventsOff("watcher-error", handleWatcherError);
-            EventsOff("watcher-status", handleWatcherStatus);
+            cancelError();
+            cancelStatus();
         };
     }, []);
 

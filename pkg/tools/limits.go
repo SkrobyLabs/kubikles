@@ -30,4 +30,7 @@ const (
 
 	// MaxToolOutputChars is the default maximum characters for general tool output.
 	MaxToolOutputChars = 10000
+
+	// MaxCommandOutputChars is the maximum characters for run_command output.
+	MaxCommandOutputChars = 10000
 )

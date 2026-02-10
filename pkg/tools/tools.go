@@ -35,6 +35,7 @@ func AllToolDefs() []ToolDef {
 					"pod":        map[string]interface{}{"type": "string", "description": "Pod name"},
 					"container":  map[string]interface{}{"type": "string", "description": "Container name (optional, defaults to first container)"},
 					"tail_lines": map[string]interface{}{"type": "integer", "description": "Number of lines to return (default 100)"},
+					"previous":   map[string]interface{}{"type": "boolean", "description": "Return logs from previous terminated container instance (default false)"},
 				},
 				"required": []string{"namespace", "pod"},
 			},
@@ -240,6 +241,17 @@ func AllToolDefs() []ToolDef {
 				"required": []string{"subject_kind", "subject_name"},
 			},
 		},
+		{
+			Name:        "run_command",
+			Description: "Execute a shell command. Only commands matching the user-configured allowlist of safe prefixes (e.g. kubectl get, helm list) will run. Commands are executed directly without shell interpretation. Disallowed commands are rejected with an error.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"command": map[string]interface{}{"type": "string", "description": "The full command to run (e.g. 'kubectl get pods -n default'). Must match an allowed command prefix."},
+				},
+				"required": []string{"command"},
+			},
+		},
 	}
 }
 
@@ -279,6 +291,12 @@ func CallTool(client *k8s.Client, name string, args map[string]interface{}) (str
 		return toolDiffResources(client, args)
 	case "check_rbac_access":
 		return toolCheckRBACAccess(client, args)
+	case "run_command":
+		prefixes := AllowedCommandPrefixes
+		if prefixes == nil {
+			prefixes = []string{} // no fallback — empty means nothing allowed
+		}
+		return toolRunCommand(args, prefixes)
 	default:
 		return fmt.Sprintf("Unknown tool: %s", name), true
 	}
@@ -293,6 +311,15 @@ func strArg(args map[string]interface{}, key string) string {
 		}
 	}
 	return ""
+}
+
+func boolArg(args map[string]interface{}, key string, defaultVal bool) bool {
+	if v, ok := args[key]; ok {
+		if b, ok := v.(bool); ok {
+			return b
+		}
+	}
+	return defaultVal
 }
 
 func intArg(args map[string]interface{}, key string, defaultVal int) int {
@@ -320,11 +347,12 @@ func toolGetPodLogs(client *k8s.Client, args map[string]interface{}) (string, bo
 	ns := strArg(args, "namespace")
 	pod := strArg(args, "pod")
 	container := strArg(args, "container")
+	previous := boolArg(args, "previous", false)
 	if ns == "" || pod == "" {
 		return "namespace and pod are required", true
 	}
 
-	logs, err := client.GetPodLogs(ns, pod, container, false, false, "")
+	logs, err := client.GetPodLogs(ns, pod, container, false, previous, "")
 	if err != nil {
 		return fmt.Sprintf("Error getting logs: %v", err), true
 	}

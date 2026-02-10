@@ -7,7 +7,7 @@ import {
     GetAllPodsLogs, GetAllPodsLogsAll, GetAllPodsLogsFromStart,
     GetAllPodsLogsBefore, GetAllPodsLogsAfter, StartAllPodsLogStream
 } from 'wailsjs/go/main/App';
-import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
+import { EventsOn } from 'wailsjs/runtime/runtime';
 import { parseLogLines } from './logUtils';
 
 // Special constants for "All" modes
@@ -491,11 +491,11 @@ export function useLogStream({
             }
         };
 
-        EventsOn('log-stream', handleLogEvent);
-        EventsOn('log-stream-batch', handleBatchEvent);
+        const cancelLogStream = EventsOn('log-stream', handleLogEvent);
+        const cancelLogBatch = EventsOn('log-stream-batch', handleBatchEvent);
         return () => {
-            EventsOff('log-stream');
-            EventsOff('log-stream-batch');
+            cancelLogStream();
+            cancelLogBatch();
         };
     }, []);
 

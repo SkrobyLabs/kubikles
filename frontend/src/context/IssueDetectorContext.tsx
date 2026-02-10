@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { RunIssueScan, ListIssueRules, ReloadIssueRules, GetIssueRulesDir, OpenIssueRulesDir } from 'wailsjs/go/main/App';
-import { EventsOn, EventsOff } from 'wailsjs/runtime/runtime';
+import { EventsOn } from 'wailsjs/runtime/runtime';
 import { useK8s } from './K8sContext';
 import type { ScanProgress, ScanResult, RuleInfo, Finding, GroupBy } from '~/hooks/useIssueDetector';
 
@@ -83,13 +83,10 @@ export function IssueDetectorProvider({ children }: { children: React.ReactNode 
 
     // --- Progress event listener (always active) ---
     useEffect(() => {
-        const cleanup = EventsOn('issuedetector:progress', (data: ScanProgress) => {
+        const cancel = EventsOn('issuedetector:progress', (data: ScanProgress) => {
             setProgress(data);
         });
-        return () => {
-            if (typeof cleanup === 'function') cleanup();
-            else EventsOff('issuedetector:progress');
-        };
+        return () => cancel();
     }, []);
 
     // --- Load rules ---

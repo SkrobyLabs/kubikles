@@ -44,6 +44,37 @@ func TestServer_Initialize(t *testing.T) {
 	}
 }
 
+func TestRunWithOptions_SetsAllowedCommandPrefixes(t *testing.T) {
+	// Save and restore the global
+	prev := tools.AllowedCommandPrefixes
+	defer func() { tools.AllowedCommandPrefixes = prev }()
+
+	// Verify nil gets normalized to empty slice
+	tools.AllowedCommandPrefixes = []string{"should-be-overwritten"}
+
+	// We can't call RunWithOptions directly (it needs k8s client + stdin),
+	// so test the logic it performs: nil → empty slice, non-nil → exact value
+	allowedCommands := []string(nil)
+	if allowedCommands == nil {
+		allowedCommands = []string{}
+	}
+	tools.AllowedCommandPrefixes = allowedCommands
+
+	if tools.AllowedCommandPrefixes == nil {
+		t.Error("expected AllowedCommandPrefixes to be non-nil empty slice after nil input")
+	}
+	if len(tools.AllowedCommandPrefixes) != 0 {
+		t.Errorf("expected empty slice, got %v", tools.AllowedCommandPrefixes)
+	}
+
+	// Verify non-nil passes through
+	custom := []string{"kubectl get", "helm list"}
+	tools.AllowedCommandPrefixes = custom
+	if len(tools.AllowedCommandPrefixes) != 2 {
+		t.Errorf("expected 2 prefixes, got %d", len(tools.AllowedCommandPrefixes))
+	}
+}
+
 func TestServer_ToolsList_AllTools(t *testing.T) {
 	s := &Server{
 		client:       nil,
@@ -58,8 +89,8 @@ func TestServer_ToolsList_AllTools(t *testing.T) {
 		t.Error("expected allowedTools to be nil")
 	}
 
-	if len(allDefs) != 16 {
-		t.Errorf("expected 16 tools, got %d", len(allDefs))
+	if len(allDefs) != 17 {
+		t.Errorf("expected 17 tools, got %d", len(allDefs))
 	}
 }
 

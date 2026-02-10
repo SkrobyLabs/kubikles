@@ -73,12 +73,19 @@ type toolContent struct {
 // Run starts the MCP server, reading JSON-RPC from stdin and writing to stdout.
 // allowedTools restricts which tools can be called; nil or empty means all tools allowed.
 func Run(k8sContext string, allowedTools []string) error {
-	return RunWithOptions(k8sContext, allowedTools, false)
+	return RunWithOptions(k8sContext, allowedTools, false, nil)
 }
 
 // RunWithOptions starts the MCP server with additional configuration.
 // allowDangerousTools allows execution of tools marked as dangerous.
-func RunWithOptions(k8sContext string, allowedTools []string, allowDangerousTools bool) error {
+// allowedCommands sets the command prefix allowlist for the run_command tool.
+// An empty slice means no commands are allowed.
+func RunWithOptions(k8sContext string, allowedTools []string, allowDangerousTools bool, allowedCommands []string) error {
+	// Always set the allowlist — empty means nothing allowed, nil means nothing allowed
+	if allowedCommands == nil {
+		allowedCommands = []string{}
+	}
+	tools.AllowedCommandPrefixes = allowedCommands
 	client, err := k8s.NewClient()
 	if err != nil {
 		return fmt.Errorf("failed to create K8s client: %w", err)

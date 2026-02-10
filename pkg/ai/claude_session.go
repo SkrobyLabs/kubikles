@@ -16,6 +16,7 @@ import (
 type Session interface {
 	SendMessage(message string) error
 	Close()
+	IsAlive() bool
 }
 
 // ClaudeCLISession manages a persistent Claude CLI process for bidirectional streaming.
@@ -55,7 +56,7 @@ func newClaudeCLISession(id string, emitFunc func(StreamEvent)) *ClaudeCLISessio
 }
 
 // Start spawns the Claude CLI process with bidirectional streaming.
-func (s *ClaudeCLISession) Start(cliPath, sessionID, systemPrompt, model, k8sContext string, allowedTools []string) error {
+func (s *ClaudeCLISession) Start(cliPath, sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -71,7 +72,7 @@ func (s *ClaudeCLISession) Start(cliPath, sessionID, systemPrompt, model, k8sCon
 	}
 
 	// Generate MCP config for K8s tools
-	mcpConfigPath, err := writeMCPConfig(k8sContext, allowedTools)
+	mcpConfigPath, err := writeMCPConfig(k8sContext, allowedTools, allowedCommands)
 	if err != nil {
 		// Fall back to no-tools mode if MCP config fails
 		args = append(args, "--allowedTools", "")
@@ -236,6 +237,16 @@ func (s *ClaudeCLISession) waitLoop() {
 		}
 		s.emitFunc(StreamEvent{Type: "done"})
 		s.Close()
+	}
+}
+
+// IsAlive returns true if the session's CLI process is still running.
+func (s *ClaudeCLISession) IsAlive() bool {
+	select {
+	case <-s.done:
+		return false
+	default:
+		return true
 	}
 }
 

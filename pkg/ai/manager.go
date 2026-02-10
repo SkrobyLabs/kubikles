@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -26,17 +27,18 @@ type AIResponseEvent struct {
 
 // session tracks a single AI chat session.
 type session struct {
-	id           string
-	clientID     string // WebSocket client that owns this session (for cleanup on disconnect)
-	cancel       context.CancelFunc
-	generation   uint64    // incremented per SendMessage to detect stale events
-	hasHistory   bool      // true after first message sent
-	messages     []Message // accumulated conversation history for stateless providers
-	cliSession   Session   // live CLI process for persistent session mode
-	systemPrompt string    // cached for session restart
-	model        string    // cached for session restart
-	k8sContext   string    // cached for session restart
-	allowedTools []string  // cached for session restart
+	id              string
+	clientID        string // WebSocket client that owns this session (for cleanup on disconnect)
+	cancel          context.CancelFunc
+	generation      uint64    // incremented per SendMessage to detect stale events
+	hasHistory      bool      // true after first message sent
+	messages        []Message // accumulated conversation history for stateless providers
+	cliSession      Session   // live CLI process for persistent session mode
+	systemPrompt    string    // cached for session restart
+	model           string    // cached for session restart
+	k8sContext      string    // cached for session restart
+	allowedTools    []string  // cached for session restart
+	allowedCommands []string  // cached for session restart
 }
 
 // Manager manages AI chat sessions and provider lifecycle.
@@ -111,7 +113,7 @@ func (m *Manager) StartSession(clientID string) string {
 // Streams response via ai:response Wails events.
 // timeoutSeconds overrides the default timeout when > 0.
 // Returns true if the request was successfully initiated, false if it failed validation.
-func (m *Manager) SendMessage(sessionID, message, systemPrompt, model, k8sContext string, allowedTools []string, timeoutSeconds int) bool {
+func (m *Manager) SendMessage(sessionID, message, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, timeoutSeconds int) bool {
 	m.mu.RLock()
 	sess, exists := m.sessions[sessionID]
 	appCtx := m.ctx
@@ -129,43 +131,80 @@ func (m *Manager) SendMessage(sessionID, message, systemPrompt, model, k8sContex
 
 	// Check if provider supports persistent sessions
 	if m.provider.SupportsSession() {
-		return m.sendMessagePersistent(sess, sessionID, message, systemPrompt, model, k8sContext, allowedTools, timeoutSeconds)
+		return m.sendMessagePersistent(sess, sessionID, message, systemPrompt, model, k8sContext, allowedTools, allowedCommands, timeoutSeconds)
 	}
 
 	// Fallback to one-shot mode for providers that don't support sessions
-	m.sendMessageOneShot(sess, sessionID, message, systemPrompt, model, k8sContext, allowedTools, timeoutSeconds, appCtx)
+	m.sendMessageOneShot(sess, sessionID, message, systemPrompt, model, k8sContext, allowedTools, allowedCommands, timeoutSeconds, appCtx)
+	return true
+}
+
+// sortedEqual checks if two string slices contain the same elements (order-independent).
+func sortedEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	ac := make([]string, len(a))
+	bc := make([]string, len(b))
+	copy(ac, a)
+	copy(bc, b)
+	sort.Strings(ac)
+	sort.Strings(bc)
+	for i := range ac {
+		if ac[i] != bc[i] {
+			return false
+		}
+	}
 	return true
 }
 
 // sendMessagePersistent uses a persistent CLI session for fast message sending.
 // Returns true if the message was successfully queued for sending.
 // Note: timeoutSeconds is unused for persistent sessions (they handle timeouts internally)
-func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, systemPrompt, model, k8sContext string, allowedTools []string, _ int) bool {
+func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, _ int) bool {
 	m.mu.Lock()
 	sess.generation++
 
-	// Start persistent session on first message
+	// Restart session if allowed tools or commands changed (e.g. user toggled a tool mid-conversation)
+	if sess.cliSession != nil && (!sortedEqual(sess.allowedTools, allowedTools) || !sortedEqual(sess.allowedCommands, allowedCommands)) {
+		sess.cliSession.Close()
+		sess.cliSession = nil
+	}
+
+	// Clear dead sessions so we can start a fresh one
+	if sess.cliSession != nil && !sess.cliSession.IsAlive() {
+		sess.cliSession = nil
+	}
+
+	// Start persistent session on first message (or after restart)
 	if sess.cliSession == nil {
 		// Cache session params for potential restart
 		sess.systemPrompt = systemPrompt
 		sess.model = model
 		sess.k8sContext = k8sContext
 		sess.allowedTools = allowedTools
+		sess.allowedCommands = allowedCommands
+
+		// Use a fresh CLI session ID to avoid stale session file conflicts.
+		// The manager's sessionID is for frontend routing; the CLI gets its own ID.
+		cliSessionID := uuid.New().String()
+
+		// Capture a reference for the onEvent closure to filter stale events.
+		// The reference is set after StartSession returns (safe because m.mu is held).
+		var thisSession Session
 
 		// Create event handler that looks up current generation at emit time
 		// This ensures events are always emitted with the correct generation
 		onEvent := func(event StreamEvent) {
 			m.mu.RLock()
 			currentSess, exists := m.sessions[sessionID]
-			currentGen := uint64(0)
-			if exists {
-				currentGen = currentSess.generation
-			}
-			m.mu.RUnlock()
-
-			if !exists {
+			// Ignore events from old (replaced) CLI sessions
+			if !exists || currentSess.cliSession != thisSession {
+				m.mu.RUnlock()
 				return
 			}
+			currentGen := currentSess.generation
+			m.mu.RUnlock()
 
 			switch event.Type {
 			case "text":
@@ -177,13 +216,14 @@ func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, syste
 			}
 		}
 
-		cliSession, err := m.provider.StartSession(sessionID, systemPrompt, model, k8sContext, allowedTools, onEvent)
+		cliSession, err := m.provider.StartSession(cliSessionID, systemPrompt, model, k8sContext, allowedTools, allowedCommands, onEvent)
 		if err != nil {
 			gen := sess.generation
 			m.mu.Unlock()
 			m.emit(AIResponseEvent{SessionID: sessionID, Generation: gen, Error: fmt.Sprintf("failed to start session: %v", err), Done: true})
 			return false
 		}
+		thisSession = cliSession
 		sess.cliSession = cliSession
 	}
 	cliSession := sess.cliSession
@@ -208,7 +248,7 @@ func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, syste
 }
 
 // sendMessageOneShot uses the traditional one-process-per-message approach.
-func (m *Manager) sendMessageOneShot(sess *session, sessionID, message, systemPrompt, model, k8sContext string, allowedTools []string, timeoutSeconds int, appCtx context.Context) {
+func (m *Manager) sendMessageOneShot(sess *session, sessionID, message, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, timeoutSeconds int, appCtx context.Context) {
 	timeout := time.Duration(timeoutSeconds) * time.Second
 	if timeout <= 0 {
 		timeout = defaultRequestTimeout
@@ -231,14 +271,15 @@ func (m *Manager) sendMessageOneShot(sess *session, sessionID, message, systemPr
 		defer cancel()
 
 		req := Request{
-			SessionID:    sessionID,
-			Message:      message,
-			SystemPrompt: systemPrompt,
-			Model:        model,
-			IsResume:     isResume,
-			History:      history,
-			K8sContext:   k8sContext,
-			AllowedTools: allowedTools,
+			SessionID:       sessionID,
+			Message:         message,
+			SystemPrompt:    systemPrompt,
+			Model:           model,
+			IsResume:        isResume,
+			History:         history,
+			K8sContext:      k8sContext,
+			AllowedTools:    allowedTools,
+			AllowedCommands: allowedCommands,
 		}
 
 		// Collect assistant response text for history

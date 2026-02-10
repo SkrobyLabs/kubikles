@@ -9,7 +9,7 @@ import {
     CreatePodDirectory,
     DeletePodFile
 } from 'wailsjs/go/main/App';
-import { EventsOn, EventsOff, OnFileDrop, OnFileDropOff } from 'wailsjs/runtime/runtime';
+import { EventsOn, OnFileDrop, OnFileDropOff } from 'wailsjs/runtime/runtime';
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import ContainerSelector from './ContainerSelector';
@@ -157,8 +157,8 @@ export default function PodFileBrowser({
             }
         };
 
-        EventsOn('file:progress', handleProgress);
-        return () => EventsOff('file:progress');
+        const cancel = EventsOn('file:progress', handleProgress);
+        return () => cancel();
     }, [loadFiles]);
 
     // Set up drag and drop using Wails native file drop

@@ -109,7 +109,7 @@ func TestManager_SendMessage_SessionNotFound(t *testing.T) {
 	manager.SetEmitter(emitter, ctx)
 
 	// Send message to non-existent session
-	manager.SendMessage("non-existent", "hello", "", "", "", nil, 0)
+	manager.SendMessage("non-existent", "hello", "", "", "", nil, nil, 0)
 
 	// Wait for event
 	time.Sleep(10 * time.Millisecond)
@@ -134,7 +134,7 @@ func TestManager_SendMessage_NoContext(t *testing.T) {
 	manager.SetEmitter(emitter, nil)
 
 	sessionID := manager.StartSession("")
-	manager.SendMessage(sessionID, "hello", "", "", "", nil, 0)
+	manager.SendMessage(sessionID, "hello", "", "", "", nil, nil, 0)
 
 	// Wait for event
 	time.Sleep(10 * time.Millisecond)
@@ -155,7 +155,7 @@ func TestManager_SendMessage_PersistentSession(t *testing.T) {
 	provider.SetSupportsSession(true)
 
 	var capturedSession *MockSession
-	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools []string, onEvent func(StreamEvent)) (Session, error) {
+	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error) {
 		capturedSession = NewMockSession(onEvent)
 		return capturedSession, nil
 	})
@@ -167,7 +167,7 @@ func TestManager_SendMessage_PersistentSession(t *testing.T) {
 	manager.SetEmitter(emitter, ctx)
 
 	sessionID := manager.StartSession("")
-	manager.SendMessage(sessionID, "hello", "system", "model", "ctx", []string{"tool1"}, 0)
+	manager.SendMessage(sessionID, "hello", "system", "model", "ctx", []string{"tool1"}, nil, 0)
 
 	// Wait for session to start and message to be sent
 	time.Sleep(50 * time.Millisecond)
@@ -217,7 +217,7 @@ func TestManager_SendMessage_OneShotMode(t *testing.T) {
 	manager.SetEmitter(emitter, ctx)
 
 	sessionID := manager.StartSession("")
-	manager.SendMessage(sessionID, "hello", "system", "model", "ctx", []string{"tool1"}, 0)
+	manager.SendMessage(sessionID, "hello", "system", "model", "ctx", []string{"tool1"}, nil, 0)
 
 	// Wait for response
 	time.Sleep(50 * time.Millisecond)
@@ -252,7 +252,7 @@ func TestManager_CancelRequest(t *testing.T) {
 	sessionID := manager.StartSession("")
 
 	// Start message in background
-	go manager.SendMessage(sessionID, "hello", "", "", "", nil, 60)
+	go manager.SendMessage(sessionID, "hello", "", "", "", nil, nil, 60)
 
 	// Wait for send to start
 	<-sendStarted
@@ -295,7 +295,7 @@ func TestManager_ClearSession(t *testing.T) {
 func TestManager_CloseSession(t *testing.T) {
 	provider := NewMockProvider()
 	var capturedSession *MockSession
-	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools []string, onEvent func(StreamEvent)) (Session, error) {
+	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error) {
 		capturedSession = NewMockSession(onEvent)
 		return capturedSession, nil
 	})
@@ -307,7 +307,7 @@ func TestManager_CloseSession(t *testing.T) {
 	manager.SetEmitter(emitter, ctx)
 
 	sessionID := manager.StartSession("")
-	manager.SendMessage(sessionID, "hello", "", "", "", nil, 0)
+	manager.SendMessage(sessionID, "hello", "", "", "", nil, nil, 0)
 
 	// Wait for session to start
 	time.Sleep(50 * time.Millisecond)
@@ -324,7 +324,7 @@ func TestManager_CloseSession(t *testing.T) {
 func TestManager_OnClientDisconnect(t *testing.T) {
 	provider := NewMockProvider()
 	var sessions []*MockSession
-	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools []string, onEvent func(StreamEvent)) (Session, error) {
+	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error) {
 		sess := NewMockSession(onEvent)
 		sessions = append(sessions, sess)
 		return sess, nil
@@ -345,9 +345,9 @@ func TestManager_OnClientDisconnect(t *testing.T) {
 	sessionB := manager.StartSession(clientB)
 
 	// Start messages to create CLI sessions
-	manager.SendMessage(sessionA1, "hello", "", "", "", nil, 0)
-	manager.SendMessage(sessionA2, "hello", "", "", "", nil, 0)
-	manager.SendMessage(sessionB, "hello", "", "", "", nil, 0)
+	manager.SendMessage(sessionA1, "hello", "", "", "", nil, nil, 0)
+	manager.SendMessage(sessionA2, "hello", "", "", "", nil, nil, 0)
+	manager.SendMessage(sessionB, "hello", "", "", "", nil, nil, 0)
 
 	// Wait for sessions to start
 	time.Sleep(50 * time.Millisecond)
@@ -376,7 +376,7 @@ func TestManager_OnClientDisconnect(t *testing.T) {
 func TestManager_CloseAllSessions(t *testing.T) {
 	provider := NewMockProvider()
 	var sessions []*MockSession
-	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools []string, onEvent func(StreamEvent)) (Session, error) {
+	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error) {
 		sess := NewMockSession(onEvent)
 		sessions = append(sessions, sess)
 		return sess, nil
@@ -392,8 +392,8 @@ func TestManager_CloseAllSessions(t *testing.T) {
 	session1 := manager.StartSession("")
 	session2 := manager.StartSession("")
 
-	manager.SendMessage(session1, "hello", "", "", "", nil, 0)
-	manager.SendMessage(session2, "hello", "", "", "", nil, 0)
+	manager.SendMessage(session1, "hello", "", "", "", nil, nil, 0)
+	manager.SendMessage(session2, "hello", "", "", "", nil, nil, 0)
 
 	// Wait for sessions to start
 	time.Sleep(50 * time.Millisecond)
@@ -417,7 +417,7 @@ func TestManager_EventRouting(t *testing.T) {
 	provider := NewMockProvider()
 
 	var sessionEmitFunc func(StreamEvent)
-	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools []string, onEvent func(StreamEvent)) (Session, error) {
+	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error) {
 		sessionEmitFunc = onEvent
 		return NewMockSession(onEvent), nil
 	})
@@ -429,7 +429,7 @@ func TestManager_EventRouting(t *testing.T) {
 	manager.SetEmitter(emitter, ctx)
 
 	sessionID := manager.StartSession("")
-	manager.SendMessage(sessionID, "hello", "", "", "", nil, 0)
+	manager.SendMessage(sessionID, "hello", "", "", "", nil, nil, 0)
 
 	// Wait for session to start
 	time.Sleep(50 * time.Millisecond)
@@ -464,5 +464,135 @@ func TestManager_EventRouting(t *testing.T) {
 	}
 	if !hasDone {
 		t.Error("expected done event")
+	}
+}
+
+func TestManager_SessionRestartsOnToolChange(t *testing.T) {
+	provider := NewMockProvider()
+	var sessions []*MockSession
+	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error) {
+		sess := NewMockSession(onEvent)
+		sessions = append(sessions, sess)
+		return sess, nil
+	})
+
+	manager := NewManager(provider)
+
+	emitter := &mockEmitter{}
+	ctx := context.Background()
+	manager.SetEmitter(emitter, ctx)
+
+	sessionID := manager.StartSession("")
+
+	// First message with initial tools
+	manager.SendMessage(sessionID, "hello", "", "", "", []string{"tool1"}, nil, 0)
+	time.Sleep(50 * time.Millisecond)
+
+	if len(sessions) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(sessions))
+	}
+
+	// Second message with same tools — should reuse session
+	manager.SendMessage(sessionID, "hello2", "", "", "", []string{"tool1"}, nil, 0)
+	time.Sleep(50 * time.Millisecond)
+
+	if len(sessions) != 1 {
+		t.Fatalf("expected still 1 session (reused), got %d", len(sessions))
+	}
+
+	// Third message with DIFFERENT tools — should restart session
+	manager.SendMessage(sessionID, "hello3", "", "", "", []string{"tool1", "tool2"}, nil, 0)
+	time.Sleep(50 * time.Millisecond)
+
+	if len(sessions) != 2 {
+		t.Fatalf("expected 2 sessions (restarted), got %d", len(sessions))
+	}
+
+	// Old session should be closed
+	if !sessions[0].IsClosed() {
+		t.Error("expected old session to be closed after tool change")
+	}
+}
+
+func TestManager_DeadSessionRecovery(t *testing.T) {
+	provider := NewMockProvider()
+	var sessions []*MockSession
+	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error) {
+		sess := NewMockSession(onEvent)
+		sessions = append(sessions, sess)
+		return sess, nil
+	})
+
+	manager := NewManager(provider)
+
+	emitter := &mockEmitter{}
+	ctx := context.Background()
+	manager.SetEmitter(emitter, ctx)
+
+	sessionID := manager.StartSession("")
+
+	// First message starts a session
+	manager.SendMessage(sessionID, "hello", "", "", "", []string{"tool1"}, nil, 0)
+	time.Sleep(50 * time.Millisecond)
+
+	if len(sessions) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(sessions))
+	}
+
+	// Simulate the CLI session dying (e.g., process crash)
+	sessions[0].Close()
+
+	// Next message should detect dead session and start a new one
+	manager.SendMessage(sessionID, "hello2", "", "", "", []string{"tool1"}, nil, 0)
+	time.Sleep(50 * time.Millisecond)
+
+	if len(sessions) != 2 {
+		t.Fatalf("expected 2 sessions (recovered from dead), got %d", len(sessions))
+	}
+}
+
+func TestManager_StaleEventsFilteredAfterRestart(t *testing.T) {
+	provider := NewMockProvider()
+	var sessionEmitFuncs []func(StreamEvent)
+	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error) {
+		sessionEmitFuncs = append(sessionEmitFuncs, onEvent)
+		return NewMockSession(onEvent), nil
+	})
+
+	manager := NewManager(provider)
+
+	emitter := &mockEmitter{}
+	ctx := context.Background()
+	manager.SetEmitter(emitter, ctx)
+
+	sessionID := manager.StartSession("")
+
+	// First message starts session
+	manager.SendMessage(sessionID, "hello", "", "", "", []string{"tool1"}, nil, 0)
+	time.Sleep(50 * time.Millisecond)
+
+	// Trigger session restart via tool change
+	manager.SendMessage(sessionID, "hello2", "", "", "", []string{"tool1", "tool2"}, nil, 0)
+	time.Sleep(50 * time.Millisecond)
+
+	if len(sessionEmitFuncs) != 2 {
+		t.Fatalf("expected 2 emit funcs, got %d", len(sessionEmitFuncs))
+	}
+
+	// Clear events
+	emitter.mu.Lock()
+	emitter.events = nil
+	emitter.mu.Unlock()
+
+	// Emit error from OLD session's emitFunc (simulates waitLoop race)
+	sessionEmitFuncs[0](StreamEvent{Type: "error", Content: "stale error from old process"})
+	time.Sleep(10 * time.Millisecond)
+
+	// Stale event should be filtered — no error events
+	events := emitter.getEvents()
+	for _, e := range events {
+		if event, ok := e.Data.(AIResponseEvent); ok && event.Error != "" {
+			t.Errorf("expected stale event to be filtered, got error: %q", event.Error)
+		}
 	}
 }

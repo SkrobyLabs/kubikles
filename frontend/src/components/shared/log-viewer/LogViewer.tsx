@@ -417,7 +417,6 @@ export default function LogViewer({
                                     placeholder="Select Container..."
                                     className="text-xs"
                                     getOptionLabel={(opt: any) => opt === ALL_CONTAINERS ? 'All Containers' : opt}
-                                    disabled={!!stream.fetchError || stream.streamDisconnected}
                                 />
                             </div>
                         </div>

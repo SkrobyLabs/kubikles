@@ -188,6 +188,51 @@ describe('sidebar layout validation', () => {
     });
 });
 
+describe('ai commandAllowlist validation', () => {
+    it('accepts valid commandAllowlist as string array', () => {
+        const result = appConfigSchema.safeParse({
+            ai: { commandAllowlist: ['kubectl get', 'helm list'] },
+        });
+        expect(result.success).toBe(true);
+    });
+
+    it('accepts empty commandAllowlist', () => {
+        const result = appConfigSchema.safeParse({
+            ai: { commandAllowlist: [] },
+        });
+        expect(result.success).toBe(true);
+    });
+
+    it('accepts omitted commandAllowlist', () => {
+        const result = appConfigSchema.safeParse({ ai: {} });
+        expect(result.success).toBe(true);
+    });
+
+    it('rejects non-string values in commandAllowlist', () => {
+        const result = appConfigSchema.safeParse({
+            ai: { commandAllowlist: [123] },
+        });
+        expect(result.success).toBe(false);
+    });
+
+    it('rejects non-array commandAllowlist', () => {
+        const result = appConfigSchema.safeParse({
+            ai: { commandAllowlist: 'kubectl get' },
+        });
+        expect(result.success).toBe(false);
+    });
+
+    it('accepts commandAllowlist alongside allowedTools', () => {
+        const result = appConfigSchema.safeParse({
+            ai: {
+                allowedTools: ['run_command'],
+                commandAllowlist: ['kubectl get', 'kubectl logs'],
+            },
+        });
+        expect(result.success).toBe(true);
+    });
+});
+
 describe('debug config validation', () => {
     it('accepts showDebugIcon as true', () => {
         const result = appConfigSchema.safeParse({ debug: { showDebugIcon: true } });
