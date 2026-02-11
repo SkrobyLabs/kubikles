@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"kubikles/pkg/debug"
+
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -235,6 +237,8 @@ type DependencyNode struct {
 	IsSummary      bool   `json:"isSummary,omitempty"`
 	RemainingCount int    `json:"remainingCount,omitempty"`
 	ParentID       string `json:"parentId,omitempty"` // For expansion context
+	// Metadata for node charms (e.g., replica counts)
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 // DependencyEdge represents an edge (relationship) in the dependency graph
@@ -654,6 +658,22 @@ func (c *Client) addNode(graph *DependencyGraph, nodeMap map[string]bool, node D
 	if !nodeMap[node.ID] {
 		graph.Nodes = append(graph.Nodes, node)
 		nodeMap[node.ID] = true
+		debug.LogK8s("addNode: Added new node", map[string]interface{}{"id": node.ID, "kind": node.Kind})
+	} else if node.Metadata != nil {
+		// Update existing node with metadata if it was added without it
+		for i, existing := range graph.Nodes {
+			if existing.ID == node.ID && existing.Metadata == nil {
+				graph.Nodes[i].Metadata = node.Metadata
+				// Also update status if the new node has it and the old one doesn't
+				if existing.Status == "" && node.Status != "" {
+					graph.Nodes[i].Status = node.Status
+				}
+				debug.LogK8s("addNode: Updated existing node with metadata", map[string]interface{}{"id": node.ID})
+				break
+			}
+		}
+	} else {
+		debug.LogK8s("addNode: Skipped duplicate node", map[string]interface{}{"id": node.ID})
 	}
 }
 
@@ -673,12 +693,22 @@ func (c *Client) getPodDependencies(cs kubernetes.Interface, cache *resourceCach
 	}
 
 	podID := nodeID("Pod", namespace, name)
+	// Calculate total restart count
+	var restarts int32
+	for _, cs := range pod.Status.ContainerStatuses {
+		restarts += cs.RestartCount
+	}
+	podMeta := make(map[string]string)
+	if restarts > 0 {
+		podMeta["restarts"] = strconv.Itoa(int(restarts))
+	}
 	c.addNode(graph, nodeMap, DependencyNode{
 		ID:        podID,
 		Kind:      "Pod",
 		Name:      name,
 		Namespace: namespace,
 		Status:    string(pod.Status.Phase),
+		Metadata:  podMeta,
 	})
 
 	// Resolve owner references (upward)
@@ -688,8 +718,8 @@ func (c *Client) getPodDependencies(cs kubernetes.Interface, cache *resourceCach
 	c.resolvePodVolumes(cs, graph, nodeMap, podID, namespace, pod.Spec.Volumes)
 
 	// Resolve container env references
-	c.resolvePodContainerRefs(graph, nodeMap, podID, namespace, pod.Spec.Containers)
-	c.resolvePodContainerRefs(graph, nodeMap, podID, namespace, pod.Spec.InitContainers)
+	c.resolvePodContainerRefs(cs, graph, nodeMap, podID, namespace, pod.Spec.Containers)
+	c.resolvePodContainerRefs(cs, graph, nodeMap, podID, namespace, pod.Spec.InitContainers)
 
 	// Find Services that select this Pod (and their Ingresses)
 	c.findServicesSelectingPod(cache, graph, nodeMap, namespace, pod.Labels, podID)
@@ -718,42 +748,94 @@ func (c *Client) resolveOwnerRefs(cs kubernetes.Interface, cache *resourceCache,
 		}
 
 		ownerID := nodeID(ref.Kind, namespace, ref.Name)
+
+		// Fetch owner resource to get metadata (replicas, etc.)
+		var metadata map[string]string
+		var ownerRefs []metav1.OwnerReference
+
+		switch ref.Kind {
+		case "Deployment":
+			if deploy, err := cs.AppsV1().Deployments(namespace).Get(cache.ctx, ref.Name, metav1.GetOptions{}); err == nil {
+				metadata = map[string]string{
+					"replicas": fmt.Sprintf("%d/%d", deploy.Status.ReadyReplicas, deploy.Status.Replicas),
+				}
+			}
+		case "StatefulSet":
+			if sts, err := cs.AppsV1().StatefulSets(namespace).Get(cache.ctx, ref.Name, metav1.GetOptions{}); err == nil {
+				metadata = map[string]string{
+					"replicas": fmt.Sprintf("%d/%d", sts.Status.ReadyReplicas, sts.Status.Replicas),
+				}
+			}
+		case "DaemonSet":
+			if ds, err := cs.AppsV1().DaemonSets(namespace).Get(cache.ctx, ref.Name, metav1.GetOptions{}); err == nil {
+				metadata = map[string]string{
+					"replicas": fmt.Sprintf("%d/%d", ds.Status.NumberReady, ds.Status.DesiredNumberScheduled),
+				}
+			}
+		case "ReplicaSet":
+			// Use O(1) name-indexed lookup
+			if rs, err := cache.getReplicaSetByName(namespace, ref.Name); err == nil && rs != nil {
+				metadata = map[string]string{
+					"replicas": fmt.Sprintf("%d/%d", rs.Status.ReadyReplicas, rs.Status.Replicas),
+				}
+				ownerRefs = rs.OwnerReferences
+			}
+		case "Job":
+			// Use O(1) name-indexed lookup
+			if job, err := cache.getJobByName(namespace, ref.Name); err == nil && job != nil {
+				completions := int32(1)
+				if job.Spec.Completions != nil {
+					completions = *job.Spec.Completions
+				}
+				metadata = map[string]string{
+					"completions": fmt.Sprintf("%d/%d", job.Status.Succeeded, completions),
+				}
+				ownerRefs = job.OwnerReferences
+			}
+		case "CronJob":
+			// CronJobs don't have replica-like metadata
+		}
+
 		c.addNode(graph, nodeMap, DependencyNode{
 			ID:        ownerID,
 			Kind:      ref.Kind,
 			Name:      ref.Name,
 			Namespace: namespace,
+			Metadata:  metadata,
 		})
 		c.addEdge(graph, ownerID, childID, "owns")
 
 		// Recursively resolve parent's owner refs
-		switch ref.Kind {
-		case "ReplicaSet":
-			// Use O(1) name-indexed lookup
-			if rs, err := cache.getReplicaSetByName(namespace, ref.Name); err == nil && rs != nil {
-				c.resolveOwnerRefs(cs, cache, graph, nodeMap, ownerID, namespace, rs.OwnerReferences)
-			}
-		case "Job":
-			// Use O(1) name-indexed lookup
-			if job, err := cache.getJobByName(namespace, ref.Name); err == nil && job != nil {
-				c.resolveOwnerRefs(cs, cache, graph, nodeMap, ownerID, namespace, job.OwnerReferences)
-			}
+		if len(ownerRefs) > 0 {
+			c.resolveOwnerRefs(cs, cache, graph, nodeMap, ownerID, namespace, ownerRefs)
 		}
 	}
 }
 
 // resolvePodVolumes resolves PVC, ConfigMap, Secret volume references
 func (c *Client) resolvePodVolumes(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, podID, namespace string, volumes []v1.Volume) {
+	debug.LogK8s("resolvePodVolumes called", map[string]interface{}{"volumeCount": len(volumes), "podID": podID})
 	for _, vol := range volumes {
 		// PVC references
 		if vol.PersistentVolumeClaim != nil {
 			pvcName := vol.PersistentVolumeClaim.ClaimName
 			pvcID := nodeID("PersistentVolumeClaim", namespace, pvcName)
+			debug.LogK8s("Processing PVC volume", map[string]interface{}{"pvcName": pvcName})
 
 			pvc, err := cs.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
 			status := "Unknown"
+			var pvcMeta map[string]string
 			if err == nil {
 				status = string(pvc.Status.Phase)
+				debug.LogK8s("PVC fetched successfully", map[string]interface{}{"pvcName": pvcName, "status": status})
+				// Get capacity from status (actual) or spec (requested)
+				if capacity, ok := pvc.Status.Capacity[v1.ResourceStorage]; ok {
+					pvcMeta = map[string]string{"capacity": capacity.String()}
+				} else if req, ok := pvc.Spec.Resources.Requests[v1.ResourceStorage]; ok {
+					pvcMeta = map[string]string{"capacity": req.String()}
+				}
+			} else {
+				debug.LogK8s("PVC fetch error", map[string]interface{}{"pvcName": pvcName, "error": err.Error()})
 			}
 
 			c.addNode(graph, nodeMap, DependencyNode{
@@ -762,8 +844,10 @@ func (c *Client) resolvePodVolumes(cs kubernetes.Interface, graph *DependencyGra
 				Name:      pvcName,
 				Namespace: namespace,
 				Status:    status,
+				Metadata:  pvcMeta,
 			})
 			c.addEdge(graph, podID, pvcID, "uses")
+			debug.LogK8s("Added PVC node", map[string]interface{}{"pvcID": pvcID, "nodeCount": len(graph.Nodes)})
 
 			// Resolve PV from PVC
 			if err == nil && pvc.Spec.VolumeName != "" {
@@ -775,11 +859,17 @@ func (c *Client) resolvePodVolumes(cs kubernetes.Interface, graph *DependencyGra
 		if vol.ConfigMap != nil {
 			cmName := vol.ConfigMap.Name
 			cmID := nodeID("ConfigMap", namespace, cmName)
+			var cmMeta map[string]string
+			if cm, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{}); err == nil {
+				keyCount := len(cm.Data) + len(cm.BinaryData)
+				cmMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
+			}
 			c.addNode(graph, nodeMap, DependencyNode{
 				ID:        cmID,
 				Kind:      "ConfigMap",
 				Name:      cmName,
 				Namespace: namespace,
+				Metadata:  cmMeta,
 			})
 			c.addEdge(graph, podID, cmID, "uses")
 		}
@@ -788,11 +878,17 @@ func (c *Client) resolvePodVolumes(cs kubernetes.Interface, graph *DependencyGra
 		if vol.Secret != nil {
 			secretName := vol.Secret.SecretName
 			secretID := nodeID("Secret", namespace, secretName)
+			var secretMeta map[string]string
+			if secret, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), secretName, metav1.GetOptions{}); err == nil {
+				keyCount := len(secret.Data) + len(secret.StringData)
+				secretMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
+			}
 			c.addNode(graph, nodeMap, DependencyNode{
 				ID:        secretID,
 				Kind:      "Secret",
 				Name:      secretName,
 				Namespace: namespace,
+				Metadata:  secretMeta,
 			})
 			c.addEdge(graph, podID, secretID, "uses")
 		}
@@ -805,15 +901,20 @@ func (c *Client) resolvePVFromPVC(cs kubernetes.Interface, graph *DependencyGrap
 
 	pv, err := cs.CoreV1().PersistentVolumes().Get(context.TODO(), pvName, metav1.GetOptions{})
 	status := "Unknown"
+	var pvMeta map[string]string
 	if err == nil {
 		status = string(pv.Status.Phase)
+		if capacity, ok := pv.Spec.Capacity[v1.ResourceStorage]; ok {
+			pvMeta = map[string]string{"capacity": capacity.String()}
+		}
 	}
 
 	c.addNode(graph, nodeMap, DependencyNode{
-		ID:     pvID,
-		Kind:   "PersistentVolume",
-		Name:   pvName,
-		Status: status,
+		ID:       pvID,
+		Kind:     "PersistentVolume",
+		Name:     pvName,
+		Status:   status,
+		Metadata: pvMeta,
 	})
 	c.addEdge(graph, pvcID, pvID, "binds")
 
@@ -837,27 +938,41 @@ func (c *Client) resolvePVFromPVC(cs kubernetes.Interface, graph *DependencyGrap
 }
 
 // resolvePodContainerRefs resolves ConfigMap/Secret references from container env vars
-func (c *Client) resolvePodContainerRefs(graph *DependencyGraph, nodeMap map[string]bool, podID, namespace string, containers []v1.Container) {
+func (c *Client) resolvePodContainerRefs(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, podID, namespace string, containers []v1.Container) {
 	for _, container := range containers {
 		// envFrom references
 		for _, envFrom := range container.EnvFrom {
 			if envFrom.ConfigMapRef != nil {
-				cmID := nodeID("ConfigMap", namespace, envFrom.ConfigMapRef.Name)
+				cmName := envFrom.ConfigMapRef.Name
+				cmID := nodeID("ConfigMap", namespace, cmName)
+				var cmMeta map[string]string
+				if cm, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{}); err == nil {
+					keyCount := len(cm.Data) + len(cm.BinaryData)
+					cmMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
+				}
 				c.addNode(graph, nodeMap, DependencyNode{
 					ID:        cmID,
 					Kind:      "ConfigMap",
-					Name:      envFrom.ConfigMapRef.Name,
+					Name:      cmName,
 					Namespace: namespace,
+					Metadata:  cmMeta,
 				})
 				c.addEdge(graph, podID, cmID, "uses")
 			}
 			if envFrom.SecretRef != nil {
-				secretID := nodeID("Secret", namespace, envFrom.SecretRef.Name)
+				secretName := envFrom.SecretRef.Name
+				secretID := nodeID("Secret", namespace, secretName)
+				var secretMeta map[string]string
+				if secret, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), secretName, metav1.GetOptions{}); err == nil {
+					keyCount := len(secret.Data) + len(secret.StringData)
+					secretMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
+				}
 				c.addNode(graph, nodeMap, DependencyNode{
 					ID:        secretID,
 					Kind:      "Secret",
-					Name:      envFrom.SecretRef.Name,
+					Name:      secretName,
 					Namespace: namespace,
+					Metadata:  secretMeta,
 				})
 				c.addEdge(graph, podID, secretID, "uses")
 			}
@@ -867,22 +982,36 @@ func (c *Client) resolvePodContainerRefs(graph *DependencyGraph, nodeMap map[str
 		for _, env := range container.Env {
 			if env.ValueFrom != nil {
 				if env.ValueFrom.ConfigMapKeyRef != nil {
-					cmID := nodeID("ConfigMap", namespace, env.ValueFrom.ConfigMapKeyRef.Name)
+					cmName := env.ValueFrom.ConfigMapKeyRef.Name
+					cmID := nodeID("ConfigMap", namespace, cmName)
+					var cmMeta map[string]string
+					if cm, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{}); err == nil {
+						keyCount := len(cm.Data) + len(cm.BinaryData)
+						cmMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
+					}
 					c.addNode(graph, nodeMap, DependencyNode{
 						ID:        cmID,
 						Kind:      "ConfigMap",
-						Name:      env.ValueFrom.ConfigMapKeyRef.Name,
+						Name:      cmName,
 						Namespace: namespace,
+						Metadata:  cmMeta,
 					})
 					c.addEdge(graph, podID, cmID, "uses")
 				}
 				if env.ValueFrom.SecretKeyRef != nil {
-					secretID := nodeID("Secret", namespace, env.ValueFrom.SecretKeyRef.Name)
+					secretName := env.ValueFrom.SecretKeyRef.Name
+					secretID := nodeID("Secret", namespace, secretName)
+					var secretMeta map[string]string
+					if secret, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), secretName, metav1.GetOptions{}); err == nil {
+						keyCount := len(secret.Data) + len(secret.StringData)
+						secretMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
+					}
 					c.addNode(graph, nodeMap, DependencyNode{
 						ID:        secretID,
 						Kind:      "Secret",
-						Name:      env.ValueFrom.SecretKeyRef.Name,
+						Name:      secretName,
 						Namespace: namespace,
+						Metadata:  secretMeta,
 					})
 					c.addEdge(graph, podID, secretID, "uses")
 				}
@@ -904,6 +1033,9 @@ func (c *Client) getDeploymentDependencies(cs kubernetes.Interface, cache *resou
 		Kind:      "Deployment",
 		Name:      name,
 		Namespace: namespace,
+		Metadata: map[string]string{
+			"replicas": fmt.Sprintf("%d/%d", deploy.Status.ReadyReplicas, deploy.Status.Replicas),
+		},
 	})
 
 	// Find owned ReplicaSets (using cache)
@@ -918,6 +1050,9 @@ func (c *Client) getDeploymentDependencies(cs kubernetes.Interface, cache *resou
 						Kind:      "ReplicaSet",
 						Name:      rs.Name,
 						Namespace: namespace,
+						Metadata: map[string]string{
+							"replicas": fmt.Sprintf("%d/%d", rs.Status.ReadyReplicas, rs.Status.Replicas),
+						},
 					})
 					c.addEdge(graph, deployID, rsID, "owns")
 
@@ -947,6 +1082,9 @@ func (c *Client) getStatefulSetDependencies(cs kubernetes.Interface, cache *reso
 		Kind:      "StatefulSet",
 		Name:      name,
 		Namespace: namespace,
+		Metadata: map[string]string{
+			"replicas": fmt.Sprintf("%d/%d", sts.Status.ReadyReplicas, sts.Status.Replicas),
+		},
 	})
 
 	// Find owned Pods
@@ -971,6 +1109,9 @@ func (c *Client) getDaemonSetDependencies(cs kubernetes.Interface, cache *resour
 		Kind:      "DaemonSet",
 		Name:      name,
 		Namespace: namespace,
+		Metadata: map[string]string{
+			"replicas": fmt.Sprintf("%d/%d", ds.Status.NumberReady, ds.Status.DesiredNumberScheduled),
+		},
 	})
 
 	// Find owned Pods
@@ -995,6 +1136,9 @@ func (c *Client) getReplicaSetDependencies(cs kubernetes.Interface, cache *resou
 		Kind:      "ReplicaSet",
 		Name:      name,
 		Namespace: namespace,
+		Metadata: map[string]string{
+			"replicas": fmt.Sprintf("%d/%d", rs.Status.ReadyReplicas, rs.Status.Replicas),
+		},
 	})
 
 	// Resolve owner (Deployment)
@@ -1019,11 +1163,18 @@ func (c *Client) getJobDependencies(cs kubernetes.Interface, cache *resourceCach
 	}
 
 	jobID := nodeID("Job", namespace, name)
+	completions := int32(1)
+	if job.Spec.Completions != nil {
+		completions = *job.Spec.Completions
+	}
 	c.addNode(graph, nodeMap, DependencyNode{
 		ID:        jobID,
 		Kind:      "Job",
 		Name:      name,
 		Namespace: namespace,
+		Metadata: map[string]string{
+			"completions": fmt.Sprintf("%d/%d", job.Status.Succeeded, completions),
+		},
 	})
 
 	// Resolve owner (CronJob)
@@ -1062,11 +1213,18 @@ func (c *Client) getCronJobDependencies(cs kubernetes.Interface, cache *resource
 			for _, ref := range job.OwnerReferences {
 				if ref.Kind == "CronJob" && ref.Name == name {
 					jobID := nodeID("Job", namespace, job.Name)
+					completions := int32(1)
+					if job.Spec.Completions != nil {
+						completions = *job.Spec.Completions
+					}
 					c.addNode(graph, nodeMap, DependencyNode{
 						ID:        jobID,
 						Kind:      "Job",
 						Name:      job.Name,
 						Namespace: namespace,
+						Metadata: map[string]string{
+							"completions": fmt.Sprintf("%d/%d", job.Status.Succeeded, completions),
+						},
 					})
 					c.addEdge(graph, cronJobID, jobID, "owns")
 
@@ -1088,12 +1246,20 @@ func (c *Client) getPVCDependencies(cs kubernetes.Interface, cache *resourceCach
 	}
 
 	pvcID := nodeID("PersistentVolumeClaim", namespace, name)
+	// Get capacity from status (actual) or spec (requested)
+	var pvcMeta map[string]string
+	if capacity, ok := pvc.Status.Capacity[v1.ResourceStorage]; ok {
+		pvcMeta = map[string]string{"capacity": capacity.String()}
+	} else if req, ok := pvc.Spec.Resources.Requests[v1.ResourceStorage]; ok {
+		pvcMeta = map[string]string{"capacity": req.String()}
+	}
 	c.addNode(graph, nodeMap, DependencyNode{
 		ID:        pvcID,
 		Kind:      "PersistentVolumeClaim",
 		Name:      name,
 		Namespace: namespace,
 		Status:    string(pvc.Status.Phase),
+		Metadata:  pvcMeta,
 	})
 
 	// Find pods using this PVC (using cache)
@@ -1137,11 +1303,16 @@ func (c *Client) getPVDependencies(cs kubernetes.Interface, cache *resourceCache
 	}
 
 	pvID := nodeID("PersistentVolume", "", name)
+	var pvMeta map[string]string
+	if capacity, ok := pv.Spec.Capacity[v1.ResourceStorage]; ok {
+		pvMeta = map[string]string{"capacity": capacity.String()}
+	}
 	c.addNode(graph, nodeMap, DependencyNode{
-		ID:     pvID,
-		Kind:   "PersistentVolume",
-		Name:   name,
-		Status: string(pv.Status.Phase),
+		ID:       pvID,
+		Kind:     "PersistentVolume",
+		Name:     name,
+		Status:   string(pv.Status.Phase),
+		Metadata: pvMeta,
 	})
 
 	// Find bound PVC
@@ -1207,17 +1378,19 @@ func (c *Client) getPVDependencies(cs kubernetes.Interface, cache *resourceCache
 
 // getConfigMapDependencies resolves dependencies for a ConfigMap
 func (c *Client) getConfigMapDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
-	_, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	cm, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get configmap: %w", err)
 	}
 
 	cmID := nodeID("ConfigMap", namespace, name)
+	keyCount := len(cm.Data) + len(cm.BinaryData)
 	c.addNode(graph, nodeMap, DependencyNode{
 		ID:        cmID,
 		Kind:      "ConfigMap",
 		Name:      name,
 		Namespace: namespace,
+		Metadata:  map[string]string{"keys": strconv.Itoa(keyCount)},
 	})
 
 	// Find pods using this ConfigMap
@@ -1228,17 +1401,19 @@ func (c *Client) getConfigMapDependencies(cs kubernetes.Interface, cache *resour
 
 // getSecretDependencies resolves dependencies for a Secret
 func (c *Client) getSecretDependencies(cs kubernetes.Interface, cache *resourceCache, contextName, namespace, name string, graph *DependencyGraph, nodeMap map[string]bool) (*DependencyGraph, error) {
-	_, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	secret, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret: %w", err)
 	}
 
 	secretID := nodeID("Secret", namespace, name)
+	keyCount := len(secret.Data) + len(secret.StringData)
 	c.addNode(graph, nodeMap, DependencyNode{
 		ID:        secretID,
 		Kind:      "Secret",
 		Name:      name,
 		Namespace: namespace,
+		Metadata:  map[string]string{"keys": strconv.Itoa(keyCount)},
 	})
 
 	// Find pods using this Secret
@@ -1363,19 +1538,29 @@ func (c *Client) findOwnedPods(cs kubernetes.Interface, cache *resourceCache, gr
 		for _, ref := range pod.OwnerReferences {
 			if ref.Kind == ownerKind && ref.Name == ownerName {
 				podID := nodeID("Pod", namespace, pod.Name)
+				// Calculate total restart count
+				var restarts int32
+				for _, cs := range pod.Status.ContainerStatuses {
+					restarts += cs.RestartCount
+				}
+				podMeta := make(map[string]string)
+				if restarts > 0 {
+					podMeta["restarts"] = strconv.Itoa(int(restarts))
+				}
 				c.addNode(graph, nodeMap, DependencyNode{
 					ID:        podID,
 					Kind:      "Pod",
 					Name:      pod.Name,
 					Namespace: namespace,
 					Status:    string(pod.Status.Phase),
+					Metadata:  podMeta,
 				})
 				c.addEdge(graph, ownerID, podID, "owns")
 
 				// Resolve pod's downward dependencies (volumes, configs)
 				c.resolvePodVolumes(cs, graph, nodeMap, podID, namespace, pod.Spec.Volumes)
-				c.resolvePodContainerRefs(graph, nodeMap, podID, namespace, pod.Spec.Containers)
-				c.resolvePodContainerRefs(graph, nodeMap, podID, namespace, pod.Spec.InitContainers)
+				c.resolvePodContainerRefs(cs, graph, nodeMap, podID, namespace, pod.Spec.Containers)
+				c.resolvePodContainerRefs(cs, graph, nodeMap, podID, namespace, pod.Spec.InitContainers)
 			}
 		}
 	}

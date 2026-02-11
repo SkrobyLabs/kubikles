@@ -753,6 +753,7 @@ export namespace k8s {
 	    isSummary?: boolean;
 	    remainingCount?: number;
 	    parentId?: string;
+	    metadata?: Record<string, string>;
 	
 	    static createFrom(source: any = {}) {
 	        return new DependencyNode(source);
@@ -768,6 +769,7 @@ export namespace k8s {
 	        this.isSummary = source["isSummary"];
 	        this.remainingCount = source["remainingCount"];
 	        this.parentId = source["parentId"];
+	        this.metadata = source["metadata"];
 	    }
 	}
 	export class DependencyGraph {

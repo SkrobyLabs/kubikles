@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import {
     ReactFlow,
     Controls,
@@ -73,19 +74,182 @@ const resourceStyles = {
     PodDisruptionBudget: { icon: ShieldExclamationIcon, color: '#fbbf24', bgColor: '#fbbf2420' },
 };
 
+// Pure function - moved outside component to avoid recreation
+const getStatusColor = (status: string | undefined): string => {
+    if (!status) return 'text-gray-400';
+    const s = status.toLowerCase();
+    if (s === 'running' || s === 'bound' || s === 'available' || s === 'active') return 'text-green-400';
+    if (s === 'pending' || s === 'released') return 'text-yellow-400';
+    if (s === 'failed' || s === 'lost' || s === 'terminated') return 'text-red-400';
+    return 'text-gray-400';
+};
+
+// Parse metadata values once - returns { ready, total } or null
+const parseRatio = (value: string | undefined): { ready: number; total: number } | null => {
+    if (!value) return null;
+    const [ready, total] = value.split('/').map(Number);
+    return { ready, total };
+};
+
 // Custom node component - memoized to prevent unnecessary re-renders
 const ResourceNode = React.memo(function ResourceNode({ data }: any) {
-    const style = (resourceStyles as Record<string, any>)[data.kind] || { icon: CubeIcon, color: '#6b7280', bgColor: '#6b728020' };
+    const [showTooltip, setShowTooltip] = useState(false);
+    const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+    const nodeRef = useRef<HTMLDivElement>(null);
+
+    // Memoize style lookup - only recalculates when kind changes
+    const style = useMemo(
+        () => (resourceStyles as Record<string, any>)[data.kind] || { icon: CubeIcon, color: '#6b7280', bgColor: '#6b728020' },
+        [data.kind]
+    );
     const Icon = data.isSummary ? EllipsisHorizontalIcon : style.icon;
 
-    const getStatusColor = (status: any) => {
-        if (!status) return 'text-gray-400';
-        const s = status.toLowerCase();
-        if (s === 'running' || s === 'bound' || s === 'available' || s === 'active') return 'text-green-400';
-        if (s === 'pending' || s === 'released') return 'text-yellow-400';
-        if (s === 'failed' || s === 'lost' || s === 'terminated') return 'text-red-400';
-        return 'text-gray-400';
-    };
+    // Memoize charm calculation - only recalculates when metadata changes
+    const charm = useMemo(() => {
+        if (!data.metadata) return null;
+        // Replicas charm for workloads (Deployment, StatefulSet, DaemonSet, ReplicaSet)
+        const replicas = parseRatio(data.metadata.replicas);
+        if (replicas) {
+            const isHealthy = replicas.ready === replicas.total && replicas.total > 0;
+            return {
+                text: data.metadata.replicas,
+                label: 'Replicas',
+                ready: replicas.ready,
+                total: replicas.total,
+                color: isHealthy ? 'text-green-400' : 'text-yellow-400',
+                bg: isHealthy ? 'bg-green-500/30' : 'bg-yellow-500/30',
+                border: isHealthy ? 'border-green-500/50' : 'border-yellow-500/50',
+            };
+        }
+        // Completions charm for Jobs
+        const completions = parseRatio(data.metadata.completions);
+        if (completions) {
+            const isComplete = completions.ready === completions.total;
+            return {
+                text: data.metadata.completions,
+                label: 'Completions',
+                ready: completions.ready,
+                total: completions.total,
+                color: isComplete ? 'text-green-400' : 'text-blue-400',
+                bg: isComplete ? 'bg-green-500/30' : 'bg-blue-500/30',
+                border: isComplete ? 'border-green-500/50' : 'border-blue-500/50',
+            };
+        }
+        // Restarts charm for Pods
+        if (data.metadata.restarts) {
+            const restarts = parseInt(data.metadata.restarts, 10);
+            const isHigh = restarts > 5;
+            return {
+                text: restarts.toString(),
+                label: 'Restarts',
+                ready: restarts,
+                total: 0,
+                color: isHigh ? 'text-red-400' : 'text-yellow-400',
+                bg: isHigh ? 'bg-red-500/30' : 'bg-yellow-500/30',
+                border: isHigh ? 'border-red-500/50' : 'border-yellow-500/50',
+                icon: 'restart',
+            };
+        }
+        // Capacity charm for PVC/PV
+        if (data.metadata.capacity) {
+            return {
+                text: data.metadata.capacity,
+                label: 'Capacity',
+                ready: 0,
+                total: 0,
+                color: 'text-purple-400',
+                bg: 'bg-purple-500/30',
+                border: 'border-purple-500/50',
+            };
+        }
+        // Key count charm for Secret
+        if (data.metadata.keys && data.kind === 'Secret') {
+            const keys = parseInt(data.metadata.keys, 10);
+            return {
+                text: `${keys}`,
+                label: 'Keys',
+                ready: keys,
+                total: 0,
+                color: 'text-red-400',
+                bg: 'bg-red-500/30',
+                border: 'border-red-500/50',
+                icon: 'lock',
+            };
+        }
+        // Key count charm for ConfigMap
+        if (data.metadata.keys && data.kind === 'ConfigMap') {
+            const keys = parseInt(data.metadata.keys, 10);
+            return {
+                text: `${keys}`,
+                label: 'Keys',
+                ready: keys,
+                total: 0,
+                color: 'text-lime-400',
+                bg: 'bg-lime-500/30',
+                border: 'border-lime-500/50',
+                icon: 'values',
+            };
+        }
+        return null;
+    }, [data.metadata]);
+
+    // Memoize event handlers
+    const handleMouseEnter = useCallback(() => {
+        if (nodeRef.current) {
+            const rect = nodeRef.current.getBoundingClientRect();
+            setTooltipPos({ x: rect.right + 8, y: rect.top });
+            setShowTooltip(true);
+        }
+    }, []);
+
+    const handleMouseLeave = useCallback(() => {
+        setShowTooltip(false);
+    }, []);
+
+    // Memoize tooltip content - reuses parsed charm data
+    const tooltipContent = useMemo(() => {
+        const lines: { label: string; value: string; color?: string }[] = [];
+        lines.push({ label: 'Name', value: data.label });
+        if (data.namespace) {
+            lines.push({ label: 'Namespace', value: data.namespace });
+        }
+        if (data.status) {
+            lines.push({ label: 'Status', value: data.status, color: getStatusColor(data.status) });
+        }
+        // Reuse charm's parsed values instead of re-parsing
+        if (charm?.label === 'Replicas') {
+            lines.push({
+                label: 'Replicas',
+                value: `${charm.ready} ready / ${charm.total} desired`,
+                color: charm.color
+            });
+        } else if (charm?.label === 'Completions') {
+            lines.push({
+                label: 'Completions',
+                value: `${charm.ready} / ${charm.total}`,
+                color: charm.color
+            });
+        } else if (charm?.label === 'Restarts') {
+            lines.push({
+                label: 'Restarts',
+                value: charm.text,
+                color: charm.color
+            });
+        } else if (charm?.label === 'Capacity') {
+            lines.push({
+                label: 'Capacity',
+                value: charm.text,
+                color: charm.color
+            });
+        } else if (charm?.label === 'Keys') {
+            lines.push({
+                label: 'Keys',
+                value: `${charm.ready} key${charm.ready !== 1 ? 's' : ''}`,
+                color: charm.color
+            });
+        }
+        return lines;
+    }, [data.label, data.namespace, data.status, charm]);
 
     // Summary nodes have a dashed border and different styling
     if (data.isSummary) {
@@ -115,31 +279,69 @@ const ResourceNode = React.memo(function ResourceNode({ data }: any) {
     }
 
     return (
-        <div
-            className="px-3 py-2 rounded-lg border-2 min-w-[140px] cursor-pointer transition-all hover:scale-105"
-            style={{
-                backgroundColor: style.bgColor,
-                borderColor: style.color,
-            }}
-            onContextMenu={data.onContextMenu}
-        >
-            <Handle type="target" position={Position.Top} className="!bg-gray-500" />
-            <div className="flex items-center gap-2">
-                <Icon className="h-5 w-5" style={{ color: style.color }} />
-                <div className="flex flex-col">
-                    <span className="text-xs text-gray-400">{data.kind}</span>
-                    <span className="text-sm font-medium text-white truncate max-w-[120px]" title={data.label}>
-                        {data.label}
-                    </span>
-                    {data.status && (
-                        <span className={`text-xs ${getStatusColor(data.status)}`}>
-                            {data.status}
+        <>
+            <div
+                ref={nodeRef}
+                className="px-3 py-2 rounded-lg border-2 min-w-[140px] cursor-pointer transition-all hover:scale-105"
+                style={{
+                    backgroundColor: style.bgColor,
+                    borderColor: style.color,
+                }}
+                onContextMenu={data.onContextMenu}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+            >
+                <Handle type="target" position={Position.Top} className="!bg-gray-500" />
+                <div className="flex items-center gap-2">
+                    <Icon className="h-5 w-5" style={{ color: style.color }} />
+                    <div className="flex flex-col flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-gray-400 shrink-0">{data.kind}</span>
+                            {charm && (
+                                <span
+                                    className={`text-[11px] font-semibold px-1 py-0.5 rounded ${charm.color} ${charm.bg} border ${charm.border} flex items-center gap-0.5 whitespace-nowrap shrink-0`}
+                                >
+                                    {charm.icon === 'restart' && <span>&#x21bb;</span>}
+                                    {charm.icon === 'lock' && <LockClosedIcon className="h-3 w-3" />}
+                                    {charm.icon === 'values' && <span>#</span>}
+                                    {charm.text}
+                                </span>
+                            )}
+                        </div>
+                        <span className="text-sm font-medium text-white truncate max-w-[120px]">
+                            {data.label}
                         </span>
-                    )}
+                        {data.status && (
+                            <span className={`text-xs ${getStatusColor(data.status)}`}>
+                                {data.status}
+                            </span>
+                        )}
+                    </div>
                 </div>
+                <Handle type="source" position={Position.Bottom} className="!bg-gray-500" />
             </div>
-            <Handle type="source" position={Position.Bottom} className="!bg-gray-500" />
-        </div>
+            {/* Tooltip rendered via portal to escape React Flow's clipping */}
+            {showTooltip && ReactDOM.createPortal(
+                <div
+                    className="fixed z-[9999] bg-gray-900 border border-gray-700 rounded-lg shadow-xl p-3 text-sm pointer-events-none"
+                    style={{ left: tooltipPos.x, top: tooltipPos.y }}
+                >
+                    <div className="font-medium text-white mb-2 flex items-center gap-2">
+                        <Icon className="h-4 w-4" style={{ color: style.color }} />
+                        {data.kind}
+                    </div>
+                    <div className="space-y-1">
+                        {tooltipContent.map((item, i) => (
+                            <div key={i} className="flex justify-between gap-4">
+                                <span className="text-gray-400">{item.label}:</span>
+                                <span className={item.color || 'text-white'}>{item.value}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>,
+                document.body
+            )}
+        </>
     );
 });
 
@@ -204,7 +406,7 @@ const getEdgeStyle = (relation: any) => {
 };
 
 export default function DependencyGraph({ resourceType, namespace, resourceName, onClose }: any) {
-    const { openTab, closeTab, openDiagnostic } = useUI();
+    const { openTab, closeTab, openDiagnostic, navigateWithSearch } = useUI();
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [loading, setLoading] = useState(true);
@@ -244,6 +446,31 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             PodDisruptionBudget: 'pdb',
         };
         return (mapping as Record<string, string>)[kind] || kind.toLowerCase();
+    };
+
+    // Map resource kind to view name for navigation
+    const kindToView: Record<string, string> = {
+        Pod: 'pods',
+        Deployment: 'deployments',
+        StatefulSet: 'statefulsets',
+        DaemonSet: 'daemonsets',
+        ReplicaSet: 'replicasets',
+        Job: 'jobs',
+        CronJob: 'cronjobs',
+        ConfigMap: 'configmaps',
+        Secret: 'secrets',
+        Service: 'services',
+        PersistentVolumeClaim: 'pvcs',
+        PersistentVolume: 'pvs',
+        StorageClass: 'storageclasses',
+        Ingress: 'ingresses',
+        IngressClass: 'ingressclasses',
+        Endpoints: 'endpoints',
+        NetworkPolicy: 'networkpolicies',
+        PriorityClass: 'priorityclasses',
+        ServiceAccount: 'serviceaccounts',
+        HorizontalPodAutoscaler: 'hpas',
+        PodDisruptionBudget: 'pdbs',
     };
 
     const handleNodeContextMenu = useCallback((event: any, nodeData: any) => {
@@ -314,6 +541,17 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
         setContextMenu(null);
     }, [openDiagnostic]);
 
+    const handleGoToResource = useCallback((node: any) => {
+        const viewName = kindToView[node.kind];
+        if (viewName) {
+            const search = node.namespace
+                ? `name:"${node.label}" namespace:"${node.namespace}"`
+                : `name:"${node.label}"`;
+            navigateWithSearch(viewName, search, true);
+        }
+        setContextMenu(null);
+    }, [navigateWithSearch]);
+
     // Handle expanding a summary node
     const handleExpandNode = useCallback(async (summaryNode: any) => {
         setContextMenu(null);
@@ -346,6 +584,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                     kind: node.kind,
                     namespace: node.namespace,
                     status: node.status,
+                    metadata: node.metadata,
                     isSummary: node.isSummary || false,
                     remainingCount: node.remainingCount || 0,
                     parentId: node.parentId || '',
@@ -419,8 +658,16 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
         return () => document.removeEventListener('click', handleClick);
     }, []);
 
+    // Stable context menu handler reference to avoid effect re-runs
+    const contextMenuHandlerRef = useRef(handleNodeContextMenu);
+    useEffect(() => {
+        contextMenuHandlerRef.current = handleNodeContextMenu;
+    }, [handleNodeContextMenu]);
+
     // Load dependency data
     useEffect(() => {
+        let cancelled = false;
+
         const loadDependencies = async () => {
             setLoading(true);
             setError(null);
@@ -428,6 +675,9 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             try {
                 Logger.info('Loading dependencies', { resourceType, namespace, resourceName }, 'k8s');
                 const graph = await GetResourceDependencies(resourceType, namespace || '', resourceName);
+
+                // Check if effect was cancelled during async operation
+                if (cancelled) return;
 
                 if (!graph || !graph.nodes || graph.nodes.length === 0) {
                     setError('No dependencies found for this resource');
@@ -444,10 +694,11 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                         kind: node.kind,
                         namespace: node.namespace,
                         status: node.status,
+                        metadata: node.metadata,
                         isSummary: node.isSummary || false,
                         remainingCount: node.remainingCount || 0,
                         parentId: node.parentId || '',
-                        onContextMenu: (e: any) => handleNodeContextMenu(e, {
+                        onContextMenu: (e: any) => contextMenuHandlerRef.current(e, {
                             label: node.name,
                             kind: node.kind,
                             namespace: node.namespace,
@@ -479,10 +730,13 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                 // Apply layout
                 const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(flowNodes, flowEdges);
 
+                if (cancelled) return;
+
                 setNodes(layoutedNodes);
                 setEdges(layoutedEdges);
                 setLoading(false);
             } catch (err: any) {
+                if (cancelled) return;
                 Logger.error('Failed to load dependencies', err, 'k8s');
                 setError(err.message || 'Failed to load dependencies');
                 setLoading(false);
@@ -490,7 +744,11 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
         };
 
         loadDependencies();
-    }, [resourceType, namespace, resourceName, handleNodeContextMenu]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [resourceType, namespace, resourceName]);
 
     if (loading) {
         return (
@@ -508,9 +766,13 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
         );
     }
 
+    // Generate stable key for ReactFlow to force clean remount on resource change
+    const flowKey = `${resourceType}-${namespace || ''}-${resourceName}`;
+
     return (
         <div className="h-full w-full bg-background relative">
             <ReactFlow
+                key={flowKey}
                 nodes={nodes}
                 edges={edges}
                 onNodesChange={onNodesChange}
@@ -614,6 +876,12 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover"
                             >
                                 Compare to...
+                            </button>
+                            <button
+                                onClick={() => handleGoToResource(contextMenu.node)}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover"
+                            >
+                                Go to Resource
                             </button>
                         </>
                     )}
