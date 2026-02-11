@@ -390,6 +390,10 @@ export function GetCurrentTheme() {
   return window['go']['main']['App']['GetCurrentTheme']();
 }
 
+export function GetCustomResourceEvents(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['GetCustomResourceEvents'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
 export function GetCustomResourceYaml(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['GetCustomResourceYaml'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -688,6 +692,18 @@ export function GetVersionInfo() {
 
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
+}
+
+export function HelmDryRunUpgrade(arg1, arg2, arg3) {
+  return window['go']['main']['App']['HelmDryRunUpgrade'](arg1, arg2, arg3);
+}
+
+export function HelmTemplateRelease(arg1, arg2, arg3) {
+  return window['go']['main']['App']['HelmTemplateRelease'](arg1, arg2, arg3);
+}
+
+export function HelmValidateValues(arg1) {
+  return window['go']['main']['App']['HelmValidateValues'](arg1);
 }
 
 export function IsRequestCancellationEnabled() {

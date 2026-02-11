@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useK8s, useIssueDetector } from '~/context';
+import { useAIChat } from '~/context';
 import type { Finding, ScanResult } from '~/hooks/useIssueDetector';
 import Tooltip from '~/components/shared/Tooltip';
 import {
@@ -15,6 +16,7 @@ import {
     AdjustmentsHorizontalIcon,
     CheckIcon,
     BugAntIcon,
+    SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 const SEVERITY_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: typeof ExclamationCircleIcon }> = {
@@ -34,6 +36,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default function IssueDetector({ onClose }: { onClose?: () => void }) {
     const { namespaces } = useK8s();
+    const { openAndSend: openAndSendAI, providerAvailable, isStreaming: aiStreaming } = useAIChat();
     const {
         scanning, progress, result, rules, error,
         runScan, reloadRules, openRulesDir,
@@ -50,6 +53,8 @@ export default function IssueDetector({ onClose }: { onClose?: () => void }) {
         expandedSubGroups, setExpandedSubGroups,
         showRulesPanel, setShowRulesPanel,
     } = useIssueDetector();
+
+    const [ruleSearch, setRuleSearch] = useState('');
 
     // Track whether we already auto-expanded for the current result
     const autoExpandedForResult = useRef<ScanResult | null>(null);
@@ -112,6 +117,26 @@ export default function IssueDetector({ onClose }: { onClose?: () => void }) {
             return next;
         });
     }, [setExpandedGroups]);
+
+    const explainFinding = useCallback((f: Finding) => {
+        const prompt = `Explain this Kubernetes issue and suggest how to fix it:
+
+Rule: ${f.ruleName} (${f.ruleID})
+Severity: ${f.severity}
+Category: ${f.category}
+Resource: ${f.resource.kind}/${f.resource.name}${f.resource.namespace ? ` in namespace ${f.resource.namespace}` : ''}
+
+Issue: ${f.description}
+${f.suggestedFix ? `\nSuggested fix: ${f.suggestedFix}` : ''}
+
+Please explain:
+1. Why this is a problem
+2. What the potential impact is
+3. Step-by-step instructions to fix it
+4. How to prevent it in the future`;
+
+        openAndSendAI(prompt);
+    }, [openAndSendAI]);
 
     // Filter and group findings
     const filteredFindings = useMemo(() => {
@@ -255,6 +280,18 @@ export default function IssueDetector({ onClose }: { onClose?: () => void }) {
                                             </div>
                                         ))}
                                     </div>
+                                )}
+                                {providerAvailable && (
+                                    <Tooltip content="Explain with AI">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); explainFinding(f); }}
+                                            disabled={aiStreaming}
+                                            className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] text-gray-400 hover:text-purple-300 bg-surface hover:bg-purple-900/20 border border-border hover:border-purple-800/50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <SparklesIcon className="h-3 w-3" />
+                                            Explain
+                                        </button>
+                                    </Tooltip>
                                 )}
                             </div>
                         )}
@@ -443,6 +480,10 @@ export default function IssueDetector({ onClose }: { onClose?: () => void }) {
                                         value={searchFilter}
                                         onChange={e => setSearchFilter(e.target.value)}
                                         placeholder="Filter findings..."
+                                        autoComplete="off"
+                                        autoCorrect="off"
+                                        autoCapitalize="off"
+                                        spellCheck={false}
                                         className="w-full pl-7 pr-2 py-1 bg-surface border border-border rounded text-xs text-text placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary/50"
                                     />
                                 </div>
@@ -584,6 +625,24 @@ export default function IssueDetector({ onClose }: { onClose?: () => void }) {
                             </div>
                         </div>
 
+                        {/* Search */}
+                        <div className="px-3 py-2 border-b border-border">
+                            <div className="relative">
+                                <MagnifyingGlassIcon className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-500" />
+                                <input
+                                    type="text"
+                                    value={ruleSearch}
+                                    onChange={e => setRuleSearch(e.target.value)}
+                                    placeholder="Filter rules..."
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
+                                    className="w-full pl-7 pr-2 py-1.5 text-xs bg-background border border-border rounded text-text placeholder-gray-500 focus:outline-none focus:border-primary/50"
+                                />
+                            </div>
+                        </div>
+
                         <div className="flex items-center justify-between px-3 py-2 border-b border-border">
                             <span className="text-xs text-gray-400">
                                 {rules.length - disabledRules.size} of {rules.length} enabled
@@ -603,7 +662,15 @@ export default function IssueDetector({ onClose }: { onClose?: () => void }) {
                         </div>
 
                         <div className="flex-1 min-h-0 overflow-auto p-2 space-y-1">
-                            {rules.map(rule => {
+                            {rules.filter(rule => {
+                                if (!ruleSearch) return true;
+                                const q = ruleSearch.toLowerCase();
+                                return rule.id.toLowerCase().includes(q) ||
+                                    rule.name.toLowerCase().includes(q) ||
+                                    (rule.description || '').toLowerCase().includes(q) ||
+                                    rule.severity.toLowerCase().includes(q) ||
+                                    rule.category.toLowerCase().includes(q);
+                            }).map(rule => {
                                 const disabled = disabledRules.has(rule.id);
                                 const sevCfg = SEVERITY_CONFIG[rule.severity] || SEVERITY_CONFIG.info;
                                 return (

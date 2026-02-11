@@ -95,3 +95,13 @@ func (a *App) DeleteCustomResource(group, version, resource, namespace, name str
 	}
 	return a.k8sClient.DeleteCustomResource(currentContext, group, version, resource, namespace, name)
 }
+
+// GetCustomResourceEvents returns events related to a specific custom resource instance
+func (a *App) GetCustomResourceEvents(group, version, resource, namespace, name, kind string) ([]map[string]interface{}, error) {
+	currentContext := a.GetCurrentContext()
+	debug.LogK8s("GetCustomResourceEvents called", map[string]interface{}{"group": group, "version": version, "resource": resource, "namespace": namespace, "name": name, "kind": kind})
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetCustomResourceEvents(currentContext, group, version, resource, namespace, name, kind)
+}

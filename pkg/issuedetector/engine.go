@@ -237,7 +237,7 @@ func (e *ScanEngine) loadUserRules() {
 // isClusterScoped returns true for resource kinds that are cluster-scoped.
 func isClusterScoped(kind string) bool {
 	switch kind {
-	case "nodes", "pvs", "ingressclasses":
+	case "nodes", "pvs", "ingressclasses", "clusterroles", "clusterrolebindings":
 		return true
 	default:
 		return false

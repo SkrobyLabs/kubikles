@@ -7,11 +7,13 @@ import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 import ControllerMetricsTab from './ControllerMetricsTab';
+import ResourceEventsTab from './ResourceEventsTab';
 import ScaleModal from './ScaleModal';
 import { ScaleStatefulSet } from '~/lib/wailsjs-adapter/go/main/App';
 import { useResourceWatcher } from '~/hooks/useResourceWatcher';
 
 const TAB_BASIC = 'basic';
+const TAB_EVENTS = 'events';
 const TAB_METRICS = 'metrics';
 
 export default function StatefulSetDetails({ statefulSet: initialStatefulSet, tabContext = '' }: { statefulSet: any; tabContext?: string }) {
@@ -145,6 +147,7 @@ export default function StatefulSetDetails({ statefulSet: initialStatefulSet, ta
 
     const tabs = useMemo(() => [
         { id: TAB_BASIC, label: 'Basic' },
+        { id: TAB_EVENTS, label: 'Events' },
         { id: TAB_METRICS, label: 'Metrics' },
     ], []);
 
@@ -211,6 +214,15 @@ export default function StatefulSetDetails({ statefulSet: initialStatefulSet, ta
                     name={name}
                     controllerType="statefulset"
                     isStale={!!isStale}
+                />
+            ) : activeTab === TAB_EVENTS ? (
+                <ResourceEventsTab
+                    kind="StatefulSet"
+                    namespace={namespace}
+                    name={name}
+                    uid={uid}
+                    isStale={!!isStale}
+                    matchLabels={selector}
                 />
             ) : (
             <div className="h-full overflow-auto p-4">

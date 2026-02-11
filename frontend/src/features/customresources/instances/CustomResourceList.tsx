@@ -98,7 +98,7 @@ const renderColumnValue = (value: any, type: any) => {
 export default function CustomResourceList({ crdInfo, isVisible }: any) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { handleEditYaml } = useCustomResourceActions(crdInfo);
+    const { handleShowDetails, handleEditYaml } = useCustomResourceActions(crdInfo);
     const selection = useSelection();
 
     // Wrap APIs to match useBulkActions signature
@@ -220,6 +220,7 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
                     isOpen={activeMenuId === `cr-${item.metadata?.uid}`}
                     menuPosition={menuPosition}
                     onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `cr-${item.metadata?.uid}`, buttonElement)}
+                    onShowDetails={handleShowDetails}
                     onEditYaml={handleEditYaml}
                     onDelete={(resource: any) => openBulkDelete([resource])}
                 />
@@ -230,7 +231,7 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
         });
 
         return cols;
-    }, [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, openBulkDelete, showNamespaceColumn, printerColumns]);
+    }, [activeMenuId, menuPosition, handleMenuOpenChange, handleShowDetails, handleEditYaml, openBulkDelete, showNamespaceColumn, printerColumns]);
 
     return (
         <>
@@ -246,7 +247,7 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
                 multiSelectNamespaces={true}
                 initialSort={{ key: 'age', direction: 'desc' }}
                 resourceType={`cr-${crdInfo.group}-${crdInfo.resource}`}
-                onRowClick={handleEditYaml}
+                onRowClick={handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

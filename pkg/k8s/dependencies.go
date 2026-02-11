@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"kubikles/pkg/debug"
@@ -13,6 +14,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -58,9 +62,15 @@ type resourceCache struct {
 	allIngressesCached bool
 	ctx                context.Context // Request context with timeout
 	cs                 kubernetes.Interface
+	// Dynamic client for CRD owner resolution
+	dc dynamic.Interface
+	// GVR cache: "apiVersion/kind" -> resolved GVR (avoids repeated discovery calls)
+	gvrCache map[string]*schema.GroupVersionResource
+	// CRD resource cache: "kind/namespace/name" -> fetched unstructured resource
+	crdCache map[string]*unstructured.Unstructured
 }
 
-func newResourceCache(ctx context.Context, cs kubernetes.Interface) *resourceCache {
+func newResourceCache(ctx context.Context, cs kubernetes.Interface, dc dynamic.Interface) *resourceCache {
 	return &resourceCache{
 		pods:              make(map[string][]v1.Pod),
 		services:          make(map[string][]v1.Service),
@@ -72,7 +82,94 @@ func newResourceCache(ctx context.Context, cs kubernetes.Interface) *resourceCac
 		jobsByName:        make(map[string]map[string]*batchv1.Job),
 		ctx:               ctx,
 		cs:                cs,
+		dc:                dc,
+		gvrCache:          make(map[string]*schema.GroupVersionResource),
+		crdCache:          make(map[string]*unstructured.Unstructured),
 	}
+}
+
+// resolveGVR resolves an apiVersion + kind to a GroupVersionResource using the discovery API.
+// Results are cached per request to avoid repeated discovery calls.
+func (rc *resourceCache) resolveGVR(apiVersion, kind string) (*schema.GroupVersionResource, error) {
+	cacheKey := apiVersion + "/" + kind
+	if cached, ok := rc.gvrCache[cacheKey]; ok {
+		return cached, nil
+	}
+
+	// Parse apiVersion into group and version
+	gv, err := schema.ParseGroupVersion(apiVersion)
+	if err != nil {
+		return nil, fmt.Errorf("invalid apiVersion %q: %w", apiVersion, err)
+	}
+
+	// Use discovery to find the resource name for this kind
+	resourceList, err := rc.cs.Discovery().ServerResourcesForGroupVersion(apiVersion)
+	if err != nil {
+		return nil, fmt.Errorf("discovery failed for %s: %w", apiVersion, err)
+	}
+
+	// Find the resource matching the kind (use the plural resource name)
+	lowerKind := strings.ToLower(kind)
+	for _, r := range resourceList.APIResources {
+		// Skip subresources (e.g., pods/status)
+		if strings.Contains(r.Name, "/") {
+			continue
+		}
+		if r.Kind == kind {
+			result := &schema.GroupVersionResource{
+				Group:    gv.Group,
+				Version:  gv.Version,
+				Resource: r.Name,
+			}
+			rc.gvrCache[cacheKey] = result
+			return result, nil
+		}
+		// Fallback: match by lowercase plural name (e.g., "rollouts" for "Rollout")
+		if r.Name == lowerKind+"s" || r.Name == lowerKind+"es" || r.Name == lowerKind {
+			result := &schema.GroupVersionResource{
+				Group:    gv.Group,
+				Version:  gv.Version,
+				Resource: r.Name,
+			}
+			rc.gvrCache[cacheKey] = result
+			return result, nil
+		}
+	}
+
+	return nil, fmt.Errorf("resource %q not found in %s", kind, apiVersion)
+}
+
+// getCRDResource fetches a CRD resource using the dynamic client.
+// Tries namespaced first, then cluster-scoped. Results are cached per request.
+func (rc *resourceCache) getCRDResource(gvr *schema.GroupVersionResource, namespace, name string) (*unstructured.Unstructured, error) {
+	cacheKey := gvr.Resource + "/" + namespace + "/" + name
+	if cached, ok := rc.crdCache[cacheKey]; ok {
+		return cached, nil
+	}
+
+	if rc.dc == nil {
+		return nil, fmt.Errorf("dynamic client not available")
+	}
+
+	var obj *unstructured.Unstructured
+	var err error
+
+	// Try namespaced first if namespace is provided
+	if namespace != "" {
+		obj, err = rc.dc.Resource(*gvr).Namespace(namespace).Get(rc.ctx, name, metav1.GetOptions{})
+	}
+
+	// If namespaced failed or no namespace, try cluster-scoped
+	if err != nil || namespace == "" {
+		obj, err = rc.dc.Resource(*gvr).Get(rc.ctx, name, metav1.GetOptions{})
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	rc.crdCache[cacheKey] = obj
+	return obj, nil
 }
 
 func (rc *resourceCache) getPods(namespace string) ([]v1.Pod, error) {
@@ -264,6 +361,9 @@ func (c *Client) GetResourceDependencies(contextName, resourceType, namespace, n
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 
+	// Get dynamic client for CRD owner resolution (best-effort, nil is handled gracefully)
+	dc, _ := c.getDynamicClientForContext(contextName)
+
 	// Create context with timeout to prevent UI hangs on slow clusters
 	ctx, cancel := context.WithTimeout(context.Background(), dependencyAPITimeout)
 	defer cancel()
@@ -273,8 +373,8 @@ func (c *Client) GetResourceDependencies(contextName, resourceType, namespace, n
 		Edges: make([]DependencyEdge, 0, 32),
 	}
 
-	nodeMap := make(map[string]bool, 32) // Track added nodes by ID, pre-sized for typical graph
-	cache := newResourceCache(ctx, cs)   // Request-scoped cache for List() results
+	nodeMap := make(map[string]bool, 32)   // Track added nodes by ID, pre-sized for typical graph
+	cache := newResourceCache(ctx, cs, dc) // Request-scoped cache for List() results
 
 	var result *DependencyGraph
 
@@ -794,6 +894,23 @@ func (c *Client) resolveOwnerRefs(cs kubernetes.Interface, cache *resourceCache,
 			}
 		case "CronJob":
 			// CronJobs don't have replica-like metadata
+		default:
+			// CRD/unknown owner type — resolve via dynamic client
+			if gvr, err := cache.resolveGVR(ref.APIVersion, ref.Kind); err == nil {
+				if obj, err := cache.getCRDResource(gvr, namespace, ref.Name); err == nil {
+					metadata = extractCRDMetadata(obj)
+					// Extract owner references from the unstructured resource for recursive resolution
+					ownerRefs = extractOwnerRefs(obj)
+				} else {
+					debug.LogK8s("CRD owner fetch failed, using ownerRef info only", map[string]interface{}{
+						"kind": ref.Kind, "name": ref.Name, "apiVersion": ref.APIVersion, "error": err.Error(),
+					})
+				}
+			} else {
+				debug.LogK8s("GVR resolution failed for CRD owner", map[string]interface{}{
+					"kind": ref.Kind, "apiVersion": ref.APIVersion, "error": err.Error(),
+				})
+			}
 		}
 
 		c.addNode(graph, nodeMap, DependencyNode{
@@ -810,6 +927,48 @@ func (c *Client) resolveOwnerRefs(cs kubernetes.Interface, cache *resourceCache,
 			c.resolveOwnerRefs(cs, cache, graph, nodeMap, ownerID, namespace, ownerRefs)
 		}
 	}
+}
+
+// extractCRDMetadata extracts useful metadata from an unstructured CRD resource.
+func extractCRDMetadata(obj *unstructured.Unstructured) map[string]string {
+	meta := make(map[string]string)
+
+	// Extract replicas if present (common in controllers like ArgoCD Rollout)
+	if spec, ok := obj.Object["spec"].(map[string]interface{}); ok {
+		if replicas, ok := spec["replicas"]; ok {
+			meta["replicas"] = fmt.Sprintf("%v", replicas)
+		}
+	}
+
+	// Extract status phase/conditions if present
+	if status, ok := obj.Object["status"].(map[string]interface{}); ok {
+		if phase, ok := status["phase"].(string); ok {
+			meta["status"] = phase
+		}
+		// Check for ready replicas (common CRD pattern)
+		if readyReplicas, ok := status["readyReplicas"]; ok {
+			if replicas, exists := meta["replicas"]; exists {
+				meta["replicas"] = fmt.Sprintf("%v/%s", readyReplicas, replicas)
+			}
+		}
+		// Check for health status (ArgoCD pattern)
+		if health, ok := status["health"].(map[string]interface{}); ok {
+			if healthStatus, ok := health["status"].(string); ok {
+				meta["status"] = healthStatus
+			}
+		}
+	}
+
+	return meta
+}
+
+// extractOwnerRefs extracts owner references from an unstructured resource.
+func extractOwnerRefs(obj *unstructured.Unstructured) []metav1.OwnerReference {
+	refs := obj.GetOwnerReferences()
+	if len(refs) == 0 {
+		return nil
+	}
+	return refs
 }
 
 // resolvePodVolumes resolves PVC, ConfigMap, Secret volume references
@@ -2281,6 +2440,9 @@ func (c *Client) ExpandDependencyNode(contextName, resourceType, namespace, reso
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
 
+	// Get dynamic client for CRD owner resolution (best-effort, nil is handled gracefully)
+	dc, _ := c.getDynamicClientForContext(contextName)
+
 	// Create context with timeout to prevent UI hangs on slow clusters
 	ctx, cancel := context.WithTimeout(context.Background(), dependencyAPITimeout)
 	defer cancel()
@@ -2290,7 +2452,7 @@ func (c *Client) ExpandDependencyNode(contextName, resourceType, namespace, reso
 		Edges: make([]DependencyEdge, 0, 32),
 	}
 	nodeMap := make(map[string]bool, 32)
-	cache := newResourceCache(ctx, cs) // Request-scoped cache with timeout
+	cache := newResourceCache(ctx, cs, dc) // Request-scoped cache with timeout
 
 	var fullGraph *DependencyGraph
 

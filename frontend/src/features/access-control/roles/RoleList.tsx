@@ -16,7 +16,7 @@ export default function RoleList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { roles, loading } = useRoles(currentContext, selectedNamespaces, isVisible) as any;
-    const { handleEditYaml } = useRoleActions();
+    const { handleShowDetails, handleEditYaml } = useRoleActions();
     const selection = useSelection();
 
     // Unified bulk actions (also used for single delete)
@@ -81,7 +81,7 @@ export default function RoleList({ isVisible }: { isVisible: boolean }) {
                 multiSelectNamespaces={true}
                 initialSort={{ key: 'age', direction: 'desc' }}
                 resourceType="roles"
-                onRowClick={handleEditYaml}
+                onRowClick={handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

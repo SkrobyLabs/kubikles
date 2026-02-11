@@ -259,3 +259,35 @@ func (a *App) SearchChartInSource(sourceName, chartName string) (*helm.ChartSear
 	}
 	return a.helmClient.SearchChartInSource(sourceName, chartName)
 }
+
+// =============================================================================
+// Helm Template Preview / Dry-Run / Validation
+// =============================================================================
+
+// HelmTemplateRelease renders templates locally without contacting the cluster
+func (a *App) HelmTemplateRelease(releaseName, namespace string, opts helm.UpgradeOptions) (*helm.TemplateResult, error) {
+	debug.LogHelm("HelmTemplateRelease", map[string]interface{}{"name": releaseName, "ns": namespace, "chart": opts.ChartName, "version": opts.Version})
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.TemplateRelease(releaseName, namespace, opts)
+}
+
+// HelmDryRunUpgrade performs a server-side dry-run upgrade and returns current vs proposed manifests
+func (a *App) HelmDryRunUpgrade(namespace, releaseName string, opts helm.UpgradeOptions) (*helm.DryRunResult, error) {
+	currentContext := a.GetCurrentContext()
+	debug.LogHelm("HelmDryRunUpgrade", map[string]interface{}{"context": currentContext, "ns": namespace, "name": releaseName, "chart": opts.ChartName, "version": opts.Version})
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.DryRunUpgrade(currentContext, namespace, releaseName, opts)
+}
+
+// HelmValidateValues validates values against the chart's JSON schema
+func (a *App) HelmValidateValues(opts helm.UpgradeOptions) ([]helm.ValidationError, error) {
+	debug.LogHelm("HelmValidateValues", map[string]interface{}{"chart": opts.ChartName, "version": opts.Version})
+	if a.helmClient == nil {
+		return nil, fmt.Errorf("helm client not initialized")
+	}
+	return a.helmClient.ValidateValues(opts)
+}

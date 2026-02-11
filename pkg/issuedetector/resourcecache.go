@@ -7,8 +7,10 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 
 	"kubikles/pkg/k8s"
 
@@ -98,6 +100,18 @@ func (rc *ResourceCache) ResourceCount(kind string) int {
 	case []v1.ServiceAccount:
 		return len(v)
 	case []autoscalingv2.HorizontalPodAutoscaler:
+		return len(v)
+	case []batchv1.Job:
+		return len(v)
+	case []batchv1.CronJob:
+		return len(v)
+	case []rbacv1.Role:
+		return len(v)
+	case []rbacv1.ClusterRole:
+		return len(v)
+	case []rbacv1.RoleBinding:
+		return len(v)
+	case []rbacv1.ClusterRoleBinding:
 		return len(v)
 	default:
 		return 0
@@ -241,6 +255,60 @@ func (rc *ResourceCache) HPAs() []autoscalingv2.HorizontalPodAutoscaler {
 	return []autoscalingv2.HorizontalPodAutoscaler{}
 }
 
+func (rc *ResourceCache) Jobs() []batchv1.Job {
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
+	if v, ok := rc.data["jobs"].([]batchv1.Job); ok {
+		return v
+	}
+	return []batchv1.Job{}
+}
+
+func (rc *ResourceCache) CronJobs() []batchv1.CronJob {
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
+	if v, ok := rc.data["cronjobs"].([]batchv1.CronJob); ok {
+		return v
+	}
+	return []batchv1.CronJob{}
+}
+
+func (rc *ResourceCache) Roles() []rbacv1.Role {
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
+	if v, ok := rc.data["roles"].([]rbacv1.Role); ok {
+		return v
+	}
+	return []rbacv1.Role{}
+}
+
+func (rc *ResourceCache) ClusterRoles() []rbacv1.ClusterRole {
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
+	if v, ok := rc.data["clusterroles"].([]rbacv1.ClusterRole); ok {
+		return v
+	}
+	return []rbacv1.ClusterRole{}
+}
+
+func (rc *ResourceCache) RoleBindings() []rbacv1.RoleBinding {
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
+	if v, ok := rc.data["rolebindings"].([]rbacv1.RoleBinding); ok {
+		return v
+	}
+	return []rbacv1.RoleBinding{}
+}
+
+func (rc *ResourceCache) ClusterRoleBindings() []rbacv1.ClusterRoleBinding {
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
+	if v, ok := rc.data["clusterrolebindings"].([]rbacv1.ClusterRoleBinding); ok {
+		return v
+	}
+	return []rbacv1.ClusterRoleBinding{}
+}
+
 // ---- Internal fetch dispatching ----
 
 func (rc *ResourceCache) fetchKind(ctx context.Context, kind string) error {
@@ -376,6 +444,54 @@ func (rc *ResourceCache) fetchKind(ctx context.Context, kind string) error {
 				all = append(all, r.([]autoscalingv2.HorizontalPodAutoscaler)...)
 			}
 			return all
+		})
+	case "jobs":
+		return rc.fetchNamespaced(ctx, kind, func(ctx context.Context, ns string) (interface{}, error) {
+			return rc.client.ListJobsWithContext(ctx, "", ns)
+		}, func(results []interface{}) interface{} {
+			var all []batchv1.Job
+			for _, r := range results {
+				all = append(all, r.([]batchv1.Job)...)
+			}
+			return all
+		})
+	case "cronjobs":
+		return rc.fetchNamespaced(ctx, kind, func(ctx context.Context, ns string) (interface{}, error) {
+			return rc.client.ListCronJobsWithContext(ctx, "", ns)
+		}, func(results []interface{}) interface{} {
+			var all []batchv1.CronJob
+			for _, r := range results {
+				all = append(all, r.([]batchv1.CronJob)...)
+			}
+			return all
+		})
+	case "roles":
+		return rc.fetchNamespaced(ctx, kind, func(ctx context.Context, ns string) (interface{}, error) {
+			return rc.client.ListRolesWithContext(ctx, ns)
+		}, func(results []interface{}) interface{} {
+			var all []rbacv1.Role
+			for _, r := range results {
+				all = append(all, r.([]rbacv1.Role)...)
+			}
+			return all
+		})
+	case "clusterroles":
+		return rc.fetchClusterScoped(ctx, kind, func(ctx context.Context) (interface{}, error) {
+			return rc.client.ListClusterRolesWithContext(ctx)
+		})
+	case "rolebindings":
+		return rc.fetchNamespaced(ctx, kind, func(ctx context.Context, ns string) (interface{}, error) {
+			return rc.client.ListRoleBindingsWithContext(ctx, ns)
+		}, func(results []interface{}) interface{} {
+			var all []rbacv1.RoleBinding
+			for _, r := range results {
+				all = append(all, r.([]rbacv1.RoleBinding)...)
+			}
+			return all
+		})
+	case "clusterrolebindings":
+		return rc.fetchClusterScoped(ctx, kind, func(ctx context.Context) (interface{}, error) {
+			return rc.client.ListClusterRoleBindingsWithContext(ctx)
 		})
 	default:
 		return fmt.Errorf("unknown resource kind: %s", kind)

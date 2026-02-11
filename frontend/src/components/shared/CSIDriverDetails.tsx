@@ -3,7 +3,7 @@ import { PencilSquareIcon, ShareIcon, CheckCircleIcon, XCircleIcon, CpuChipIcon 
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
+import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 const BooleanBadge = ({ value, label }: any) => {
@@ -67,11 +67,6 @@ export default function CSIDriverDetails({ csiDriver, tabContext = '' }: any) {
         });
     };
 
-    const basicInfo = [
-        { label: 'Name', value: metadata.name },
-        { label: 'Age', value: formatAge(metadata.creationTimestamp) },
-    ];
-
     const capabilities = [
         { label: 'Attach Required', value: spec.attachRequired ?? true },
         { label: 'Pod Info on Mount', value: spec.podInfoOnMount ?? false },
@@ -114,23 +109,8 @@ export default function CSIDriverDetails({ csiDriver, tabContext = '' }: any) {
 
             {/* Content Area */}
             <div className="h-full overflow-auto p-4">
-            <div className="space-y-6">
-                {/* Basic Info */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Basic Information</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        {basicInfo.map(({ label, value }) => (
-                            <div key={label}>
-                                <dt className="text-xs text-gray-500">{label}</dt>
-                                <dd className="text-sm text-gray-200 mt-0.5">{value ?? '-'}</dd>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
                 {/* Capabilities */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Capabilities</h3>
+                <DetailSection title="Capabilities">
                     <div className="grid grid-cols-2 gap-4">
                         {capabilities.map(({ label, value }) => (
                             <div key={label}>
@@ -141,13 +121,12 @@ export default function CSIDriverDetails({ csiDriver, tabContext = '' }: any) {
                             </div>
                         ))}
                     </div>
-                </div>
+                </DetailSection>
 
                 {/* Volume Lifecycle Modes */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Volume Lifecycle Modes</h3>
+                <DetailSection title="Volume Lifecycle Modes">
                     {volumeLifecycleModes.length === 0 ? (
-                        <p className="text-sm text-gray-500">No modes specified (defaults to Persistent)</p>
+                        <span className="text-gray-500">No modes specified (defaults to Persistent)</span>
                     ) : (
                         <div className="flex flex-wrap gap-2">
                             {volumeLifecycleModes.map((mode: any) => (
@@ -160,13 +139,12 @@ export default function CSIDriverDetails({ csiDriver, tabContext = '' }: any) {
                             ))}
                         </div>
                     )}
-                </div>
+                </DetailSection>
 
                 {/* FS Group Policy */}
                 {fsGroupPolicy && (
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-400 mb-3">FS Group Policy</h3>
-                        <div className="bg-gray-800/50 rounded-lg p-3">
+                    <DetailSection title="FS Group Policy">
+                        <div className="bg-background-dark rounded border border-border p-3">
                             <span className={`text-sm ${
                                 fsGroupPolicy === 'ReadWriteOnceWithFSType' ? 'text-green-400' :
                                 fsGroupPolicy === 'File' ? 'text-blue-400' :
@@ -180,16 +158,15 @@ export default function CSIDriverDetails({ csiDriver, tabContext = '' }: any) {
                                 {fsGroupPolicy === 'None' && 'CSI driver does not support volume ownership/permissions'}
                             </p>
                         </div>
-                    </div>
+                    </DetailSection>
                 )}
 
                 {/* Token Requests */}
                 {tokenRequests.length > 0 && (
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-400 mb-3">Token Requests</h3>
+                    <DetailSection title="Token Requests">
                         <div className="space-y-2">
                             {tokenRequests.map((request: any, idx: number) => (
-                                <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
+                                <div key={idx} className="bg-background-dark rounded border border-border p-3">
                                     <div className="text-sm text-gray-300">{request.audience}</div>
                                     {request.expirationSeconds && (
                                         <div className="text-xs text-gray-500 mt-1">
@@ -199,21 +176,31 @@ export default function CSIDriverDetails({ csiDriver, tabContext = '' }: any) {
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </DetailSection>
                 )}
 
+                {/* Details */}
+                <DetailSection title="Details">
+                    <DetailRow label="Name" value={name} />
+                    <DetailRow label="Created">
+                        <span title={metadata.creationTimestamp}>
+                            {formatAge(metadata.creationTimestamp)} ago
+                        </span>
+                    </DetailRow>
+                    <DetailRow label="UID">
+                        <CopyableLabel value={metadata.uid?.substring(0, 8) + '...'} copyValue={metadata.uid} />
+                    </DetailRow>
+                </DetailSection>
+
                 {/* Labels */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Labels</h3>
+                <DetailSection title="Labels">
                     <LabelsDisplay labels={metadata.labels} />
-                </div>
+                </DetailSection>
 
                 {/* Annotations */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Annotations</h3>
+                <DetailSection title="Annotations">
                     <AnnotationsDisplay annotations={metadata.annotations} />
-                </div>
-            </div>
+                </DetailSection>
             </div>
         </div>
     );

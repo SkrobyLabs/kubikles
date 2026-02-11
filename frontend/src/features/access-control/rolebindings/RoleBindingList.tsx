@@ -16,7 +16,7 @@ export default function RoleBindingList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { roleBindings, loading } = useRoleBindings(currentContext, selectedNamespaces, isVisible) as any;
-    const { handleEditYaml } = useRoleBindingActions();
+    const { handleShowDetails, handleEditYaml } = useRoleBindingActions();
     const selection = useSelection();
 
     // Unified bulk actions (also used for single delete)
@@ -95,7 +95,7 @@ export default function RoleBindingList({ isVisible }: { isVisible: boolean }) {
                 multiSelectNamespaces={true}
                 initialSort={{ key: 'age', direction: 'desc' }}
                 resourceType="rolebindings"
-                onRowClick={handleEditYaml}
+                onRowClick={handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

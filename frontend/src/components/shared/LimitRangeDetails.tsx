@@ -3,7 +3,7 @@ import { PencilSquareIcon, ShareIcon, ArrowsPointingOutIcon } from '@heroicons/r
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
+import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 export default function LimitRangeDetails({ limitRange, tabContext = '' }: any) {
@@ -55,13 +55,6 @@ export default function LimitRangeDetails({ limitRange, tabContext = '' }: any) 
 
     const limits = spec.limits || [];
 
-    const basicInfo = [
-        { label: 'Name', value: metadata.name },
-        { label: 'Namespace', value: metadata.namespace },
-        { label: 'Age', value: formatAge(metadata.creationTimestamp) },
-        { label: 'Limit Types', value: limits.length },
-    ];
-
     return (
         <div className="flex flex-col h-full bg-background">
             {/* Header Bar */}
@@ -93,29 +86,14 @@ export default function LimitRangeDetails({ limitRange, tabContext = '' }: any) 
 
             {/* Content Area */}
             <div className="h-full overflow-auto p-4">
-            <div className="space-y-6">
-                {/* Basic Info */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Basic Information</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        {basicInfo.map(({ label, value }) => (
-                            <div key={label}>
-                                <dt className="text-xs text-gray-500">{label}</dt>
-                                <dd className="text-sm text-gray-200 mt-0.5">{value ?? '-'}</dd>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
                 {/* Limits */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Limits</h3>
+                <DetailSection title="Limits">
                     {limits.length === 0 ? (
-                        <p className="text-sm text-gray-500">No limits defined</p>
+                        <span className="text-gray-500">No limits defined</span>
                     ) : (
                         <div className="space-y-4">
                             {limits.map((limit: any, idx: number) => (
-                                <div key={idx} className="bg-gray-800/50 rounded-lg p-4">
+                                <div key={idx} className="bg-background-dark rounded border border-border p-4">
                                     <div className="flex items-center gap-2 mb-3">
                                         <span className="text-sm font-medium text-gray-200">{limit.type}</span>
                                         <span className="text-xs text-gray-500 bg-gray-700 px-2 py-0.5 rounded">
@@ -125,7 +103,7 @@ export default function LimitRangeDetails({ limitRange, tabContext = '' }: any) 
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm">
                                             <thead>
-                                                <tr className="text-left text-xs text-gray-500 border-b border-gray-700">
+                                                <tr className="text-left text-xs text-gray-500 border-b border-border">
                                                     <th className="pb-2 pr-4">Resource</th>
                                                     <th className="pb-2 pr-4">Min</th>
                                                     <th className="pb-2 pr-4">Max</th>
@@ -147,7 +125,7 @@ export default function LimitRangeDetails({ limitRange, tabContext = '' }: any) 
                                                     }
 
                                                     return (
-                                                        <tr key={resource} className="border-b border-gray-700/50">
+                                                        <tr key={resource} className="border-b border-border/50">
                                                             <td className="py-2 pr-4 text-gray-300">{resource}</td>
                                                             <td className="py-2 pr-4 text-gray-400">{min || '-'}</td>
                                                             <td className="py-2 pr-4 text-gray-400">{max || '-'}</td>
@@ -164,20 +142,32 @@ export default function LimitRangeDetails({ limitRange, tabContext = '' }: any) 
                             ))}
                         </div>
                     )}
-                </div>
+                </DetailSection>
+
+                {/* Details */}
+                <DetailSection title="Details">
+                    <DetailRow label="Name" value={name} />
+                    <DetailRow label="Namespace" value={namespace} />
+                    <DetailRow label="Limit Types" value={limits.length} />
+                    <DetailRow label="Created">
+                        <span title={metadata.creationTimestamp}>
+                            {formatAge(metadata.creationTimestamp)} ago
+                        </span>
+                    </DetailRow>
+                    <DetailRow label="UID">
+                        <CopyableLabel value={metadata.uid?.substring(0, 8) + '...'} copyValue={metadata.uid} />
+                    </DetailRow>
+                </DetailSection>
 
                 {/* Labels */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Labels</h3>
+                <DetailSection title="Labels">
                     <LabelsDisplay labels={metadata.labels} />
-                </div>
+                </DetailSection>
 
                 {/* Annotations */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Annotations</h3>
+                <DetailSection title="Annotations">
                     <AnnotationsDisplay annotations={metadata.annotations} />
-                </div>
-            </div>
+                </DetailSection>
             </div>
         </div>
     );

@@ -1,67 +1,37 @@
-import React from 'react';
-import { useUI } from '~/context';
-import { useK8s } from '~/context';
-import { useNotification } from '~/context';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
 import { DeleteClusterRoleBinding } from 'wailsjs/go/main/App';
-import { LazyYamlEditor as YamlEditor } from '~/components/lazy';
-import Logger from '~/utils/Logger';
+import ClusterRoleBindingDetails from '~/components/shared/ClusterRoleBindingDetails';
 import { K8sClusterRoleBinding } from '~/types/k8s';
-import { BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
 
-/**
- * Return type for useClusterRoleBindingActions
- */
-export interface ClusterRoleBindingActionsReturn extends Pick<BaseResourceActionsReturn<K8sClusterRoleBinding>, 'handleEditYaml'> {
+export interface ClusterRoleBindingActionsReturn extends BaseResourceActionsReturn<K8sClusterRoleBinding> {
     handleDelete: (clusterRoleBinding: K8sClusterRoleBinding) => void;
 }
 
 export const useClusterRoleBindingActions = (): any => {
-    const { openTab, closeTab, openModal, closeModal } = useUI();
-    const { currentContext } = useK8s();
-    const { addNotification } = useNotification();
+    const {
+        handleShowDetails,
+        handleEditYaml,
+        handleShowDependencies,
+        createDeleteHandler,
+    } = useBaseResourceActions({
+        resourceType: 'clusterrolebinding',
+        resourceLabel: 'ClusterRoleBinding',
+        DetailsComponent: ClusterRoleBindingDetails,
+        detailsPropName: 'clusterRoleBinding',
+        isNamespaced: false,
+    });
 
-    const handleEditYaml = (clusterRoleBinding: K8sClusterRoleBinding): void => {
-        Logger.info("Opening ClusterRoleBinding editor", { name: clusterRoleBinding.metadata.name }, 'k8s');
-        const tabId = `clusterrolebinding-${clusterRoleBinding.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `${clusterRoleBinding.metadata.name}`,
-            content: (
-                <YamlEditor
-                    resourceType="clusterrolebinding"
-                    resourceName={clusterRoleBinding.metadata.name}
-                    onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
-                />
-            ),
-            resourceMeta: { kind: 'ClusterRoleBinding', name: clusterRoleBinding.metadata.name },
-        });
-    };
-
-    const handleDelete = (clusterRoleBinding: K8sClusterRoleBinding): void => {
-        const name = clusterRoleBinding.metadata.name;
-        Logger.info("Delete ClusterRoleBinding requested", { name }, 'k8s');
-
-        openModal({
-            title: `Delete ClusterRoleBinding ${name}?`,
-            content: `Are you sure you want to delete cluster role binding "${name}"? This action cannot be undone.`,
-            confirmText: 'Delete',
-            confirmStyle: 'danger',
-            onConfirm: async (): Promise<void> => {
-                try {
-                    await DeleteClusterRoleBinding(name);
-                    Logger.info("ClusterRoleBinding deleted successfully", { name }, 'k8s');
-                    closeModal();
-                } catch (err: any) {
-                    Logger.error("Failed to delete ClusterRoleBinding", err, 'k8s');
-                    addNotification({ type: 'error', title: 'Failed to delete cluster role binding', message: String(err) });
-                }
-            }
-        });
-    };
+    const handleDelete = createDeleteHandler(
+        async (clusterRoleBinding: any): Promise<void> => {
+            await DeleteClusterRoleBinding(clusterRoleBinding.metadata.name);
+        },
+        { confirmMessage: 'Are you sure you want to delete this ClusterRoleBinding? Associated subjects will lose their cluster-wide permissions.' }
+    );
 
     return {
+        handleShowDetails,
         handleEditYaml,
+        handleShowDependencies,
         handleDelete
     };
 };

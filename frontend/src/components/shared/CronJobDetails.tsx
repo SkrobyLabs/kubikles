@@ -1,19 +1,26 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { PencilSquareIcon, PlayIcon, PauseIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
+import ResourceEventsTab from './ResourceEventsTab';
+
+const TAB_BASIC = 'basic';
+const TAB_EVENTS = 'events';
 
 export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: any; tabContext?: string }) {
     const { currentContext } = useK8s();
-    const { openTab, closeTab, navigateWithSearch } = useUI();
+    const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
+    const activeTab = getDetailTab('cronjob', TAB_BASIC);
+    const setActiveTab = (tab: string) => setDetailTab('cronjob', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
 
     const name = cronJob.metadata?.name;
     const namespace = cronJob.metadata?.namespace;
+    const uid = cronJob.metadata?.uid;
     const labels = cronJob.metadata?.labels || {};
     const annotations = cronJob.metadata?.annotations || {};
     const spec = cronJob.spec || {};
@@ -67,6 +74,11 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
         navigateWithSearch('jobs', `owner:"${name}"`);
     };
 
+    const tabs = useMemo(() => [
+        { id: TAB_BASIC, label: 'Basic' },
+        { id: TAB_EVENTS, label: 'Events' },
+    ], []);
+
     return (
         <div className="flex flex-col h-full bg-background">
             {/* Header Bar */}
@@ -85,6 +97,22 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
                             variant="warning"
                         />
                     )}
+                    {/* Tab Toggle */}
+                    <div className="flex items-center bg-surface-light rounded-md p-0.5">
+                        {tabs.map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                    activeTab === tab.id
+                                        ? 'bg-primary text-white'
+                                        : 'text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                     {/* Action Icons */}
                     <div className="flex items-center gap-1 ml-2">
                         <button
@@ -107,6 +135,15 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
             </div>
 
             {/* Content Area */}
+            {activeTab === TAB_EVENTS ? (
+                <ResourceEventsTab
+                    kind="CronJob"
+                    namespace={namespace}
+                    name={name}
+                    uid={uid}
+                    isStale={!!isStale}
+                />
+            ) : (
             <div className="h-full overflow-auto p-4">
                 {/* Schedule */}
                 <DetailSection title="Schedule">
@@ -193,6 +230,7 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
                     <AnnotationsDisplay annotations={annotations} />
                 </DetailSection>
             </div>
+            )}
         </div>
     );
 }

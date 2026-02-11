@@ -3,7 +3,7 @@ import { PencilSquareIcon, ShareIcon, AdjustmentsHorizontalIcon } from '@heroico
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
+import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' }: any) {
@@ -101,13 +101,6 @@ export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' }:
     const scopes = spec.scopes || [];
     const scopeSelector = spec.scopeSelector;
 
-    const basicInfo = [
-        { label: 'Name', value: metadata.name },
-        { label: 'Namespace', value: metadata.namespace },
-        { label: 'Age', value: formatAge(metadata.creationTimestamp) },
-        { label: 'Resources', value: quotaItems.length },
-    ];
-
     return (
         <div className="flex flex-col h-full bg-background">
             {/* Header Bar */}
@@ -139,31 +132,16 @@ export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' }:
 
             {/* Content Area */}
             <div className="h-full overflow-auto p-4">
-            <div className="space-y-6">
-                {/* Basic Info */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Basic Information</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        {basicInfo.map(({ label, value }) => (
-                            <div key={label}>
-                                <dt className="text-xs text-gray-500">{label}</dt>
-                                <dd className="text-sm text-gray-200 mt-0.5">{value ?? '-'}</dd>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
                 {/* Resource Usage */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Resource Usage</h3>
+                <DetailSection title="Resource Usage">
                     {quotaItems.length === 0 ? (
-                        <p className="text-sm text-gray-500">No resources defined</p>
+                        <span className="text-gray-500">No resources defined</span>
                     ) : (
                         <div className="space-y-3">
                             {quotaItems.map(({ resource, hard, used }) => {
                                 const percent = getUsagePercent(used, hard);
                                 return (
-                                    <div key={resource} className="bg-gray-800/50 rounded-lg p-3">
+                                    <div key={resource} className="bg-background-dark rounded border border-border p-3">
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-sm text-gray-300">{resource}</span>
                                             <span className="text-sm text-gray-400">{used} / {hard}</span>
@@ -180,12 +158,11 @@ export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' }:
                             })}
                         </div>
                     )}
-                </div>
+                </DetailSection>
 
                 {/* Scopes */}
                 {scopes.length > 0 && (
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-400 mb-3">Scopes</h3>
+                    <DetailSection title="Scopes">
                         <div className="flex flex-wrap gap-2">
                             {scopes.map((scope: any) => (
                                 <span
@@ -196,33 +173,44 @@ export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' }:
                                 </span>
                             ))}
                         </div>
-                    </div>
+                    </DetailSection>
                 )}
 
                 {/* Scope Selector */}
                 {scopeSelector && (
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-400 mb-3">Scope Selector</h3>
-                        <div className="bg-gray-800/50 rounded-lg p-3">
+                    <DetailSection title="Scope Selector">
+                        <div className="bg-background-dark rounded border border-border p-3">
                             <pre className="text-xs text-gray-300 overflow-auto">
                                 {JSON.stringify(scopeSelector, null, 2)}
                             </pre>
                         </div>
-                    </div>
+                    </DetailSection>
                 )}
 
+                {/* Details */}
+                <DetailSection title="Details">
+                    <DetailRow label="Name" value={name} />
+                    <DetailRow label="Namespace" value={namespace} />
+                    <DetailRow label="Resources" value={quotaItems.length} />
+                    <DetailRow label="Created">
+                        <span title={metadata.creationTimestamp}>
+                            {formatAge(metadata.creationTimestamp)} ago
+                        </span>
+                    </DetailRow>
+                    <DetailRow label="UID">
+                        <CopyableLabel value={metadata.uid?.substring(0, 8) + '...'} copyValue={metadata.uid} />
+                    </DetailRow>
+                </DetailSection>
+
                 {/* Labels */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Labels</h3>
+                <DetailSection title="Labels">
                     <LabelsDisplay labels={metadata.labels} />
-                </div>
+                </DetailSection>
 
                 {/* Annotations */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Annotations</h3>
+                <DetailSection title="Annotations">
                     <AnnotationsDisplay annotations={metadata.annotations} />
-                </div>
-            </div>
+                </DetailSection>
             </div>
         </div>
     );

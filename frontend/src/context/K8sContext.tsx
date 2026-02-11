@@ -437,6 +437,12 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, [currentContext]);
 
     const switchContext = useCallback(async (newContext: string): Promise<void> => {
+        // No-op when clicking the same context we're already on.
+        // Without this guard, watchers are stopped but the useEffect keyed on
+        // currentContext won't re-run (value unchanged), leaving the UI stuck
+        // in an infinite "connecting" state.
+        if (newContext === currentContext) return;
+
         try {
             Logger.info("Switching context...", { from: currentContext, to: newContext }, 'k8s');
 

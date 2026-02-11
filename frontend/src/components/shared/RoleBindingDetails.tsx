@@ -1,32 +1,45 @@
 import React from 'react';
-import { PencilSquareIcon, ShareIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, ShareIcon, UserIcon, UserGroupIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { DetailRow, DetailSection, CopyableLabel, LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
+import { DetailSection, DetailRow, LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
-export default function LeaseDetails({ lease, tabContext = '' }: any) {
+function SubjectIcon({ kind }: { kind: string }) {
+    switch (kind) {
+        case 'User':
+            return <UserIcon className="w-4 h-4 text-blue-400" />;
+        case 'Group':
+            return <UserGroupIcon className="w-4 h-4 text-purple-400" />;
+        case 'ServiceAccount':
+            return <CubeIcon className="w-4 h-4 text-green-400" />;
+        default:
+            return <UserIcon className="w-4 h-4 text-gray-400" />;
+    }
+}
+
+export default function RoleBindingDetails({ roleBinding, tabContext = '' }: any) {
     const { currentContext } = useK8s();
     const { openTab, closeTab } = useUI();
 
-    const metadata = lease?.metadata || {};
-    const spec = lease?.spec || {};
+    const metadata = roleBinding?.metadata || {};
+    const subjects = roleBinding?.subjects || [];
+    const roleRef = roleBinding?.roleRef || {};
 
     const isStale = tabContext && tabContext !== currentContext;
     const name = metadata.name;
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-lease-${lease.metadata?.uid}`;
+        const tabId = `yaml-rolebinding-${metadata.uid}`;
         openTab({
             id: tabId,
             title: `${name}`,
-            icon: ClockIcon,
             actionLabel: 'Edit',
             content: (
                 <YamlEditor
-                    resourceType="lease"
+                    resourceType="rolebinding"
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
@@ -37,33 +50,19 @@ export default function LeaseDetails({ lease, tabContext = '' }: any) {
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-lease-${lease.metadata?.uid}`;
+        const tabId = `deps-rolebinding-${metadata.uid}`;
         openTab({
             id: tabId,
             title: `${name}`,
-            icon: ClockIcon,
             content: (
                 <DependencyGraph
-                    resourceType="lease"
+                    resourceType="rolebinding"
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
                 />
             )
         });
-    };
-
-    const formatDuration = (seconds: any) => {
-        if (!seconds) return '-';
-        if (seconds < 60) return `${seconds}s`;
-        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-        return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-    };
-
-    const formatTimestamp = (timestamp: any) => {
-        if (!timestamp) return '-';
-        const date = new Date(timestamp);
-        return date.toLocaleString();
     };
 
     return (
@@ -74,13 +73,16 @@ export default function LeaseDetails({ lease, tabContext = '' }: any) {
                     <div className="text-sm font-medium text-gray-400 selectable">
                         {namespace}/{name}
                     </div>
+                    <span className="px-2 py-0.5 text-xs rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                        {subjects.length} subject{subjects.length !== 1 ? 's' : ''}
+                    </span>
                     {/* Action Icons */}
                     <div className="flex items-center gap-1 ml-2">
                         <button
                             onClick={handleEditYaml}
                             className={`p-1.5 rounded transition-colors ${isStale ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                             title="Edit YAML"
-                            disabled={isStale}
+                            disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
                         </button>
@@ -97,44 +99,50 @@ export default function LeaseDetails({ lease, tabContext = '' }: any) {
 
             {/* Content Area */}
             <div className="h-full overflow-auto p-4">
-                {/* Leader Election Info */}
-                {spec.holderIdentity && (
-                    <DetailSection title="Leader Election">
-                        <div className="bg-background-dark rounded border border-border p-3">
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                                <span className="text-sm text-gray-300">Current leader:</span>
-                                <CopyableLabel value={spec.holderIdentity} />
-                            </div>
-                            {spec.leaseTransitions !== undefined && spec.leaseTransitions > 0 && (
-                                <p className="text-xs text-gray-500 mt-2">
-                                    Leadership has changed {spec.leaseTransitions} time(s)
-                                </p>
-                            )}
-                        </div>
-                    </DetailSection>
-                )}
-
                 {/* Details */}
                 <DetailSection title="Details">
                     <DetailRow label="Name" value={name} />
                     <DetailRow label="Namespace" value={namespace} />
-                    <DetailRow label="Lease Duration" value={formatDuration(spec.leaseDurationSeconds)} />
-                    <DetailRow label="Lease Transitions" value={spec.leaseTransitions ?? '-'} />
                     <DetailRow label="Created">
                         <span title={metadata.creationTimestamp}>
                             {formatAge(metadata.creationTimestamp)} ago
                         </span>
                     </DetailRow>
-                    <DetailRow label="UID">
-                        <CopyableLabel value={metadata.uid?.substring(0, 8) + '...'} copyValue={metadata.uid} />
-                    </DetailRow>
                 </DetailSection>
 
-                {/* Timing */}
-                <DetailSection title="Timing">
-                    <DetailRow label="Acquire Time" value={formatTimestamp(spec.acquireTime)} />
-                    <DetailRow label="Renew Time" value={formatTimestamp(spec.renewTime)} />
+                {/* Role Reference */}
+                <DetailSection title="Role Reference">
+                    <DetailRow label="Kind" value={roleRef.kind} />
+                    <DetailRow label="Name" value={roleRef.name} />
+                    <DetailRow label="API Group" value={roleRef.apiGroup || 'rbac.authorization.k8s.io'} />
+                </DetailSection>
+
+                {/* Subjects */}
+                <DetailSection title={`Subjects (${subjects.length})`}>
+                    {subjects.length === 0 ? (
+                        <span className="text-gray-500">No subjects defined</span>
+                    ) : (
+                        <div className="space-y-2">
+                            {subjects.map((subject: any, idx: number) => (
+                                <div key={idx} className="flex items-center gap-3 bg-background-dark rounded border border-border p-3">
+                                    <SubjectIcon kind={subject.kind} />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-gray-200 font-medium">{subject.name}</span>
+                                            <span className="px-1.5 py-0.5 text-xs rounded bg-gray-500/10 text-gray-400 border border-gray-500/30">
+                                                {subject.kind}
+                                            </span>
+                                        </div>
+                                        {subject.namespace && (
+                                            <div className="text-xs text-gray-500 mt-0.5">
+                                                Namespace: {subject.namespace}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </DetailSection>
 
                 {/* Labels */}

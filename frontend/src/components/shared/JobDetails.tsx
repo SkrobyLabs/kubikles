@@ -1,19 +1,26 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { PencilSquareIcon, DocumentTextIcon, ShareIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
+import ResourceEventsTab from './ResourceEventsTab';
+
+const TAB_BASIC = 'basic';
+const TAB_EVENTS = 'events';
 
 export default function JobDetails({ job, tabContext = '' }: { job: any; tabContext?: string }) {
     const { currentContext } = useK8s();
-    const { openTab, closeTab, navigateWithSearch } = useUI();
+    const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
+    const activeTab = getDetailTab('job', TAB_BASIC);
+    const setActiveTab = (tab: string) => setDetailTab('job', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
 
     const name = job.metadata?.name;
     const namespace = job.metadata?.namespace;
+    const uid = job.metadata?.uid;
     const labels = job.metadata?.labels || {};
     const annotations = job.metadata?.annotations || {};
     const spec = job.spec || {};
@@ -94,6 +101,11 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
 
     const jobStatus = getJobStatus();
 
+    const tabs = useMemo(() => [
+        { id: TAB_BASIC, label: 'Basic' },
+        { id: TAB_EVENTS, label: 'Events' },
+    ], []);
+
     const getConditionVariant = (condition: any) => {
         if (condition.type === 'Complete' && condition.status === 'True') return 'success';
         if (condition.type === 'Failed' && condition.status === 'True') return 'error';
@@ -116,6 +128,22 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
                         status={`${succeeded}/${completions}`}
                         variant={succeeded >= completions ? 'success' : active > 0 ? 'warning' : 'default'}
                     />
+                    {/* Tab Toggle */}
+                    <div className="flex items-center bg-surface-light rounded-md p-0.5">
+                        {tabs.map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                    activeTab === tab.id
+                                        ? 'bg-primary text-white'
+                                        : 'text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                     {/* Action Icons */}
                     <div className="flex items-center gap-1 ml-2">
                         <button
@@ -145,6 +173,15 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
             </div>
 
             {/* Content Area */}
+            {activeTab === TAB_EVENTS ? (
+                <ResourceEventsTab
+                    kind="Job"
+                    namespace={namespace}
+                    name={name}
+                    uid={uid}
+                    isStale={!!isStale}
+                />
+            ) : (
             <div className="h-full overflow-auto p-4">
                 {/* Status */}
                 <DetailSection title="Status">
@@ -260,6 +297,7 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
                     <AnnotationsDisplay annotations={annotations} />
                 </DetailSection>
             </div>
+            )}
         </div>
     );
 }

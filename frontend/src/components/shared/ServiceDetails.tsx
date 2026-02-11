@@ -3,7 +3,9 @@ import { LockClosedIcon, SignalIcon, ClipboardDocumentIcon, CheckIcon, PlayIcon,
 import { useK8s } from '~/context';
 import { usePortForwards } from '~/hooks/usePortForwards';
 import { useUI } from '~/context';
+import { formatAge } from '~/utils/formatting';
 import { BrowserOpenURL } from 'wailsjs/runtime/runtime';
+import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, CopyableLabel } from './DetailComponents';
 import ServicePortForwardDialog from './ServicePortForwardDialog';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
@@ -37,55 +39,6 @@ const CopyButton = ({ value }: any) => {
         </button>
     );
 };
-
-// Copyable label component
-const CopyableLabel = ({ value, className = '' }: any) => {
-    const [copied, setCopied] = useState(false);
-
-    const handleCopy = async () => {
-        if (!value) return;
-        try {
-            await navigator.clipboard.writeText(value);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch (err: any) {
-            console.error('Failed to copy:', err);
-        }
-    };
-
-    return (
-        <button
-            onClick={handleCopy}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded border transition-colors cursor-pointer ${
-                copied
-                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                    : `bg-gray-500/10 hover:bg-gray-500/20 text-gray-300 border-gray-500/30 ${className}`
-            }`}
-            title={copied ? 'Copied!' : 'Click to copy'}
-        >
-            {copied ? (
-                <>
-                    <CheckIcon className="w-3 h-3" />
-                    Copied
-                </>
-            ) : (
-                value
-            )}
-        </button>
-    );
-};
-
-// Detail row component
-const DetailRow = ({ label, value, children }: any) => (
-    <div className="flex py-2 border-b border-border/50">
-        <div className="w-40 text-xs font-medium text-gray-500 uppercase tracking-wider shrink-0">
-            {label}
-        </div>
-        <div className="flex-1 text-sm text-gray-200">
-            {children || value || <span className="text-gray-500">N/A</span>}
-        </div>
-    </div>
-);
 
 export default function ServiceDetails({ service, tabContext = '' }: any) {
     const { currentContext } = useK8s();
@@ -289,7 +242,8 @@ export default function ServiceDetails({ service, tabContext = '' }: any) {
 
             {/* Content Area */}
             <div className="h-full overflow-auto p-4">
-                <div className="bg-surface rounded-lg border border-border p-4">
+                {/* Service Configuration */}
+                <DetailSection title="Configuration">
                     {/* Type */}
                     <DetailRow label="Type">
                         <span className="px-2 py-0.5 text-xs rounded bg-primary/10 text-primary border border-primary/30">
@@ -304,8 +258,8 @@ export default function ServiceDetails({ service, tabContext = '' }: any) {
                                 {ports.map((port: any, idx: number) => {
                                     const portStyle = getPortStyle(port.port);
                                     const config = getPortForwardConfig(port.port);
-                                    const status = config ? getConfigStatus(config.id) : null;
-                                    const isRunning = status === 'running';
+                                    const pfStatus = config ? getConfigStatus(config.id) : null;
+                                    const isRunning = pfStatus === 'running';
 
                                     return (
                                         <div key={idx} className={`inline-flex items-center text-xs border rounded ${portStyle.className.replace(/hover:\S+/g, '')}`}>
@@ -448,7 +402,31 @@ export default function ServiceDetails({ service, tabContext = '' }: any) {
                             <span className="text-gray-500">No selector</span>
                         )}
                     </DetailRow>
-                </div>
+                </DetailSection>
+
+                {/* Details */}
+                <DetailSection title="Details">
+                    <DetailRow label="Name" value={name} />
+                    <DetailRow label="Namespace" value={namespace} />
+                    <DetailRow label="Created">
+                        <span title={service.metadata?.creationTimestamp}>
+                            {formatAge(service.metadata?.creationTimestamp)} ago
+                        </span>
+                    </DetailRow>
+                    <DetailRow label="UID">
+                        <CopyableLabel value={service.metadata?.uid?.substring(0, 8) + '...'} copyValue={service.metadata?.uid} />
+                    </DetailRow>
+                </DetailSection>
+
+                {/* Labels */}
+                <DetailSection title="Labels">
+                    <LabelsDisplay labels={service.metadata?.labels} />
+                </DetailSection>
+
+                {/* Annotations */}
+                <DetailSection title="Annotations">
+                    <AnnotationsDisplay annotations={service.metadata?.annotations} />
+                </DetailSection>
             </div>
 
             {/* Port Forward Dialog */}

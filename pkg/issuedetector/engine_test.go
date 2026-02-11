@@ -2,12 +2,23 @@ package issuedetector
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"math/big"
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -422,8 +433,8 @@ func TestIsLatestOrUntagged(t *testing.T) {
 func TestScanEngine_ListRules(t *testing.T) {
 	engine := NewScanEngine("", nil)
 	rules := engine.ListRules()
-	if len(rules) != 40 {
-		t.Errorf("expected 40 built-in rules, got %d", len(rules))
+	if len(rules) != 54 {
+		t.Errorf("expected 54 built-in rules, got %d", len(rules))
 	}
 
 	// Verify all rules have required fields
@@ -457,8 +468,8 @@ func TestScanEngine_FilterByCategory(t *testing.T) {
 			count++
 		}
 	}
-	if count != 9 {
-		t.Errorf("expected 9 networking rules, got %d", count)
+	if count != 10 {
+		t.Errorf("expected 10 networking rules, got %d", count)
 	}
 }
 
@@ -1402,5 +1413,1215 @@ func TestDEP005_DeprecatedAppArmorAnnotations(t *testing.T) {
 	}
 	if findings[0].Resource.Name != "apparmor-pod" {
 		t.Errorf("expected apparmor-pod, got %s", findings[0].Resource.Name)
+	}
+}
+
+// ---- Node Rules Tests ----
+
+func TestNODE001_NodeNotReady(t *testing.T) {
+	cache := mockCache(map[string]interface{}{
+		"nodes": []v1.Node{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "not-ready-node"},
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						{Type: v1.NodeReady, Status: v1.ConditionFalse, Reason: "KubeletNotReady", Message: "container runtime is down"},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "ready-node"},
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						{Type: v1.NodeReady, Status: v1.ConditionTrue},
+					},
+				},
+			},
+		},
+	})
+
+	rule := &ruleNODE001{baseRule: baseRule{id: "NODE001", severity: SeverityCritical, category: CategoryWorkloads}}
+	findings, err := rule.Evaluate(context.Background(), cache)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(findings))
+	}
+	if findings[0].Resource.Name != "not-ready-node" {
+		t.Errorf("expected not-ready-node, got %s", findings[0].Resource.Name)
+	}
+	if findings[0].Severity != SeverityCritical {
+		t.Errorf("expected critical severity, got %s", findings[0].Severity)
+	}
+}
+
+func TestNODE001_NodeReadyUnknown(t *testing.T) {
+	cache := mockCache(map[string]interface{}{
+		"nodes": []v1.Node{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "unknown-node"},
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						{Type: v1.NodeReady, Status: v1.ConditionUnknown, Reason: "NodeStatusUnknown"},
+					},
+				},
+			},
+		},
+	})
+
+	rule := &ruleNODE001{baseRule: baseRule{id: "NODE001", severity: SeverityCritical, category: CategoryWorkloads}}
+	findings, err := rule.Evaluate(context.Background(), cache)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding for Unknown status, got %d", len(findings))
+	}
+}
+
+func TestNODE002_NodeDiskPressure(t *testing.T) {
+	cache := mockCache(map[string]interface{}{
+		"nodes": []v1.Node{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "disk-pressure-node"},
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						{Type: v1.NodeReady, Status: v1.ConditionTrue},
+						{Type: v1.NodeDiskPressure, Status: v1.ConditionTrue, Reason: "KubeletHasDiskPressure"},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "healthy-node"},
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						{Type: v1.NodeReady, Status: v1.ConditionTrue},
+						{Type: v1.NodeDiskPressure, Status: v1.ConditionFalse},
+					},
+				},
+			},
+		},
+	})
+
+	rule := &ruleNODE002{baseRule: baseRule{id: "NODE002", severity: SeverityWarning, category: CategoryWorkloads}}
+	findings, err := rule.Evaluate(context.Background(), cache)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(findings))
+	}
+	if findings[0].Resource.Name != "disk-pressure-node" {
+		t.Errorf("expected disk-pressure-node, got %s", findings[0].Resource.Name)
+	}
+}
+
+func TestNODE003_NodeMemoryPressure(t *testing.T) {
+	cache := mockCache(map[string]interface{}{
+		"nodes": []v1.Node{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "mem-pressure-node"},
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						{Type: v1.NodeReady, Status: v1.ConditionTrue},
+						{Type: v1.NodeMemoryPressure, Status: v1.ConditionTrue, Reason: "KubeletHasInsufficientMemory"},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "ok-node"},
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						{Type: v1.NodeMemoryPressure, Status: v1.ConditionFalse},
+					},
+				},
+			},
+		},
+	})
+
+	rule := &ruleNODE003{baseRule: baseRule{id: "NODE003", severity: SeverityWarning, category: CategoryWorkloads}}
+	findings, err := rule.Evaluate(context.Background(), cache)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(findings))
+	}
+	if findings[0].Resource.Name != "mem-pressure-node" {
+		t.Errorf("expected mem-pressure-node, got %s", findings[0].Resource.Name)
+	}
+}
+
+// ---- COST Rules Tests ----
+
+func TestCOST001_LoadBalancerWithoutEndpoints(t *testing.T) {
+	t.Run("LB with no endpoints object", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"services": []v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "idle-lb", Namespace: "default"},
+					Spec:       v1.ServiceSpec{Type: v1.ServiceTypeLoadBalancer},
+				},
+			},
+			"endpoints": []v1.Endpoints{},
+		})
+
+		rule := &ruleCOST001{baseRule: baseRule{id: "COST001", severity: SeverityWarning, category: CategoryNetworking}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+		if findings[0].Resource.Name != "idle-lb" {
+			t.Errorf("expected idle-lb, got %s", findings[0].Resource.Name)
+		}
+	})
+
+	t.Run("LB with empty endpoints subsets", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"services": []v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "empty-ep-lb", Namespace: "default"},
+					Spec:       v1.ServiceSpec{Type: v1.ServiceTypeLoadBalancer},
+				},
+			},
+			"endpoints": []v1.Endpoints{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "empty-ep-lb", Namespace: "default"},
+					Subsets:    []v1.EndpointSubset{}, //nolint:staticcheck // Endpoints API still used in production clusters
+				},
+			},
+		})
+
+		rule := &ruleCOST001{baseRule: baseRule{id: "COST001", severity: SeverityWarning, category: CategoryNetworking}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+	})
+
+	t.Run("LB with ready endpoints is fine", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"services": []v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "active-lb", Namespace: "default"},
+					Spec:       v1.ServiceSpec{Type: v1.ServiceTypeLoadBalancer},
+				},
+			},
+			"endpoints": []v1.Endpoints{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "active-lb", Namespace: "default"},
+					Subsets: []v1.EndpointSubset{ //nolint:staticcheck
+						{Addresses: []v1.EndpointAddress{{IP: "10.0.0.1"}}},
+					},
+				},
+			},
+		})
+
+		rule := &ruleCOST001{baseRule: baseRule{id: "COST001", severity: SeverityWarning, category: CategoryNetworking}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings, got %d", len(findings))
+		}
+	})
+
+	t.Run("ClusterIP service skipped", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"services": []v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "cluster-svc", Namespace: "default"},
+					Spec:       v1.ServiceSpec{Type: v1.ServiceTypeClusterIP},
+				},
+			},
+			"endpoints": []v1.Endpoints{},
+		})
+
+		rule := &ruleCOST001{baseRule: baseRule{id: "COST001", severity: SeverityWarning, category: CategoryNetworking}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings, got %d", len(findings))
+		}
+	})
+}
+
+// ---- WRK013 Requests Exceed Node Capacity Tests ----
+
+func TestWRK013_RequestsExceedNodeCapacity(t *testing.T) {
+	// Nodes: largest has 4 CPU and 16Gi memory
+	nodes := []v1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "small-node"},
+			Status: v1.NodeStatus{
+				Allocatable: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("2"),
+					v1.ResourceMemory: resource.MustParse("8Gi"),
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "large-node"},
+			Status: v1.NodeStatus{
+				Allocatable: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("4"),
+					v1.ResourceMemory: resource.MustParse("16Gi"),
+				},
+			},
+		},
+	}
+
+	t.Run("CPU exceeds all nodes flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"nodes": nodes,
+			"pods": []v1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "big-cpu-pod", Namespace: "default"},
+					Spec: v1.PodSpec{
+						Containers: []v1.Container{
+							{
+								Name: "main",
+								Resources: v1.ResourceRequirements{
+									Requests: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("8"),
+										v1.ResourceMemory: resource.MustParse("4Gi"),
+									},
+								},
+							},
+						},
+					},
+					Status: v1.PodStatus{Phase: v1.PodRunning},
+				},
+			},
+		})
+
+		rule := &ruleWRK013{baseRule: baseRule{id: "WRK013", severity: SeverityWarning, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+		if findings[0].Resource.Name != "big-cpu-pod" {
+			t.Errorf("expected big-cpu-pod, got %s", findings[0].Resource.Name)
+		}
+	})
+
+	t.Run("memory exceeds all nodes flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"nodes": nodes,
+			"pods": []v1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "big-mem-pod", Namespace: "default"},
+					Spec: v1.PodSpec{
+						Containers: []v1.Container{
+							{
+								Name: "main",
+								Resources: v1.ResourceRequirements{
+									Requests: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("1"),
+										v1.ResourceMemory: resource.MustParse("32Gi"),
+									},
+								},
+							},
+						},
+					},
+					Status: v1.PodStatus{Phase: v1.PodPending},
+				},
+			},
+		})
+
+		rule := &ruleWRK013{baseRule: baseRule{id: "WRK013", severity: SeverityWarning, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+	})
+
+	t.Run("within capacity not flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"nodes": nodes,
+			"pods": []v1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "normal-pod", Namespace: "default"},
+					Spec: v1.PodSpec{
+						Containers: []v1.Container{
+							{
+								Name: "main",
+								Resources: v1.ResourceRequirements{
+									Requests: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("2"),
+										v1.ResourceMemory: resource.MustParse("8Gi"),
+									},
+								},
+							},
+						},
+					},
+					Status: v1.PodStatus{Phase: v1.PodRunning},
+				},
+			},
+		})
+
+		rule := &ruleWRK013{baseRule: baseRule{id: "WRK013", severity: SeverityWarning, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings, got %d", len(findings))
+		}
+	})
+
+	t.Run("completed pods skipped", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"nodes": nodes,
+			"pods": []v1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "done-pod", Namespace: "default"},
+					Spec: v1.PodSpec{
+						Containers: []v1.Container{
+							{
+								Name: "main",
+								Resources: v1.ResourceRequirements{
+									Requests: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("16"),
+										v1.ResourceMemory: resource.MustParse("64Gi"),
+									},
+								},
+							},
+						},
+					},
+					Status: v1.PodStatus{Phase: v1.PodSucceeded},
+				},
+			},
+		})
+
+		rule := &ruleWRK013{baseRule: baseRule{id: "WRK013", severity: SeverityWarning, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings for completed pod, got %d", len(findings))
+		}
+	})
+
+	t.Run("no nodes returns no findings", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"nodes": []v1.Node{},
+			"pods": []v1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "orphan-pod", Namespace: "default"},
+					Spec: v1.PodSpec{
+						Containers: []v1.Container{
+							{
+								Name: "main",
+								Resources: v1.ResourceRequirements{
+									Requests: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("100"),
+										v1.ResourceMemory: resource.MustParse("100Gi"),
+									},
+								},
+							},
+						},
+					},
+					Status: v1.PodStatus{Phase: v1.PodRunning},
+				},
+			},
+		})
+
+		rule := &ruleWRK013{baseRule: baseRule{id: "WRK013", severity: SeverityWarning, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings when no nodes, got %d", len(findings))
+		}
+	})
+}
+
+// ---- Certificate Rules Tests ----
+
+func generateTestCertWithCN(t *testing.T, cn string, notBefore, notAfter time.Time, isCA bool, issuer *x509.Certificate, issuerKey *ecdsa.PrivateKey) ([]byte, *x509.Certificate, *ecdsa.PrivateKey) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate key: %v", err)
+	}
+
+	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		t.Fatalf("failed to generate serial: %v", err)
+	}
+
+	template := &x509.Certificate{
+		SerialNumber: serial,
+		Subject:      pkix.Name{CommonName: cn},
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
+		IsCA:         isCA,
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+	if isCA {
+		template.KeyUsage |= x509.KeyUsageCertSign
+		template.BasicConstraintsValid = true
+	}
+
+	signingCert := template
+	signingKey := key
+	if issuer != nil && issuerKey != nil {
+		signingCert = issuer
+		signingKey = issuerKey
+	}
+
+	certDER, err := x509.CreateCertificate(rand.Reader, template, signingCert, &key.PublicKey, signingKey)
+	if err != nil {
+		t.Fatalf("failed to create certificate: %v", err)
+	}
+
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	parsed, err := x509.ParseCertificate(certDER)
+	if err != nil {
+		t.Fatalf("failed to parse certificate: %v", err)
+	}
+
+	return certPEM, parsed, key
+}
+
+func generateTestCert(t *testing.T, notBefore, notAfter time.Time, isCA bool, issuer *x509.Certificate, issuerKey *ecdsa.PrivateKey) ([]byte, *x509.Certificate, *ecdsa.PrivateKey) {
+	t.Helper()
+	return generateTestCertWithCN(t, "test-cert", notBefore, notAfter, isCA, issuer, issuerKey)
+}
+
+func TestCERT001_CertificateExpiringSoon(t *testing.T) {
+	now := time.Now()
+
+	t.Run("cert expiring in 15 days flagged", func(t *testing.T) {
+		certPEM, _, _ := generateTestCert(t, now.Add(-30*24*time.Hour), now.Add(15*24*time.Hour), false, nil, nil)
+		cache := mockCache(map[string]interface{}{
+			"secrets": []v1.Secret{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "expiring-tls", Namespace: "default"},
+					Type:       v1.SecretTypeTLS,
+					Data:       map[string][]byte{"tls.crt": certPEM, "tls.key": []byte("key")},
+				},
+			},
+		})
+
+		rule := &ruleCERT001{baseRule: baseRule{id: "CERT001", severity: SeverityWarning, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+		if findings[0].Resource.Name != "expiring-tls" {
+			t.Errorf("expected expiring-tls, got %s", findings[0].Resource.Name)
+		}
+	})
+
+	t.Run("cert expiring in 60 days not flagged", func(t *testing.T) {
+		certPEM, _, _ := generateTestCert(t, now.Add(-30*24*time.Hour), now.Add(60*24*time.Hour), false, nil, nil)
+		cache := mockCache(map[string]interface{}{
+			"secrets": []v1.Secret{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "ok-tls", Namespace: "default"},
+					Type:       v1.SecretTypeTLS,
+					Data:       map[string][]byte{"tls.crt": certPEM, "tls.key": []byte("key")},
+				},
+			},
+		})
+
+		rule := &ruleCERT001{baseRule: baseRule{id: "CERT001", severity: SeverityWarning, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings, got %d", len(findings))
+		}
+	})
+}
+
+func TestCERT002_CertificateExpired(t *testing.T) {
+	now := time.Now()
+
+	t.Run("expired cert flagged", func(t *testing.T) {
+		certPEM, _, _ := generateTestCert(t, now.Add(-90*24*time.Hour), now.Add(-5*24*time.Hour), false, nil, nil)
+		cache := mockCache(map[string]interface{}{
+			"secrets": []v1.Secret{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "expired-tls", Namespace: "default"},
+					Type:       v1.SecretTypeTLS,
+					Data:       map[string][]byte{"tls.crt": certPEM, "tls.key": []byte("key")},
+				},
+			},
+		})
+
+		rule := &ruleCERT002{baseRule: baseRule{id: "CERT002", severity: SeverityCritical, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+		if findings[0].Severity != SeverityCritical {
+			t.Errorf("expected critical severity, got %s", findings[0].Severity)
+		}
+	})
+
+	t.Run("valid cert not flagged", func(t *testing.T) {
+		certPEM, _, _ := generateTestCert(t, now.Add(-30*24*time.Hour), now.Add(60*24*time.Hour), false, nil, nil)
+		cache := mockCache(map[string]interface{}{
+			"secrets": []v1.Secret{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "valid-tls", Namespace: "default"},
+					Type:       v1.SecretTypeTLS,
+					Data:       map[string][]byte{"tls.crt": certPEM, "tls.key": []byte("key")},
+				},
+			},
+		})
+
+		rule := &ruleCERT002{baseRule: baseRule{id: "CERT002", severity: SeverityCritical, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings, got %d", len(findings))
+		}
+	})
+}
+
+func TestCERT003_IncompleteCAChain(t *testing.T) {
+	now := time.Now()
+
+	t.Run("single non-self-signed cert flagged", func(t *testing.T) {
+		// Generate a CA cert with a different CN, then sign a leaf with it, but only include the leaf
+		caCertPEM, caCert, caKey := generateTestCertWithCN(t, "Test CA", now.Add(-365*24*time.Hour), now.Add(365*24*time.Hour), true, nil, nil)
+		_ = caCertPEM
+		leafPEM, _, _ := generateTestCertWithCN(t, "leaf.example.com", now.Add(-30*24*time.Hour), now.Add(60*24*time.Hour), false, caCert, caKey)
+
+		cache := mockCache(map[string]interface{}{
+			"secrets": []v1.Secret{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "incomplete-chain", Namespace: "default"},
+					Type:       v1.SecretTypeTLS,
+					Data:       map[string][]byte{"tls.crt": leafPEM, "tls.key": []byte("key")},
+				},
+			},
+		})
+
+		rule := &ruleCERT003{baseRule: baseRule{id: "CERT003", severity: SeverityWarning, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+	})
+
+	t.Run("self-signed cert not flagged", func(t *testing.T) {
+		selfSignedPEM, _, _ := generateTestCert(t, now.Add(-30*24*time.Hour), now.Add(365*24*time.Hour), true, nil, nil)
+		cache := mockCache(map[string]interface{}{
+			"secrets": []v1.Secret{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "self-signed", Namespace: "default"},
+					Type:       v1.SecretTypeTLS,
+					Data:       map[string][]byte{"tls.crt": selfSignedPEM, "tls.key": []byte("key")},
+				},
+			},
+		})
+
+		rule := &ruleCERT003{baseRule: baseRule{id: "CERT003", severity: SeverityWarning, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings, got %d", len(findings))
+		}
+	})
+}
+
+func TestCERT004_IngressTLSSecretExpiring(t *testing.T) {
+	now := time.Now()
+	certPEM, _, _ := generateTestCert(t, now.Add(-30*24*time.Hour), now.Add(15*24*time.Hour), false, nil, nil)
+
+	cache := mockCache(map[string]interface{}{
+		"ingresses": []networkingv1.Ingress{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "tls-ing", Namespace: "default"},
+				Spec: networkingv1.IngressSpec{
+					TLS: []networkingv1.IngressTLS{
+						{SecretName: "expiring-tls", Hosts: []string{"example.com"}},
+					},
+				},
+			},
+		},
+		"secrets": []v1.Secret{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "expiring-tls", Namespace: "default"},
+				Type:       v1.SecretTypeTLS,
+				Data:       map[string][]byte{"tls.crt": certPEM, "tls.key": []byte("key")},
+			},
+		},
+	})
+
+	rule := &ruleCERT004{baseRule: baseRule{id: "CERT004", severity: SeverityWarning, category: CategorySecurity}}
+	findings, err := rule.Evaluate(context.Background(), cache)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(findings))
+	}
+	if findings[0].Resource.Name != "tls-ing" {
+		t.Errorf("expected tls-ing, got %s", findings[0].Resource.Name)
+	}
+}
+
+// ---- RBAC Rules Tests ----
+
+func TestRBAC001_UnusedRole(t *testing.T) {
+	t.Run("role with no matching binding flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"roles": []rbacv1.Role{
+				{ObjectMeta: metav1.ObjectMeta{Name: "unused-role", Namespace: "default"}},
+			},
+			"rolebindings": []rbacv1.RoleBinding{},
+		})
+
+		rule := &ruleRBAC001{baseRule: baseRule{id: "RBAC001", severity: SeverityInfo, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+		if findings[0].Resource.Name != "unused-role" {
+			t.Errorf("expected unused-role, got %s", findings[0].Resource.Name)
+		}
+	})
+
+	t.Run("role with matching binding not flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"roles": []rbacv1.Role{
+				{ObjectMeta: metav1.ObjectMeta{Name: "used-role", Namespace: "default"}},
+			},
+			"rolebindings": []rbacv1.RoleBinding{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "my-binding", Namespace: "default"},
+					RoleRef:    rbacv1.RoleRef{Kind: "Role", Name: "used-role", APIGroup: "rbac.authorization.k8s.io"},
+				},
+			},
+		})
+
+		rule := &ruleRBAC001{baseRule: baseRule{id: "RBAC001", severity: SeverityInfo, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings, got %d", len(findings))
+		}
+	})
+
+	t.Run("role in system namespace skipped", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"roles": []rbacv1.Role{
+				{ObjectMeta: metav1.ObjectMeta{Name: "system-role", Namespace: "kube-system"}},
+			},
+			"rolebindings": []rbacv1.RoleBinding{},
+		})
+
+		rule := &ruleRBAC001{baseRule: baseRule{id: "RBAC001", severity: SeverityInfo, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings for system namespace, got %d", len(findings))
+		}
+	})
+}
+
+func TestRBAC002_UnusedClusterRole(t *testing.T) {
+	t.Run("clusterrole with no bindings flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"clusterroles": []rbacv1.ClusterRole{
+				{ObjectMeta: metav1.ObjectMeta{Name: "unused-cr"}},
+			},
+			"clusterrolebindings": []rbacv1.ClusterRoleBinding{},
+			"rolebindings":        []rbacv1.RoleBinding{},
+		})
+
+		rule := &ruleRBAC002{baseRule: baseRule{id: "RBAC002", severity: SeverityInfo, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+		if findings[0].Resource.Name != "unused-cr" {
+			t.Errorf("expected unused-cr, got %s", findings[0].Resource.Name)
+		}
+	})
+
+	t.Run("system prefixed clusterrole skipped", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"clusterroles": []rbacv1.ClusterRole{
+				{ObjectMeta: metav1.ObjectMeta{Name: "system:controller:foo"}},
+			},
+			"clusterrolebindings": []rbacv1.ClusterRoleBinding{},
+			"rolebindings":        []rbacv1.RoleBinding{},
+		})
+
+		rule := &ruleRBAC002{baseRule: baseRule{id: "RBAC002", severity: SeverityInfo, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings for system: prefix, got %d", len(findings))
+		}
+	})
+
+	t.Run("clusterrole bound via ClusterRoleBinding not flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"clusterroles": []rbacv1.ClusterRole{
+				{ObjectMeta: metav1.ObjectMeta{Name: "bound-cr"}},
+			},
+			"clusterrolebindings": []rbacv1.ClusterRoleBinding{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "my-crb"},
+					RoleRef:    rbacv1.RoleRef{Kind: "ClusterRole", Name: "bound-cr", APIGroup: "rbac.authorization.k8s.io"},
+				},
+			},
+			"rolebindings": []rbacv1.RoleBinding{},
+		})
+
+		rule := &ruleRBAC002{baseRule: baseRule{id: "RBAC002", severity: SeverityInfo, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings, got %d", len(findings))
+		}
+	})
+
+	t.Run("clusterrole bound via RoleBinding not flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"clusterroles": []rbacv1.ClusterRole{
+				{ObjectMeta: metav1.ObjectMeta{Name: "ns-bound-cr"}},
+			},
+			"clusterrolebindings": []rbacv1.ClusterRoleBinding{},
+			"rolebindings": []rbacv1.RoleBinding{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "ns-rb", Namespace: "default"},
+					RoleRef:    rbacv1.RoleRef{Kind: "ClusterRole", Name: "ns-bound-cr", APIGroup: "rbac.authorization.k8s.io"},
+				},
+			},
+		})
+
+		rule := &ruleRBAC002{baseRule: baseRule{id: "RBAC002", severity: SeverityInfo, category: CategorySecurity}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings, got %d", len(findings))
+		}
+	})
+}
+
+// ---- Scheduling Rules Tests ----
+
+func TestSCHED001_StaleCronJob(t *testing.T) {
+	now := time.Now()
+
+	t.Run("stale cronjob flagged", func(t *testing.T) {
+		lastSchedule := metav1.NewTime(now.Add(-3 * time.Hour))
+		cache := mockCache(map[string]interface{}{
+			"cronjobs": []batchv1.CronJob{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "stale-cj", Namespace: "default"},
+					Spec:       batchv1.CronJobSpec{Schedule: "*/30 * * * *"},
+					Status:     batchv1.CronJobStatus{LastScheduleTime: &lastSchedule},
+				},
+			},
+		})
+
+		rule := &ruleSCHED001{baseRule: baseRule{id: "SCHED001", severity: SeverityWarning, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+		if findings[0].Resource.Name != "stale-cj" {
+			t.Errorf("expected stale-cj, got %s", findings[0].Resource.Name)
+		}
+	})
+
+	t.Run("recent cronjob not flagged", func(t *testing.T) {
+		lastSchedule := metav1.NewTime(now.Add(-10 * time.Minute))
+		cache := mockCache(map[string]interface{}{
+			"cronjobs": []batchv1.CronJob{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "ok-cj", Namespace: "default"},
+					Spec:       batchv1.CronJobSpec{Schedule: "*/30 * * * *"},
+					Status:     batchv1.CronJobStatus{LastScheduleTime: &lastSchedule},
+				},
+			},
+		})
+
+		rule := &ruleSCHED001{baseRule: baseRule{id: "SCHED001", severity: SeverityWarning, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings, got %d", len(findings))
+		}
+	})
+
+	t.Run("weekly cronjob ran 3 days ago not flagged", func(t *testing.T) {
+		// "0 9 * * 1" = every Monday at 9am → interval 7 days, threshold 14 days
+		lastSchedule := metav1.NewTime(now.Add(-3 * 24 * time.Hour))
+		cache := mockCache(map[string]interface{}{
+			"cronjobs": []batchv1.CronJob{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "weekly-cj", Namespace: "default"},
+					Spec:       batchv1.CronJobSpec{Schedule: "0 9 * * 1"},
+					Status:     batchv1.CronJobStatus{LastScheduleTime: &lastSchedule},
+				},
+			},
+		})
+
+		rule := &ruleSCHED001{baseRule: baseRule{id: "SCHED001", severity: SeverityWarning, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings for weekly job ran 3 days ago, got %d", len(findings))
+		}
+	})
+
+	t.Run("weekly cronjob ran 15 days ago flagged", func(t *testing.T) {
+		lastSchedule := metav1.NewTime(now.Add(-15 * 24 * time.Hour))
+		cache := mockCache(map[string]interface{}{
+			"cronjobs": []batchv1.CronJob{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "stale-weekly", Namespace: "default"},
+					Spec:       batchv1.CronJobSpec{Schedule: "0 9 * * 1"},
+					Status:     batchv1.CronJobStatus{LastScheduleTime: &lastSchedule},
+				},
+			},
+		})
+
+		rule := &ruleSCHED001{baseRule: baseRule{id: "SCHED001", severity: SeverityWarning, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding for weekly job 15 days stale, got %d", len(findings))
+		}
+	})
+
+	t.Run("suspended cronjob skipped", func(t *testing.T) {
+		lastSchedule := metav1.NewTime(now.Add(-3 * time.Hour))
+		cache := mockCache(map[string]interface{}{
+			"cronjobs": []batchv1.CronJob{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "suspended-cj", Namespace: "default"},
+					Spec:       batchv1.CronJobSpec{Schedule: "*/30 * * * *", Suspend: ptr(true)},
+					Status:     batchv1.CronJobStatus{LastScheduleTime: &lastSchedule},
+				},
+			},
+		})
+
+		rule := &ruleSCHED001{baseRule: baseRule{id: "SCHED001", severity: SeverityWarning, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings for suspended cronjob, got %d", len(findings))
+		}
+	})
+}
+
+func TestSCHED002_FailedCronJob(t *testing.T) {
+	now := time.Now()
+
+	t.Run("3 failed jobs flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"cronjobs": []batchv1.CronJob{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "failing-cj", Namespace: "default"},
+					Spec:       batchv1.CronJobSpec{Schedule: "*/5 * * * *"},
+				},
+			},
+			"jobs": []batchv1.Job{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "failing-cj-001", Namespace: "default",
+						OwnerReferences: []metav1.OwnerReference{{Kind: "CronJob", Name: "failing-cj"}},
+					},
+					Status: batchv1.JobStatus{Failed: 1, Succeeded: 0, StartTime: &metav1.Time{Time: now.Add(-15 * time.Minute)}},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "failing-cj-002", Namespace: "default",
+						OwnerReferences: []metav1.OwnerReference{{Kind: "CronJob", Name: "failing-cj"}},
+					},
+					Status: batchv1.JobStatus{Failed: 1, Succeeded: 0, StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)}},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "failing-cj-003", Namespace: "default",
+						OwnerReferences: []metav1.OwnerReference{{Kind: "CronJob", Name: "failing-cj"}},
+					},
+					Status: batchv1.JobStatus{Failed: 1, Succeeded: 0, StartTime: &metav1.Time{Time: now.Add(-5 * time.Minute)}},
+				},
+			},
+		})
+
+		rule := &ruleSCHED002{baseRule: baseRule{id: "SCHED002", severity: SeverityWarning, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+		if findings[0].Resource.Name != "failing-cj" {
+			t.Errorf("expected failing-cj, got %s", findings[0].Resource.Name)
+		}
+	})
+
+	t.Run("2 failed 1 succeeded not flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"cronjobs": []batchv1.CronJob{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "mixed-cj", Namespace: "default"},
+					Spec:       batchv1.CronJobSpec{Schedule: "*/5 * * * *"},
+				},
+			},
+			"jobs": []batchv1.Job{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "mixed-cj-001", Namespace: "default",
+						OwnerReferences: []metav1.OwnerReference{{Kind: "CronJob", Name: "mixed-cj"}},
+					},
+					Status: batchv1.JobStatus{Failed: 1, Succeeded: 0, StartTime: &metav1.Time{Time: now.Add(-15 * time.Minute)}},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "mixed-cj-002", Namespace: "default",
+						OwnerReferences: []metav1.OwnerReference{{Kind: "CronJob", Name: "mixed-cj"}},
+					},
+					Status: batchv1.JobStatus{Failed: 0, Succeeded: 1, StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)}},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "mixed-cj-003", Namespace: "default",
+						OwnerReferences: []metav1.OwnerReference{{Kind: "CronJob", Name: "mixed-cj"}},
+					},
+					Status: batchv1.JobStatus{Failed: 1, Succeeded: 0, StartTime: &metav1.Time{Time: now.Add(-5 * time.Minute)}},
+				},
+			},
+		})
+
+		rule := &ruleSCHED002{baseRule: baseRule{id: "SCHED002", severity: SeverityWarning, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings, got %d", len(findings))
+		}
+	})
+}
+
+// ---- WRK014 Missing Pod Anti-Affinity Tests ----
+
+func TestWRK014_MissingPodAntiAffinity(t *testing.T) {
+	t.Run("deployment with 3 replicas no anti-affinity flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"deployments": []appsv1.Deployment{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "no-aa-deploy", Namespace: "production"},
+					Spec: appsv1.DeploymentSpec{
+						Replicas: ptr(int32(3)),
+						Template: v1.PodTemplateSpec{
+							Spec: v1.PodSpec{Containers: []v1.Container{{Name: "app"}}},
+						},
+					},
+				},
+			},
+			"statefulsets": []appsv1.StatefulSet{},
+		})
+
+		rule := &ruleWRK014{baseRule: baseRule{id: "WRK014", severity: SeverityInfo, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+		if findings[0].Resource.Name != "no-aa-deploy" {
+			t.Errorf("expected no-aa-deploy, got %s", findings[0].Resource.Name)
+		}
+	})
+
+	t.Run("deployment with anti-affinity not flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"deployments": []appsv1.Deployment{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "aa-deploy", Namespace: "production"},
+					Spec: appsv1.DeploymentSpec{
+						Replicas: ptr(int32(3)),
+						Template: v1.PodTemplateSpec{
+							Spec: v1.PodSpec{
+								Affinity: &v1.Affinity{
+									PodAntiAffinity: &v1.PodAntiAffinity{
+										PreferredDuringSchedulingIgnoredDuringExecution: []v1.WeightedPodAffinityTerm{
+											{
+												Weight: 100,
+												PodAffinityTerm: v1.PodAffinityTerm{
+													TopologyKey: "kubernetes.io/hostname",
+												},
+											},
+										},
+									},
+								},
+								Containers: []v1.Container{{Name: "app"}},
+							},
+						},
+					},
+				},
+			},
+			"statefulsets": []appsv1.StatefulSet{},
+		})
+
+		rule := &ruleWRK014{baseRule: baseRule{id: "WRK014", severity: SeverityInfo, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings, got %d", len(findings))
+		}
+	})
+
+	t.Run("deployment with 1 replica not flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"deployments": []appsv1.Deployment{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "single-deploy", Namespace: "production"},
+					Spec: appsv1.DeploymentSpec{
+						Replicas: ptr(int32(1)),
+						Template: v1.PodTemplateSpec{
+							Spec: v1.PodSpec{Containers: []v1.Container{{Name: "app"}}},
+						},
+					},
+				},
+			},
+			"statefulsets": []appsv1.StatefulSet{},
+		})
+
+		rule := &ruleWRK014{baseRule: baseRule{id: "WRK014", severity: SeverityInfo, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected 0 findings for single replica, got %d", len(findings))
+		}
+	})
+
+	t.Run("statefulset with 3 replicas no anti-affinity flagged", func(t *testing.T) {
+		cache := mockCache(map[string]interface{}{
+			"deployments": []appsv1.Deployment{},
+			"statefulsets": []appsv1.StatefulSet{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "no-aa-sts", Namespace: "production"},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: ptr(int32(3)),
+						Template: v1.PodTemplateSpec{
+							Spec: v1.PodSpec{Containers: []v1.Container{{Name: "app"}}},
+						},
+					},
+				},
+			},
+		})
+
+		rule := &ruleWRK014{baseRule: baseRule{id: "WRK014", severity: SeverityInfo, category: CategoryWorkloads}}
+		findings, err := rule.Evaluate(context.Background(), cache)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(findings))
+		}
+		if findings[0].Resource.Name != "no-aa-sts" {
+			t.Errorf("expected no-aa-sts, got %s", findings[0].Resource.Name)
+		}
+	})
+}
+
+func TestParseCronInterval(t *testing.T) {
+	tests := []struct {
+		schedule string
+		expected time.Duration
+	}{
+		{"@hourly", time.Hour},
+		{"@daily", 24 * time.Hour},
+		{"@weekly", 7 * 24 * time.Hour},
+		{"*/5 * * * *", 5 * time.Minute},
+		{"*/30 * * * *", 30 * time.Minute},
+		{"0 */2 * * *", 2 * time.Hour},
+		{"0 */6 * * *", 6 * time.Hour},
+		{"0 9 * * *", 24 * time.Hour},         // daily at 9am
+		{"0 9 * * 1", 7 * 24 * time.Hour},     // every Monday
+		{"0 9 * * 1,4", 3 * 24 * time.Hour},   // Mon+Thu → ~3.5 days, truncated to 3
+		{"0 0 1 * *", 30 * 24 * time.Hour},    // 1st of month
+		{"0 0 1,15 * *", 15 * 24 * time.Hour}, // 1st and 15th
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.schedule, func(t *testing.T) {
+			got := parseCronInterval(tc.schedule)
+			if got != tc.expected {
+				t.Errorf("parseCronInterval(%q) = %v, want %v", tc.schedule, got, tc.expected)
+			}
+		})
 	}
 }

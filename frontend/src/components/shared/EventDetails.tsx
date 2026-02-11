@@ -1,10 +1,10 @@
 import React from 'react';
-import { PencilSquareIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, StatusBadge, CopyableTextBlock, CopyableLabel } from './DetailComponents';
-import { LazyYamlEditor as YamlEditor } from '../lazy';
+import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 // Map Kubernetes resource kinds to view names
 const kindToView = {
@@ -56,6 +56,22 @@ export default function EventDetails({ event, tabContext = '' }: { event: any; t
         });
     };
 
+    const handleShowDependencies = () => {
+        const tabId = `deps-event-${event.metadata.uid}`;
+        openTab({
+            id: tabId,
+            title: `${event.metadata.name}`,
+            content: (
+                <DependencyGraph
+                    resourceType="event"
+                    namespace={event.metadata?.namespace}
+                    resourceName={event.metadata?.name}
+                    onClose={() => closeTab(tabId)}
+                />
+            )
+        });
+    };
+
     const handleNavigateToObject = () => {
         if (!involvedObject.kind || !involvedObject.uid) return;
         const viewName = (kindToView as Record<string, string>)[involvedObject.kind];
@@ -90,6 +106,13 @@ export default function EventDetails({ event, tabContext = '' }: { event: any; t
                             disabled={!!isStale}
                         >
                             <PencilSquareIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={handleShowDependencies}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title="Dependencies"
+                        >
+                            <ShareIcon className="w-4 h-4" />
                         </button>
                     </div>
                 </div>

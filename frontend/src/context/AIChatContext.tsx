@@ -59,6 +59,8 @@ interface AIChatContextValue {
     togglePanel: () => void;
     messages: ChatMessage[];
     sendMessage: (text: string) => void;
+    /** Opens the AI panel and sends a message once the session is ready */
+    openAndSend: (text: string) => void;
     isStreaming: boolean;
     cancelRequest: () => void;
     startNewChat: () => void;
@@ -189,6 +191,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
     const autoExecutedNavRef = useRef<Set<string>>(new Set<any>());
     const generationRef = useRef<number>(0);
     const currentUsageRef = useRef<TokenUsage | null>(null); // track latest token usage
+    const pendingMessageRef = useRef<string | null>(null); // queued message for openAndSend
     const sessionIdRef = useRef<string | null>(sessionId);
     sessionIdRef.current = sessionId;
     const THINKING_THRESHOLD = 500; // ms — pause longer than this inserts a thought bubble
@@ -215,6 +218,16 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
             }).catch((err: any) => console.error('Failed to start AI session:', err));
         }
     }, [isOpen, sessionId, providerAvailable]);
+
+    // Flush pending message once session is ready (used by openAndSend)
+    useEffect(() => {
+        if (sessionId && pendingMessageRef.current) {
+            const msg = pendingMessageRef.current;
+            pendingMessageRef.current = null;
+            // Defer to next tick so sendMessage sees the updated sessionId
+            queueMicrotask(() => sendMessage(msg));
+        }
+    }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Listen for AI response events — registered once, uses refs to avoid stale closures
     useEffect(() => {
@@ -553,6 +566,19 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
             });
     }, [sessionId, isStreaming, buildSystemPrompt, buildMessageContext, getConfig]);
 
+    const openAndSend = useCallback((text: string) => {
+        if (!text.trim()) return;
+        if (sessionId) {
+            // Session already active — open panel and send immediately
+            if (!isOpen) setIsOpen(true);
+            sendMessage(text);
+        } else {
+            // Queue the message; the useEffect watching sessionId will flush it
+            pendingMessageRef.current = text;
+            if (!isOpen) setIsOpen(true);
+        }
+    }, [sessionId, isOpen, sendMessage]);
+
     const cancelRequest = useCallback(() => {
         if (sessionId) {
             CancelAIRequest(sessionId).catch(() => {});
@@ -649,6 +675,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
         togglePanel,
         messages,
         sendMessage,
+        openAndSend,
         isStreaming,
         cancelRequest,
         startNewChat,
@@ -660,7 +687,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
         providerStatus,
         providerName,
         autoExecutedNavRef
-    }), [isOpen, togglePanel, messages, sendMessage, isStreaming, cancelRequest, startNewChat, loadConversation, deleteConversation, conversationHistory, conversationId, providerAvailable, providerStatus, providerName]);
+    }), [isOpen, togglePanel, messages, sendMessage, openAndSend, isStreaming, cancelRequest, startNewChat, loadConversation, deleteConversation, conversationHistory, conversationId, providerAvailable, providerStatus, providerName]);
 
     return (
         <AIChatContext.Provider value={value}>

@@ -43,6 +43,14 @@ func (a *App) SwitchContext(name string) error {
 	// Cancel any pending connection test
 	a.CancelConnectionTest()
 
+	// Stop all port forwards from the previous context — they target resources
+	// that won't exist in the new context and the reconnect loop would keep
+	// retrying otherwise.
+	if a.portForwardManager != nil {
+		debug.LogK8s("SwitchContext: Stopping all port forwards before context switch", nil)
+		a.portForwardManager.StopAll()
+	}
+
 	// Discard any buffered events from the old context, then stop all watchers.
 	// Order matters: clear coalescer first so the timer can't fire and emit
 	// stale events between StopAll and the new context starting.

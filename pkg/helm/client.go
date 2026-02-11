@@ -12,6 +12,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
@@ -683,4 +684,232 @@ func (c *Client) locateOCIChart(registryURL, repository, version string) (string
 	}
 
 	return "", fmt.Errorf("chart archive not found after pull")
+}
+
+// TemplateResult contains the rendered manifests from a template operation
+type TemplateResult struct {
+	Manifests string `json:"manifests"` // Rendered YAML manifests
+	Notes     string `json:"notes"`     // Release notes
+}
+
+// DryRunResult contains the diff between current and proposed state
+type DryRunResult struct {
+	CurrentManifest  string `json:"currentManifest"`  // Current deployed manifest
+	ProposedManifest string `json:"proposedManifest"` // Proposed manifest from dry-run
+	Notes            string `json:"notes"`            // Release notes from dry-run
+}
+
+// ValidationError represents a single values validation error with path info
+type ValidationError struct {
+	Path    string `json:"path"`    // JSON path to the invalid field (e.g. ".service.type")
+	Message string `json:"message"` // Error message describing the validation failure
+}
+
+// TemplateRelease renders templates locally using Helm's template engine (client-only, no cluster access)
+func (c *Client) TemplateRelease(releaseName, namespace string, opts UpgradeOptions) (*TemplateResult, error) {
+	actionConfig, err := c.getActionConfig(namespace, "")
+	if err != nil {
+		return nil, err
+	}
+
+	// Locate and download the chart
+	var chartPath string
+	if opts.IsOCI {
+		chartPath, err = c.locateOCIChart(opts.RepoURL, opts.OCIRepository, opts.Version)
+	} else {
+		chartRef := fmt.Sprintf("%s/%s", opts.RepoName, opts.ChartName)
+		chartPath, err = c.locateChart(chartRef, opts.Version)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to locate chart: %w", err)
+	}
+
+	// Load the chart
+	chart, err := loader.Load(chartPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load chart: %w", err)
+	}
+
+	// Use Install action with DryRun + ClientOnly for local template rendering
+	installAction := action.NewInstall(actionConfig)
+	installAction.DryRun = true
+	installAction.ClientOnly = true
+	installAction.ReleaseName = releaseName
+	installAction.Namespace = namespace
+	installAction.Replace = true // Allow re-use of release name
+
+	values := opts.Values
+	if values == nil {
+		values = make(map[string]interface{})
+	}
+
+	rel, err := installAction.Run(chart, values)
+	if err != nil {
+		return nil, fmt.Errorf("template rendering failed: %w", err)
+	}
+
+	result := &TemplateResult{
+		Manifests: rel.Manifest,
+	}
+	if rel.Info != nil {
+		result.Notes = rel.Info.Notes
+	}
+
+	return result, nil
+}
+
+// DryRunUpgrade performs a server-side dry-run upgrade and returns current vs proposed manifests
+func (c *Client) DryRunUpgrade(contextName, namespace, releaseName string, opts UpgradeOptions) (*DryRunResult, error) {
+	actionConfig, err := c.getActionConfig(namespace, contextName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get current release manifest
+	getAction := action.NewGet(actionConfig)
+	currentRelease, err := getAction.Run(releaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current release: %w", err)
+	}
+
+	// Locate and download the chart
+	var chartPath string
+	if opts.IsOCI {
+		chartPath, err = c.locateOCIChart(opts.RepoURL, opts.OCIRepository, opts.Version)
+	} else {
+		chartRef := fmt.Sprintf("%s/%s", opts.RepoName, opts.ChartName)
+		chartPath, err = c.locateChart(chartRef, opts.Version)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to locate chart: %w", err)
+	}
+
+	// Load the chart
+	chart, err := loader.Load(chartPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load chart: %w", err)
+	}
+
+	// Perform server-side dry-run upgrade
+	upgradeAction := action.NewUpgrade(actionConfig)
+	upgradeAction.Namespace = namespace
+	upgradeAction.DryRun = true
+	upgradeAction.ReuseValues = opts.ReuseValues
+	upgradeAction.ResetValues = opts.ResetValues
+
+	values := opts.Values
+	if values == nil {
+		values = make(map[string]interface{})
+	}
+
+	proposedRelease, err := upgradeAction.Run(releaseName, chart, values)
+	if err != nil {
+		return nil, fmt.Errorf("dry-run upgrade failed: %w", err)
+	}
+
+	result := &DryRunResult{
+		CurrentManifest:  currentRelease.Manifest,
+		ProposedManifest: proposedRelease.Manifest,
+	}
+	if proposedRelease.Info != nil {
+		result.Notes = proposedRelease.Info.Notes
+	}
+
+	return result, nil
+}
+
+// ValidateValues validates values against the chart's values.schema.json if present
+func (c *Client) ValidateValues(opts UpgradeOptions) ([]ValidationError, error) {
+	// Locate and download the chart
+	var chartPath string
+	var err error
+	if opts.IsOCI {
+		chartPath, err = c.locateOCIChart(opts.RepoURL, opts.OCIRepository, opts.Version)
+	} else {
+		chartRef := fmt.Sprintf("%s/%s", opts.RepoName, opts.ChartName)
+		chartPath, err = c.locateChart(chartRef, opts.Version)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to locate chart: %w", err)
+	}
+
+	// Load the chart
+	chart, err := loader.Load(chartPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load chart: %w", err)
+	}
+
+	// Check if the chart has a JSON schema
+	if chart.Schema == nil {
+		return []ValidationError{}, nil // No schema, nothing to validate
+	}
+
+	values := opts.Values
+	if values == nil {
+		values = make(map[string]interface{})
+	}
+
+	// Merge provided values with chart defaults for complete validation
+	mergedValues, err := chartutil.CoalesceValues(chart, values)
+	if err != nil {
+		return []ValidationError{{
+			Path:    ".",
+			Message: fmt.Sprintf("failed to merge values: %v", err),
+		}}, nil
+	}
+
+	// Validate merged values against the chart's JSON Schema
+	if err := chartutil.ValidateAgainstSchema(chart, mergedValues); err != nil {
+		// Parse the validation error to extract individual field errors
+		return parseValidationErrors(err), nil
+	}
+
+	return []ValidationError{}, nil
+}
+
+// parseValidationErrors converts a schema validation error into structured ValidationError entries
+func parseValidationErrors(err error) []ValidationError {
+	if err == nil {
+		return nil
+	}
+
+	errStr := err.Error()
+
+	// Helm's schema validation errors are typically multi-line with specific field paths
+	// Format: "- fieldpath: error message"
+	lines := strings.Split(errStr, "\n")
+	var errors []ValidationError
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		// Strip leading "- " if present
+		line = strings.TrimPrefix(line, "- ")
+
+		// Try to extract path: message format
+		if idx := strings.Index(line, ": "); idx > 0 {
+			path := strings.TrimSpace(line[:idx])
+			msg := strings.TrimSpace(line[idx+2:])
+			errors = append(errors, ValidationError{
+				Path:    path,
+				Message: msg,
+			})
+		} else {
+			errors = append(errors, ValidationError{
+				Path:    ".",
+				Message: line,
+			})
+		}
+	}
+
+	if len(errors) == 0 {
+		errors = append(errors, ValidationError{
+			Path:    ".",
+			Message: errStr,
+		})
+	}
+
+	return errors
 }

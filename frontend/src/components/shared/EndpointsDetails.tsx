@@ -3,7 +3,7 @@ import { PencilSquareIcon, ShareIcon, QueueListIcon } from '@heroicons/react/24/
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
+import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 export default function EndpointsDetails({ endpoints, tabContext = '' }: { endpoints: any; tabContext?: string }) {
@@ -52,13 +52,6 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }: { endpo
             )
         });
     };
-
-    const basicInfo = [
-        { label: 'Name', value: metadata.name },
-        { label: 'Namespace', value: metadata.namespace },
-        { label: 'Age', value: formatAge(metadata.creationTimestamp) },
-        { label: 'Subsets', value: subsets.length.toString() },
-    ];
 
     const getAllAddresses = () => {
         const ready: any[] = [];
@@ -112,31 +105,14 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }: { endpo
 
             {/* Content Area */}
             <div className="h-full overflow-auto p-4">
-            <div className="space-y-6">
-                {/* Basic Info */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Basic Information</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        {basicInfo.map(({ label, value }) => (
-                            <div key={label}>
-                                <dt className="text-xs text-gray-500">{label}</dt>
-                                <dd className="text-sm text-gray-200 mt-0.5">{value || '-'}</dd>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
                 {/* Ready Addresses */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">
-                        Ready Addresses ({ready.length})
-                    </h3>
+                <DetailSection title={`Ready Addresses (${ready.length})`}>
                     {ready.length === 0 ? (
-                        <p className="text-sm text-gray-500">No ready addresses</p>
+                        <span className="text-gray-500">No ready addresses</span>
                     ) : (
                         <div className="space-y-2">
                             {ready.map((addr: any, idx: number) => (
-                                <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
+                                <div key={idx} className="bg-background-dark rounded border border-border p-3">
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <span className="text-sm text-green-400 font-mono">{addr.ip}</span>
@@ -155,17 +131,14 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }: { endpo
                             ))}
                         </div>
                     )}
-                </div>
+                </DetailSection>
 
                 {/* Not Ready Addresses */}
                 {notReady.length > 0 && (
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-400 mb-3">
-                            Not Ready Addresses ({notReady.length})
-                        </h3>
+                    <DetailSection title={`Not Ready Addresses (${notReady.length})`}>
                         <div className="space-y-2">
                             {notReady.map((addr: any, idx: number) => (
-                                <div key={idx} className="bg-gray-800/50 rounded-lg p-3 border-l-2 border-yellow-500">
+                                <div key={idx} className="bg-background-dark rounded border border-border p-3 border-l-2 border-l-yellow-500">
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <span className="text-sm text-yellow-400 font-mono">{addr.ip}</span>
@@ -183,21 +156,33 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }: { endpo
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </DetailSection>
                 )}
 
+                {/* Details */}
+                <DetailSection title="Details">
+                    <DetailRow label="Name" value={name} />
+                    <DetailRow label="Namespace" value={namespace} />
+                    <DetailRow label="Subsets" value={subsets.length} />
+                    <DetailRow label="Created">
+                        <span title={metadata.creationTimestamp}>
+                            {formatAge(metadata.creationTimestamp)} ago
+                        </span>
+                    </DetailRow>
+                    <DetailRow label="UID">
+                        <CopyableLabel value={metadata.uid?.substring(0, 8) + '...'} copyValue={metadata.uid} />
+                    </DetailRow>
+                </DetailSection>
+
                 {/* Labels */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Labels</h3>
+                <DetailSection title="Labels">
                     <LabelsDisplay labels={metadata.labels} />
-                </div>
+                </DetailSection>
 
                 {/* Annotations */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Annotations</h3>
+                <DetailSection title="Annotations">
                     <AnnotationsDisplay annotations={metadata.annotations} />
-                </div>
-            </div>
+                </DetailSection>
             </div>
         </div>
     );

@@ -3,7 +3,7 @@ import { PencilSquareIcon, ShareIcon, ChartBarIcon } from '@heroicons/react/24/o
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
+import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 export default function HPADetails({ hpa, tabContext = '' }: any) {
@@ -110,17 +110,6 @@ export default function HPADetails({ hpa, tabContext = '' }: any) {
         }
     };
 
-    const basicInfo = [
-        { label: 'Name', value: metadata.name },
-        { label: 'Namespace', value: metadata.namespace },
-        { label: 'Age', value: formatAge(metadata.creationTimestamp) },
-        { label: 'Scale Target', value: getScaleTargetRef() },
-        { label: 'Min Replicas', value: spec.minReplicas ?? 1 },
-        { label: 'Max Replicas', value: spec.maxReplicas },
-        { label: 'Current Replicas', value: status.currentReplicas ?? '-' },
-        { label: 'Desired Replicas', value: status.desiredReplicas ?? '-' },
-    ];
-
     const metrics = spec.metrics || [];
     const currentMetrics = status.currentMetrics || [];
 
@@ -157,31 +146,16 @@ export default function HPADetails({ hpa, tabContext = '' }: any) {
 
             {/* Content Area */}
             <div className="h-full overflow-auto p-4">
-            <div className="space-y-6">
-                {/* Basic Info */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Basic Information</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        {basicInfo.map(({ label, value }) => (
-                            <div key={label}>
-                                <dt className="text-xs text-gray-500">{label}</dt>
-                                <dd className="text-sm text-gray-200 mt-0.5">{value ?? '-'}</dd>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
                 {/* Metrics */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Metrics</h3>
+                <DetailSection title="Metrics">
                     {metrics.length === 0 ? (
-                        <p className="text-sm text-gray-500">No metrics configured</p>
+                        <span className="text-gray-500">No metrics configured</span>
                     ) : (
                         <div className="space-y-2">
                             {metrics.map((metric: any, idx: number) => {
                                 const current = currentMetrics[idx];
                                 return (
-                                    <div key={idx} className="bg-gray-800/50 rounded-lg p-3 flex justify-between items-center">
+                                    <div key={idx} className="bg-background-dark rounded border border-border p-3 flex justify-between items-center">
                                         <div>
                                             <div className="text-sm text-gray-300">{formatMetric(metric)}</div>
                                             <div className="text-xs text-gray-500">Target</div>
@@ -195,46 +169,55 @@ export default function HPADetails({ hpa, tabContext = '' }: any) {
                             })}
                         </div>
                     )}
-                </div>
+                </DetailSection>
 
                 {/* Conditions */}
                 {conditions.length > 0 && (
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-400 mb-3">Conditions</h3>
+                    <DetailSection title="Conditions">
                         <div className="space-y-2">
                             {conditions.map((condition: any, idx: number) => (
-                                <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <span className={`text-sm ${condition.status === 'True' ? 'text-green-400' : 'text-gray-300'}`}>
-                                                {condition.type}
-                                            </span>
-                                            <span className={`ml-2 text-xs ${condition.status === 'True' ? 'text-green-500' : 'text-gray-500'}`}>
-                                                ({condition.status})
-                                            </span>
-                                        </div>
+                                <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+                                    <div className="flex items-center gap-2">
+                                        <StatusBadge status={condition.type} variant={condition.status === 'True' ? 'success' : condition.status === 'False' ? 'error' : 'warning'} />
+                                        <span className="text-sm text-gray-400">{condition.message}</span>
                                     </div>
-                                    {condition.message && (
-                                        <p className="text-xs text-gray-500 mt-1">{condition.message}</p>
-                                    )}
+                                    <span className="text-xs text-gray-500" title={condition.lastTransitionTime}>
+                                        {formatAge(condition.lastTransitionTime)}
+                                    </span>
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </DetailSection>
                 )}
 
+                {/* Details */}
+                <DetailSection title="Details">
+                    <DetailRow label="Name" value={name} />
+                    <DetailRow label="Namespace" value={namespace} />
+                    <DetailRow label="Scale Target" value={getScaleTargetRef()} />
+                    <DetailRow label="Min Replicas" value={spec.minReplicas ?? 1} />
+                    <DetailRow label="Max Replicas" value={spec.maxReplicas} />
+                    <DetailRow label="Current Replicas" value={status.currentReplicas ?? '-'} />
+                    <DetailRow label="Desired Replicas" value={status.desiredReplicas ?? '-'} />
+                    <DetailRow label="Created">
+                        <span title={metadata.creationTimestamp}>
+                            {formatAge(metadata.creationTimestamp)} ago
+                        </span>
+                    </DetailRow>
+                    <DetailRow label="UID">
+                        <CopyableLabel value={metadata.uid?.substring(0, 8) + '...'} copyValue={metadata.uid} />
+                    </DetailRow>
+                </DetailSection>
+
                 {/* Labels */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Labels</h3>
+                <DetailSection title="Labels">
                     <LabelsDisplay labels={metadata.labels} />
-                </div>
+                </DetailSection>
 
                 {/* Annotations */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Annotations</h3>
+                <DetailSection title="Annotations">
                     <AnnotationsDisplay annotations={metadata.annotations} />
-                </div>
-            </div>
+                </DetailSection>
             </div>
         </div>
     );

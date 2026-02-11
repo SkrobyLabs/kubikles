@@ -204,6 +204,8 @@ export function GetCurrentContext():Promise<string>;
 
 export function GetCurrentTheme():Promise<main.Theme>;
 
+export function GetCustomResourceEvents(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string):Promise<Array<Record<string, any>>>;
+
 export function GetCustomResourceYaml(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
 
 export function GetDaemonSetYaml(arg1:string,arg2:string):Promise<string>;
@@ -353,6 +355,12 @@ export function GetValidatingWebhookConfigurationYaml(arg1:string):Promise<strin
 export function GetVersionInfo():Promise<main.VersionInfo>;
 
 export function Greet(arg1:string):Promise<string>;
+
+export function HelmDryRunUpgrade(arg1:string,arg2:string,arg3:helm.UpgradeOptions):Promise<helm.DryRunResult>;
+
+export function HelmTemplateRelease(arg1:string,arg2:string,arg3:helm.UpgradeOptions):Promise<helm.TemplateResult>;
+
+export function HelmValidateValues(arg1:helm.UpgradeOptions):Promise<Array<helm.ValidationError>>;
 
 export function IsRequestCancellationEnabled():Promise<boolean>;
 

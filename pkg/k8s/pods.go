@@ -1338,6 +1338,22 @@ func (c *Client) ForceDeletePod(contextName, namespace, name string) error {
 	})
 }
 
+// IsPodRunning checks whether a pod exists and is not in a terminal phase (Succeeded/Failed).
+func (c *Client) IsPodRunning(contextName, namespace, name string) bool {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return false
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+
+	pod, err := cs.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return false
+	}
+	return pod.Status.Phase != v1.PodSucceeded && pod.Status.Phase != v1.PodFailed
+}
+
 // resolveControllerChain walks the ownership chain to find the top-level controller.
 // For example, ReplicaSet→Deployment or Job→CronJob.
 func resolveControllerChain(cs kubernetes.Interface, ctx context.Context, namespace, kind, name string) (string, string) {

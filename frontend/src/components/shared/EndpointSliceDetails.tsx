@@ -3,7 +3,7 @@ import { PencilSquareIcon, ShareIcon, QueueListIcon } from '@heroicons/react/24/
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
+import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 export default function EndpointSliceDetails({ endpointSlice, tabContext = '' }: { endpointSlice: any; tabContext?: string }) {
@@ -54,15 +54,6 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' }:
         });
     };
 
-    const basicInfo = [
-        { label: 'Name', value: metadata.name },
-        { label: 'Namespace', value: metadata.namespace },
-        { label: 'Age', value: formatAge(metadata.creationTimestamp) },
-        { label: 'Address Type', value: endpointSlice?.addressType || '-' },
-        { label: 'Endpoints', value: endpoints.length.toString() },
-        { label: 'Ports', value: ports.length.toString() },
-    ];
-
     const getServiceName = () => {
         return metadata.labels?.['kubernetes.io/service-name'] || '-';
     };
@@ -106,29 +97,10 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' }:
 
             {/* Content Area */}
             <div className="h-full overflow-auto p-4">
-            <div className="space-y-6">
-                {/* Basic Info */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Basic Information</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        {basicInfo.map(({ label, value }) => (
-                            <div key={label}>
-                                <dt className="text-xs text-gray-500">{label}</dt>
-                                <dd className="text-sm text-gray-200 mt-0.5">{value || '-'}</dd>
-                            </div>
-                        ))}
-                        <div>
-                            <dt className="text-xs text-gray-500">Service</dt>
-                            <dd className="text-sm text-gray-200 mt-0.5">{getServiceName()}</dd>
-                        </div>
-                    </div>
-                </div>
-
                 {/* Ports */}
                 {ports.length > 0 && (
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-400 mb-3">Ports</h3>
-                        <div className="bg-gray-800/50 rounded-lg p-3">
+                    <DetailSection title="Ports">
+                        <div className="bg-background-dark rounded border border-border p-3">
                             <div className="grid grid-cols-3 gap-2 text-xs text-gray-500 mb-2">
                                 <span>Name</span>
                                 <span>Port</span>
@@ -142,26 +114,23 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' }:
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </DetailSection>
                 )}
 
                 {/* Endpoints */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">
-                        Endpoints ({endpoints.length})
-                    </h3>
+                <DetailSection title={`Endpoints (${endpoints.length})`}>
                     {endpoints.length === 0 ? (
-                        <p className="text-sm text-gray-500">No endpoints</p>
+                        <span className="text-gray-500">No endpoints</span>
                     ) : (
                         <div className="space-y-2">
                             {endpoints.map((endpoint: any, idx: number) => {
-                                const status = getEndpointStatus(endpoint);
+                                const epStatus = getEndpointStatus(endpoint);
                                 return (
-                                    <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
+                                    <div key={idx} className="bg-background-dark rounded border border-border p-3">
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-2">
-                                                <span className={`text-xs font-medium ${status.color}`}>
-                                                    {status.text}
+                                                <span className={`text-xs font-medium ${epStatus.color}`}>
+                                                    {epStatus.text}
                                                 </span>
                                                 {endpoint.nodeName && (
                                                     <span className="text-xs text-gray-500">
@@ -197,20 +166,33 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' }:
                             })}
                         </div>
                     )}
-                </div>
+                </DetailSection>
+
+                {/* Details */}
+                <DetailSection title="Details">
+                    <DetailRow label="Name" value={name} />
+                    <DetailRow label="Namespace" value={namespace} />
+                    <DetailRow label="Address Type" value={endpointSlice?.addressType || '-'} />
+                    <DetailRow label="Service" value={getServiceName()} />
+                    <DetailRow label="Created">
+                        <span title={metadata.creationTimestamp}>
+                            {formatAge(metadata.creationTimestamp)} ago
+                        </span>
+                    </DetailRow>
+                    <DetailRow label="UID">
+                        <CopyableLabel value={metadata.uid?.substring(0, 8) + '...'} copyValue={metadata.uid} />
+                    </DetailRow>
+                </DetailSection>
 
                 {/* Labels */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Labels</h3>
+                <DetailSection title="Labels">
                     <LabelsDisplay labels={metadata.labels} />
-                </div>
+                </DetailSection>
 
                 {/* Annotations */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Annotations</h3>
+                <DetailSection title="Annotations">
                     <AnnotationsDisplay annotations={metadata.annotations} />
-                </div>
-            </div>
+                </DetailSection>
             </div>
         </div>
     );

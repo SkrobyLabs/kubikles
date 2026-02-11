@@ -7,7 +7,9 @@ import {
     DeleteCustomResource
 } from 'wailsjs/go/main/App';
 import { LazyYamlEditor as YamlEditor } from '~/components/lazy';
+import CustomResourceDetails from '~/components/shared/CustomResourceDetails';
 import { K8sResource } from '~/types/k8s';
+import { getResourceIcon } from '~/utils/resourceIcons';
 
 /**
  * CRD Information for custom resource operations
@@ -24,16 +26,37 @@ export interface CRDInfo {
  * Return type for useCustomResourceActions
  */
 export interface CustomResourceActionsReturn {
+    handleShowDetails: (resource: K8sResource) => void;
     handleEditYaml: (resource: K8sResource) => void;
     handleDelete: (resource: K8sResource) => void;
 }
 
 /**
- * Hook for custom resource instance actions (edit, delete)
+ * Hook for custom resource instance actions (edit, delete, show details)
  */
 export const useCustomResourceActions = (crdInfo: CRDInfo): any => {
     const { openTab, closeTab, openModal, closeModal } = useUI();
     const { currentContext } = useK8s();
+
+    const handleShowDetails = (resource: K8sResource): void => {
+        const name = resource.metadata?.name;
+        const namespace = resource.metadata?.namespace || '';
+        const tabId = `details-cr-${crdInfo.group}-${crdInfo.resource}-${resource.metadata?.uid}`;
+
+        openTab({
+            id: tabId,
+            title: name || 'Unknown',
+            icon: getResourceIcon('customresource'),
+            content: (
+                <CustomResourceDetails
+                    resource={resource}
+                    crdInfo={crdInfo}
+                    tabContext={currentContext}
+                />
+            ),
+            resourceMeta: { kind: crdInfo.kind, name, namespace: namespace || undefined },
+        });
+    };
 
     const handleEditYaml = (resource: K8sResource): void => {
         const name = resource.metadata?.name;
@@ -81,5 +104,5 @@ export const useCustomResourceActions = (crdInfo: CRDInfo): any => {
         });
     };
 
-    return { handleEditYaml, handleDelete };
+    return { handleShowDetails, handleEditYaml, handleDelete };
 };

@@ -38,7 +38,7 @@ type PortForwardConfig struct {
 // ActivePortForward represents a running port forward
 type ActivePortForward struct {
 	Config    PortForwardConfig `json:"config"`
-	Status    string            `json:"status"` // "starting", "running", "stopped", "error"
+	Status    string            `json:"status"` // "starting", "running", "reconnecting", "stopped", "error"
 	Error     string            `json:"error"`
 	StartedAt time.Time         `json:"startedAt"`
 	// Internal fields (not serialized)
@@ -49,7 +49,7 @@ type ActivePortForward struct {
 
 // PortForwardEvent is emitted when port forward status changes
 type PortForwardEvent struct {
-	Type     string             `json:"type"` // "started", "stopped", "error", "config_added", "config_removed", "config_updated"
+	Type     string             `json:"type"` // "started", "stopped", "error", "reconnecting", "config_added", "config_removed", "config_updated"
 	ConfigID string             `json:"configId"`
 	Config   *PortForwardConfig `json:"config,omitempty"`
 	Status   string             `json:"status,omitempty"`
@@ -320,8 +320,8 @@ func (m *PortForwardManager) Start(configID string) error {
 		Status:   "starting",
 	})
 
-	// Start the port forward in a goroutine
-	go m.runPortForward(af)
+	// Start the port forward in a goroutine with auto-reconnect
+	go m.runWithReconnect(af)
 
 	return nil
 }
@@ -523,10 +523,82 @@ func (m *PortForwardManager) isPortAvailable(port int) bool {
 	return true
 }
 
-// runPortForward runs the actual port forward
-func (m *PortForwardManager) runPortForward(af *ActivePortForward) {
+// runWithReconnect wraps runPortForward with automatic reconnection on failure.
+// It retries with exponential backoff, resetting counters on successful connections.
+func (m *PortForwardManager) runWithReconnect(af *ActivePortForward) {
 	defer close(af.doneChan)
 
+	const maxRetries = 10
+	backoff := time.Second
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		// Check if stopped before attempting connection
+		select {
+		case <-af.stopChan:
+			return
+		default:
+		}
+
+		wasConnected, err := m.runPortForward(af)
+
+		// Check if explicitly stopped by the user
+		select {
+		case <-af.stopChan:
+			return
+		default:
+		}
+
+		// Connection dropped — attempt reconnect
+		if wasConnected {
+			// Reset retry counter and backoff since we had a working connection
+			attempt = -1 // Will become 0 after the for loop increment
+			backoff = time.Second
+		}
+
+		if err != nil {
+			m.app.logDebug("PortForward: Connection lost for %s (attempt %d/%d): %v", af.Config.ID, attempt+1, maxRetries, err)
+		} else {
+			m.app.logDebug("PortForward: Connection closed for %s (attempt %d/%d)", af.Config.ID, attempt+1, maxRetries)
+		}
+
+		m.updateStatus(af.Config.ID, "reconnecting", fmt.Sprintf("Reconnecting (attempt %d/%d)...", attempt+1, maxRetries))
+
+		// Wait with backoff, but bail out immediately if stopped
+		select {
+		case <-af.stopChan:
+			return
+		case <-time.After(backoff):
+		}
+
+		backoff = backoff * 2
+		if backoff > 30*time.Second {
+			backoff = 30 * time.Second
+		}
+
+		// For pod-targeted forwards, check if the pod still exists before reconnecting
+		if af.Config.ResourceType == "pod" {
+			if !m.isPodAlive(af.Config.Context, af.Config.Namespace, af.Config.ResourceName) {
+				m.app.logDebug("PortForward: Pod %s/%s no longer exists, stopping reconnect", af.Config.Namespace, af.Config.ResourceName)
+				m.updateStatus(af.Config.ID, "error", "Pod no longer exists")
+				return
+			}
+		}
+	}
+
+	// Max retries exceeded
+	m.app.logDebug("PortForward: Max retries exceeded for %s", af.Config.ID)
+	m.updateStatus(af.Config.ID, "error", "Connection lost: max reconnect attempts exceeded")
+}
+
+// isPodAlive checks whether a pod still exists and is not in a terminal phase.
+func (m *PortForwardManager) isPodAlive(contextName, namespace, podName string) bool {
+	return m.app.k8sClient.IsPodRunning(contextName, namespace, podName)
+}
+
+// runPortForward runs a single port forward attempt. Returns (wasConnected, error).
+// wasConnected is true if the connection reached the ready/running state before
+// failing. The caller (runWithReconnect) uses this to decide backoff reset.
+func (m *PortForwardManager) runPortForward(af *ActivePortForward) (bool, error) {
 	cfg := af.Config
 
 	// Get the pod name (for services, find a backing pod)
@@ -537,8 +609,7 @@ func (m *PortForwardManager) runPortForward(af *ActivePortForward) {
 		var err error
 		podName, err = m.findServiceBackingPod(cfg.Context, cfg.Namespace, cfg.ResourceName)
 		if err != nil {
-			m.updateStatus(cfg.ID, "error", fmt.Sprintf("Failed to find pod for service: %v", err))
-			return
+			return false, fmt.Errorf("failed to find pod for service: %w", err)
 		}
 		m.app.logDebug("PortForward: Service %s resolved to pod %s", cfg.ResourceName, podName)
 	}
@@ -546,8 +617,7 @@ func (m *PortForwardManager) runPortForward(af *ActivePortForward) {
 	// Get REST config for the specific context
 	restConfig, err := m.app.k8sClient.GetRestConfigForContext(cfg.Context)
 	if err != nil {
-		m.updateStatus(cfg.ID, "error", fmt.Sprintf("Failed to get REST config: %v", err))
-		return
+		return false, fmt.Errorf("failed to get REST config: %w", err)
 	}
 
 	// Build the port-forward URL
@@ -556,16 +626,14 @@ func (m *PortForwardManager) runPortForward(af *ActivePortForward) {
 
 	u, err := url.Parse(hostIP)
 	if err != nil {
-		m.updateStatus(cfg.ID, "error", fmt.Sprintf("Failed to parse host URL: %v", err))
-		return
+		return false, fmt.Errorf("failed to parse host URL: %w", err)
 	}
 	u.Path = path
 
 	// Create SPDY transport
 	transport, upgrader, err := spdy.RoundTripperFor(restConfig)
 	if err != nil {
-		m.updateStatus(cfg.ID, "error", fmt.Sprintf("Failed to create transport: %v", err))
-		return
+		return false, fmt.Errorf("failed to create transport: %w", err)
 	}
 
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", u)
@@ -580,11 +648,11 @@ func (m *PortForwardManager) runPortForward(af *ActivePortForward) {
 		<-af.stopChan
 		cancel()
 	}()
+	defer cancel()
 
 	fw, err := portforward.New(dialer, ports, ctx.Done(), readyChan, nil, nil)
 	if err != nil {
-		m.updateStatus(cfg.ID, "error", fmt.Sprintf("Failed to create port forwarder: %v", err))
-		return
+		return false, fmt.Errorf("failed to create port forwarder: %w", err)
 	}
 
 	// Run in goroutine and wait for ready or error
@@ -599,20 +667,21 @@ func (m *PortForwardManager) runPortForward(af *ActivePortForward) {
 		m.updateStatus(cfg.ID, "running", "")
 		m.app.logDebug("PortForward: Started %s localhost:%d -> %s:%d", cfg.ID, cfg.LocalPort, podName, cfg.RemotePort)
 	case err := <-errChan:
-		m.updateStatus(cfg.ID, "error", fmt.Sprintf("Port forward failed: %v", err))
-		return
+		return false, fmt.Errorf("port forward failed: %w", err)
 	case <-af.stopChan:
-		return
+		return false, nil
 	}
 
-	// Wait for completion or stop
+	// Connection is established — any error from here is a drop after success
 	select {
 	case err := <-errChan:
 		if err != nil {
-			m.updateStatus(cfg.ID, "error", fmt.Sprintf("Port forward error: %v", err))
+			return true, fmt.Errorf("port forward error: %w", err)
 		}
+		return true, nil
 	case <-af.stopChan:
 		// Stopped by user
+		return true, nil
 	}
 }
 

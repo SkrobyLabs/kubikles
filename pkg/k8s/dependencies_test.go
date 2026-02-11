@@ -10,6 +10,11 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	fakediscovery "k8s.io/client-go/discovery/fake"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -65,7 +70,7 @@ func TestGetPodDependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
-	cache := newResourceCache(context.Background(), cs)
+	cache := newResourceCache(context.Background(), cs, nil)
 
 	result, err := client.getPodDependencies(cs, cache, "default", "test-pod", graph, nodeMap)
 	if err != nil {
@@ -127,7 +132,7 @@ func TestGetPodDependencies_DefaultServiceAccount(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
-	cache := newResourceCache(context.Background(), cs)
+	cache := newResourceCache(context.Background(), cs, nil)
 
 	result, err := client.getPodDependencies(cs, cache, "default", "test-pod", graph, nodeMap)
 	if err != nil {
@@ -185,7 +190,7 @@ func TestGetDeploymentDependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
-	cache := newResourceCache(context.Background(), cs)
+	cache := newResourceCache(context.Background(), cs, nil)
 
 	result, err := client.getDeploymentDependencies(cs, cache, "", "default", "test-deploy", graph, nodeMap)
 	if err != nil {
@@ -256,7 +261,7 @@ func TestGetServiceDependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
-	cache := newResourceCache(context.Background(), cs)
+	cache := newResourceCache(context.Background(), cs, nil)
 
 	result, err := client.getServiceDependencies(cs, cache, "", "default", "test-svc", graph, nodeMap)
 	if err != nil {
@@ -324,7 +329,7 @@ func TestGetIngressDependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
-	cache := newResourceCache(context.Background(), cs)
+	cache := newResourceCache(context.Background(), cs, nil)
 
 	result, err := client.getIngressDependencies(cs, cache, "", "default", "test-ingress", graph, nodeMap)
 	if err != nil {
@@ -375,7 +380,7 @@ func TestGetHPADependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
-	cache := newResourceCache(context.Background(), cs)
+	cache := newResourceCache(context.Background(), cs, nil)
 
 	result, err := client.getHPADependencies(cs, cache, "", "default", "test-hpa", graph, nodeMap)
 	if err != nil {
@@ -429,7 +434,7 @@ func TestGetPDBDependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
-	cache := newResourceCache(context.Background(), cs)
+	cache := newResourceCache(context.Background(), cs, nil)
 
 	result, err := client.getPDBDependencies(cs, cache, "", "default", "test-pdb", graph, nodeMap)
 	if err != nil {
@@ -492,7 +497,7 @@ func TestGetConfigMapDependencies(t *testing.T) {
 	client := &Client{}
 	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 	nodeMap := make(map[string]bool)
-	cache := newResourceCache(context.Background(), cs)
+	cache := newResourceCache(context.Background(), cs, nil)
 
 	result, err := client.getConfigMapDependencies(cs, cache, "", "default", "test-cm", graph, nodeMap)
 	if err != nil {
@@ -862,7 +867,7 @@ func BenchmarkGetPodDependencies(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 		nodeMap := make(map[string]bool)
-		cache := newResourceCache(context.Background(), cs)
+		cache := newResourceCache(context.Background(), cs, nil)
 		_, _ = client.getPodDependencies(cs, cache, "default", "bench-pod", graph, nodeMap)
 	}
 }
@@ -916,7 +921,7 @@ func BenchmarkGetDeploymentDependencies(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
 		nodeMap := make(map[string]bool)
-		cache := newResourceCache(context.Background(), cs)
+		cache := newResourceCache(context.Background(), cs, nil)
 		_, _ = client.getDeploymentDependencies(cs, cache, "", "default", "bench-deploy", graph, nodeMap)
 	}
 }
@@ -1022,5 +1027,307 @@ func TestEdgeDeduplication_Stress(t *testing.T) {
 
 	if edgeCount != 1 {
 		t.Errorf("Expected 1 deduplicated edge, got %d", edgeCount)
+	}
+}
+
+func TestResolveOwnerRefs_CRDOwner(t *testing.T) {
+	// Pod owned by an ArgoCD Rollout (a CRD)
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "rollout-pod",
+			Namespace: "default",
+			Labels:    map[string]string{"app": "myapp"},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "argoproj.io/v1alpha1",
+					Kind:       "Rollout",
+					Name:       "myapp-rollout",
+					Controller: boolPtr(true),
+				},
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{Name: "main", Image: "nginx"}},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+
+	// Create the fake clientset with the pod
+	cs := fake.NewSimpleClientset(pod)
+
+	// Configure fake discovery to know about the Rollout CRD
+	fakeDisc, ok := cs.Discovery().(*fakediscovery.FakeDiscovery)
+	if !ok {
+		t.Fatal("expected FakeDiscovery")
+	}
+	fakeDisc.Resources = []*metav1.APIResourceList{
+		{
+			GroupVersion: "argoproj.io/v1alpha1",
+			APIResources: []metav1.APIResource{
+				{
+					Name:       "rollouts",
+					Kind:       "Rollout",
+					Namespaced: true,
+				},
+			},
+		},
+	}
+
+	// Create the CRD resource as unstructured
+	rollout := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "argoproj.io/v1alpha1",
+			"kind":       "Rollout",
+			"metadata": map[string]interface{}{
+				"name":      "myapp-rollout",
+				"namespace": "default",
+			},
+			"spec": map[string]interface{}{
+				"replicas": int64(3),
+			},
+			"status": map[string]interface{}{
+				"readyReplicas": int64(2),
+				"phase":         "Progressing",
+			},
+		},
+	}
+
+	// Create fake dynamic client with the rollout
+	scheme := runtime.NewScheme()
+	gvrRollouts := schema.GroupVersionResource{Group: "argoproj.io", Version: "v1alpha1", Resource: "rollouts"}
+	dc := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme,
+		map[schema.GroupVersionResource]string{
+			gvrRollouts: "RolloutList",
+		},
+		rollout,
+	)
+
+	client := &Client{}
+	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs, dc)
+
+	result, err := client.getPodDependencies(cs, cache, "default", "rollout-pod", graph, nodeMap)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify the Rollout CRD node was added
+	rolloutFound := false
+	var rolloutNode DependencyNode
+	for _, node := range result.Nodes {
+		if node.Kind == "Rollout" && node.Name == "myapp-rollout" {
+			rolloutFound = true
+			rolloutNode = node
+			break
+		}
+	}
+
+	if !rolloutFound {
+		t.Fatal("expected Rollout CRD node in dependency graph")
+	}
+
+	// Verify metadata was extracted
+	if rolloutNode.Metadata == nil {
+		t.Fatal("expected metadata on Rollout node")
+	}
+	if rolloutNode.Metadata["replicas"] != "2/3" {
+		t.Errorf("expected replicas '2/3', got %q", rolloutNode.Metadata["replicas"])
+	}
+	if rolloutNode.Metadata["status"] != "Progressing" {
+		t.Errorf("expected status 'Progressing', got %q", rolloutNode.Metadata["status"])
+	}
+
+	// Verify the owns edge exists
+	ownsFound := false
+	for _, edge := range result.Edges {
+		if edge.Source == "Rollout/default/myapp-rollout" && edge.Target == "Pod/default/rollout-pod" && edge.Relation == "owns" {
+			ownsFound = true
+			break
+		}
+	}
+	if !ownsFound {
+		t.Error("expected 'owns' edge from Rollout to Pod")
+	}
+}
+
+func TestResolveOwnerRefs_CRDOwnerChain(t *testing.T) {
+	// Pod owned by a ReplicaSet, which is owned by a CRD (Rollout)
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain-pod",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "apps/v1",
+					Kind:       "ReplicaSet",
+					Name:       "chain-rs",
+					Controller: boolPtr(true),
+				},
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{Name: "main", Image: "nginx"}},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+
+	// ReplicaSet owned by a CRD Rollout
+	rs := &appsv1.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain-rs",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "argoproj.io/v1alpha1",
+					Kind:       "Rollout",
+					Name:       "chain-rollout",
+					Controller: boolPtr(true),
+				},
+			},
+		},
+		Status: appsv1.ReplicaSetStatus{
+			Replicas:      3,
+			ReadyReplicas: 3,
+		},
+	}
+
+	cs := fake.NewSimpleClientset(pod, rs)
+
+	// Configure fake discovery
+	fakeDisc := cs.Discovery().(*fakediscovery.FakeDiscovery)
+	fakeDisc.Resources = []*metav1.APIResourceList{
+		{
+			GroupVersion: "argoproj.io/v1alpha1",
+			APIResources: []metav1.APIResource{
+				{Name: "rollouts", Kind: "Rollout", Namespaced: true},
+			},
+		},
+	}
+
+	// CRD Rollout resource (no further owners — top of chain)
+	rollout := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "argoproj.io/v1alpha1",
+			"kind":       "Rollout",
+			"metadata": map[string]interface{}{
+				"name":      "chain-rollout",
+				"namespace": "default",
+			},
+			"spec": map[string]interface{}{
+				"replicas": int64(3),
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	gvrRollouts := schema.GroupVersionResource{Group: "argoproj.io", Version: "v1alpha1", Resource: "rollouts"}
+	dc := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme,
+		map[schema.GroupVersionResource]string{gvrRollouts: "RolloutList"},
+		rollout,
+	)
+
+	client := &Client{}
+	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs, dc)
+
+	result, err := client.getPodDependencies(cs, cache, "default", "chain-pod", graph, nodeMap)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify the full chain: Pod -> ReplicaSet -> Rollout
+	nodeKinds := make(map[string]bool)
+	for _, node := range result.Nodes {
+		nodeKinds[node.Kind] = true
+	}
+
+	if !nodeKinds["Pod"] {
+		t.Error("expected Pod node")
+	}
+	if !nodeKinds["ReplicaSet"] {
+		t.Error("expected ReplicaSet node")
+	}
+	if !nodeKinds["Rollout"] {
+		t.Error("expected Rollout CRD node from recursive owner chain")
+	}
+
+	// Verify the owns edges form a chain
+	rsOwnsPod := false
+	rolloutOwnsRS := false
+	for _, edge := range result.Edges {
+		if edge.Source == "ReplicaSet/default/chain-rs" && edge.Target == "Pod/default/chain-pod" && edge.Relation == "owns" {
+			rsOwnsPod = true
+		}
+		if edge.Source == "Rollout/default/chain-rollout" && edge.Target == "ReplicaSet/default/chain-rs" && edge.Relation == "owns" {
+			rolloutOwnsRS = true
+		}
+	}
+	if !rsOwnsPod {
+		t.Error("expected 'owns' edge from ReplicaSet to Pod")
+	}
+	if !rolloutOwnsRS {
+		t.Error("expected 'owns' edge from Rollout to ReplicaSet")
+	}
+}
+
+func TestResolveOwnerRefs_CRDOwnerFetchFails(t *testing.T) {
+	// Pod owned by a CRD but the CRD resource can't be fetched
+	// Graph should still include the owner node with basic info from ownerRef
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "orphan-pod",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "custom.example.com/v1",
+					Kind:       "Widget",
+					Name:       "missing-widget",
+					Controller: boolPtr(true),
+				},
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{Name: "main", Image: "nginx"}},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+
+	cs := fake.NewSimpleClientset(pod)
+
+	// Don't configure discovery — GVR resolution will fail
+	client := &Client{}
+	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs, nil) // nil dynamic client
+
+	result, err := client.getPodDependencies(cs, cache, "default", "orphan-pod", graph, nodeMap)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Even though the CRD fetch fails, the node should still be added
+	widgetFound := false
+	for _, node := range result.Nodes {
+		if node.Kind == "Widget" && node.Name == "missing-widget" {
+			widgetFound = true
+			break
+		}
+	}
+	if !widgetFound {
+		t.Error("expected Widget node to be present even when CRD fetch fails (graceful degradation)")
+	}
+
+	// Verify the owns edge still exists
+	ownsFound := false
+	for _, edge := range result.Edges {
+		if edge.Source == "Widget/default/missing-widget" && edge.Target == "Pod/default/orphan-pod" && edge.Relation == "owns" {
+			ownsFound = true
+			break
+		}
+	}
+	if !ownsFound {
+		t.Error("expected 'owns' edge from Widget to Pod even on fetch failure")
 	}
 }

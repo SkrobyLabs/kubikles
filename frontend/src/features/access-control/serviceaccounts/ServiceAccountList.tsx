@@ -16,7 +16,7 @@ export default function ServiceAccountList({ isVisible }: { isVisible: boolean }
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { serviceAccounts, loading } = useServiceAccounts(currentContext, selectedNamespaces, isVisible) as any;
-    const { handleEditYaml } = useServiceAccountActions();
+    const { handleShowDetails, handleEditYaml } = useServiceAccountActions();
     const selection = useSelection();
 
     // Unified bulk actions (also used for single delete)
@@ -81,7 +81,7 @@ export default function ServiceAccountList({ isVisible }: { isVisible: boolean }
                 multiSelectNamespaces={true}
                 initialSort={{ key: 'age', direction: 'desc' }}
                 resourceType="serviceaccounts"
-                onRowClick={handleEditYaml}
+                onRowClick={handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

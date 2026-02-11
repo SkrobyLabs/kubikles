@@ -178,6 +178,7 @@ export function GetCrashLogPath(...args) { return AppProxy.GetCrashLogPath(...ar
 export function GetCronJobYaml(...args) { return AppProxy.GetCronJobYaml(...args); }
 export function GetCurrentContext(...args) { return AppProxy.GetCurrentContext(...args); }
 export function GetCurrentTheme(...args) { return AppProxy.GetCurrentTheme(...args); }
+export function GetCustomResourceEvents(...args) { return AppProxy.GetCustomResourceEvents(...args); }
 export function GetCustomResourceYaml(...args) { return AppProxy.GetCustomResourceYaml(...args); }
 export function GetDaemonSetYaml(...args) { return AppProxy.GetDaemonSetYaml(...args); }
 export function GetDeploymentYaml(...args) { return AppProxy.GetDeploymentYaml(...args); }
@@ -253,6 +254,9 @@ export function GetToolDiscovery(...args) { return AppProxy.GetToolDiscovery(...
 export function GetValidatingWebhookConfigurationYaml(...args) { return AppProxy.GetValidatingWebhookConfigurationYaml(...args); }
 export function GetVersionInfo(...args) { return AppProxy.GetVersionInfo(...args); }
 export function Greet(...args) { return AppProxy.Greet(...args); }
+export function HelmDryRunUpgrade(...args) { return AppProxy.HelmDryRunUpgrade(...args); }
+export function HelmTemplateRelease(...args) { return AppProxy.HelmTemplateRelease(...args); }
+export function HelmValidateValues(...args) { return AppProxy.HelmValidateValues(...args); }
 export function IsRequestCancellationEnabled(...args) { return AppProxy.IsRequestCancellationEnabled(...args); }
 export function ListCRDs(...args) { return AppProxy.ListCRDs(...args); }
 export function ListCSIDrivers(...args) { return AppProxy.ListCSIDrivers(...args); }

@@ -3,7 +3,7 @@ import { PencilSquareIcon, ShareIcon, ShieldCheckIcon } from '@heroicons/react/2
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
+import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' }: { networkPolicy: any; tabContext?: string }) {
@@ -93,14 +93,6 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' }:
         return parts.length > 0 ? parts.join('; ') : 'Any';
     };
 
-    const basicInfo = [
-        { label: 'Name', value: metadata.name },
-        { label: 'Namespace', value: metadata.namespace },
-        { label: 'Age', value: formatAge(metadata.creationTimestamp) },
-        { label: 'Pod Selector', value: formatLabelSelector(spec.podSelector) },
-        { label: 'Policy Types', value: spec.policyTypes?.join(', ') || 'Ingress (default)' },
-    ];
-
     const ingressRules = spec.ingress || [];
     const egressRules = spec.egress || [];
 
@@ -135,35 +127,18 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' }:
 
             {/* Content Area */}
             <div className="h-full overflow-auto p-4">
-            <div className="space-y-6">
-                {/* Basic Info */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Basic Information</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        {basicInfo.map(({ label, value }) => (
-                            <div key={label}>
-                                <dt className="text-xs text-gray-500">{label}</dt>
-                                <dd className="text-sm text-gray-200 mt-0.5">{value || '-'}</dd>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
                 {/* Ingress Rules */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">
-                        Ingress Rules ({ingressRules.length})
-                    </h3>
+                <DetailSection title={`Ingress Rules (${ingressRules.length})`}>
                     {ingressRules.length === 0 ? (
-                        <p className="text-sm text-gray-500">
+                        <span className="text-gray-500">
                             {spec.policyTypes?.includes('Ingress')
                                 ? 'No ingress rules (all ingress denied)'
                                 : 'Ingress not restricted'}
-                        </p>
+                        </span>
                     ) : (
                         <div className="space-y-3">
                             {ingressRules.map((rule: any, idx: number) => (
-                                <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
+                                <div key={idx} className="bg-background-dark rounded border border-border p-3">
                                     <div className="text-xs text-gray-400 mb-2">Rule {idx + 1}</div>
                                     <div className="space-y-2">
                                         <div>
@@ -189,23 +164,20 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' }:
                             ))}
                         </div>
                     )}
-                </div>
+                </DetailSection>
 
                 {/* Egress Rules */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">
-                        Egress Rules ({egressRules.length})
-                    </h3>
+                <DetailSection title={`Egress Rules (${egressRules.length})`}>
                     {egressRules.length === 0 ? (
-                        <p className="text-sm text-gray-500">
+                        <span className="text-gray-500">
                             {spec.policyTypes?.includes('Egress')
                                 ? 'No egress rules (all egress denied)'
                                 : 'Egress not restricted'}
-                        </p>
+                        </span>
                     ) : (
                         <div className="space-y-3">
                             {egressRules.map((rule: any, idx: number) => (
-                                <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
+                                <div key={idx} className="bg-background-dark rounded border border-border p-3">
                                     <div className="text-xs text-gray-400 mb-2">Rule {idx + 1}</div>
                                     <div className="space-y-2">
                                         <div>
@@ -231,20 +203,33 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' }:
                             ))}
                         </div>
                     )}
-                </div>
+                </DetailSection>
+
+                {/* Details */}
+                <DetailSection title="Details">
+                    <DetailRow label="Name" value={name} />
+                    <DetailRow label="Namespace" value={namespace} />
+                    <DetailRow label="Pod Selector" value={formatLabelSelector(spec.podSelector)} />
+                    <DetailRow label="Policy Types" value={spec.policyTypes?.join(', ') || 'Ingress (default)'} />
+                    <DetailRow label="Created">
+                        <span title={metadata.creationTimestamp}>
+                            {formatAge(metadata.creationTimestamp)} ago
+                        </span>
+                    </DetailRow>
+                    <DetailRow label="UID">
+                        <CopyableLabel value={metadata.uid?.substring(0, 8) + '...'} copyValue={metadata.uid} />
+                    </DetailRow>
+                </DetailSection>
 
                 {/* Labels */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Labels</h3>
+                <DetailSection title="Labels">
                     <LabelsDisplay labels={metadata.labels} />
-                </div>
+                </DetailSection>
 
                 {/* Annotations */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Annotations</h3>
+                <DetailSection title="Annotations">
                     <AnnotationsDisplay annotations={metadata.annotations} />
-                </div>
-            </div>
+                </DetailSection>
             </div>
         </div>
     );

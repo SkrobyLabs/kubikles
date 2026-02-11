@@ -22,6 +22,8 @@ func workloadRules() []Rule {
 		&ruleWRK010{baseRule: baseRule{id: "WRK010", name: "DaemonSet Not Fully Scheduled", description: "DaemonSet desired pods differ from ready pods", severity: SeverityWarning, category: CategoryWorkloads, requires: []string{"daemonsets"}}},
 		&ruleWRK011{baseRule: baseRule{id: "WRK011", name: "Evicted Pods", description: "Pod was evicted from node", severity: SeverityInfo, category: CategoryWorkloads, requires: []string{"pods"}}},
 		&ruleWRK012{baseRule: baseRule{id: "WRK012", name: "Single-Replica Deployment", description: "Deployment has only one replica with no high availability", severity: SeverityInfo, category: CategoryWorkloads, requires: []string{"deployments"}}},
+		&ruleWRK013{baseRule: baseRule{id: "WRK013", name: "Requests Exceed Node Capacity", description: "Container requests exceed the allocatable capacity of every node in the cluster", severity: SeverityWarning, category: CategoryWorkloads, requires: []string{"pods", "nodes"}}},
+		&ruleWRK014{baseRule: baseRule{id: "WRK014", name: "Missing Pod Anti-Affinity for HA", description: "Multi-replica workload without pod anti-affinity may schedule all replicas on the same node", severity: SeverityInfo, category: CategoryWorkloads, requires: []string{"deployments", "statefulsets"}}},
 	}
 }
 
@@ -394,4 +396,168 @@ func (r *ruleWRK012) Evaluate(_ context.Context, cache *ResourceCache) ([]Findin
 		}
 	}
 	return findings, nil
+}
+
+// WRK013: Requests exceed node capacity — container can never be scheduled
+type ruleWRK013 struct{ baseRule }
+
+func (r *ruleWRK013) Evaluate(_ context.Context, cache *ResourceCache) ([]Finding, error) {
+	nodes := cache.Nodes()
+	if len(nodes) == 0 {
+		return nil, nil // no node data available, skip
+	}
+
+	// Find the maximum allocatable CPU and memory across all nodes
+	var maxCPU, maxMem int64
+	for _, node := range nodes {
+		if cpu := node.Status.Allocatable.Cpu().MilliValue(); cpu > maxCPU {
+			maxCPU = cpu
+		}
+		if mem := node.Status.Allocatable.Memory().Value(); mem > maxMem {
+			maxMem = mem
+		}
+	}
+	if maxCPU == 0 && maxMem == 0 {
+		return nil, nil // nodes have no allocatable resources reported
+	}
+
+	pods := cache.Pods()
+	var findings []Finding
+
+	for _, pod := range pods {
+		if pod.Status.Phase != v1.PodRunning && pod.Status.Phase != v1.PodPending {
+			continue
+		}
+
+		for _, c := range pod.Spec.Containers {
+			cpuReq := c.Resources.Requests.Cpu().MilliValue()
+			memReq := c.Resources.Requests.Memory().Value()
+
+			if cpuReq == 0 && memReq == 0 {
+				continue
+			}
+
+			exceedsCPU := maxCPU > 0 && cpuReq > maxCPU
+			exceedsMem := maxMem > 0 && memReq > maxMem
+
+			if exceedsCPU || exceedsMem {
+				var detail string
+				if exceedsCPU && exceedsMem {
+					detail = fmt.Sprintf("requests %dm CPU (max node: %dm) and %s memory (max node: %s)",
+						cpuReq, maxCPU, c.Resources.Requests.Memory().String(), fmtBytes(maxMem))
+				} else if exceedsCPU {
+					detail = fmt.Sprintf("requests %dm CPU (max node: %dm)",
+						cpuReq, maxCPU)
+				} else {
+					detail = fmt.Sprintf("requests %s memory (max node: %s)",
+						c.Resources.Requests.Memory().String(), fmtBytes(maxMem))
+				}
+
+				findings = append(findings, makeFinding(r,
+					ResourceRef{Kind: "Pod", Name: pod.Name, Namespace: pod.Namespace},
+					fmt.Sprintf("Pod '%s' container '%s' %s — exceeds every node's capacity",
+						pod.Name, c.Name, detail),
+					"Resource requests exceed the largest node's allocatable capacity. The pod cannot be scheduled. Reduce requests or add larger nodes",
+					map[string]string{
+						"container":  c.Name,
+						"cpuReq":     fmt.Sprintf("%dm", cpuReq),
+						"memReq":     c.Resources.Requests.Memory().String(),
+						"maxNodeCPU": fmt.Sprintf("%dm", maxCPU),
+						"maxNodeMem": fmtBytes(maxMem),
+					},
+				))
+			}
+		}
+	}
+	return findings, nil
+}
+
+// WRK014: Missing Pod Anti-Affinity for HA workloads
+type ruleWRK014 struct{ baseRule }
+
+func (r *ruleWRK014) Evaluate(_ context.Context, cache *ResourceCache) ([]Finding, error) {
+	deployments := cache.Deployments()
+	statefulsets := cache.StatefulSets()
+	var findings []Finding
+
+	skipNamespaces := map[string]bool{
+		"kube-system":     true,
+		"kube-public":     true,
+		"kube-node-lease": true,
+	}
+
+	for _, dep := range deployments {
+		if skipNamespaces[dep.Namespace] {
+			continue
+		}
+		replicas := int32(1)
+		if dep.Spec.Replicas != nil {
+			replicas = *dep.Spec.Replicas
+		}
+		if replicas <= 1 {
+			continue
+		}
+
+		affinity := dep.Spec.Template.Spec.Affinity
+		if affinity != nil && affinity.PodAntiAffinity != nil {
+			if len(affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) > 0 ||
+				len(affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution) > 0 {
+				continue
+			}
+		}
+
+		findings = append(findings, makeFinding(r,
+			ResourceRef{Kind: "Deployment", Name: dep.Name, Namespace: dep.Namespace},
+			fmt.Sprintf("Deployment '%s' has %d replicas but no pod anti-affinity — all replicas may land on the same node",
+				dep.Name, replicas),
+			"Add podAntiAffinity to spread replicas across nodes for high availability",
+			map[string]string{
+				"replicas": fmt.Sprintf("%d", replicas),
+			},
+		))
+	}
+
+	for _, sts := range statefulsets {
+		if skipNamespaces[sts.Namespace] {
+			continue
+		}
+		replicas := int32(1)
+		if sts.Spec.Replicas != nil {
+			replicas = *sts.Spec.Replicas
+		}
+		if replicas <= 1 {
+			continue
+		}
+
+		affinity := sts.Spec.Template.Spec.Affinity
+		if affinity != nil && affinity.PodAntiAffinity != nil {
+			if len(affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) > 0 ||
+				len(affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution) > 0 {
+				continue
+			}
+		}
+
+		findings = append(findings, makeFinding(r,
+			ResourceRef{Kind: "StatefulSet", Name: sts.Name, Namespace: sts.Namespace},
+			fmt.Sprintf("StatefulSet '%s' has %d replicas but no pod anti-affinity — all replicas may land on the same node",
+				sts.Name, replicas),
+			"Add podAntiAffinity to spread replicas across nodes for high availability",
+			map[string]string{
+				"replicas": fmt.Sprintf("%d", replicas),
+			},
+		))
+	}
+	return findings, nil
+}
+
+func fmtBytes(b int64) string {
+	const gi = 1024 * 1024 * 1024
+	if b >= gi && b%gi == 0 {
+		return fmt.Sprintf("%dGi", b/gi)
+	}
+	const mi = 1024 * 1024
+	if b >= mi && b%mi == 0 {
+		return fmt.Sprintf("%dMi", b/mi)
+	}
+	return fmt.Sprintf("%d", b)
 }

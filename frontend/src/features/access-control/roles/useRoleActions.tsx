@@ -1,66 +1,36 @@
-import React from 'react';
-import { useUI } from '~/context';
-import { useK8s } from '~/context';
-import { useNotification } from '~/context';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
 import { DeleteRole } from 'wailsjs/go/main/App';
-import { LazyYamlEditor as YamlEditor } from '~/components/lazy';
-import Logger from '~/utils/Logger';
+import RoleDetails from '~/components/shared/RoleDetails';
 import { K8sRole } from '~/types/k8s';
 
-interface RoleActionsReturn {
-    handleEditYaml: (role: K8sRole) => void;
+export interface RoleActionsReturn extends BaseResourceActionsReturn<K8sRole> {
     handleDelete: (role: K8sRole) => void;
 }
 
 export const useRoleActions = (): any => {
-    const { openTab, closeTab, openModal, closeModal } = useUI();
-    const { currentContext } = useK8s();
-    const { addNotification } = useNotification();
+    const {
+        handleShowDetails,
+        handleEditYaml,
+        handleShowDependencies,
+        createDeleteHandler,
+    } = useBaseResourceActions({
+        resourceType: 'role',
+        resourceLabel: 'Role',
+        DetailsComponent: RoleDetails,
+        detailsPropName: 'role',
+    });
 
-    const handleEditYaml = (role: K8sRole): void => {
-        Logger.info("Opening Role editor", { namespace: role.metadata.namespace, name: role.metadata.name }, 'k8s');
-        const tabId = `role-${role.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `${role.metadata.name}`,
-            content: (
-                <YamlEditor
-                    resourceType="role"
-                    namespace={role.metadata.namespace}
-                    resourceName={role.metadata.name}
-                    onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
-                />
-            ),
-            resourceMeta: { kind: 'Role', name: role.metadata.name, namespace: role.metadata.namespace },
-        });
-    };
-
-    const handleDelete = (role: K8sRole): void => {
-        const name = role.metadata.name;
-        const namespace = role.metadata.namespace;
-        Logger.info("Delete Role requested", { namespace, name }, 'k8s');
-
-        openModal({
-            title: `Delete Role ${name}?`,
-            content: `Are you sure you want to delete role "${name}" in namespace "${namespace}"? This action cannot be undone.`,
-            confirmText: 'Delete',
-            confirmStyle: 'danger',
-            onConfirm: async (): Promise<void> => {
-                try {
-                    await DeleteRole(namespace, name);
-                    Logger.info("Role deleted successfully", { namespace, name }, 'k8s');
-                    closeModal();
-                } catch (err: any) {
-                    Logger.error("Failed to delete Role", err, 'k8s');
-                    addNotification({ type: 'error', title: 'Failed to delete role', message: String(err) });
-                }
-            }
-        });
-    };
+    const handleDelete = createDeleteHandler(
+        async (role: any): Promise<void> => {
+            await DeleteRole(role.metadata.namespace, role.metadata.name);
+        },
+        { confirmMessage: 'Are you sure you want to delete this Role? All associated permissions will be removed.' }
+    );
 
     return {
+        handleShowDetails,
         handleEditYaml,
+        handleShowDependencies,
         handleDelete
     };
 };

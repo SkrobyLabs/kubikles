@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { XMarkIcon, ArrowPathIcon, ExclamationTriangleIcon, ChevronDownIcon, ChevronRightIcon, DocumentTextIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
-import { SearchHelmChart, UpgradeHelmRelease, GetHelmChartVersions, GetHelmReleaseValues, GetHelmReleaseAllValues, ListChartSources, SearchChartInSource } from 'wailsjs/go/main/App';
+import { XMarkIcon, ArrowPathIcon, ExclamationTriangleIcon, ChevronDownIcon, ChevronRightIcon, DocumentTextIcon, Cog6ToothIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { SearchHelmChart, UpgradeHelmRelease, GetHelmChartVersions, GetHelmReleaseValues, GetHelmReleaseAllValues, ListChartSources, SearchChartInSource, HelmValidateValues } from 'wailsjs/go/main/App';
 import { useNotification } from '~/context';
 import SearchSelect from '~/components/shared/SearchSelect';
 import Editor from '@monaco-editor/react';
+import HelmPreviewDialog from './HelmPreviewDialog';
 // @ts-ignore
 import yaml from 'js-yaml';
 
@@ -62,6 +63,14 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }: HelmU
     const [loadingValues, setLoadingValues] = useState(false);
     const [valuesError, setValuesError] = useState<string | null>(null);
     const editorRef = useRef<any>(null);
+
+    // Preview dialog
+    const [showPreview, setShowPreview] = useState(false);
+
+    // Values validation
+    const [validationErrors, setValidationErrors] = useState<any[]>([]);
+    const [validating, setValidating] = useState(false);
+    const validationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Get selected source object
     const selectedSource = chartSources.find((s: any) => s.repoName === selectedSourceName) || null;
@@ -129,6 +138,69 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }: HelmU
             throw new Error(`Invalid ${valuesFormat.toUpperCase()}: ${(err as any).message}`);
         }
     }, [showValuesEditor, valuesContent, valuesFormat]);
+
+    // Build upgrade options object from current state
+    const buildUpgradeOpts = useCallback(() => {
+        if (!selectedSource || !selectedVersion) return null;
+        let customValues: any = {};
+        try {
+            if (showValuesEditor && valuesContent.trim()) {
+                customValues = parseValues();
+            }
+        } catch {
+            // Ignore parse errors here; they'll be caught at upgrade time
+        }
+        return {
+            repoName: selectedSource.repoName,
+            repoUrl: selectedSource.repoUrl,
+            chartName: selectedSource.chartName,
+            version: selectedVersion,
+            values: customValues,
+            reuseValues: reuseValues && !showValuesEditor,
+            resetValues: resetValues,
+            force: force,
+            wait: wait,
+            timeout: 300,
+            isOci: selectedSource.isOci || false,
+            ociRepository: selectedSource.ociRepository || ''
+        };
+    }, [selectedSource, selectedVersion, reuseValues, resetValues, force, wait, showValuesEditor, valuesContent, parseValues]);
+
+    // Values validation (debounced, triggered when values change)
+    const validateValues = useCallback(async () => {
+        if (!selectedSource || !selectedVersion) return;
+        const opts = buildUpgradeOpts();
+        if (!opts) return;
+
+        setValidating(true);
+        try {
+            const errors = await HelmValidateValues(opts);
+            setValidationErrors(errors || []);
+        } catch {
+            // Schema validation not available or chart has no schema - ignore
+            setValidationErrors([]);
+        } finally {
+            setValidating(false);
+        }
+    }, [buildUpgradeOpts, selectedSource, selectedVersion]);
+
+    // Debounce validation when values editor content changes
+    useEffect(() => {
+        if (!showValuesEditor || !selectedSource || !selectedVersion) return;
+
+        if (validationTimerRef.current) {
+            clearTimeout(validationTimerRef.current);
+        }
+        validationTimerRef.current = setTimeout(() => {
+            validateValues();
+        }, 800);
+
+        return () => {
+            if (validationTimerRef.current) {
+                clearTimeout(validationTimerRef.current);
+            }
+        };
+    }, [valuesContent, showValuesEditor, selectedSource, selectedVersion, validateValues]);
 
     // Progressive search for chart sources
     const performSearch = useCallback(async () => {
@@ -885,28 +957,85 @@ export default function HelmUpgradeDialog({ release, onClose, onSuccess }: HelmU
                     )}
                 </div>
 
+                {/* Validation Errors */}
+                {validationErrors.length > 0 && (
+                    <div className="px-6 pb-2">
+                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-md">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-xs font-medium text-red-400">Values Validation Errors</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setValidationErrors([])}
+                                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                                    title="Dismiss validation errors and allow upgrade"
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+                            <ul className="space-y-1">
+                                {validationErrors.map((err: any, i: number) => (
+                                    <li key={i} className="text-xs text-red-300">
+                                        <span className="font-mono text-red-400">{err.path}</span>
+                                        {err.path !== '.' && ': '}
+                                        {err.message}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                )}
+
                 {/* Footer */}
-                <div className="flex justify-end gap-3 px-6 py-4 border-t border-border shrink-0">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={upgrading}
-                        className="px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleUpgrade}
-                        disabled={upgrading || loading || chartSources.length === 0 || !selectedVersion}
-                        className="px-4 py-2 text-sm bg-primary hover:bg-primary/80 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                        {upgrading && (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <div className="flex items-center justify-between px-6 py-4 border-t border-border shrink-0">
+                    <div>
+                        {validating && (
+                            <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                                <ArrowPathIcon className="h-3 w-3 animate-spin" />
+                                Validating...
+                            </span>
                         )}
-                        {isCurrentVersion ? 'Reinstall' : 'Upgrade'}
-                    </button>
+                    </div>
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={upgrading}
+                            className="px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowPreview(true)}
+                            disabled={upgrading || loading || chartSources.length === 0 || !selectedVersion}
+                            className="px-4 py-2 text-sm bg-surface hover:bg-white/10 text-gray-300 border border-border rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            <EyeIcon className="h-4 w-4" />
+                            Preview
+                        </button>
+                        <button
+                            onClick={handleUpgrade}
+                            disabled={upgrading || loading || chartSources.length === 0 || !selectedVersion || validationErrors.length > 0}
+                            title={validationErrors.length > 0 ? 'Fix validation errors before upgrading' : undefined}
+                            className="px-4 py-2 text-sm bg-primary hover:bg-primary/80 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            {upgrading && (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            )}
+                            {isCurrentVersion ? 'Reinstall' : 'Upgrade'}
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            {/* Preview Dialog */}
+            {showPreview && buildUpgradeOpts() && (
+                <HelmPreviewDialog
+                    release={release}
+                    upgradeOpts={buildUpgradeOpts()!}
+                    onClose={() => setShowPreview(false)}
+                />
+            )}
         </div>
     );
 }

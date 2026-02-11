@@ -139,6 +139,22 @@ export namespace helm {
 	    }
 	}
 	
+	export class DryRunResult {
+	    currentManifest: string;
+	    proposedManifest: string;
+	    notes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DryRunResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currentManifest = source["currentManifest"];
+	        this.proposedManifest = source["proposedManifest"];
+	        this.notes = source["notes"];
+	    }
+	}
 	export class OCIRegistry {
 	    url: string;
 	    username: string;
@@ -334,6 +350,20 @@ export namespace helm {
 	        this.namespace = source["namespace"];
 	    }
 	}
+	export class TemplateResult {
+	    manifests: string;
+	    notes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TemplateResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.manifests = source["manifests"];
+	        this.notes = source["notes"];
+	    }
+	}
 	export class UpgradeOptions {
 	    repoName: string;
 	    repoUrl: string;
@@ -366,6 +396,20 @@ export namespace helm {
 	        this.timeout = source["timeout"];
 	        this.isOci = source["isOci"];
 	        this.ociRepository = source["ociRepository"];
+	    }
+	}
+	export class ValidationError {
+	    path: string;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ValidationError(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.message = source["message"];
 	    }
 	}
 

@@ -3,7 +3,7 @@ import { PencilSquareIcon, ShareIcon, BoltIcon } from '@heroicons/react/24/outli
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { LabelsDisplay, AnnotationsDisplay } from './DetailComponents';
+import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 
 export default function PriorityClassDetails({ priorityClass, tabContext = '' }: any) {
@@ -58,14 +58,6 @@ export default function PriorityClassDetails({ priorityClass, tabContext = '' }:
         return value?.toLocaleString() || '0';
     };
 
-    const basicInfo = [
-        { label: 'Name', value: metadata.name },
-        { label: 'Age', value: formatAge(metadata.creationTimestamp) },
-        { label: 'Value', value: formatValue(priorityClass.value) },
-        { label: 'Global Default', value: priorityClass.globalDefault ? 'Yes' : 'No' },
-        { label: 'Preemption Policy', value: priorityClass.preemptionPolicy || 'PreemptLowerPriority' },
-    ];
-
     return (
         <div className="flex flex-col h-full bg-background">
             {/* Header Bar */}
@@ -97,42 +89,40 @@ export default function PriorityClassDetails({ priorityClass, tabContext = '' }:
 
             {/* Content Area */}
             <div className="h-full overflow-auto p-4">
-            <div className="space-y-6">
-                {/* Basic Info */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Basic Information</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        {basicInfo.map(({ label, value }) => (
-                            <div key={label}>
-                                <dt className="text-xs text-gray-500">{label}</dt>
-                                <dd className="text-sm text-gray-200 mt-0.5">{value || '-'}</dd>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
                 {/* Description */}
                 {priorityClass.description && (
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-400 mb-3">Description</h3>
-                        <p className="text-sm text-gray-300 bg-gray-800/50 rounded-lg p-3">
+                    <DetailSection title="Description">
+                        <p className="text-sm text-gray-300 bg-background-dark rounded border border-border p-3">
                             {priorityClass.description}
                         </p>
-                    </div>
+                    </DetailSection>
                 )}
 
+                {/* Details */}
+                <DetailSection title="Details">
+                    <DetailRow label="Name" value={name} />
+                    <DetailRow label="Value" value={formatValue(priorityClass.value)} />
+                    <DetailRow label="Global Default" value={priorityClass.globalDefault ? 'Yes' : 'No'} />
+                    <DetailRow label="Preemption Policy" value={priorityClass.preemptionPolicy || 'PreemptLowerPriority'} />
+                    <DetailRow label="Created">
+                        <span title={metadata.creationTimestamp}>
+                            {formatAge(metadata.creationTimestamp)} ago
+                        </span>
+                    </DetailRow>
+                    <DetailRow label="UID">
+                        <CopyableLabel value={metadata.uid?.substring(0, 8) + '...'} copyValue={metadata.uid} />
+                    </DetailRow>
+                </DetailSection>
+
                 {/* Labels */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Labels</h3>
+                <DetailSection title="Labels">
                     <LabelsDisplay labels={metadata.labels} />
-                </div>
+                </DetailSection>
 
                 {/* Annotations */}
-                <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Annotations</h3>
+                <DetailSection title="Annotations">
                     <AnnotationsDisplay annotations={metadata.annotations} />
-                </div>
-            </div>
+                </DetailSection>
             </div>
         </div>
     );

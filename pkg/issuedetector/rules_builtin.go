@@ -9,5 +9,10 @@ func registerBuiltinRules() []Rule {
 	rules = append(rules, securityRules()...)
 	rules = append(rules, configRules()...)
 	rules = append(rules, deprecationRules()...)
+	rules = append(rules, nodeRules()...)
+	rules = append(rules, costRules()...)
+	rules = append(rules, certRules()...)
+	rules = append(rules, rbacRules()...)
+	rules = append(rules, schedulingRules()...)
 	return rules
 }

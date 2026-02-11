@@ -16,7 +16,7 @@ export default function ClusterRoleBindingList({ isVisible }: { isVisible: boole
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { clusterRoleBindings, loading } = useClusterRoleBindings(currentContext, isVisible) as any;
-    const { handleEditYaml } = useClusterRoleBindingActions();
+    const { handleShowDetails, handleEditYaml } = useClusterRoleBindingActions();
     const selection = useSelection();
 
     // Unified bulk actions (also used for single delete)
@@ -90,7 +90,7 @@ export default function ClusterRoleBindingList({ isVisible }: { isVisible: boole
                 showNamespaceSelector={false}
                 initialSort={{ key: 'age', direction: 'desc' }}
                 resourceType="clusterrolebindings"
-                onRowClick={handleEditYaml}
+                onRowClick={handleShowDetails}
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}

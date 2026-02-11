@@ -1,64 +1,37 @@
-import React from 'react';
-import { useUI } from '~/context';
-import { useK8s } from '~/context';
-import { useNotification } from '~/context';
+import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
 import { DeleteClusterRole } from 'wailsjs/go/main/App';
-import { LazyYamlEditor as YamlEditor } from '~/components/lazy';
-import Logger from '~/utils/Logger';
+import ClusterRoleDetails from '~/components/shared/ClusterRoleDetails';
 import { K8sClusterRole } from '~/types/k8s';
 
-interface ClusterRoleActionsReturn {
-    handleEditYaml: (clusterRole: K8sClusterRole) => void;
+export interface ClusterRoleActionsReturn extends BaseResourceActionsReturn<K8sClusterRole> {
     handleDelete: (clusterRole: K8sClusterRole) => void;
 }
 
 export const useClusterRoleActions = (): any => {
-    const { openTab, closeTab, openModal, closeModal } = useUI();
-    const { currentContext } = useK8s();
-    const { addNotification } = useNotification();
+    const {
+        handleShowDetails,
+        handleEditYaml,
+        handleShowDependencies,
+        createDeleteHandler,
+    } = useBaseResourceActions({
+        resourceType: 'clusterrole',
+        resourceLabel: 'ClusterRole',
+        DetailsComponent: ClusterRoleDetails,
+        detailsPropName: 'clusterRole',
+        isNamespaced: false,
+    });
 
-    const handleEditYaml = (clusterRole: K8sClusterRole): void => {
-        Logger.info("Opening ClusterRole editor", { name: clusterRole.metadata.name }, 'k8s');
-        const tabId = `clusterrole-${clusterRole.metadata.uid}`;
-        openTab({
-            id: tabId,
-            title: `${clusterRole.metadata.name}`,
-            content: (
-                <YamlEditor
-                    resourceType="clusterrole"
-                    resourceName={clusterRole.metadata.name}
-                    onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
-                />
-            ),
-            resourceMeta: { kind: 'ClusterRole', name: clusterRole.metadata.name },
-        });
-    };
-
-    const handleDelete = (clusterRole: K8sClusterRole): void => {
-        const name = clusterRole.metadata.name;
-        Logger.info("Delete ClusterRole requested", { name }, 'k8s');
-
-        openModal({
-            title: `Delete ClusterRole ${name}?`,
-            content: `Are you sure you want to delete cluster role "${name}"? This action cannot be undone.`,
-            confirmText: 'Delete',
-            confirmStyle: 'danger',
-            onConfirm: async (): Promise<void> => {
-                try {
-                    await DeleteClusterRole(name);
-                    Logger.info("ClusterRole deleted successfully", { name }, 'k8s');
-                    closeModal();
-                } catch (err: any) {
-                    Logger.error("Failed to delete ClusterRole", err, 'k8s');
-                    addNotification({ type: 'error', title: 'Failed to delete cluster role', message: String(err) });
-                }
-            }
-        });
-    };
+    const handleDelete = createDeleteHandler(
+        async (clusterRole: any): Promise<void> => {
+            await DeleteClusterRole(clusterRole.metadata.name);
+        },
+        { confirmMessage: 'Are you sure you want to delete this ClusterRole? All associated permissions will be removed.' }
+    );
 
     return {
+        handleShowDetails,
         handleEditYaml,
+        handleShowDependencies,
         handleDelete
     };
 };

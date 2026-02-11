@@ -296,6 +296,73 @@ func (c *Client) DeleteCustomResource(contextName, group, version, resource, nam
 	return dc.Resource(gvr).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
+// GetCustomResourceEvents returns events related to a custom resource instance
+func (c *Client) GetCustomResourceEvents(contextName, group, version, resource, namespace, name, kind string) ([]map[string]interface{}, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+
+	// Use field selector to filter events by involvedObject
+	fieldSelector := fmt.Sprintf("involvedObject.name=%s", name)
+	if kind != "" {
+		fieldSelector += fmt.Sprintf(",involvedObject.kind=%s", kind)
+	}
+
+	events, err := cs.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{
+		FieldSelector: fieldSelector,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Build expected apiVersion for matching
+	expectedAPIVersion := version
+	if group != "" {
+		expectedAPIVersion = group + "/" + version
+	}
+
+	// Filter by apiVersion match and convert to maps
+	var result []map[string]interface{}
+	for _, event := range events.Items {
+		// Check if the involvedObject's apiVersion matches the CRD's group/version
+		if event.InvolvedObject.APIVersion != expectedAPIVersion {
+			continue
+		}
+
+		eventMap := map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"name":              event.Name,
+				"namespace":         event.Namespace,
+				"uid":               string(event.UID),
+				"creationTimestamp": event.CreationTimestamp.Format("2006-01-02T15:04:05Z"),
+			},
+			"type":           event.Type,
+			"reason":         event.Reason,
+			"message":        event.Message,
+			"count":          event.Count,
+			"firstTimestamp": event.FirstTimestamp.Format("2006-01-02T15:04:05Z"),
+			"lastTimestamp":  event.LastTimestamp.Format("2006-01-02T15:04:05Z"),
+			"involvedObject": map[string]interface{}{
+				"kind":       event.InvolvedObject.Kind,
+				"name":       event.InvolvedObject.Name,
+				"namespace":  event.InvolvedObject.Namespace,
+				"uid":        string(event.InvolvedObject.UID),
+				"apiVersion": event.InvolvedObject.APIVersion,
+			},
+		}
+		result = append(result, eventMap)
+	}
+
+	if result == nil {
+		result = []map[string]interface{}{}
+	}
+
+	return result, nil
+}
+
 // --- Port Forwarding Support ---
 
 // GetRestConfigForContext returns the REST config for a specific context

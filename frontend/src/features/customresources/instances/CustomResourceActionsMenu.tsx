@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 
-export default function CustomResourceActionsMenu({ resource, isOpen, menuPosition, onOpenChange, onEditYaml, onDelete }: any) {
+export default function CustomResourceActionsMenu({ resource, isOpen, menuPosition, onOpenChange, onShowDetails, onEditYaml, onDelete }: any) {
     const buttonRef = useRef<any>(null);
     const menuRef = useRef<any>(null);
 
@@ -47,6 +47,13 @@ export default function CustomResourceActionsMenu({ resource, isOpen, menuPositi
             style={{ position: 'fixed', top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, zIndex: 99999 }}
             onClick={(e) => e.stopPropagation()}
         >
+            <button
+                onClick={(e) => { e.stopPropagation(); handleAction(() => onShowDetails(resource)); }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
+            >
+                <InformationCircleIcon className="h-4 w-4" />
+                View Details
+            </button>
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onEditYaml(resource)); }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
