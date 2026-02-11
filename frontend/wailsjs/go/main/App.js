@@ -254,6 +254,10 @@ export function DownloadPodFolder(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['DownloadPodFolder'](arg1, arg2, arg3, arg4);
 }
 
+export function EvictPod(arg1, arg2) {
+  return window['go']['main']['App']['EvictPod'](arg1, arg2);
+}
+
 export function ExpandDependencyNode(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['ExpandDependencyNode'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -536,6 +540,10 @@ export function GetPVYaml(arg1) {
 
 export function GetPerformanceMetrics() {
   return window['go']['main']['App']['GetPerformanceMetrics']();
+}
+
+export function GetPodEvictionInfo(arg1, arg2) {
+  return window['go']['main']['App']['GetPodEvictionInfo'](arg1, arg2);
 }
 
 export function GetPodLogs(arg1, arg2, arg3, arg4, arg5, arg6) {

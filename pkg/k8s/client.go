@@ -3856,6 +3856,114 @@ func (c *Client) ForceDeletePod(contextName, namespace, name string) error {
 	})
 }
 
+// PodEvictionInfo describes a pod's eviction category based on its ownership chain.
+type PodEvictionInfo struct {
+	Category  string `json:"category"`  // "reschedulable", "killable", "daemon"
+	OwnerKind string `json:"ownerKind"` // top-level controller kind
+	OwnerName string `json:"ownerName"` // top-level controller name
+	PodName   string `json:"podName"`
+	Namespace string `json:"namespace"`
+}
+
+// GetPodEvictionInfo resolves the ownership chain of a pod and returns its eviction category.
+func (c *Client) GetPodEvictionInfo(contextName, namespace, name string) (*PodEvictionInfo, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+
+	pod, err := cs.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pod %s/%s: %w", namespace, name, err)
+	}
+
+	info := &PodEvictionInfo{
+		PodName:   name,
+		Namespace: namespace,
+	}
+
+	// Find the controller owner reference
+	var controller *metav1.OwnerReference
+	for i := range pod.OwnerReferences {
+		if pod.OwnerReferences[i].Controller != nil && *pod.OwnerReferences[i].Controller {
+			controller = &pod.OwnerReferences[i]
+			break
+		}
+	}
+
+	if controller == nil {
+		// Standalone pod
+		info.Category = "killable"
+		return info, nil
+	}
+
+	switch controller.Kind {
+	case "DaemonSet":
+		info.Category = "daemon"
+		info.OwnerKind = "DaemonSet"
+		info.OwnerName = controller.Name
+
+	case "Node":
+		// Mirror pod
+		info.Category = "daemon"
+		info.OwnerKind = "Node"
+		info.OwnerName = controller.Name
+
+	case "Job":
+		info.Category = "killable"
+		info.OwnerKind = "Job"
+		info.OwnerName = controller.Name
+
+	case "ReplicaSet":
+		// Check if the RS is owned by a Deployment
+		info.Category = "reschedulable"
+		info.OwnerKind = "ReplicaSet"
+		info.OwnerName = controller.Name
+
+		rs, rsErr := cs.AppsV1().ReplicaSets(namespace).Get(ctx, controller.Name, metav1.GetOptions{})
+		if rsErr != nil {
+			log.Printf("[K8s Client] GetPodEvictionInfo: failed to look up ReplicaSet %s/%s: %v", namespace, controller.Name, rsErr)
+		} else {
+			for _, ref := range rs.OwnerReferences {
+				if ref.Controller != nil && *ref.Controller && ref.Kind == "Deployment" {
+					info.OwnerKind = "Deployment"
+					info.OwnerName = ref.Name
+					break
+				}
+			}
+		}
+
+	case "StatefulSet":
+		info.Category = "reschedulable"
+		info.OwnerKind = "StatefulSet"
+		info.OwnerName = controller.Name
+
+	default:
+		info.Category = "killable"
+		info.OwnerKind = controller.Kind
+		info.OwnerName = controller.Name
+	}
+
+	return info, nil
+}
+
+// EvictPod evicts a pod using the Kubernetes Eviction API, which respects PDBs.
+func (c *Client) EvictPod(contextName, namespace, name string) error {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+
+	eviction := &policyv1.Eviction{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+	}
+	return cs.CoreV1().Pods(namespace).EvictV1(ctx, eviction)
+}
+
 func (c *Client) GetPodYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {

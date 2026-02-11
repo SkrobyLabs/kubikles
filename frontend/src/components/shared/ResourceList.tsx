@@ -68,6 +68,7 @@ interface ResourceListProps {
     onRowClick?: ((item: any) => void) | null;
     onRefresh?: (() => void) | null;
     customHeaderActions?: React.ReactNode | null;
+    customBody?: React.ReactNode | null;
     selection?: SelectionState | null;
     selectable?: boolean;
     onBulkDelete?: ((items: any[]) => void) | null;
@@ -321,6 +322,7 @@ export default function ResourceList({
     onRowClick = null,
     onRefresh = null,
     customHeaderActions = null,
+    customBody = null,
     // Selection props
     selection = null,
     selectable = false,
@@ -1214,7 +1216,7 @@ export default function ResourceList({
 
             {/* Table Content */}
             <div className="flex-1 overflow-hidden">
-                {isLoading ? (
+                {customBody ? customBody : isLoading ? (
                     <div className="flex items-center justify-center h-full text-gray-500">
                         Loading...
                     </div>

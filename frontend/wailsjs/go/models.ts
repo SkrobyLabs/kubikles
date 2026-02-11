@@ -1200,6 +1200,26 @@ export namespace k8s {
 	
 	
 	
+	export class PodEvictionInfo {
+	    category: string;
+	    ownerKind: string;
+	    ownerName: string;
+	    podName: string;
+	    namespace: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PodEvictionInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.ownerKind = source["ownerKind"];
+	        this.ownerName = source["ownerName"];
+	        this.podName = source["podName"];
+	        this.namespace = source["namespace"];
+	    }
+	}
 	export class PodMetrics {
 	    namespace: string;
 	    name: string;

@@ -170,7 +170,7 @@ Read the AI reference documentation for full project context:
 | network | services, ingresses, networkpolicies, endpoints, endpointslices, ingressclasses |
 | config | configmaps, secrets, hpas, pdbs, resourcequotas, leases, limitranges |
 | storage | pv, pvc, storageclass, csidrivers, csinodes |
-| cluster | nodes, namespaces, events, metrics, webhooks, priorityclasses |
+| cluster | nodes, namespaces, events, metrics, webhooks, priorityclasses, topology |
 | access-control | roles, clusterroles, rolebindings, clusterrolebindings, serviceaccounts |
 | customresources | definitions, instances |
 | helm | releases, repos, oci |

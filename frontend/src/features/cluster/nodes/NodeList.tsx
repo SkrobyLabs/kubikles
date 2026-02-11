@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, memo } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, memo } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
 import AggregateResourceBar from '~/components/shared/AggregateResourceBar';
 import ResourceBar from '~/components/shared/ResourceBar';
@@ -8,10 +8,11 @@ import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { useMenu } from '~/context';
 import { formatAge, formatBytes, formatCpu } from '~/utils/formatting';
-import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { EllipsisVerticalIcon, TableCellsIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import NodeActionsMenu from './NodeActionsMenu';
 import { useNodeActions } from './useNodeActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
+import NodeTopology from '../topology/NodeTopology';
 
 // Helper to get node conditions summary
 const getConditionsSummary = (node: any) => {
@@ -101,13 +102,25 @@ const TaintsCell = memo(function TaintsCell({ node }: { node: any }) {
     );
 });
 
+const STORAGE_KEY = 'kubikles-nodes-view';
+
 export default function NodeList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { nodes, loading, refetch } = useNodes(currentContext, isVisible) as any;
     // Delay metrics fetch until nodes are loaded to prioritize showing node list first
     const { metrics, available: metricsAvailable } = useNodeMetrics(isVisible, !loading && nodes.length > 0);
-    const { handleShowDetails, handleEditYaml, handleCordonUncordon, handleShell, handleDelete } = useNodeActions(refetch);
+    const nodeActions = useNodeActions(refetch);
+    const { handleShowDetails, handleEditYaml, handleCordonUncordon, handleShell, handleDelete } = nodeActions;
+
+    // View mode: list or topology, persisted to localStorage
+    const [viewMode, setViewMode] = useState<'list' | 'topology'>(() =>
+        (localStorage.getItem(STORAGE_KEY) as 'list' | 'topology') || 'list'
+    );
+
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, viewMode);
+    }, [viewMode]);
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name },
@@ -306,6 +319,51 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
         }
     ] as any[], [activeMenuId, menuPosition, handleMenuOpenChange, handleEditYaml, handleCordonUncordon, handleShell, handleDelete, metrics, metricsAvailable]);
 
+    const viewToggle = (
+        <div className="flex items-center gap-0.5 bg-surface rounded-md p-0.5 border border-border">
+            <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-surface-light text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                title="List view"
+            >
+                <TableCellsIcon className="h-4 w-4" />
+            </button>
+            <button
+                onClick={() => setViewMode('topology')}
+                className={`p-1.5 rounded transition-colors ${viewMode === 'topology' ? 'bg-surface-light text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                title="Topology view"
+            >
+                <Squares2X2Icon className="h-4 w-4" />
+            </button>
+        </div>
+    );
+
+    if (viewMode === 'topology') {
+        return (
+            <ResourceList
+                title="Nodes"
+                columns={columns}
+                data={nodes}
+                isLoading={false}
+                showNamespaceSelector={false}
+                initialSort={{ key: 'age', direction: 'desc' }}
+                resourceType="nodes"
+                onRowClick={handleShowDetails}
+                customHeaderActions={viewToggle}
+                customBody={
+                    <NodeTopology
+                        isVisible={isVisible}
+                        nodes={nodes}
+                        nodesLoading={loading}
+                        metrics={metrics}
+                        metricsAvailable={metricsAvailable}
+                        nodeActions={nodeActions}
+                    />
+                }
+            />
+        );
+    }
+
     return (
         <ResourceList
             title="Nodes"
@@ -316,6 +374,7 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
             initialSort={{ key: 'age', direction: 'desc' }}
             resourceType="nodes"
             onRowClick={handleShowDetails}
+            customHeaderActions={viewToggle}
         />
     );
 }

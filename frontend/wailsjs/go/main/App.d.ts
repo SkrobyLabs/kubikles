@@ -136,6 +136,8 @@ export function DownloadPodFiles(arg1:string,arg2:string,arg3:string,arg4:string
 
 export function DownloadPodFolder(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
+export function EvictPod(arg1:string,arg2:string):Promise<void>;
+
 export function ExpandDependencyNode(arg1:string,arg2:string,arg3:string,arg4:string,arg5:number):Promise<k8s.DependencyGraph>;
 
 export function ForceDeletePod(arg1:string,arg2:string):Promise<void>;
@@ -277,6 +279,8 @@ export function GetPVCYaml(arg1:string,arg2:string):Promise<string>;
 export function GetPVYaml(arg1:string):Promise<string>;
 
 export function GetPerformanceMetrics():Promise<main.PerformanceMetrics>;
+
+export function GetPodEvictionInfo(arg1:string,arg2:string):Promise<k8s.PodEvictionInfo>;
 
 export function GetPodLogs(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:boolean,arg6:string):Promise<string>;
 

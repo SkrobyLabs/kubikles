@@ -123,7 +123,11 @@ kubikles/
 │   │   ├── workloads/      # pods/, deployments/, statefulsets/, daemonsets/,
 │   │   │                   # replicasets/, jobs/, cronjobs/
 │   │   ├── cluster/        # nodes/, namespaces/, events/, metrics/, webhooks/,
-│   │   │                   # priorityclasses/
+│   │   │                   # priorityclasses/, topology/
+│   │   │   └── topology/
+│   │   │       ├── NodeTopology.tsx          # Main topology canvas with React Flow
+│   │   │       ├── TopologyNodeComponent.tsx # Custom React Flow node for K8s nodes
+│   │   │       └── topologyUtils.ts         # Layout and pod grouping utilities
 │   │   ├── config/         # configmaps/, secrets/, hpas/, pdbs/, resourcequotas/,
 │   │   │                   # leases/, limitranges/
 │   │   ├── storage/        # pv/, pvc/, storageclass/, csidrivers/, csinodes/

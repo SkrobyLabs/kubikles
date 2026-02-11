@@ -144,6 +144,7 @@ export function DiffResources(...args) { return AppProxy.DiffResources(...args);
 export function DownloadPodFile(...args) { return AppProxy.DownloadPodFile(...args); }
 export function DownloadPodFiles(...args) { return AppProxy.DownloadPodFiles(...args); }
 export function DownloadPodFolder(...args) { return AppProxy.DownloadPodFolder(...args); }
+export function EvictPod(...args) { return AppProxy.EvictPod(...args); }
 export function ExpandDependencyNode(...args) { return AppProxy.ExpandDependencyNode(...args); }
 export function ForceDeletePod(...args) { return AppProxy.ForceDeletePod(...args); }
 export function ForceHelmReleaseStatus(...args) { return AppProxy.ForceHelmReleaseStatus(...args); }
@@ -215,6 +216,7 @@ export function GetPDBYaml(...args) { return AppProxy.GetPDBYaml(...args); }
 export function GetPVCYaml(...args) { return AppProxy.GetPVCYaml(...args); }
 export function GetPVYaml(...args) { return AppProxy.GetPVYaml(...args); }
 export function GetPerformanceMetrics(...args) { return AppProxy.GetPerformanceMetrics(...args); }
+export function GetPodEvictionInfo(...args) { return AppProxy.GetPodEvictionInfo(...args); }
 export function GetPodLogs(...args) { return AppProxy.GetPodLogs(...args); }
 export function GetPodLogsAfter(...args) { return AppProxy.GetPodLogsAfter(...args); }
 export function GetPodLogsBefore(...args) { return AppProxy.GetPodLogsBefore(...args); }
