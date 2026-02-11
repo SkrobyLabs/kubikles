@@ -75,13 +75,36 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 ### K8s Package
 | Purpose | File |
 |---------|------|
-| K8s API wrapper | `pkg/k8s/client.go` |
+| Core client, config, watch | `pkg/k8s/client.go` |
+| ApplyYAML + kindToResource | `pkg/k8s/apply.go` |
+| ConfigMaps & Secrets CRUD | `pkg/k8s/configmaps.go` |
+| CSI Drivers & Nodes | `pkg/k8s/csi.go` |
+| CRDs + custom resource CRUD | `pkg/k8s/customresources.go` |
+| DaemonSet operations | `pkg/k8s/daemonsets.go` |
 | Dependency graphs | `pkg/k8s/dependencies.go` |
+| Deployment operations | `pkg/k8s/deployments.go` |
 | Resource diff | `pkg/k8s/diff.go` |
-| Multi-resource logging | `pkg/k8s/multilog.go` |
-| Flow timeline | `pkg/k8s/flowtimeline.go` |
-| RBAC operations | `pkg/k8s/rbac.go` |
+| Event operations | `pkg/k8s/events.go` |
 | File operations | `pkg/k8s/fileops.go` |
+| Flow timeline | `pkg/k8s/flowtimeline.go` |
+| Ingress & IngressClass | `pkg/k8s/ingresses.go` |
+| Job & CronJob operations | `pkg/k8s/jobs.go` |
+| Metrics-server metrics | `pkg/k8s/metrics.go` |
+| Multi-resource logging | `pkg/k8s/multilog.go` |
+| Namespace ops + resource counts | `pkg/k8s/namespaces.go` |
+| NetPol, HPA, PDB, Quota, LimitRange, Endpoints | `pkg/k8s/networkpolicies.go` |
+| Node operations | `pkg/k8s/nodes.go` |
+| Pod CRUD, logs, eviction, owner resolution | `pkg/k8s/pods.go` |
+| Prometheus detection, queries, history | `pkg/k8s/prometheus.go` |
+| RBAC permission checking | `pkg/k8s/rbac.go` |
+| Roles, ClusterRoles, Bindings CRUD | `pkg/k8s/rbacresources.go` |
+| ReplicaSet operations | `pkg/k8s/replicasets.go` |
+| PriorityClasses & Leases | `pkg/k8s/scheduling.go` |
+| ServiceAccount operations | `pkg/k8s/serviceaccounts.go` |
+| Service ops + backing pods | `pkg/k8s/services.go` |
+| StatefulSet operations | `pkg/k8s/statefulsets.go` |
+| PVC, PV, StorageClass | `pkg/k8s/storage.go` |
+| Webhook configurations | `pkg/k8s/webhooks.go` |
 
 ### Debug Package (`pkg/debug/`)
 | Purpose | File |

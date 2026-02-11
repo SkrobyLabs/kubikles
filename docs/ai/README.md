@@ -57,13 +57,36 @@ kubikles/
 │
 ├── pkg/
 │   ├── k8s/
-│   │   ├── client.go       # K8s API wrapper - all resource operations
-│   │   ├── dependencies.go # Dependency graph computation
-│   │   ├── diff.go         # Resource diff/comparison
-│   │   ├── fileops.go      # File operations for K8s resources
-│   │   ├── flowtimeline.go # Flow timeline for resource events
-│   │   ├── multilog.go     # Multi-resource log streaming
-│   │   └── rbac.go         # RBAC operations
+│   │   ├── client.go           # Core client struct, config, context switching, watch
+│   │   ├── apply.go            # ApplyYAML + kindToResource map
+│   │   ├── configmaps.go       # ConfigMaps & Secrets CRUD
+│   │   ├── csi.go              # CSI Drivers & CSI Nodes
+│   │   ├── customresources.go  # CRDs + custom resource CRUD
+│   │   ├── daemonsets.go       # DaemonSet operations
+│   │   ├── dependencies.go     # Dependency graph computation
+│   │   ├── deployments.go      # Deployment operations
+│   │   ├── diff.go             # Resource diff/comparison
+│   │   ├── events.go           # Event operations
+│   │   ├── fileops.go          # File operations for K8s resources
+│   │   ├── flowtimeline.go     # Flow timeline for resource events
+│   │   ├── ingresses.go        # Ingress & IngressClass operations
+│   │   ├── jobs.go             # Job & CronJob operations
+│   │   ├── metrics.go          # Metrics-server node/pod metrics
+│   │   ├── multilog.go         # Multi-resource log streaming
+│   │   ├── namespaces.go       # Namespace operations + resource counts
+│   │   ├── networkpolicies.go  # NetworkPolicies, HPAs, PDBs, Quotas, LimitRanges, Endpoints
+│   │   ├── nodes.go            # Node operations
+│   │   ├── pods.go             # Pod CRUD, logs, eviction, owner resolution
+│   │   ├── prometheus.go       # Prometheus detection, queries, metrics history
+│   │   ├── rbac.go             # RBAC permission checking
+│   │   ├── rbacresources.go    # Roles, ClusterRoles, Bindings CRUD
+│   │   ├── replicasets.go      # ReplicaSet operations
+│   │   ├── scheduling.go       # PriorityClasses & Leases
+│   │   ├── serviceaccounts.go  # ServiceAccount operations
+│   │   ├── services.go         # Service operations + backing pods
+│   │   ├── statefulsets.go     # StatefulSet operations
+│   │   ├── storage.go          # PVC, PV, StorageClass operations
+│   │   └── webhooks.go         # Validating & Mutating webhook configs
 │   ├── terminal/
 │   │   ├── manager.go      # Session lifecycle
 │   │   ├── session_unix.go # Unix/macOS PTY

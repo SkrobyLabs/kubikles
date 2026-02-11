@@ -86,13 +86,36 @@ Read the AI reference documentation for full project context:
 ### Packages
 | Purpose | Location |
 |---------|----------|
-| K8s API operations | `pkg/k8s/client.go` |
+| Core client, config, watch | `pkg/k8s/client.go` |
+| ApplyYAML + kindToResource | `pkg/k8s/apply.go` |
+| ConfigMaps & Secrets CRUD | `pkg/k8s/configmaps.go` |
+| CSI Drivers & Nodes | `pkg/k8s/csi.go` |
+| CRDs + custom resource CRUD | `pkg/k8s/customresources.go` |
+| DaemonSet operations | `pkg/k8s/daemonsets.go` |
 | Dependency graphs | `pkg/k8s/dependencies.go` |
+| Deployment operations | `pkg/k8s/deployments.go` |
 | Resource diff/comparison | `pkg/k8s/diff.go` |
+| Event operations | `pkg/k8s/events.go` |
 | File operations | `pkg/k8s/fileops.go` |
-| Multi-resource logging | `pkg/k8s/multilog.go` |
 | Flow timeline | `pkg/k8s/flowtimeline.go` |
-| RBAC operations | `pkg/k8s/rbac.go` |
+| Ingress & IngressClass | `pkg/k8s/ingresses.go` |
+| Job & CronJob operations | `pkg/k8s/jobs.go` |
+| Metrics-server metrics | `pkg/k8s/metrics.go` |
+| Multi-resource logging | `pkg/k8s/multilog.go` |
+| Namespace ops + resource counts | `pkg/k8s/namespaces.go` |
+| NetPol, HPA, PDB, Quota, LimitRange, Endpoints | `pkg/k8s/networkpolicies.go` |
+| Node operations | `pkg/k8s/nodes.go` |
+| Pod CRUD, logs, eviction, owner resolution | `pkg/k8s/pods.go` |
+| Prometheus detection, queries, history | `pkg/k8s/prometheus.go` |
+| RBAC permission checking | `pkg/k8s/rbac.go` |
+| Roles, ClusterRoles, Bindings CRUD | `pkg/k8s/rbacresources.go` |
+| ReplicaSet operations | `pkg/k8s/replicasets.go` |
+| PriorityClasses & Leases | `pkg/k8s/scheduling.go` |
+| ServiceAccount operations | `pkg/k8s/serviceaccounts.go` |
+| Service ops + backing pods | `pkg/k8s/services.go` |
+| StatefulSet operations | `pkg/k8s/statefulsets.go` |
+| PVC, PV, StorageClass | `pkg/k8s/storage.go` |
+| Webhook configurations | `pkg/k8s/webhooks.go` |
 | Helm operations | `pkg/helm/client.go` |
 | Helm repositories | `pkg/helm/repo.go` |
 | OCI registries | `pkg/helm/oci.go` |
