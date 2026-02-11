@@ -88,6 +88,11 @@ interface K8sContextValue {
     lastRefresh: number;
     triggerRefresh: () => void;
 
+    // Silent reconciliation token: incremented when watchers reconnect after
+    // error to remove ghost resources without disrupting UI (no loading flash,
+    // no scroll jump, no selection loss)
+    reconcileToken: number;
+
     // Watcher status
     watcherStatus: WatcherStatus;
 
@@ -240,6 +245,9 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
     const [isLoadingNamespaces, setIsLoadingNamespaces] = useState<boolean>(false);
     const [watcherStatus, setWatcherStatus] = useState<WatcherStatus>({}); // { resourceType: { status, error } }
+    const [reconcileToken, setReconcileToken] = useState(0);
+    const watcherPrevStatusRef = useRef<Record<string, string>>({});
+    const reconnectRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [connectionError, setConnectionError] = useState<ConnectionError | null>(null); // { title, message, suggestion, provider, raw }
     const [isConnecting, setIsConnecting] = useState<boolean>(true); // Initial loading state
 
@@ -629,6 +637,23 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
 
             Logger.debug("Watcher status changed", { resourceType, namespace, status }, 'k8s');
+
+            // Detect reconnection: if a watcher transitions reconnecting → connected,
+            // the watch restarted from "now" after resourceVersion expired, so any
+            // resources deleted during the gap are now ghosts. Trigger a full re-fetch
+            // to reconcile frontend state. Debounce so multiple watchers reconnecting
+            // simultaneously only trigger one refresh cycle.
+            const prevStatus = watcherPrevStatusRef.current[resourceType];
+            watcherPrevStatusRef.current[resourceType] = status;
+            if (prevStatus === 'reconnecting' && status === 'connected') {
+                if (reconnectRefreshTimerRef.current) clearTimeout(reconnectRefreshTimerRef.current);
+                reconnectRefreshTimerRef.current = setTimeout(() => {
+                    Logger.info("Watcher reconnected after error, triggering silent reconciliation", undefined, 'k8s');
+                    setReconcileToken(t => t + 1);
+                    reconnectRefreshTimerRef.current = null;
+                }, 500);
+            }
+
             setWatcherStatus(prev => ({
                 ...prev,
                 [resourceType]: { status, namespace, error: null }
@@ -658,6 +683,11 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Clear watcher status on context switch
     useEffect(() => {
         setWatcherStatus({});
+        watcherPrevStatusRef.current = {};
+        if (reconnectRefreshTimerRef.current) {
+            clearTimeout(reconnectRefreshTimerRef.current);
+            reconnectRefreshTimerRef.current = null;
+        }
     }, [currentContext]);
 
     const triggerRefresh = useCallback((): void => {
@@ -756,6 +786,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         refreshNamespaces: fetchNamespaces,
         lastRefresh,
         triggerRefresh,
+        reconcileToken,
         watcherStatus,
         // CRD lookup for owner reference resolution
         crds,
@@ -779,6 +810,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetchNamespaces,
         lastRefresh,
         triggerRefresh,
+        reconcileToken,
         watcherStatus,
         crds,
         ensureCRDsLoaded,

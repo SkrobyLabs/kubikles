@@ -4,6 +4,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"kubikles/pkg/events"
 )
 
 // Helper to create a test event with metadata
@@ -467,6 +469,157 @@ func TestEventCoalescer_SetFrameInterval(t *testing.T) {
 	_, frameMs = c.Stats()
 	if frameMs != 100 {
 		t.Errorf("expected frameMs clamped to 100, got %f", frameMs)
+	}
+}
+
+func TestEventCoalescer_Clear_DiscardsPendingEvents(t *testing.T) {
+	app := &App{}
+	c := NewEventCoalescer(app, 1*time.Hour) // Long interval so timer won't fire
+
+	// Queue several events
+	c.Emit(makeTestEvent("pods", "default", "nginx", ""))
+	c.Emit(makeTestEvent("pods", "default", "redis", ""))
+	c.Emit(makeTestEvent("services", "kube-system", "coredns", ""))
+
+	// Verify events are pending
+	c.mu.Lock()
+	if len(c.events) != 3 {
+		t.Errorf("expected 3 pending events, got %d", len(c.events))
+	}
+	if !c.pending {
+		t.Error("expected pending to be true")
+	}
+	c.mu.Unlock()
+
+	// Clear should discard everything without emitting
+	c.Clear()
+
+	c.mu.Lock()
+	if len(c.events) != 0 {
+		t.Errorf("expected 0 events after Clear, got %d", len(c.events))
+	}
+	if c.pending {
+		t.Error("expected pending to be false after Clear")
+	}
+	if c.timer != nil {
+		t.Error("expected timer to be nil after Clear")
+	}
+	c.mu.Unlock()
+}
+
+func TestEventCoalescer_Clear_SafeWhenEmpty(t *testing.T) {
+	app := &App{}
+	c := NewEventCoalescer(app, 100*time.Millisecond)
+
+	// Clear on a fresh coalescer should not panic
+	c.Clear()
+
+	c.mu.Lock()
+	if len(c.events) != 0 {
+		t.Errorf("expected 0 events, got %d", len(c.events))
+	}
+	if c.pending {
+		t.Error("expected pending to be false")
+	}
+	c.mu.Unlock()
+
+	// Clear twice should also be safe
+	c.Clear()
+}
+
+func TestEventCoalescer_Clear_StopsTimerPreventingLateFlush(t *testing.T) {
+	app := &App{}
+	c := NewEventCoalescer(app, 30*time.Millisecond)
+
+	// Queue an event (starts the timer)
+	c.Emit(makeTestEvent("pods", "default", "nginx", ""))
+
+	// Clear before the timer fires
+	c.Clear()
+
+	// Wait for what would have been the timer fire
+	time.Sleep(60 * time.Millisecond)
+
+	// Verify nothing was flushed (buffer should still be empty, no panic)
+	c.mu.Lock()
+	if len(c.events) != 0 {
+		t.Errorf("expected 0 events after Clear + wait, got %d", len(c.events))
+	}
+	if c.pending {
+		t.Error("pending should remain false after Clear")
+	}
+	c.mu.Unlock()
+}
+
+func TestEventCoalescer_FlushAndDelete_Ordering(t *testing.T) {
+	// Verify that flush() and DELETE can't both produce events for the same
+	// resource. This tests the fix where both emit under the mutex.
+	//
+	// Scenario: MODIFIED is buffered, then DELETE arrives concurrently with
+	// flush. With the fix, either:
+	// - DELETE runs first: clears MODIFIED from buffer, emits DELETE. flush() finds empty buffer.
+	// - flush() runs first: emits MODIFIED. DELETE emits DELETE after.
+	// In neither case should MODIFIED be emitted AFTER DELETE for the same resource.
+	//
+	// We run many iterations to catch races.
+
+	for i := 0; i < 100; i++ {
+		var mu sync.Mutex
+		var emitted []ResourceEvent
+
+		app := &App{}
+		app.emitter = events.EmitterFunc(func(name string, data ...interface{}) {
+			mu.Lock()
+			defer mu.Unlock()
+			if len(data) > 0 {
+				switch v := data[0].(type) {
+				case ResourceEvent:
+					emitted = append(emitted, v)
+				case []ResourceEvent:
+					emitted = append(emitted, v...)
+				}
+			}
+		})
+
+		c := NewEventCoalescer(app, 5*time.Millisecond)
+
+		// Buffer a MODIFIED event
+		c.Emit(makeTestEventWithType("MODIFIED", "pods", "default", "nginx"))
+
+		// Now race: DELETE + timer flush
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			c.Emit(makeTestEventWithType("DELETED", "pods", "default", "nginx"))
+		}()
+		go func() {
+			defer wg.Done()
+			c.FlushNow()
+		}()
+		wg.Wait()
+
+		// Verify: if DELETE was emitted, no MODIFIED should appear after it
+		mu.Lock()
+		deleteIdx := -1
+		for idx, e := range emitted {
+			if e.Type == "DELETED" {
+				deleteIdx = idx
+				break
+			}
+		}
+		if deleteIdx >= 0 {
+			for idx := deleteIdx + 1; idx < len(emitted); idx++ {
+				if emitted[idx].Type == "MODIFIED" {
+					key := c.eventKey(emitted[idx])
+					deleteKey := c.eventKey(emitted[deleteIdx])
+					if key == deleteKey {
+						t.Fatalf("iteration %d: MODIFIED emitted after DELETE for same resource: %v", i, emitted)
+					}
+				}
+			}
+		}
+		mu.Unlock()
 	}
 }
 

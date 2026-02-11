@@ -267,6 +267,13 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 
 				// Only emit ADDED, MODIFIED, DELETED events
 				if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
+					// Guard: skip emit if context was cancelled (prevents stale
+					// events leaking to a new context after StopAll)
+					if ctx.Err() != nil {
+						watcher.Stop()
+						return
+					}
+
 					// Track event for performance metrics
 					a.recordWatcherEvent(watcherKey, string(event.Type))
 
@@ -479,6 +486,13 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 
 				// Only emit ADDED, MODIFIED, DELETED events
 				if event.Type == "ADDED" || event.Type == "MODIFIED" || event.Type == "DELETED" {
+					// Guard: skip emit if context was cancelled (prevents stale
+					// events leaking to a new context after StopAll)
+					if ctx.Err() != nil {
+						watcher.Stop()
+						return
+					}
+
 					// Track event for performance metrics
 					a.recordWatcherEvent(watcherKey, string(event.Type))
 

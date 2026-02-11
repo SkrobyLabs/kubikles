@@ -4,6 +4,7 @@ import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 import { useResourceWatcher } from './useResourceWatcher';
 import { createResourceEventHandler, createNamespacedResourceEventHandler } from './useResourceEventHandler';
 import { CancelListRequest } from 'wailsjs/go/main/App';
+import Logger from '../utils/Logger';
 
 // K8s resource with metadata
 interface K8sResource {
@@ -81,7 +82,7 @@ export function createNamespacedResourceHook<T extends K8sResource>(
         const [data, setData] = useState<T[]>([]);
         const [loading, setLoading] = useState<boolean>(false);
         const [error, setError] = useState<Error | null>(null);
-        const { namespaces: allNamespaces, lastRefresh, checkConnectionError } = useK8s();
+        const { namespaces: allNamespaces, lastRefresh, checkConnectionError, reconcileToken } = useK8s();
         const requestIdRef = useRef<string | null>(null);
         const fetchInProgressRef = useRef<string | null>(null); // Prevent duplicate fetches from StrictMode
 
@@ -208,6 +209,14 @@ export function createNamespacedResourceHook<T extends K8sResource>(
             Boolean(currentContext && isVisible && optimizedNamespaces.length > 0)
         );
 
+        // Silent reconciliation after watcher reconnection.
+        // Only removes ghost resources (items deleted during disconnect window).
+        // No loading flash, no scroll jump, no selection loss.
+        useGhostReconciliation(
+            resourceType, reconcileToken, setData as any, listFn as any,
+            currentContext, selectedNamespaces, allNamespaces, isVisible
+        );
+
         // Return with dynamic key name for backwards compatibility
         const result: NamespacedResourceHookReturn<T> = {
             loading,
@@ -235,7 +244,7 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
         const [data, setData] = useState<T[]>([]);
         const [loading, setLoading] = useState<boolean>(false);
         const [error, setError] = useState<Error | null>(null);
-        const { lastRefresh, checkConnectionError } = useK8s();
+        const { lastRefresh, checkConnectionError, reconcileToken } = useK8s();
         const requestIdRef = useRef<string | null>(null);
         const fetchInProgressRef = useRef<string | null>(null); // Prevent duplicate fetches from StrictMode
 
@@ -326,6 +335,12 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
         const handleEvent = useCallback(createResourceEventHandler(setData as any), []);
         useResourceWatcher(resourceType, "", handleEvent as any, Boolean(currentContext && isVisible));
 
+        // Silent reconciliation after watcher reconnection (cluster-scoped variant)
+        useGhostReconciliation(
+            resourceType, reconcileToken, setData as any, ((rid: string, _ns: string) => listFn(rid)) as any,
+            currentContext, null, [], isVisible
+        );
+
         const result: ClusterScopedResourceHookReturn<T> = {
             loading,
             error,
@@ -334,4 +349,98 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
         };
         return result;
     };
+}
+
+/**
+ * Silent ghost reconciliation after watcher reconnection.
+ * When the watcher disconnects and reconnects, resources deleted during the gap
+ * become "ghosts" — they exist in local state but not on the cluster.
+ * This hook fetches fresh data and removes any items not present in the fresh list.
+ *
+ * Key properties:
+ * - No loading state changes (no flash)
+ * - Only removes ghosts; never replaces existing items (preserves selections, scroll)
+ * - Skips initial mount (reconcileToken starts at 0)
+ * - Silently ignores fetch errors (watcher will catch up)
+ */
+function useGhostReconciliation<T extends K8sResource>(
+    resourceType: string,
+    reconcileToken: number,
+    setData: React.Dispatch<React.SetStateAction<T[]>>,
+    listFn: NamespacedListFn<T>,
+    currentContext: string | null,
+    selectedNamespaces: string | string[] | null | undefined,
+    allNamespaces: string[],
+    isVisible: boolean
+): void {
+    const prevTokenRef = useRef(reconcileToken);
+
+    useEffect(() => {
+        // Skip if token hasn't changed (including initial mount)
+        if (reconcileToken === prevTokenRef.current) return;
+        prevTokenRef.current = reconcileToken;
+
+        if (!currentContext || !isVisible) return;
+
+        let cancelled = false;
+
+        const reconcile = async () => {
+            Logger.debug(`[ghost-reconcile] Starting for ${resourceType} (token=${reconcileToken})`);
+
+            try {
+                const optimized = optimizeNamespaceQuery(selectedNamespaces ?? [], allNamespaces);
+
+                let freshItems: T[];
+                const requestId = `reconcile-${resourceType}-${++requestCounter}`;
+
+                if (optimized === null) {
+                    // No valid namespaces selected — nothing to reconcile against
+                    Logger.debug(`[ghost-reconcile] ${resourceType}: no namespaces, skipping`);
+                    return;
+                } else if (optimized === '') {
+                    // All namespaces
+                    freshItems = await listFn(requestId, '');
+                } else {
+                    const results = await Promise.all(
+                        optimized.map(ns => listFn(requestId, ns).catch(() => [] as T[]))
+                    );
+                    freshItems = results.flat().filter(Boolean);
+                }
+
+                if (cancelled) return;
+
+                // Build set of UIDs that exist on the cluster right now
+                const freshUids = new Set<string>();
+                for (const item of freshItems) {
+                    const uid = item.metadata?.uid;
+                    if (uid) freshUids.add(uid);
+                }
+
+                // Remove ghosts: items in local state whose UID is not in the fresh set
+                setData(prev => {
+                    const filtered = prev.filter(r => {
+                        const uid = r.metadata?.uid;
+                        // Keep items without UID (shouldn't happen, but safe)
+                        if (!uid) return true;
+                        return freshUids.has(uid);
+                    });
+                    const removed = prev.length - filtered.length;
+                    if (removed > 0) {
+                        Logger.debug(`[ghost-reconcile] ${resourceType}: removed ${removed} ghost(s)`);
+                    } else {
+                        Logger.debug(`[ghost-reconcile] ${resourceType}: no ghosts found (${prev.length} items verified)`);
+                    }
+                    // Return same reference if nothing changed to avoid re-render
+                    return removed > 0 ? filtered : prev;
+                });
+            } catch (err) {
+                // Silent failure — watcher events will eventually correct state
+                Logger.debug(`[ghost-reconcile] ${resourceType}: fetch failed, skipping`, err);
+            }
+        };
+
+        reconcile();
+
+        return () => { cancelled = true; };
+    }, [reconcileToken, resourceType, currentContext, selectedNamespaces, allNamespaces, isVisible, listFn, setData]);
 }

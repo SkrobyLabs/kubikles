@@ -45,6 +45,11 @@ func NewEventCoalescer(app *App, frameInterval time.Duration) *EventCoalescer {
 // This prevents a race where MODIFIED events arriving after DELETE could
 // overwrite it (since coalescing key doesn't include event type), causing
 // deleted resources to never disappear from the UI.
+//
+// Both flush() and DELETE emit while holding the mutex to guarantee ordering.
+// Since Wails EventsEmit is non-blocking (posts to JS event queue), this is
+// safe and prevents the race where flush() releases the lock, DELETE emits,
+// then flush() emits a stale MODIFIED that re-adds the deleted resource.
 func (c *EventCoalescer) Emit(event ResourceEvent) {
 	// Fast path: if coalescing is disabled (frameInterval very small), emit immediately
 	if c.frameInterval < time.Millisecond {
@@ -58,14 +63,16 @@ func (c *EventCoalescer) Emit(event ResourceEvent) {
 	// 1. MODIFIED queued in buffer
 	// 2. DELETE arrives -> emitted immediately -> frontend removes resource
 	// 3. Frame timer fires -> MODIFIED emitted -> frontend adds resource back!
+	//
+	// Emit under lock to guarantee ordering with flush() - prevents the race
+	// where flush copies MODIFIED, releases lock, DELETE emits first, then
+	// flush emits stale MODIFIED causing ghost resources.
 	if event.Type == "DELETED" {
-		// Remove any pending event for this resource from the buffer
 		key := c.eventKey(event)
 		c.mu.Lock()
 		delete(c.events, key)
+		c.app.emitEvent("resource-event", event)
 		c.mu.Unlock()
-
-		c.emitDirect(event)
 		return
 	}
 
@@ -103,13 +110,18 @@ func (c *EventCoalescer) eventKey(event ResourceEvent) string {
 
 // flush emits all batched events and resets the buffer.
 // Called by the frame timer.
+//
+// Emits while holding the lock to guarantee ordering with DELETE events.
+// Since Wails EventsEmit is non-blocking (posts to JS event queue),
+// holding the lock during emit is safe and prevents the race where
+// a DELETE slips in between buffer copy and emit.
 func (c *EventCoalescer) flush() {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	// Nothing to emit
 	if len(c.events) == 0 {
 		c.pending = false
-		c.mu.Unlock()
 		return
 	}
 
@@ -125,9 +137,7 @@ func (c *EventCoalescer) flush() {
 	}
 	c.pending = false
 
-	c.mu.Unlock()
-
-	// Emit batch outside lock
+	// Emit while holding lock - guarantees ordering with DELETE events
 	if len(batch) == 1 {
 		// Single event - emit directly for backward compatibility
 		c.app.emitEvent("resource-event", batch[0])
@@ -153,6 +163,23 @@ func (c *EventCoalescer) FlushNow() {
 	c.mu.Unlock()
 
 	c.flush()
+}
+
+// Clear discards all pending events without emitting them.
+// Used on context switch to prevent stale events from the old cluster
+// being emitted into the new context's state.
+func (c *EventCoalescer) Clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.timer != nil {
+		c.timer.Stop()
+		c.timer = nil
+	}
+	for k := range c.events {
+		delete(c.events, k)
+	}
+	c.pending = false
 }
 
 // Stats returns current coalescer statistics.

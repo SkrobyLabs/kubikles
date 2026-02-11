@@ -43,8 +43,12 @@ func (a *App) SwitchContext(name string) error {
 	// Cancel any pending connection test
 	a.CancelConnectionTest()
 
-	// Stop all existing watchers before switching context
-	// This prevents stale events from the old context being processed
+	// Discard any buffered events from the old context, then stop all watchers.
+	// Order matters: clear coalescer first so the timer can't fire and emit
+	// stale events between StopAll and the new context starting.
+	if a.eventCoalescer != nil {
+		a.eventCoalescer.Clear()
+	}
 	if a.watcherManager != nil {
 		debug.LogK8s("SwitchContext: Stopping all watchers before context switch", nil)
 		a.watcherManager.StopAll()

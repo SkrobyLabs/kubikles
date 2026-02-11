@@ -241,5 +241,33 @@ describe('createNamespacedResourceEventHandler', () => {
             const result = updater([]); // Empty list simulates MODIFIED before ADDED
             expect(result).toEqual([resource]);
         });
+
+        it('does NOT re-add resource with deletionTimestamp after DELETE (namespaced)', () => {
+            const setState = vi.fn();
+            const handler = createNamespacedResourceEventHandler(setState, ['default']);
+            const resource = {
+                metadata: { uid: 'uid-deleted', name: 'deleted-pod', namespace: 'default', deletionTimestamp: '2024-01-01T00:00:00Z' }
+            };
+
+            handler({ type: 'MODIFIED', resource, namespace: 'default' });
+
+            const updater = setState.mock.calls[0][0];
+            const result = updater([]); // Empty list = DELETE already processed
+            expect(result).toEqual([]); // Should NOT re-add
+        });
+
+        it('does NOT re-add resource with deletionTimestamp after DELETE (cluster-scoped)', () => {
+            const setState = vi.fn();
+            const handler = createResourceEventHandler(setState);
+            const resource = {
+                metadata: { uid: 'uid-deleted', name: 'deleted-node', deletionTimestamp: '2024-01-01T00:00:00Z' }
+            };
+
+            handler({ type: 'MODIFIED', resource });
+
+            const updater = setState.mock.calls[0][0];
+            const result = updater([]); // Empty list = DELETE already processed
+            expect(result).toEqual([]); // Should NOT re-add
+        });
     });
 });

@@ -8,6 +8,136 @@ import { getOwnerViewId } from '~/utils/owner-navigation';
 import { CopyableLabel, DetailRow } from './DetailComponents';
 import Tooltip from './Tooltip';
 
+function formatMatchExpr(expr: any): string {
+    if (!expr?.key) return String(expr);
+    const { key, operator, values } = expr;
+    if (operator === 'Exists') return `${key} Exists`;
+    if (operator === 'DoesNotExist') return `${key} DoesNotExist`;
+    if (operator === 'Gt') return `${key} > ${values?.[0]}`;
+    if (operator === 'Lt') return `${key} < ${values?.[0]}`;
+    return `${key} ${operator} [${(values || []).join(', ')}]`;
+}
+
+function renderPodAffinityRules(pa: any): React.ReactNode[] {
+    const rules: React.ReactNode[] = [];
+
+    pa.requiredDuringSchedulingIgnoredDuringExecution?.forEach((term: any, ti: number) => {
+        const labels: React.ReactNode[] = [];
+        if (term.topologyKey)
+            labels.push(<CopyableLabel key="tk" value={`topology: ${term.topologyKey}`} copyValue={term.topologyKey} />);
+        if (term.labelSelector?.matchLabels)
+            Object.entries(term.labelSelector.matchLabels).sort(([a], [b]) => a.localeCompare(b))
+                .forEach(([k, v]) => labels.push(<CopyableLabel key={`ml-${k}`} value={`${k}=${v}`} />));
+        (term.labelSelector?.matchExpressions || []).forEach((expr: any, i: number) =>
+            labels.push(<CopyableLabel key={`me-${i}`} value={formatMatchExpr(expr)} copyValue={expr.key} />));
+        if (labels.length > 0)
+            rules.push(
+                <div key={`req-${ti}`} className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs text-gray-500">required:</span>
+                    {labels}
+                </div>
+            );
+    });
+
+    pa.preferredDuringSchedulingIgnoredDuringExecution?.forEach((pref: any, pi: number) => {
+        const term = pref.podAffinityTerm;
+        if (!term) return;
+        const labels: React.ReactNode[] = [];
+        if (term.topologyKey)
+            labels.push(<CopyableLabel key="tk" value={`topology: ${term.topologyKey}`} copyValue={term.topologyKey} />);
+        if (term.labelSelector?.matchLabels)
+            Object.entries(term.labelSelector.matchLabels).sort(([a], [b]) => a.localeCompare(b))
+                .forEach(([k, v]) => labels.push(<CopyableLabel key={`ml-${k}`} value={`${k}=${v}`} />));
+        (term.labelSelector?.matchExpressions || []).forEach((expr: any, i: number) =>
+            labels.push(<CopyableLabel key={`me-${i}`} value={formatMatchExpr(expr)} copyValue={expr.key} />));
+        if (labels.length > 0)
+            rules.push(
+                <div key={`pref-${pi}`} className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs text-gray-500">preferred (w:{pref.weight}):</span>
+                    {labels}
+                </div>
+            );
+    });
+
+    return rules;
+}
+
+function AffinityDisplay({ affinity }: { affinity: any }) {
+    if (!affinity) return <span className="text-gray-500">None</span>;
+
+    const sections: React.ReactNode[] = [];
+
+    // Node Affinity
+    if (affinity.nodeAffinity) {
+        const na = affinity.nodeAffinity;
+        const rules: React.ReactNode[] = [];
+
+        na.requiredDuringSchedulingIgnoredDuringExecution?.nodeSelectorTerms?.forEach((term: any, ti: number) => {
+            const exprs = [...(term.matchExpressions || []), ...(term.matchFields || [])];
+            if (exprs.length > 0)
+                rules.push(
+                    <div key={`req-${ti}`} className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs text-gray-500">required:</span>
+                        {exprs.map((expr: any, i: number) => (
+                            <CopyableLabel key={i} value={formatMatchExpr(expr)} copyValue={expr.key} />
+                        ))}
+                    </div>
+                );
+        });
+
+        na.preferredDuringSchedulingIgnoredDuringExecution?.forEach((pref: any, pi: number) => {
+            const exprs = [...(pref.preference?.matchExpressions || []), ...(pref.preference?.matchFields || [])];
+            if (exprs.length > 0)
+                rules.push(
+                    <div key={`pref-${pi}`} className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs text-gray-500">preferred (w:{pref.weight}):</span>
+                        {exprs.map((expr: any, i: number) => (
+                            <CopyableLabel key={i} value={formatMatchExpr(expr)} copyValue={expr.key} />
+                        ))}
+                    </div>
+                );
+        });
+
+        if (rules.length > 0)
+            sections.push(
+                <div key="node">
+                    <div className="text-xs text-blue-400 mb-1">Node</div>
+                    <div className="space-y-1">{rules}</div>
+                </div>
+            );
+    }
+
+    // Pod Affinity
+    if (affinity.podAffinity) {
+        const rules = renderPodAffinityRules(affinity.podAffinity);
+        if (rules.length > 0)
+            sections.push(
+                <div key="pod">
+                    <div className="text-xs text-green-400 mb-1">Pod</div>
+                    <div className="space-y-1">{rules}</div>
+                </div>
+            );
+    }
+
+    // Pod Anti-Affinity
+    if (affinity.podAntiAffinity) {
+        const rules = renderPodAffinityRules(affinity.podAntiAffinity);
+        if (rules.length > 0)
+            sections.push(
+                <div key="anti">
+                    <div className="text-xs text-amber-400 mb-1">Pod Anti-Affinity</div>
+                    <div className="space-y-1">{rules}</div>
+                </div>
+            );
+    }
+
+    return sections.length > 0 ? (
+        <div className="space-y-2.5">{sections}</div>
+    ) : (
+        <span className="text-gray-500">None</span>
+    );
+}
+
 export default function PodInfoTab({ pod }: { pod: any }) {
     const { navigateWithSearch, openDiagnostic } = useUI();
     const { crds } = useK8s();
@@ -17,6 +147,8 @@ export default function PodInfoTab({ pod }: { pod: any }) {
     const serviceAccount = pod.spec?.serviceAccountName || 'default';
     const labels = pod.metadata?.labels || {};
     const tolerations = pod.spec?.tolerations || [];
+    const nodeSelector = pod.spec?.nodeSelector || {};
+    const affinity = pod.spec?.affinity;
     const qosClass = pod.status?.qosClass || 'N/A';
     const podIPs = pod.status?.podIPs || (pod.status?.podIP ? [{ ip: pod.status.podIP }] : []);
     const nodeName = pod.spec?.nodeName;
@@ -128,6 +260,26 @@ export default function PodInfoTab({ pod }: { pod: any }) {
                     ) : (
                         <span className="text-gray-500">None</span>
                     )}
+                </DetailRow>
+
+                {/* Node Selector */}
+                <DetailRow label="Node Selector">
+                    {Object.keys(nodeSelector).length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                            {Object.entries(nodeSelector)
+                                .sort(([a], [b]) => a.localeCompare(b))
+                                .map(([key, value]) => (
+                                    <CopyableLabel key={key} value={`${key}=${value}`} />
+                                ))}
+                        </div>
+                    ) : (
+                        <span className="text-gray-500">None</span>
+                    )}
+                </DetailRow>
+
+                {/* Affinity */}
+                <DetailRow label="Affinity">
+                    <AffinityDisplay affinity={affinity} />
                 </DetailRow>
 
                 {/* QoS Class */}

@@ -50,7 +50,13 @@ export const createResourceEventHandler = <T extends K8sResource = K8sResource>(
                 if (exists) {
                     return prev.map((r: any) => r.metadata?.uid === uid ? resource : r);
                 }
-                // MODIFIED arrived before ADDED - treat as add
+                // MODIFIED arrived before ADDED - treat as add, but NOT if the
+                // resource is being deleted (has deletionTimestamp). A MODIFIED
+                // for a non-existent resource with deletionTimestamp means the
+                // DELETE was already processed and this is a stale event.
+                if (resource?.metadata?.deletionTimestamp) {
+                    return prev;
+                }
                 return [...prev, resource];
             }
 
@@ -104,7 +110,13 @@ export const createNamespacedResourceEventHandler = <T extends K8sResource = K8s
                 if (exists) {
                     return prev.map((r: any) => r.metadata?.uid === uid ? resource : r);
                 }
-                // MODIFIED arrived before ADDED - treat as add
+                // MODIFIED arrived before ADDED - treat as add, but NOT if the
+                // resource is being deleted (has deletionTimestamp). A MODIFIED
+                // for a non-existent resource with deletionTimestamp means the
+                // DELETE was already processed and this is a stale event.
+                if (resource?.metadata?.deletionTimestamp) {
+                    return prev;
+                }
                 return [...prev, resource];
             }
 
