@@ -45,6 +45,21 @@ func (a *App) GetPodEvictionInfo(namespace, name string) (*k8s.PodEvictionInfo, 
 	return result, err
 }
 
+func (a *App) ResolveTopLevelOwner(namespace, kind, name string) (*k8s.TopLevelOwner, error) {
+	contextName := a.GetCurrentContext()
+	pkgdebug.LogK8s("ResolveTopLevelOwner called", map[string]interface{}{"context": contextName, "namespace": namespace, "kind": kind, "name": name})
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	result, err := a.k8sClient.ResolveTopLevelOwner(contextName, namespace, kind, name)
+	if err != nil {
+		pkgdebug.LogK8s("ResolveTopLevelOwner error", map[string]interface{}{"error": err.Error()})
+	} else {
+		pkgdebug.LogK8s("ResolveTopLevelOwner success", map[string]interface{}{"kind": result.Kind, "name": result.Name})
+	}
+	return result, err
+}
+
 func (a *App) EvictPod(namespace, name string) error {
 	contextName := a.GetCurrentContext()
 	pkgdebug.LogK8s("EvictPod called", map[string]interface{}{"context": contextName, "namespace": namespace, "name": name})

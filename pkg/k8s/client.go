@@ -3856,6 +3856,55 @@ func (c *Client) ForceDeletePod(contextName, namespace, name string) error {
 	})
 }
 
+// resolveControllerChain walks the ownership chain to find the top-level controller.
+// For example, ReplicaSet→Deployment or Job→CronJob.
+func resolveControllerChain(cs kubernetes.Interface, ctx context.Context, namespace, kind, name string) (string, string) {
+	switch kind {
+	case "ReplicaSet":
+		rs, err := cs.AppsV1().ReplicaSets(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			log.Printf("[K8s Client] resolveControllerChain: failed to look up ReplicaSet %s/%s: %v", namespace, name, err)
+			return kind, name
+		}
+		for _, ref := range rs.OwnerReferences {
+			if ref.Controller != nil && *ref.Controller && ref.Kind == "Deployment" {
+				return "Deployment", ref.Name
+			}
+		}
+	case "Job":
+		job, err := cs.BatchV1().Jobs(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			log.Printf("[K8s Client] resolveControllerChain: failed to look up Job %s/%s: %v", namespace, name, err)
+			return kind, name
+		}
+		for _, ref := range job.OwnerReferences {
+			if ref.Controller != nil && *ref.Controller && ref.Kind == "CronJob" {
+				return "CronJob", ref.Name
+			}
+		}
+	}
+	return kind, name
+}
+
+// TopLevelOwner represents the resolved top-level controller for a resource.
+type TopLevelOwner struct {
+	Kind string `json:"kind"`
+	Name string `json:"name"`
+}
+
+// ResolveTopLevelOwner resolves the top-level controller for a given owner reference.
+func (c *Client) ResolveTopLevelOwner(contextName, namespace, kind, name string) (*TopLevelOwner, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+
+	resolvedKind, resolvedName := resolveControllerChain(cs, ctx, namespace, kind, name)
+	return &TopLevelOwner{Kind: resolvedKind, Name: resolvedName}, nil
+}
+
 // PodEvictionInfo describes a pod's eviction category based on its ownership chain.
 type PodEvictionInfo struct {
 	Category  string `json:"category"`  // "reschedulable", "killable", "daemon"
@@ -3913,27 +3962,11 @@ func (c *Client) GetPodEvictionInfo(contextName, namespace, name string) (*PodEv
 
 	case "Job":
 		info.Category = "killable"
-		info.OwnerKind = "Job"
-		info.OwnerName = controller.Name
+		info.OwnerKind, info.OwnerName = resolveControllerChain(cs, ctx, namespace, controller.Kind, controller.Name)
 
 	case "ReplicaSet":
-		// Check if the RS is owned by a Deployment
 		info.Category = "reschedulable"
-		info.OwnerKind = "ReplicaSet"
-		info.OwnerName = controller.Name
-
-		rs, rsErr := cs.AppsV1().ReplicaSets(namespace).Get(ctx, controller.Name, metav1.GetOptions{})
-		if rsErr != nil {
-			log.Printf("[K8s Client] GetPodEvictionInfo: failed to look up ReplicaSet %s/%s: %v", namespace, controller.Name, rsErr)
-		} else {
-			for _, ref := range rs.OwnerReferences {
-				if ref.Controller != nil && *ref.Controller && ref.Kind == "Deployment" {
-					info.OwnerKind = "Deployment"
-					info.OwnerName = ref.Name
-					break
-				}
-			}
-		}
+		info.OwnerKind, info.OwnerName = resolveControllerChain(cs, ctx, namespace, controller.Kind, controller.Name)
 
 	case "StatefulSet":
 		info.Category = "reschedulable"

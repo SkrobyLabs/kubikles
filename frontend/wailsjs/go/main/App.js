@@ -938,6 +938,10 @@ export function ResizeTerminal(arg1, arg2, arg3) {
   return window['go']['main']['App']['ResizeTerminal'](arg1, arg2, arg3);
 }
 
+export function ResolveTopLevelOwner(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ResolveTopLevelOwner'](arg1, arg2, arg3);
+}
+
 export function RestartDaemonSet(arg1, arg2) {
   return window['go']['main']['App']['RestartDaemonSet'](arg1, arg2);
 }

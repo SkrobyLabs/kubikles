@@ -1515,6 +1515,21 @@ export namespace k8s {
 		    return a;
 		}
 	}
+	
+	export class TopLevelOwner {
+	    kind: string;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TopLevelOwner(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.name = source["name"];
+	    }
+	}
 
 }
 

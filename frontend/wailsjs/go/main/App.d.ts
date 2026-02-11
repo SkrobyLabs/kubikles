@@ -478,6 +478,8 @@ export function ResizePVC(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<void>;
 
+export function ResolveTopLevelOwner(arg1:string,arg2:string,arg3:string):Promise<k8s.TopLevelOwner>;
+
 export function RestartDaemonSet(arg1:string,arg2:string):Promise<void>;
 
 export function RestartDeployment(arg1:string,arg2:string):Promise<void>;

@@ -183,3 +183,32 @@ export const getPodController = (pod: any) => {
         uid: controller.uid
     };
 };
+
+// Extract controller owner from raw YAML string content
+export function extractControllerOwnerFromYaml(yamlContent: any): { kind: string; name: string; uid: string | null } | null {
+    if (!yamlContent) return null;
+
+    const ownerRefsMatch = yamlContent.match(/ownerReferences:\s*\n((?:\s+-[\s\S]*?(?=\n\S|\n\s*$))+)/);
+    if (!ownerRefsMatch) return null;
+
+    const ownerRefsBlock = ownerRefsMatch[1];
+    const entries = ownerRefsBlock.split(/\n\s+-\s+/).filter(Boolean);
+
+    for (const entry of entries) {
+        if (entry.includes('controller: true') || entry.includes('controller:true')) {
+            const kindMatch = entry.match(/kind:\s*(\S+)/);
+            const nameMatch = entry.match(/name:\s*(\S+)/);
+            const uidMatch = entry.match(/uid:\s*(\S+)/);
+
+            if (kindMatch && nameMatch) {
+                return {
+                    kind: kindMatch[1],
+                    name: nameMatch[1],
+                    uid: uidMatch ? uidMatch[1] : null
+                };
+            }
+        }
+    }
+
+    return null;
+}

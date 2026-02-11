@@ -313,6 +313,7 @@ export function ReloadIssueRules(...args) { return AppProxy.ReloadIssueRules(...
 export function ReloadThemes(...args) { return AppProxy.ReloadThemes(...args); }
 export function RemoveHelmRepository(...args) { return AppProxy.RemoveHelmRepository(...args); }
 export function RemoveOCIRegistry(...args) { return AppProxy.RemoveOCIRegistry(...args); }
+export function ResolveTopLevelOwner(...args) { return AppProxy.ResolveTopLevelOwner(...args); }
 export function ResizePVC(...args) { return AppProxy.ResizePVC(...args); }
 export function ResizeTerminal(...args) { return AppProxy.ResizeTerminal(...args); }
 export function RestartDaemonSet(...args) { return AppProxy.RestartDaemonSet(...args); }

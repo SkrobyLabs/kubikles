@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ZoomLevel, ColorMode, ResourceMaxes, PodMetricsMap, getPodSquareColor, getNamespaceColor, sortPods, computePodGridHeight, getPodSquareSize, getMaxVisiblePods } from './topologyUtils';
+import AggregateResourceBar from '~/components/shared/AggregateResourceBar';
+import { formatCpu, formatBytes } from '~/utils/formatting';
 
 /** Show top N namespaces in the close-zoom breakdown */
 const MAX_NAMESPACE_LABELS = 5;
@@ -23,18 +25,27 @@ interface TopologyNodeData {
     onNamespaceToggle: (ns: string) => void;
 }
 
-/** Micro-bar for CPU/Memory percentage */
-function MetricBar({ label, percent, color }: { label: string; percent: number; color: string }) {
+/** Compact label + AggregateResourceBar for topology node cards */
+function NodeMetricBar({ label, metrics, type }: { label: string; metrics: any; type: 'cpu' | 'memory' }) {
+    const isCpu = type === 'cpu';
     return (
         <div className="flex items-center gap-1.5 text-[10px]">
             <span className="text-gray-400 w-8 shrink-0">{label}</span>
-            <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden min-w-[40px]">
-                <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${Math.min(100, percent)}%`, backgroundColor: color }}
+            <div className="flex-1 min-w-0">
+                <AggregateResourceBar
+                    usagePercent={isCpu ? metrics.cpuPercent : metrics.memPercent}
+                    reservedPercent={isCpu ? metrics.cpuReservedPercent : metrics.memReservedPercent}
+                    committedPercent={isCpu ? metrics.cpuCommittedPercent : metrics.memCommittedPercent}
+                    type={type}
+                    label={label}
+                    barClassName="w-full h-1.5"
+                    usageValue={isCpu ? metrics.cpuUsage : metrics.memoryUsage}
+                    reservedValue={isCpu ? metrics.cpuRequested : metrics.memRequested}
+                    committedValue={isCpu ? metrics.cpuCommitted : metrics.memCommitted}
+                    capacityValue={isCpu ? metrics.cpuCapacity : metrics.memCapacity}
+                    formatValue={isCpu ? formatCpu : formatBytes}
                 />
             </div>
-            <span className="text-gray-400 w-8 text-right">{percent}%</span>
         </div>
     );
 }
@@ -163,8 +174,8 @@ const TopologyNodeComponent = React.memo(function TopologyNodeComponent({ data }
 
                 {metricsAvailable !== false && metrics && (
                     <div className="mt-1.5 space-y-0.5">
-                        <MetricBar label="CPU" percent={metrics.cpuPercent} color="#3b82f6" />
-                        <MetricBar label="Mem" percent={metrics.memPercent} color="#8b5cf6" />
+                        <NodeMetricBar label="CPU" metrics={metrics} type="cpu" />
+                        <NodeMetricBar label="Mem" metrics={metrics} type="memory" />
                     </div>
                 )}
 

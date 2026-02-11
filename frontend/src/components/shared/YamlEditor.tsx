@@ -1,43 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import { getResource, getResourceByKind } from '~/utils/resourceRegistry';
+import { extractControllerOwnerFromYaml } from '~/utils/k8s-helpers';
+import { ResolveTopLevelOwner } from '~/lib/wailsjs-adapter/go/main/App';
 import Logger from '~/utils/Logger';
 import { useUI } from '~/context';
 import { useK8s } from '~/context';
 import { useNotification } from '~/context';
 import { ExclamationTriangleIcon, InformationCircleIcon, LockClosedIcon } from '@heroicons/react/24/outline';
-
-// Extract controller owner from YAML content
-function extractControllerOwner(yamlContent: any) {
-    if (!yamlContent) return null;
-
-    // Find ownerReferences section
-    const ownerRefsMatch = yamlContent.match(/ownerReferences:\s*\n((?:\s+-[\s\S]*?(?=\n\S|\n\s*$))+)/);
-    if (!ownerRefsMatch) return null;
-
-    const ownerRefsBlock = ownerRefsMatch[1];
-
-    // Find the controller owner (controller: true)
-    const entries = ownerRefsBlock.split(/\n\s+-\s+/).filter(Boolean);
-
-    for (const entry of entries) {
-        if (entry.includes('controller: true') || entry.includes('controller:true')) {
-            const kindMatch = entry.match(/kind:\s*(\S+)/);
-            const nameMatch = entry.match(/name:\s*(\S+)/);
-            const uidMatch = entry.match(/uid:\s*(\S+)/);
-
-            if (kindMatch && nameMatch) {
-                return {
-                    kind: kindMatch[1],
-                    name: nameMatch[1],
-                    uid: uidMatch ? uidMatch[1] : null
-                };
-            }
-        }
-    }
-
-    return null;
-}
 
 export default function YamlEditor({
     resourceType,
@@ -77,29 +47,58 @@ export default function YamlEditor({
     }, [resourceType, getYamlFn, updateYamlFn]);
 
     // Extract controller owner from content
-    const controllerOwner = useMemo(() => extractControllerOwner(content), [content]);
+    const controllerOwner = useMemo(() => extractControllerOwnerFromYaml(content), [content]);
 
-    // Handle opening the controlling resource's edit dialog
-    const handleEditOwner = () => {
-        if (!controllerOwner) return;
+    // Resolve top-level owner (e.g., ReplicaSet → Deployment)
+    const [topLevelOwner, setTopLevelOwner] = useState<{ kind: string; name: string } | null>(null);
 
-        const ownerResource = getResourceByKind(controllerOwner.kind);
-        if (!ownerResource) {
-            Logger.warn("Unknown controller kind", { kind: controllerOwner.kind }, 'k8s');
+    useEffect(() => {
+        if (!controllerOwner || !namespace) {
+            setTopLevelOwner(null);
             return;
         }
 
-        const ownerType = controllerOwner.kind.toLowerCase();
-        const tabId = `yaml-${ownerType}-${namespace}-${controllerOwner.name}`;
+        let cancelled = false;
+        ResolveTopLevelOwner(namespace, controllerOwner.kind, controllerOwner.name)
+            .then((result: { kind: string; name: string }) => {
+                if (!cancelled) {
+                    setTopLevelOwner(result);
+                }
+            })
+            .catch((err: any) => {
+                if (!cancelled) {
+                    Logger.warn("Failed to resolve top-level owner", err, 'k8s');
+                    setTopLevelOwner(null);
+                }
+            });
+
+        return () => { cancelled = true; };
+    }, [controllerOwner?.kind, controllerOwner?.name, namespace]);
+
+    // The edit target is the top-level owner (if resolved and different), otherwise the immediate owner
+    const editTarget = topLevelOwner || controllerOwner;
+
+    // Handle opening the controlling resource's edit dialog
+    const handleEditOwner = () => {
+        if (!editTarget) return;
+
+        const ownerResource = getResourceByKind(editTarget.kind);
+        if (!ownerResource) {
+            Logger.warn("Unknown controller kind", { kind: editTarget.kind }, 'k8s');
+            return;
+        }
+
+        const ownerType = editTarget.kind.toLowerCase();
+        const tabId = `yaml-${ownerType}-${namespace}-${editTarget.name}`;
 
         openTab({
             id: tabId,
-            title: `${controllerOwner.name}`,
+            title: `${editTarget.name}`,
             content: (
                 <YamlEditor
                     resourceType={ownerType}
                     namespace={namespace}
-                    resourceName={controllerOwner.name}
+                    resourceName={editTarget.name}
                     onClose={() => closeTab(tabId)}
                 />
             )
@@ -315,15 +314,21 @@ export default function YamlEditor({
                     <div className="flex items-center gap-2">
                         <InformationCircleIcon className="h-5 w-5" />
                         <span className="text-sm">
-                            This resource is controlled by <span className="font-medium">{controllerOwner.kind}/{controllerOwner.name}</span>. Changes may be overwritten.
+                            Controlled by <span className="font-medium">{controllerOwner.kind}/{controllerOwner.name}</span>.
+                            {topLevelOwner && (topLevelOwner.kind !== controllerOwner.kind || topLevelOwner.name !== controllerOwner.name) && (
+                                <> Managed by <span className="font-medium">{topLevelOwner.kind}/{topLevelOwner.name}</span>.</>
+                            )}
+                            {' '}Changes may be overwritten.
                         </span>
                     </div>
-                    <button
-                        onClick={handleEditOwner}
-                        className="px-3 py-1 text-xs font-medium bg-blue-500/30 hover:bg-blue-500/40 rounded transition-colors"
-                    >
-                        Edit {controllerOwner.kind}
-                    </button>
+                    {editTarget && (
+                        <button
+                            onClick={handleEditOwner}
+                            className="px-3 py-1 text-xs font-medium bg-blue-500/30 hover:bg-blue-500/40 rounded transition-colors whitespace-nowrap"
+                        >
+                            Edit {editTarget.kind}
+                        </button>
+                    )}
                 </div>
             )}
 
