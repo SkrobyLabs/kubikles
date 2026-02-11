@@ -390,6 +390,104 @@ func parseLogTimestamp(line string) (time.Time, string) {
 	return t, content
 }
 
+// lifecycleReasons maps K8s event reasons to severity levels for metrics chart markers
+var lifecycleReasons = map[string]string{
+	// Error
+	"OOMKilling":                "error",
+	"BackOff":                   "error",
+	"Failed":                    "error",
+	"FailedScheduling":          "error",
+	"FailedMount":               "error",
+	"FailedAttachVolume":        "error",
+	"Unhealthy":                 "error",
+	"Evicted":                   "error",
+	"ExceededGracePeriod":       "error",
+	"FailedPreStopHook":         "error",
+	"PreemptionByKubeScheduler": "error",
+	// Warning
+	"Killing":            "warning",
+	"Preempting":         "warning",
+	"FailedBinding":      "warning",
+	"InsufficientMemory": "warning",
+	"InsufficientCPU":    "warning",
+	"NodeNotReady":       "warning",
+	// Info
+	"Pulled":            "info",
+	"Created":           "info",
+	"Started":           "info",
+	"Scheduled":         "info",
+	"SuccessfulCreate":  "info",
+	"ScalingReplicaSet": "info",
+}
+
+// GetLifecycleMarkers returns lifecycle event markers for a resource within a time window.
+// These are used to overlay vertical lines on metrics charts.
+func (c *Client) GetLifecycleMarkers(namespace, name, kind string, since time.Duration) ([]LifecycleMarker, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return []LifecycleMarker{}, err
+	}
+
+	ctx := context.Background()
+	cutoff := time.Now().Add(-since)
+	resolvedKind := capitalizeKind(kind)
+
+	fieldSelector := fmt.Sprintf("involvedObject.name=%s,involvedObject.kind=%s", name, resolvedKind)
+
+	// For cluster-scoped resources (empty namespace), query across all namespaces
+	queryNamespace := namespace
+	if queryNamespace == "" {
+		queryNamespace = metav1.NamespaceAll
+	}
+
+	events, err := cs.CoreV1().Events(queryNamespace).List(ctx, metav1.ListOptions{
+		FieldSelector: fieldSelector,
+	})
+	if err != nil {
+		return []LifecycleMarker{}, err
+	}
+
+	var markers []LifecycleMarker
+	for _, e := range events.Items {
+		severity, ok := lifecycleReasons[e.Reason]
+		if !ok {
+			continue
+		}
+
+		// Use LastTimestamp, fall back to EventTime, then FirstTimestamp
+		eventTime := e.LastTimestamp.Time
+		if eventTime.IsZero() {
+			eventTime = e.EventTime.Time
+		}
+		if eventTime.IsZero() {
+			eventTime = e.FirstTimestamp.Time
+		}
+
+		if eventTime.Before(cutoff) {
+			continue
+		}
+
+		markers = append(markers, LifecycleMarker{
+			Timestamp: eventTime.UnixMilli(),
+			Reason:    e.Reason,
+			Severity:  severity,
+			Message:   truncateString(e.Message, 200),
+			Kind:      resolvedKind,
+		})
+	}
+
+	// Sort chronologically
+	sort.Slice(markers, func(i, j int) bool {
+		return markers[i].Timestamp < markers[j].Timestamp
+	})
+
+	if markers == nil {
+		markers = []LifecycleMarker{}
+	}
+
+	return markers, nil
+}
+
 // truncateString truncates a string to maxLen characters
 func truncateString(s string, maxLen int) string {
 	if len(s) <= maxLen {

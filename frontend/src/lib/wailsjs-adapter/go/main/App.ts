@@ -173,6 +173,7 @@ export function GetClusterRoleYaml(...args) { return AppProxy.GetClusterRoleYaml
 export function GetConfigMapData(...args) { return AppProxy.GetConfigMapData(...args); }
 export function GetConfigMapYaml(...args) { return AppProxy.GetConfigMapYaml(...args); }
 export function GetControllerMetricsHistory(...args) { return AppProxy.GetControllerMetricsHistory(...args); }
+export function GetControllerMetricsHistoryRange(...args) { return AppProxy.GetControllerMetricsHistoryRange(...args); }
 export function GetCrashLogPath(...args) { return AppProxy.GetCrashLogPath(...args); }
 export function GetCronJobYaml(...args) { return AppProxy.GetCronJobYaml(...args); }
 export function GetCurrentContext(...args) { return AppProxy.GetCurrentContext(...args); }
@@ -201,16 +202,19 @@ export function GetLeaseYaml(...args) { return AppProxy.GetLeaseYaml(...args); }
 export function GetLimitRangeYaml(...args) { return AppProxy.GetLimitRangeYaml(...args); }
 export function GetListRequestStats(...args) { return AppProxy.GetListRequestStats(...args); }
 export function GetManagedHosts(...args) { return AppProxy.GetManagedHosts(...args); }
+export function GetMetricsEventMarkers(...args) { return AppProxy.GetMetricsEventMarkers(...args); }
 export function GetMetricsRequestStats(...args) { return AppProxy.GetMetricsRequestStats(...args); }
 export function GetMutatingWebhookConfigurationYaml(...args) { return AppProxy.GetMutatingWebhookConfigurationYaml(...args); }
 export function GetMultiPodLogs(...args) { return AppProxy.GetMultiPodLogs(...args); }
 export function GetNamespaceMetricsHistory(...args) { return AppProxy.GetNamespaceMetricsHistory(...args); }
+export function GetNamespaceMetricsHistoryRange(...args) { return AppProxy.GetNamespaceMetricsHistoryRange(...args); }
 export function GetNamespaceResourceCounts(...args) { return AppProxy.GetNamespaceResourceCounts(...args); }
 export function GetNamespaceYAML(...args) { return AppProxy.GetNamespaceYAML(...args); }
 export function GetNetworkPolicyYaml(...args) { return AppProxy.GetNetworkPolicyYaml(...args); }
 export function GetNodeMetrics(...args) { return AppProxy.GetNodeMetrics(...args); }
 export function GetNodeMetricsFromPrometheus(...args) { return AppProxy.GetNodeMetricsFromPrometheus(...args); }
 export function GetNodeMetricsHistory(...args) { return AppProxy.GetNodeMetricsHistory(...args); }
+export function GetNodeMetricsHistoryRange(...args) { return AppProxy.GetNodeMetricsHistoryRange(...args); }
 export function GetNodeYaml(...args) { return AppProxy.GetNodeYaml(...args); }
 export function GetPDBYaml(...args) { return AppProxy.GetPDBYaml(...args); }
 export function GetPVCYaml(...args) { return AppProxy.GetPVCYaml(...args); }
@@ -224,6 +228,7 @@ export function GetPodLogsFromStart(...args) { return AppProxy.GetPodLogsFromSta
 export function GetPodMetrics(...args) { return AppProxy.GetPodMetrics(...args); }
 export function GetPodMetricsFromPrometheus(...args) { return AppProxy.GetPodMetricsFromPrometheus(...args); }
 export function GetPodMetricsHistory(...args) { return AppProxy.GetPodMetricsHistory(...args); }
+export function GetPodMetricsHistoryRange(...args) { return AppProxy.GetPodMetricsHistoryRange(...args); }
 export function GetPodPorts(...args) { return AppProxy.GetPodPorts(...args); }
 export function GetPodYaml(...args) { return AppProxy.GetPodYaml(...args); }
 export function GetPortForwardConfigs(...args) { return AppProxy.GetPortForwardConfigs(...args); }

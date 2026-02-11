@@ -914,6 +914,26 @@ export namespace k8s {
 		    return a;
 		}
 	}
+	export class LifecycleMarker {
+	    timestamp: number;
+	    reason: string;
+	    severity: string;
+	    message: string;
+	    kind: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LifecycleMarker(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.timestamp = source["timestamp"];
+	        this.reason = source["reason"];
+	        this.severity = source["severity"];
+	        this.message = source["message"];
+	        this.kind = source["kind"];
+	    }
+	}
 	
 	export class MultiLogEntry {
 	    // Go type: time

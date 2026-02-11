@@ -1,7 +1,21 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { ChartBarIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { DetectPrometheus, GetNamespaceMetricsHistory } from 'wailsjs/go/main/App';
+import { ChartBarIcon, ExclamationTriangleIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
+import { DetectPrometheus, GetNamespaceMetricsHistory, GetNamespaceMetricsHistoryRange, GetMetricsEventMarkers } from 'wailsjs/go/main/App';
 import { formatBytes } from '~/utils/formatting';
+
+interface EventMarker {
+    timestamp: number;
+    reason: string;
+    severity: string;
+    message: string;
+    kind: string;
+}
+
+const MARKER_COLORS: Record<string, { line: string; fill: string; text: string }> = {
+    error: { line: 'stroke-red-500', fill: 'fill-red-500', text: 'text-red-400' },
+    warning: { line: 'stroke-amber-500', fill: 'fill-amber-500', text: 'text-amber-400' },
+    info: { line: 'stroke-gray-500', fill: 'fill-gray-500', text: 'text-gray-400' },
+};
 
 // Format time for display
 const formatTime = (timestamp: string, duration: string) => {
@@ -16,11 +30,15 @@ const formatTime = (timestamp: string, duration: string) => {
 };
 
 // Interactive line chart component
-const MetricsChart = React.memo(({ data, color, label, formatValue, duration }: { data: any; color: string; label: string; formatValue: (value: number) => string; duration: string }) => {
+const MetricsChart = React.memo(({ data, color, label, formatValue, duration, markers, onZoomSelect }: { data: any; color: string; label: string; formatValue: (value: number) => string; duration: string; markers?: EventMarker[]; onZoomSelect?: (startMs: number, endMs: number) => void }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [showMarkers, setShowMarkers] = useState(true);
     const [containerWidth, setContainerWidth] = useState(500);
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStartIndex, setDragStartIndex] = useState<number | null>(null);
+    const [dragEndIndex, setDragEndIndex] = useState<number | null>(null);
 
     // Track container size for responsive width
     useEffect(() => {
@@ -77,8 +95,21 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }: 
             x: paddingLeft + (i / (data.length - 1)) * chartWidth
         }));
 
-        return { points, linePath, areaPath, yTicks, xTicks, currentValue: values[values.length - 1] };
-    }, [data, chartWidth, chartHeight]);
+        const markerPositions = (markers || []).map(m => {
+            let closestIdx = 0;
+            let closestDist = Math.abs(Number(timestamps[0]) - m.timestamp);
+            for (let i = 1; i < timestamps.length; i++) {
+                const dist = Math.abs(Number(timestamps[i]) - m.timestamp);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closestIdx = i;
+                }
+            }
+            return { ...m, x: points[closestIdx].x, dataIndex: closestIdx };
+        });
+
+        return { points, linePath, areaPath, yTicks, xTicks, currentValue: values[values.length - 1], markerPositions };
+    }, [data, chartWidth, chartHeight, markers]);
 
     if (!chartData) {
         return (
@@ -88,10 +119,14 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }: 
         );
     }
 
-    const { points, linePath, areaPath, yTicks, xTicks, currentValue } = chartData;
+    const { points, linePath, areaPath, yTicks, xTicks, currentValue, markerPositions } = chartData;
 
-    const handleMouseMove = useCallback((e: any) => {
-        if (!containerRef.current) return;
+    const hoveredMarker = hoveredIndex !== null && showMarkers
+        ? markerPositions.find((m: any) => Math.abs(m.dataIndex - hoveredIndex) <= 1)
+        : null;
+
+    const getDataIndex = useCallback((e: any): number | null => {
+        if (!containerRef.current || !data || data.length === 0) return null;
         const rect = containerRef.current.getBoundingClientRect();
         const zoom = parseFloat(document.body.style.zoom) || 1;
         const mouseX = e.clientX / zoom;
@@ -110,28 +145,94 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }: 
         if (svgX >= paddingLeft && svgX <= width - paddingRight) {
             const chartX = svgX - paddingLeft;
             const index = Math.round((chartX / chartWidth) * (data.length - 1));
-            setHoveredIndex(Math.max(0, Math.min(data.length - 1, index)));
-            setMousePos({ x: mouseX - rect.left, y: mouseY - rect.top });
+            return Math.max(0, Math.min(data.length - 1, index));
+        }
+        return null;
+    }, [data?.length, chartWidth, width, height]);
+
+    const handleMouseMove = useCallback((e: any) => {
+        const index = getDataIndex(e);
+        if (isDragging) {
+            if (index !== null) setDragEndIndex(index);
+            return;
+        }
+        if (index !== null) {
+            const rect = containerRef.current!.getBoundingClientRect();
+            const zoom = parseFloat(document.body.style.zoom) || 1;
+            setHoveredIndex(index);
+            setMousePos({ x: e.clientX / zoom - rect.left, y: e.clientY / zoom - rect.top });
         } else {
             setHoveredIndex(null);
         }
-    }, [data.length, chartWidth]);
+    }, [getDataIndex, isDragging]);
+
+    const handleMouseDown = useCallback((e: any) => {
+        if (!onZoomSelect) return;
+        const index = getDataIndex(e);
+        if (index !== null) {
+            setIsDragging(true);
+            setDragStartIndex(index);
+            setDragEndIndex(index);
+            setHoveredIndex(null);
+        }
+    }, [getDataIndex, onZoomSelect]);
+
+    const handleMouseUp = useCallback(() => {
+        if (!isDragging || dragStartIndex == null || dragEndIndex == null || !data || !onZoomSelect) {
+            setIsDragging(false);
+            setDragStartIndex(null);
+            setDragEndIndex(null);
+            return;
+        }
+        const minIdx = Math.min(dragStartIndex, dragEndIndex);
+        const maxIdx = Math.max(dragStartIndex, dragEndIndex);
+        setIsDragging(false);
+        setDragStartIndex(null);
+        setDragEndIndex(null);
+        if (maxIdx - minIdx >= 2) {
+            const startMs = Number(data[minIdx].timestamp);
+            const endMs = Number(data[maxIdx].timestamp);
+            onZoomSelect(startMs, endMs);
+        }
+    }, [isDragging, dragStartIndex, dragEndIndex, data, onZoomSelect]);
+
+    const handleMouseLeave = useCallback(() => {
+        setHoveredIndex(null);
+        if (isDragging) {
+            setIsDragging(false);
+            setDragStartIndex(null);
+            setDragEndIndex(null);
+        }
+    }, [isDragging]);
 
     const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
 
     return (
         <div className="relative">
             <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-300">{label}</span>
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-300">{label}</span>
+                    {markerPositions.length > 0 && (
+                        <button
+                            onClick={() => setShowMarkers(!showMarkers)}
+                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 text-xs ${!showMarkers ? 'opacity-40' : ''}`}
+                            title={showMarkers ? 'Hide event markers' : 'Show event markers'}
+                        >
+                            <span className={`w-1.5 h-1.5 rotate-45 ${showMarkers ? 'bg-amber-500' : 'bg-gray-500'}`}></span>
+                            <span className={showMarkers ? 'text-amber-400' : 'text-gray-500'}>Events</span>
+                            <span className={`text-[10px] px-1 rounded-full ${showMarkers ? 'bg-amber-500/20 text-amber-400' : 'bg-gray-700 text-gray-500'}`}>{markerPositions.length}</span>
+                        </button>
+                    )}
+                </div>
                 <span className="text-sm text-gray-400">
                     Current: <span className={`font-medium ${color.replace('stroke-', 'text-')}`}>
                         {formatValue(currentValue)}
                     </span>
                 </span>
             </div>
-            <div ref={containerRef} className="h-56 bg-background rounded border border-border relative"
-                onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)}>
-                <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet" className="w-full h-full">
+            <div ref={containerRef} className={`h-56 bg-background rounded border border-border relative ${onZoomSelect ? 'cursor-crosshair' : ''}`}
+                onMouseMove={handleMouseMove} onMouseDown={handleMouseDown} onMouseUp={handleMouseUp} onMouseLeave={handleMouseLeave}>
+                <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet" className="w-full h-full select-none">
                     {yTicks.map((tick: any, i: number) => (
                         <g key={i}>
                             <line x1={paddingLeft} y1={tick.y} x2={width - paddingRight} y2={tick.y}
@@ -150,7 +251,32 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }: 
                     <line x1={paddingLeft} y1={paddingTop + chartHeight} x2={width - paddingRight} y2={paddingTop + chartHeight} className="stroke-gray-600" strokeWidth="1" />
                     <path d={areaPath} className={`${color.replace('stroke-', 'fill-')} opacity-20`} />
                     <path d={linePath} fill="none" className={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    {hoveredPoint && (
+
+                    {/* Event markers */}
+                    {showMarkers && markerPositions.map((m: any, i: number) => {
+                        const mc = MARKER_COLORS[m.severity] || MARKER_COLORS.info;
+                        return (
+                            <g key={i}>
+                                <line x1={m.x} y1={paddingTop} x2={m.x} y2={paddingTop + chartHeight}
+                                    className={mc.line} strokeWidth="1" strokeDasharray="3,3" opacity="0.7" />
+                                <polygon
+                                    points={`${m.x},${paddingTop - 1} ${m.x + 4},${paddingTop + 4} ${m.x},${paddingTop + 9} ${m.x - 4},${paddingTop + 4}`}
+                                    className={mc.fill} opacity="0.9" />
+                            </g>
+                        );
+                    })}
+
+                    {/* Drag selection overlay */}
+                    {isDragging && dragStartIndex != null && dragEndIndex != null && points.length > 0 && (() => {
+                        const x1 = points[Math.min(dragStartIndex, dragEndIndex)]?.x ?? 0;
+                        const x2 = points[Math.max(dragStartIndex, dragEndIndex)]?.x ?? 0;
+                        return (
+                            <rect x={Math.min(x1, x2)} y={paddingTop} width={Math.abs(x2 - x1)} height={chartHeight}
+                                className="fill-blue-500" opacity={0.15} />
+                        );
+                    })()}
+
+                    {!isDragging && hoveredPoint && (
                         <>
                             <line x1={hoveredPoint.x} y1={paddingTop} x2={hoveredPoint.x} y2={paddingTop + chartHeight}
                                 className="stroke-gray-400" strokeWidth="1" strokeDasharray="4,2" />
@@ -159,11 +285,19 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration }: 
                         </>
                     )}
                 </svg>
-                {hoveredPoint && (
+                {!isDragging && hoveredPoint && (
                     <div className="absolute z-10 pointer-events-none bg-surface border border-border rounded-lg shadow-lg px-3 py-2"
                         style={{ left: Math.min(mousePos.x + 10, (containerRef.current?.offsetWidth ?? 0) - 150 || 0), top: mousePos.y - 60 }}>
                         <div className="text-xs text-gray-400 mb-1">{new Date(hoveredPoint.timestamp).toLocaleString()}</div>
                         <div className={`text-sm font-medium ${color.replace('stroke-', 'text-')}`}>{formatValue(hoveredPoint.value)}</div>
+                        {hoveredMarker && (
+                            <div className="border-t border-border mt-1 pt-1">
+                                <div className={`text-xs font-medium ${MARKER_COLORS[hoveredMarker.severity]?.text || 'text-gray-400'}`}>
+                                    {hoveredMarker.reason}
+                                </div>
+                                <div className="text-[10px] text-gray-500 max-w-[200px] truncate">{hoveredMarker.message}</div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -527,6 +661,8 @@ export default function NamespaceMetricsTab({ namespace, isStale }: { namespace:
     const [error, setError] = useState<string | null>(null);
     const [metricsData, setMetricsData] = useState<any>(null);
     const [duration, setDuration] = useState('1h');
+    const [eventMarkers, setEventMarkers] = useState<EventMarker[]>([]);
+    const [zoomRange, setZoomRange] = useState<{ startMs: number; endMs: number } | null>(null);
     const requestIdRef = useRef(0);
 
     const namespaceName = namespace.metadata?.name;
@@ -555,14 +691,24 @@ export default function NamespaceMetricsTab({ namespace, isStale }: { namespace:
             setLoading(true);
             setError(null);
             try {
-                const data = await GetNamespaceMetricsHistory(
-                    requestIdString,
-                    prometheusInfo.namespace,
-                    prometheusInfo.service,
-                    prometheusInfo.port,
-                    namespaceName,
-                    duration
-                );
+                const data = zoomRange
+                    ? await GetNamespaceMetricsHistoryRange(
+                        requestIdString,
+                        prometheusInfo.namespace,
+                        prometheusInfo.service,
+                        prometheusInfo.port,
+                        namespaceName,
+                        zoomRange.startMs,
+                        zoomRange.endMs
+                    )
+                    : await GetNamespaceMetricsHistory(
+                        requestIdString,
+                        prometheusInfo.namespace,
+                        prometheusInfo.service,
+                        prometheusInfo.port,
+                        namespaceName,
+                        duration
+                    );
                 if (currentRequestId === requestIdRef.current) {
                     setMetricsData(data);
                     setLoading(false);
@@ -576,7 +722,39 @@ export default function NamespaceMetricsTab({ namespace, isStale }: { namespace:
         };
 
         fetchMetrics();
-    }, [prometheusInfo, namespaceName, duration, isStale]);
+    }, [prometheusInfo, namespaceName, duration, zoomRange, isStale]);
+
+    // Fetch event markers
+    useEffect(() => {
+        if (!namespaceName || isStale) return;
+        GetMetricsEventMarkers('', namespaceName, 'namespace', duration)
+            .then((m: EventMarker[]) => setEventMarkers(m || []))
+            .catch(() => setEventMarkers([]));
+    }, [namespaceName, duration, isStale]);
+
+    const handleZoomSelect = useCallback((startMs: number, endMs: number) => {
+        setZoomRange({ startMs, endMs });
+    }, []);
+
+    const handleDurationChange = useCallback((d: string) => {
+        setDuration(d);
+        setZoomRange(null);
+    }, []);
+
+    const effectiveDuration = useMemo(() => {
+        if (!zoomRange) return duration;
+        const rangeHours = (zoomRange.endMs - zoomRange.startMs) / 3_600_000;
+        if (rangeHours <= 1) return '1h';
+        if (rangeHours <= 6) return '6h';
+        if (rangeHours <= 24) return '24h';
+        if (rangeHours <= 168) return '7d';
+        return '30d';
+    }, [zoomRange, duration]);
+
+    const filteredMarkers = useMemo(() => {
+        if (!zoomRange) return eventMarkers;
+        return eventMarkers.filter(m => m.timestamp >= zoomRange.startMs && m.timestamp <= zoomRange.endMs);
+    }, [eventMarkers, zoomRange]);
 
     const formatCPU = (value: number) => {
         if (value == null || isNaN(value)) return '-';
@@ -623,12 +801,18 @@ export default function NamespaceMetricsTab({ namespace, isStale }: { namespace:
                 <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1 bg-surface-light rounded-md p-0.5">
                         {DURATIONS.map((d: any) => (
-                            <button key={d.value} onClick={() => setDuration(d.value)}
-                                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${duration === d.value ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}>
+                            <button key={d.value} onClick={() => handleDurationChange(d.value)}
+                                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${duration === d.value && !zoomRange ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}>
                                 {d.label}
                             </button>
                         ))}
                     </div>
+                    {zoomRange && (
+                        <button onClick={() => setZoomRange(null)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
+                            <ArrowUturnLeftIcon className="w-3 h-3" /> Reset zoom
+                        </button>
+                    )}
                     {loading && <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />}
                 </div>
                 <div className="ml-auto text-xs text-gray-500">
@@ -654,8 +838,8 @@ export default function NamespaceMetricsTab({ namespace, isStale }: { namespace:
                 {metricsData && (
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <MetricsChart data={metricsData.cpu} color="stroke-blue-500" label="CPU Usage (Total)" formatValue={formatCPU} duration={duration} />
-                            <MetricsChart data={metricsData.memory} color="stroke-purple-500" label="Memory Usage (Total)" formatValue={formatBytes} duration={duration} />
+                            <MetricsChart data={metricsData.cpu} color="stroke-blue-500" label="CPU Usage (Total)" formatValue={formatCPU} duration={effectiveDuration} markers={filteredMarkers} onZoomSelect={handleZoomSelect} />
+                            <MetricsChart data={metricsData.memory} color="stroke-purple-500" label="Memory Usage (Total)" formatValue={formatBytes} duration={effectiveDuration} markers={filteredMarkers} onZoomSelect={handleZoomSelect} />
                         </div>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <NetworkChart data={metricsData.network} duration={duration} />

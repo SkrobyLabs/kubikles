@@ -194,6 +194,8 @@ export function GetConfigMapYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetControllerMetricsHistory(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string,arg7:string,arg8:string):Promise<k8s.ControllerMetricsHistory>;
 
+export function GetControllerMetricsHistoryRange(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string,arg7:string,arg8:number,arg9:number):Promise<k8s.ControllerMetricsHistory>;
+
 export function GetCrashLogPath():Promise<string>;
 
 export function GetCronJobYaml(arg1:string,arg2:string):Promise<string>;
@@ -250,6 +252,8 @@ export function GetListRequestStats():Promise<main.ListRequestStats>;
 
 export function GetManagedHosts():Promise<Array<string>>;
 
+export function GetMetricsEventMarkers(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Array<k8s.LifecycleMarker>>;
+
 export function GetMetricsRequestStats():Promise<main.MetricsRequestStats>;
 
 export function GetMultiPodLogs(arg1:string,arg2:Record<string, string>,arg3:Array<string>,arg4:string,arg5:number,arg6:number):Promise<Array<k8s.MultiLogEntry>>;
@@ -257,6 +261,8 @@ export function GetMultiPodLogs(arg1:string,arg2:Record<string, string>,arg3:Arr
 export function GetMutatingWebhookConfigurationYaml(arg1:string):Promise<string>;
 
 export function GetNamespaceMetricsHistory(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string):Promise<k8s.NamespaceMetricsHistory>;
+
+export function GetNamespaceMetricsHistoryRange(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:number,arg7:number):Promise<k8s.NamespaceMetricsHistory>;
 
 export function GetNamespaceResourceCounts(arg1:string):Promise<k8s.NamespaceResourceCounts>;
 
@@ -269,6 +275,8 @@ export function GetNodeMetrics():Promise<k8s.NodeMetricsResult>;
 export function GetNodeMetricsFromPrometheus(arg1:string,arg2:string,arg3:number):Promise<k8s.NodeMetricsResult>;
 
 export function GetNodeMetricsHistory(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string):Promise<k8s.NodeMetricsHistory>;
+
+export function GetNodeMetricsHistoryRange(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:number,arg7:number):Promise<k8s.NodeMetricsHistory>;
 
 export function GetNodeYaml(arg1:string):Promise<string>;
 
@@ -295,6 +303,8 @@ export function GetPodMetrics():Promise<k8s.PodMetricsResult>;
 export function GetPodMetricsFromPrometheus(arg1:string,arg2:string,arg3:number):Promise<k8s.PodMetricsResult>;
 
 export function GetPodMetricsHistory(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string,arg7:string,arg8:string):Promise<k8s.PodMetricsHistory>;
+
+export function GetPodMetricsHistoryRange(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string,arg7:string,arg8:number,arg9:number):Promise<k8s.PodMetricsHistory>;
 
 export function GetPodPorts(arg1:string,arg2:string):Promise<Array<number>>;
 

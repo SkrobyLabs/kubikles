@@ -370,6 +370,10 @@ export function GetControllerMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6, 
   return window['go']['main']['App']['GetControllerMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
 
+export function GetControllerMetricsHistoryRange(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
+  return window['go']['main']['App']['GetControllerMetricsHistoryRange'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+}
+
 export function GetCrashLogPath() {
   return window['go']['main']['App']['GetCrashLogPath']();
 }
@@ -482,6 +486,10 @@ export function GetManagedHosts() {
   return window['go']['main']['App']['GetManagedHosts']();
 }
 
+export function GetMetricsEventMarkers(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GetMetricsEventMarkers'](arg1, arg2, arg3, arg4);
+}
+
 export function GetMetricsRequestStats() {
   return window['go']['main']['App']['GetMetricsRequestStats']();
 }
@@ -496,6 +504,10 @@ export function GetMutatingWebhookConfigurationYaml(arg1) {
 
 export function GetNamespaceMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['GetNamespaceMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function GetNamespaceMetricsHistoryRange(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetNamespaceMetricsHistoryRange'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function GetNamespaceResourceCounts(arg1) {
@@ -520,6 +532,10 @@ export function GetNodeMetricsFromPrometheus(arg1, arg2, arg3) {
 
 export function GetNodeMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['GetNodeMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function GetNodeMetricsHistoryRange(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetNodeMetricsHistoryRange'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function GetNodeYaml(arg1) {
@@ -572,6 +588,10 @@ export function GetPodMetricsFromPrometheus(arg1, arg2, arg3) {
 
 export function GetPodMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
   return window['go']['main']['App']['GetPodMetricsHistory'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+}
+
+export function GetPodMetricsHistoryRange(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
+  return window['go']['main']['App']['GetPodMetricsHistoryRange'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 }
 
 export function GetPodPorts(arg1, arg2) {

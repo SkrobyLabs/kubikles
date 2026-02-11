@@ -172,6 +172,26 @@ func (a *App) TestPrometheusEndpoint(namespace, service string, port int) error 
 	})
 }
 
+// parseMetricsDuration converts a duration string to time.Duration for metrics queries
+func parseMetricsDuration(duration string) time.Duration {
+	switch duration {
+	case "1h":
+		return time.Hour
+	case "6h":
+		return 6 * time.Hour
+	case "24h":
+		return 24 * time.Hour
+	case "7d":
+		return 7 * 24 * time.Hour
+	case "30d":
+		return 30 * 24 * time.Hour
+	case "all":
+		return 90 * 24 * time.Hour
+	default:
+		return time.Hour
+	}
+}
+
 // GetPodMetricsHistory retrieves historical metrics for a pod from Prometheus
 func (a *App) GetPodMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, pod, container, duration string) (*k8s.PodMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
@@ -180,24 +200,9 @@ func (a *App) GetPodMetricsHistory(requestId, prometheusNamespace, prometheusSer
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 
-	// Parse duration
-	var dur time.Duration
-	switch duration {
-	case "1h":
-		dur = time.Hour
-	case "6h":
-		dur = 6 * time.Hour
-	case "24h":
-		dur = 24 * time.Hour
-	case "7d":
-		dur = 7 * 24 * time.Hour
-	case "30d":
-		dur = 30 * 24 * time.Hour
-	case "all":
-		dur = 90 * 24 * time.Hour // 90 days max for "all"
-	default:
-		dur = time.Hour
-	}
+	dur := parseMetricsDuration(duration)
+	end := time.Now()
+	start := end.Add(-dur)
 
 	info := &k8s.PrometheusInfo{
 		Available: true,
@@ -211,7 +216,7 @@ func (a *App) GetPodMetricsHistory(requestId, prometheusNamespace, prometheusSer
 	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
 
 	// Target ~150 data points for readable charts (chart width ~320px, line width 2px)
-	return a.k8sClient.GetPodMetricsHistoryWithContext(ctx, currentContext, info, namespace, pod, container, dur, 150)
+	return a.k8sClient.GetPodMetricsHistoryWithContext(ctx, currentContext, info, namespace, pod, container, start, end, 150)
 }
 
 // GetControllerMetricsHistory retrieves historical metrics for a controller (deployment, statefulset, etc.)
@@ -222,24 +227,9 @@ func (a *App) GetControllerMetricsHistory(requestId, prometheusNamespace, promet
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 
-	// Parse duration
-	var dur time.Duration
-	switch duration {
-	case "1h":
-		dur = time.Hour
-	case "6h":
-		dur = 6 * time.Hour
-	case "24h":
-		dur = 24 * time.Hour
-	case "7d":
-		dur = 7 * 24 * time.Hour
-	case "30d":
-		dur = 30 * 24 * time.Hour
-	case "all":
-		dur = 90 * 24 * time.Hour
-	default:
-		dur = time.Hour
-	}
+	dur := parseMetricsDuration(duration)
+	end := time.Now()
+	start := end.Add(-dur)
 
 	info := &k8s.PrometheusInfo{
 		Available: true,
@@ -252,7 +242,7 @@ func (a *App) GetControllerMetricsHistory(requestId, prometheusNamespace, promet
 	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
 	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
 
-	return a.k8sClient.GetControllerMetricsHistoryWithContext(ctx, currentContext, info, namespace, name, controllerType, dur, 150)
+	return a.k8sClient.GetControllerMetricsHistoryWithContext(ctx, currentContext, info, namespace, name, controllerType, start, end, 150)
 }
 
 // GetNodeMetricsHistory retrieves historical metrics for a node
@@ -263,24 +253,9 @@ func (a *App) GetNodeMetricsHistory(requestId, prometheusNamespace, prometheusSe
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 
-	// Parse duration
-	var dur time.Duration
-	switch duration {
-	case "1h":
-		dur = time.Hour
-	case "6h":
-		dur = 6 * time.Hour
-	case "24h":
-		dur = 24 * time.Hour
-	case "7d":
-		dur = 7 * 24 * time.Hour
-	case "30d":
-		dur = 30 * 24 * time.Hour
-	case "all":
-		dur = 90 * 24 * time.Hour
-	default:
-		dur = time.Hour
-	}
+	dur := parseMetricsDuration(duration)
+	end := time.Now()
+	start := end.Add(-dur)
 
 	info := &k8s.PrometheusInfo{
 		Available: true,
@@ -293,7 +268,7 @@ func (a *App) GetNodeMetricsHistory(requestId, prometheusNamespace, prometheusSe
 	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
 	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
 
-	return a.k8sClient.GetNodeMetricsHistoryWithContext(ctx, currentContext, info, nodeName, dur, 150)
+	return a.k8sClient.GetNodeMetricsHistoryWithContext(ctx, currentContext, info, nodeName, start, end, 150)
 }
 
 // GetNamespaceMetricsHistory retrieves historical metrics for a namespace
@@ -304,24 +279,12 @@ func (a *App) GetNamespaceMetricsHistory(requestId, prometheusNamespace, prometh
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 
-	// Parse duration
-	var dur time.Duration
-	switch duration {
-	case "1h":
-		dur = time.Hour
-	case "6h":
-		dur = 6 * time.Hour
-	case "24h":
-		dur = 24 * time.Hour
-	case "7d":
-		dur = 7 * 24 * time.Hour
-	case "30d":
-		dur = 30 * 24 * time.Hour
-	case "all":
-		dur = 365 * 24 * time.Hour
-	default:
-		dur = time.Hour
+	dur := parseMetricsDuration(duration)
+	if duration == "all" {
+		dur = 365 * 24 * time.Hour // Namespace uses 365d for "all"
 	}
+	end := time.Now()
+	start := end.Add(-dur)
 
 	info := &k8s.PrometheusInfo{
 		Available: true,
@@ -334,7 +297,103 @@ func (a *App) GetNamespaceMetricsHistory(requestId, prometheusNamespace, prometh
 	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
 	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
 
-	return a.k8sClient.GetNamespaceMetricsHistoryWithContext(ctx, currentContext, info, namespace, dur, 150)
+	return a.k8sClient.GetNamespaceMetricsHistoryWithContext(ctx, currentContext, info, namespace, start, end, 150)
+}
+
+// GetPodMetricsHistoryRange retrieves historical pod metrics for an explicit time range (zoom)
+func (a *App) GetPodMetricsHistoryRange(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, pod, container string, startMs, endMs int64) (*k8s.PodMetricsHistory, error) {
+	currentContext := a.GetCurrentContext()
+	debug.LogPerformance("GetPodMetricsHistoryRange called", map[string]interface{}{"context": currentContext, "namespace": namespace, "pod": pod, "startMs": startMs, "endMs": endMs, "requestId": requestId})
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+
+	start := time.UnixMilli(startMs)
+	end := time.UnixMilli(endMs)
+
+	info := &k8s.PrometheusInfo{
+		Available: true,
+		Namespace: prometheusNamespace,
+		Service:   prometheusService,
+		Port:      prometheusPort,
+	}
+
+	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
+
+	return a.k8sClient.GetPodMetricsHistoryWithContext(ctx, currentContext, info, namespace, pod, container, start, end, 150)
+}
+
+// GetControllerMetricsHistoryRange retrieves historical controller metrics for an explicit time range (zoom)
+func (a *App) GetControllerMetricsHistoryRange(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, name, controllerType string, startMs, endMs int64) (*k8s.ControllerMetricsHistory, error) {
+	currentContext := a.GetCurrentContext()
+	debug.LogPerformance("GetControllerMetricsHistoryRange called", map[string]interface{}{"context": currentContext, "namespace": namespace, "name": name, "startMs": startMs, "endMs": endMs, "requestId": requestId})
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+
+	start := time.UnixMilli(startMs)
+	end := time.UnixMilli(endMs)
+
+	info := &k8s.PrometheusInfo{
+		Available: true,
+		Namespace: prometheusNamespace,
+		Service:   prometheusService,
+		Port:      prometheusPort,
+	}
+
+	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
+
+	return a.k8sClient.GetControllerMetricsHistoryWithContext(ctx, currentContext, info, namespace, name, controllerType, start, end, 150)
+}
+
+// GetNodeMetricsHistoryRange retrieves historical node metrics for an explicit time range (zoom)
+func (a *App) GetNodeMetricsHistoryRange(requestId, prometheusNamespace, prometheusService string, prometheusPort int, nodeName string, startMs, endMs int64) (*k8s.NodeMetricsHistory, error) {
+	currentContext := a.GetCurrentContext()
+	debug.LogPerformance("GetNodeMetricsHistoryRange called", map[string]interface{}{"context": currentContext, "node": nodeName, "startMs": startMs, "endMs": endMs, "requestId": requestId})
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+
+	start := time.UnixMilli(startMs)
+	end := time.UnixMilli(endMs)
+
+	info := &k8s.PrometheusInfo{
+		Available: true,
+		Namespace: prometheusNamespace,
+		Service:   prometheusService,
+		Port:      prometheusPort,
+	}
+
+	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
+
+	return a.k8sClient.GetNodeMetricsHistoryWithContext(ctx, currentContext, info, nodeName, start, end, 150)
+}
+
+// GetNamespaceMetricsHistoryRange retrieves historical namespace metrics for an explicit time range (zoom)
+func (a *App) GetNamespaceMetricsHistoryRange(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace string, startMs, endMs int64) (*k8s.NamespaceMetricsHistory, error) {
+	currentContext := a.GetCurrentContext()
+	debug.LogPerformance("GetNamespaceMetricsHistoryRange called", map[string]interface{}{"context": currentContext, "namespace": namespace, "startMs": startMs, "endMs": endMs, "requestId": requestId})
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+
+	start := time.UnixMilli(startMs)
+	end := time.UnixMilli(endMs)
+
+	info := &k8s.PrometheusInfo{
+		Available: true,
+		Namespace: prometheusNamespace,
+		Service:   prometheusService,
+		Port:      prometheusPort,
+	}
+
+	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
+
+	return a.k8sClient.GetNamespaceMetricsHistoryWithContext(ctx, currentContext, info, namespace, start, end, 150)
 }
 
 // CancelMetricsRequest cancels an in-flight metrics request

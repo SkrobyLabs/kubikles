@@ -6933,6 +6933,15 @@ type MetricsDataPoint struct {
 	Value     float64 `json:"value"`
 }
 
+// LifecycleMarker represents a K8s lifecycle event to overlay on metrics charts
+type LifecycleMarker struct {
+	Timestamp int64  `json:"timestamp"` // Unix ms (matches MetricsDataPoint)
+	Reason    string `json:"reason"`    // "OOMKilling", "BackOff", etc.
+	Severity  string `json:"severity"`  // "error" | "warning" | "info"
+	Message   string `json:"message"`
+	Kind      string `json:"kind"` // "Pod", "Deployment", etc.
+}
+
 // ContainerMetricsHistory holds historical metrics for a container
 type ContainerMetricsHistory struct {
 	Container string             `json:"container"`
@@ -7341,21 +7350,13 @@ func (c *Client) QueryPrometheusRangeWithContext(ctx context.Context, contextNam
 	return &result, nil
 }
 
-// GetPodMetricsHistoryWithContext retrieves historical metrics with cancellation support
-func (c *Client) GetPodMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, namespace, pod, container string, duration time.Duration, maxDataPoints int) (*PodMetricsHistory, error) {
-	end := time.Now()
-	start := end.Add(-duration)
-
-	// Calculate step based on duration and target data points
-	// This ensures the chart doesn't become too dense regardless of time range
+// calculateMetricsStep computes a rounded Prometheus step interval for the given time range and target data points.
+func calculateMetricsStep(start, end time.Time, maxDataPoints int) time.Duration {
+	duration := end.Sub(start)
 	step := duration / time.Duration(maxDataPoints)
-
-	// Enforce minimum step of 15 seconds (Prometheus scrape interval is typically 15-30s)
 	if step < 15*time.Second {
 		step = 15 * time.Second
 	}
-
-	// Round step to nice intervals for cleaner data
 	switch {
 	case step < 30*time.Second:
 		step = 15 * time.Second
@@ -7372,6 +7373,12 @@ func (c *Client) GetPodMetricsHistoryWithContext(ctx context.Context, contextNam
 	default:
 		step = time.Hour
 	}
+	return step
+}
+
+// GetPodMetricsHistoryWithContext retrieves historical metrics with cancellation support
+func (c *Client) GetPodMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, namespace, pod, container string, start, end time.Time, maxDataPoints int) (*PodMetricsHistory, error) {
+	step := calculateMetricsStep(start, end, maxDataPoints)
 
 	result := &PodMetricsHistory{
 		Namespace:  namespace,
@@ -7594,33 +7601,8 @@ type NetworkMetrics struct {
 
 // GetControllerMetricsHistory retrieves historical metrics for a controller
 // GetControllerMetricsHistoryWithContext retrieves historical metrics with cancellation support
-func (c *Client) GetControllerMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, namespace, name, controllerType string, duration time.Duration, maxDataPoints int) (*ControllerMetricsHistory, error) {
-	end := time.Now()
-	start := end.Add(-duration)
-
-	// Calculate step based on duration and target data points
-	step := duration / time.Duration(maxDataPoints)
-	if step < 15*time.Second {
-		step = 15 * time.Second
-	}
-
-	// Round step to nice intervals
-	switch {
-	case step < 30*time.Second:
-		step = 15 * time.Second
-	case step < time.Minute:
-		step = 30 * time.Second
-	case step < 5*time.Minute:
-		step = time.Minute
-	case step < 15*time.Minute:
-		step = 5 * time.Minute
-	case step < 30*time.Minute:
-		step = 15 * time.Minute
-	case step < time.Hour:
-		step = 30 * time.Minute
-	default:
-		step = time.Hour
-	}
+func (c *Client) GetControllerMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, namespace, name, controllerType string, start, end time.Time, maxDataPoints int) (*ControllerMetricsHistory, error) {
+	step := calculateMetricsStep(start, end, maxDataPoints)
 
 	result := &ControllerMetricsHistory{
 		Namespace:      namespace,
@@ -7806,33 +7788,8 @@ func (c *Client) GetControllerMetricsHistoryWithContext(ctx context.Context, con
 }
 
 // GetNamespaceMetricsHistoryWithContext retrieves historical metrics for a namespace with cancellation support
-func (c *Client) GetNamespaceMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, namespace string, duration time.Duration, maxDataPoints int) (*NamespaceMetricsHistory, error) {
-	end := time.Now()
-	start := end.Add(-duration)
-
-	// Calculate step based on duration and target data points
-	step := duration / time.Duration(maxDataPoints)
-	if step < 15*time.Second {
-		step = 15 * time.Second
-	}
-
-	// Round step to nice intervals
-	switch {
-	case step < 30*time.Second:
-		step = 15 * time.Second
-	case step < time.Minute:
-		step = 30 * time.Second
-	case step < 5*time.Minute:
-		step = time.Minute
-	case step < 15*time.Minute:
-		step = 5 * time.Minute
-	case step < 30*time.Minute:
-		step = 15 * time.Minute
-	case step < time.Hour:
-		step = 30 * time.Minute
-	default:
-		step = time.Hour
-	}
+func (c *Client) GetNamespaceMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, namespace string, start, end time.Time, maxDataPoints int) (*NamespaceMetricsHistory, error) {
+	step := calculateMetricsStep(start, end, maxDataPoints)
 
 	result := &NamespaceMetricsHistory{
 		Namespace: namespace,
@@ -7960,32 +7917,8 @@ type NodePodMetrics struct {
 
 // GetNodeMetricsHistory retrieves historical metrics for a specific node
 // GetNodeMetricsHistoryWithContext retrieves historical metrics with cancellation support
-func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, nodeName string, duration time.Duration, maxDataPoints int) (*NodeMetricsHistory, error) {
-	end := time.Now()
-	start := end.Add(-duration)
-
-	// Calculate step
-	step := duration / time.Duration(maxDataPoints)
-	if step < 15*time.Second {
-		step = 15 * time.Second
-	}
-
-	switch {
-	case step < 30*time.Second:
-		step = 15 * time.Second
-	case step < time.Minute:
-		step = 30 * time.Second
-	case step < 5*time.Minute:
-		step = time.Minute
-	case step < 15*time.Minute:
-		step = 5 * time.Minute
-	case step < 30*time.Minute:
-		step = 15 * time.Minute
-	case step < time.Hour:
-		step = 30 * time.Minute
-	default:
-		step = time.Hour
-	}
+func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextName string, info *PrometheusInfo, nodeName string, start, end time.Time, maxDataPoints int) (*NodeMetricsHistory, error) {
+	step := calculateMetricsStep(start, end, maxDataPoints)
 
 	result := &NodeMetricsHistory{
 		NodeName: nodeName,

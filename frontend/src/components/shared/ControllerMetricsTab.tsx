@@ -1,7 +1,21 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { ChartBarIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { DetectPrometheus, GetControllerMetricsHistory } from 'wailsjs/go/main/App';
+import { ChartBarIcon, ExclamationTriangleIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
+import { DetectPrometheus, GetControllerMetricsHistory, GetControllerMetricsHistoryRange, GetMetricsEventMarkers } from 'wailsjs/go/main/App';
 import { formatBytes } from '~/utils/formatting';
+
+interface EventMarker {
+    timestamp: number;
+    reason: string;
+    severity: string;
+    message: string;
+    kind: string;
+}
+
+const MARKER_COLORS: Record<string, { line: string; fill: string; text: string }> = {
+    error: { line: 'stroke-red-500', fill: 'fill-red-500', text: 'text-red-400' },
+    warning: { line: 'stroke-amber-500', fill: 'fill-amber-500', text: 'text-amber-400' },
+    info: { line: 'stroke-gray-500', fill: 'fill-gray-500', text: 'text-gray-400' },
+};
 
 interface MetricPoint {
     value: number;
@@ -23,6 +37,8 @@ interface MetricsChartProps {
     duration: string;
     request?: MetricPoint[];
     limit?: MetricPoint[];
+    markers?: EventMarker[];
+    onZoomSelect?: (startMs: number, endMs: number) => void;
 }
 
 interface CountChartProps {
@@ -74,13 +90,17 @@ const formatTime = (timestamp: string, duration: string) => {
 
 // Interactive line chart component with toggleable request/limit lines
 // Memoized to prevent re-renders when parent updates with same props
-const MetricsChart = React.memo(({ data, color, label, formatValue, duration, request, limit }: MetricsChartProps) => {
+const MetricsChart = React.memo(({ data, color, label, formatValue, duration, request, limit, markers, onZoomSelect }: MetricsChartProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [showRequest, setShowRequest] = useState(false);
     const [showLimit, setShowLimit] = useState(false);
+    const [showMarkers, setShowMarkers] = useState(true);
     const [containerWidth, setContainerWidth] = useState(500);
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStartIndex, setDragStartIndex] = useState<number | null>(null);
+    const [dragEndIndex, setDragEndIndex] = useState<number | null>(null);
 
     // Track container size for responsive width
     useEffect(() => {
@@ -157,6 +177,19 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
             return paddingTop + chartHeight - ((value - yMin) / yRange) * chartHeight;
         };
 
+        const markerPositions = (markers || []).map(m => {
+            let closestIdx = 0;
+            let closestDist = Math.abs(Number(timestamps[0]) - m.timestamp);
+            for (let i = 1; i < timestamps.length; i++) {
+                const dist = Math.abs(Number(timestamps[i]) - m.timestamp);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closestIdx = i;
+                }
+            }
+            return { ...m, x: points[closestIdx].x, dataIndex: closestIdx };
+        });
+
         return {
             points,
             linePath,
@@ -166,8 +199,9 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
             currentValue: values[values.length - 1],
             requestY: getYPos(requestValue),
             limitY: getYPos(limitValue),
+            markerPositions,
         };
-    }, [data, showRequest, showLimit, requestValue, limitValue, chartWidth, chartHeight]);
+    }, [data, showRequest, showLimit, requestValue, limitValue, chartWidth, chartHeight, markers]);
 
     if (!chartData) {
         return (
@@ -177,17 +211,19 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
         );
     }
 
-    const { points, linePath, areaPath, yTicks, xTicks, currentValue, requestY, limitY } = chartData;
+    const { points, linePath, areaPath, yTicks, xTicks, currentValue, requestY, limitY, markerPositions } = chartData;
 
-    const handleMouseMove = useCallback((e: any) => {
-        if (!containerRef.current) return;
+    const hoveredMarker = hoveredIndex !== null && showMarkers
+        ? markerPositions.find((m: any) => Math.abs(m.dataIndex - hoveredIndex) <= 1)
+        : null;
+
+    const getDataIndex = useCallback((e: any): number | null => {
+        if (!containerRef.current || !data || data.length === 0) return null;
         const rect = containerRef.current.getBoundingClientRect();
-        // Account for CSS zoom applied to document body
         const zoom = parseFloat(document.body.style.zoom) || 1;
         const mouseX = e.clientX / zoom;
         const mouseY = e.clientY / zoom;
 
-        // Calculate actual SVG render size (preserveAspectRatio="xMinYMin meet" maintains aspect ratio)
         const viewBoxAspect = width / height;
         const containerAspect = rect.width / rect.height;
         let svgRenderWidth, svgRenderHeight;
@@ -206,17 +242,65 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
             svgY >= paddingTop && svgY <= height - paddingBottom) {
             const chartX = svgX - paddingLeft;
             const index = Math.round((chartX / chartWidth) * (data.length - 1));
-            const clampedIndex = Math.max(0, Math.min(data.length - 1, index));
-            setHoveredIndex(clampedIndex);
-            setMousePos({ x: mouseX - rect.left, y: mouseY - rect.top });
+            return Math.max(0, Math.min(data.length - 1, index));
+        }
+        return null;
+    }, [data?.length, chartWidth, width, height]);
+
+    const handleMouseMove = useCallback((e: any) => {
+        const index = getDataIndex(e);
+        if (isDragging) {
+            if (index !== null) setDragEndIndex(index);
+            return;
+        }
+        if (index !== null) {
+            const rect = containerRef.current!.getBoundingClientRect();
+            const zoom = parseFloat(document.body.style.zoom) || 1;
+            setHoveredIndex(index);
+            setMousePos({ x: e.clientX / zoom - rect.left, y: e.clientY / zoom - rect.top });
         } else {
             setHoveredIndex(null);
         }
-    }, [data.length, chartWidth]);
+    }, [getDataIndex, isDragging]);
+
+    const handleMouseDown = useCallback((e: any) => {
+        if (!onZoomSelect) return;
+        const index = getDataIndex(e);
+        if (index !== null) {
+            setIsDragging(true);
+            setDragStartIndex(index);
+            setDragEndIndex(index);
+            setHoveredIndex(null);
+        }
+    }, [getDataIndex, onZoomSelect]);
+
+    const handleMouseUp = useCallback(() => {
+        if (!isDragging || dragStartIndex == null || dragEndIndex == null || !data || !onZoomSelect) {
+            setIsDragging(false);
+            setDragStartIndex(null);
+            setDragEndIndex(null);
+            return;
+        }
+        const minIdx = Math.min(dragStartIndex, dragEndIndex);
+        const maxIdx = Math.max(dragStartIndex, dragEndIndex);
+        setIsDragging(false);
+        setDragStartIndex(null);
+        setDragEndIndex(null);
+        if (maxIdx - minIdx >= 2) {
+            const startMs = Number(data[minIdx].timestamp);
+            const endMs = Number(data[maxIdx].timestamp);
+            onZoomSelect(startMs, endMs);
+        }
+    }, [isDragging, dragStartIndex, dragEndIndex, data, onZoomSelect]);
 
     const handleMouseLeave = useCallback(() => {
         setHoveredIndex(null);
-    }, []);
+        if (isDragging) {
+            setIsDragging(false);
+            setDragStartIndex(null);
+            setDragEndIndex(null);
+        }
+    }, [isDragging]);
 
     const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
 
@@ -247,6 +331,17 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
                                 <span className={showLimit ? 'text-red-400' : 'text-gray-500'}>Limit</span>
                             </button>
                         )}
+                        {markerPositions.length > 0 && (
+                            <button
+                                onClick={() => setShowMarkers(!showMarkers)}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${!showMarkers ? 'opacity-40' : ''}`}
+                                title={showMarkers ? 'Hide event markers' : 'Show event markers'}
+                            >
+                                <span className={`w-1.5 h-1.5 rotate-45 ${showMarkers ? 'bg-amber-500' : 'bg-gray-500'}`}></span>
+                                <span className={showMarkers ? 'text-amber-400' : 'text-gray-500'}>Events</span>
+                                <span className={`text-[10px] px-1 rounded-full ${showMarkers ? 'bg-amber-500/20 text-amber-400' : 'bg-gray-700 text-gray-500'}`}>{markerPositions.length}</span>
+                            </button>
+                        )}
                     </div>
                 </div>
                 <span className="text-sm text-gray-400">
@@ -257,11 +352,13 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
             </div>
             <div
                 ref={containerRef}
-                className="h-56 bg-background rounded border border-border relative"
+                className={`h-56 bg-background rounded border border-border relative ${onZoomSelect ? 'cursor-crosshair' : ''}`}
                 onMouseMove={handleMouseMove}
+                onMouseDown={handleMouseDown}
+                onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseLeave}
             >
-                <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet" className="w-full h-full">
+                <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet" className="w-full h-full select-none">
                     {/* Y axis grid lines */}
                     {yTicks.map((tick: any, i: number) => (
                         <g key={i}>
@@ -322,8 +419,32 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
                     {/* Line */}
                     <path d={linePath} fill="none" className={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 
+                    {/* Event markers */}
+                    {showMarkers && markerPositions.map((m: any, i: number) => {
+                        const mc = MARKER_COLORS[m.severity] || MARKER_COLORS.info;
+                        return (
+                            <g key={i}>
+                                <line x1={m.x} y1={paddingTop} x2={m.x} y2={paddingTop + chartHeight}
+                                    className={mc.line} strokeWidth="1" strokeDasharray="3,3" opacity="0.7" />
+                                <polygon
+                                    points={`${m.x},${paddingTop - 1} ${m.x + 4},${paddingTop + 4} ${m.x},${paddingTop + 9} ${m.x - 4},${paddingTop + 4}`}
+                                    className={mc.fill} opacity="0.9" />
+                            </g>
+                        );
+                    })}
+
+                    {/* Drag selection overlay */}
+                    {isDragging && dragStartIndex != null && dragEndIndex != null && points.length > 0 && (() => {
+                        const x1 = points[Math.min(dragStartIndex, dragEndIndex)]?.x ?? 0;
+                        const x2 = points[Math.max(dragStartIndex, dragEndIndex)]?.x ?? 0;
+                        return (
+                            <rect x={Math.min(x1, x2)} y={paddingTop} width={Math.abs(x2 - x1)} height={chartHeight}
+                                className="fill-blue-500" opacity={0.15} />
+                        );
+                    })()}
+
                     {/* Hover indicator */}
-                    {hoveredPoint && (
+                    {!isDragging && hoveredPoint && (
                         <>
                             <line x1={hoveredPoint.x} y1={paddingTop} x2={hoveredPoint.x} y2={paddingTop + chartHeight}
                                 className="stroke-gray-400" strokeWidth="1" strokeDasharray="4,2" />
@@ -334,7 +455,7 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
                 </svg>
 
                 {/* Tooltip */}
-                {hoveredPoint && (
+                {!isDragging && hoveredPoint && (
                     <div
                         className="absolute z-10 pointer-events-none bg-surface border border-border rounded-lg shadow-lg px-3 py-2"
                         style={{
@@ -353,6 +474,14 @@ const MetricsChart = React.memo(({ data, color, label, formatValue, duration, re
                         )}
                         {showLimit && limitValue != null && (
                             <div className="text-xs text-red-400">Limit: {formatValue(limitValue)}</div>
+                        )}
+                        {hoveredMarker && (
+                            <div className="border-t border-border mt-1 pt-1">
+                                <div className={`text-xs font-medium ${MARKER_COLORS[hoveredMarker.severity]?.text || 'text-gray-400'}`}>
+                                    {hoveredMarker.reason}
+                                </div>
+                                <div className="text-[10px] text-gray-500 max-w-[200px] truncate">{hoveredMarker.message}</div>
+                            </div>
                         )}
                     </div>
                 )}
@@ -716,7 +845,9 @@ export default function ControllerMetricsTab({ namespace, name, controllerType, 
     const [error, setError] = useState<string | null>(null);
     const [metricsData, setMetricsData] = useState<any>(null);
     const [duration, setDuration] = useState('1h');
-    const requestIdRef = useRef(0); // Track current request to cancel stale ones
+    const [eventMarkers, setEventMarkers] = useState<EventMarker[]>([]);
+    const [zoomRange, setZoomRange] = useState<{ startMs: number; endMs: number } | null>(null);
+    const requestIdRef = useRef(0);
 
     useEffect(() => {
         const detect = async () => {
@@ -735,32 +866,40 @@ export default function ControllerMetricsTab({ namespace, name, controllerType, 
     useEffect(() => {
         if (!prometheusInfo?.available || isStale) return;
 
-        // Increment request ID to invalidate any in-flight requests
         const currentRequestId = ++requestIdRef.current;
-        // Use stable ID for backend cancellation (without counter)
         const requestIdString = `controller-metrics-${namespace}-${name}`;
 
         const fetchMetrics = async () => {
             setLoading(true);
             setError(null);
             try {
-                const data = await GetControllerMetricsHistory(
-                    requestIdString,
-                    prometheusInfo!.namespace!,
-                    prometheusInfo!.service!,
-                    prometheusInfo!.port!,
-                    namespace,
-                    name,
-                    controllerType,
-                    duration
-                );
-                // Only update state if this request is still current
+                const data = zoomRange
+                    ? await GetControllerMetricsHistoryRange(
+                        requestIdString,
+                        prometheusInfo!.namespace!,
+                        prometheusInfo!.service!,
+                        prometheusInfo!.port!,
+                        namespace,
+                        name,
+                        controllerType,
+                        zoomRange.startMs,
+                        zoomRange.endMs
+                    )
+                    : await GetControllerMetricsHistory(
+                        requestIdString,
+                        prometheusInfo!.namespace!,
+                        prometheusInfo!.service!,
+                        prometheusInfo!.port!,
+                        namespace,
+                        name,
+                        controllerType,
+                        duration
+                    );
                 if (currentRequestId === requestIdRef.current) {
                     setMetricsData(data);
                     setLoading(false);
                 }
             } catch (err: any) {
-                // Only update state if this request is still current
                 if (currentRequestId === requestIdRef.current) {
                     setError(err.toString());
                     setLoading(false);
@@ -769,7 +908,39 @@ export default function ControllerMetricsTab({ namespace, name, controllerType, 
         };
 
         fetchMetrics();
-    }, [prometheusInfo, namespace, name, controllerType, duration, isStale]);
+    }, [prometheusInfo, namespace, name, controllerType, duration, zoomRange, isStale]);
+
+    // Fetch event markers
+    useEffect(() => {
+        if (!namespace || !name || isStale) return;
+        GetMetricsEventMarkers(namespace, name, controllerType, duration)
+            .then((m: EventMarker[]) => setEventMarkers(m || []))
+            .catch(() => setEventMarkers([]));
+    }, [namespace, name, controllerType, duration, isStale]);
+
+    const handleZoomSelect = useCallback((startMs: number, endMs: number) => {
+        setZoomRange({ startMs, endMs });
+    }, []);
+
+    const handleDurationChange = useCallback((d: string) => {
+        setDuration(d);
+        setZoomRange(null);
+    }, []);
+
+    const effectiveDuration = useMemo(() => {
+        if (!zoomRange) return duration;
+        const rangeHours = (zoomRange.endMs - zoomRange.startMs) / 3_600_000;
+        if (rangeHours <= 1) return '1h';
+        if (rangeHours <= 6) return '6h';
+        if (rangeHours <= 24) return '24h';
+        if (rangeHours <= 168) return '7d';
+        return '30d';
+    }, [zoomRange, duration]);
+
+    const filteredMarkers = useMemo(() => {
+        if (!zoomRange) return eventMarkers;
+        return eventMarkers.filter(m => m.timestamp >= zoomRange.startMs && m.timestamp <= zoomRange.endMs);
+    }, [eventMarkers, zoomRange]);
 
     const formatCPU = (value: number) => {
         if (value == null || isNaN(value)) return '-';
@@ -819,15 +990,21 @@ export default function ControllerMetricsTab({ namespace, name, controllerType, 
                         {DURATIONS.map((d: any) => (
                             <button
                                 key={d.value}
-                                onClick={() => setDuration(d.value)}
+                                onClick={() => handleDurationChange(d.value)}
                                 className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                                    duration === d.value ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'
+                                    duration === d.value && !zoomRange ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'
                                 }`}
                             >
                                 {d.label}
                             </button>
                         ))}
                     </div>
+                    {zoomRange && (
+                        <button onClick={() => setZoomRange(null)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
+                            <ArrowUturnLeftIcon className="w-3 h-3" /> Reset zoom
+                        </button>
+                    )}
                     {loading && (
                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
                     )}
@@ -862,18 +1039,22 @@ export default function ControllerMetricsTab({ namespace, name, controllerType, 
                                 color="stroke-blue-500"
                                 label="CPU Usage (Aggregated)"
                                 formatValue={formatCPU}
-                                duration={duration}
+                                duration={effectiveDuration}
                                 request={metricsData.cpu?.request}
                                 limit={metricsData.cpu?.limit}
+                                markers={filteredMarkers}
+                                onZoomSelect={handleZoomSelect}
                             />
                             <MetricsChart
                                 data={metricsData.memory?.usage}
                                 color="stroke-purple-500"
                                 label="Memory Usage (Aggregated)"
                                 formatValue={formatBytes}
-                                duration={duration}
+                                duration={effectiveDuration}
                                 request={metricsData.memory?.request}
                                 limit={metricsData.memory?.limit}
+                                markers={filteredMarkers}
+                                onZoomSelect={handleZoomSelect}
                             />
                         </div>
 

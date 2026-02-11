@@ -46,6 +46,15 @@ func (a *App) UpdateEventYAML(namespace, name string, yamlContent string) error 
 	return a.k8sClient.UpdateEventYAML(namespace, name, yamlContent)
 }
 
+// GetMetricsEventMarkers returns lifecycle event markers for overlaying on metrics charts
+func (a *App) GetMetricsEventMarkers(namespace, name, kind, duration string) ([]k8s.LifecycleMarker, error) {
+	if a.k8sClient == nil {
+		return []k8s.LifecycleMarker{}, nil
+	}
+	dur := parseMetricsDuration(duration)
+	return a.k8sClient.GetLifecycleMarkers(namespace, name, kind, dur)
+}
+
 func (a *App) DeleteEvent(namespace, name string) error {
 	contextName := a.GetCurrentContext()
 	debug.LogK8s("DeleteEvent called", map[string]interface{}{"context": contextName, "namespace": namespace, "name": name})
