@@ -33,6 +33,20 @@ type ThemeColors struct {
 	ScrollbarTrack      string `json:"scrollbarTrack"`
 	ScrollbarThumb      string `json:"scrollbarThumb"`
 	ScrollbarThumbHover string `json:"scrollbarThumbHover"`
+
+	// Gray palette override (Tailwind gray-50 through gray-950).
+	// Values are hex colors. If empty, CSS defaults apply.
+	Gray50  string `json:"gray50,omitempty"`
+	Gray100 string `json:"gray100,omitempty"`
+	Gray200 string `json:"gray200,omitempty"`
+	Gray300 string `json:"gray300,omitempty"`
+	Gray400 string `json:"gray400,omitempty"`
+	Gray500 string `json:"gray500,omitempty"`
+	Gray600 string `json:"gray600,omitempty"`
+	Gray700 string `json:"gray700,omitempty"`
+	Gray800 string `json:"gray800,omitempty"`
+	Gray900 string `json:"gray900,omitempty"`
+	Gray950 string `json:"gray950,omitempty"`
 }
 
 // ThemeFontConfig represents font configuration
@@ -51,6 +65,7 @@ type ThemeFonts struct {
 type Theme struct {
 	ID          string      `json:"id"`
 	Name        string      `json:"name"`
+	Type        string      `json:"type"` // "dark" or "light"
 	Version     string      `json:"version,omitempty"`
 	Author      string      `json:"author,omitempty"`
 	Description string      `json:"description,omitempty"`
@@ -100,6 +115,7 @@ func (m *ThemeManager) loadBuiltinThemes() {
 	m.themes["default-dark"] = &Theme{
 		ID:          "default-dark",
 		Name:        "Default Dark",
+		Type:        "dark",
 		Version:     "1.0.0",
 		Author:      "Kubikles",
 		Description: "The default dark theme inspired by VS Code",
@@ -136,6 +152,7 @@ func (m *ThemeManager) loadBuiltinThemes() {
 	m.themes["solarized-dark"] = &Theme{
 		ID:          "solarized-dark",
 		Name:        "Solarized Dark",
+		Type:        "dark",
 		Version:     "1.0.0",
 		Author:      "Kubikles",
 		Description: "Warm, earthy tones with reduced eye strain based on Solarized by Ethan Schoonover",
@@ -172,6 +189,7 @@ func (m *ThemeManager) loadBuiltinThemes() {
 	m.themes["solarized-midnight"] = &Theme{
 		ID:          "solarized-midnight",
 		Name:        "Solarized Midnight",
+		Type:        "dark",
 		Version:     "1.0.0",
 		Author:      "Kubikles",
 		Description: "A deeper, darker Solarized variant with enhanced contrast and brighter text",
@@ -208,6 +226,7 @@ func (m *ThemeManager) loadBuiltinThemes() {
 	m.themes["phosphor"] = &Theme{
 		ID:          "phosphor",
 		Name:        "Phosphor",
+		Type:        "dark",
 		Version:     "1.0.0",
 		Author:      "Kubikles",
 		Description: "Gentle hacker aesthetic inspired by vintage CRT terminals with soft phosphor glow",
@@ -237,6 +256,108 @@ func (m *ThemeManager) loadBuiltinThemes() {
 		Fonts: ThemeFonts{
 			UI:   ThemeFontConfig{Family: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"},
 			Mono: ThemeFontConfig{Family: "'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', monospace"},
+		},
+	}
+
+	// Spring Meadow - warm light theme with sage green primary
+	m.themes["spring-meadow"] = &Theme{
+		ID:          "spring-meadow",
+		Name:        "Spring Meadow",
+		Type:        "light",
+		Version:     "1.0.0",
+		Author:      "Kubikles",
+		Description: "A warm, gentle light theme inspired by spring fields with low saturation and harmonious tones",
+		IsBuiltin:   true,
+		Colors: ThemeColors{
+			Background:          "#faf9f7", // warm cream
+			BackgroundDark:      "#f3f1ed", // slightly deeper cream (sidebar/titlebar)
+			Surface:             "#ffffff", // clean white for cards
+			SurfaceLight:        "#f5f3ef", // subtle warm tint
+			SurfaceHover:        "#ebe8e2", // warm hover
+			Primary:             "#5b8a5e", // sage green
+			Text:                "#2d3436", // warm near-black
+			TextMuted:           "#6d7a7a", // mossy gray
+			Border:              "#ddd8d0", // warm light border
+			Success:             "#3d9970", // rich green
+			SuccessDark:         "#2d7d58",
+			Error:               "#d63031", // clear red
+			ErrorDark:           "#b32825",
+			Warning:             "#d4851c", // warm amber
+			WarningDark:         "#b5701a",
+			RedOrange:           "#d35400", // burnt orange
+			RedOrangeDark:       "#b24600",
+			ScrollbarTrack:      "#f0ede8",
+			ScrollbarThumb:      "#ccc7be",
+			ScrollbarThumbHover: "#5b8a5e",
+			// Gray palette: inverted warm stone scale for light theme.
+			// When code uses gray-800 (dark bg in dark theme), it resolves
+			// to a light value here (stone-200). Gray-400 (muted text in dark)
+			// resolves to stone-600 (readable muted text on white).
+			Gray50:  "#0c0a09", // stone-950 (rarely used as bg; gives darkest anchor)
+			Gray100: "#1c1917", // stone-900
+			Gray200: "#292524", // stone-800
+			Gray300: "#44403c", // stone-700
+			Gray400: "#57534e", // stone-600 (muted text on white)
+			Gray500: "#78716c", // stone-500 (mid gray, similar both themes)
+			Gray600: "#a8a29e", // stone-400 (borders on white)
+			Gray700: "#d6d3d1", // stone-300 (subtle dividers/bg)
+			Gray800: "#e7e5e4", // stone-200 (panel backgrounds)
+			Gray900: "#f5f5f4", // stone-100 (very subtle bg)
+			Gray950: "#fafaf9", // stone-50  (near-white)
+		},
+		Fonts: ThemeFonts{
+			UI:   ThemeFontConfig{Family: "'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"},
+			Mono: ThemeFontConfig{Family: "'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', monospace"},
+		},
+	}
+
+	// Briefcase - nostalgic light theme inspired by late-90s desktop computing
+	m.themes["briefcase"] = &Theme{
+		ID:          "briefcase",
+		Name:        "Briefcase",
+		Type:        "light",
+		Version:     "1.0.0",
+		Author:      "Kubikles",
+		Description: "A nostalgic light theme that recalls the silver-gray desktops and navy title bars of late-90s computing",
+		IsBuiltin:   true,
+		Colors: ThemeColors{
+			Background:          "#c0c0c0", // the silver
+			BackgroundDark:      "#a4a0a0", // slightly darker for sidebar
+			Surface:             "#d4d0c8", // that warm window gray
+			SurfaceLight:        "#ece9d8", // lighter content area
+			SurfaceHover:        "#b5b1a9", // hover
+			Primary:             "#1a1a8c", // deep navy blue
+			Text:                "#000000", // pure black text, as nature intended
+			TextMuted:           "#545454", // dark gray
+			Border:              "#808080", // the classic
+			Success:             "#008040", // classic green
+			SuccessDark:         "#006030",
+			Error:               "#cc0000", // classic red
+			ErrorDark:           "#a00000",
+			Warning:             "#7d7d00", // olive-ish yellow
+			WarningDark:         "#5c5c00",
+			RedOrange:           "#cc4400",
+			RedOrangeDark:       "#a03600",
+			ScrollbarTrack:      "#c0c0c0",
+			ScrollbarThumb:      "#808080",
+			ScrollbarThumbHover: "#1a1a8c",
+			// Neutral cool grays (inverted for light theme).
+			// Deliberately flat and utilitarian.
+			Gray50:  "#0a0a0a",
+			Gray100: "#171717",
+			Gray200: "#262626",
+			Gray300: "#404040",
+			Gray400: "#525252", // muted text
+			Gray500: "#737373", // mid gray
+			Gray600: "#a3a3a3", // borders, subtle UI
+			Gray700: "#c0c0c0", // the silver (dividers, subtle bg)
+			Gray800: "#d4d4d4", // panel backgrounds
+			Gray900: "#e5e5e5", // very subtle bg
+			Gray950: "#f5f5f5", // near-white
+		},
+		Fonts: ThemeFonts{
+			UI:   ThemeFontConfig{Family: "'Tahoma', 'Segoe UI', system-ui, sans-serif"},
+			Mono: ThemeFontConfig{Family: "'Consolas', 'Courier New', monospace"},
 		},
 	}
 }

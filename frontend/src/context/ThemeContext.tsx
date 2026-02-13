@@ -31,11 +31,13 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 // Available UI fonts (sans-serif for interface)
 // - Inter: Modern, highly legible, designed for screens (bundled)
+// - DM Sans: Slightly condensed, geometric, rounded (bundled)
 // - SF Pro: Apple's system font, native macOS feel
 // - Segoe UI: Microsoft's system font, clean and professional
 // - System Default: Uses the OS default sans-serif font
 export const UI_FONTS: FontOption[] = [
     { id: 'inter', name: 'Inter', family: "'Inter', system-ui, sans-serif" },
+    { id: 'dm-sans', name: 'DM Sans', family: "'DM Sans', system-ui, sans-serif" },
     { id: 'sf-pro', name: 'SF Pro', family: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" },
     { id: 'segoe', name: 'Segoe UI', family: "'Segoe UI', Roboto, sans-serif" },
     { id: 'system', name: 'System Default', family: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif" },
@@ -70,12 +72,34 @@ export const useTheme = (): ThemeContextValue => {
     return context;
 };
 
+// Convert hex color (#rrggbb or #rgb) to "R G B" space-separated string for CSS variables
+const hexToRgbTriplet = (hex: string): string | null => {
+    if (!hex) return null;
+    const cleaned = hex.replace('#', '');
+    let r: number, g: number, b: number;
+    if (cleaned.length === 3) {
+        r = parseInt(cleaned[0] + cleaned[0], 16);
+        g = parseInt(cleaned[1] + cleaned[1], 16);
+        b = parseInt(cleaned[2] + cleaned[2], 16);
+    } else if (cleaned.length === 6) {
+        r = parseInt(cleaned.slice(0, 2), 16);
+        g = parseInt(cleaned.slice(2, 4), 16);
+        b = parseInt(cleaned.slice(4, 6), 16);
+    } else {
+        return null;
+    }
+    return `${r} ${g} ${b}`;
+};
+
 // Apply theme colors to CSS variables
 const applyThemeColors = (theme: Theme | null): void => {
     if (!theme || !theme.colors) return;
 
     const root = document.documentElement;
     const colors = theme.colors;
+
+    // Set theme type attribute for CSS overrides (light/dark)
+    root.setAttribute('data-theme-type', theme.type || 'dark');
 
     // Apply color variables
     root.style.setProperty('--color-background', colors.background || '#1e1e1e');
@@ -87,6 +111,7 @@ const applyThemeColors = (theme: Theme | null): void => {
     root.style.setProperty('--color-text', colors.text || '#cccccc');
     root.style.setProperty('--color-text-muted', colors.textMuted || '#808080');
     root.style.setProperty('--color-border', colors.border || '#3e3e42');
+    root.style.setProperty('--color-border-rgb', hexToRgbTriplet(colors.border || '#3e3e42') || '62 62 66');
     root.style.setProperty('--color-success', colors.success || '#4CC38A');
     root.style.setProperty('--color-success-dark', colors.successDark || '#3AA876');
     root.style.setProperty('--color-error', colors.error || '#E5484D');
@@ -98,6 +123,25 @@ const applyThemeColors = (theme: Theme | null): void => {
     root.style.setProperty('--color-scrollbar-track', colors.scrollbarTrack || '#252526');
     root.style.setProperty('--color-scrollbar-thumb', colors.scrollbarThumb || '#3e3e42');
     root.style.setProperty('--color-scrollbar-thumb-hover', colors.scrollbarThumbHover || '#007acc');
+
+    // Apply gray palette if theme provides one (otherwise CSS defaults apply)
+    const grayShades: [string, string | undefined][] = [
+        ['50', colors.gray50], ['100', colors.gray100], ['200', colors.gray200],
+        ['300', colors.gray300], ['400', colors.gray400], ['500', colors.gray500],
+        ['600', colors.gray600], ['700', colors.gray700], ['800', colors.gray800],
+        ['900', colors.gray900], ['950', colors.gray950],
+    ];
+    for (const [shade, hex] of grayShades) {
+        if (hex) {
+            const rgb = hexToRgbTriplet(hex);
+            if (rgb) {
+                root.style.setProperty(`--gray-${shade}`, rgb);
+            }
+        } else {
+            // Remove override so CSS default applies
+            root.style.removeProperty(`--gray-${shade}`);
+        }
+    }
 };
 
 // Apply font CSS variables

@@ -257,7 +257,7 @@ const ResourceNode = React.memo(function ResourceNode({ data }: any) {
             <div
                 className="px-3 py-2 rounded-lg border-2 border-dashed min-w-[140px] cursor-pointer transition-all hover:scale-105"
                 style={{
-                    backgroundColor: '#374151',
+                    backgroundColor: 'rgb(var(--gray-700))',
                     borderColor: style.color,
                 }}
                 onContextMenu={data.onContextMenu}
@@ -308,7 +308,7 @@ const ResourceNode = React.memo(function ResourceNode({ data }: any) {
                                 </span>
                             )}
                         </div>
-                        <span className="text-sm font-medium text-white truncate max-w-[120px]">
+                        <span className="text-sm font-medium text-text truncate max-w-[120px]">
                             {data.label}
                         </span>
                         {data.status && (
@@ -326,7 +326,7 @@ const ResourceNode = React.memo(function ResourceNode({ data }: any) {
                     className="fixed z-[9999] bg-gray-900 border border-gray-700 rounded-lg shadow-xl p-3 text-sm pointer-events-none"
                     style={{ left: tooltipPos.x, top: tooltipPos.y }}
                 >
-                    <div className="font-medium text-white mb-2 flex items-center gap-2">
+                    <div className="font-medium text-text mb-2 flex items-center gap-2">
                         <Icon className="h-4 w-4" style={{ color: style.color }} />
                         {data.kind}
                     </div>
@@ -334,7 +334,7 @@ const ResourceNode = React.memo(function ResourceNode({ data }: any) {
                         {tooltipContent.map((item, i) => (
                             <div key={i} className="flex justify-between gap-4">
                                 <span className="text-gray-400">{item.label}:</span>
-                                <span className={item.color || 'text-white'}>{item.value}</span>
+                                <span className={item.color || 'text-text'}>{item.value}</span>
                             </div>
                         ))}
                     </div>
@@ -837,7 +837,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             {/* Title */}
             <div className="absolute top-4 left-4 bg-surface-light border border-border rounded-lg px-3 py-2">
                 <span className="text-gray-400 text-sm">
-                    Dependencies for <span className="text-white font-medium">{resourceName}</span>
+                    Dependencies for <span className="text-text font-medium">{resourceName}</span>
                 </span>
             </div>
 

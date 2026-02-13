@@ -2198,6 +2198,17 @@ export namespace main {
 	    scrollbarTrack: string;
 	    scrollbarThumb: string;
 	    scrollbarThumbHover: string;
+	    gray50?: string;
+	    gray100?: string;
+	    gray200?: string;
+	    gray300?: string;
+	    gray400?: string;
+	    gray500?: string;
+	    gray600?: string;
+	    gray700?: string;
+	    gray800?: string;
+	    gray900?: string;
+	    gray950?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ThemeColors(source);
@@ -2225,11 +2236,23 @@ export namespace main {
 	        this.scrollbarTrack = source["scrollbarTrack"];
 	        this.scrollbarThumb = source["scrollbarThumb"];
 	        this.scrollbarThumbHover = source["scrollbarThumbHover"];
+	        this.gray50 = source["gray50"];
+	        this.gray100 = source["gray100"];
+	        this.gray200 = source["gray200"];
+	        this.gray300 = source["gray300"];
+	        this.gray400 = source["gray400"];
+	        this.gray500 = source["gray500"];
+	        this.gray600 = source["gray600"];
+	        this.gray700 = source["gray700"];
+	        this.gray800 = source["gray800"];
+	        this.gray900 = source["gray900"];
+	        this.gray950 = source["gray950"];
 	    }
 	}
 	export class Theme {
 	    id: string;
 	    name: string;
+	    type: string;
 	    version?: string;
 	    author?: string;
 	    description?: string;
@@ -2246,6 +2269,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
+	        this.type = source["type"];
 	        this.version = source["version"];
 	        this.author = source["author"];
 	        this.description = source["description"];
