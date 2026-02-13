@@ -36,11 +36,8 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
     const selection = useSelection();
 
     const {
-        bulkActionModal,
-        bulkProgress,
+        bulkModalProps,
         openBulkDelete,
-        closeBulkAction,
-        confirmBulkAction,
         exportYaml,
     } = useBulkActions({
         resourceLabel: 'Pod',
@@ -446,14 +443,10 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
             />
 
             <BulkActionModal
-                isOpen={bulkActionModal.isOpen}
-                onClose={closeBulkAction}
+                {...bulkModalProps}
                 action="delete"
                 actionLabel="Delete"
-                items={bulkActionModal.items}
-                onConfirm={confirmBulkAction}
                 onExportYaml={exportYaml}
-                progress={bulkProgress}
             />
 
             {/* Port Forward Dialog */}

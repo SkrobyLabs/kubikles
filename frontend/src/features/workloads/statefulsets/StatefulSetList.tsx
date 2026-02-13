@@ -21,11 +21,9 @@ export default function StatefulSetList({ isVisible }: { isVisible: boolean }) {
 
     const {
         bulkActionModal,
-        bulkProgress,
+        bulkModalProps,
         openBulkDelete,
         openBulkRestart,
-        closeBulkAction,
-        confirmBulkAction,
         exportYaml,
     } = useBulkActions({
         resourceLabel: 'StatefulSet',
@@ -175,14 +173,10 @@ export default function StatefulSetList({ isVisible }: { isVisible: boolean }) {
             />
 
             <BulkActionModal
-                isOpen={bulkActionModal.isOpen}
-                onClose={closeBulkAction}
+                {...bulkModalProps}
                 action={bulkActionModal.action || ''}
                 actionLabel={bulkActionModal.action === 'delete' ? 'Delete' : 'Restart'}
-                items={bulkActionModal.items}
-                onConfirm={confirmBulkAction}
                 onExportYaml={bulkActionModal.action === 'delete' ? exportYaml : undefined}
-                progress={bulkProgress}
             />
         </>
     );

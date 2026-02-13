@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { SaveYamlBackup } from 'wailsjs/go/main/App';
 import { main } from 'wailsjs/go/models';
 import Logger from '../utils/Logger';
+import { sleep } from '../utils/bulkExecutor';
 
 // Resource metadata interface matching K8s ObjectMeta
 interface ResourceMetadata {
@@ -37,7 +38,7 @@ interface BulkActionResult {
 interface BulkProgressState {
     current: number;
     total: number;
-    status: 'idle' | 'inProgress' | 'complete';
+    status: 'idle' | 'inProgress' | 'paused' | 'complete';
     results: BulkActionResult[];
 }
 
@@ -62,14 +63,28 @@ interface ExportYamlOptions {
     signal?: AbortSignal;
 }
 
+// Props that can be spread directly onto <BulkActionModal>
+interface BulkModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    items: Resource[];
+    onConfirm: (items: Resource[], delayMs: number) => Promise<void>;
+    onPause: () => void;
+    onResume: () => void;
+    progress: BulkProgressState;
+}
+
 // Return type of the hook
 interface UseBulkActionsReturn {
     bulkActionModal: BulkActionModalState;
     bulkProgress: BulkProgressState;
+    bulkModalProps: BulkModalProps;
     openBulkDelete: (items: Resource[]) => void;
     openBulkRestart?: (items: Resource[]) => void;
     closeBulkAction: () => void;
-    confirmBulkAction: (items: Resource[]) => Promise<void>;
+    confirmBulkAction: (items: Resource[], delayMs?: number) => Promise<void>;
+    pauseBulkAction: () => void;
+    resumeBulkAction: () => void;
     exportYaml: (items: Resource[], options?: ExportYamlOptions) => Promise<void>;
     supportsRestart: boolean;
 }
@@ -106,6 +121,10 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
         results: [],
     });
 
+    // Pause/resume refs — refs so the for-loop closure always sees current values
+    const pausedRef = useRef(false);
+    const resumeResolverRef = useRef<(() => void) | null>(null);
+
     /**
      * Open bulk action modal for delete
      */
@@ -135,9 +154,31 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
     }, []);
 
     /**
+     * Pause bulk action — sets flag and will block before the next item
+     */
+    const pauseBulkAction = useCallback((): void => {
+        pausedRef.current = true;
+        setBulkProgress(prev => prev.status === 'inProgress' ? { ...prev, status: 'paused' } : prev);
+        Logger.info('Bulk action paused', undefined, 'k8s');
+    }, []);
+
+    /**
+     * Resume bulk action — unblocks the waiting loop
+     */
+    const resumeBulkAction = useCallback((): void => {
+        pausedRef.current = false;
+        setBulkProgress(prev => prev.status === 'paused' ? { ...prev, status: 'inProgress' } : prev);
+        if (resumeResolverRef.current) {
+            resumeResolverRef.current();
+            resumeResolverRef.current = null;
+        }
+        Logger.info('Bulk action resumed', undefined, 'k8s');
+    }, []);
+
+    /**
      * Execute bulk action on items
      */
-    const confirmBulkAction = useCallback(async (items: Resource[]): Promise<void> => {
+    const confirmBulkAction = useCallback(async (items: Resource[], delayMs: number = 0): Promise<void> => {
         const action = bulkActionModal.action;
         const api = action === 'delete' ? deleteApi : restartApi;
 
@@ -146,11 +187,19 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
             return;
         }
 
-        Logger.info(`Bulk ${action} started`, { resourceType, count: items.length }, 'k8s');
+        pausedRef.current = false;
+        resumeResolverRef.current = null;
+
+        Logger.info(`Bulk ${action} started`, { resourceType, count: items.length, delayMs }, 'k8s');
         setBulkProgress(prev => ({ ...prev, status: 'inProgress', results: [] }));
 
         const results: BulkActionResult[] = [];
         for (let i = 0; i < items.length; i++) {
+            // Wait if paused
+            if (pausedRef.current) {
+                await new Promise<void>(resolve => { resumeResolverRef.current = resolve; });
+            }
+
             const item = items[i];
             const namespace = item.metadata?.namespace;
             const name = item.metadata?.name;
@@ -175,6 +224,11 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
             }
 
             setBulkProgress(prev => ({ ...prev, current: i + 1, results: [...results] }));
+
+            // Delay between items, not after the last one
+            if (delayMs > 0 && i < items.length - 1) {
+                await sleep(delayMs);
+            }
         }
 
         setBulkProgress(prev => ({ ...prev, status: 'complete' }));
@@ -255,15 +309,29 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
         }
     }, [resourceType, resourceLabel, isNamespaced, getYamlApi]);
 
+    // Pre-built props for <BulkActionModal {...bulkModalProps} action=".." actionLabel="..">
+    const bulkModalProps: BulkModalProps = {
+        isOpen: bulkActionModal.isOpen,
+        onClose: closeBulkAction,
+        items: bulkActionModal.items,
+        onConfirm: confirmBulkAction,
+        onPause: pauseBulkAction,
+        onResume: resumeBulkAction,
+        progress: bulkProgress,
+    };
+
     return {
         // State
         bulkActionModal,
         bulkProgress,
+        bulkModalProps,
         // Handlers
         openBulkDelete,
         openBulkRestart: restartApi ? openBulkRestart : undefined,
         closeBulkAction,
         confirmBulkAction,
+        pauseBulkAction,
+        resumeBulkAction,
         exportYaml,
         // Convenience: check if restart is supported
         supportsRestart: !!restartApi,

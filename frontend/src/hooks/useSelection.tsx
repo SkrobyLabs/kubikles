@@ -129,6 +129,15 @@ export function useSelection() {
         );
 
         setSelectedIds(prev => {
+            if (prev.size === 0) return prev;
+            let pruned = false;
+            for (const uid of prev) {
+                if (!validUids.has(uid)) {
+                    pruned = true;
+                    break;
+                }
+            }
+            if (!pruned) return prev;
             const next = new Set<string>();
             for (const uid of prev) {
                 if (validUids.has(uid)) {

@@ -21,11 +21,8 @@ export default function RoleBindingList({ isVisible }: { isVisible: boolean }) {
 
     // Unified bulk actions (also used for single delete)
     const {
-        bulkActionModal,
-        bulkProgress,
+        bulkModalProps,
         openBulkDelete,
-        closeBulkAction,
-        confirmBulkAction,
         exportYaml,
     } = useBulkActions({
         resourceLabel: 'RoleBinding',
@@ -101,14 +98,10 @@ export default function RoleBindingList({ isVisible }: { isVisible: boolean }) {
                 onBulkDelete={openBulkDelete}
             />
             <BulkActionModal
-                isOpen={bulkActionModal.isOpen}
-                onClose={closeBulkAction}
-                action={bulkActionModal.action || ''}
+                {...bulkModalProps}
+                action="delete"
                 actionLabel="Delete"
-                items={bulkActionModal.items}
-                onConfirm={confirmBulkAction}
                 onExportYaml={exportYaml}
-                progress={bulkProgress}
             />
         </>
     );

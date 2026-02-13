@@ -20,11 +20,9 @@ export default function DaemonSetList({ isVisible }: { isVisible: boolean }) {
 
     const {
         bulkActionModal,
-        bulkProgress,
+        bulkModalProps,
         openBulkDelete,
         openBulkRestart,
-        closeBulkAction,
-        confirmBulkAction,
         exportYaml,
     } = useBulkActions({
         resourceLabel: 'DaemonSet',
@@ -161,14 +159,10 @@ export default function DaemonSetList({ isVisible }: { isVisible: boolean }) {
                 onBulkRestart={openBulkRestart}
             />
             <BulkActionModal
-                isOpen={bulkActionModal.isOpen}
-                onClose={closeBulkAction}
+                {...bulkModalProps}
                 action={bulkActionModal.action || ''}
                 actionLabel={bulkActionModal.action === 'delete' ? 'Delete' : 'Restart'}
-                items={bulkActionModal.items}
-                onConfirm={confirmBulkAction}
                 onExportYaml={bulkActionModal.action === 'delete' ? exportYaml : undefined}
-                progress={bulkProgress}
             />
         </>
     );

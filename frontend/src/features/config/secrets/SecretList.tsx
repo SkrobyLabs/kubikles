@@ -29,11 +29,8 @@ export default function SecretList({ isVisible }: { isVisible: boolean }) {
     const selection = useSelection();
 
     const {
-        bulkActionModal,
-        bulkProgress,
+        bulkModalProps,
         openBulkDelete,
-        closeBulkAction,
-        confirmBulkAction,
         exportYaml,
     } = useBulkActions({
         resourceLabel: 'Secret',
@@ -130,14 +127,10 @@ export default function SecretList({ isVisible }: { isVisible: boolean }) {
                 customHeaderActions={helmToggle}
             />
             <BulkActionModal
-                isOpen={bulkActionModal.isOpen}
-                onClose={closeBulkAction}
-                action={bulkActionModal.action || ''}
+                {...bulkModalProps}
+                action="delete"
                 actionLabel="Delete"
-                items={bulkActionModal.items}
-                onConfirm={confirmBulkAction}
                 onExportYaml={exportYaml}
-                progress={bulkProgress}
             />
         </>
     );

@@ -41,6 +41,7 @@ interface SelectionState {
     toggleItem: (uid: string, index: number, data: any[], shiftKey: boolean) => void;
     getSelectedItems: (data: any[]) => any[];
     deselectAll: () => void;
+    pruneSelection: (data: any[]) => void;
     selectedCount: number;
 }
 
@@ -989,6 +990,13 @@ export default function ResourceList({
         return [checkboxColumn, ...baseVisibleColumns];
     }, [selectable, selection, baseVisibleColumns]);
 
+    // Prune stale selections when data changes (e.g. after bulk delete/restart)
+    useEffect(() => {
+        if (selectable && selection && selection.selectedCount > 0) {
+            selection.pruneSelection(sortedData);
+        }
+    }, [sortedData]);
+
     // Compute selection state for the current filtered/sorted data
     const selectionState = useMemo(() => {
         if (!selectable || !selection) return 'none';
@@ -1405,13 +1413,17 @@ export default function ResourceList({
                                         return (
                                             <td
                                                 key={col.key}
-                                                className="p-3 text-sm whitespace-nowrap"
+                                                className="p-3 text-sm whitespace-nowrap cursor-pointer"
                                                 style={{ width: `${col.width}px`, minWidth: `${col.width}px` }}
+                                                onClick={(e: any) => {
+                                                    e.stopPropagation();
+                                                    handleRowCheckboxClick(e, item, index);
+                                                }}
                                             >
-                                                <div className="flex items-center justify-center">
+                                                <div className="flex items-center justify-center pointer-events-none">
                                                     <RowCheckbox
                                                         checked={!!isSelected}
-                                                        onChange={(e: any) => handleRowCheckboxClick(e, item, index)}
+                                                        onChange={() => {}}
                                                     />
                                                 </div>
                                             </td>

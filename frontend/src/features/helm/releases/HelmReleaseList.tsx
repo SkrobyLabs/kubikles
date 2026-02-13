@@ -101,10 +101,9 @@ export default function HelmReleaseList({ isVisible }: { isVisible: boolean }) {
 
     const {
         bulkActionModal,
-        bulkProgress,
+        bulkModalProps,
         openBulkDelete,
         closeBulkAction: closeBulkActionBase,
-        confirmBulkAction,
     } = useBulkActions({
         resourceLabel: 'Helm Release',
         resourceType: 'helmreleases',
@@ -283,7 +282,13 @@ export default function HelmReleaseList({ isVisible }: { isVisible: boolean }) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Uninstall" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={handleExportYaml} progress={bulkProgress} />
+            <BulkActionModal
+                {...bulkModalProps}
+                onClose={closeBulkAction}
+                action={bulkActionModal.action || ''}
+                actionLabel="Uninstall"
+                onExportYaml={handleExportYaml}
+            />
 
             {upgradeRelease && (
                 <HelmUpgradeDialog

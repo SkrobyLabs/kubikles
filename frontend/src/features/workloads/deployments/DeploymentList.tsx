@@ -26,11 +26,9 @@ export default function DeploymentList({ isVisible }: DeploymentListProps) {
     // Unified bulk actions (also used for single delete/restart)
     const {
         bulkActionModal,
-        bulkProgress,
+        bulkModalProps,
         openBulkDelete,
         openBulkRestart,
-        closeBulkAction,
-        confirmBulkAction,
         exportYaml,
     } = useBulkActions({
         resourceLabel: 'Deployment',
@@ -228,14 +226,10 @@ export default function DeploymentList({ isVisible }: DeploymentListProps) {
             />
 
             <BulkActionModal
-                isOpen={bulkActionModal.isOpen}
-                onClose={closeBulkAction}
+                {...bulkModalProps}
                 action={bulkActionModal.action || ''}
                 actionLabel={bulkActionModal.action === 'delete' ? 'Delete' : 'Restart'}
-                items={bulkActionModal.items as any}
-                onConfirm={confirmBulkAction as any}
                 onExportYaml={bulkActionModal.action === 'delete' ? exportYaml : undefined}
-                progress={bulkProgress as any}
             />
         </>
     );

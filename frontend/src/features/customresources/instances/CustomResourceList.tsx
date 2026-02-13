@@ -122,11 +122,8 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
     }, [crdInfo.group, crdInfo.version, crdInfo.resource, crdInfo.namespaced]);
 
     const {
-        bulkActionModal,
-        bulkProgress,
+        bulkModalProps,
         openBulkDelete,
-        closeBulkAction,
-        confirmBulkAction,
         exportYaml,
     } = useBulkActions({
         resourceLabel: crdInfo.kind,
@@ -252,7 +249,12 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
+            <BulkActionModal
+                {...bulkModalProps}
+                action="delete"
+                actionLabel="Delete"
+                onExportYaml={exportYaml}
+            />
         </>
     );
 }

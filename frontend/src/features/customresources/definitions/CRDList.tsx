@@ -24,11 +24,8 @@ export default function CRDList({ isVisible }: { isVisible: boolean }) {
     const getYamlApi = useCallback((name: any) => GetCRDYaml(name), []);
 
     const {
-        bulkActionModal,
-        bulkProgress,
+        bulkModalProps,
         openBulkDelete,
-        closeBulkAction,
-        confirmBulkAction,
         exportYaml,
     } = useBulkActions({
         resourceLabel: 'CustomResourceDefinition',
@@ -158,7 +155,12 @@ export default function CRDList({ isVisible }: { isVisible: boolean }) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
+            <BulkActionModal
+                {...bulkModalProps}
+                action="delete"
+                actionLabel="Delete"
+                onExportYaml={exportYaml}
+            />
         </>
     );
 }

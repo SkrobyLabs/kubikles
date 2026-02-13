@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { XMarkIcon, ChevronDownIcon, ChevronRightIcon, ClipboardIcon, CheckIcon, ArrowDownTrayIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ChevronDownIcon, ChevronRightIcon, ClipboardIcon, CheckIcon, ArrowDownTrayIcon, ExclamationTriangleIcon, ArrowPathIcon, PauseIcon, PlayIcon } from '@heroicons/react/24/outline';
 
 /**
  * BulkActionModal - Modal for bulk action confirmation and progress
@@ -15,7 +15,7 @@ import { XMarkIcon, ChevronDownIcon, ChevronRightIcon, ClipboardIcon, CheckIcon,
  * @param {string} props.action - Action type ('delete', 'restart', etc.)
  * @param {string} props.actionLabel - Human-readable action label (e.g., 'Delete', 'Restart')
  * @param {Array} props.items - Array of items to act on
- * @param {Function} props.onConfirm - Called when action is confirmed, receives items array
+ * @param {Function} props.onConfirm - Called when action is confirmed, receives items array and delayMs
  * @param {Function} props.onExportYaml - Optional callback to export YAML backup before action
  * @param {Object} props.progress - Progress state { current, total, status: 'idle'|'inProgress'|'complete', results: [{name, namespace, success, message}] }
  */
@@ -26,6 +26,8 @@ export default function BulkActionModal({
     actionLabel,
     items = [],
     onConfirm,
+    onPause,
+    onResume,
     onExportYaml,
     progress = { current: 0, total: 0, status: 'idle', results: [] },
 }: {
@@ -34,13 +36,16 @@ export default function BulkActionModal({
     action: string;
     actionLabel: string;
     items?: any[];
-    onConfirm: (items: any[]) => void;
+    onConfirm: (items: any[], delayMs: number) => void;
+    onPause?: () => void;
+    onResume?: () => void;
     onExportYaml?: ((items: any[], opts: any) => Promise<void>) | null;
     progress?: any;
 }) {
     const [detailsExpanded, setDetailsExpanded] = useState(false);
     const [copied, setCopied] = useState(false);
     const [backupProgress, setBackupProgress] = useState({ status: 'idle', current: 0, total: 0 });
+    const [delaySeconds, setDelaySeconds] = useState(0);
     const backupAbortRef = useRef<any>(null);
     const modalRef = useRef<HTMLDivElement>(null);
 
@@ -87,14 +92,14 @@ export default function BulkActionModal({
                 cancelBackup();
                 onClose();
             } else if (e.key === 'Delete' && progress.status === 'idle' && backupProgress.status !== 'inProgress') {
-                onConfirm(items);
+                onConfirm(items, delaySeconds * 1000);
             }
             // Enter does nothing (as per user request)
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose, onConfirm, items, progress.status, backupProgress.status, cancelBackup]);
+    }, [isOpen, onClose, onConfirm, items, progress.status, backupProgress.status, cancelBackup, delaySeconds]);
 
     // Focus trap
     useEffect(() => {
@@ -118,6 +123,7 @@ export default function BulkActionModal({
         if (isOpen && progress.status === 'idle') {
             setDetailsExpanded(false);
             setBackupProgress({ status: 'idle', current: 0, total: 0 });
+            setDelaySeconds(0);
         }
     }, [isOpen, progress.status]);
 
@@ -164,6 +170,8 @@ export default function BulkActionModal({
                     <h2 className="text-lg font-semibold text-text">
                         {progress.status === 'complete'
                             ? `${actionLabel} Complete`
+                            : progress.status === 'paused'
+                            ? `${actionLabel} Paused`
                             : progress.status === 'inProgress'
                             ? `${actionLabel}ing...`
                             : `${actionLabel} ${items.length} ${items.length === 1 ? 'Resource' : 'Resources'}`}
@@ -205,10 +213,31 @@ export default function BulkActionModal({
                                     </div>
                                 ))}
                             </div>
+
+                            {/* Delay slider - only for multi-item operations */}
+                            {items.length > 1 && (
+                                <div className="mt-4">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <label className="text-sm text-gray-400">Delay between operations</label>
+                                        <span className="text-sm text-gray-300 tabular-nums w-10 text-right">
+                                            {delaySeconds.toFixed(1)}s
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={0}
+                                        max={10}
+                                        step={0.5}
+                                        value={delaySeconds}
+                                        onChange={(e) => setDelaySeconds(parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-background rounded-full appearance-none cursor-pointer accent-primary"
+                                    />
+                                </div>
+                            )}
                         </>
                     )}
 
-                    {progress.status === 'inProgress' && (
+                    {(progress.status === 'inProgress' || progress.status === 'paused') && (
                         <>
                             {/* Progress bar */}
                             <div className="mb-4">
@@ -384,7 +413,7 @@ export default function BulkActionModal({
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={() => onConfirm(items)}
+                                    onClick={() => onConfirm(items, delaySeconds * 1000)}
                                     disabled={backupProgress.status === 'inProgress'}
                                     className={`px-4 py-1.5 text-sm rounded transition-colors ${
                                         backupProgress.status === 'inProgress'
@@ -396,9 +425,34 @@ export default function BulkActionModal({
                                 </button>
                             </div>
                         </>
-                    ) : progress.status === 'inProgress' ? (
-                        <div className="w-full text-center text-sm text-gray-400">
-                            Please wait...
+                    ) : (progress.status === 'inProgress' || progress.status === 'paused') ? (
+                        <div className="w-full flex items-center justify-between">
+                            <div className="text-sm text-gray-400">
+                                {progress.status === 'paused'
+                                    ? 'Paused'
+                                    : delaySeconds > 0
+                                    ? `Please wait... (${delaySeconds.toFixed(1)}s delay between operations)`
+                                    : 'Please wait...'}
+                            </div>
+                            {onPause && onResume && (
+                                progress.status === 'paused' ? (
+                                    <button
+                                        onClick={onResume}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors text-gray-300 hover:text-text hover:bg-white/10 border border-border"
+                                    >
+                                        <PlayIcon className="h-4 w-4" />
+                                        <span>Resume</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={onPause}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors text-gray-300 hover:text-text hover:bg-white/10 border border-border"
+                                    >
+                                        <PauseIcon className="h-4 w-4" />
+                                        <span>Pause</span>
+                                    </button>
+                                )
+                            )}
                         </div>
                     ) : (
                         <div className="w-full flex justify-end">

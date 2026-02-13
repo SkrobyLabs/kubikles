@@ -20,11 +20,8 @@ export default function LeaseList({ isVisible }: { isVisible: boolean }) {
     const selection = useSelection();
 
     const {
-        bulkActionModal,
-        bulkProgress,
+        bulkModalProps,
         openBulkDelete,
-        closeBulkAction,
-        confirmBulkAction,
         exportYaml,
     } = useBulkActions({
         resourceLabel: 'Lease',
@@ -99,7 +96,12 @@ export default function LeaseList({ isVisible }: { isVisible: boolean }) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
-            <BulkActionModal isOpen={bulkActionModal.isOpen} onClose={closeBulkAction} action={bulkActionModal.action || ''} actionLabel="Delete" items={bulkActionModal.items} onConfirm={confirmBulkAction} onExportYaml={exportYaml} progress={bulkProgress} />
+            <BulkActionModal
+                {...bulkModalProps}
+                action="delete"
+                actionLabel="Delete"
+                onExportYaml={exportYaml}
+            />
         </>
     );
 }

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
 import BulkActionModal from '~/components/shared/BulkActionModal';
 import { useConfigMaps } from '~/hooks/resources';
@@ -12,6 +12,7 @@ import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import ConfigMapActionsMenu from './ConfigMapActionsMenu';
 import { useConfigMapActions } from './useConfigMapActions';
 import Logger from '~/utils/Logger';
+import { sleep } from '~/utils/bulkExecutor';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 
 // System ConfigMaps auto-created by Kubernetes in every namespace
@@ -26,18 +27,39 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
 
     const [bulkActionModal, setBulkActionModal] = useState<any>({ isOpen: false, action: null, items: [] });
     const [bulkProgress, setBulkProgress] = useState<any>({ current: 0, total: 0, status: 'idle', results: [] });
+    const pausedRef = useRef(false);
+    const resumeResolverRef = useRef<(() => void) | null>(null);
 
     const handleBulkDeleteClick = useCallback((selectedItems: any) => {
         setBulkActionModal({ isOpen: true, action: 'delete', items: selectedItems });
         setBulkProgress({ current: 0, total: selectedItems.length, status: 'idle', results: [] });
     }, []);
 
-    const handleBulkActionConfirm = useCallback(async (items: any) => {
-        Logger.info('Bulk delete started', { count: items.length }, 'config');
+    const handlePause = useCallback(() => {
+        pausedRef.current = true;
+        setBulkProgress((prev: any) => prev.status === 'inProgress' ? { ...prev, status: 'paused' } : prev);
+    }, []);
+
+    const handleResume = useCallback(() => {
+        pausedRef.current = false;
+        setBulkProgress((prev: any) => prev.status === 'paused' ? { ...prev, status: 'inProgress' } : prev);
+        if (resumeResolverRef.current) {
+            resumeResolverRef.current();
+            resumeResolverRef.current = null;
+        }
+    }, []);
+
+    const handleBulkActionConfirm = useCallback(async (items: any, delayMs: number = 0) => {
+        pausedRef.current = false;
+        resumeResolverRef.current = null;
+        Logger.info('Bulk delete started', { count: items.length, delayMs }, 'config');
         setBulkProgress((prev: any) => ({ ...prev, status: 'inProgress', results: [] }));
 
         const results: any[] = [];
         for (let i = 0; i < items.length; i++) {
+            if (pausedRef.current) {
+                await new Promise<void>(resolve => { resumeResolverRef.current = resolve; });
+            }
             const item = items[i];
             const namespace = item.metadata?.namespace;
             const name = item.metadata?.name;
@@ -52,6 +74,11 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
             }
 
             setBulkProgress((prev: any) => ({ ...prev, current: i + 1, results: [...results] }));
+
+            // Delay between items, not after the last one
+            if (delayMs > 0 && i < items.length - 1) {
+                await sleep(delayMs);
+            }
         }
 
         setBulkProgress((prev: any) => ({ ...prev, status: 'complete' }));
@@ -193,6 +220,8 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
                 actionLabel="Delete"
                 items={bulkActionModal.items}
                 onConfirm={handleBulkActionConfirm}
+                onPause={handlePause}
+                onResume={handleResume}
                 onExportYaml={handleExportYaml}
                 progress={bulkProgress}
             />
