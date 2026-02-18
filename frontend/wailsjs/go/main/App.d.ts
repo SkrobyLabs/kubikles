@@ -562,15 +562,13 @@ export function StartAllContainersLogStream(arg1:string,arg2:string,arg3:Array<s
 
 export function StartAllPodsLogStream(arg1:string,arg2:Array<main.PodContainerPair>,arg3:boolean,arg4:boolean):Promise<string>;
 
-export function StartFavoritePortForwards(arg1:string):Promise<void>;
+export function StartAutoStartPortForwards(arg1:string):Promise<void>;
 
 export function StartIngressForward(arg1:main.IngressController,arg2:Array<string>):Promise<void>;
 
 export function StartLogStream(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
 
 export function StartPortForward(arg1:string):Promise<void>;
-
-export function StartPortForwardsWithMode(arg1:string,arg2:string):Promise<void>;
 
 export function StartTerminalSession(arg1:terminal.SessionOptions):Promise<string>;
 

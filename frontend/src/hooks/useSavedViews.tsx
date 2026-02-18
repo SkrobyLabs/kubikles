@@ -29,6 +29,7 @@ export interface SavedView {
     hiddenColumns: string[];
     sortConfig: SortConfig | null;
     columnFilters: ColumnFilters;
+    columnOrder?: string[];
     createdAt: number;
     isDefault?: boolean;
 }
@@ -42,6 +43,7 @@ export interface ViewConfig {
     hiddenColumns?: string[];
     sortConfig?: SortConfig | null;
     columnFilters?: ColumnFilters;
+    columnOrder?: string[];
     resourceType?: string;
 }
 
@@ -133,6 +135,7 @@ export function useSavedViews(resourceType: string | null = null): UseSavedViews
             hiddenColumns: config.hiddenColumns || [],
             sortConfig: config.sortConfig || null,
             columnFilters: config.columnFilters || {},
+            columnOrder: config.columnOrder,
             createdAt: Date.now(),
         };
 

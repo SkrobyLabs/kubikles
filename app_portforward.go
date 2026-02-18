@@ -100,22 +100,11 @@ func (a *App) GetRandomAvailablePort() int {
 	return a.portForwardManager.GetRandomAvailablePort()
 }
 
-// StartFavoritePortForwards starts all favorite port forwards for a context
-func (a *App) StartFavoritePortForwards(contextName string) {
-	debug.LogPortforward("StartFavoritePortForwards called", map[string]interface{}{"context": contextName})
+// StartAutoStartPortForwards starts port forwards with AutoStart=true for a context
+func (a *App) StartAutoStartPortForwards(contextName string) {
+	debug.LogPortforward("StartAutoStartPortForwards called", map[string]interface{}{"context": contextName})
 	if a.portForwardManager == nil {
 		return
 	}
-	a.portForwardManager.StartFavorites(contextName)
-}
-
-// StartPortForwardsWithMode starts port forwards based on the specified mode
-// mode can be: "all", "favorites", "none"
-// Only starts forwards that were running when the app was closed
-func (a *App) StartPortForwardsWithMode(contextName, mode string) {
-	debug.LogPortforward("StartPortForwardsWithMode called", map[string]interface{}{"context": contextName, "mode": mode})
-	if a.portForwardManager == nil {
-		return
-	}
-	a.portForwardManager.StartWithMode(contextName, mode)
+	a.portForwardManager.StartAutoStart(contextName)
 }

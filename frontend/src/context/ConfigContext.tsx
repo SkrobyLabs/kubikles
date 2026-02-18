@@ -19,10 +19,6 @@ interface LogsConfig {
     search: LogSearchConfig;
 }
 
-interface PortForwardsConfig {
-    autoStartMode: 'all' | 'favorites' | 'none';
-}
-
 interface AIConfig {
     model: string;
     panelWidth: number;
@@ -66,7 +62,6 @@ interface DebugConfig {
 
 interface AppConfig {
     logs: LogsConfig;
-    portForwards: PortForwardsConfig;
     ai: AIConfig;
     ui: UIConfig;
     kubernetes: KubernetesConfig;
@@ -104,13 +99,6 @@ const defaultConfig: AppConfig = {
             contextLinesBefore: 1,
             contextLinesAfter: 5
         }
-    },
-    portForwards: {
-        // Auto-start mode on app launch:
-        // - "all": Start all port forwards that were running when app was closed
-        // - "favorites": Only start favorites that were running when app was closed
-        // - "none": Don't auto-start any port forwards
-        autoStartMode: "favorites"
     },
     ai: {
         model: 'sonnet',

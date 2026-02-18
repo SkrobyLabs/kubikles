@@ -520,6 +520,7 @@ export function useLogStream({
         hasMoreAfter,
         isAllLoaded,
         fetchError,
+        setFetchError,
         clearFetchError: () => setFetchError(null),
         streamDisconnected,
         disconnectReason,

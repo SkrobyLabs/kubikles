@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Environment } from 'wailsjs/runtime/runtime';
 import { isInServerMode } from '~/lib/wailsjs-adapter/runtime/runtime';
-// @ts-ignore
-import appIcon from '~/assets/images/logo-universal.png';
+import appIcon from '~/assets/images/icon-inapp.svg';
 import {
     ChevronDownIcon,
     ChevronRightIcon,
@@ -56,7 +55,7 @@ export default function Sidebar({
     const isServerMode = isInServerMode();
     // Version info
     const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
-    const [isMac, setIsMac] = useState(true); // default true to avoid layout shift on macOS
+    const [isMac, setIsMac] = useState(() => navigator.platform.includes('Mac'));
 
     useEffect(() => {
         GetVersionInfo().then(setVersionInfo).catch(() => {});

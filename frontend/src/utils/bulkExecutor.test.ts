@@ -79,7 +79,7 @@ describe('executeBulkOperations', () => {
 
     it('does not delay for single-item operations', async () => {
         const operation = vi.fn(async () => {});
-        const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
+        const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
         const callsBefore = setTimeoutSpy.mock.calls.length;
 
         const promise = executeBulkOperations(['only'], operation, { delayMs: 2000 });

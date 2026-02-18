@@ -10,6 +10,7 @@ import { BookmarkIcon as BookmarkSolidIcon, StarIcon as StarSolidIcon } from '@h
 export default function SavedViewsDropdown({
     views = [],
     activeViewId = null,
+    isDirty = false,
     onSave,
     onLoad,
     onUpdate,
@@ -129,16 +130,21 @@ export default function SavedViewsDropdown({
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-sm border rounded-md transition-colors ${
-                    hasActiveView
-                        ? 'text-primary border-primary/50 bg-primary/10 hover:bg-primary/20'
-                        : 'text-gray-400 border-border hover:text-white hover:bg-white/5'
+                    isDirty
+                        ? 'text-amber-400 border-amber-400/50 bg-amber-400/10 hover:bg-amber-400/20'
+                        : hasActiveView
+                            ? 'text-primary border-primary/50 bg-primary/10 hover:bg-primary/20'
+                            : 'text-gray-400 border-border hover:text-white hover:bg-white/5'
                 }`}
-                title={hasActiveView ? `Active view: ${activeView.name}` : 'Saved Views'}
+                title={hasActiveView
+                    ? (isDirty ? `Active view: ${activeView.name} (unsaved changes)` : `Active view: ${activeView.name}`)
+                    : (isDirty ? 'Unsaved changes — save as a view' : 'Saved Views')
+                }
             >
                 {hasActiveView ? (
-                    <BookmarkSolidIcon className="w-4 h-4" />
+                    <BookmarkSolidIcon className={`w-4 h-4 ${isDirty ? 'text-amber-400' : ''}`} />
                 ) : (
-                    <BookmarkIcon className="w-4 h-4" />
+                    <BookmarkIcon className={`w-4 h-4 ${isDirty ? 'text-amber-400' : ''}`} />
                 )}
                 <span className="hidden sm:inline truncate max-w-[120px]">
                     {hasActiveView ? activeView.name : 'Views'}
@@ -299,14 +305,24 @@ export default function SavedViewsDropdown({
                     </div>
 
                     {/* Active view actions */}
-                    {hasActiveView && (
-                        <div className="px-3 py-2 border-t border-border">
-                            <button
-                                onClick={() => { onLoad(null); setIsOpen(false); }}
-                                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                            >
-                                Clear active view
-                            </button>
+                    {(hasActiveView || isDirty) && (
+                        <div className="px-3 py-2 border-t border-border flex items-center gap-3">
+                            {isDirty && (
+                                <button
+                                    onClick={() => { onLoad(activeViewId); setIsOpen(false); }}
+                                    className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                                >
+                                    Revert changes
+                                </button>
+                            )}
+                            {hasActiveView && (
+                                <button
+                                    onClick={() => { onLoad(null); setIsOpen(false); }}
+                                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                                >
+                                    Clear active view
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>

@@ -268,6 +268,7 @@ export default function LogViewer({
             await SavePodLogs(allLogs, filename);
         } catch (err: any) {
             console.error('Failed to save logs:', err);
+            stream.setFetchError(`Failed to download logs: ${err}`);
         } finally {
             setDownloading(false);
         }
@@ -297,6 +298,7 @@ export default function LogViewer({
             await SaveLogsBundle(entries, filename);
         } catch (err: any) {
             console.error('Failed to save logs bundle:', err);
+            stream.setFetchError(`Failed to download logs bundle: ${err}`);
         } finally {
             setDownloadingBundle(false);
         }
@@ -350,37 +352,31 @@ export default function LogViewer({
                 </div>
             )}
 
-            {/* Stream Disconnected Banner */}
-            {stream.streamDisconnected && !isStale && (
+            {/* Error/Warning Banner — single slot, fetchError takes precedence */}
+            {!isStale && (stream.fetchError || stream.streamDisconnected) && (
                 <div className="flex items-center justify-between px-4 py-2 bg-amber-900/30 border-b border-amber-500/50 text-amber-400 shrink-0">
                     <div className="flex items-center gap-2">
                         <ExclamationTriangleIcon className="h-5 w-5" />
-                        <span className="text-sm">{stream.disconnectReason || 'Stream disconnected'}</span>
+                        <span className="text-sm">{stream.fetchError || stream.disconnectReason || 'Stream disconnected'}</span>
                     </div>
-                    <button
-                        onClick={stream.fetchLogs}
-                        disabled={stream.loading}
-                        className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-500 transition-colors disabled:opacity-50"
-                    >
-                        <ArrowPathIcon className={`h-4 w-4 ${stream.loading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </button>
-                </div>
-            )}
-
-            {/* Fetch Error Banner */}
-            {stream.fetchError && (
-                <div className="flex items-center justify-between px-4 py-1.5 bg-amber-900/20 border-b border-amber-500/30 text-amber-400 shrink-0">
                     <div className="flex items-center gap-2">
-                        <ExclamationTriangleIcon className="h-4 w-4" />
-                        <span className="text-xs">{stream.fetchError}</span>
+                        {stream.fetchError && (
+                            <button
+                                onClick={stream.clearFetchError}
+                                className="text-xs text-amber-400 hover:text-amber-300 px-2"
+                            >
+                                Dismiss
+                            </button>
+                        )}
+                        <button
+                            onClick={stream.fetchLogs}
+                            disabled={stream.loading}
+                            className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-500 transition-colors disabled:opacity-50"
+                        >
+                            <ArrowPathIcon className={`h-4 w-4 ${stream.loading ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </button>
                     </div>
-                    <button
-                        onClick={stream.clearFetchError}
-                        className="text-xs text-amber-400 hover:text-amber-300 px-2"
-                    >
-                        Dismiss
-                    </button>
                 </div>
             )}
 
@@ -505,7 +501,7 @@ export default function LogViewer({
                     <Tooltip content={stream.isAllLoaded ? "All logs loaded" : "Load all logs"}>
                         <button
                             onClick={handleLoadAll}
-                            disabled={stream.loading || stream.loadingAll || stream.isAllLoaded || !!stream.fetchError || stream.streamDisconnected}
+                            disabled={stream.loading || stream.loadingAll || stream.isAllLoaded || !!stream.fetchError}
                             className={`p-1.5 rounded transition-colors disabled:opacity-50 ${stream.isAllLoaded ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                         >
                             {stream.loadingAll ? <Spinner /> : <ArrowsPointingOutIcon className="w-4 h-4" />}
@@ -522,7 +518,7 @@ export default function LogViewer({
                     }>
                         <button
                             onClick={downloadLogs}
-                            disabled={stream.logs.length === 0 || stream.loading || downloading || !!stream.fetchError || stream.streamDisconnected}
+                            disabled={stream.logs.length === 0 || stream.loading || downloading || !!stream.fetchError}
                             className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {downloading ? <Spinner /> : <ArrowDownTrayIcon className="w-4 h-4" />}
@@ -534,7 +530,7 @@ export default function LogViewer({
                         <Tooltip content="Download all pod logs (zip)">
                             <button
                                 onClick={downloadBundle}
-                                disabled={stream.loading || downloadingBundle || !!stream.fetchError || stream.streamDisconnected}
+                                disabled={stream.loading || downloadingBundle || !!stream.fetchError}
                                 className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {downloadingBundle ? <Spinner /> : <ArchiveBoxArrowDownIcon className="w-4 h-4" />}

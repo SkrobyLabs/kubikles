@@ -1,7 +1,7 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind
+.PHONY: help dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon
 
 .DEFAULT_GOAL := help
 
@@ -88,36 +88,40 @@ GIT_DIRTY := $(shell git diff --quiet 2>/dev/null && echo "false" || echo "true"
 VERSION_LDFLAGS := -X main.GitCommit=$(GIT_COMMIT) -X main.GitDirty=$(GIT_DIRTY)
 BUILD_FLAGS := -trimpath -ldflags "-s -w $(VERSION_LDFLAGS)"
 
+# Generate app icon PNG from SVG source (Wails generates icon.ico from this)
+appicon:
+	magick -background none build/appicon.svg -resize 1024x1024 build/appicon.png
+
 dev:
 	$(WAILS) dev
 
-build:
+build: appicon
 	$(WAILS) build -ldflags "$(VERSION_LDFLAGS)"
 
 # Build optimized portable executable for current platform
-build-release:
+build-release: appicon
 	$(WAILS) build $(BUILD_FLAGS)
 
 # Build portable Windows executables (requires mingw-w64 on non-Windows: brew install mingw-w64)
-build-windows-amd64:
+build-windows-amd64: appicon
 	$(WAILS) build -platform windows/amd64 $(BUILD_FLAGS) -o Kubikles-amd64.exe
 
-build-windows-arm64:
+build-windows-arm64: appicon
 	$(WAILS) build -platform windows/arm64 $(BUILD_FLAGS) -o Kubikles-arm64.exe
 
 # Build portable macOS executable
-build-mac:
+build-mac: appicon
 	$(WAILS) build -platform darwin/amd64 $(BUILD_FLAGS) -o Kubikles-amd64
 
 # Build portable macOS ARM executable (Apple Silicon)
-build-mac-arm:
+build-mac-arm: appicon
 	$(WAILS) build -platform darwin/arm64 $(BUILD_FLAGS) -o Kubikles-arm64
 
 # Build portable Linux executables
-build-linux-amd64:
+build-linux-amd64: appicon
 	$(WAILS) build -platform linux/amd64 $(BUILD_FLAGS) -o Kubikles-linux-amd64
 
-build-linux-arm64:
+build-linux-arm64: appicon
 	$(WAILS) build -platform linux/arm64 $(BUILD_FLAGS) -o Kubikles-linux-arm64
 
 # Build portable Linux AppImage (bundles into single executable) - Unix only

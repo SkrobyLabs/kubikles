@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
+import ComparisonMenuItems from '~/components/shared/ComparisonMenuItems';
 
 export default function DaemonSetActionsMenu({ daemonSet, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onRestart, onDelete, onViewLogs }: any) {
     const buttonRef = useRef<any>(null);
@@ -74,6 +75,13 @@ export default function DaemonSetActionsMenu({ daemonSet, isOpen, menuPosition, 
                 <ArrowPathIcon className="h-4 w-4" />
                 Restart
             </button>
+            <div className="h-px bg-surface-hover my-1" />
+            <ComparisonMenuItems
+                kind="daemonset"
+                namespace={daemonSet.metadata?.namespace}
+                name={daemonSet.metadata?.name}
+                onAction={() => onOpenChange(false)}
+            />
             <div className="h-px bg-surface-hover my-1" />
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onDelete(daemonSet)); }}

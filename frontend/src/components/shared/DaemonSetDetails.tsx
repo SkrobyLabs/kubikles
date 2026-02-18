@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { PencilSquareIcon, DocumentTextIcon, ShareIcon, CubeIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, DocumentTextIcon, ShareIcon, CubeIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
+import { useNotification } from '~/context';
+import { RestartDaemonSet } from '~/lib/wailsjs-adapter/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
@@ -15,6 +17,7 @@ const TAB_METRICS = 'metrics';
 export default function DaemonSetDetails({ daemonSet, tabContext = '' }: { daemonSet: any; tabContext?: string }) {
     const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
+    const { addNotification } = useNotification();
     const activeTab = getDetailTab('daemonset', TAB_BASIC);
     const setActiveTab = (tab: string) => setDetailTab('daemonset', tab);
 
@@ -75,6 +78,15 @@ export default function DaemonSetDetails({ daemonSet, tabContext = '' }: { daemo
         const selectorParts = Object.entries(selector).map(([k, v]) => `${k}=${v}`);
         if (selectorParts.length > 0) {
             navigateWithSearch('pods', `labels:"${selectorParts.join(',')}"`);
+        }
+    };
+
+    const handleRestart = async () => {
+        try {
+            await RestartDaemonSet(namespace, name);
+            addNotification({ type: 'success', message: `Restarted daemonset ${name}` });
+        } catch (error: any) {
+            addNotification({ type: 'error', message: `Failed to restart ${name}: ${error.message || error}` });
         }
     };
 
@@ -142,6 +154,14 @@ export default function DaemonSetDetails({ daemonSet, tabContext = '' }: { daemo
                             title="Dependencies"
                         >
                             <ShareIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={handleRestart}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title="Restart"
+                            disabled={!!isStale}
+                        >
+                            <ArrowPathIcon className="w-4 h-4" />
                         </button>
                     </div>
                 </div>

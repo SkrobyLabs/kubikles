@@ -3,8 +3,10 @@
 package terminal
 
 import (
+	"fmt"
 	"io"
 	"log"
+	"os/exec"
 	"strings"
 	"sync"
 
@@ -41,7 +43,12 @@ func newSession(id string, opts SessionOptions, emitFunc func(TerminalEvent)) (*
 	for i, arg := range cmdArgs {
 		quotedArgs[i] = quoteArg(arg)
 	}
-	fullCommand := "kubectl " + strings.Join(quotedArgs, " ")
+	// Resolve kubectl to its full path so ConPTY/CreateProcess can find it
+	kubectlPath, err := exec.LookPath("kubectl")
+	if err != nil {
+		return nil, fmt.Errorf("kubectl not found in PATH: %w", err)
+	}
+	fullCommand := quoteArg(kubectlPath) + " " + strings.Join(quotedArgs, " ")
 
 	// Start ConPTY with default size (80x25)
 	cpty, err := conpty.Start(fullCommand, conpty.ConPtyDimensions(80, 25))

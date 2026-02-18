@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { PencilSquareIcon, PlayIcon, PauseIcon, ShareIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, PlayIcon, PauseIcon, ShareIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
@@ -115,6 +115,13 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
                     </div>
                     {/* Action Icons */}
                     <div className="flex items-center gap-1 ml-2">
+                        <button
+                            onClick={handleViewJobs}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title="View Jobs"
+                        >
+                            <BriefcaseIcon className="w-4 h-4" />
+                        </button>
                         <button
                             onClick={handleEditYaml}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"

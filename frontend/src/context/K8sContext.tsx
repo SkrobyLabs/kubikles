@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespaces, StartPortForwardsWithMode, ListCRDs, GetK8sInitError } from 'wailsjs/go/main/App';
+import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespaces, StartAutoStartPortForwards, ListCRDs, GetK8sInitError } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
 
@@ -111,20 +111,6 @@ interface K8sContextValue {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-// Helper to get port forward auto-start mode from settings
-const getPortForwardAutoStartMode = (): string => {
-    try {
-        const saved = localStorage.getItem('kubikles_settings');
-        if (saved) {
-            const settings = JSON.parse(saved);
-            return settings?.portForwards?.autoStartMode || 'favorites';
-        }
-    } catch (e: any) {
-        Logger.error('Failed to read port forward settings', e, 'k8s');
-    }
-    return 'favorites'; // Default
-};
 
 // Helper to get connection test timeout (seconds) from settings
 const getConnectionTestTimeout = (): number => {
@@ -566,11 +552,10 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setIsLoadingNamespaces(false);
             setIsConnecting(false);
 
-            // Start port forwards based on auto-start mode setting
-            const autoStartMode = getPortForwardAutoStartMode();
+            // Start port forwards with AutoStart=true for this context
             try {
-                await StartPortForwardsWithMode(contextForThisEffect, autoStartMode);
-                Logger.debug("Started port forwards", { context: contextForThisEffect, mode: autoStartMode }, 'k8s');
+                await StartAutoStartPortForwards(contextForThisEffect);
+                Logger.debug("Started auto-start port forwards", { context: contextForThisEffect }, 'k8s');
             } catch (err: any) {
                 Logger.error("Failed to start port forwards", err, 'k8s');
             }

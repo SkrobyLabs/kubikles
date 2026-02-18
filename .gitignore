@@ -1,5 +1,9 @@
-# Wails
-build/
+# Wails build outputs (generated from build/appicon.svg)
+build/bin/
+build/appicon.png
+build/windows/icon.ico
+build/icon-src/icon.svg
+build/icon-src/logo.svg
 bin/
 frontend/wailsjs/runtime/
 

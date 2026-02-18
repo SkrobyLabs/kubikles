@@ -183,20 +183,6 @@ export const configSchema: Record<string, any> = {
             default: 0
         }
     },
-    portForwards: {
-        _meta: { label: 'Port Forwards', description: 'Port forwarding settings' },
-        autoStartMode: {
-            type: 'enum',
-            label: 'Auto-Start Mode',
-            description: 'Which port forwards to restore on app launch',
-            options: [
-                { value: 'all', label: 'All' },
-                { value: 'favorites', label: 'Favorites Only' },
-                { value: 'none', label: 'None' }
-            ],
-            default: 'favorites'
-        }
-    },
     ai: {
         _meta: { label: 'AI', description: 'AI assistant settings' },
         model: {

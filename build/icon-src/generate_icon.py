@@ -12,7 +12,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BUILD_DIR = os.path.dirname(SCRIPT_DIR)
 
 SIZE = 1024
-PADDING = 80
+PADDING = 0
 BG_COLOR = "#1a1d23"
 ACCENT = "#007acc"
 ACCENT_LIGHT = "#3ba0e6"
@@ -20,7 +20,7 @@ ACCENT_DIM = "#1e5a8a"     # Visible spoke color against dark bg
 WHITE = "#e8eaed"
 
 cx, cy = SIZE // 2, SIZE // 2
-corner_r = 180
+corner_r = 228              # macOS Big Sur standard continuous corner radius
 
 # Wheel/cluster params
 outer_r = 280
@@ -110,7 +110,8 @@ def magick(args):
     subprocess.run([cmd] + args, check=True)
 
 def generate_png(svg_path, out_path, size=1024, crop_padding=False):
-    args = [svg_path, "-resize", f"{size}x{size}", "-background", "none", "-gravity", "center"]
+    # -background none MUST come before the input so SVG rasterizes with transparency
+    args = ["-background", "none", svg_path, "-resize", f"{size}x{size}", "-gravity", "center"]
     if crop_padding:
         # Trim transparent padding so the icon fills the image edge-to-edge
         args += ["-trim", "+repage"]
@@ -118,7 +119,7 @@ def generate_png(svg_path, out_path, size=1024, crop_padding=False):
     magick(args)
 
 def generate_ico(svg_path, out_path):
-    magick([svg_path, "-resize", "256x256", "-background", "none", "-gravity", "center", out_path])
+    magick(["-background", "none", svg_path, "-resize", "256x256", "-gravity", "center", out_path])
 
 def generate_icns(svg_path, out_path):
     with tempfile.TemporaryDirectory(suffix=".iconset") as iconset:

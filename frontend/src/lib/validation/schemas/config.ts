@@ -23,11 +23,6 @@ const logsConfigSchema = z.object({
   search: logSearchConfigSchema.optional(),
 });
 
-// Port forwards config
-const portForwardsConfigSchema = z.object({
-  autoStartMode: z.enum(['all', 'favorites', 'none']).optional(),
-});
-
 // AI config
 const aiConfigSchema = z.object({
   model: z.string().optional(),
@@ -95,7 +90,6 @@ const debugConfigSchema = z.object({
  */
 export const appConfigSchema = z.object({
   logs: logsConfigSchema.optional(),
-  portForwards: portForwardsConfigSchema.optional(),
   ai: aiConfigSchema.optional(),
   ui: uiConfigSchema.optional(),
   kubernetes: kubernetesConfigSchema.optional(),

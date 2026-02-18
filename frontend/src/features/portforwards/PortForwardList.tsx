@@ -8,9 +8,11 @@ import {
     PlusIcon,
     EllipsisVerticalIcon,
     PencilSquareIcon,
-    MagnifyingGlassIcon
+    MagnifyingGlassIcon,
+    PowerIcon,
+    LockClosedIcon
 } from '@heroicons/react/24/outline';
-import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
+import { StarIcon as StarIconSolid, PowerIcon as PowerIconSolid, LockClosedIcon as LockClosedIconSolid } from '@heroicons/react/24/solid';
 import { usePortForwards } from '~/hooks/usePortForwards';
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
@@ -35,6 +37,8 @@ const StatusText = ({ status }: any) => {
 // Column definitions
 const ALL_COLUMNS = [
     { key: 'favorite', label: '', alwaysVisible: true },
+    { key: 'autoStart', label: '', alwaysVisible: true },
+    { key: 'keepAlive', label: '', alwaysVisible: true },
     { key: 'label', label: 'Label' },
     { key: 'context', label: 'Context', contextOnly: true },
     { key: 'namespace', label: 'Namespace' },
@@ -169,6 +173,32 @@ export default function PortForwardList({ isVisible }: { isVisible: boolean }) {
         }
     }, [updateConfig]);
 
+    const handleToggleAutoStart = useCallback(async (config: any) => {
+        try {
+            const newAutoStart = !config.autoStart;
+            await updateConfig({ ...config, autoStart: newAutoStart });
+            // If both flags are now on and forward isn't active, start it
+            if (newAutoStart && config.keepAlive && !isActive(config.id)) {
+                await startForward(config.id);
+            }
+        } catch (err: any) {
+            console.error('Failed to toggle autoStart:', err);
+        }
+    }, [updateConfig, isActive, startForward]);
+
+    const handleToggleKeepAlive = useCallback(async (config: any) => {
+        try {
+            const newKeepAlive = !config.keepAlive;
+            await updateConfig({ ...config, keepAlive: newKeepAlive });
+            // If both flags are now on and forward isn't active, start it
+            if (newKeepAlive && config.autoStart && !isActive(config.id)) {
+                await startForward(config.id);
+            }
+        } catch (err: any) {
+            console.error('Failed to toggle keepAlive:', err);
+        }
+    }, [updateConfig, isActive, startForward]);
+
     const handleOpenBrowser = useCallback((config: any) => {
         const protocol = config.https ? 'https' : 'http';
         const url = `${protocol}://localhost:${config.localPort}`;
@@ -183,8 +213,8 @@ export default function PortForwardList({ isVisible }: { isVisible: boolean }) {
             } else {
                 // Adding new config
                 const result = await addConfig(config);
-                // Auto-start if requested
-                if (config.autoStart && result?.id) {
+                // Start immediately if requested (startNow is form-only, not persisted)
+                if (config.startNow && result?.id) {
                     try {
                         await startForward(result.id);
                         // Open in browser if requested
@@ -193,7 +223,7 @@ export default function PortForwardList({ isVisible }: { isVisible: boolean }) {
                             BrowserOpenURL(`${protocol}://localhost:${config.localPort}`);
                         }
                     } catch (startErr) {
-                        console.error('Failed to auto-start port forward:', startErr);
+                        console.error('Failed to start port forward:', startErr);
                     }
                 }
             }
@@ -383,6 +413,38 @@ export default function PortForwardList({ isVisible }: { isVisible: boolean }) {
                                                                     <StarIconSolid className="w-4 h-4 text-yellow-400" />
                                                                 ) : (
                                                                     <StarIcon className="w-4 h-4" />
+                                                                )}
+                                                            </button>
+                                                        </td>
+                                                    );
+                                                case 'autoStart':
+                                                    return (
+                                                        <td key={col.key} className="px-6 py-3">
+                                                            <button
+                                                                onClick={() => handleToggleAutoStart(config)}
+                                                                className="text-gray-400 hover:text-blue-400 transition-colors"
+                                                                title={config.autoStart ? 'Disable auto-start' : 'Auto-start when switching to this context'}
+                                                            >
+                                                                {config.autoStart ? (
+                                                                    <PowerIconSolid className="w-4 h-4 text-blue-400" />
+                                                                ) : (
+                                                                    <PowerIcon className="w-4 h-4" />
+                                                                )}
+                                                            </button>
+                                                        </td>
+                                                    );
+                                                case 'keepAlive':
+                                                    return (
+                                                        <td key={col.key} className="px-6 py-3">
+                                                            <button
+                                                                onClick={() => handleToggleKeepAlive(config)}
+                                                                className="text-gray-400 hover:text-purple-400 transition-colors"
+                                                                title={config.keepAlive ? 'Disable keep alive' : 'Enable keep alive across contexts'}
+                                                            >
+                                                                {config.keepAlive ? (
+                                                                    <LockClosedIconSolid className="w-4 h-4 text-purple-400" />
+                                                                ) : (
+                                                                    <LockClosedIcon className="w-4 h-4" />
                                                                 )}
                                                             </button>
                                                         </td>

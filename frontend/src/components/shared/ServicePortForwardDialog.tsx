@@ -20,7 +20,7 @@ export default function ServicePortForwardDialog({
 
     const form = useForm({
         schema: podPortForwardSchema,
-        initialValues: { localPort: 0, label: '', https: false, favorite: false, autoStart: true, openInBrowser: false },
+        initialValues: { localPort: 0, label: '', https: false, favorite: false, autoStart: false, keepAlive: false, startNow: true, openInBrowser: false },
         onSubmit: async (values) => {
             if (isEditing && existingConfig) {
                 const updatedConfig = {
@@ -28,7 +28,9 @@ export default function ServicePortForwardDialog({
                     localPort: values.localPort,
                     label: values.label,
                     favorite: values.favorite,
-                    https: values.https
+                    https: values.https,
+                    autoStart: values.autoStart,
+                    keepAlive: values.keepAlive
                 };
                 await UpdatePortForwardConfig(updatedConfig);
             } else {
@@ -41,12 +43,14 @@ export default function ServicePortForwardDialog({
                     remotePort: remotePort,
                     label: values.label,
                     favorite: values.favorite,
-                    https: values.https
+                    https: values.https,
+                    autoStart: values.autoStart,
+                    keepAlive: values.keepAlive
                 };
 
                 const result = await AddPortForwardConfig(config);
 
-                if (values.autoStart && result?.id) {
+                if (values.startNow && result?.id) {
                     try {
                         await StartPortForward(result.id);
                         if (values.openInBrowser) {
@@ -54,7 +58,7 @@ export default function ServicePortForwardDialog({
                             BrowserOpenURL(`${protocol}://localhost:${values.localPort}`);
                         }
                     } catch (startErr) {
-                        console.error('Failed to auto-start port forward:', startErr);
+                        console.error('Failed to start port forward:', startErr);
                     }
                 }
             }
@@ -73,7 +77,9 @@ export default function ServicePortForwardDialog({
                     localPort: existingConfig.localPort || remotePort,
                     https: existingConfig.https || false,
                     favorite: existingConfig.favorite || false,
-                    autoStart: false,
+                    autoStart: existingConfig.autoStart || false,
+                    keepAlive: existingConfig.keepAlive || false,
+                    startNow: false,
                     openInBrowser: false
                 });
             } else {
@@ -87,7 +93,9 @@ export default function ServicePortForwardDialog({
                     localPort: 0,
                     https: false,
                     favorite: false,
-                    autoStart: true,
+                    autoStart: false,
+                    keepAlive: false,
+                    startNow: true,
                     openInBrowser: false
                 });
 
@@ -214,24 +222,42 @@ export default function ServicePortForwardDialog({
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
-                                        {...form.getFieldProps('autoStart') as any}
-                                        checked={form.values.autoStart}
+                                        {...form.getFieldProps('startNow') as any}
+                                        checked={form.values.startNow}
                                         className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                                     />
                                     <span className="text-sm text-gray-300">Start immediately</span>
                                 </label>
-                                <label className={`flex items-center gap-2 ${form.values.autoStart ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
+                                <label className={`flex items-center gap-2 ${form.values.startNow ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
                                     <input
                                         type="checkbox"
                                         {...form.getFieldProps('openInBrowser') as any}
                                         checked={form.values.openInBrowser}
-                                        disabled={!form.values.autoStart}
+                                        disabled={!form.values.startNow}
                                         className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                                     />
                                     <span className="text-sm text-gray-300">Open in browser</span>
                                 </label>
                             </>
                         )}
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                {...form.getFieldProps('autoStart') as any}
+                                checked={form.values.autoStart}
+                                className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
+                            />
+                            <span className="text-sm text-gray-300">Auto-start on context switch</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                {...form.getFieldProps('keepAlive') as any}
+                                checked={form.values.keepAlive}
+                                className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
+                            />
+                            <span className="text-sm text-gray-300">Keep alive across contexts</span>
+                        </label>
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input
                                 type="checkbox"

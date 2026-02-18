@@ -43,12 +43,11 @@ func (a *App) SwitchContext(name string) error {
 	// Cancel any pending connection test
 	a.CancelConnectionTest()
 
-	// Stop all port forwards from the previous context — they target resources
-	// that won't exist in the new context and the reconnect loop would keep
-	// retrying otherwise.
+	// Stop non-KeepAlive port forwards from the departing context
 	if a.portForwardManager != nil {
-		debug.LogK8s("SwitchContext: Stopping all port forwards before context switch", nil)
-		a.portForwardManager.StopAll()
+		oldContext := a.k8sClient.GetCurrentContext()
+		debug.LogK8s("SwitchContext: Stopping port forwards for context", map[string]any{"context": oldContext})
+		a.portForwardManager.StopAllForContext(oldContext)
 	}
 
 	// Discard any buffered events from the old context, then stop all watchers.

@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 import ComparisonMenuItems from '~/components/shared/ComparisonMenuItems';
 
-export default function StatefulSetActionsMenu({ statefulSet, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onRestart, onDelete, onViewLogs }: any) {
+export default function StatefulSetActionsMenu({ statefulSet, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onRestart, onDelete, onViewLogs, onScale }: any) {
     const buttonRef = useRef<any>(null);
     const menuRef = useRef<any>(null);
 
@@ -75,6 +75,15 @@ export default function StatefulSetActionsMenu({ statefulSet, isOpen, menuPositi
                 <ArrowPathIcon className="h-4 w-4" />
                 Restart
             </button>
+            {onScale && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); handleAction(() => onScale(statefulSet)); }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
+                >
+                    <ArrowsPointingOutIcon className="h-4 w-4" />
+                    Scale
+                </button>
+            )}
             <div className="h-px bg-surface-hover my-1" />
             <ComparisonMenuItems
                 kind="statefulset"

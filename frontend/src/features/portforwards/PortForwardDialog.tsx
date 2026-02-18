@@ -30,7 +30,9 @@ export default function PortForwardDialog({
             label: '',
             favorite: false,
             https: false,
-            autoStart: true,
+            autoStart: false,
+            keepAlive: false,
+            startNow: true,
             openInBrowser: false
         },
         onSubmit: async (values) => {
@@ -54,7 +56,9 @@ export default function PortForwardDialog({
                     label: config.label || '',
                     favorite: config.favorite || false,
                     https: config.https || false,
-                    autoStart: true,
+                    autoStart: config.autoStart || false,
+                    keepAlive: config.keepAlive || false,
+                    startNow: false,
                     openInBrowser: false
                 });
                 setAvailablePorts([]);
@@ -71,7 +75,9 @@ export default function PortForwardDialog({
                     label: '',
                     favorite: false,
                     https: false,
-                    autoStart: true,
+                    autoStart: false,
+                    keepAlive: false,
+                    startNow: true,
                     openInBrowser: false
                 });
                 // Get a random available port
@@ -381,22 +387,38 @@ export default function PortForwardDialog({
                                 <label className="flex items-center gap-2">
                                     <input
                                         type="checkbox"
-                                        {...form.getFieldProps('autoStart')}
-                                        checked={form.values.autoStart}
+                                        {...form.getFieldProps('startNow')}
+                                        checked={form.values.startNow}
                                     />
                                     <span className="text-gray-300">Start immediately</span>
                                 </label>
-                                <label className={`flex items-center gap-2 ${!form.values.autoStart && 'opacity-50'}`}>
+                                <label className={`flex items-center gap-2 ${!form.values.startNow && 'opacity-50'}`}>
                                     <input
                                         type="checkbox"
                                         {...form.getFieldProps('openInBrowser')}
                                         checked={form.values.openInBrowser}
-                                        disabled={!form.values.autoStart}
+                                        disabled={!form.values.startNow}
                                     />
                                     <span className="text-gray-300">Open in browser</span>
                                 </label>
                             </>
                         )}
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                {...form.getFieldProps('autoStart')}
+                                checked={form.values.autoStart}
+                            />
+                            <span className="text-gray-300">Auto-start on context switch</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                {...form.getFieldProps('keepAlive')}
+                                checked={form.values.keepAlive}
+                            />
+                            <span className="text-gray-300">Keep alive across contexts</span>
+                        </label>
                         <div className="flex gap-6">
                             <label className="flex items-center gap-2">
                                 <input

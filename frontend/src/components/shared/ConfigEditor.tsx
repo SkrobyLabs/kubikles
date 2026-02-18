@@ -273,18 +273,6 @@ export default function ConfigEditor() {
                                 }
                             }
                         },
-                        portForwards: {
-                            type: 'object',
-                            description: 'Port forwarding settings',
-                            properties: {
-                                autoStartMode: {
-                                    type: 'string',
-                                    description: 'Auto-start mode: "all" (start all that were running), "favorites" (only favorites), "none" (disabled)',
-                                    enum: ['all', 'favorites', 'none'],
-                                    default: 'favorites'
-                                }
-                            }
-                        },
                         ui: {
                             type: 'object',
                             description: 'UI timing settings',

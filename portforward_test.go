@@ -23,7 +23,8 @@ func TestPortForwardConfig_Fields(t *testing.T) {
 		RemotePort:   80,
 		Label:        "Nginx Dev",
 		Favorite:     true,
-		WasRunning:   false,
+		AutoStart:    true,
+		KeepAlive:    false,
 		HTTPS:        false,
 		CreatedAt:    time.Now(),
 	}
@@ -46,8 +47,84 @@ func TestPortForwardConfig_Fields(t *testing.T) {
 	if !cfg.Favorite {
 		t.Error("Favorite should be true")
 	}
-	if cfg.WasRunning {
-		t.Error("WasRunning should be false")
+	if !cfg.AutoStart {
+		t.Error("AutoStart should be true")
+	}
+	if cfg.KeepAlive {
+		t.Error("KeepAlive should be false")
+	}
+}
+
+func TestPortForwardConfig_AutoStartKeepAlive(t *testing.T) {
+	tests := []struct {
+		name      string
+		autoStart bool
+		keepAlive bool
+	}{
+		{"both false", false, false},
+		{"autoStart only", true, false},
+		{"keepAlive only", false, true},
+		{"both true", true, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := PortForwardConfig{
+				ID:        "test-" + tt.name,
+				AutoStart: tt.autoStart,
+				KeepAlive: tt.keepAlive,
+			}
+			if cfg.AutoStart != tt.autoStart {
+				t.Errorf("AutoStart = %v, want %v", cfg.AutoStart, tt.autoStart)
+			}
+			if cfg.KeepAlive != tt.keepAlive {
+				t.Errorf("KeepAlive = %v, want %v", cfg.KeepAlive, tt.keepAlive)
+			}
+		})
+	}
+}
+
+func TestPortForwardConfig_AutoStartKeepAlive_JSON(t *testing.T) {
+	cfg := PortForwardConfig{
+		ID:        "json-flags",
+		AutoStart: true,
+		KeepAlive: true,
+		LocalPort: 8080,
+	}
+
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatalf("Failed to marshal: %v", err)
+	}
+
+	var decoded PortForwardConfig
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("Failed to unmarshal: %v", err)
+	}
+
+	if !decoded.AutoStart {
+		t.Error("AutoStart should survive JSON round-trip")
+	}
+	if !decoded.KeepAlive {
+		t.Error("KeepAlive should survive JSON round-trip")
+	}
+}
+
+func TestPortForwardConfig_BackwardCompat_NoAutoStartKeepAlive(t *testing.T) {
+	// Simulate loading a config saved before AutoStart/KeepAlive existed
+	jsonData := `{"id":"old-cfg","localPort":8080,"remotePort":80,"favorite":true}`
+
+	var cfg PortForwardConfig
+	if err := json.Unmarshal([]byte(jsonData), &cfg); err != nil {
+		t.Fatalf("Failed to unmarshal: %v", err)
+	}
+
+	// Both should default to false (zero value) for old configs
+	if cfg.AutoStart {
+		t.Error("AutoStart should default to false for old configs")
+	}
+	if cfg.KeepAlive {
+		t.Error("KeepAlive should default to false for old configs")
 	}
 }
 

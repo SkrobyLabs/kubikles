@@ -357,11 +357,10 @@ export function SetTheme(...args) { return AppProxy.SetTheme(...args); }
 export function StartAISession(...args) { return AppProxy.StartAISession(...args); }
 export function StartAllContainersLogStream(...args) { return AppProxy.StartAllContainersLogStream(...args); }
 export function StartAllPodsLogStream(...args) { return AppProxy.StartAllPodsLogStream(...args); }
-export function StartFavoritePortForwards(...args) { return AppProxy.StartFavoritePortForwards(...args); }
+export function StartAutoStartPortForwards(...args) { return AppProxy.StartAutoStartPortForwards(...args); }
 export function StartIngressForward(...args) { return AppProxy.StartIngressForward(...args); }
 export function StartLogStream(...args) { return AppProxy.StartLogStream(...args); }
 export function StartPortForward(...args) { return AppProxy.StartPortForward(...args); }
-export function StartPortForwardsWithMode(...args) { return AppProxy.StartPortForwardsWithMode(...args); }
 export function StartTerminalSession(...args) { return AppProxy.StartTerminalSession(...args); }
 export function StopAllPortForwards(...args) { return AppProxy.StopAllPortForwards(...args); }
 export function StopAllWatchers(...args) { return AppProxy.StopAllWatchers(...args); }

@@ -1627,7 +1627,8 @@ export namespace main {
 	    remotePort: number;
 	    label: string;
 	    favorite: boolean;
-	    wasRunning: boolean;
+	    autoStart: boolean;
+	    keepAlive: boolean;
 	    https: boolean;
 	    // Go type: time
 	    createdAt: any;
@@ -1647,7 +1648,8 @@ export namespace main {
 	        this.remotePort = source["remotePort"];
 	        this.label = source["label"];
 	        this.favorite = source["favorite"];
-	        this.wasRunning = source["wasRunning"];
+	        this.autoStart = source["autoStart"];
+	        this.keepAlive = source["keepAlive"];
 	        this.https = source["https"];
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	    }

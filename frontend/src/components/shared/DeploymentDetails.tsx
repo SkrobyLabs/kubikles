@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { PencilSquareIcon, DocumentTextIcon, ShareIcon, CubeIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, DocumentTextIcon, ShareIcon, CubeIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { useNotification } from '~/context';
@@ -9,7 +9,7 @@ import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } 
 import ControllerMetricsTab from './ControllerMetricsTab';
 import ResourceEventsTab from './ResourceEventsTab';
 import ScaleModal from './ScaleModal';
-import { ScaleDeployment } from '~/lib/wailsjs-adapter/go/main/App';
+import { ScaleDeployment, RestartDeployment } from '~/lib/wailsjs-adapter/go/main/App';
 import { useResourceWatcher } from '~/hooks/useResourceWatcher';
 
 const TAB_BASIC = 'basic';
@@ -113,6 +113,15 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
         }
     };
 
+    const handleRestart = async () => {
+        try {
+            await RestartDeployment(namespace, name);
+            addNotification({ type: 'success', message: `Restarted deployment ${name}` });
+        } catch (error: any) {
+            addNotification({ type: 'error', message: `Failed to restart ${name}: ${error.message || error}` });
+        }
+    };
+
     const handleScale = async (newReplicas: number) => {
         try {
             await ScaleDeployment(namespace, name, newReplicas);
@@ -201,6 +210,14 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
                             title="Dependencies"
                         >
                             <ShareIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={handleRestart}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title="Restart"
+                            disabled={!!isStale}
+                        >
+                            <ArrowPathIcon className="w-4 h-4" />
                         </button>
                     </div>
                 </div>

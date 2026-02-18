@@ -9,7 +9,9 @@ export const podPortForwardSchema = z.object({
   label: optionalStringSchema.default(''),
   https: z.boolean().default(false),
   favorite: z.boolean().default(false),
-  autoStart: z.boolean().default(true),
+  autoStart: z.boolean().default(false),
+  keepAlive: z.boolean().default(false),
+  startNow: z.boolean().default(true),
   openInBrowser: z.boolean().default(false),
 });
 
@@ -29,7 +31,9 @@ export const portForwardConfigSchema = z.object({
   label: optionalStringSchema.default(''),
   favorite: z.boolean().default(false),
   https: z.boolean().default(false),
-  autoStart: z.boolean().default(true),
+  autoStart: z.boolean().default(false),
+  keepAlive: z.boolean().default(false),
+  startNow: z.boolean().default(true),
   openInBrowser: z.boolean().default(false),
 });
 
@@ -44,6 +48,8 @@ export const portForwardEditSchema = z.object({
   label: optionalStringSchema.default(''),
   favorite: z.boolean().default(false),
   https: z.boolean().default(false),
+  autoStart: z.boolean().default(false),
+  keepAlive: z.boolean().default(false),
 });
 
 export type PortForwardEditFormValues = z.infer<typeof portForwardEditSchema>;

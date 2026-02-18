@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
+import ComparisonMenuItems from '~/components/shared/ComparisonMenuItems';
 
-export default function ReplicaSetActionsMenu({ replicaSet, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onDelete, onViewLogs }: any) {
+export default function ReplicaSetActionsMenu({ replicaSet, isOpen, menuPosition, onOpenChange, onEditYaml, onShowDependencies, onDelete, onViewLogs, onScale }: any) {
     const buttonRef = useRef<any>(null);
     const menuRef = useRef<any>(null);
 
@@ -67,6 +68,22 @@ export default function ReplicaSetActionsMenu({ replicaSet, isOpen, menuPosition
                 <ShareIcon className="h-4 w-4" />
                 Dependencies
             </button>
+            {onScale && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); handleAction(() => onScale(replicaSet)); }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
+                >
+                    <ArrowsPointingOutIcon className="h-4 w-4" />
+                    Scale
+                </button>
+            )}
+            <div className="h-px bg-surface-hover my-1" />
+            <ComparisonMenuItems
+                kind="replicaset"
+                namespace={replicaSet.metadata?.namespace}
+                name={replicaSet.metadata?.name}
+                onAction={() => onOpenChange(false)}
+            />
             <div className="h-px bg-surface-hover my-1" />
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onDelete(replicaSet)); }}

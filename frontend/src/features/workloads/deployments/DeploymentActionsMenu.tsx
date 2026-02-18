@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, ArrowPathIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, ShareIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 import ComparisonMenuItems from '~/components/shared/ComparisonMenuItems';
 import type { K8sDeployment } from '~/types/k8s';
 
@@ -19,6 +19,7 @@ interface DeploymentActionsMenuProps {
     onRestart: (deployment: K8sDeployment) => void;
     onDelete: (deployment: K8sDeployment) => void;
     onViewLogs: (deployment: K8sDeployment) => void;
+    onScale?: (deployment: K8sDeployment) => void;
 }
 
 export default function DeploymentActionsMenu({
@@ -30,7 +31,8 @@ export default function DeploymentActionsMenu({
     onShowDependencies,
     onRestart,
     onDelete,
-    onViewLogs
+    onViewLogs,
+    onScale
 }: DeploymentActionsMenuProps) {
     const buttonRef = useRef<HTMLButtonElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -103,6 +105,15 @@ export default function DeploymentActionsMenu({
                 <ArrowPathIcon className="h-4 w-4" />
                 Restart
             </button>
+            {onScale && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); handleAction(() => onScale(deployment)); }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover flex items-center gap-2"
+                >
+                    <ArrowsPointingOutIcon className="h-4 w-4" />
+                    Scale
+                </button>
+            )}
             <div className="h-px bg-surface-hover my-1" />
             <ComparisonMenuItems
                 kind="deployment"

@@ -7,9 +7,11 @@ import { useStatefulSets, usePods } from '~/hooks/resources';
 import { useStatefulSetActions } from './useStatefulSetActions';
 import { useK8s } from '~/context';
 import { useMenu } from '~/context';
+import { useNotification } from '~/context';
 import { useSelection } from '~/hooks/useSelection';
 import { useBulkActions } from '~/hooks/useBulkActions';
-import { DeleteStatefulSet, RestartStatefulSet, GetStatefulSetYaml } from 'wailsjs/go/main/App';
+import { DeleteStatefulSet, RestartStatefulSet, GetStatefulSetYaml, ScaleStatefulSet } from 'wailsjs/go/main/App';
+import ScaleModal from '~/components/shared/ScaleModal';
 import { formatAge } from '~/utils/formatting';
 import { getDeploymentPods, getEffectivePodStatus, getPodStatusColor } from '~/utils/k8s-helpers';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
@@ -39,6 +41,8 @@ export default function StatefulSetList({ isVisible }: { isVisible: boolean }) {
     const statefulSetsReady = !statefulSetsLoading && statefulSets.length > 0;
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible && statefulSetsReady) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useStatefulSetActions();
+    const { addNotification } = useNotification();
+    const [scaleTarget, setScaleTarget] = useState<any>(null);
 
     const columns = useMemo(() => [
         { key: 'name', label: 'Name', render: (item: any) => item.metadata?.name, getValue: (item: any) => item.metadata?.name, initialSort: 'asc' },
@@ -143,6 +147,7 @@ export default function StatefulSetList({ isVisible }: { isVisible: boolean }) {
                     onRestart={() => openBulkRestart?.([ item])}
                     onDelete={() => openBulkDelete([item])}
                     onViewLogs={() => handleViewLogs(item)}
+                    onScale={() => setScaleTarget(item)}
                 />
             ),
             isColumnSelector: true,
@@ -178,6 +183,21 @@ export default function StatefulSetList({ isVisible }: { isVisible: boolean }) {
                 actionLabel={bulkActionModal.action === 'delete' ? 'Delete' : 'Restart'}
                 onExportYaml={bulkActionModal.action === 'delete' ? exportYaml : undefined}
             />
+
+            {scaleTarget && (
+                <ScaleModal
+                    resourceType="StatefulSet"
+                    resourceName={scaleTarget.metadata?.name || ''}
+                    namespace={scaleTarget.metadata?.namespace || ''}
+                    currentReplicas={scaleTarget.spec?.replicas ?? 1}
+                    selector={scaleTarget.spec?.selector?.matchLabels || {}}
+                    onScale={async (replicas: number) => {
+                        await ScaleStatefulSet(scaleTarget.metadata?.namespace || '', scaleTarget.metadata?.name || '', replicas);
+                        addNotification({ type: 'success', message: `Scaled ${scaleTarget.metadata?.name} to ${replicas} replicas` });
+                    }}
+                    onClose={() => setScaleTarget(null)}
+                />
+            )}
         </>
     );
 }

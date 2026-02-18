@@ -28,10 +28,11 @@ type PortForwardConfig struct {
 	ResourceName string    `json:"resourceName"`
 	LocalPort    int       `json:"localPort"`
 	RemotePort   int       `json:"remotePort"`
-	Label        string    `json:"label"`      // User-friendly name
-	Favorite     bool      `json:"favorite"`   // Marks as favorite (for auto-start mode "favorites")
-	WasRunning   bool      `json:"wasRunning"` // Was running when app was closed (for auto-start)
-	HTTPS        bool      `json:"https"`      // Use HTTPS when opening in browser
+	Label        string    `json:"label"`     // User-friendly name
+	Favorite     bool      `json:"favorite"`  // Marks as favorite
+	AutoStart    bool      `json:"autoStart"` // Auto-start on context switch / app launch
+	KeepAlive    bool      `json:"keepAlive"` // Don't stop when switching away from this context
+	HTTPS        bool      `json:"https"`     // Use HTTPS when opening in browser
 	CreatedAt    time.Time `json:"createdAt"`
 }
 
@@ -296,12 +297,6 @@ func (m *PortForwardManager) Start(configID string) error {
 		return fmt.Errorf("local port %d is not available", cfg.LocalPort)
 	}
 
-	// Mark as running and persist (so state survives unexpected shutdown)
-	cfg.WasRunning = true
-	if err := m.saveConfigs(); err != nil {
-		m.app.logDebug("PortForward: Failed to save running state on start: %v", err)
-	}
-
 	af := &ActivePortForward{
 		Config:    *cfg,
 		Status:    "starting",
@@ -328,28 +323,12 @@ func (m *PortForwardManager) Start(configID string) error {
 
 // Stop stops an active port forward
 func (m *PortForwardManager) Stop(configID string) error {
-	return m.stopInternal(configID, true)
-}
-
-// stopInternal stops an active port forward, optionally updating wasRunning state
-func (m *PortForwardManager) stopInternal(configID string, updateWasRunning bool) error {
 	m.mutex.Lock()
 
 	af, exists := m.active[configID]
 	if !exists {
 		m.mutex.Unlock()
 		return fmt.Errorf("no active port forward for %s", configID)
-	}
-
-	// Mark as not running and persist (so state survives unexpected shutdown)
-	// Skip this when shutting down - SaveRunningState already captured the state
-	if updateWasRunning {
-		if cfg, cfgExists := m.configs[configID]; cfgExists {
-			cfg.WasRunning = false
-			if err := m.saveConfigs(); err != nil {
-				m.app.logDebug("PortForward: Failed to save running state on stop: %v", err)
-			}
-		}
 	}
 
 	m.mutex.Unlock()
@@ -413,22 +392,26 @@ func (m *PortForwardManager) CleanupIngressConfigs(contextName string) {
 	}
 }
 
-// StopAllAndSaveState saves running state and then stops all active port forwards
-// This should be called on app shutdown
-func (m *PortForwardManager) StopAllAndSaveState() {
-	m.SaveRunningState()
-
-	// Stop all active forwards WITHOUT updating wasRunning state
-	// (SaveRunningState already captured the correct state)
+// StopAllForContext stops active forwards for the given context, skipping KeepAlive forwards.
+func (m *PortForwardManager) StopAllForContext(contextName string) {
 	m.mutex.RLock()
-	ids := make([]string, 0, len(m.active))
-	for id := range m.active {
-		ids = append(ids, id)
+	var toStop []string
+	for id, cfg := range m.configs {
+		if cfg.Context != contextName {
+			continue
+		}
+		if cfg.KeepAlive {
+			continue // Don't stop keep-alive forwards
+		}
+		if _, isActive := m.active[id]; isActive {
+			toStop = append(toStop, id)
+		}
 	}
 	m.mutex.RUnlock()
 
-	for _, id := range ids {
-		_ = m.stopInternal(id, false) // false = don't update wasRunning
+	m.app.logDebug("PortForward: Stopping %d forwards for context %s", len(toStop), contextName)
+	for _, id := range toStop {
+		_ = m.Stop(id)
 	}
 }
 
@@ -730,90 +713,30 @@ func (m *PortForwardManager) emitEvent(event PortForwardEvent) {
 	m.app.emitEvent("port-forward-event", event)
 }
 
-// SaveRunningState saves which port forwards are currently running (called before shutdown)
-func (m *PortForwardManager) SaveRunningState() {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
-	// Mark all configs with their current running state
-	for id, cfg := range m.configs {
-		_, isActive := m.active[id]
-		cfg.WasRunning = isActive
-	}
-
-	if err := m.saveConfigs(); err != nil {
-		m.app.logDebug("PortForward: Failed to save running state: %v", err)
-	} else {
-		m.app.logDebug("PortForward: Saved running state for %d configs", len(m.configs))
-	}
-}
-
-// StartWithMode starts port forwards based on the specified mode
-// mode can be: "all", "favorites", "none"
-// Only starts forwards that were running when the app was closed (wasRunning=true)
-func (m *PortForwardManager) StartWithMode(contextName, mode string) {
-	if mode == "none" {
-		m.app.logDebug("PortForward: Auto-start mode is 'none', not starting any forwards")
-		return
-	}
-
+// StartAutoStart starts forwards where AutoStart=true for the given context, skipping already-active ones.
+// Forwards with both AutoStart and KeepAlive are also started regardless of context.
+func (m *PortForwardManager) StartAutoStart(contextName string) {
 	m.mutex.RLock()
 	var toStart []string
-	var skippedNotRunning, skippedNotFavorite, skippedWrongContext, skippedAlreadyActive int
 	for id, cfg := range m.configs {
-		if cfg.Context != contextName {
-			skippedWrongContext++
+		if !cfg.AutoStart {
 			continue
 		}
 		if _, isActive := m.active[id]; isActive {
-			skippedAlreadyActive++
-			continue // Already running
+			continue
 		}
-		if !cfg.WasRunning {
-			skippedNotRunning++
-			continue // Wasn't running when app was closed
+		// Start if it belongs to this context, or if KeepAlive is set (cross-context)
+		if cfg.Context != contextName && !cfg.KeepAlive {
+			continue
 		}
-
-		// Check mode-specific criteria
-		switch mode {
-		case "all":
-			toStart = append(toStart, id)
-		case "favorites":
-			if cfg.Favorite {
-				toStart = append(toStart, id)
-			} else {
-				skippedNotFavorite++
-			}
-		}
+		toStart = append(toStart, id)
 	}
 	m.mutex.RUnlock()
 
-	m.app.logDebug("PortForward: Starting %d port forwards with mode '%s' for context '%s' (skipped: %d not running, %d not favorite, %d wrong context, %d already active)",
-		len(toStart), mode, contextName, skippedNotRunning, skippedNotFavorite, skippedWrongContext, skippedAlreadyActive)
-
+	m.app.logDebug("PortForward: Auto-starting %d forwards for context '%s'", len(toStart), contextName)
 	for _, id := range toStart {
 		if err := m.Start(id); err != nil {
-			m.app.logDebug("PortForward: Failed to start %s: %v", id, err)
-		}
-	}
-}
-
-// StartFavorites starts all favorite port forwards for the current context (legacy method)
-func (m *PortForwardManager) StartFavorites(contextName string) {
-	m.mutex.RLock()
-	var toStart []string
-	for id, cfg := range m.configs {
-		if cfg.Favorite && cfg.Context == contextName {
-			if _, isActive := m.active[id]; !isActive {
-				toStart = append(toStart, id)
-			}
-		}
-	}
-	m.mutex.RUnlock()
-
-	for _, id := range toStart {
-		if err := m.Start(id); err != nil {
-			m.app.logDebug("PortForward: Failed to start favorite %s: %v", id, err)
+			m.app.logDebug("PortForward: Failed to auto-start %s: %v", id, err)
 		}
 	}
 }

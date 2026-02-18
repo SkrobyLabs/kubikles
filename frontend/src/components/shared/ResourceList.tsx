@@ -2,6 +2,20 @@ import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallba
 import { createPortal } from 'react-dom';
 import { TableVirtuoso } from 'react-virtuoso';
 import { MagnifyingGlassIcon, InformationCircleIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import {
+    DndContext,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    horizontalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import SearchSelect from './SearchSelect';
 import BulkActionBar from './BulkActionBar';
 import ColumnConfigurator from './ColumnConfigurator';
@@ -226,6 +240,48 @@ interface ColumnDef {
 // Column widths map type
 type ColumnWidths = Record<string, number>;
 
+// Sortable header cell for column reordering via DnD
+interface SortableHeaderProps {
+    id: string;
+    disabled: boolean;
+    children: React.ReactNode;
+    className: string;
+    style: React.CSSProperties;
+    onClick?: () => void;
+}
+
+const SortableHeader = ({ id, disabled, children, className, style, onClick }: SortableHeaderProps) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id, disabled });
+
+    const combinedStyle: React.CSSProperties = {
+        ...style,
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : undefined,
+        zIndex: isDragging ? 30 : undefined,
+    };
+
+    return (
+        <th
+            ref={setNodeRef}
+            className={className}
+            style={combinedStyle}
+            {...attributes}
+            {...listeners}
+            onClick={onClick}
+        >
+            {children}
+        </th>
+    );
+};
+
 // Calculate width needed for a string value
 const calculateTextWidth = (text: unknown): number => {
     if (!text) return 0;
@@ -365,6 +421,27 @@ export default function ResourceList({
     const searchHelpRef = useRef<HTMLDivElement>(null);
     const tableRef = useRef<HTMLTableElement>(null);
 
+    // Column reordering state (user-saved order)
+    const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+        if (!resourceType) return [];
+        try {
+            const saved = localStorage.getItem(`kubikles_colorder_${resourceType}`);
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    // Persist column order to localStorage
+    useEffect(() => {
+        if (!resourceType) return;
+        if (columnOrder.length > 0) {
+            localStorage.setItem(`kubikles_colorder_${resourceType}`, JSON.stringify(columnOrder));
+        } else {
+            localStorage.removeItem(`kubikles_colorder_${resourceType}`);
+        }
+    }, [columnOrder, resourceType]);
+
     // Get current view config for saving (defined after columnFilters state)
     const getCurrentViewConfig = useCallback(() => {
         // Serialize columnFilters — convert Sets to arrays for JSON storage
@@ -382,9 +459,10 @@ export default function ResourceList({
             hiddenColumns: Array.from(hiddenColumns),
             sortConfig,
             columnFilters: serializedFilters,
+            columnOrder: columnOrder.length > 0 ? columnOrder : undefined,
             resourceType,
         };
-    }, [searchInput, currentNamespace, hiddenColumns, sortConfig, columnFilters, resourceType]);
+    }, [searchInput, currentNamespace, hiddenColumns, sortConfig, columnFilters, columnOrder, resourceType]);
 
     // Load a saved view (or reset to defaults if viewId is null)
     const handleLoadView = useCallback((viewId: string | null) => {
@@ -396,6 +474,7 @@ export default function ResourceList({
             setHiddenColumns(new Set(columns.filter((col: any) => col.defaultHidden).map((col: any) => col.key)));
             setSortConfig(initialSort || { key: null, direction: 'asc' });
             setColumnFilters({});
+            setColumnOrder([]);
             return;
         }
         const view = loadView(viewId);
@@ -425,6 +504,7 @@ export default function ResourceList({
         } else {
             setColumnFilters({});
         }
+        setColumnOrder(view.columnOrder || []);
         if (view.namespace && onNamespaceChange) {
             onNamespaceChange(view.namespace);
         }
@@ -448,6 +528,7 @@ export default function ResourceList({
             hiddenColumns: config.hiddenColumns,
             sortConfig: config.sortConfig,
             columnFilters: serializedFilters,
+            columnOrder: config.columnOrder,
         });
     }, [updateView]);
 
@@ -846,6 +927,30 @@ export default function ResourceList({
 
     const baseVisibleColumns = columns.filter((col: any) => !hiddenColumns.has(col.key));
 
+    // Apply column order — reorder data columns while keeping column-selector at end
+    const orderedVisibleColumns = useMemo(() => {
+        if (columnOrder.length === 0) return baseVisibleColumns;
+
+        // Separate column-selector (always last) from data columns
+        const colSelectorIdx = baseVisibleColumns.findIndex((c: any) => c.isColumnSelector);
+        const colSelector = colSelectorIdx >= 0 ? baseVisibleColumns[colSelectorIdx] : null;
+        const dataCols = baseVisibleColumns.filter((c: any) => !c.isColumnSelector);
+
+        // Build order map for known keys
+        const orderMap = new Map(columnOrder.map((key, idx) => [key, idx]));
+
+        // Partition into ordered and unordered columns
+        const ordered = dataCols.filter((c: any) => orderMap.has(c.key));
+        const unordered = dataCols.filter((c: any) => !orderMap.has(c.key));
+
+        // Sort ordered columns by their position in columnOrder
+        ordered.sort((a: any, b: any) => orderMap.get(a.key)! - orderMap.get(b.key)!);
+
+        const result = [...ordered, ...unordered];
+        if (colSelector) result.push(colSelector);
+        return result;
+    }, [baseVisibleColumns, columnOrder]);
+
     const handleSort = (key: string) => {
         let direction = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -978,7 +1083,7 @@ export default function ResourceList({
 
     // Add selection checkbox column if selection is enabled
     const visibleColumns = useMemo(() => {
-        if (!selectable || !selection) return baseVisibleColumns;
+        if (!selectable || !selection) return orderedVisibleColumns;
 
         const checkboxColumn = {
             key: '_selection',
@@ -987,8 +1092,8 @@ export default function ResourceList({
             width: MIN_COLUMN_WIDTHS._selection,
         };
 
-        return [checkboxColumn, ...baseVisibleColumns];
-    }, [selectable, selection, baseVisibleColumns]);
+        return [checkboxColumn, ...orderedVisibleColumns];
+    }, [selectable, selection, orderedVisibleColumns]);
 
     // Prune stale selections when data changes (e.g. after bulk delete/restart)
     useEffect(() => {
@@ -1041,6 +1146,74 @@ export default function ResourceList({
         if (!selection) return;
         selection.deselectAll();
     }, [selection]);
+
+    // Detect whether the current state has unsaved changes (vs active view or vs app defaults)
+    const defaultSortConfig = initialSort || { key: null, direction: 'asc' };
+    const isViewDirty = useMemo(() => {
+        if (activeViewId) {
+            // Compare against the loaded saved view
+            const view = loadView(activeViewId);
+            if (!view) return false;
+
+            if ((view.query || '') !== searchInput) return true;
+            if (JSON.stringify(view.namespace) !== JSON.stringify(currentNamespace)) return true;
+            if (JSON.stringify(view.sortConfig || { key: null, direction: 'asc' }) !== JSON.stringify(sortConfig)) return true;
+
+            const savedHidden = new Set(view.hiddenColumns || []);
+            if (savedHidden.size !== hiddenColumns.size || [...savedHidden].some(k => !hiddenColumns.has(k))) return true;
+
+            const savedOrder = view.columnOrder || [];
+            if (JSON.stringify(savedOrder) !== JSON.stringify(columnOrder)) return true;
+
+            const currentFilters: Record<string, any> = {};
+            for (const [key, filter] of Object.entries(columnFilters)) {
+                if (filter.type === 'select') {
+                    currentFilters[key] = { ...filter, values: Array.from(filter.values || []) };
+                } else {
+                    currentFilters[key] = filter;
+                }
+            }
+            if (JSON.stringify(view.columnFilters || {}) !== JSON.stringify(currentFilters)) return true;
+
+            return false;
+        }
+
+        // No active view — compare against application defaults
+        if (searchInput) return true;
+        if (JSON.stringify(sortConfig) !== JSON.stringify(defaultSortConfig)) return true;
+        if (columnOrder.length > 0) return true;
+        if (Object.keys(columnFilters).length > 0) return true;
+
+        // Hidden columns differ from column defaults
+        if (hiddenColumns.size !== defaultHiddenColumns.size || [...defaultHiddenColumns].some(k => !hiddenColumns.has(k))) return true;
+
+        return false;
+    }, [activeViewId, loadView, searchInput, currentNamespace, sortConfig, defaultSortConfig, hiddenColumns, defaultHiddenColumns, columnOrder, columnFilters]);
+
+    // DnD sensors for column reordering — 8px distance distinguishes click (sort) from drag (reorder)
+    const dndSensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    );
+
+    // Sortable IDs = data column keys only (no selection, no column-selector)
+    const sortableColumnIds = useMemo(() =>
+        visibleColumns
+            .filter((c: any) => !c.isSelectionColumn && !c.isColumnSelector)
+            .map((c: any) => c.key),
+    [visibleColumns]);
+
+    // Handle column drag end — compute new order
+    const handleColumnDragEnd = useCallback((event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const oldIndex = sortableColumnIds.indexOf(active.id as string);
+        const newIndex = sortableColumnIds.indexOf(over.id as string);
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const newOrder = arrayMove(sortableColumnIds, oldIndex, newIndex);
+        setColumnOrder(newOrder);
+    }, [sortableColumnIds]);
 
     // Memoize virtuoso components to prevent recreation on every render
     const virtuosoComponents = useMemo(() => ({
@@ -1157,6 +1330,7 @@ export default function ResourceList({
                         <SavedViewsDropdown
                             views={views as any}
                             activeViewId={activeViewId as any}
+                            isDirty={isViewDirty}
                             onSave={saveView}
                             onLoad={handleLoadView}
                             onUpdate={handleUpdateView}
@@ -1292,117 +1466,137 @@ export default function ResourceList({
                         overscan={50}
                         components={virtuosoComponents}
                         fixedHeaderContent={() => (
-                            <tr>
-                                {visibleColumns.map((col: any, colIndex: number) => {
-                                    const isLastDataColumn = colIndex === visibleColumns.length - 2 && visibleColumns[visibleColumns.length - 1]?.isColumnSelector;
-                                    const isResizable = !col.isColumnSelector && !col.isSelectionColumn;
-                                    // All columns get a width for table-layout: fixed
-                                    const width = col.isSelectionColumn
-                                        ? col.width
-                                        : (columnWidths[col.key] || MIN_COLUMN_WIDTHS[col.key] || 100);
+                            <DndContext sensors={dndSensors} onDragEnd={handleColumnDragEnd}>
+                                <SortableContext items={sortableColumnIds} strategy={horizontalListSortingStrategy}>
+                                    <tr>
+                                        {visibleColumns.map((col: any) => {
+                                            const isResizable = !col.isColumnSelector && !col.isSelectionColumn;
+                                            const isDraggable = isResizable;
+                                            // All columns get a width for table-layout: fixed
+                                            const width = col.isSelectionColumn
+                                                ? col.width
+                                                : (columnWidths[col.key] || MIN_COLUMN_WIDTHS[col.key] || 100);
 
-                                    // Selection column header
-                                    if (col.isSelectionColumn) {
-                                        return (
-                                            <th
-                                                key={col.key}
-                                                className="p-3 text-xs font-medium text-gray-400 border-b border-border select-none whitespace-nowrap"
-                                                style={{ width: `${col.width}px`, minWidth: `${col.width}px` }}
-                                            >
-                                                <div className="flex items-center justify-center">
-                                                    <TriStateCheckbox
-                                                        state={selectionState}
-                                                        onChange={handleHeaderCheckboxClick}
-                                                    />
-                                                </div>
-                                            </th>
-                                        );
-                                    }
+                                            // Selection column header (not sortable/draggable)
+                                            if (col.isSelectionColumn) {
+                                                return (
+                                                    <th
+                                                        key={col.key}
+                                                        className="p-3 text-xs font-medium text-gray-400 border-b border-border select-none whitespace-nowrap"
+                                                        style={{ width: `${col.width}px`, minWidth: `${col.width}px` }}
+                                                    >
+                                                        <div className="flex items-center justify-center">
+                                                            <TriStateCheckbox
+                                                                state={selectionState}
+                                                                onChange={handleHeaderCheckboxClick}
+                                                            />
+                                                        </div>
+                                                    </th>
+                                                );
+                                            }
 
-                                    return (
-                                        <th
-                                            key={col.key}
-                                            className={`p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none relative whitespace-nowrap group ${col.isColumnSelector ? 'sticky right-0 bg-surface z-20' : 'cursor-pointer hover:text-text'}`}
-                                            style={{ width: `${width}px`, minWidth: `${width}px` }}
-                                            onClick={() => !col.isColumnSelector && handleSort(col.key)}
-                                        >
-                                            {col.isColumnSelector ? (
-                                                <div className="flex justify-center">
-                                                    <ColumnConfigurator
-                                                        columns={columns}
-                                                        hiddenColumns={hiddenColumns}
-                                                        onToggleColumn={toggleColumn}
-                                                        onShowAll={showAllColumns}
-                                                        onResetDefaults={resetColumnDefaults}
-                                                        defaultHiddenColumns={defaultHiddenColumns}
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className={`flex items-center gap-1 ${col.align === 'center' ? 'justify-center' : ''}`}>
-                                                    {col.label}
-                                                    {sortConfig.key === col.key && (
-                                                        <span className="text-primary">
-                                                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                                        </span>
-                                                    )}
-                                                    {/* Column filter button */}
-                                                    {(columnFilterTypes[col.key] === 'regex' || columnFilterTypes[col.key] === 'numeric' || (columnFilterTypes[col.key] === 'select' && columnUniqueValues[col.key])) && (
-                                                        <div className="relative" ref={openColumnFilter === col.key ? columnFilterRef : undefined}>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    const opening = openColumnFilter !== col.key;
-                                                                    setOpenColumnFilter(opening ? col.key : null);
-                                                                    setColumnFilterSearch('');
-                                                                    if (opening) {
-                                                                        const rect = e.currentTarget.getBoundingClientRect();
-                                                                        const dropdownWidth = 224; // w-56 = 14rem = 224px
-                                                                        const left = Math.max(8, Math.min(rect.left, window.innerWidth - dropdownWidth - 8));
-                                                                        // Place below the button initially; useLayoutEffect will correct if it overflows
-                                                                        setColumnFilterPos({ top: rect.bottom + 4, left, anchorTop: rect.top, anchorBottom: rect.bottom });
-                                                                        if (columnFilterTypes[col.key] === 'regex') {
-                                                                            setRegexDraft('');
-                                                                        } else if (columnFilterTypes[col.key] === 'numeric') {
-                                                                            setNumericDraft({ operator: '>', value: '', unit: 'h' });
+                                            // Column-selector header (not sortable/draggable)
+                                            if (col.isColumnSelector) {
+                                                return (
+                                                    <th
+                                                        key={col.key}
+                                                        className="p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none relative whitespace-nowrap group sticky right-0 bg-surface z-20"
+                                                        style={{ width: `${width}px`, minWidth: `${width}px` }}
+                                                    >
+                                                        <div className="flex justify-center">
+                                                            <ColumnConfigurator
+                                                                columns={columns}
+                                                                hiddenColumns={hiddenColumns}
+                                                                onToggleColumn={toggleColumn}
+                                                                onShowAll={showAllColumns}
+                                                                onResetDefaults={resetColumnDefaults}
+                                                                defaultHiddenColumns={defaultHiddenColumns}
+                                                            />
+                                                        </div>
+                                                    </th>
+                                                );
+                                            }
+
+                                            // Data column — sortable + draggable
+                                            return (
+                                                <SortableHeader
+                                                    key={col.key}
+                                                    id={col.key}
+                                                    disabled={!isDraggable}
+                                                    className="p-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-border select-none relative whitespace-nowrap group cursor-pointer hover:text-text"
+                                                    style={{ width: `${width}px`, minWidth: `${width}px` }}
+                                                >
+                                                    <div
+                                                        className={`flex items-center gap-1 ${col.align === 'center' ? 'justify-center' : ''}`}
+                                                        onClick={() => handleSort(col.key)}
+                                                    >
+                                                        {col.label}
+                                                        {sortConfig.key === col.key && (
+                                                            <span className="text-primary">
+                                                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                            </span>
+                                                        )}
+                                                        {/* Column filter button */}
+                                                        {(columnFilterTypes[col.key] === 'regex' || columnFilterTypes[col.key] === 'numeric' || (columnFilterTypes[col.key] === 'select' && columnUniqueValues[col.key])) && (
+                                                            <div className="relative" ref={openColumnFilter === col.key ? columnFilterRef : undefined}>
+                                                                <button
+                                                                    onPointerDown={(e) => e.stopPropagation()}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const opening = openColumnFilter !== col.key;
+                                                                        setOpenColumnFilter(opening ? col.key : null);
+                                                                        setColumnFilterSearch('');
+                                                                        if (opening) {
+                                                                            const rect = e.currentTarget.getBoundingClientRect();
+                                                                            const dropdownWidth = 224; // w-56 = 14rem = 224px
+                                                                            const left = Math.max(8, Math.min(rect.left, window.innerWidth - dropdownWidth - 8));
+                                                                            // Place below the button initially; useLayoutEffect will correct if it overflows
+                                                                            setColumnFilterPos({ top: rect.bottom + 4, left, anchorTop: rect.top, anchorBottom: rect.bottom });
+                                                                            if (columnFilterTypes[col.key] === 'regex') {
+                                                                                setRegexDraft('');
+                                                                            } else if (columnFilterTypes[col.key] === 'numeric') {
+                                                                                setNumericDraft({ operator: '>', value: '', unit: 'h' });
+                                                                            }
                                                                         }
+                                                                    }}
+                                                                    className={`p-0.5 rounded transition-colors ${
+                                                                        columnFilters[col.key]
+                                                                            ? 'text-primary'
+                                                                            : 'text-gray-600 opacity-0 group-hover:opacity-100 hover:text-gray-400'
+                                                                    }`}
+                                                                    title={columnFilters[col.key]
+                                                                        ? columnFilters[col.key].type === 'regex'
+                                                                            ? `Filtering: ${(columnFilters[col.key].conditions || []).map((p: any) => `/${p}/`).join(` ${columnFilters[col.key].logic || 'and'} `)}`
+                                                                            : columnFilters[col.key].type === 'numeric'
+                                                                                ? `Filtering: ${(columnFilters[col.key].conditions || []).map((c: any) => `${c.operator} ${c.value}`).join(` ${columnFilters[col.key].logic || 'and'} `)}`
+                                                                                : `Filtering: ${columnFilters[col.key].values?.size} value(s)`
+                                                                        : `Filter by ${col.label}`
                                                                     }
-                                                                }}
-                                                                className={`p-0.5 rounded transition-colors ${
-                                                                    columnFilters[col.key]
-                                                                        ? 'text-primary'
-                                                                        : 'text-gray-600 opacity-0 group-hover:opacity-100 hover:text-gray-400'
-                                                                }`}
-                                                                title={columnFilters[col.key]
-                                                                    ? columnFilters[col.key].type === 'regex'
-                                                                        ? `Filtering: ${(columnFilters[col.key].conditions || []).map((p: any) => `/${p}/`).join(` ${columnFilters[col.key].logic || 'and'} `)}`
-                                                                        : columnFilters[col.key].type === 'numeric'
-                                                                            ? `Filtering: ${(columnFilters[col.key].conditions || []).map((c: any) => `${c.operator} ${c.value}`).join(` ${columnFilters[col.key].logic || 'and'} `)}`
-                                                                            : `Filtering: ${columnFilters[col.key].values?.size} value(s)`
-                                                                    : `Filter by ${col.label}`
-                                                                }
-                                                            >
-                                                                <FunnelIcon className="w-3 h-3" />
-                                                            </button>
-                                                            {/* Column filter dropdown rendered via portal below */}
+                                                                >
+                                                                    <FunnelIcon className="w-3 h-3" />
+                                                                </button>
+                                                                {/* Column filter dropdown rendered via portal below */}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {/* Resize handle */}
+                                                    {isResizable && (
+                                                        <div
+                                                            className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary group"
+                                                            onPointerDown={(e) => e.stopPropagation()}
+                                                            onMouseDown={(e) => handleResizeStart(e, col.key)}
+                                                            onDoubleClick={(e) => handleResizeDoubleClick(e, col.key)}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gray-600 group-hover:bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                                                         </div>
                                                     )}
-                                                </div>
-                                            )}
-                                            {/* Resize handle */}
-                                            {isResizable && !isLastDataColumn && (
-                                                <div
-                                                    className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary group"
-                                                    onMouseDown={(e) => handleResizeStart(e, col.key)}
-                                                    onDoubleClick={(e) => handleResizeDoubleClick(e, col.key)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gray-600 group-hover:bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                </div>
-                                            )}
-                                        </th>
-                                    );
-                                })}
-                            </tr>
+                                                </SortableHeader>
+                                            );
+                                        })}
+                                    </tr>
+                                </SortableContext>
+                            </DndContext>
                         )}
                         itemContent={(index, item) => (
                             <>

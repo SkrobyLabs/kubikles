@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon, DocumentTextIcon, PlayIcon, PauseIcon, ShareIcon } from '@heroicons/react/24/outline';
+import ComparisonMenuItems from '~/components/shared/ComparisonMenuItems';
 
 export default function CronJobActionsMenu({ cronJob, isOpen, menuPosition, onOpenChange, onViewLogs, onEditYaml, onShowDependencies, onRunNow, onSuspend, onDelete }: any) {
     const buttonRef = useRef<any>(null);
@@ -82,6 +83,13 @@ export default function CronJobActionsMenu({ cronJob, isOpen, menuPosition, onOp
                 {isSuspended ? <PlayIcon className="h-4 w-4" /> : <PauseIcon className="h-4 w-4" />}
                 {isSuspended ? 'Resume' : 'Suspend'}
             </button>
+            <div className="h-px bg-surface-hover my-1" />
+            <ComparisonMenuItems
+                kind="cronjob"
+                namespace={cronJob.metadata?.namespace}
+                name={cronJob.metadata?.name}
+                onAction={() => onOpenChange(false)}
+            />
             <div className="h-px bg-surface-hover my-1" />
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onDelete(cronJob)); }}

@@ -256,9 +256,9 @@ func (a *App) shutdown(ctx context.Context) {
 		a.ingressForwardManager.Cleanup()
 	}
 
-	// Save port forward running state and stop all forwards
+	// Stop all port forwards
 	if a.portForwardManager != nil {
-		a.portForwardManager.StopAllAndSaveState()
+		a.portForwardManager.StopAll()
 	}
 
 	// Stop all watchers

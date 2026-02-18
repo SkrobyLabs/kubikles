@@ -1106,8 +1106,8 @@ export function StartAllPodsLogStream(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['StartAllPodsLogStream'](arg1, arg2, arg3, arg4);
 }
 
-export function StartFavoritePortForwards(arg1) {
-  return window['go']['main']['App']['StartFavoritePortForwards'](arg1);
+export function StartAutoStartPortForwards(arg1) {
+  return window['go']['main']['App']['StartAutoStartPortForwards'](arg1);
 }
 
 export function StartIngressForward(arg1, arg2) {
@@ -1120,10 +1120,6 @@ export function StartLogStream(arg1, arg2, arg3, arg4) {
 
 export function StartPortForward(arg1) {
   return window['go']['main']['App']['StartPortForward'](arg1);
-}
-
-export function StartPortForwardsWithMode(arg1, arg2) {
-  return window['go']['main']['App']['StartPortForwardsWithMode'](arg1, arg2);
 }
 
 export function StartTerminalSession(arg1) {
