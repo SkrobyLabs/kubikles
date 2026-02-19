@@ -93,7 +93,7 @@ appicon:
 	magick -background none build/appicon.svg -resize 1024x1024 build/appicon.png
 
 dev:
-	$(WAILS) dev
+	$(WAILS) dev -tags debugcluster
 
 build: appicon
 	$(WAILS) build -ldflags "$(VERSION_LDFLAGS)"

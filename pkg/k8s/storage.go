@@ -13,32 +13,35 @@ import (
 )
 
 func (c *Client) ListPVCs(contextName, namespace string) ([]v1.PersistentVolumeClaim, error) {
-	cs, err := c.getClientForContext(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	pvcs, err := cs.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return pvcs.Items, nil
+	return c.ListPVCsWithContext(ctx, contextName, namespace)
 }
 
-func (c *Client) ListPVCsWithContext(ctx context.Context, contextName, namespace string) ([]v1.PersistentVolumeClaim, error) {
+// ListPVCsWithContext lists PVCs with cancellation support and pagination.
+func (c *Client) ListPVCsWithContext(ctx context.Context, contextName, namespace string, onProgress ...func(loaded, total int)) ([]v1.PersistentVolumeClaim, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
-	pvcs, err := cs.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "pvcs", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.PersistentVolumeClaim, string, *int64, error) {
+		list, err := cs.CoreV1().PersistentVolumeClaims(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return pvcs.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetPVCYaml(namespace, name string) (string, error) {
@@ -127,32 +130,35 @@ func (c *Client) ResizePVC(contextName, namespace, name, newSize string) error {
 
 // PersistentVolume operations (cluster-scoped)
 func (c *Client) ListPVs(contextName string) ([]v1.PersistentVolume, error) {
-	cs, err := c.getClientForContext(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	pvs, err := cs.CoreV1().PersistentVolumes().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return pvs.Items, nil
+	return c.ListPVsWithContext(ctx, contextName)
 }
 
-func (c *Client) ListPVsWithContext(ctx context.Context, contextName string) ([]v1.PersistentVolume, error) {
+// ListPVsWithContext lists PVs with cancellation support and pagination.
+func (c *Client) ListPVsWithContext(ctx context.Context, contextName string, onProgress ...func(loaded, total int)) ([]v1.PersistentVolume, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
-	pvs, err := cs.CoreV1().PersistentVolumes().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "pvs", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.PersistentVolume, string, *int64, error) {
+		list, err := cs.CoreV1().PersistentVolumes().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return pvs.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetPVYaml(name string) (string, error) {
@@ -218,32 +224,35 @@ func (c *Client) GetStorageClass(contextName, name string) (*storagev1.StorageCl
 }
 
 func (c *Client) ListStorageClasses(contextName string) ([]storagev1.StorageClass, error) {
-	cs, err := c.getClientForContext(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	scs, err := cs.StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return scs.Items, nil
+	return c.ListStorageClassesWithContext(ctx, contextName)
 }
 
-func (c *Client) ListStorageClassesWithContext(ctx context.Context, contextName string) ([]storagev1.StorageClass, error) {
+// ListStorageClassesWithContext lists storage classes with cancellation support and pagination.
+func (c *Client) ListStorageClassesWithContext(ctx context.Context, contextName string, onProgress ...func(loaded, total int)) ([]storagev1.StorageClass, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
-	scs, err := cs.StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "storageclasses", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]storagev1.StorageClass, string, *int64, error) {
+		list, err := cs.StorageV1().StorageClasses().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return scs.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetStorageClassYaml(name string) (string, error) {

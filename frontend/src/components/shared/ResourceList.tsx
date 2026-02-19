@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import { TableVirtuoso } from 'react-virtuoso';
-import { MagnifyingGlassIcon, InformationCircleIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, InformationCircleIcon, FunnelIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { EventsOn } from 'wailsjs/runtime/runtime';
 import {
     DndContext,
     PointerSensor,
@@ -66,12 +67,19 @@ interface ResizeState {
     startWidth: number;
 }
 
+// Loading progress from paginated listing
+interface LoadingProgress {
+    loaded: number;
+    total: number;
+}
+
 // ResourceList props
 interface ResourceListProps {
     title: string;
     columns: any[];
     data: any[];
     isLoading: boolean;
+    loadingProgress?: LoadingProgress | null;
     namespaces?: string[];
     currentNamespace?: any;
     onNamespaceChange?: ((...args: any[]) => void) | null;
@@ -363,11 +371,68 @@ const calculateColumnWidths = (columns: ColumnDef[], data: any[], savedWidths: C
     return calculatedWidths;
 };
 
+// Format large numbers with locale separators
+const formatCount = (n: number) => n.toLocaleString();
+
+// Large dataset banner — shows progress during loading or warning after load
+function LargeDatasetBanner({ isLoading, progress, dataCount, threshold }: {
+    isLoading: boolean;
+    progress: LoadingProgress | null;
+    dataCount: number;
+    threshold: number;
+}) {
+    const [dismissed, setDismissed] = useState(false);
+
+    // Reset dismissed state when loading starts
+    useEffect(() => {
+        if (isLoading) setDismissed(false);
+    }, [isLoading]);
+
+    // Mode 1: Loading with progress (only for large datasets worth tracking)
+    if (isLoading && progress && progress.total > threshold) {
+        const pct = Math.min(100, Math.round((progress.loaded / progress.total) * 100));
+        return (
+            <div className="px-4 py-2 border-b border-border bg-blue-500/10 shrink-0 flex items-center gap-3 text-sm text-blue-400">
+                <div className="shrink-0">
+                    Loading... {formatCount(progress.loaded)} / ~{formatCount(progress.total)}
+                </div>
+                <div className="flex-1 h-1.5 bg-blue-500/20 rounded-full overflow-hidden">
+                    <div
+                        className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                        style={{ width: `${pct}%` }}
+                    />
+                </div>
+                <div className="shrink-0 text-xs text-blue-400/70">{pct}%</div>
+            </div>
+        );
+    }
+
+    // Mode 2: Post-load warning
+    if (!isLoading && dataCount > threshold && !dismissed) {
+        return (
+            <div className="px-4 py-1.5 border-b border-border bg-yellow-500/10 shrink-0 flex items-center gap-2 text-sm text-yellow-400">
+                <ExclamationTriangleIcon className="w-4 h-4 shrink-0" />
+                <span>Large dataset: {formatCount(dataCount)} items. Filtering may be slower.</span>
+                <button
+                    onClick={() => setDismissed(true)}
+                    className="ml-auto p-0.5 hover:bg-yellow-500/20 rounded transition-colors"
+                    title="Dismiss"
+                >
+                    <XMarkIcon className="w-4 h-4" />
+                </button>
+            </div>
+        );
+    }
+
+    return null;
+}
+
 export default function ResourceList({
     title,
     columns,
     data,
     isLoading,
+    loadingProgress: externalProgress = null,
     namespaces = [],
     currentNamespace,
     onNamespaceChange,
@@ -391,6 +456,23 @@ export default function ResourceList({
 }: ResourceListProps) {
     const { pendingSearch, consumePendingSearch } = useUI();
     const { getConfig } = useConfig();
+
+    // Loading progress: prefer external prop, fall back to internal listener
+    const [internalProgress, setInternalProgress] = useState<LoadingProgress | null>(null);
+    useEffect(() => {
+        if (!isLoading || !resourceType) {
+            setInternalProgress(null);
+            return;
+        }
+        const cancel = EventsOn("list-progress", (event: any) => {
+            if (event?.resourceType === resourceType) {
+                setInternalProgress({ loaded: event.loaded, total: event.total });
+            }
+        });
+        return () => { cancel(); setInternalProgress(null); };
+    }, [isLoading, resourceType]);
+    const loadingProgress = externalProgress ?? internalProgress;
+    const largeDatasetThreshold = getConfig('ui.largeDatasetThreshold') ?? 5000;
     const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: string }>(initialSort || { key: null, direction: 'asc' });
     const [searchInput, setSearchInput] = useState(''); // Immediate input value
     const [searchTerm, setSearchTerm] = useState('');   // Debounced value for filtering
@@ -1395,6 +1477,14 @@ export default function ResourceList({
                     </button>
                 </div>
             )}
+
+            {/* Large Dataset Banner */}
+            <LargeDatasetBanner
+                isLoading={isLoading}
+                progress={loadingProgress}
+                dataCount={data.length}
+                threshold={largeDatasetThreshold}
+            />
 
             {/* Table Content */}
             <div className="flex-1 overflow-hidden">

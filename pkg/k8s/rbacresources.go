@@ -11,32 +11,35 @@ import (
 )
 
 func (c *Client) ListRoles(namespace string) ([]rbacv1.Role, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.RbacV1().Roles(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListRolesWithContext(ctx, namespace)
 }
 
-func (c *Client) ListRolesWithContext(ctx context.Context, namespace string) ([]rbacv1.Role, error) {
+// ListRolesWithContext lists roles with cancellation support and pagination.
+func (c *Client) ListRolesWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]rbacv1.Role, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.RbacV1().Roles(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "roles", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]rbacv1.Role, string, *int64, error) {
+		list, err := cs.RbacV1().Roles(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 // ListRolesForContext lists roles for a specific kubeconfig context
@@ -47,11 +50,17 @@ func (c *Client) ListRolesForContext(contextName, namespace string) ([]rbacv1.Ro
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.RbacV1().Roles(namespace).List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "roles", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]rbacv1.Role, string, *int64, error) {
+		list, err := cs.RbacV1().Roles(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetRoleYaml(namespace, name string) (string, error) {
@@ -101,17 +110,9 @@ func (c *Client) DeleteRole(contextName, namespace, name string) error {
 
 // ClusterRole operations (cluster-scoped)
 func (c *Client) ListClusterRoles() ([]rbacv1.ClusterRole, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListClusterRolesWithContext(ctx)
 }
 
 // ListClusterRolesForContext lists cluster roles for a specific kubeconfig context
@@ -122,26 +123,43 @@ func (c *Client) ListClusterRolesForContext(contextName string) ([]rbacv1.Cluste
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "clusterroles", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]rbacv1.ClusterRole, string, *int64, error) {
+		list, err := cs.RbacV1().ClusterRoles().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
-func (c *Client) ListClusterRolesWithContext(ctx context.Context) ([]rbacv1.ClusterRole, error) {
+// ListClusterRolesWithContext lists cluster roles with cancellation support and pagination.
+func (c *Client) ListClusterRolesWithContext(ctx context.Context, onProgress ...func(loaded, total int)) ([]rbacv1.ClusterRole, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "clusterroles", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]rbacv1.ClusterRole, string, *int64, error) {
+		list, err := cs.RbacV1().ClusterRoles().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetClusterRoleYaml(name string) (string, error) {
@@ -191,32 +209,35 @@ func (c *Client) DeleteClusterRole(contextName, name string) error {
 
 // RoleBinding operations (namespaced)
 func (c *Client) ListRoleBindings(namespace string) ([]rbacv1.RoleBinding, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.RbacV1().RoleBindings(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListRoleBindingsWithContext(ctx, namespace)
 }
 
-func (c *Client) ListRoleBindingsWithContext(ctx context.Context, namespace string) ([]rbacv1.RoleBinding, error) {
+// ListRoleBindingsWithContext lists role bindings with cancellation support and pagination.
+func (c *Client) ListRoleBindingsWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]rbacv1.RoleBinding, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.RbacV1().RoleBindings(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "rolebindings", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]rbacv1.RoleBinding, string, *int64, error) {
+		list, err := cs.RbacV1().RoleBindings(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 // ListRoleBindingsForContext lists role bindings for a specific kubeconfig context
@@ -227,11 +248,17 @@ func (c *Client) ListRoleBindingsForContext(contextName, namespace string) ([]rb
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.RbacV1().RoleBindings(namespace).List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "rolebindings", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]rbacv1.RoleBinding, string, *int64, error) {
+		list, err := cs.RbacV1().RoleBindings(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetRoleBindingYaml(namespace, name string) (string, error) {
@@ -281,17 +308,9 @@ func (c *Client) DeleteRoleBinding(contextName, namespace, name string) error {
 
 // ClusterRoleBinding operations (cluster-scoped)
 func (c *Client) ListClusterRoleBindings() ([]rbacv1.ClusterRoleBinding, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListClusterRoleBindingsWithContext(ctx)
 }
 
 // ListClusterRoleBindingsForContext lists cluster role bindings for a specific kubeconfig context
@@ -302,26 +321,43 @@ func (c *Client) ListClusterRoleBindingsForContext(contextName string) ([]rbacv1
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "clusterrolebindings", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]rbacv1.ClusterRoleBinding, string, *int64, error) {
+		list, err := cs.RbacV1().ClusterRoleBindings().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
-func (c *Client) ListClusterRoleBindingsWithContext(ctx context.Context) ([]rbacv1.ClusterRoleBinding, error) {
+// ListClusterRoleBindingsWithContext lists cluster role bindings with cancellation support and pagination.
+func (c *Client) ListClusterRoleBindingsWithContext(ctx context.Context, onProgress ...func(loaded, total int)) ([]rbacv1.ClusterRoleBinding, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "clusterrolebindings", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]rbacv1.ClusterRoleBinding, string, *int64, error) {
+		list, err := cs.RbacV1().ClusterRoleBindings().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetClusterRoleBindingYaml(name string) (string, error) {

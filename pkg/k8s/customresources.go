@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"path/filepath"
@@ -17,6 +18,10 @@ import (
 )
 
 func (c *Client) getApiExtensionsClientForContext(contextName string) (*apiextensionsclientset.Clientset, error) {
+	if IsDebugClusterContext(contextName) {
+		return nil, fmt.Errorf("CRDs are not supported on the debug cluster")
+	}
+
 	home := homedir.HomeDir()
 	kubeconfigPath := filepath.Join(home, ".kube", "config")
 	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
@@ -37,17 +42,35 @@ func (c *Client) getApiExtensionsClientForContext(contextName string) (*apiexten
 
 // CustomResourceDefinition operations (cluster-scoped)
 func (c *Client) ListCRDs(contextName string) ([]apiextensionsv1.CustomResourceDefinition, error) {
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	return c.ListCRDsWithContext(ctx, contextName)
+}
+
+// ListCRDsWithContext lists CRDs with cancellation support and pagination.
+func (c *Client) ListCRDsWithContext(ctx context.Context, contextName string, onProgress ...func(loaded, total int)) ([]apiextensionsv1.CustomResourceDefinition, error) {
 	cs, err := c.getApiExtensionsClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get apiextensions client for context %s: %w", contextName, err)
 	}
-	ctx, cancel := c.contextWithTimeout()
-	defer cancel()
-	crds, err := cs.ApiextensionsV1().CustomResourceDefinitions().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "crds", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]apiextensionsv1.CustomResourceDefinition, string, *int64, error) {
+		list, err := cs.ApiextensionsV1().CustomResourceDefinitions().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
 		return nil, err
 	}
-	return crds.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetCRDYaml(contextName, name string) (string, error) {
@@ -150,6 +173,10 @@ func (c *Client) getDynamicClientForContext(contextName string) (dynamic.Interfa
 		c.mu.RUnlock()
 	}
 
+	if IsDebugClusterContext(contextName) {
+		return nil, fmt.Errorf("custom resources are not supported on the debug cluster")
+	}
+
 	home := homedir.HomeDir()
 	kubeconfigPath := filepath.Join(home, ".kube", "config")
 	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
@@ -178,12 +205,17 @@ type CustomResourceInfo struct {
 
 // ListCustomResources lists instances of a custom resource
 func (c *Client) ListCustomResources(contextName, group, version, resource, namespace string) ([]map[string]interface{}, error) {
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	return c.ListCustomResourcesWithContext(ctx, contextName, group, version, resource, namespace)
+}
+
+// ListCustomResourcesWithContext lists custom resource instances with cancellation support and pagination.
+func (c *Client) ListCustomResourcesWithContext(ctx context.Context, contextName, group, version, resource, namespace string, onProgress ...func(loaded, total int)) ([]map[string]interface{}, error) {
 	dc, err := c.getDynamicClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get dynamic client for context %s: %w", contextName, err)
 	}
-	ctx, cancel := c.contextWithTimeout()
-	defer cancel()
 
 	gvr := schema.GroupVersionResource{
 		Group:    group,
@@ -191,20 +223,33 @@ func (c *Client) ListCustomResources(contextName, group, version, resource, name
 		Resource: resource,
 	}
 
-	var list *unstructured.UnstructuredList
-	if namespace != "" {
-		list, err = dc.Resource(gvr).Namespace(namespace).List(ctx, metav1.ListOptions{})
-	} else {
-		list, err = dc.Resource(gvr).List(ctx, metav1.ListOptions{})
-	}
-	if err != nil {
-		return nil, err
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
 	}
 
-	// Convert to slice of maps for easier JSON serialization
-	result := make([]map[string]interface{}, len(list.Items))
-	for i, item := range list.Items {
-		result[i] = item.Object
+	// Paginate unstructured items, then convert to maps
+	result, err := paginatedList(ctx, "customresources", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]map[string]interface{}, string, *int64, error) {
+		var list *unstructured.UnstructuredList
+		if namespace != "" {
+			list, err = dc.Resource(gvr).Namespace(namespace).List(ctx, opts)
+		} else {
+			list, err = dc.Resource(gvr).List(ctx, opts)
+		}
+		if err != nil {
+			return nil, "", nil, err
+		}
+		items := make([]map[string]interface{}, len(list.Items))
+		for i, item := range list.Items {
+			items[i] = item.Object
+		}
+		return items, list.GetContinue(), list.GetRemainingItemCount(), nil
+	}, progressFn)
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
 	}
 	return result, nil
 }

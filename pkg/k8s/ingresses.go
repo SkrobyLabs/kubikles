@@ -11,32 +11,34 @@ import (
 )
 
 func (c *Client) ListIngresses(namespace string) ([]networkingv1.Ingress, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	ingresses, err := cs.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return ingresses.Items, nil
+	return c.ListIngressesWithContext(ctx, namespace)
 }
 
-func (c *Client) ListIngressesWithContext(ctx context.Context, namespace string) ([]networkingv1.Ingress, error) {
+func (c *Client) ListIngressesWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]networkingv1.Ingress, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	ingresses, err := cs.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "ingresses", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]networkingv1.Ingress, string, *int64, error) {
+		list, err := cs.NetworkingV1().Ingresses(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return ingresses.Items, nil
+	return result, nil
 }
 
 // ListIngressesForContext lists ingresses for a specific kubeconfig context
@@ -47,11 +49,17 @@ func (c *Client) ListIngressesForContext(contextName, namespace string) ([]netwo
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	ingresses, err := cs.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "ingresses", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]networkingv1.Ingress, string, *int64, error) {
+		list, err := cs.NetworkingV1().Ingresses(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return ingresses.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetIngressYaml(namespace, name string) (string, error) {
@@ -104,32 +112,34 @@ func (c *Client) DeleteIngress(contextName, namespace, name string) error {
 
 // IngressClass operations (cluster-scoped)
 func (c *Client) ListIngressClasses(contextName string) ([]networkingv1.IngressClass, error) {
-	cs, err := c.getClientForContext(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	ingressClasses, err := cs.NetworkingV1().IngressClasses().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return ingressClasses.Items, nil
+	return c.ListIngressClassesWithContext(ctx, contextName)
 }
 
-func (c *Client) ListIngressClassesWithContext(ctx context.Context, contextName string) ([]networkingv1.IngressClass, error) {
+func (c *Client) ListIngressClassesWithContext(ctx context.Context, contextName string, onProgress ...func(loaded, total int)) ([]networkingv1.IngressClass, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
-	ingressClasses, err := cs.NetworkingV1().IngressClasses().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "ingressclasses", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]networkingv1.IngressClass, string, *int64, error) {
+		list, err := cs.NetworkingV1().IngressClasses().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return ingressClasses.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetIngressClassYaml(name string) (string, error) {

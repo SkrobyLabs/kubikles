@@ -22,7 +22,7 @@ func (a *App) ListPriorityClasses(requestId string) ([]schedulingv1.PriorityClas
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListPriorityClassesWithContext(ctx)
+		result, err := a.k8sClient.ListPriorityClassesWithContext(ctx, a.listProgressCallback("priorityclasses"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -66,7 +66,7 @@ func (a *App) ListLeases(requestId, namespace string) ([]coordinationv1.Lease, e
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListLeasesWithContext(ctx, currentContext, namespace)
+		result, err := a.k8sClient.ListLeasesWithContext(ctx, currentContext, namespace, a.listProgressCallback("leases"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

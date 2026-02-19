@@ -23,7 +23,7 @@ func (a *App) ListConfigMaps(requestId, namespace string) ([]v1.ConfigMap, error
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListConfigMapsWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListConfigMapsWithContext(ctx, namespace, a.listProgressCallback("configmaps"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -40,7 +40,7 @@ func (a *App) ListSecrets(requestId, namespace string) ([]v1.Secret, error) {
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListSecretsWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListSecretsWithContext(ctx, namespace, a.listProgressCallback("secrets"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -59,7 +59,7 @@ func (a *App) ListSecretsMetadata(requestId, namespace string) ([]k8s.SecretList
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListSecretsMetadataWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListSecretsMetadataWithContext(ctx, namespace, a.listProgressCallback("secrets"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

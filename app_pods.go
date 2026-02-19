@@ -21,13 +21,20 @@ func (a *App) ListPods(requestId, namespace string) ([]v1.Pod, error) {
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListPodsWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListPodsWithContext(ctx, namespace, a.listProgressCallback("pods"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil // Return empty for canceled requests
 		}
 		return result, err
 	}
 	return a.k8sClient.ListPods(namespace)
+}
+
+func (a *App) ListPodsForNode(nodeName string) ([]v1.Pod, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.ListPodsForNode(nodeName)
 }
 
 func (a *App) GetPodEvictionInfo(namespace, name string) (*k8s.PodEvictionInfo, error) {

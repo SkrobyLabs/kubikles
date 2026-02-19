@@ -15,17 +15,9 @@ import (
 )
 
 func (c *Client) ListNetworkPolicies(namespace string) ([]networkingv1.NetworkPolicy, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.NetworkingV1().NetworkPolicies(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListNetworkPoliciesWithContext(ctx, namespace)
 }
 
 // ListNetworkPoliciesForContext lists network policies for a specific kubeconfig context
@@ -36,26 +28,42 @@ func (c *Client) ListNetworkPoliciesForContext(contextName, namespace string) ([
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.NetworkingV1().NetworkPolicies(namespace).List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "networkpolicies", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]networkingv1.NetworkPolicy, string, *int64, error) {
+		list, err := cs.NetworkingV1().NetworkPolicies(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
-func (c *Client) ListNetworkPoliciesWithContext(ctx context.Context, namespace string) ([]networkingv1.NetworkPolicy, error) {
+func (c *Client) ListNetworkPoliciesWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]networkingv1.NetworkPolicy, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.NetworkingV1().NetworkPolicies(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "networkpolicies", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]networkingv1.NetworkPolicy, string, *int64, error) {
+		list, err := cs.NetworkingV1().NetworkPolicies(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetNetworkPolicyYaml(namespace, name string) (string, error) {
@@ -105,32 +113,34 @@ func (c *Client) DeleteNetworkPolicy(contextName, namespace, name string) error 
 
 // HorizontalPodAutoscaler operations (namespaced)
 func (c *Client) ListHPAs(namespace string) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListHPAsWithContext(ctx, namespace)
 }
 
-func (c *Client) ListHPAsWithContext(ctx context.Context, namespace string) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
+func (c *Client) ListHPAsWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "hpas", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]autoscalingv2.HorizontalPodAutoscaler, string, *int64, error) {
+		list, err := cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 // ListHPAsForContext lists HPAs for a specific kubeconfig context
@@ -141,11 +151,17 @@ func (c *Client) ListHPAsForContext(contextName, namespace string) ([]autoscalin
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "hpas", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]autoscalingv2.HorizontalPodAutoscaler, string, *int64, error) {
+		list, err := cs.AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetHPAYaml(namespace, name string) (string, error) {
@@ -195,32 +211,34 @@ func (c *Client) DeleteHPA(contextName, namespace, name string) error {
 
 // PodDisruptionBudget operations (namespaced)
 func (c *Client) ListPDBs(namespace string) ([]policyv1.PodDisruptionBudget, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.PolicyV1().PodDisruptionBudgets(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListPDBsWithContext(ctx, namespace)
 }
 
-func (c *Client) ListPDBsWithContext(ctx context.Context, namespace string) ([]policyv1.PodDisruptionBudget, error) {
+func (c *Client) ListPDBsWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]policyv1.PodDisruptionBudget, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.PolicyV1().PodDisruptionBudgets(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "pdbs", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]policyv1.PodDisruptionBudget, string, *int64, error) {
+		list, err := cs.PolicyV1().PodDisruptionBudgets(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetPDBYaml(namespace, name string) (string, error) {
@@ -270,32 +288,34 @@ func (c *Client) DeletePDB(contextName, namespace, name string) error {
 
 // ResourceQuota operations (namespaced)
 func (c *Client) ListResourceQuotas(namespace string) ([]v1.ResourceQuota, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.CoreV1().ResourceQuotas(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListResourceQuotasWithContext(ctx, namespace)
 }
 
-func (c *Client) ListResourceQuotasWithContext(ctx context.Context, namespace string) ([]v1.ResourceQuota, error) {
+func (c *Client) ListResourceQuotasWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]v1.ResourceQuota, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.CoreV1().ResourceQuotas(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "resourcequotas", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.ResourceQuota, string, *int64, error) {
+		list, err := cs.CoreV1().ResourceQuotas(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetResourceQuotaYaml(namespace, name string) (string, error) {
@@ -345,32 +365,34 @@ func (c *Client) DeleteResourceQuota(contextName, namespace, name string) error 
 
 // LimitRange operations (namespaced)
 func (c *Client) ListLimitRanges(namespace string) ([]v1.LimitRange, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.CoreV1().LimitRanges(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListLimitRangesWithContext(ctx, namespace)
 }
 
-func (c *Client) ListLimitRangesWithContext(ctx context.Context, namespace string) ([]v1.LimitRange, error) {
+func (c *Client) ListLimitRangesWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]v1.LimitRange, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.CoreV1().LimitRanges(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "limitranges", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.LimitRange, string, *int64, error) {
+		list, err := cs.CoreV1().LimitRanges(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetLimitRangeYaml(namespace, name string) (string, error) {
@@ -420,32 +442,34 @@ func (c *Client) DeleteLimitRange(contextName, namespace, name string) error {
 
 // Endpoints operations (namespaced)
 func (c *Client) ListEndpoints(namespace string) ([]v1.Endpoints, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.CoreV1().Endpoints(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListEndpointsWithContext(ctx, namespace)
 }
 
-func (c *Client) ListEndpointsWithContext(ctx context.Context, namespace string) ([]v1.Endpoints, error) {
+func (c *Client) ListEndpointsWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]v1.Endpoints, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.CoreV1().Endpoints(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "endpoints", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.Endpoints, string, *int64, error) {
+		list, err := cs.CoreV1().Endpoints(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetEndpointsYaml(namespace, name string) (string, error) {
@@ -495,32 +519,34 @@ func (c *Client) DeleteEndpoints(contextName, namespace, name string) error {
 
 // EndpointSlice operations (namespaced, discovery.k8s.io/v1)
 func (c *Client) ListEndpointSlices(namespace string) ([]discoveryv1.EndpointSlice, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.DiscoveryV1().EndpointSlices(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListEndpointSlicesWithContext(ctx, namespace)
 }
 
-func (c *Client) ListEndpointSlicesWithContext(ctx context.Context, namespace string) ([]discoveryv1.EndpointSlice, error) {
+func (c *Client) ListEndpointSlicesWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]discoveryv1.EndpointSlice, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.DiscoveryV1().EndpointSlices(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "endpointslices", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]discoveryv1.EndpointSlice, string, *int64, error) {
+		list, err := cs.DiscoveryV1().EndpointSlices(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetEndpointSliceYaml(namespace, name string) (string, error) {

@@ -10,32 +10,35 @@ import (
 )
 
 func (c *Client) ListCSIDrivers(contextName string) ([]storagev1.CSIDriver, error) {
-	cs, err := c.getClientForContext(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.StorageV1().CSIDrivers().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListCSIDriversWithContext(ctx, contextName)
 }
 
-func (c *Client) ListCSIDriversWithContext(ctx context.Context, contextName string) ([]storagev1.CSIDriver, error) {
+// ListCSIDriversWithContext lists CSI drivers with cancellation support and pagination.
+func (c *Client) ListCSIDriversWithContext(ctx context.Context, contextName string, onProgress ...func(loaded, total int)) ([]storagev1.CSIDriver, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
-	list, err := cs.StorageV1().CSIDrivers().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "csidrivers", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]storagev1.CSIDriver, string, *int64, error) {
+		list, err := cs.StorageV1().CSIDrivers().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetCSIDriverYaml(contextName, name string) (string, error) {
@@ -87,32 +90,35 @@ func (c *Client) DeleteCSIDriver(contextName, name string) error {
 // ============================================================================
 
 func (c *Client) ListCSINodes(contextName string) ([]storagev1.CSINode, error) {
-	cs, err := c.getClientForContext(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.StorageV1().CSINodes().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListCSINodesWithContext(ctx, contextName)
 }
 
-func (c *Client) ListCSINodesWithContext(ctx context.Context, contextName string) ([]storagev1.CSINode, error) {
+// ListCSINodesWithContext lists CSI nodes with cancellation support and pagination.
+func (c *Client) ListCSINodesWithContext(ctx context.Context, contextName string, onProgress ...func(loaded, total int)) ([]storagev1.CSINode, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
-	list, err := cs.StorageV1().CSINodes().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "csinodes", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]storagev1.CSINode, string, *int64, error) {
+		list, err := cs.StorageV1().CSINodes().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetCSINodeYaml(contextName, name string) (string, error) {

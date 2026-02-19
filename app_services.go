@@ -21,7 +21,7 @@ func (a *App) ListServices(requestId, namespace string) ([]v1.Service, error) {
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListServicesWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListServicesWithContext(ctx, namespace, a.listProgressCallback("services"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

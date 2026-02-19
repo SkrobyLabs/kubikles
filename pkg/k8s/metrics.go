@@ -15,6 +15,10 @@ import (
 )
 
 func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
+	if IsDebugClusterContext(c.GetCurrentContext()) {
+		return &NodeMetricsResult{Available: false, Error: "metrics not available on debug cluster"}, nil
+	}
+
 	c.mu.Lock()
 	// Lazy init metrics client
 	if c.metricsClient == nil {
@@ -559,6 +563,10 @@ func (c *Client) GetPodMetricsFromPrometheus(contextName string, info *Prometheu
 // GetPodMetrics fetches CPU and Memory metrics for all pods, relative to node capacity
 
 func (c *Client) GetPodMetrics() (*PodMetricsResult, error) {
+	if IsDebugClusterContext(c.GetCurrentContext()) {
+		return &PodMetricsResult{Available: false, Error: "metrics not available on debug cluster"}, nil
+	}
+
 	c.mu.Lock()
 	// Lazy init metrics client
 	if c.metricsClient == nil {

@@ -11,32 +11,35 @@ import (
 )
 
 func (c *Client) ListValidatingWebhookConfigurations() ([]admissionregistrationv1.ValidatingWebhookConfiguration, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListValidatingWebhookConfigurationsWithContext(ctx)
 }
 
-func (c *Client) ListValidatingWebhookConfigurationsWithContext(ctx context.Context) ([]admissionregistrationv1.ValidatingWebhookConfiguration, error) {
+// ListValidatingWebhookConfigurationsWithContext lists validating webhook configurations with cancellation support and pagination.
+func (c *Client) ListValidatingWebhookConfigurationsWithContext(ctx context.Context, onProgress ...func(loaded, total int)) ([]admissionregistrationv1.ValidatingWebhookConfiguration, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "validatingwebhooks", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]admissionregistrationv1.ValidatingWebhookConfiguration, string, *int64, error) {
+		list, err := cs.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetValidatingWebhookConfigurationYaml(name string) (string, error) {
@@ -86,32 +89,35 @@ func (c *Client) DeleteValidatingWebhookConfiguration(contextName, name string) 
 
 // MutatingWebhookConfiguration operations (cluster-scoped)
 func (c *Client) ListMutatingWebhookConfigurations() ([]admissionregistrationv1.MutatingWebhookConfiguration, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListMutatingWebhookConfigurationsWithContext(ctx)
 }
 
-func (c *Client) ListMutatingWebhookConfigurationsWithContext(ctx context.Context) ([]admissionregistrationv1.MutatingWebhookConfiguration, error) {
+// ListMutatingWebhookConfigurationsWithContext lists mutating webhook configurations with cancellation support and pagination.
+func (c *Client) ListMutatingWebhookConfigurationsWithContext(ctx context.Context, onProgress ...func(loaded, total int)) ([]admissionregistrationv1.MutatingWebhookConfiguration, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "mutatingwebhooks", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]admissionregistrationv1.MutatingWebhookConfiguration, string, *int64, error) {
+		list, err := cs.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetMutatingWebhookConfigurationYaml(name string) (string, error) {

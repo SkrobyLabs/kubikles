@@ -21,7 +21,7 @@ func (a *App) ListDeployments(requestId, namespace string) ([]appsv1.Deployment,
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListDeploymentsWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListDeploymentsWithContext(ctx, namespace, a.listProgressCallback("deployments"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

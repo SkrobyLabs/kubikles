@@ -53,6 +53,7 @@ const uiConfigSchema = z.object({
   copyFeedbackMs: z.number().int().min(500).max(5000).optional(),
   scrollZoomEnabled: z.boolean().optional(),
   showTabIcons: z.boolean().optional(),
+  largeDatasetThreshold: z.number().int().min(1000).max(500000).optional(),
   sidebar: sidebarConfigSchema.optional(),
 });
 

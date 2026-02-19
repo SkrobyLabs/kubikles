@@ -13,53 +13,35 @@ import (
 )
 
 func (c *Client) ListConfigMaps(namespace string) ([]v1.ConfigMap, error) {
-	start := time.Now()
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("[ListConfigMaps] getClientset took %v", time.Since(start))
-	apiStart := time.Now()
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	cms, err := cs.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
-	log.Printf("[ListConfigMaps] API call took %v, returned %d items", time.Since(apiStart), len(cms.Items))
-	if err != nil {
-		return nil, err
-	}
-	return cms.Items, nil
+	return c.ListConfigMapsWithContext(ctx, namespace)
 }
 
-// ListConfigMapsWithContext lists configmaps with cancellation support
-func (c *Client) ListConfigMapsWithContext(ctx context.Context, namespace string) ([]v1.ConfigMap, error) {
-	start := time.Now()
+// ListConfigMapsWithContext lists configmaps with cancellation support and pagination.
+func (c *Client) ListConfigMapsWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]v1.ConfigMap, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	getClientsetTime := time.Since(start)
-
-	apiStart := time.Now()
-	cms, err := cs.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
-	apiTime := time.Since(apiStart)
-
-	// Check context state
-	ctxErr := ctx.Err()
-	deadline, hasDeadline := ctx.Deadline()
-	deadlineInfo := "no deadline"
-	if hasDeadline {
-		deadlineInfo = fmt.Sprintf("deadline in %v", time.Until(deadline))
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
 	}
-
-	log.Printf("[ListConfigMapsWithContext] getClientset=%v, API=%v, total=%v, ns=%q, items=%d, err=%v, ctxErr=%v, %s",
-		getClientsetTime, apiTime, time.Since(start), namespace, len(cms.Items), err, ctxErr, deadlineInfo)
+	result, err := paginatedList(ctx, "configmaps", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.ConfigMap, string, *int64, error) {
+		list, err := cs.CoreV1().ConfigMaps(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return cms.Items, nil
+	return result, nil
 }
 
 // ListConfigMapsForContext lists configmaps for a specific kubeconfig context
@@ -70,48 +52,49 @@ func (c *Client) ListConfigMapsForContext(contextName, namespace string) ([]v1.C
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	cms, err := cs.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "configmaps", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.ConfigMap, string, *int64, error) {
+		list, err := cs.CoreV1().ConfigMaps(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return cms.Items, nil
+	return result, nil
 }
 
 func (c *Client) ListSecrets(namespace string) ([]v1.Secret, error) {
-	start := time.Now()
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("[ListSecrets] getClientset took %v", time.Since(start))
-	apiStart := time.Now()
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	secrets, err := cs.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
-	log.Printf("[ListSecrets] API call took %v, returned %d items", time.Since(apiStart), len(secrets.Items))
-	if err != nil {
-		return nil, err
-	}
-	// Sanitize secrets? For now, we return them as is, UI should handle masking.
-	return secrets.Items, nil
+	return c.ListSecretsWithContext(ctx, namespace)
 }
 
-// ListSecretsWithContext lists secrets with cancellation support
-func (c *Client) ListSecretsWithContext(ctx context.Context, namespace string) ([]v1.Secret, error) {
-	start := time.Now()
+// ListSecretsWithContext lists secrets with cancellation support and pagination.
+func (c *Client) ListSecretsWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]v1.Secret, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	secrets, err := cs.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
-	log.Printf("[ListSecretsWithContext] API call took %v, ns=%q, items=%d, err=%v", time.Since(start), namespace, len(secrets.Items), err)
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "secrets", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.Secret, string, *int64, error) {
+		list, err := cs.CoreV1().Secrets(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return secrets.Items, nil
+	return result, nil
 }
 
 // ListSecretsForContext lists secrets for a specific kubeconfig context
@@ -122,11 +105,17 @@ func (c *Client) ListSecretsForContext(contextName, namespace string) ([]v1.Secr
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	secrets, err := cs.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "secrets", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.Secret, string, *int64, error) {
+		list, err := cs.CoreV1().Secrets(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return secrets.Items, nil
+	return result, nil
 }
 
 // SecretListItem is a lightweight representation of a Secret for list views.
@@ -149,11 +138,16 @@ type SecretMetadata struct {
 
 // ListSecretsMetadataWithContext lists secrets using metadata-only fetch for list views.
 // This avoids transferring the actual secret data, significantly reducing response size.
-func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace string) ([]SecretListItem, error) {
+func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]SecretListItem, error) {
 	start := time.Now()
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
+	}
+
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
 	}
 
 	// Build the request path
@@ -164,101 +158,143 @@ func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace s
 		path = fmt.Sprintf("/api/v1/namespaces/%s/secrets", namespace)
 	}
 
-	// Use Table format with metadata-only objects
-	// This returns column data (name, type, data count, age) plus minimal object metadata
-	// without the actual secret data
-	result := cs.CoreV1().RESTClient().Get().
-		AbsPath(path).
-		SetHeader("Accept", "application/json;as=Table;g=meta.k8s.io;v=v1").
-		Do(ctx)
-
-	if err := result.Error(); err != nil {
-		log.Printf("[ListSecretsMetadata] API call failed after %v, ns=%q, err=%v", time.Since(start), namespace, err)
-		if isCancelledError(err) {
-			return nil, ErrRequestCancelled
-		}
-		return nil, err
+	// tableResponse is used to parse the Table response including pagination metadata
+	type tableResponse struct {
+		metav1.Table `json:",inline"`
+		Metadata     struct {
+			Continue           string `json:"continue"`
+			RemainingItemCount *int64 `json:"remainingItemCount,omitempty"`
+		} `json:"metadata"`
 	}
 
-	// Parse the Table response
-	body, err := result.Raw()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
+	var allItems []SecretListItem
+	continueToken := ""
 
-	var table metav1.Table
-	if err := json.Unmarshal(body, &table); err != nil {
-		return nil, fmt.Errorf("failed to parse table response: %w", err)
-	}
-
-	// Find column indices
-	nameIdx, typeIdx, dataIdx := -1, -1, -1
-	for i, col := range table.ColumnDefinitions {
-		switch col.Name {
-		case "Name":
-			nameIdx = i
-		case "Type":
-			typeIdx = i
-		case "Data":
-			dataIdx = i
-		}
-	}
-
-	// Convert rows to SecretListItem
-	items := make([]SecretListItem, 0, len(table.Rows))
-	for _, row := range table.Rows {
-		item := SecretListItem{}
-
-		// Extract cells
-		if nameIdx >= 0 && nameIdx < len(row.Cells) {
-			if name, ok := row.Cells[nameIdx].(string); ok {
-				item.Metadata.Name = name
+	for {
+		// Check context before each page
+		if err := ctx.Err(); err != nil {
+			if isCancelledError(err) {
+				return nil, ErrRequestCancelled
 			}
-		}
-		if typeIdx >= 0 && typeIdx < len(row.Cells) {
-			if t, ok := row.Cells[typeIdx].(string); ok {
-				item.Type = t
-			}
-		}
-		if dataIdx >= 0 && dataIdx < len(row.Cells) {
-			// Data column contains count as number
-			switch v := row.Cells[dataIdx].(type) {
-			case float64:
-				item.DataKeys = int(v)
-			case int64:
-				item.DataKeys = int(v)
-			case int:
-				item.DataKeys = v
-			}
+			return nil, err
 		}
 
-		// Extract metadata from the embedded object
-		if row.Object.Raw != nil {
-			var partialMeta struct {
-				Metadata struct {
-					Name              string            `json:"name"`
-					Namespace         string            `json:"namespace"`
-					UID               string            `json:"uid"`
-					CreationTimestamp metav1.Time       `json:"creationTimestamp"`
-					Labels            map[string]string `json:"labels,omitempty"`
-					Annotations       map[string]string `json:"annotations,omitempty"`
-				} `json:"metadata"`
+		// Use Table format with metadata-only objects
+		req := cs.CoreV1().RESTClient().Get().
+			AbsPath(path).
+			SetHeader("Accept", "application/json;as=Table;g=meta.k8s.io;v=v1")
+		// Only set limit when progress tracking is requested (avoids bypassing watch cache)
+		if progressFn != nil {
+			req = req.Param("limit", fmt.Sprintf("%d", defaultPageSize))
+		}
+		if continueToken != "" {
+			req = req.Param("continue", continueToken)
+		}
+
+		result := req.Do(ctx)
+
+		if err := result.Error(); err != nil {
+			log.Printf("[ListSecretsMetadata] API call failed after %v, ns=%q, err=%v", time.Since(start), namespace, err)
+			if isCancelledError(err) {
+				return nil, ErrRequestCancelled
 			}
-			if err := json.Unmarshal(row.Object.Raw, &partialMeta); err == nil {
-				item.Metadata.Name = partialMeta.Metadata.Name
-				item.Metadata.Namespace = partialMeta.Metadata.Namespace
-				item.Metadata.UID = partialMeta.Metadata.UID
-				item.Metadata.CreationTimestamp = partialMeta.Metadata.CreationTimestamp
-				item.Metadata.Labels = partialMeta.Metadata.Labels
-				item.Metadata.Annotations = partialMeta.Metadata.Annotations
+			return nil, err
+		}
+
+		// Parse the Table response
+		body, err := result.Raw()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read response: %w", err)
+		}
+
+		var table tableResponse
+		if err := json.Unmarshal(body, &table); err != nil {
+			return nil, fmt.Errorf("failed to parse table response: %w", err)
+		}
+
+		// Find column indices
+		nameIdx, typeIdx, dataIdx := -1, -1, -1
+		for i, col := range table.ColumnDefinitions {
+			switch col.Name {
+			case "Name":
+				nameIdx = i
+			case "Type":
+				typeIdx = i
+			case "Data":
+				dataIdx = i
 			}
 		}
 
-		items = append(items, item)
+		// Convert rows to SecretListItem
+		for _, row := range table.Rows {
+			item := SecretListItem{}
+
+			// Extract cells
+			if nameIdx >= 0 && nameIdx < len(row.Cells) {
+				if name, ok := row.Cells[nameIdx].(string); ok {
+					item.Metadata.Name = name
+				}
+			}
+			if typeIdx >= 0 && typeIdx < len(row.Cells) {
+				if t, ok := row.Cells[typeIdx].(string); ok {
+					item.Type = t
+				}
+			}
+			if dataIdx >= 0 && dataIdx < len(row.Cells) {
+				// Data column contains count as number
+				switch v := row.Cells[dataIdx].(type) {
+				case float64:
+					item.DataKeys = int(v)
+				case int64:
+					item.DataKeys = int(v)
+				case int:
+					item.DataKeys = v
+				}
+			}
+
+			// Extract metadata from the embedded object
+			if row.Object.Raw != nil {
+				var partialMeta struct {
+					Metadata struct {
+						Name              string            `json:"name"`
+						Namespace         string            `json:"namespace"`
+						UID               string            `json:"uid"`
+						CreationTimestamp metav1.Time       `json:"creationTimestamp"`
+						Labels            map[string]string `json:"labels,omitempty"`
+						Annotations       map[string]string `json:"annotations,omitempty"`
+					} `json:"metadata"`
+				}
+				if err := json.Unmarshal(row.Object.Raw, &partialMeta); err == nil {
+					item.Metadata.Name = partialMeta.Metadata.Name
+					item.Metadata.Namespace = partialMeta.Metadata.Namespace
+					item.Metadata.UID = partialMeta.Metadata.UID
+					item.Metadata.CreationTimestamp = partialMeta.Metadata.CreationTimestamp
+					item.Metadata.Labels = partialMeta.Metadata.Labels
+					item.Metadata.Annotations = partialMeta.Metadata.Annotations
+				}
+			}
+
+			allItems = append(allItems, item)
+		}
+
+		// Report progress
+		if progressFn != nil {
+			total := len(allItems)
+			if table.Metadata.RemainingItemCount != nil {
+				total = len(allItems) + int(*table.Metadata.RemainingItemCount)
+			}
+			progressFn(len(allItems), total)
+		}
+
+		// No more pages
+		if table.Metadata.Continue == "" {
+			break
+		}
+		continueToken = table.Metadata.Continue
 	}
 
-	log.Printf("[ListSecretsMetadata] API call took %v, ns=%q, items=%d", time.Since(start), namespace, len(items))
-	return items, nil
+	log.Printf("[ListSecretsMetadata] API call took %v, ns=%q, items=%d", time.Since(start), namespace, len(allItems))
+	return allItems, nil
 }
 
 // ConfigMap YAML operations

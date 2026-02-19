@@ -30,6 +30,7 @@ interface UIConfig {
     copyFeedbackMs: number;
     scrollZoomEnabled: boolean;
     showTabIcons: boolean;
+    largeDatasetThreshold: number;
     sidebar?: {
         layout?: SidebarLayoutSection[];
         excludedItems?: string[];
@@ -117,7 +118,9 @@ const defaultConfig: AppConfig = {
         // Enable Cmd/Ctrl+Scroll to zoom in/out
         scrollZoomEnabled: false,
         // Display resource type icons in tab titles
-        showTabIcons: true
+        showTabIcons: true,
+        // Show warning banner when dataset exceeds this count
+        largeDatasetThreshold: 5000
     },
     kubernetes: {
         // API request timeout (ms). Increase for slow clusters.

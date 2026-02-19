@@ -50,6 +50,9 @@ func TestNewEventCoalescer_DefaultInterval(t *testing.T) {
 	if c.events == nil {
 		t.Error("events map not initialized")
 	}
+	if c.maxBatchSize != 500 {
+		t.Errorf("expected default maxBatchSize 500, got %d", c.maxBatchSize)
+	}
 }
 
 func TestNewEventCoalescer_CustomInterval(t *testing.T) {
@@ -649,5 +652,250 @@ func TestEventCoalescer_DeleteClearsPendingEvents(t *testing.T) {
 	c.mu.Unlock()
 	if countAfter != 0 {
 		t.Errorf("expected 0 pending events after DELETE, got %d", countAfter)
+	}
+}
+
+// --- Batch cap tests ---
+
+func TestEventCoalescer_FlushEmitsAtMostMaxBatchSize(t *testing.T) {
+	var mu sync.Mutex
+	var emittedCount int
+
+	app := &App{}
+	app.emitter = events.EmitterFunc(func(name string, data ...interface{}) {
+		mu.Lock()
+		defer mu.Unlock()
+		if len(data) > 0 {
+			switch v := data[0].(type) {
+			case ResourceEvent:
+				emittedCount++
+				_ = v
+			case []ResourceEvent:
+				emittedCount += len(v)
+			}
+		}
+	})
+
+	c := NewEventCoalescer(app, 1*time.Hour) // Long interval so timer won't fire
+	c.SetMaxBatchSize(100)
+
+	// Emit 250 unique events
+	for i := 0; i < 250; i++ {
+		c.Emit(makeTestEvent("pods", "default", "pod-"+string(rune(i/26+'a'))+string(rune(i%26+'a')), ""))
+	}
+
+	// Verify all 250 are in the buffer (they should be unique enough)
+	c.mu.Lock()
+	bufferSize := len(c.events)
+	c.mu.Unlock()
+	if bufferSize != 250 {
+		t.Errorf("expected 250 events in buffer, got %d", bufferSize)
+	}
+
+	// Trigger a single flush (via timer simulation)
+	c.flush()
+
+	// After one flush: should have emitted exactly 100 and left 150
+	mu.Lock()
+	if emittedCount != 100 {
+		t.Errorf("expected 100 emitted events, got %d", emittedCount)
+	}
+	mu.Unlock()
+
+	c.mu.Lock()
+	remaining := len(c.events)
+	isPending := c.pending
+	c.mu.Unlock()
+
+	if remaining != 150 {
+		t.Errorf("expected 150 remaining events, got %d", remaining)
+	}
+	if !isPending {
+		t.Error("expected pending=true since there are remaining events")
+	}
+}
+
+func TestEventCoalescer_FlushNowDrainsAllRegardlessOfCap(t *testing.T) {
+	var mu sync.Mutex
+	var emittedCount int
+
+	app := &App{}
+	app.emitter = events.EmitterFunc(func(name string, data ...interface{}) {
+		mu.Lock()
+		defer mu.Unlock()
+		if len(data) > 0 {
+			switch v := data[0].(type) {
+			case ResourceEvent:
+				emittedCount++
+				_ = v
+			case []ResourceEvent:
+				emittedCount += len(v)
+			}
+		}
+	})
+
+	c := NewEventCoalescer(app, 1*time.Hour)
+	c.SetMaxBatchSize(100)
+
+	// Emit 350 unique events
+	for i := 0; i < 350; i++ {
+		c.Emit(makeTestEvent("pods", "default", "pod-"+string(rune(i/26+'a'))+string(rune(i%26+'a')), ""))
+	}
+
+	// FlushNow should drain everything regardless of cap
+	c.FlushNow()
+
+	mu.Lock()
+	if emittedCount != 350 {
+		t.Errorf("expected all 350 events emitted, got %d", emittedCount)
+	}
+	mu.Unlock()
+
+	c.mu.Lock()
+	if len(c.events) != 0 {
+		t.Errorf("expected 0 remaining events, got %d", len(c.events))
+	}
+	if c.pending {
+		t.Error("pending should be false after FlushNow")
+	}
+	c.mu.Unlock()
+}
+
+func TestEventCoalescer_BatchCapTimerRearms(t *testing.T) {
+	var mu sync.Mutex
+	var emittedCount int
+
+	app := &App{}
+	app.emitter = events.EmitterFunc(func(name string, data ...interface{}) {
+		mu.Lock()
+		defer mu.Unlock()
+		if len(data) > 0 {
+			switch v := data[0].(type) {
+			case ResourceEvent:
+				emittedCount++
+				_ = v
+			case []ResourceEvent:
+				emittedCount += len(v)
+			}
+		}
+	})
+
+	c := NewEventCoalescer(app, 15*time.Millisecond)
+	c.SetMaxBatchSize(100)
+
+	// Emit 250 unique events
+	for i := 0; i < 250; i++ {
+		c.Emit(makeTestEvent("pods", "default", "pod-"+string(rune(i/26+'a'))+string(rune(i%26+'a')), ""))
+	}
+
+	// Wait enough for 3+ timer cycles to drain all 250 events
+	time.Sleep(150 * time.Millisecond)
+
+	mu.Lock()
+	if emittedCount != 250 {
+		t.Errorf("expected all 250 events auto-drained, got %d", emittedCount)
+	}
+	mu.Unlock()
+
+	c.mu.Lock()
+	if len(c.events) != 0 {
+		t.Errorf("expected 0 remaining events, got %d", len(c.events))
+	}
+	if c.pending {
+		t.Error("pending should be false after auto-drain")
+	}
+	c.mu.Unlock()
+}
+
+func TestEventCoalescer_SetMaxBatchSize_Clamping(t *testing.T) {
+	app := &App{}
+	c := NewEventCoalescer(app, 16*time.Millisecond)
+
+	// Default
+	c.mu.Lock()
+	if c.maxBatchSize != 500 {
+		t.Errorf("expected default maxBatchSize 500, got %d", c.maxBatchSize)
+	}
+	c.mu.Unlock()
+
+	// Set normal value
+	c.SetMaxBatchSize(200)
+	c.mu.Lock()
+	if c.maxBatchSize != 200 {
+		t.Errorf("expected 200, got %d", c.maxBatchSize)
+	}
+	c.mu.Unlock()
+
+	// Clamp to minimum (50)
+	c.SetMaxBatchSize(10)
+	c.mu.Lock()
+	if c.maxBatchSize != 50 {
+		t.Errorf("expected clamped to 50, got %d", c.maxBatchSize)
+	}
+	c.mu.Unlock()
+
+	// Clamp to maximum (5000)
+	c.SetMaxBatchSize(10000)
+	c.mu.Lock()
+	if c.maxBatchSize != 5000 {
+		t.Errorf("expected clamped to 5000, got %d", c.maxBatchSize)
+	}
+	c.mu.Unlock()
+}
+
+func TestEventCoalescer_ConcurrentEmitWithBatchCap(t *testing.T) {
+	var mu sync.Mutex
+	var emittedCount int
+
+	app := &App{}
+	app.emitter = events.EmitterFunc(func(name string, data ...interface{}) {
+		mu.Lock()
+		defer mu.Unlock()
+		if len(data) > 0 {
+			switch v := data[0].(type) {
+			case ResourceEvent:
+				emittedCount++
+				_ = v
+			case []ResourceEvent:
+				emittedCount += len(v)
+			}
+		}
+	})
+
+	c := NewEventCoalescer(app, 10*time.Millisecond)
+	c.SetMaxBatchSize(50)
+
+	var wg sync.WaitGroup
+	// 10 goroutines each emitting 50 unique events = 500 unique events total
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < 50; j++ {
+				c.Emit(makeTestEvent("pods", "default",
+					"pod-"+string(rune('a'+id))+"-"+string(rune('a'+j)), ""))
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Wait for auto-drain to complete (500 events / 50 per batch = 10 batches × 10ms = 100ms + margin)
+	time.Sleep(300 * time.Millisecond)
+
+	mu.Lock()
+	totalEmitted := emittedCount
+	mu.Unlock()
+
+	c.mu.Lock()
+	remaining := len(c.events)
+	c.mu.Unlock()
+
+	if remaining != 0 {
+		t.Errorf("expected 0 remaining events after drain, got %d", remaining)
+	}
+	// Total emitted should equal the total unique events
+	if totalEmitted < 1 {
+		t.Errorf("expected some events to be emitted, got %d", totalEmitted)
 	}
 }

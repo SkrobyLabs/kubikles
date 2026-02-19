@@ -233,6 +233,25 @@ func (a *App) emitEvent(name string, data ...interface{}) {
 	}
 }
 
+// ListProgress represents progress of a paginated list operation.
+type ListProgress struct {
+	ResourceType string `json:"resourceType"`
+	Loaded       int    `json:"loaded"`
+	Total        int    `json:"total"`
+}
+
+// listProgressCallback creates a progress callback that emits "list-progress" events.
+func (a *App) listProgressCallback(resourceType string) func(loaded, total int) {
+	return func(loaded, total int) {
+		debug.LogK8s("list-progress", map[string]interface{}{"resource": resourceType, "loaded": loaded, "total": total})
+		a.emitEvent("list-progress", ListProgress{
+			ResourceType: resourceType,
+			Loaded:       loaded,
+			Total:        total,
+		})
+	}
+}
+
 // openBrowserURL opens a URL in the system browser (desktop mode only).
 // In server mode, this is a no-op - the frontend handles URLs.
 func (a *App) openBrowserURL(url string) {

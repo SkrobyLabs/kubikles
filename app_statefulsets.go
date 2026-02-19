@@ -21,7 +21,7 @@ func (a *App) ListStatefulSets(requestId, namespace string) ([]appsv1.StatefulSe
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListStatefulSetsWithContext(ctx, "", namespace)
+		result, err := a.k8sClient.ListStatefulSetsWithContext(ctx, "", namespace, a.listProgressCallback("statefulsets"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

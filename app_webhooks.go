@@ -21,7 +21,7 @@ func (a *App) ListValidatingWebhookConfigurations(requestId string) ([]admission
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListValidatingWebhookConfigurationsWithContext(ctx)
+		result, err := a.k8sClient.ListValidatingWebhookConfigurationsWithContext(ctx, a.listProgressCallback("validatingwebhookconfigurations"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -64,7 +64,7 @@ func (a *App) ListMutatingWebhookConfigurations(requestId string) ([]admissionre
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListMutatingWebhookConfigurationsWithContext(ctx)
+		result, err := a.k8sClient.ListMutatingWebhookConfigurationsWithContext(ctx, a.listProgressCallback("mutatingwebhookconfigurations"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

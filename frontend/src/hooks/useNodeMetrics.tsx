@@ -47,6 +47,25 @@ export const useNodeMetrics = (isVisible: boolean, isReady: boolean = true, auto
     const prometheusInfoRef = useRef<k8s.PrometheusInfo | null>(null); // Cache prometheus info for fallback
     const pollInterval = getConfig('kubernetes.metricsPollIntervalMs') ?? 30000;
 
+    // Ref to current metrics for structural comparison — skip setState when values unchanged
+    const metricsRef = useRef<NodeMetricsMap>(metrics);
+    const updateMetrics = useCallback((next: NodeMetricsMap) => {
+        const prev = metricsRef.current;
+        const prevKeys = Object.keys(prev);
+        const nextKeys = Object.keys(next);
+        if (prevKeys.length === nextKeys.length && nextKeys.every((k) => {
+            const a = prev[k], b = next[k];
+            return a && b &&
+                a.cpuPercent === b.cpuPercent && a.memPercent === b.memPercent &&
+                a.cpuUsage === b.cpuUsage && a.memoryUsage === b.memoryUsage &&
+                a.cpuRequested === b.cpuRequested && a.memRequested === b.memRequested &&
+                a.cpuCommitted === b.cpuCommitted && a.memCommitted === b.memCommitted &&
+                a.podCount === b.podCount;
+        })) return;
+        metricsRef.current = next;
+        setMetrics(next);
+    }, []);
+
     // Transform metrics result to map format
     const transformMetrics = useCallback((result: k8s.NodeMetricsResult): NodeMetricsMap => {
         const metricsMap: NodeMetricsMap = {};
@@ -156,11 +175,11 @@ export const useNodeMetrics = (isVisible: boolean, isReady: boolean = true, auto
                 if (result.available) {
                     setAvailable(true);
                     setSource('k8s');
-                    setMetrics(transformMetrics(result));
+                    updateMetrics(transformMetrics(result));
                 } else {
                     setAvailable(false);
                     setSource(null);
-                    setMetrics({});
+                    updateMetrics({});
                 }
                 return;
             }
@@ -171,11 +190,11 @@ export const useNodeMetrics = (isVisible: boolean, isReady: boolean = true, auto
                 if (promResult.available) {
                     setAvailable(true);
                     setSource('prometheus');
-                    setMetrics(transformMetrics(promResult));
+                    updateMetrics(transformMetrics(promResult));
                 } else {
                     setAvailable(false);
                     setSource(null);
-                    setMetrics({});
+                    updateMetrics({});
                 }
                 return;
             }
@@ -186,7 +205,7 @@ export const useNodeMetrics = (isVisible: boolean, isReady: boolean = true, auto
                 console.log("K8s metrics available, using them");
                 setAvailable(true);
                 setSource('k8s');
-                setMetrics(transformMetrics(result));
+                updateMetrics(transformMetrics(result));
                 return;
             }
             console.log("K8s metrics not available (available=" + result.available + ", error=" + result.error + ")");
@@ -197,14 +216,14 @@ export const useNodeMetrics = (isVisible: boolean, isReady: boolean = true, auto
             if (promResult.available) {
                 setAvailable(true);
                 setSource('prometheus');
-                setMetrics(transformMetrics(promResult));
+                updateMetrics(transformMetrics(promResult));
                 return;
             }
 
             // Neither source available
             setAvailable(false);
             setSource(null);
-            setMetrics({});
+            updateMetrics({});
         } catch (err: any) {
             console.error("Failed to fetch node metrics", err);
             setAvailable(false);
@@ -243,7 +262,7 @@ export const useNodeMetrics = (isVisible: boolean, isReady: boolean = true, auto
 
     // Reset on context change
     useEffect(() => {
-        setMetrics({});
+        updateMetrics({});
         setAvailable(null); // Reset to unknown until next fetch
         setSource(null);
         prometheusInfoRef.current = null; // Clear cached prometheus info

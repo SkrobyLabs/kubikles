@@ -21,7 +21,7 @@ func (a *App) ListIngresses(requestId, namespace string) ([]networkingv1.Ingress
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListIngressesWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListIngressesWithContext(ctx, namespace, a.listProgressCallback("ingresses"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -66,7 +66,7 @@ func (a *App) ListIngressClasses(requestId string) ([]networkingv1.IngressClass,
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListIngressClassesWithContext(ctx, currentContext)
+		result, err := a.k8sClient.ListIngressClassesWithContext(ctx, currentContext, a.listProgressCallback("ingressclasses"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

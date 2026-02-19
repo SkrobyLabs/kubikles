@@ -350,6 +350,15 @@ export const configSchema: Record<string, any> = {
             description: 'Display resource type icons in tab titles',
             default: true
         },
+        largeDatasetThreshold: {
+            type: 'number',
+            label: 'Large Dataset Threshold',
+            description: 'Show a warning banner when resource count exceeds this value',
+            min: 1000,
+            max: 500000,
+            step: 1000,
+            default: 5000
+        },
         sidebar: {
             _meta: { label: 'Sidebar', isNested: true },
             layout: {

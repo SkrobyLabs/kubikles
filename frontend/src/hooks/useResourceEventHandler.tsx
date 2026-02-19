@@ -15,20 +15,21 @@ interface ResourceEvent<T extends K8sResource = K8sResource> {
 type ResourceEventHandler<T extends K8sResource = K8sResource> = (event: ResourceEvent<T>) => void;
 
 /**
- * React setState function type for resource lists
+ * React setState function type for resource maps (UID -> resource).
+ * Using Map<string, T> for O(1) lookups on watch events.
  */
-type SetResourceState<T extends K8sResource = K8sResource> = React.Dispatch<React.SetStateAction<T[]>>;
+type SetResourceMapState<T extends K8sResource = K8sResource> = React.Dispatch<React.SetStateAction<Map<string, T>>>;
 
 /**
  * Creates a state updater function for resource watch events.
- * Handles ADDED, MODIFIED, and DELETED events using the resource's metadata.uid.
+ * Uses Map<string, T> keyed by UID for O(1) event processing.
  *
  * @example
- * const handleEvent = useCallback(createResourceEventHandler(setNamespaces), []);
+ * const handleEvent = useCallback(createResourceEventHandler(setDataMap), []);
  * useResourceWatcher("namespaces", "", handleEvent, isVisible);
  */
 export const createResourceEventHandler = <T extends K8sResource = K8sResource>(
-    setState: SetResourceState<T>
+    setState: SetResourceMapState<T>
 ): ResourceEventHandler<T> => (event: ResourceEvent<T>): void => {
     const { type, resource } = event;
 
@@ -38,17 +39,16 @@ export const createResourceEventHandler = <T extends K8sResource = K8sResource>(
 
         switch (type) {
             case 'ADDED':
-                // Avoid duplicates - check if resource already exists
-                if (prev.find((r: any) => r.metadata?.uid === uid)) {
-                    return prev;
-                }
-                return [...prev, resource];
+                // Avoid duplicates - O(1) check
+                if (prev.has(uid)) return prev;
+                { const next = new Map(prev); next.set(uid, resource); return next; }
 
             case 'MODIFIED': {
-                // Replace the existing resource, or add if not found (handles race condition)
-                const exists = prev.some((r: any) => r.metadata?.uid === uid);
-                if (exists) {
-                    return prev.map((r: any) => r.metadata?.uid === uid ? resource : r);
+                // Replace existing or add if not found (handles race condition)
+                if (prev.has(uid)) {
+                    const next = new Map(prev);
+                    next.set(uid, resource);
+                    return next;
                 }
                 // MODIFIED arrived before ADDED - treat as add, but NOT if the
                 // resource is being deleted (has deletionTimestamp). A MODIFIED
@@ -57,12 +57,15 @@ export const createResourceEventHandler = <T extends K8sResource = K8sResource>(
                 if (resource?.metadata?.deletionTimestamp) {
                     return prev;
                 }
-                return [...prev, resource];
+                const next = new Map(prev);
+                next.set(uid, resource);
+                return next;
             }
 
             case 'DELETED':
-                // Remove the resource from the list
-                return prev.filter((r: any) => r.metadata?.uid !== uid);
+                // O(1) check and removal
+                if (!prev.has(uid)) return prev;
+                { const next = new Map(prev); next.delete(uid); return next; }
 
             default:
                 return prev;
@@ -73,15 +76,16 @@ export const createResourceEventHandler = <T extends K8sResource = K8sResource>(
 /**
  * Creates a namespaced resource event handler that only processes events
  * for resources in the specified namespaces.
+ * Uses Map<string, T> keyed by UID for O(1) event processing.
  *
  * @example
  * const handleEvent = useCallback(
- *   createNamespacedResourceEventHandler(setDeployments, selectedNamespaces),
+ *   createNamespacedResourceEventHandler(setDataMap, selectedNamespaces),
  *   [selectedNamespaces]
  * );
  */
 export const createNamespacedResourceEventHandler = <T extends K8sResource = K8sResource>(
-    setState: SetResourceState<T>,
+    setState: SetResourceMapState<T>,
     selectedNamespaces: string[]
 ): ResourceEventHandler<T> => (event: ResourceEvent<T>): void => {
     const { type, resource, namespace: eventNamespace } = event;
@@ -99,16 +103,14 @@ export const createNamespacedResourceEventHandler = <T extends K8sResource = K8s
 
         switch (type) {
             case 'ADDED':
-                if (prev.find((r: any) => r.metadata?.uid === uid)) {
-                    return prev;
-                }
-                return [...prev, resource];
+                if (prev.has(uid)) return prev;
+                { const next = new Map(prev); next.set(uid, resource); return next; }
 
             case 'MODIFIED': {
-                // Replace the existing resource, or add if not found (handles race condition)
-                const exists = prev.some((r: any) => r.metadata?.uid === uid);
-                if (exists) {
-                    return prev.map((r: any) => r.metadata?.uid === uid ? resource : r);
+                if (prev.has(uid)) {
+                    const next = new Map(prev);
+                    next.set(uid, resource);
+                    return next;
                 }
                 // MODIFIED arrived before ADDED - treat as add, but NOT if the
                 // resource is being deleted (has deletionTimestamp). A MODIFIED
@@ -117,11 +119,14 @@ export const createNamespacedResourceEventHandler = <T extends K8sResource = K8s
                 if (resource?.metadata?.deletionTimestamp) {
                     return prev;
                 }
-                return [...prev, resource];
+                const next = new Map(prev);
+                next.set(uid, resource);
+                return next;
             }
 
             case 'DELETED':
-                return prev.filter((r: any) => r.metadata?.uid !== uid);
+                if (!prev.has(uid)) return prev;
+                { const next = new Map(prev); next.delete(uid); return next; }
 
             default:
                 return prev;

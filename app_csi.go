@@ -22,7 +22,7 @@ func (a *App) ListCSIDrivers(requestId string) ([]storagev1.CSIDriver, error) {
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListCSIDriversWithContext(ctx, currentContext)
+		result, err := a.k8sClient.ListCSIDriversWithContext(ctx, currentContext, a.listProgressCallback("csidrivers"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -68,7 +68,7 @@ func (a *App) ListCSINodes(requestId string) ([]storagev1.CSINode, error) {
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListCSINodesWithContext(ctx, currentContext)
+		result, err := a.k8sClient.ListCSINodesWithContext(ctx, currentContext, a.listProgressCallback("csinodes"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

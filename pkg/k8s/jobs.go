@@ -12,33 +12,35 @@ import (
 )
 
 func (c *Client) ListJobs(contextName, namespace string) ([]batchv1.Job, error) {
-	cs, err := c.getClientForContext(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	jobs, err := cs.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return jobs.Items, nil
+	return c.ListJobsWithContext(ctx, contextName, namespace)
 }
 
-// ListJobsWithContext lists jobs with cancellation support
-func (c *Client) ListJobsWithContext(ctx context.Context, contextName, namespace string) ([]batchv1.Job, error) {
+// ListJobsWithContext lists jobs with cancellation support and pagination.
+func (c *Client) ListJobsWithContext(ctx context.Context, contextName, namespace string, onProgress ...func(loaded, total int)) ([]batchv1.Job, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
-	jobs, err := cs.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "jobs", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]batchv1.Job, string, *int64, error) {
+		list, err := cs.BatchV1().Jobs(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return jobs.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetJobYaml(namespace, name string) (string, error) {
@@ -87,33 +89,35 @@ func (c *Client) DeleteJob(contextName, namespace, name string) error {
 
 // CronJob operations
 func (c *Client) ListCronJobs(contextName, namespace string) ([]batchv1.CronJob, error) {
-	cs, err := c.getClientForContext(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	cronJobs, err := cs.BatchV1().CronJobs(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return cronJobs.Items, nil
+	return c.ListCronJobsWithContext(ctx, contextName, namespace)
 }
 
-// ListCronJobsWithContext lists cronjobs with cancellation support
-func (c *Client) ListCronJobsWithContext(ctx context.Context, contextName, namespace string) ([]batchv1.CronJob, error) {
+// ListCronJobsWithContext lists cronjobs with cancellation support and pagination.
+func (c *Client) ListCronJobsWithContext(ctx context.Context, contextName, namespace string, onProgress ...func(loaded, total int)) ([]batchv1.CronJob, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
-	cronJobs, err := cs.BatchV1().CronJobs(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "cronjobs", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]batchv1.CronJob, string, *int64, error) {
+		list, err := cs.BatchV1().CronJobs(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return cronJobs.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetCronJobYaml(namespace, name string) (string, error) {

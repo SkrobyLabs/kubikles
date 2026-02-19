@@ -23,7 +23,7 @@ func (a *App) ListReplicaSets(requestId, namespace string) ([]appsv1.ReplicaSet,
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListReplicaSetsWithContext(ctx, currentContext, namespace)
+		result, err := a.k8sClient.ListReplicaSetsWithContext(ctx, currentContext, namespace, a.listProgressCallback("replicasets"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

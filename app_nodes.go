@@ -21,7 +21,7 @@ func (a *App) ListNodes(requestId string) ([]v1.Node, error) {
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListNodesWithContext(ctx)
+		result, err := a.k8sClient.ListNodesWithContext(ctx, a.listProgressCallback("nodes"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

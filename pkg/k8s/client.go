@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"kubikles/pkg/debug"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -35,6 +37,75 @@ func isCancelledError(err error) bool {
 // ptr returns a pointer to the given value. Used for optional fields in K8s API structs.
 func ptr[T any](v T) *T {
 	return &v
+}
+
+// defaultPageSize is the number of items per page for paginated list requests.
+// 1000 is a good balance between minimizing round-trips and keeping responses manageable.
+const defaultPageSize int64 = 1000
+
+// paginatedList fetches all items using the Kubernetes API pagination mechanism.
+// It accumulates results across pages and optionally reports progress.
+//
+// When onProgress is nil, it performs a single unbounded List call (no Limit set)
+// which allows the API server to serve from the watch cache for maximum performance.
+// When onProgress is provided, it uses pagination with Limit to enable progress tracking.
+func paginatedList[T any](
+	ctx context.Context,
+	resourceType string,
+	pageSize int64,
+	fetchPage func(ctx context.Context, opts metav1.ListOptions) (items []T, continueToken string, remaining *int64, err error),
+	onProgress func(loaded, total int),
+) ([]T, error) {
+	start := time.Now()
+
+	// Fast path: no progress callback → single unbounded List (watch-cache friendly)
+	if onProgress == nil {
+		items, _, _, err := fetchPage(ctx, metav1.ListOptions{})
+		if err != nil {
+			debug.LogK8s("paginatedList fast-path error", map[string]interface{}{"resource": resourceType, "duration": time.Since(start).String(), "error": err.Error()})
+			return nil, err
+		}
+		debug.LogK8s("paginatedList fast-path", map[string]interface{}{"resource": resourceType, "items": len(items), "duration": time.Since(start).String()})
+		return items, nil
+	}
+
+	// Paginated path: use Limit to enable progress tracking
+	var allItems []T
+	opts := metav1.ListOptions{Limit: pageSize}
+	pages := 0
+
+	for {
+		// Check context before each page
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+
+		items, continueToken, remaining, err := fetchPage(ctx, opts)
+		if err != nil {
+			debug.LogK8s("paginatedList page error", map[string]interface{}{"resource": resourceType, "page": pages + 1, "duration": time.Since(start).String(), "error": err.Error()})
+			return nil, err
+		}
+		pages++
+
+		allItems = append(allItems, items...)
+
+		// Report progress
+		total := len(allItems)
+		if remaining != nil {
+			total = len(allItems) + int(*remaining)
+		}
+		onProgress(len(allItems), total)
+
+		// No more pages
+		if continueToken == "" {
+			break
+		}
+
+		opts.Continue = continueToken
+	}
+
+	debug.LogK8s("paginatedList complete", map[string]interface{}{"resource": resourceType, "items": len(allItems), "pages": pages, "duration": time.Since(start).String()})
+	return allItems, nil
 }
 
 type Client struct {
@@ -243,6 +314,19 @@ func (c *Client) loadConfig(contextName string) error {
 }
 
 func (c *Client) SwitchContext(contextName string) error {
+	if IsDebugClusterContext(contextName) {
+		if err := c.switchToDebugCluster(); err != nil {
+			return err
+		}
+		// Warmup is instant for debug cluster
+		c.mu.Lock()
+		ch := make(chan struct{})
+		close(ch)
+		c.warmupDone = ch
+		c.mu.Unlock()
+		return nil
+	}
+
 	if err := c.loadConfig(contextName); err != nil {
 		return err
 	}
@@ -303,6 +387,10 @@ func (c *Client) GetCurrentContext() string {
 // Returns nil if the cluster is reachable, or an error describing the failure.
 // Use a short timeout (e.g., 5 seconds) for fast feedback on unreachable clusters.
 func (c *Client) TestConnection(ctx context.Context) error {
+	if IsDebugClusterContext(c.GetCurrentContext()) {
+		return nil // debug cluster is always "connected"
+	}
+
 	cs, err := c.getClientset()
 	if err != nil {
 		return fmt.Errorf("failed to get clientset: %w", err)
@@ -323,9 +411,12 @@ func (c *Client) ListContexts() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	contexts := make([]string, 0, len(rawConfig.Contexts))
+	contexts := make([]string, 0, len(rawConfig.Contexts)+1)
 	for name := range rawConfig.Contexts {
 		contexts = append(contexts, name)
+	}
+	if DebugClusterContextName != "" {
+		contexts = append(contexts, DebugClusterContextName)
 	}
 	return contexts, nil
 }
@@ -517,6 +608,10 @@ func RuntimeObjectToMap(obj interface{}) (map[string]interface{}, error) {
 }
 
 func (c *Client) getClientForContext(contextName string) (kubernetes.Interface, error) {
+	if IsDebugClusterContext(contextName) {
+		return GetDebugClusterClientset()
+	}
+
 	c.mu.RLock()
 	if contextName == "" || contextName == c.currentContext {
 		defer c.mu.RUnlock()
@@ -549,6 +644,10 @@ func (c *Client) getClientForContext(contextName string) (kubernetes.Interface, 
 }
 
 func (c *Client) GetRestConfigForContext(contextName string) (*rest.Config, error) {
+	if IsDebugClusterContext(contextName) {
+		return nil, fmt.Errorf("no REST config for debug cluster (exec/port-forward/logs are not supported)")
+	}
+
 	home := homedir.HomeDir()
 	kubeconfigPath := filepath.Join(home, ".kube", "config")
 	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
@@ -563,6 +662,10 @@ func (c *Client) GetRestConfigForContext(contextName string) (*rest.Config, erro
 }
 
 func (c *Client) getClientsetForContext(contextName string) (kubernetes.Interface, error) {
+	if IsDebugClusterContext(contextName) {
+		return GetDebugClusterClientset()
+	}
+
 	c.mu.RLock()
 	currentCtx := c.currentContext
 	cs := c.clientset

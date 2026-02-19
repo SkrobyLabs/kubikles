@@ -20,33 +20,35 @@ import (
 )
 
 func (c *Client) ListPods(namespace string) ([]v1.Pod, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	pods, err := cs.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return pods.Items, nil
+	return c.ListPodsWithContext(ctx, namespace)
 }
 
-// ListPodsWithContext lists pods with cancellation support
-func (c *Client) ListPodsWithContext(ctx context.Context, namespace string) ([]v1.Pod, error) {
+// ListPodsWithContext lists pods with cancellation support and pagination.
+func (c *Client) ListPodsWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]v1.Pod, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	pods, err := cs.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "pods", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.Pod, string, *int64, error) {
+		list, err := cs.CoreV1().Pods(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return pods.Items, nil
+	return result, nil
 }
 
 // ListPodsForContext lists pods for a specific kubeconfig context
@@ -57,11 +59,35 @@ func (c *Client) ListPodsForContext(contextName, namespace string) ([]v1.Pod, er
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	pods, err := cs.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "pods", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.Pod, string, *int64, error) {
+		list, err := cs.CoreV1().Pods(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return pods.Items, nil
+	return result, nil
+}
+
+// ListPodsForNode lists all pods scheduled on a specific node using field selector.
+// This is much faster than listing all pods when you only need one node's pods.
+func (c *Client) ListPodsForNode(nodeName string) ([]v1.Pod, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	list, err := cs.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+		FieldSelector: "spec.nodeName=" + nodeName,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
 }
 
 func (c *Client) WatchPods(ctx context.Context, namespace string) (watch.Interface, error) {
@@ -255,6 +281,10 @@ func (c *Client) GetPodLogsAfter(namespace, podName, containerName string, times
 }
 
 func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string, tailLines *int64, timestamps bool, previous bool, sinceTime string) (string, error) {
+	if IsDebugClusterContext(c.GetCurrentContext()) {
+		return "", fmt.Errorf("logs are not available on the debug cluster")
+	}
+
 	cs, err := c.getClientset()
 	if err != nil {
 		return "", err

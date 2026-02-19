@@ -402,6 +402,10 @@ export function GetDaemonSetYaml(arg1, arg2) {
   return window['go']['main']['App']['GetDaemonSetYaml'](arg1, arg2);
 }
 
+export function GetDebugClusterConfig() {
+  return window['go']['main']['App']['GetDebugClusterConfig']();
+}
+
 export function GetDeploymentYaml(arg1, arg2) {
   return window['go']['main']['App']['GetDeploymentYaml'](arg1, arg2);
 }
@@ -706,6 +710,10 @@ export function HelmValidateValues(arg1) {
   return window['go']['main']['App']['HelmValidateValues'](arg1);
 }
 
+export function IsDebugClusterEnabled() {
+  return window['go']['main']['App']['IsDebugClusterEnabled']();
+}
+
 export function IsRequestCancellationEnabled() {
   return window['go']['main']['App']['IsRequestCancellationEnabled']();
 }
@@ -746,8 +754,8 @@ export function ListCronJobs(arg1, arg2) {
   return window['go']['main']['App']['ListCronJobs'](arg1, arg2);
 }
 
-export function ListCustomResources(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['ListCustomResources'](arg1, arg2, arg3, arg4);
+export function ListCustomResources(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['ListCustomResources'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function ListDaemonSets(arg1, arg2) {
@@ -858,6 +866,10 @@ export function ListPodsForContext(arg1, arg2) {
   return window['go']['main']['App']['ListPodsForContext'](arg1, arg2);
 }
 
+export function ListPodsForNode(arg1) {
+  return window['go']['main']['App']['ListPodsForNode'](arg1);
+}
+
 export function ListPriorityClasses(arg1) {
   return window['go']['main']['App']['ListPriorityClasses'](arg1);
 }
@@ -966,6 +978,10 @@ export function RemoveOCIRegistry(arg1) {
   return window['go']['main']['App']['RemoveOCIRegistry'](arg1);
 }
 
+export function ResetDebugCluster() {
+  return window['go']['main']['App']['ResetDebugCluster']();
+}
+
 export function ResizePVC(arg1, arg2, arg3) {
   return window['go']['main']['App']['ResizePVC'](arg1, arg2, arg3);
 }
@@ -1052,6 +1068,10 @@ export function SendTerminalInput(arg1, arg2) {
 
 export function SetClientPoolSize(arg1) {
   return window['go']['main']['App']['SetClientPoolSize'](arg1);
+}
+
+export function SetDebugClusterConfig(arg1) {
+  return window['go']['main']['App']['SetDebugClusterConfig'](arg1);
 }
 
 export function SetDebugEnabled(arg1) {

@@ -12,33 +12,35 @@ import (
 )
 
 func (c *Client) ListNodes() ([]v1.Node, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	nodes, err := cs.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return nodes.Items, nil
+	return c.ListNodesWithContext(ctx)
 }
 
-// ListNodesWithContext lists nodes with cancellation support
-func (c *Client) ListNodesWithContext(ctx context.Context) ([]v1.Node, error) {
+// ListNodesWithContext lists nodes with cancellation support and pagination.
+func (c *Client) ListNodesWithContext(ctx context.Context, onProgress ...func(loaded, total int)) ([]v1.Node, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	nodes, err := cs.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "nodes", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.Node, string, *int64, error) {
+		list, err := cs.CoreV1().Nodes().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return nodes.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetNodeYaml(name string) (string, error) {

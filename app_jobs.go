@@ -23,7 +23,7 @@ func (a *App) ListJobs(requestId, namespace string) ([]batchv1.Job, error) {
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListJobsWithContext(ctx, currentContext, namespace)
+		result, err := a.k8sClient.ListJobsWithContext(ctx, currentContext, namespace, a.listProgressCallback("jobs"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -67,7 +67,7 @@ func (a *App) ListCronJobs(requestId, namespace string) ([]batchv1.CronJob, erro
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListCronJobsWithContext(ctx, currentContext, namespace)
+		result, err := a.k8sClient.ListCronJobsWithContext(ctx, currentContext, namespace, a.listProgressCallback("cronjobs"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

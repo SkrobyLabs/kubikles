@@ -91,6 +91,26 @@ const PodSquare = React.memo(function PodSquare({
     );
 });
 
+/** Compare individual data fields so React.memo works even when the data wrapper
+ *  object is a new reference (displayNodes spreads create fresh objects every sync). */
+function areNodePropsEqual(prev: { data: TopologyNodeData }, next: { data: TopologyNodeData }): boolean {
+    const a = prev.data;
+    const b = next.data;
+    return (
+        a.pods === b.pods &&
+        a.metrics === b.metrics &&
+        a.metricsAvailable === b.metricsAvailable &&
+        a.zoomLevel === b.zoomLevel &&
+        a.colorMode === b.colorMode &&
+        a.resourceMaxes === b.resourceMaxes &&
+        a.podMetrics === b.podMetrics &&
+        a.isReady === b.isReady &&
+        a.isUnschedulable === b.isUnschedulable &&
+        a.taintCount === b.taintCount &&
+        a.dimmedNamespaces === b.dimmedNamespaces
+    );
+}
+
 /** Custom React Flow node for a K8s node */
 const TopologyNodeComponent = React.memo(function TopologyNodeComponent({ data }: { data: TopologyNodeData }) {
     const {
@@ -255,6 +275,6 @@ const TopologyNodeComponent = React.memo(function TopologyNodeComponent({ data }
             )}
         </div>
     );
-});
+}, areNodePropsEqual);
 
 export default TopologyNodeComponent;

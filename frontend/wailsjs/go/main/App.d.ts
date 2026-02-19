@@ -210,6 +210,8 @@ export function GetCustomResourceYaml(arg1:string,arg2:string,arg3:string,arg4:s
 
 export function GetDaemonSetYaml(arg1:string,arg2:string):Promise<string>;
 
+export function GetDebugClusterConfig():Promise<k8s.DebugClusterConfig>;
+
 export function GetDeploymentYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetEndpointSliceYaml(arg1:string,arg2:string):Promise<string>;
@@ -362,6 +364,8 @@ export function HelmTemplateRelease(arg1:string,arg2:string,arg3:helm.UpgradeOpt
 
 export function HelmValidateValues(arg1:helm.UpgradeOptions):Promise<Array<helm.ValidationError>>;
 
+export function IsDebugClusterEnabled():Promise<boolean>;
+
 export function IsRequestCancellationEnabled():Promise<boolean>;
 
 export function ListCRDs():Promise<Array<v1.CustomResourceDefinition>>;
@@ -382,7 +386,7 @@ export function ListContexts():Promise<Array<string>>;
 
 export function ListCronJobs(arg1:string,arg2:string):Promise<Array<v1.CronJob>>;
 
-export function ListCustomResources(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Array<Record<string, any>>>;
+export function ListCustomResources(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<Array<Record<string, any>>>;
 
 export function ListDaemonSets(arg1:string,arg2:string):Promise<Array<v1.DaemonSet>>;
 
@@ -438,6 +442,8 @@ export function ListPods(arg1:string,arg2:string):Promise<Array<v1.Pod>>;
 
 export function ListPodsForContext(arg1:string,arg2:string):Promise<Array<v1.Pod>>;
 
+export function ListPodsForNode(arg1:string):Promise<Array<v1.Pod>>;
+
 export function ListPriorityClasses(arg1:string):Promise<Array<v1.PriorityClass>>;
 
 export function ListPrometheusInstalls():Promise<Array<k8s.PrometheusInstall>>;
@@ -492,6 +498,8 @@ export function RemoveHelmRepository(arg1:string):Promise<void>;
 
 export function RemoveOCIRegistry(arg1:string):Promise<void>;
 
+export function ResetDebugCluster():Promise<void>;
+
 export function ResizePVC(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<void>;
@@ -535,6 +543,8 @@ export function SendAIMessage(arg1:string,arg2:string,arg3:string,arg4:string,ar
 export function SendTerminalInput(arg1:string,arg2:string):Promise<void>;
 
 export function SetClientPoolSize(arg1:number):Promise<void>;
+
+export function SetDebugClusterConfig(arg1:k8s.DebugClusterConfig):Promise<void>;
 
 export function SetDebugEnabled(arg1:boolean):Promise<void>;
 

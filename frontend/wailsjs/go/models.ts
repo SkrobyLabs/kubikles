@@ -772,6 +772,38 @@ export namespace k8s {
 		    return a;
 		}
 	}
+	export class DebugClusterConfig {
+	    namespaces: number;
+	    pods: number;
+	    deployments: number;
+	    services: number;
+	    configMaps: number;
+	    secrets: number;
+	    nodes: number;
+	    statefulSets: number;
+	    daemonSets: number;
+	    jobs: number;
+	    replicaSets: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DebugClusterConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.namespaces = source["namespaces"];
+	        this.pods = source["pods"];
+	        this.deployments = source["deployments"];
+	        this.services = source["services"];
+	        this.configMaps = source["configMaps"];
+	        this.secrets = source["secrets"];
+	        this.nodes = source["nodes"];
+	        this.statefulSets = source["statefulSets"];
+	        this.daemonSets = source["daemonSets"];
+	        this.jobs = source["jobs"];
+	        this.replicaSets = source["replicaSets"];
+	    }
+	}
 	export class DependencyEdge {
 	    source: string;
 	    target: string;

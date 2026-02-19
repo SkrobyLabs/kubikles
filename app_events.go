@@ -21,7 +21,7 @@ func (a *App) ListEvents(requestId, namespace string) ([]v1.Event, error) {
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListEventsWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListEventsWithContext(ctx, namespace, a.listProgressCallback("events"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

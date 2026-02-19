@@ -12,33 +12,35 @@ import (
 )
 
 func (c *Client) ListServices(namespace string) ([]v1.Service, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	services, err := cs.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return services.Items, nil
+	return c.ListServicesWithContext(ctx, namespace)
 }
 
-// ListServicesWithContext lists services with cancellation support
-func (c *Client) ListServicesWithContext(ctx context.Context, namespace string) ([]v1.Service, error) {
+// ListServicesWithContext lists services with cancellation support and pagination.
+func (c *Client) ListServicesWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]v1.Service, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	services, err := cs.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "services", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.Service, string, *int64, error) {
+		list, err := cs.CoreV1().Services(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return services.Items, nil
+	return result, nil
 }
 
 // ListServicesForContext lists services for a specific kubeconfig context
@@ -49,11 +51,17 @@ func (c *Client) ListServicesForContext(contextName, namespace string) ([]v1.Ser
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	services, err := cs.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "services", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.Service, string, *int64, error) {
+		list, err := cs.CoreV1().Services(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return services.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetServiceYaml(namespace, name string) (string, error) {

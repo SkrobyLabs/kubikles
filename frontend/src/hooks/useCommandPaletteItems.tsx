@@ -1,7 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { ListCRDs } from 'wailsjs/go/main/App';
+import { useEffect, useMemo } from 'react';
 import { useK8s, useConfig } from '../context';
-import { K8sCustomResourceDefinition } from '../types/k8s';
 import {
     ALL_MENU_ITEMS,
     DEFAULT_MENU_SECTIONS,
@@ -26,33 +24,15 @@ interface UseCommandPaletteItemsResult {
 }
 
 export const useCommandPaletteItems = (): UseCommandPaletteItemsResult => {
-    const { currentContext } = useK8s();
+    const { currentContext, crds, crdsLoading, ensureCRDsLoaded } = useK8s();
     const { config } = useConfig();
-    const [crds, setCRDs] = useState<K8sCustomResourceDefinition[]>([]);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<Error | null>(null);
 
-    // Fetch CRDs when context is available
+    // Trigger CRD loading when context is available
     useEffect(() => {
-        if (!currentContext) return;
-
-        const fetchCRDs = async (): Promise<void> => {
-            setLoading(true);
-            setError(null);
-            try {
-                const list = await ListCRDs();
-                setCRDs(list || []);
-            } catch (err: any) {
-                console.error('Failed to fetch CRDs for command palette:', err);
-                setError(err as Error);
-                setCRDs([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchCRDs();
-    }, [currentContext]);
+        if (currentContext) {
+            ensureCRDsLoaded();
+        }
+    }, [currentContext, ensureCRDsLoaded]);
 
     // Compute effective layout and visible items
     const sidebarLayout = config?.ui?.sidebar?.layout;
@@ -131,5 +111,5 @@ export const useCommandPaletteItems = (): UseCommandPaletteItemsResult => {
         return result;
     }, [crds, sidebarLayout]);
 
-    return { items, loading, error };
+    return { items, loading: crdsLoading, error: null };
 };

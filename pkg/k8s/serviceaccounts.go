@@ -11,32 +11,35 @@ import (
 )
 
 func (c *Client) ListServiceAccounts(namespace string) ([]v1.ServiceAccount, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.CoreV1().ServiceAccounts(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListServiceAccountsWithContext(ctx, namespace)
 }
 
-func (c *Client) ListServiceAccountsWithContext(ctx context.Context, namespace string) ([]v1.ServiceAccount, error) {
+// ListServiceAccountsWithContext lists service accounts with cancellation support and pagination.
+func (c *Client) ListServiceAccountsWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]v1.ServiceAccount, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.CoreV1().ServiceAccounts(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "serviceaccounts", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.ServiceAccount, string, *int64, error) {
+		list, err := cs.CoreV1().ServiceAccounts(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 // ListServiceAccountsForContext lists service accounts for a specific kubeconfig context
@@ -47,11 +50,17 @@ func (c *Client) ListServiceAccountsForContext(contextName, namespace string) ([
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.CoreV1().ServiceAccounts(namespace).List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "serviceaccounts", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.ServiceAccount, string, *int64, error) {
+		list, err := cs.CoreV1().ServiceAccounts(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetServiceAccountYaml(namespace, name string) (string, error) {

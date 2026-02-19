@@ -14,9 +14,14 @@ import (
 // - Natural deduplication (rapid updates to same resource = one event)
 // - Enables batch React updates on frontend
 // - Maintains 60fps responsiveness (16ms max latency)
+//
+// Large cluster support:
+// - maxBatchSize caps each flush to prevent massive IPC payloads
+// - Remaining events carry over and auto-drain via re-armed timer
 type EventCoalescer struct {
 	app           *App
 	frameInterval time.Duration
+	maxBatchSize  int
 	events        map[string]ResourceEvent // key: resourceType:namespace:name
 	mu            sync.Mutex
 	timer         *time.Timer
@@ -25,6 +30,7 @@ type EventCoalescer struct {
 
 // NewEventCoalescer creates a new event coalescer with the given frame interval.
 // Default interval is 16ms (~60fps). Use 0 for immediate emission (bypass coalescing).
+// Default maxBatchSize is 500.
 func NewEventCoalescer(app *App, frameInterval time.Duration) *EventCoalescer {
 	if frameInterval == 0 {
 		frameInterval = 16 * time.Millisecond
@@ -32,6 +38,7 @@ func NewEventCoalescer(app *App, frameInterval time.Duration) *EventCoalescer {
 	return &EventCoalescer{
 		app:           app,
 		frameInterval: frameInterval,
+		maxBatchSize:  500,
 		events:        make(map[string]ResourceEvent, 64), // Pre-size for typical batch
 	}
 }
@@ -108,7 +115,7 @@ func (c *EventCoalescer) eventKey(event ResourceEvent) string {
 	return event.ResourceType + ":" + event.Namespace + ":" + name
 }
 
-// flush emits all batched events and resets the buffer.
+// flush emits batched events up to maxBatchSize and re-arms the timer for any remainder.
 // Called by the frame timer.
 //
 // Emits while holding the lock to guarantee ordering with DELETE events.
@@ -125,23 +132,41 @@ func (c *EventCoalescer) flush() {
 		return
 	}
 
-	// Collect events into slice
-	batch := make([]ResourceEvent, 0, len(c.events))
-	for _, event := range c.events {
-		batch = append(batch, event)
+	// Collect events into slice, respecting maxBatchSize
+	cap := len(c.events)
+	if c.maxBatchSize > 0 && cap > c.maxBatchSize {
+		cap = c.maxBatchSize
 	}
 
-	// Clear the map (reuse underlying memory)
-	for k := range c.events {
+	batch := make([]ResourceEvent, 0, cap)
+	emittedKeys := make([]string, 0, cap)
+
+	for k, event := range c.events {
+		if c.maxBatchSize > 0 && len(batch) >= c.maxBatchSize {
+			break
+		}
+		batch = append(batch, event)
+		emittedKeys = append(emittedKeys, k)
+	}
+
+	// Remove emitted events from the map
+	for _, k := range emittedKeys {
 		delete(c.events, k)
 	}
-	c.pending = false
+
+	// If there are remaining events, re-arm the timer for the next batch
+	if len(c.events) > 0 {
+		c.pending = true
+		c.timer = time.AfterFunc(c.frameInterval, c.flush)
+	} else {
+		c.pending = false
+	}
 
 	// Emit while holding lock - guarantees ordering with DELETE events
 	if len(batch) == 1 {
 		// Single event - emit directly for backward compatibility
 		c.app.emitEvent("resource-event", batch[0])
-	} else {
+	} else if len(batch) > 0 {
 		// Multiple events - emit as batch
 		c.app.emitEvent("resource-events-batch", batch)
 	}
@@ -153,7 +178,8 @@ func (c *EventCoalescer) emitDirect(event ResourceEvent) {
 	c.app.emitEvent("resource-event", event)
 }
 
-// FlushNow forces immediate emission of any pending events.
+// FlushNow forces immediate emission of all pending events.
+// Drains all events regardless of maxBatchSize by flushing in a loop.
 // Useful for cleanup or when switching contexts.
 func (c *EventCoalescer) FlushNow() {
 	c.mu.Lock()
@@ -162,7 +188,17 @@ func (c *EventCoalescer) FlushNow() {
 	}
 	c.mu.Unlock()
 
-	c.flush()
+	// Drain all events by flushing in a loop until empty
+	for {
+		c.mu.Lock()
+		remaining := len(c.events)
+		c.mu.Unlock()
+
+		if remaining == 0 {
+			break
+		}
+		c.flush()
+	}
 }
 
 // Clear discards all pending events without emitting them.
@@ -201,5 +237,19 @@ func (c *EventCoalescer) SetFrameInterval(ms int) {
 	}
 	c.mu.Lock()
 	c.frameInterval = time.Duration(ms) * time.Millisecond
+	c.mu.Unlock()
+}
+
+// SetMaxBatchSize updates the maximum number of events emitted per flush.
+// Value is clamped to 50-5000. Default is 500.
+func (c *EventCoalescer) SetMaxBatchSize(n int) {
+	if n < 50 {
+		n = 50
+	}
+	if n > 5000 {
+		n = 5000
+	}
+	c.mu.Lock()
+	c.maxBatchSize = n
 	c.mu.Unlock()
 }

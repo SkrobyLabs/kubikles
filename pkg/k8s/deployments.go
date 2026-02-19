@@ -12,33 +12,35 @@ import (
 )
 
 func (c *Client) ListDeployments(namespace string) ([]appsv1.Deployment, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	deployments, err := cs.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return deployments.Items, nil
+	return c.ListDeploymentsWithContext(ctx, namespace)
 }
 
-// ListDeploymentsWithContext lists deployments with cancellation support
-func (c *Client) ListDeploymentsWithContext(ctx context.Context, namespace string) ([]appsv1.Deployment, error) {
+// ListDeploymentsWithContext lists deployments with cancellation support and pagination.
+func (c *Client) ListDeploymentsWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]appsv1.Deployment, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	deployments, err := cs.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "deployments", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]appsv1.Deployment, string, *int64, error) {
+		list, err := cs.AppsV1().Deployments(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return deployments.Items, nil
+	return result, nil
 }
 
 // ListDeploymentsForContext lists deployments for a specific kubeconfig context
@@ -49,11 +51,17 @@ func (c *Client) ListDeploymentsForContext(contextName, namespace string) ([]app
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	deployments, err := cs.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "deployments", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]appsv1.Deployment, string, *int64, error) {
+		list, err := cs.AppsV1().Deployments(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return deployments.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetDeploymentYaml(namespace, name string) (string, error) {

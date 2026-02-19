@@ -12,33 +12,35 @@ import (
 )
 
 func (c *Client) ListStatefulSets(contextName, namespace string) ([]appsv1.StatefulSet, error) {
-	cs, err := c.getClientForContext(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	statefulsets, err := cs.AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return statefulsets.Items, nil
+	return c.ListStatefulSetsWithContext(ctx, contextName, namespace)
 }
 
-// ListStatefulSetsWithContext lists statefulsets with cancellation support
-func (c *Client) ListStatefulSetsWithContext(ctx context.Context, contextName, namespace string) ([]appsv1.StatefulSet, error) {
+// ListStatefulSetsWithContext lists statefulsets with cancellation support and pagination.
+func (c *Client) ListStatefulSetsWithContext(ctx context.Context, contextName, namespace string, onProgress ...func(loaded, total int)) ([]appsv1.StatefulSet, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
-	statefulsets, err := cs.AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "statefulsets", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]appsv1.StatefulSet, string, *int64, error) {
+		list, err := cs.AppsV1().StatefulSets(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return statefulsets.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetStatefulSetYaml(namespace, name string) (string, error) {

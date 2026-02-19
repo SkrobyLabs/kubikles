@@ -4,6 +4,7 @@ import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 import { useResourceWatcher } from './useResourceWatcher';
 import { createResourceEventHandler, createNamespacedResourceEventHandler } from './useResourceEventHandler';
 import { CancelListRequest } from 'wailsjs/go/main/App';
+import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
 
 // K8s resource with metadata
@@ -19,11 +20,18 @@ interface K8sResource {
 type NamespacedListFn<T extends K8sResource> = (requestId: string, namespace: string) => Promise<T[]>;
 type ClusterScopedListFn<T extends K8sResource> = (requestId: string) => Promise<T[]>;
 
+// Loading progress from paginated backend list
+export interface LoadingProgress {
+    loaded: number;
+    total: number;
+}
+
 // Hook return types for namespaced resources
 interface NamespacedResourceHookReturn<T extends K8sResource> {
     loading: boolean;
     error: Error | null;
-    [key: string]: T[] | boolean | Error | null | ((data: T[]) => void);
+    loadingProgress: LoadingProgress | null;
+    [key: string]: T[] | boolean | Error | null | LoadingProgress | null | ((data: T[]) => void);
 }
 
 // Hook return types for cluster-scoped resources
@@ -31,7 +39,8 @@ interface ClusterScopedResourceHookReturn<T extends K8sResource> {
     loading: boolean;
     error: Error | null;
     refetch: () => Promise<void>;
-    [key: string]: T[] | boolean | Error | null | (() => Promise<void>);
+    loadingProgress: LoadingProgress | null;
+    [key: string]: T[] | boolean | Error | null | LoadingProgress | null | (() => Promise<void>);
 }
 
 // Global counter for unique request IDs - Date.now() can return same value within same millisecond
@@ -66,8 +75,21 @@ export function createClusterScopedRequestId(resourceType: string): string {
 }
 
 /**
+ * Converts an array of K8s resources to a UID-keyed Map.
+ */
+function arrayToMap<T extends K8sResource>(items: T[]): Map<string, T> {
+    const map = new Map<string, T>();
+    for (const item of items) {
+        const uid = item.metadata?.uid;
+        if (uid) map.set(uid, item);
+    }
+    return map;
+}
+
+/**
  * Factory function to create a hook for namespaced Kubernetes resources.
  * Handles namespace optimization, multi-namespace fetching, and real-time updates.
+ * Internally uses Map<string, T> for O(1) event processing, exposes T[] for consumers.
  */
 export function createNamespacedResourceHook<T extends K8sResource>(
     resourceType: string,
@@ -79,12 +101,27 @@ export function createNamespacedResourceHook<T extends K8sResource>(
         selectedNamespaces: string | string[] | null | undefined,
         isVisible: boolean
     ): NamespacedResourceHookReturn<T> {
-        const [data, setData] = useState<T[]>([]);
+        const [dataMap, setDataMap] = useState<Map<string, T>>(new Map());
         const [loading, setLoading] = useState<boolean>(false);
         const [error, setError] = useState<Error | null>(null);
+        const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
         const { namespaces: allNamespaces, lastRefresh, checkConnectionError, reconcileToken } = useK8s();
         const requestIdRef = useRef<string | null>(null);
         const fetchInProgressRef = useRef<string | null>(null); // Prevent duplicate fetches from StrictMode
+
+        // Derive array from map for consumers
+        const data = useMemo(() => Array.from(dataMap.values()), [dataMap]);
+
+        // Listen for paginated list progress events
+        useEffect(() => {
+            if (!loading) return;
+            const cancel = EventsOn("list-progress", (event: any) => {
+                if (event?.resourceType === resourceType) {
+                    setLoadingProgress({ loaded: event.loaded, total: event.total });
+                }
+            });
+            return () => { cancel(); setLoadingProgress(null); };
+        }, [loading]);
 
         // Calculate optimized namespaces for watching
         const optimizedNamespaces = useMemo((): string[] => {
@@ -126,10 +163,10 @@ export function createNamespacedResourceHook<T extends K8sResource>(
                     const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
 
                     if (optimized === null) {
-                        if (!isCancelled) setData([]);
+                        if (!isCancelled) setDataMap(new Map());
                     } else if (optimized === '') {
                         const list = await listFn(newRequestId, '');
-                        if (!isCancelled) setData(list || []);
+                        if (!isCancelled) setDataMap(arrayToMap(list || []));
                     } else {
                         const allResults = await Promise.all(
                             optimized.map((ns: any) => listFn(newRequestId, ns).catch((err: any) => {
@@ -143,16 +180,9 @@ export function createNamespacedResourceHook<T extends K8sResource>(
                         // Check cancellation after all async operations complete
                         if (isCancelled) return;
 
-                        // O(n) deduplication using Map instead of O(n²) filter/findIndex
+                        // O(n) deduplication using Map
                         const merged = allResults.flat().filter(Boolean);
-                        const seen = new Map<string, T>();
-                        for (const item of merged) {
-                            const uid = item.metadata?.uid;
-                            if (uid && !seen.has(uid)) {
-                                seen.set(uid, item);
-                            }
-                        }
-                        setData(Array.from(seen.values()));
+                        setDataMap(arrayToMap(merged));
                     }
                     if (!isCancelled) setError(null);
                 } catch (err: any) {
@@ -198,7 +228,7 @@ export function createNamespacedResourceHook<T extends K8sResource>(
 
         // Subscribe to resource events
         const handleEvent = useCallback(
-            createNamespacedResourceEventHandler(setData as any, selectedNamespacesList),
+            createNamespacedResourceEventHandler(setDataMap as any, selectedNamespacesList),
             [selectedNamespacesList]
         );
 
@@ -213,7 +243,8 @@ export function createNamespacedResourceHook<T extends K8sResource>(
         // Only removes ghost resources (items deleted during disconnect window).
         // No loading flash, no scroll jump, no selection loss.
         useGhostReconciliation(
-            resourceType, reconcileToken, setData as any, listFn as any,
+            resourceType, reconcileToken, setDataMap,
+            listFn as any,
             currentContext, selectedNamespaces, allNamespaces, isVisible
         );
 
@@ -221,8 +252,8 @@ export function createNamespacedResourceHook<T extends K8sResource>(
         const result: NamespacedResourceHookReturn<T> = {
             loading,
             error,
-            [stateName]: data,
-            [`set${stateName.charAt(0).toUpperCase() + stateName.slice(1)}`]: setData
+            loadingProgress,
+            [stateName]: data
         };
         return result;
     };
@@ -231,6 +262,7 @@ export function createNamespacedResourceHook<T extends K8sResource>(
 /**
  * Factory function to create a hook for cluster-scoped Kubernetes resources.
  * These resources don't have namespaces (e.g., nodes, PVs, StorageClasses).
+ * Internally uses Map<string, T> for O(1) event processing, exposes T[] for consumers.
  */
 export function createClusterScopedResourceHook<T extends K8sResource>(
     resourceType: string,
@@ -241,12 +273,27 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
         currentContext: string | null,
         isVisible: boolean
     ): ClusterScopedResourceHookReturn<T> {
-        const [data, setData] = useState<T[]>([]);
+        const [dataMap, setDataMap] = useState<Map<string, T>>(new Map());
         const [loading, setLoading] = useState<boolean>(false);
         const [error, setError] = useState<Error | null>(null);
+        const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
         const { lastRefresh, checkConnectionError, reconcileToken } = useK8s();
         const requestIdRef = useRef<string | null>(null);
         const fetchInProgressRef = useRef<string | null>(null); // Prevent duplicate fetches from StrictMode
+
+        // Derive array from map for consumers
+        const data = useMemo(() => Array.from(dataMap.values()), [dataMap]);
+
+        // Listen for paginated list progress events
+        useEffect(() => {
+            if (!loading) return;
+            const cancel = EventsOn("list-progress", (event: any) => {
+                if (event?.resourceType === resourceType) {
+                    setLoadingProgress({ loaded: event.loaded, total: event.total });
+                }
+            });
+            return () => { cancel(); setLoadingProgress(null); };
+        }, [loading]);
 
         useEffect(() => {
             if (!currentContext || !isVisible) return;
@@ -275,7 +322,7 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
                 try {
                     const list = await listFn(requestId);
                     if (!isCancelled) {
-                        setData(list || []);
+                        setDataMap(arrayToMap(list || []));
                         setError(null);
                     }
                 } catch (err: any) {
@@ -318,7 +365,7 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
             setLoading(true);
             try {
                 const list = await listFn(refetchRequestId);
-                setData(list || []);
+                setDataMap(arrayToMap(list || []));
                 setError(null);
             } catch (err: any) {
                 if (!(err as any)?.message?.includes('cancelled')) {
@@ -332,12 +379,13 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
         }, [currentContext, isVisible, checkConnectionError]);
 
         // Subscribe to resource events (cluster-scoped, so namespace = "")
-        const handleEvent = useCallback(createResourceEventHandler(setData as any), []);
+        const handleEvent = useCallback(createResourceEventHandler(setDataMap as any), []);
         useResourceWatcher(resourceType, "", handleEvent as any, Boolean(currentContext && isVisible));
 
         // Silent reconciliation after watcher reconnection (cluster-scoped variant)
         useGhostReconciliation(
-            resourceType, reconcileToken, setData as any, ((rid: string, _ns: string) => listFn(rid)) as any,
+            resourceType, reconcileToken, setDataMap,
+            ((rid: string, _ns: string) => listFn(rid)) as any,
             currentContext, null, [], isVisible
         );
 
@@ -345,6 +393,7 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
             loading,
             error,
             refetch,
+            loadingProgress,
             [stateName]: data
         };
         return result;
@@ -366,7 +415,7 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
 function useGhostReconciliation<T extends K8sResource>(
     resourceType: string,
     reconcileToken: number,
-    setData: React.Dispatch<React.SetStateAction<T[]>>,
+    setDataMap: React.Dispatch<React.SetStateAction<Map<string, T>>>,
     listFn: NamespacedListFn<T>,
     currentContext: string | null,
     selectedNamespaces: string | string[] | null | undefined,
@@ -416,22 +465,24 @@ function useGhostReconciliation<T extends K8sResource>(
                     if (uid) freshUids.add(uid);
                 }
 
-                // Remove ghosts: items in local state whose UID is not in the fresh set
-                setData(prev => {
-                    const filtered = prev.filter(r => {
-                        const uid = r.metadata?.uid;
-                        // Keep items without UID (shouldn't happen, but safe)
-                        if (!uid) return true;
-                        return freshUids.has(uid);
-                    });
-                    const removed = prev.length - filtered.length;
+                // Remove ghosts: items in local map whose UID is not in the fresh set
+                setDataMap(prev => {
+                    let removed = 0;
+                    const next = new Map<string, T>();
+                    for (const [uid, resource] of prev) {
+                        if (freshUids.has(uid)) {
+                            next.set(uid, resource);
+                        } else {
+                            removed++;
+                        }
+                    }
                     if (removed > 0) {
                         Logger.debug(`[ghost-reconcile] ${resourceType}: removed ${removed} ghost(s)`);
-                    } else {
-                        Logger.debug(`[ghost-reconcile] ${resourceType}: no ghosts found (${prev.length} items verified)`);
+                        return next;
                     }
+                    Logger.debug(`[ghost-reconcile] ${resourceType}: no ghosts found (${prev.size} items verified)`);
                     // Return same reference if nothing changed to avoid re-render
-                    return removed > 0 ? filtered : prev;
+                    return prev;
                 });
             } catch (err) {
                 // Silent failure — watcher events will eventually correct state
@@ -442,5 +493,5 @@ function useGhostReconciliation<T extends K8sResource>(
         reconcile();
 
         return () => { cancelled = true; };
-    }, [reconcileToken, resourceType, currentContext, selectedNamespaces, allNamespaces, isVisible, listFn, setData]);
+    }, [reconcileToken, resourceType, currentContext, selectedNamespaces, allNamespaces, isVisible, listFn, setDataMap]);
 }

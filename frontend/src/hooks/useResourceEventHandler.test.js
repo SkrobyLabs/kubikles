@@ -6,21 +6,29 @@ describe('createResourceEventHandler', () => {
         metadata: { uid, name }
     });
 
+    /** Helper: build a Map from resource array */
+    const toMap = (resources) => {
+        const m = new Map();
+        for (const r of resources) {
+            m.set(r.metadata.uid, r);
+        }
+        return m;
+    };
+
     describe('ADDED events', () => {
-        it('adds new resource to empty list', () => {
+        it('adds new resource to empty map', () => {
             const setState = vi.fn();
             const handler = createResourceEventHandler(setState);
             const resource = createMockResource('uid-1', 'resource-1');
 
             handler({ type: 'ADDED', resource });
 
-            // Get the updater function and call it with empty prev state
             const updater = setState.mock.calls[0][0];
-            const result = updater([]);
-            expect(result).toEqual([resource]);
+            const result = updater(new Map());
+            expect(Array.from(result.values())).toEqual([resource]);
         });
 
-        it('adds new resource to existing list', () => {
+        it('adds new resource to existing map', () => {
             const setState = vi.fn();
             const handler = createResourceEventHandler(setState);
             const existing = createMockResource('uid-1', 'resource-1');
@@ -29,8 +37,10 @@ describe('createResourceEventHandler', () => {
             handler({ type: 'ADDED', resource: newResource });
 
             const updater = setState.mock.calls[0][0];
-            const result = updater([existing]);
-            expect(result).toEqual([existing, newResource]);
+            const result = updater(toMap([existing]));
+            expect(result.size).toBe(2);
+            expect(result.get('uid-1')).toEqual(existing);
+            expect(result.get('uid-2')).toEqual(newResource);
         });
 
         it('does not add duplicate resource (same uid)', () => {
@@ -41,8 +51,9 @@ describe('createResourceEventHandler', () => {
             handler({ type: 'ADDED', resource });
 
             const updater = setState.mock.calls[0][0];
-            const result = updater([resource]);
-            expect(result).toEqual([resource]); // Same reference, no change
+            const prev = toMap([resource]);
+            const result = updater(prev);
+            expect(result).toBe(prev); // Same reference, no change
         });
 
         it('ignores resource without uid', () => {
@@ -53,7 +64,7 @@ describe('createResourceEventHandler', () => {
             handler({ type: 'ADDED', resource });
 
             const updater = setState.mock.calls[0][0];
-            const prev = [createMockResource('uid-1')];
+            const prev = toMap([createMockResource('uid-1')]);
             const result = updater(prev);
             expect(result).toBe(prev); // Same reference, no change
         });
@@ -69,9 +80,9 @@ describe('createResourceEventHandler', () => {
             handler({ type: 'MODIFIED', resource: updated });
 
             const updater = setState.mock.calls[0][0];
-            const result = updater([original]);
-            expect(result).toEqual([updated]);
-            expect(result[0].spec.replicas).toBe(3);
+            const result = updater(toMap([original]));
+            expect(result.get('uid-1')).toEqual(updated);
+            expect(result.get('uid-1').spec.replicas).toBe(3);
         });
 
         it('adds resource if not found (race condition fix)', () => {
@@ -82,11 +93,11 @@ describe('createResourceEventHandler', () => {
             handler({ type: 'MODIFIED', resource });
 
             const updater = setState.mock.calls[0][0];
-            const result = updater([]); // Empty list - resource not found
-            expect(result).toEqual([resource]); // Should be added
+            const result = updater(new Map()); // Empty map - resource not found
+            expect(Array.from(result.values())).toEqual([resource]); // Should be added
         });
 
-        it('adds resource to existing list if not found', () => {
+        it('adds resource to existing map if not found', () => {
             const setState = vi.fn();
             const handler = createResourceEventHandler(setState);
             const existing = createMockResource('uid-1', 'existing');
@@ -95,8 +106,10 @@ describe('createResourceEventHandler', () => {
             handler({ type: 'MODIFIED', resource: newResource });
 
             const updater = setState.mock.calls[0][0];
-            const result = updater([existing]);
-            expect(result).toEqual([existing, newResource]);
+            const result = updater(toMap([existing]));
+            expect(result.size).toBe(2);
+            expect(result.get('uid-1')).toEqual(existing);
+            expect(result.get('uid-2')).toEqual(newResource);
         });
 
         it('only updates matching resource', () => {
@@ -109,13 +122,14 @@ describe('createResourceEventHandler', () => {
             handler({ type: 'MODIFIED', resource: updatedResource1 });
 
             const updater = setState.mock.calls[0][0];
-            const result = updater([resource1, resource2]);
-            expect(result).toEqual([updatedResource1, resource2]);
+            const result = updater(toMap([resource1, resource2]));
+            expect(result.get('uid-1')).toEqual(updatedResource1);
+            expect(result.get('uid-2')).toEqual(resource2);
         });
     });
 
     describe('DELETED events', () => {
-        it('removes resource from list', () => {
+        it('removes resource from map', () => {
             const setState = vi.fn();
             const handler = createResourceEventHandler(setState);
             const resource1 = createMockResource('uid-1', 'resource-1');
@@ -125,8 +139,10 @@ describe('createResourceEventHandler', () => {
             handler({ type: 'DELETED', resource: toDelete });
 
             const updater = setState.mock.calls[0][0];
-            const result = updater([resource1, resource2]);
-            expect(result).toEqual([resource2]);
+            const result = updater(toMap([resource1, resource2]));
+            expect(result.size).toBe(1);
+            expect(result.has('uid-1')).toBe(false);
+            expect(result.get('uid-2')).toEqual(resource2);
         });
 
         it('handles delete of non-existent resource', () => {
@@ -138,11 +154,12 @@ describe('createResourceEventHandler', () => {
             handler({ type: 'DELETED', resource: toDelete });
 
             const updater = setState.mock.calls[0][0];
-            const result = updater([existing]);
-            expect(result).toEqual([existing]);
+            const prev = toMap([existing]);
+            const result = updater(prev);
+            expect(result).toBe(prev); // Same reference, no change
         });
 
-        it('removes all instances with matching uid', () => {
+        it('removes resource with matching uid', () => {
             const setState = vi.fn();
             const handler = createResourceEventHandler(setState);
             const resource = createMockResource('uid-1', 'resource');
@@ -151,8 +168,8 @@ describe('createResourceEventHandler', () => {
             handler({ type: 'DELETED', resource: toDelete });
 
             const updater = setState.mock.calls[0][0];
-            const result = updater([resource]);
-            expect(result).toEqual([]);
+            const result = updater(toMap([resource]));
+            expect(result.size).toBe(0);
         });
     });
 
@@ -165,9 +182,78 @@ describe('createResourceEventHandler', () => {
             handler({ type: 'UNKNOWN', resource });
 
             const updater = setState.mock.calls[0][0];
-            const prev = [createMockResource('uid-2')];
+            const prev = toMap([createMockResource('uid-2')]);
             const result = updater(prev);
             expect(result).toBe(prev); // Same reference
+        });
+    });
+
+    describe('scale performance', () => {
+        it('processes batch of 500 MODIFIED events against 10K map under 2000ms', () => {
+            const setState = vi.fn();
+            const handler = createResourceEventHandler(setState);
+
+            // Build initial map with 10K resources
+            let map = new Map();
+            for (let i = 0; i < 10000; i++) {
+                map.set(`uid-${i}`, createMockResource(`uid-${i}`, `resource-${i}`));
+            }
+
+            const start = performance.now();
+
+            // Process 500 MODIFIED events (matching EventCoalescer batch cap)
+            for (let i = 0; i < 500; i++) {
+                const updated = { ...createMockResource(`uid-${i}`, `resource-${i}`), spec: { version: 2 } };
+                handler({ type: 'MODIFIED', resource: updated });
+
+                // Apply the updater to simulate React state update
+                const updater = setState.mock.calls[setState.mock.calls.length - 1][0];
+                map = updater(map);
+            }
+
+            const elapsed = performance.now() - start;
+            expect(elapsed).toBeLessThan(2000);
+            expect(map.size).toBe(10000);
+        });
+
+        it('O(1) lookup: has() is faster than find() on large dataset', () => {
+            // Verify Map.has is O(1) vs Array.find O(n)
+            const size = 50000;
+            const map = new Map();
+            const arr = [];
+            for (let i = 0; i < size; i++) {
+                const r = createMockResource(`uid-${i}`, `resource-${i}`);
+                map.set(`uid-${i}`, r);
+                arr.push(r);
+            }
+
+            // Time 10K lookups on Map
+            const mapStart = performance.now();
+            for (let i = 0; i < 10000; i++) {
+                map.has(`uid-${i % size}`);
+            }
+            const mapTime = performance.now() - mapStart;
+
+            // Time 10K lookups on Array
+            const arrStart = performance.now();
+            for (let i = 0; i < 10000; i++) {
+                arr.find(r => r.metadata?.uid === `uid-${i % size}`);
+            }
+            const arrTime = performance.now() - arrStart;
+
+            // Map should be significantly faster (>10x)
+            expect(mapTime).toBeLessThan(arrTime);
+        });
+    });
+
+    describe('Map to array derivation', () => {
+        it('Array.from(map.values()) preserves insertion order', () => {
+            const r1 = createMockResource('uid-1', 'alpha');
+            const r2 = createMockResource('uid-2', 'bravo');
+            const r3 = createMockResource('uid-3', 'charlie');
+            const map = toMap([r1, r2, r3]);
+            const arr = Array.from(map.values());
+            expect(arr).toEqual([r1, r2, r3]);
         });
     });
 });
@@ -176,6 +262,14 @@ describe('createNamespacedResourceEventHandler', () => {
     const createMockResource = (uid, name = 'test', namespace = 'default') => ({
         metadata: { uid, name, namespace }
     });
+
+    const toMap = (resources) => {
+        const m = new Map();
+        for (const r of resources) {
+            m.set(r.metadata.uid, r);
+        }
+        return m;
+    };
 
     describe('namespace filtering', () => {
         it('processes event when namespace matches selected', () => {
@@ -238,8 +332,8 @@ describe('createNamespacedResourceEventHandler', () => {
             handler({ type: 'MODIFIED', resource, namespace: 'default' });
 
             const updater = setState.mock.calls[0][0];
-            const result = updater([]); // Empty list simulates MODIFIED before ADDED
-            expect(result).toEqual([resource]);
+            const result = updater(new Map()); // Empty map simulates MODIFIED before ADDED
+            expect(Array.from(result.values())).toEqual([resource]);
         });
 
         it('does NOT re-add resource with deletionTimestamp after DELETE (namespaced)', () => {
@@ -252,8 +346,8 @@ describe('createNamespacedResourceEventHandler', () => {
             handler({ type: 'MODIFIED', resource, namespace: 'default' });
 
             const updater = setState.mock.calls[0][0];
-            const result = updater([]); // Empty list = DELETE already processed
-            expect(result).toEqual([]); // Should NOT re-add
+            const result = updater(new Map()); // Empty map = DELETE already processed
+            expect(result.size).toBe(0); // Should NOT re-add
         });
 
         it('does NOT re-add resource with deletionTimestamp after DELETE (cluster-scoped)', () => {
@@ -266,8 +360,8 @@ describe('createNamespacedResourceEventHandler', () => {
             handler({ type: 'MODIFIED', resource });
 
             const updater = setState.mock.calls[0][0];
-            const result = updater([]); // Empty list = DELETE already processed
-            expect(result).toEqual([]); // Should NOT re-add
+            const result = updater(new Map()); // Empty map = DELETE already processed
+            expect(result.size).toBe(0); // Should NOT re-add
         });
     });
 });

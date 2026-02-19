@@ -12,32 +12,35 @@ import (
 )
 
 func (c *Client) ListPriorityClasses() ([]schedulingv1.PriorityClass, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.SchedulingV1().PriorityClasses().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListPriorityClassesWithContext(ctx)
 }
 
-func (c *Client) ListPriorityClassesWithContext(ctx context.Context) ([]schedulingv1.PriorityClass, error) {
+// ListPriorityClassesWithContext lists priority classes with cancellation support and pagination.
+func (c *Client) ListPriorityClassesWithContext(ctx context.Context, onProgress ...func(loaded, total int)) ([]schedulingv1.PriorityClass, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	list, err := cs.SchedulingV1().PriorityClasses().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "priorityclasses", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]schedulingv1.PriorityClass, string, *int64, error) {
+		list, err := cs.SchedulingV1().PriorityClasses().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetPriorityClassYaml(name string) (string, error) {
@@ -90,32 +93,35 @@ func (c *Client) DeletePriorityClass(contextName, name string) error {
 // ============================================================================
 
 func (c *Client) ListLeases(contextName, namespace string) ([]coordinationv1.Lease, error) {
-	cs, err := c.getClientForContext(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	list, err := cs.CoordinationV1().Leases(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return c.ListLeasesWithContext(ctx, contextName, namespace)
 }
 
-func (c *Client) ListLeasesWithContext(ctx context.Context, contextName, namespace string) ([]coordinationv1.Lease, error) {
+// ListLeasesWithContext lists leases with cancellation support and pagination.
+func (c *Client) ListLeasesWithContext(ctx context.Context, contextName, namespace string, onProgress ...func(loaded, total int)) ([]coordinationv1.Lease, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
-	list, err := cs.CoordinationV1().Leases(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "leases", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]coordinationv1.Lease, string, *int64, error) {
+		list, err := cs.CoordinationV1().Leases(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return list.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetLeaseYaml(contextName, namespace, name string) (string, error) {

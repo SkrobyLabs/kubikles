@@ -24,7 +24,7 @@ func (a *App) ListPVCs(requestId, namespace string) ([]v1.PersistentVolumeClaim,
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListPVCsWithContext(ctx, currentContext, namespace)
+		result, err := a.k8sClient.ListPVCsWithContext(ctx, currentContext, namespace, a.listProgressCallback("pvcs"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -78,7 +78,7 @@ func (a *App) ListPVs(requestId string) ([]v1.PersistentVolume, error) {
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListPVsWithContext(ctx, currentContext)
+		result, err := a.k8sClient.ListPVsWithContext(ctx, currentContext, a.listProgressCallback("pvs"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -123,7 +123,7 @@ func (a *App) ListStorageClasses(requestId string) ([]storagev1.StorageClass, er
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListStorageClassesWithContext(ctx, currentContext)
+		result, err := a.k8sClient.ListStorageClassesWithContext(ctx, currentContext, a.listProgressCallback("storageclasses"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

@@ -12,33 +12,35 @@ import (
 )
 
 func (c *Client) ListDaemonSets(contextName, namespace string) ([]appsv1.DaemonSet, error) {
-	cs, err := c.getClientForContext(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	daemonsets, err := cs.AppsV1().DaemonSets(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return daemonsets.Items, nil
+	return c.ListDaemonSetsWithContext(ctx, contextName, namespace)
 }
 
-// ListDaemonSetsWithContext lists daemonsets with cancellation support
-func (c *Client) ListDaemonSetsWithContext(ctx context.Context, contextName, namespace string) ([]appsv1.DaemonSet, error) {
+// ListDaemonSetsWithContext lists daemonsets with cancellation support and pagination.
+func (c *Client) ListDaemonSetsWithContext(ctx context.Context, contextName, namespace string, onProgress ...func(loaded, total int)) ([]appsv1.DaemonSet, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
-	daemonsets, err := cs.AppsV1().DaemonSets(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "daemonsets", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]appsv1.DaemonSet, string, *int64, error) {
+		list, err := cs.AppsV1().DaemonSets(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return daemonsets.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetDaemonSetYaml(namespace, name string) (string, error) {

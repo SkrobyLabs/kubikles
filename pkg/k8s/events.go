@@ -11,32 +11,34 @@ import (
 )
 
 func (c *Client) ListEvents(namespace string) ([]v1.Event, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	events, err := cs.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return events.Items, nil
+	return c.ListEventsWithContext(ctx, namespace)
 }
 
-func (c *Client) ListEventsWithContext(ctx context.Context, namespace string) ([]v1.Event, error) {
+func (c *Client) ListEventsWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]v1.Event, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	events, err := cs.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "events", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.Event, string, *int64, error) {
+		list, err := cs.CoreV1().Events(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return events.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetEventYAML(namespace, name string) (string, error) {

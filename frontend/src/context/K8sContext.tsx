@@ -17,7 +17,10 @@ interface CRDSpec {
     group?: string;
     names?: {
         kind?: string;
+        plural?: string;
     };
+    versions?: Array<{ name?: string; storage?: boolean }>;
+    scope?: string;
 }
 
 interface CRD {
@@ -98,6 +101,7 @@ interface K8sContextValue {
 
     // CRD lookup for owner reference resolution
     crds: CRD[];
+    crdsLoading: boolean;
     ensureCRDsLoaded: () => Promise<CRD[]>;
     findCRD: (apiVersion: string, kind: string) => CRD | null;
 
@@ -249,7 +253,10 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // CRD state for owner reference resolution
     const [crds, setCRDs] = useState<CRD[]>([]);
+    const [crdsLoading, setCRDsLoading] = useState(false);
+    const crdsRef = useRef<CRD[]>([]);
     const crdsLoadedForContext = useRef<string | null>(null);
+    const crdsFetchPromise = useRef<{ context: string; promise: Promise<CRD[]> } | null>(null);
 
     // Backward compatibility: expose currentNamespace for components not yet updated
     const currentNamespace = selectedNamespaces.length === 1 ? selectedNamespaces[0] : '';
@@ -719,24 +726,41 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
     }, []);
 
+    // Keep crds ref in sync for stable callback
+    useEffect(() => { crdsRef.current = crds; }, [crds]);
+
     // Fetch CRDs lazily when needed (for owner reference resolution)
+    // Only depends on currentContext — uses refs for crds to stay stable
     const ensureCRDsLoaded = useCallback(async (): Promise<CRD[]> => {
         if (!currentContext) return [];
-        if (crdsLoadedForContext.current === currentContext && crds.length > 0) {
-            return crds;
+        if (crdsLoadedForContext.current === currentContext && crdsRef.current.length > 0) {
+            return crdsRef.current;
+        }
+        // Dedup: if a fetch is already in flight for this context, reuse it
+        if (crdsFetchPromise.current?.context === currentContext) {
+            return crdsFetchPromise.current.promise;
         }
 
-        try {
-            Logger.debug("Fetching CRDs for owner resolution...", undefined, 'k8s');
-            const list: CRD[] = await ListCRDs();
-            setCRDs(list || []);
-            crdsLoadedForContext.current = currentContext;
-            return list || [];
-        } catch (err: any) {
-            Logger.error("Failed to fetch CRDs", err, 'k8s');
-            return [];
-        }
-    }, [currentContext, crds]);
+        const fetchPromise = (async () => {
+            try {
+                setCRDsLoading(true);
+                Logger.debug("Fetching CRDs...", undefined, 'k8s');
+                const list: CRD[] = await ListCRDs();
+                setCRDs(list || []);
+                crdsRef.current = list || [];
+                crdsLoadedForContext.current = currentContext;
+                return list || [];
+            } catch (err: any) {
+                Logger.error("Failed to fetch CRDs", err, 'k8s');
+                return [];
+            } finally {
+                setCRDsLoading(false);
+                crdsFetchPromise.current = null;
+            }
+        })();
+        crdsFetchPromise.current = { context: currentContext, promise: fetchPromise };
+        return fetchPromise;
+    }, [currentContext]);
 
     // Look up CRD by apiVersion and kind (for resolving owner references)
     const findCRD = useCallback((apiVersion: string, kind: string): CRD | null => {
@@ -757,8 +781,10 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, [crds]);
 
     // Clear CRDs on context switch
+    // Note: don't clear crdsFetchPromise — the context tag handles staleness
     useEffect(() => {
         setCRDs([]);
+        crdsRef.current = [];
         crdsLoadedForContext.current = null;
     }, [currentContext]);
 
@@ -781,6 +807,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         watcherStatus,
         // CRD lookup for owner reference resolution
         crds,
+        crdsLoading,
         ensureCRDsLoaded,
         findCRD,
         // Connection state
@@ -804,6 +831,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         reconcileToken,
         watcherStatus,
         crds,
+        crdsLoading,
         ensureCRDsLoaded,
         findCRD,
         connectionError,

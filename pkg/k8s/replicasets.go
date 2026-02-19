@@ -11,33 +11,35 @@ import (
 )
 
 func (c *Client) ListReplicaSets(contextName, namespace string) ([]appsv1.ReplicaSet, error) {
-	cs, err := c.getClientForContext(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
-	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	replicasets, err := cs.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return replicasets.Items, nil
+	return c.ListReplicaSetsWithContext(ctx, contextName, namespace)
 }
 
-// ListReplicaSetsWithContext lists replicasets with cancellation support
-func (c *Client) ListReplicaSetsWithContext(ctx context.Context, contextName, namespace string) ([]appsv1.ReplicaSet, error) {
+// ListReplicaSetsWithContext lists replicasets with cancellation support and pagination.
+func (c *Client) ListReplicaSetsWithContext(ctx context.Context, contextName, namespace string, onProgress ...func(loaded, total int)) ([]appsv1.ReplicaSet, error) {
 	cs, err := c.getClientForContext(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
 	}
-	replicasets, err := cs.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "replicasets", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]appsv1.ReplicaSet, string, *int64, error) {
+		list, err := cs.AppsV1().ReplicaSets(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return replicasets.Items, nil
+	return result, nil
 }
 
 func (c *Client) GetReplicaSetYaml(namespace, name string) (string, error) {

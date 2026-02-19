@@ -25,7 +25,7 @@ func (a *App) ListNetworkPolicies(requestId, namespace string) ([]networkingv1.N
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListNetworkPoliciesWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListNetworkPoliciesWithContext(ctx, namespace, a.listProgressCallback("networkpolicies"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -68,7 +68,7 @@ func (a *App) ListHPAs(requestId, namespace string) ([]autoscalingv2.HorizontalP
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListHPAsWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListHPAsWithContext(ctx, namespace, a.listProgressCallback("hpas"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -111,7 +111,7 @@ func (a *App) ListPDBs(requestId, namespace string) ([]policyv1.PodDisruptionBud
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListPDBsWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListPDBsWithContext(ctx, namespace, a.listProgressCallback("pdbs"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -154,7 +154,7 @@ func (a *App) ListResourceQuotas(requestId, namespace string) ([]v1.ResourceQuot
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListResourceQuotasWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListResourceQuotasWithContext(ctx, namespace, a.listProgressCallback("resourcequotas"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -197,7 +197,7 @@ func (a *App) ListLimitRanges(requestId, namespace string) ([]v1.LimitRange, err
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListLimitRangesWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListLimitRangesWithContext(ctx, namespace, a.listProgressCallback("limitranges"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -239,7 +239,7 @@ func (a *App) ListEndpoints(requestId, namespace string) ([]v1.Endpoints, error)
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListEndpointsWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListEndpointsWithContext(ctx, namespace, a.listProgressCallback("endpoints"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -282,7 +282,7 @@ func (a *App) ListEndpointSlices(requestId, namespace string) ([]discoveryv1.End
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListEndpointSlicesWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListEndpointSlicesWithContext(ctx, namespace, a.listProgressCallback("endpointslices"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

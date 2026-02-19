@@ -6,24 +6,22 @@ import {
     Background,
     MiniMap,
     useOnViewportChange,
+    useReactFlow,
     applyNodeChanges,
 } from '@xyflow/react';
 import type { NodeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { usePods } from '~/hooks/resources';
 import { usePodMetrics } from '~/hooks/usePodMetrics';
 import { useK8s } from '~/context';
 import { getPodStatus } from '~/utils/k8s-helpers';
 import TopologyNodeComponent from './TopologyNodeComponent';
 import {
-    groupPodsByNode,
     getZoomLevel,
     computeGridPositions,
     computeResourceMaxes,
     computePodGridHeight,
     getPodSquareColor,
     getPodCommitted,
-    getPodResourceRequests,
     getNamespaceColor,
     formatCpuMillis,
     formatMemBytes,
@@ -35,7 +33,8 @@ import {
 import PodDetails from '~/components/shared/PodDetails';
 import { useUI } from '~/context';
 import { useNotification } from '~/context/NotificationContext';
-import { GetPodEvictionInfo, EvictPod } from 'wailsjs/go/main/App';
+import { GetPodEvictionInfo, EvictPod, ListPodsForNode } from 'wailsjs/go/main/App';
+import { useResourceWatcher } from '~/hooks/useResourceWatcher';
 import { CubeIcon, SwatchIcon, SignalIcon } from '@heroicons/react/24/outline';
 
 interface NodeTopologyProps {
@@ -93,19 +92,26 @@ function isNodeInteractive(target: EventTarget | null): boolean {
 // ---------------------------------------------------------------------------
 // Inner component — must be inside ReactFlowProvider for useOnViewportChange
 // ---------------------------------------------------------------------------
+/** Viewport margin (in flow coords) for pre-fetching slightly off-screen nodes */
+const VIEWPORT_MARGIN = 200;
+
+/** Minimum interval (ms) between React Flow display node syncs. */
+const TOPOLOGY_REDRAW_INTERVAL_MS = 1000;
+
 function TopologyCanvas({
     rfNodes,
-    podsLoading,
     onNodeClick,
     onPaneClick,
+    onVisibleNodesChange,
 }: {
     rfNodes: any[];
-    podsLoading: boolean;
     onNodeClick: (event: React.MouseEvent, rfNode: any) => void;
     onPaneClick: () => void;
+    onVisibleNodesChange: (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
 }) {
     const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('medium');
     const zoomRef = useRef<ZoomLevel>('medium');
+    const reactFlowInstance = useReactFlow();
 
     // Track user-dragged positions so they survive data/zoom updates
     const draggedPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
@@ -115,27 +121,116 @@ function TopologyCanvas({
     // State-based nodes for real-time drag preview
     const [displayNodes, setDisplayNodes] = useState<any[]>([]);
 
-    // Sync incoming rfNodes + zoomLevel into displayNodes, preserving dragged positions.
-    // Skipped while dragging — deferred sync happens on drag end.
+    // -----------------------------------------------------------------------
+    // Throttled sync: rfNodes/zoomLevel → displayNodes (max once per TOPOLOGY_REDRAW_INTERVAL_MS).
+    // Leading-edge: first change syncs immediately, subsequent changes within
+    // the interval are picked up when the cooldown timer fires.
+    // Paused while dragging — deferred sync happens on drag end.
+    // -----------------------------------------------------------------------
     const pendingSync = useRef(false);
+    const latestRfNodesRef = useRef(rfNodes);
+    latestRfNodesRef.current = rfNodes;
+    const latestZoomLevelRef = useRef(zoomLevel);
+    latestZoomLevelRef.current = zoomLevel;
+    const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastSyncTimeRef = useRef(0);
+
+    const buildDisplayNodes = useCallback(() => {
+        const nodes = latestRfNodesRef.current;
+        const zl = latestZoomLevelRef.current;
+        return nodes.map((n: any) => {
+            const podGridH = computePodGridHeight(n.data?.pods?.length || 0, zl);
+            const dragged = draggedPositions.current.get(n.id);
+            return {
+                ...n,
+                position: dragged || n.position,
+                data: { ...n.data, zoomLevel: zl },
+                style: { ...n.style, height: 120 + podGridH },
+            };
+        });
+    }, []);
+
+    const flushSync = useCallback(() => {
+        syncTimerRef.current = null;
+        lastSyncTimeRef.current = Date.now();
+        if (isDragging.current) {
+            pendingSync.current = true;
+            return;
+        }
+        setDisplayNodes(buildDisplayNodes());
+    }, [buildDisplayNodes]);
+
+    // Schedule or execute sync whenever rfNodes or zoomLevel change
     useEffect(() => {
         if (isDragging.current) {
             pendingSync.current = true;
             return;
         }
-        setDisplayNodes(
-            rfNodes.map((n: any) => {
-                const podGridH = computePodGridHeight(n.data?.pods?.length || 0, zoomLevel);
-                const dragged = draggedPositions.current.get(n.id);
-                return {
-                    ...n,
-                    position: dragged || n.position,
-                    data: { ...n.data, zoomLevel },
-                    style: { ...n.style, height: 120 + podGridH },
-                };
-            }),
-        );
-    }, [rfNodes, zoomLevel]);
+        const elapsed = Date.now() - lastSyncTimeRef.current;
+        if (elapsed >= TOPOLOGY_REDRAW_INTERVAL_MS) {
+            // Enough time since last sync — sync immediately
+            flushSync();
+        } else if (!syncTimerRef.current) {
+            // Schedule trailing sync for remaining cooldown
+            syncTimerRef.current = setTimeout(flushSync, TOPOLOGY_REDRAW_INTERVAL_MS - elapsed);
+        }
+        // If timer already running, it will pick up latest data via refs
+    }, [rfNodes, zoomLevel, flushSync]);
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (syncTimerRef.current) {
+                clearTimeout(syncTimerRef.current);
+                syncTimerRef.current = null;
+            }
+        };
+    }, []);
+
+    // Stable ref for the callback so we don't re-create the viewport handler
+    const onVisibleNodesChangeRef = useRef(onVisibleNodesChange);
+    onVisibleNodesChangeRef.current = onVisibleNodesChange;
+    const rfNodesForVisRef = useRef(rfNodes);
+    rfNodesForVisRef.current = rfNodes;
+
+    // Compute visible nodes from viewport bounds.
+    // Uses functional state updater to avoid unnecessary re-renders when the set content is unchanged.
+    const computeVisibleNodes = useCallback(() => {
+        const currentRfNodes = rfNodesForVisRef.current;
+        const level = zoomRef.current;
+        // At far zoom pods aren't rendered — no need to fetch
+        if (level === 'far') {
+            onVisibleNodesChangeRef.current((prev: Set<string>) => prev.size === 0 ? prev : new Set());
+            return;
+        }
+        const viewport = reactFlowInstance.getViewport();
+        const { x, y, zoom } = viewport;
+        // Get container dimensions from the ReactFlow wrapper
+        const container = document.querySelector('.react-flow');
+        const containerW = container?.clientWidth ?? window.innerWidth;
+        const containerH = container?.clientHeight ?? window.innerHeight;
+        // Convert screen bounds to flow coordinates
+        const left = -x / zoom - VIEWPORT_MARGIN;
+        const top_ = -y / zoom - VIEWPORT_MARGIN;
+        const right = (-x + containerW) / zoom + VIEWPORT_MARGIN;
+        const bottom = (-y + containerH) / zoom + VIEWPORT_MARGIN;
+
+        const visible = new Set<string>();
+        for (const node of currentRfNodes) {
+            const pos = draggedPositions.current.get(node.id) || node.position;
+            const w = node.style?.width || 280;
+            const h = node.style?.height || 220;
+            // Check if node rect overlaps viewport rect
+            if (pos.x + w >= left && pos.x <= right && pos.y + h >= top_ && pos.y <= bottom) {
+                if (node.data?.nodeName) visible.add(node.data.nodeName);
+            }
+        }
+        // Only update state if set content actually changed
+        onVisibleNodesChangeRef.current((prev: Set<string>) => {
+            if (prev.size === visible.size && [...prev].every((n) => visible.has(n))) return prev;
+            return visible;
+        });
+    }, [reactFlowInstance]);
 
     useOnViewportChange({
         onEnd: useCallback((viewport: any) => {
@@ -144,14 +239,18 @@ function TopologyCanvas({
                 zoomRef.current = level;
                 setZoomLevel(level);
             }
-        }, []),
+            // Always recompute visible nodes on viewport change
+            computeVisibleNodes();
+        }, [computeVisibleNodes]),
     });
 
-    // Refs for deferred sync after drag ends
-    const rfNodesRef = useRef(rfNodes);
-    rfNodesRef.current = rfNodes;
-    const zoomLevelRef = useRef(zoomLevel);
-    zoomLevelRef.current = zoomLevel;
+    // Recompute visible nodes when the node list changes (initial load, nodes added/removed).
+    // NOT on every rfNodes change (which fires on pod data updates and would cause a cascade).
+    const nodeListKey = rfNodes.map((n: any) => n.id).join(',');
+    useEffect(() => {
+        computeVisibleNodes();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [nodeListKey, computeVisibleNodes]);
 
     // Handle all node changes (position during drag, selection, etc.)
     const handleNodesChange = useCallback((changes: NodeChange[]) => {
@@ -162,32 +261,20 @@ function TopologyCanvas({
                 if (change.dragging) {
                     isDragging.current = true;
                 } else {
-                    // Drag ended — persist position and flush any deferred sync
+                    // Drag ended — persist position and flush deferred sync immediately
                     isDragging.current = false;
                     if (change.position) {
                         draggedPositions.current.set(change.id, { x: change.position.x, y: change.position.y });
                     }
                     if (pendingSync.current) {
                         pendingSync.current = false;
-                        const nodes = rfNodesRef.current;
-                        const zl = zoomLevelRef.current;
-                        setDisplayNodes(
-                            nodes.map((n: any) => {
-                                const podGridH = computePodGridHeight(n.data?.pods?.length || 0, zl);
-                                const dragged = draggedPositions.current.get(n.id);
-                                return {
-                                    ...n,
-                                    position: dragged || n.position,
-                                    data: { ...n.data, zoomLevel: zl },
-                                    style: { ...n.style, height: 120 + podGridH },
-                                };
-                            }),
-                        );
+                        lastSyncTimeRef.current = Date.now();
+                        setDisplayNodes(buildDisplayNodes());
                     }
                 }
             }
         }
-    }, []);
+    }, [buildDisplayNodes]);
 
     return (
         <ReactFlow
@@ -234,7 +321,7 @@ export default function NodeTopology({
     metricsAvailable,
     nodeActions,
 }: NodeTopologyProps) {
-    const { currentContext } = useK8s();
+    const { currentContext, lastRefresh } = useK8s();
     const { openTab, openModal, closeModal } = useUI();
     const { addNotification } = useNotification();
 
@@ -250,16 +337,142 @@ export default function NodeTopology({
         });
     }, []);
 
-    // Fetch all pods (all namespaces) only when topology is visible
-    const { pods: allPods, loading: podsLoading } = usePods(currentContext, [''], isVisible) as any;
+    // -----------------------------------------------------------------------
+    // Viewport-aware per-node pod fetching
+    // -----------------------------------------------------------------------
+    const [podsByNode, setPodsByNode] = useState<Map<string, any[]>>(new Map());
+    const [visibleNodeNames, setVisibleNodeNames] = useState<Set<string>>(new Set());
+    const fetchingRef = useRef<Set<string>>(new Set());
+    const [fetchingCount, setFetchingCount] = useState(0);
+    // Bumped when the cache is cleared so the fetch effect re-runs and reloads visible nodes
+    const [fetchGeneration, setFetchGeneration] = useState(0);
+
+    // Clear pod cache on context switch
+    const prevContextRef = useRef(currentContext);
+    useEffect(() => {
+        if (currentContext !== prevContextRef.current) {
+            prevContextRef.current = currentContext;
+            setPodsByNode(new Map());
+            fetchingRef.current.clear();
+            setFetchingCount(0);
+            setFetchGeneration((g) => g + 1);
+        }
+    }, [currentContext]);
+
+    // Clear pod cache on manual refresh so visible nodes re-fetch
+    const prevRefreshRef = useRef(lastRefresh);
+    useEffect(() => {
+        if (lastRefresh !== prevRefreshRef.current) {
+            prevRefreshRef.current = lastRefresh;
+            setPodsByNode(new Map());
+            fetchingRef.current.clear();
+            setFetchingCount(0);
+            setFetchGeneration((g) => g + 1);
+        }
+    }, [lastRefresh]);
+
+    // Ref for checking pod cache without triggering effect re-runs
+    const podsByNodeRef = useRef(podsByNode);
+    podsByNodeRef.current = podsByNode;
+
+    // Fetch pods for visible nodes that are not yet cached.
+    // Depends on fetchGeneration so cache-clearing (refresh/context switch) triggers re-fetch.
+    useEffect(() => {
+        if (!currentContext || !isVisible) return;
+        for (const name of visibleNodeNames) {
+            if (podsByNodeRef.current.has(name) || fetchingRef.current.has(name)) continue;
+            fetchingRef.current.add(name);
+            setFetchingCount((c) => c + 1);
+            ListPodsForNode(name)
+                .then((pods: any) => {
+                    fetchingRef.current.delete(name);
+                    setFetchingCount((c) => Math.max(0, c - 1));
+                    const filtered = (pods || []).filter((p: any) => p.status?.phase !== 'Succeeded');
+                    setPodsByNode((prev) => new Map(prev).set(name, filtered));
+                })
+                .catch(() => {
+                    fetchingRef.current.delete(name);
+                    setFetchingCount((c) => Math.max(0, c - 1));
+                });
+        }
+    }, [visibleNodeNames, currentContext, isVisible, fetchGeneration]);
+
+    // -----------------------------------------------------------------------
+    // Live pod watcher — keeps podsByNode in sync with evictions, restarts, etc.
+    // -----------------------------------------------------------------------
+    const handlePodEvent = useCallback((event: any) => {
+        const { type, resource: pod } = event;
+        const uid = pod?.metadata?.uid;
+        if (!uid) return;
+
+        const nodeName: string = pod.spec?.nodeName || '';
+        const isSucceeded = pod.status?.phase === 'Succeeded';
+
+        setPodsByNode((prev) => {
+            // DELETED or transitioned to Succeeded — remove from whichever node has it
+            if (type === 'DELETED' || isSucceeded) {
+                for (const [node, pods] of prev) {
+                    const idx = pods.findIndex((p: any) => p.metadata?.uid === uid);
+                    if (idx !== -1) {
+                        const next = new Map(prev);
+                        const updated = pods.slice();
+                        updated.splice(idx, 1);
+                        next.set(node, updated);
+                        return next;
+                    }
+                }
+                return prev;
+            }
+
+            // ADDED — insert into the node's list if we've loaded that node
+            if (type === 'ADDED') {
+                if (!nodeName || !prev.has(nodeName)) return prev;
+                const existing = prev.get(nodeName)!;
+                if (existing.some((p: any) => p.metadata?.uid === uid)) return prev;
+                const next = new Map(prev);
+                next.set(nodeName, [...existing, pod]);
+                return next;
+            }
+
+            // MODIFIED — update in place (or move if node changed)
+            for (const [node, pods] of prev) {
+                const idx = pods.findIndex((p: any) => p.metadata?.uid === uid);
+                if (idx !== -1) {
+                    const next = new Map(prev);
+                    if (node === nodeName) {
+                        // Same node — replace
+                        const updated = pods.slice();
+                        updated[idx] = pod;
+                        next.set(node, updated);
+                    } else {
+                        // Remove from old node
+                        const updated = pods.slice();
+                        updated.splice(idx, 1);
+                        next.set(node, updated);
+                        // Add to new node if loaded
+                        if (nodeName && prev.has(nodeName)) {
+                            next.set(nodeName, [...(next.get(nodeName) || []), pod]);
+                        }
+                    }
+                    return next;
+                }
+            }
+            // Not found anywhere — add if node is loaded (late MODIFIED before ADDED)
+            if (nodeName && prev.has(nodeName) && !pod.metadata?.deletionTimestamp) {
+                const next = new Map(prev);
+                next.set(nodeName, [...(prev.get(nodeName) || []), pod]);
+                return next;
+            }
+            return prev;
+        });
+    }, []);
+
+    useResourceWatcher('pods', '', handlePodEvent, Boolean(currentContext && isVisible));
 
     // Fetch pod metrics for committed resource values (polls every 30s)
-    const hasPods = !!(allPods && allPods.length > 0);
+    const hasPods = podsByNode.size > 0;
     const { metrics: podMetricsRaw, available: podMetricsAvailable } = usePodMetrics(isVisible, hasPods);
     const podMetrics: PodMetricsMap | undefined = podMetricsAvailable ? podMetricsRaw : undefined;
-
-    // Group pods by node (Succeeded pods already excluded)
-    const podsByNode = useMemo(() => groupPodsByNode(allPods || []), [allPods]);
 
     // Max committed resource values per node for relative coloring
     const resourceMaxesByNode = useMemo(() => {
@@ -273,12 +486,14 @@ export default function NodeTopology({
     // Pod lookup by uid — for resolving clicks from data-pod-uid
     const podByUid = useMemo(() => {
         const map = new Map<string, any>();
-        for (const pod of allPods || []) {
-            const uid = pod.metadata?.uid;
-            if (uid) map.set(uid, pod);
+        for (const [, pods] of podsByNode) {
+            for (const pod of pods) {
+                const uid = pod.metadata?.uid;
+                if (uid) map.set(uid, pod);
+            }
         }
         return map;
-    }, [allPods]);
+    }, [podsByNode]);
 
     // -----------------------------------------------------------------------
     // Imperative tooltip — zero re-renders
@@ -578,7 +793,7 @@ export default function NodeTopology({
     return (
         <div className="h-full w-full bg-background relative">
             <ReactFlowProvider>
-                <TopologyCanvas rfNodes={rfNodes} podsLoading={podsLoading} onNodeClick={handleRFNodeClick} onPaneClick={hidePopover} />
+                <TopologyCanvas rfNodes={rfNodes} onNodeClick={handleRFNodeClick} onPaneClick={hidePopover} onVisibleNodesChange={setVisibleNodeNames} />
             </ReactFlowProvider>
 
             {/* Color mode toggle */}
@@ -621,9 +836,9 @@ export default function NodeTopology({
             </div>
 
             {/* Pod loading indicator */}
-            {podsLoading && !allPods?.length && (
+            {fetchingCount > 0 && (
                 <div className="absolute top-4 right-4 bg-surface-light border border-border rounded-lg px-3 py-1.5 text-xs text-gray-400 z-10">
-                    Loading pods...
+                    Loading pods for {fetchingCount} node{fetchingCount !== 1 ? 's' : ''}...
                 </div>
             )}
 

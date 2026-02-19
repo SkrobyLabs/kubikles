@@ -22,7 +22,7 @@ func (a *App) ListServiceAccounts(requestId, namespace string) ([]v1.ServiceAcco
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListServiceAccountsWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListServiceAccountsWithContext(ctx, namespace, a.listProgressCallback("serviceaccounts"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -65,7 +65,7 @@ func (a *App) ListRoles(requestId, namespace string) ([]rbacv1.Role, error) {
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListRolesWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListRolesWithContext(ctx, namespace, a.listProgressCallback("roles"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -108,7 +108,7 @@ func (a *App) ListClusterRoles(requestId string) ([]rbacv1.ClusterRole, error) {
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListClusterRolesWithContext(ctx)
+		result, err := a.k8sClient.ListClusterRolesWithContext(ctx, a.listProgressCallback("clusterroles"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -151,7 +151,7 @@ func (a *App) ListRoleBindings(requestId, namespace string) ([]rbacv1.RoleBindin
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListRoleBindingsWithContext(ctx, namespace)
+		result, err := a.k8sClient.ListRoleBindingsWithContext(ctx, namespace, a.listProgressCallback("rolebindings"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -194,7 +194,7 @@ func (a *App) ListClusterRoleBindings(requestId string) ([]rbacv1.ClusterRoleBin
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListClusterRoleBindingsWithContext(ctx)
+		result, err := a.k8sClient.ListClusterRoleBindingsWithContext(ctx, a.listProgressCallback("clusterrolebindings"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

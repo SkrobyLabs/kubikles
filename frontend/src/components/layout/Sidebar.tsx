@@ -11,7 +11,7 @@ import {
     BugAntIcon,
     SparklesIcon
 } from '@heroicons/react/24/outline';
-import { useConfig } from '~/context';
+import { useConfig, useK8s } from '~/context';
 import { useAIChat } from '~/context';
 import {
     ALL_MENU_ITEMS,
@@ -23,7 +23,8 @@ import { usePerformancePanel } from '~/hooks/usePerformancePanel';
 import { useDebugLogs } from '~/hooks/useDebugLogs';
 import SearchSelect from '../shared/SearchSelect';
 import Logger from '~/utils/Logger';
-import { ListCRDs, GetVersionInfo } from 'wailsjs/go/main/App';
+import { GetVersionInfo, IsDebugClusterEnabled } from 'wailsjs/go/main/App';
+import DebugClusterPanel from './DebugClusterPanel';
 
 interface VersionInfo {
     version?: string;
@@ -56,10 +57,12 @@ export default function Sidebar({
     // Version info
     const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
     const [isMac, setIsMac] = useState(() => navigator.platform.includes('Mac'));
+    const [debugClusterEnabled, setDebugClusterEnabled] = useState(false);
 
     useEffect(() => {
         GetVersionInfo().then(setVersionInfo).catch(() => {});
         Environment().then((env: any) => setIsMac(env.platform === 'darwin')).catch(() => {});
+        IsDebugClusterEnabled().then((v: boolean) => setDebugClusterEnabled(v)).catch(() => {});
     }, []);
     const activeItemRef = useRef<HTMLButtonElement | null>(null);
 
@@ -73,10 +76,8 @@ export default function Sidebar({
         }
     }, [activeView]);
 
-    // Fetch CRDs for dynamic menu (lazy loaded)
-    const [crds, setCRDs] = useState<any[]>([]);
-    const [crdsLoading, setCRDsLoading] = useState(false);
-    const [crdsLoaded, setCRDsLoaded] = useState(false);
+    // CRDs from context (shared with owner resolution)
+    const { crds, crdsLoading, ensureCRDsLoaded } = useK8s();
     // Track which CRD groups are expanded (collapsed by default)
     const [expandedCRDGroups, setExpandedCRDGroups] = useState<Record<string, boolean>>(() => {
         try {
@@ -87,44 +88,12 @@ export default function Sidebar({
         }
     });
 
-    // Reset and refetch CRDs when context changes (if section is open)
+    // Fetch CRDs when context changes (if section is open) or when section opens
     useEffect(() => {
-        setCRDsLoaded(false);
-        setCRDs([]);
-        // If Custom Resources is already open, trigger fetch for new context
         if (!collapsedGroups['Custom Resources'] && currentContext) {
-            setCRDsLoading(true);
-            ListCRDs()
-                .then((list: any) => {
-                    setCRDs(list || []);
-                    setCRDsLoaded(true);
-                })
-                .catch((err: any) => {
-                    console.error("Failed to fetch CRDs for sidebar:", err);
-                    setCRDs([]);
-                })
-                .finally(() => {
-                    setCRDsLoading(false);
-                });
+            ensureCRDsLoaded();
         }
     }, [currentContext]);
-
-    // Fetch CRDs when Custom Resources is opened (lazy load)
-    const fetchCRDs = async () => {
-        if (!currentContext || crdsLoaded || crdsLoading) return;
-
-        setCRDsLoading(true);
-        try {
-            const list = await ListCRDs();
-            setCRDs(list || []);
-            setCRDsLoaded(true);
-        } catch (err: any) {
-            console.error("Failed to fetch CRDs for sidebar:", err);
-            setCRDs([]);
-        } finally {
-            setCRDsLoading(false);
-        }
-    };
 
     // Save expanded CRD groups state
     useEffect(() => {
@@ -239,7 +208,7 @@ export default function Sidebar({
         const isCurrentlyCollapsed = collapsedGroups[groupTitle];
         // If opening Custom Resources, trigger lazy load
         if (groupTitle === 'Custom Resources' && isCurrentlyCollapsed) {
-            fetchCRDs();
+            ensureCRDsLoaded();
         }
         setCollapsedGroups((prev: Record<string, boolean>) => ({
             ...prev,
@@ -281,6 +250,11 @@ export default function Sidebar({
                     preserveOrder
                 />
             </div>
+
+            {/* Debug Cluster Config (dev builds only, debug-cluster context only) */}
+            {debugClusterEnabled && currentContext === 'debug-cluster' && (
+                <DebugClusterPanel />
+            )}
 
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto py-4">

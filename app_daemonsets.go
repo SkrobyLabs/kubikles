@@ -23,7 +23,7 @@ func (a *App) ListDaemonSets(requestId, namespace string) ([]appsv1.DaemonSet, e
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListDaemonSetsWithContext(ctx, currentContext, namespace)
+		result, err := a.k8sClient.ListDaemonSetsWithContext(ctx, currentContext, namespace, a.listProgressCallback("daemonsets"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

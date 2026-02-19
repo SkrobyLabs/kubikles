@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"sync"
-	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,37 +12,35 @@ import (
 )
 
 func (c *Client) ListNamespaces() ([]v1.Namespace, error) {
-	start := time.Now()
-	cs, err := c.getClientset()
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("[ListNamespaces] getClientset took %v", time.Since(start))
-	apiStart := time.Now()
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	namespaces, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
-	log.Printf("[ListNamespaces] API call took %v, returned %d items", time.Since(apiStart), len(namespaces.Items))
-	if err != nil {
-		return nil, err
-	}
-	return namespaces.Items, nil
+	return c.ListNamespacesWithContext(ctx)
 }
 
-// ListNamespacesWithContext lists namespaces with cancellation support
-func (c *Client) ListNamespacesWithContext(ctx context.Context) ([]v1.Namespace, error) {
+// ListNamespacesWithContext lists namespaces with cancellation support and pagination.
+func (c *Client) ListNamespacesWithContext(ctx context.Context, onProgress ...func(loaded, total int)) ([]v1.Namespace, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
 	}
-	namespaces, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	var progressFn func(loaded, total int)
+	if len(onProgress) > 0 {
+		progressFn = onProgress[0]
+	}
+	result, err := paginatedList(ctx, "namespaces", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.Namespace, string, *int64, error) {
+		list, err := cs.CoreV1().Namespaces().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, progressFn)
 	if err != nil {
 		if isCancelledError(err) {
 			return nil, ErrRequestCancelled
 		}
 		return nil, err
 	}
-	return namespaces.Items, nil
+	return result, nil
 }
 
 // ListNamespacesForContext lists namespaces for a specific kubeconfig context
@@ -54,11 +51,17 @@ func (c *Client) ListNamespacesForContext(contextName string) ([]v1.Namespace, e
 	}
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()
-	namespaces, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	result, err := paginatedList(ctx, "namespaces", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.Namespace, string, *int64, error) {
+		list, err := cs.CoreV1().Namespaces().List(ctx, opts)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return list.Items, list.Continue, list.RemainingItemCount, nil
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return namespaces.Items, nil
+	return result, nil
 }
 
 // NamespaceResourceCounts holds the count of various resource types in a namespace

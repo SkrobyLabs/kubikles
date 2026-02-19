@@ -25,7 +25,7 @@ func (a *App) ListNamespaces(requestId string) ([]v1.Namespace, error) {
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListNamespacesWithContext(ctx)
+		result, err := a.k8sClient.ListNamespacesWithContext(ctx, a.listProgressCallback("namespaces"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
