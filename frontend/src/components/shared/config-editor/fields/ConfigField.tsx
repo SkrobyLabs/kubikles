@@ -6,6 +6,8 @@ import TextField from './TextField';
 import ReadonlyField from './ReadonlyField';
 import CheckboxGroupField from './CheckboxGroupField';
 import SidebarLayoutEditor from './SidebarLayoutEditor';
+import ModelSelectField from './ModelSelectField';
+import ApiKeyField from './ApiKeyField';
 
 export default function ConfigField({ schema, value, onChange, isModified, asyncValue, onAction }: any) {
     const { type, label, description } = schema;
@@ -59,6 +61,25 @@ export default function ConfigField({ schema, value, onChange, isModified, async
                     onChange={onChange}
                     isModified={isModified}
                     options={schema.options}
+                />
+            );
+
+        case 'modelSelect':
+            return (
+                <ModelSelectField
+                    label={label}
+                    description={description}
+                    value={value}
+                    onChange={onChange}
+                    isModified={isModified}
+                />
+            );
+
+        case 'apiKey':
+            return (
+                <ApiKeyField
+                    label={label}
+                    description={description}
                 />
             );
 

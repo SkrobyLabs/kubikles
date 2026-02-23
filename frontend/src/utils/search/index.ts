@@ -10,11 +10,5 @@
  * const filtered = pods.filter(filterFn);
  */
 
-export { parseQuery } from './queryParser';
-export { createFilter, filterData } from './filterEngine';
-export {
-    getFieldByName,
-    getFieldsForResource,
-    getAvailableFieldNames,
-    getFieldsMetadata
-} from './fieldMappings';
+export { createFilter } from './filterEngine';
+export { getFieldsMetadata } from './fieldMappings';

@@ -15,7 +15,6 @@ const (
 	CategoryHelm        = "helm"
 	CategoryPortforward = "portforward"
 	CategoryTerminal    = "terminal"
-	CategoryAI          = "ai"
 	CategoryConfig      = "config"
 	CategoryUI          = "ui"
 	CategoryWails       = "wails"
@@ -115,10 +114,6 @@ func LogPortforward(message string, details map[string]interface{}) {
 
 func LogTerminal(message string, details map[string]interface{}) {
 	Log(CategoryTerminal, message, details)
-}
-
-func LogAI(message string, details map[string]interface{}) {
-	Log(CategoryAI, message, details)
 }
 
 func LogConfig(message string, details map[string]interface{}) {

@@ -17,14 +17,12 @@ type MethodCaller interface {
 // ReflectMethodCaller provides a reflection-based implementation of MethodCaller.
 // This wraps any struct and exposes its public methods via reflection.
 type ReflectMethodCaller struct {
-	target      interface{}
 	targetValue reflect.Value
 }
 
 // NewReflectMethodCaller creates a new reflection-based method caller.
 func NewReflectMethodCaller(target interface{}) *ReflectMethodCaller {
 	return &ReflectMethodCaller{
-		target:      target,
 		targetValue: reflect.ValueOf(target),
 	}
 }

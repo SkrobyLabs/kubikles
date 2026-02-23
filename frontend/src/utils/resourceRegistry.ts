@@ -328,19 +328,3 @@ export function getResourceByKind(kind: string): ResourceDefinition | null {
     return Object.values(registry).find((r: any) => r.kind.toLowerCase() === kindLower) || null;
 }
 
-/**
- * Get all registered resource types.
- * @returns {string[]} Array of resource type keys
- */
-export function getResourceTypes() {
-    return Object.keys(registry);
-}
-
-/**
- * Check if a resource type is registered.
- * @param {string} resourceType - The resource type to check
- * @returns {boolean}
- */
-export function isRegisteredResource(resourceType: string): boolean {
-    return !!resourceType && resourceType.toLowerCase() in registry;
-}

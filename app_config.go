@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"kubikles/pkg/debug"
@@ -47,11 +46,6 @@ func (a *App) SetClientPoolSize(size int) {
 		a.k8sClient.SetClientPoolSize(size)
 		debug.LogConfig("Client pool size", map[string]interface{}{"size": size})
 	}
-}
-
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
 
 // TestEmit emits a test debug log event

@@ -21,7 +21,6 @@ interface NotificationContextValue {
     notifications: Notification[];
     addNotification: (params: AddNotificationParams) => number;
     removeNotification: (id: number) => void;
-    clearAll: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue | undefined>(undefined);
@@ -57,16 +56,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setNotifications(prev => prev.filter((n: any) => n.id !== id));
     }, []);
 
-    const clearAll = useCallback((): void => {
-        setNotifications([]);
-    }, []);
-
     const contextValue: NotificationContextValue = useMemo(() => ({
         notifications,
         addNotification,
         removeNotification,
-        clearAll
-    }), [notifications, addNotification, removeNotification, clearAll]);
+    }), [notifications, addNotification, removeNotification]);
 
     return (
         <NotificationContext.Provider value={contextValue}>

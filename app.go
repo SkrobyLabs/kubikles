@@ -97,7 +97,7 @@ func NewApp() *App {
 		k8sInitError:          err,
 		helmClient:            helm.NewClient(),
 		terminalManager:       terminal.NewManager(),
-		aiManager:             ai.NewManager(ai.NewClaudeCLIProvider()),
+		aiManager:             newAIManager(client),
 		logStreams:            make(map[string]context.CancelFunc),
 		prometheusConfigs:     make(map[string]*k8s.PrometheusInfo),
 		prometheusConfigPath:  filepath.Join(appDir, "prometheus_config.json"),

@@ -185,16 +185,16 @@ export const configSchema: Record<string, any> = {
     },
     ai: {
         _meta: { label: 'AI', description: 'AI assistant settings' },
+        apiKey: {
+            type: 'apiKey',
+            label: 'Anthropic API Key',
+            description: 'Required for Claude AI. Get one at console.anthropic.com',
+        },
         model: {
-            type: 'enum',
+            type: 'modelSelect',
             label: 'Model',
-            description: 'AI model to use for chat responses',
-            options: [
-                { value: 'sonnet', label: 'Sonnet (Fast)' },
-                { value: 'opus', label: 'Opus (Smart)' },
-                { value: 'haiku', label: 'Haiku (Fastest)' },
-            ],
-            default: 'sonnet'
+            description: 'AI model and provider to use for chat responses',
+            default: 'anthropic-api/sonnet'
         },
         requestTimeout: {
             type: 'number',
@@ -234,10 +234,6 @@ export const configSchema: Record<string, any> = {
                 { value: 'get_namespace_summary', label: 'Get Namespace Summary' },
                 { value: 'get_resource_dependencies', label: 'Get Resource Dependencies' },
                 { value: 'run_command', label: 'Run Command (controlled shell)', warn: true },
-                { value: 'Bash', label: 'Bash (unrestricted shell)', warn: true },
-                { value: 'WebSearch', label: 'Web Search', warn: true },
-                { value: 'Read', label: 'Read Files', warn: true },
-                { value: 'Write', label: 'Write Files', warn: true },
             ],
             default: [
                 'get_pod_logs', 'get_resource_yaml', 'list_resources',
@@ -393,7 +389,7 @@ export const getSortedSections = () =>
     Object.keys(configSchema).sort();
 
 // Get a field's schema by path (e.g., "logs.search.debounceMs")
-export const getFieldSchema = (path: string): any => {
+const getFieldSchema = (path: string): any => {
     const parts = path.split('.');
     let current: any = configSchema;
     for (const part of parts) {

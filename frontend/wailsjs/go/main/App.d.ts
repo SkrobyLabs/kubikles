@@ -30,6 +30,8 @@ export function CheckRBACAccess(arg1:string,arg2:string,arg3:string,arg4:string,
 
 export function ClearAISession(arg1:string):Promise<string>;
 
+export function ClearAnthropicAPIKey():Promise<void>;
+
 export function ClearPrometheusConfig():Promise<void>;
 
 export function CloseAISession(arg1:string):Promise<void>;
@@ -144,6 +146,10 @@ export function ForceDeletePod(arg1:string,arg2:string):Promise<void>;
 
 export function ForceHelmReleaseStatus(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function GetAIModels():Promise<Array<main.AIModelOption>>;
+
+export function GetAIProviders():Promise<Array<main.AIProviderInfo>>;
+
 export function GetActivePortForwards():Promise<Array<main.ActivePortForward>>;
 
 export function GetAllCertificateInfo(arg1:string):Promise<Array<main.CertificateInfo>>;
@@ -169,6 +175,8 @@ export function GetAllPodsLogsAll(arg1:string,arg2:Array<main.PodContainerPair>,
 export function GetAllPodsLogsBefore(arg1:string,arg2:Array<main.PodContainerPair>,arg3:boolean,arg4:boolean,arg5:boolean,arg6:string,arg7:number):Promise<main.LogChunkResult>;
 
 export function GetAllPodsLogsFromStart(arg1:string,arg2:Array<main.PodContainerPair>,arg3:boolean,arg4:boolean,arg5:boolean):Promise<string>;
+
+export function GetAnthropicAPIKeyStatus():Promise<string>;
 
 export function GetAvailablePort(arg1:number):Promise<number>;
 
@@ -356,8 +364,6 @@ export function GetValidatingWebhookConfigurationYaml(arg1:string):Promise<strin
 
 export function GetVersionInfo():Promise<main.VersionInfo>;
 
-export function Greet(arg1:string):Promise<string>;
-
 export function HelmDryRunUpgrade(arg1:string,arg2:string,arg3:helm.UpgradeOptions):Promise<helm.DryRunResult>;
 
 export function HelmTemplateRelease(arg1:string,arg2:string,arg3:helm.UpgradeOptions):Promise<helm.TemplateResult>;
@@ -541,6 +547,8 @@ export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;
 export function SendAIMessage(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<string>,arg6:Array<string>,arg7:number):Promise<boolean>;
 
 export function SendTerminalInput(arg1:string,arg2:string):Promise<void>;
+
+export function SetAnthropicAPIKey(arg1:string):Promise<void>;
 
 export function SetClientPoolSize(arg1:number):Promise<void>;
 

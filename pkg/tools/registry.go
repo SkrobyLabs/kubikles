@@ -141,43 +141,10 @@ func (r *ToolRegistry) initMetadata() {
 	}
 }
 
-// GetAllTools returns all registered tool definitions.
-func (r *ToolRegistry) GetAllTools() []ToolDef {
-	return r.tools
-}
-
 // GetMeta returns the metadata for a tool by name.
 // Returns an empty ToolMeta if the tool is not found.
 func (r *ToolRegistry) GetMeta(name string) ToolMeta {
 	return r.metadata[name]
-}
-
-// GetToolsForView returns tool names relevant to a specific UI view.
-func (r *ToolRegistry) GetToolsForView(view string) []string {
-	var result []string
-	for name, meta := range r.metadata {
-		for _, v := range meta.RelevantViews {
-			if v == view {
-				result = append(result, name)
-				break
-			}
-		}
-	}
-	return result
-}
-
-// GetToolsForAction returns tool names relevant to a specific UI action/tab.
-func (r *ToolRegistry) GetToolsForAction(action string) []string {
-	var result []string
-	for name, meta := range r.metadata {
-		for _, a := range meta.RelevantActions {
-			if a == action {
-				result = append(result, name)
-				break
-			}
-		}
-	}
-	return result
 }
 
 // BuildViewMapping returns a map of view names to relevant tool names.

@@ -138,7 +138,6 @@ func TestConvenienceFunctions_RouteCategory(t *testing.T) {
 		{LogHelm, CategoryHelm},
 		{LogPortforward, CategoryPortforward},
 		{LogTerminal, CategoryTerminal},
-		{LogAI, CategoryAI},
 		{LogConfig, CategoryConfig},
 		{LogUI, CategoryUI},
 		{LogWails, CategoryWails},

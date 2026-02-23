@@ -21,16 +21,6 @@ const (
 	CategoryDeprecation Category = "deprecation"
 )
 
-// AllCategories is the list of all known categories.
-var AllCategories = []Category{
-	CategoryNetworking,
-	CategoryWorkloads,
-	CategoryStorage,
-	CategorySecurity,
-	CategoryConfig,
-	CategoryDeprecation,
-}
-
 // ResourceRef identifies a specific Kubernetes resource.
 type ResourceRef struct {
 	Kind      string `json:"kind"`

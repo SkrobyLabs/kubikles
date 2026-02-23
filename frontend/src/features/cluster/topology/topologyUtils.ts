@@ -4,24 +4,6 @@
 
 import { getPodStatus } from '~/utils/k8s-helpers';
 
-/** Group pods by spec.nodeName, excluding Succeeded/completed pods */
-export function groupPodsByNode(pods: any[]): Map<string, any[]> {
-    const map = new Map<string, any[]>();
-    for (const pod of pods) {
-        const nodeName = pod.spec?.nodeName;
-        if (!nodeName) continue;
-        const status = pod.status?.phase;
-        if (status === 'Succeeded') continue;
-        const list = map.get(nodeName);
-        if (list) {
-            list.push(pod);
-        } else {
-            map.set(nodeName, [pod]);
-        }
-    }
-    return map;
-}
-
 /** 20-color palette for namespace coloring */
 const NAMESPACE_COLORS = [
     '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6',

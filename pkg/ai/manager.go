@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -43,11 +44,13 @@ type session struct {
 
 // Manager manages AI chat sessions and provider lifecycle.
 type Manager struct {
-	ctx      context.Context
-	emitter  events.Emitter
-	provider Provider
-	sessions map[string]*session
-	mu       sync.RWMutex
+	ctx        context.Context
+	emitter    events.Emitter
+	provider   Provider
+	providerID string    // registry key of the active provider
+	registry   *Registry // for on-demand provider creation
+	sessions   map[string]*session
+	mu         sync.RWMutex
 }
 
 // NewManager creates a new AI manager with the given provider.
@@ -61,11 +64,41 @@ func NewManager(provider Provider) *Manager {
 // NewManagerWithRegistry creates a new AI manager using the first available
 // provider from the given registry. Returns an error if no provider is available.
 func NewManagerWithRegistry(registry *Registry) (*Manager, error) {
-	provider, err := registry.GetFirstAvailable()
+	provider, providerID, err := registry.GetFirstAvailableWithID()
 	if err != nil {
 		return nil, err
 	}
-	return NewManager(provider), nil
+	return &Manager{
+		provider:   provider,
+		providerID: providerID,
+		registry:   registry,
+		sessions:   make(map[string]*session),
+	}, nil
+}
+
+// ProviderID returns the registry key of the active provider.
+func (m *Manager) ProviderID() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.providerID
+}
+
+// Registry returns the manager's provider registry (or DefaultRegistry as fallback).
+func (m *Manager) Registry() *Registry {
+	if m.registry != nil {
+		return m.registry
+	}
+	return DefaultRegistry
+}
+
+// parseModel splits a compound model string like "claude-cli/sonnet" into
+// provider ID and model name. A bare string like "sonnet" returns ("", "sonnet")
+// for backward compatibility.
+func parseModel(compound string) (providerID, modelName string) {
+	if idx := strings.IndexByte(compound, '/'); idx >= 0 {
+		return compound[:idx], compound[idx+1:]
+	}
+	return "", compound
 }
 
 // SetContext sets the Wails app context for event emission.
@@ -111,13 +144,41 @@ func (m *Manager) StartSession(clientID string) string {
 
 // SendMessage sends a message in a session asynchronously.
 // Streams response via ai:response Wails events.
+// model can be a compound string like "claude-cli/sonnet" or a bare model name.
 // timeoutSeconds overrides the default timeout when > 0.
 // Returns true if the request was successfully initiated, false if it failed validation.
 func (m *Manager) SendMessage(sessionID, message, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, timeoutSeconds int) bool {
-	m.mu.RLock()
+	// Parse compound model (e.g. "codex-cli/o3" → providerID="codex-cli", modelName="o3")
+	wantProvider, modelName := parseModel(model)
+
+	m.mu.Lock()
 	sess, exists := m.sessions[sessionID]
 	appCtx := m.ctx
-	m.mu.RUnlock()
+
+	// Switch provider if the compound model requests a different one
+	if wantProvider != "" && wantProvider != m.providerID && m.registry != nil {
+		newProvider, err := m.registry.CreateProvider(wantProvider)
+		if err != nil {
+			m.mu.Unlock()
+			m.emit(AIResponseEvent{SessionID: sessionID, Error: fmt.Sprintf("provider %q not available: %v", wantProvider, err), Done: true})
+			return false
+		}
+		if avail, _ := newProvider.IsAvailable(); !avail {
+			m.mu.Unlock()
+			m.emit(AIResponseEvent{SessionID: sessionID, Error: fmt.Sprintf("provider %q is not available", wantProvider), Done: true})
+			return false
+		}
+		// Close all existing CLI sessions (they're bound to the old provider)
+		for _, s := range m.sessions {
+			if s.cliSession != nil {
+				s.cliSession.Close()
+				s.cliSession = nil
+			}
+		}
+		m.provider = newProvider
+		m.providerID = wantProvider
+	}
+	m.mu.Unlock()
 
 	if !exists {
 		m.emit(AIResponseEvent{SessionID: sessionID, Error: "session not found", Done: true})
@@ -131,11 +192,11 @@ func (m *Manager) SendMessage(sessionID, message, systemPrompt, model, k8sContex
 
 	// Check if provider supports persistent sessions
 	if m.provider.SupportsSession() {
-		return m.sendMessagePersistent(sess, sessionID, message, systemPrompt, model, k8sContext, allowedTools, allowedCommands, timeoutSeconds)
+		return m.sendMessagePersistent(sess, sessionID, message, systemPrompt, modelName, k8sContext, allowedTools, allowedCommands, timeoutSeconds)
 	}
 
 	// Fallback to one-shot mode for providers that don't support sessions
-	m.sendMessageOneShot(sess, sessionID, message, systemPrompt, model, k8sContext, allowedTools, allowedCommands, timeoutSeconds, appCtx)
+	m.sendMessageOneShot(sess, sessionID, message, systemPrompt, modelName, k8sContext, allowedTools, allowedCommands, timeoutSeconds, appCtx)
 	return true
 }
 
@@ -165,10 +226,12 @@ func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, syste
 	m.mu.Lock()
 	sess.generation++
 
-	// Restart session if allowed tools or commands changed (e.g. user toggled a tool mid-conversation)
-	if sess.cliSession != nil && (!sortedEqual(sess.allowedTools, allowedTools) || !sortedEqual(sess.allowedCommands, allowedCommands)) {
-		sess.cliSession.Close()
-		sess.cliSession = nil
+	// Restart session if model, allowed tools, or commands changed
+	if sess.cliSession != nil {
+		if sess.model != model || !sortedEqual(sess.allowedTools, allowedTools) || !sortedEqual(sess.allowedCommands, allowedCommands) {
+			sess.cliSession.Close()
+			sess.cliSession = nil
+		}
 	}
 
 	// Clear dead sessions so we can start a fresh one
@@ -269,6 +332,12 @@ func (m *Manager) sendMessageOneShot(sess *session, sessionID, message, systemPr
 
 	go func() {
 		defer cancel()
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[AI] panic in sendMessageOneShot: %v", r)
+				m.emit(AIResponseEvent{SessionID: sessionID, Generation: gen, Error: fmt.Sprintf("internal error: %v", r), Done: true})
+			}
+		}()
 
 		req := Request{
 			SessionID:       sessionID,

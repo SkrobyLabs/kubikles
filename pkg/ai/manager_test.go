@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -594,5 +595,178 @@ func TestManager_StaleEventsFilteredAfterRestart(t *testing.T) {
 		if event, ok := e.Data.(AIResponseEvent); ok && event.Error != "" {
 			t.Errorf("expected stale event to be filtered, got error: %q", event.Error)
 		}
+	}
+}
+
+func TestParseModel(t *testing.T) {
+	tests := []struct {
+		input     string
+		wantProv  string
+		wantModel string
+	}{
+		{"claude-cli/sonnet", "claude-cli", "sonnet"},
+		{"codex-cli/o3", "codex-cli", "o3"},
+		{"sonnet", "", "sonnet"},
+		{"", "", ""},
+		{"provider/model/extra", "provider", "model/extra"},
+	}
+
+	for _, tc := range tests {
+		prov, model := parseModel(tc.input)
+		if prov != tc.wantProv || model != tc.wantModel {
+			t.Errorf("parseModel(%q) = (%q, %q), want (%q, %q)",
+				tc.input, prov, model, tc.wantProv, tc.wantModel)
+		}
+	}
+}
+
+func TestManager_SessionRestartsOnModelChange(t *testing.T) {
+	provider := NewMockProvider()
+	var sessions []*MockSession
+	provider.SetStartSessionFunc(func(sessionID, systemPrompt, model, k8sContext string, allowedTools, allowedCommands []string, onEvent func(StreamEvent)) (Session, error) {
+		sess := NewMockSession(onEvent)
+		sessions = append(sessions, sess)
+		return sess, nil
+	})
+
+	manager := NewManager(provider)
+
+	emitter := &mockEmitter{}
+	ctx := context.Background()
+	manager.SetEmitter(emitter, ctx)
+
+	sessionID := manager.StartSession("")
+
+	// First message with model "sonnet"
+	manager.SendMessage(sessionID, "hello", "", "sonnet", "", nil, nil, 0)
+	time.Sleep(50 * time.Millisecond)
+
+	if len(sessions) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(sessions))
+	}
+
+	// Second message with same model — should reuse session
+	manager.SendMessage(sessionID, "hello2", "", "sonnet", "", nil, nil, 0)
+	time.Sleep(50 * time.Millisecond)
+
+	if len(sessions) != 1 {
+		t.Fatalf("expected still 1 session (reused), got %d", len(sessions))
+	}
+
+	// Third message with DIFFERENT model — should restart session
+	manager.SendMessage(sessionID, "hello3", "", "opus", "", nil, nil, 0)
+	time.Sleep(50 * time.Millisecond)
+
+	if len(sessions) != 2 {
+		t.Fatalf("expected 2 sessions (model change restart), got %d", len(sessions))
+	}
+
+	// Old session should be closed
+	if !sessions[0].IsClosed() {
+		t.Error("expected old session to be closed after model change")
+	}
+}
+
+func TestManager_ProviderSwitch(t *testing.T) {
+	// Create a registry with two mock providers
+	registry := NewRegistry()
+
+	providerA := NewMockProvider()
+	providerA.SetName("Provider A")
+	providerA.SetAvailable(true, "available")
+
+	providerB := NewMockProvider()
+	providerB.SetName("Provider B")
+	providerB.SetAvailable(true, "available")
+	providerB.SetSupportsSession(false) // one-shot mode for provider B
+
+	var providerARef, providerBRef *MockProvider
+	registry.Register("prov-a", func() Provider {
+		providerARef = NewMockProvider()
+		providerARef.SetName("Provider A")
+		providerARef.SetAvailable(true, "available")
+		providerARef.SetSupportsSession(true)
+		return providerARef
+	}, nil)
+	registry.Register("prov-b", func() Provider {
+		providerBRef = NewMockProvider()
+		providerBRef.SetName("Provider B")
+		providerBRef.SetAvailable(true, "available")
+		providerBRef.SetSupportsSession(false)
+		return providerBRef
+	}, nil)
+
+	manager, err := NewManagerWithRegistry(registry)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	emitter := &mockEmitter{}
+	ctx := context.Background()
+	manager.SetEmitter(emitter, ctx)
+
+	sessionID := manager.StartSession("")
+
+	// Send with compound model for prov-b
+	manager.SendMessage(sessionID, "hello", "", "prov-b/mymodel", "", nil, nil, 0)
+	time.Sleep(50 * time.Millisecond)
+
+	// Provider should have switched
+	if manager.ProviderID() != "prov-b" {
+		t.Errorf("expected providerID 'prov-b', got %q", manager.ProviderID())
+	}
+
+	// Provider B doesn't support sessions, so it uses one-shot mode
+	if providerBRef == nil {
+		t.Fatal("expected provider B to be created")
+	}
+	calls := providerBRef.GetSendMessageCalls()
+	if len(calls) != 1 {
+		t.Fatalf("expected 1 send call to provider B, got %d", len(calls))
+	}
+	if calls[0].Model != "mymodel" {
+		t.Errorf("expected model 'mymodel' passed to provider, got %q", calls[0].Model)
+	}
+}
+
+func TestManager_ProviderSwitch_InvalidProvider(t *testing.T) {
+	registry := NewRegistry()
+	registry.Register("prov-a", func() Provider {
+		p := NewMockProvider()
+		p.SetAvailable(true, "ok")
+		return p
+	}, nil)
+
+	manager, err := NewManagerWithRegistry(registry)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	emitter := &mockEmitter{}
+	ctx := context.Background()
+	manager.SetEmitter(emitter, ctx)
+
+	sessionID := manager.StartSession("")
+
+	// Send with unknown provider
+	result := manager.SendMessage(sessionID, "hello", "", "unknown/model", "", nil, nil, 0)
+	if result {
+		t.Error("expected SendMessage to return false for unknown provider")
+	}
+
+	// Should have emitted error
+	time.Sleep(10 * time.Millisecond)
+	events := emitter.getEvents()
+	found := false
+	for _, e := range events {
+		if event, ok := e.Data.(AIResponseEvent); ok && event.Error != "" {
+			found = true
+			if event.Error != fmt.Sprintf("provider %q not available: provider %q not registered", "unknown", "unknown") {
+				t.Errorf("unexpected error: %q", event.Error)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected error event for unknown provider")
 	}
 }

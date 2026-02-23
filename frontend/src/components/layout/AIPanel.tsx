@@ -217,7 +217,13 @@ export default function AIPanel() {
                     <span className="text-sm font-medium text-text">AI Assistant</span>
                     {providerName && (
                         <span className="text-[10px] text-gray-500">
-                            {providerName}{getConfig('ai.model') ? ` · ${getConfig('ai.model')}` : ''}
+                            {(() => {
+                                const model = getConfig('ai.model') as string | undefined;
+                                if (!model) return providerName;
+                                const slash = model.indexOf('/');
+                                if (slash >= 0) return `${model.slice(0, slash)} / ${model.slice(slash + 1)}`;
+                                return `${providerName} · ${model}`;
+                            })()}
                         </span>
                     )}
                 </div>

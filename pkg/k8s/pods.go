@@ -325,49 +325,129 @@ func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string,
 }
 
 // StreamPodLogs streams logs from a pod container and calls the callback for each line.
-// It continues until the context is canceled or an error occurs.
-// The callback receives each log line as it arrives.
+// It continues until the context is canceled or the pod terminates.
+// Transient disconnects (unexpected EOF, connection reset) are retried automatically
+// using the last received timestamp to avoid duplicate lines.
 func (c *Client) StreamPodLogs(ctx context.Context, namespace, podName, containerName string, timestamps bool, tailLines int64, onLine func(line string)) error {
 	cs, err := c.getClientset()
 	if err != nil {
 		return err
 	}
 
-	opts := &v1.PodLogOptions{
-		Follow:     true,
-		Timestamps: timestamps,
-	}
-	if tailLines > 0 {
-		opts.TailLines = &tailLines
-	}
-	if containerName != "" {
-		opts.Container = containerName
-	}
+	const maxConsecutiveFailures = 5
+	const reconnectDelay = 2 * time.Second
 
-	req := cs.CoreV1().Pods(namespace).GetLogs(podName, opts)
-	stream, err := req.Stream(ctx)
-	if err != nil {
-		return err
-	}
-	defer stream.Close()
+	var lastTimestamp string
+	consecutiveFailures := 0
+	firstConnect := true
 
-	scanner := bufio.NewScanner(stream)
-	// Increase buffer size for long log lines
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-
-	for scanner.Scan() {
+	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			onLine(scanner.Text())
+		}
+
+		opts := &v1.PodLogOptions{
+			Follow:     true,
+			Timestamps: true, // Always request timestamps for reconnect tracking
+		}
+		if containerName != "" {
+			opts.Container = containerName
+		}
+
+		if firstConnect {
+			if tailLines > 0 {
+				opts.TailLines = &tailLines
+			}
+			firstConnect = false
+		} else if lastTimestamp != "" {
+			// Reconnect: resume from last received timestamp + 1ns to avoid duplicates
+			t, parseErr := time.Parse(time.RFC3339Nano, lastTimestamp)
+			if parseErr == nil {
+				sinceTime := metav1.NewTime(t.Add(time.Nanosecond))
+				opts.SinceTime = &sinceTime
+			}
+		}
+
+		req := cs.CoreV1().Pods(namespace).GetLogs(podName, opts)
+		stream, err := req.Stream(ctx)
+		if err != nil {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+			// Stream open failed — likely terminal (pod deleted, not found, etc.)
+			return err
+		}
+
+		scanner := bufio.NewScanner(stream)
+		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+		linesReceived := 0
+		for scanner.Scan() {
+			select {
+			case <-ctx.Done():
+				stream.Close()
+				return ctx.Err()
+			default:
+			}
+
+			line := scanner.Text()
+			linesReceived++
+
+			// Extract timestamp (always present since Timestamps: true)
+			if len(line) >= 30 {
+				lastTimestamp = line[:30]
+			}
+
+			// Strip timestamp prefix if caller doesn't want timestamps
+			if !timestamps {
+				if len(line) > 31 && line[30] == ' ' {
+					line = line[31:]
+				}
+			}
+
+			onLine(line)
+		}
+
+		stream.Close()
+
+		scanErr := scanner.Err()
+
+		// Clean EOF (scanErr == nil): pod/container terminated normally — don't reconnect
+		if scanErr == nil {
+			return nil
+		}
+
+		// Context cancelled
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// Transient error — attempt reconnect
+		if linesReceived > 0 {
+			consecutiveFailures = 0
+		} else {
+			consecutiveFailures++
+		}
+
+		if consecutiveFailures >= maxConsecutiveFailures {
+			return fmt.Errorf("log stream failed after %d consecutive reconnect attempts: %w", maxConsecutiveFailures, scanErr)
+		}
+
+		log.Printf("[K8s Client] Log stream interrupted for %s/%s/%s (err: %v), reconnecting in %v...",
+			namespace, podName, containerName, scanErr, reconnectDelay)
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(reconnectDelay):
 		}
 	}
-
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-	return nil
 }
 
 // timestampedLogLine represents a log line with parsed timestamp for sorting

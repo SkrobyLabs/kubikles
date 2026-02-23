@@ -334,9 +334,9 @@ export default function YamlEditor({
 
             {/* Header Bar */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
-                <div className="text-sm font-medium text-gray-400">
+                <span className="text-sm font-medium text-gray-400 select-text cursor-text">
                     {isNamespaced ? `${namespace}/${resourceName}` : resourceName}
-                </div>
+                </span>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={onClose}

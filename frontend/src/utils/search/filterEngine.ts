@@ -81,15 +81,3 @@ function matchCondition(item: any, condition: any, resourceType: string): boolea
     return false;
 }
 
-/**
- * Parse and filter data in one step (convenience function).
- *
- * @param {Array} data - Array of resource items to filter
- * @param {string} resourceType - The resource type
- * @param {string} queryString - The search query string
- * @returns {Array} Filtered array
- */
-export function filterData(data: any[], resourceType: string, queryString: string): any[] {
-    const filterFn = createFilter(resourceType, queryString);
-    return data.filter(filterFn);
-}

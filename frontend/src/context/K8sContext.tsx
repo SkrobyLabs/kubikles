@@ -27,17 +27,6 @@ interface CRD {
     spec?: CRDSpec;
 }
 
-interface WatcherStatusInfo {
-    status: 'running' | 'connected' | 'error' | 'stopped';
-    error?: string | null;
-    namespace?: string;
-    recoverable?: boolean;
-}
-
-interface WatcherStatus {
-    [resourceType: string]: WatcherStatusInfo;
-}
-
 interface ConnectionError {
     title: string;
     message: string;
@@ -82,7 +71,6 @@ interface K8sContextValue {
     // Namespace management
     namespaces: string[];
     currentNamespace: string;
-    setCurrentNamespace: (ns: string | string[]) => void;
     selectedNamespaces: string[];
     setSelectedNamespaces: (namespaces: string[]) => void;
     refreshNamespaces: () => Promise<void>;
@@ -96,14 +84,10 @@ interface K8sContextValue {
     // no scroll jump, no selection loss)
     reconcileToken: number;
 
-    // Watcher status
-    watcherStatus: WatcherStatus;
-
     // CRD lookup for owner reference resolution
     crds: CRD[];
     crdsLoading: boolean;
     ensureCRDsLoaded: () => Promise<CRD[]>;
-    findCRD: (apiVersion: string, kind: string) => CRD | null;
 
     // Connection state
     connectionError: ConnectionError | null;
@@ -234,7 +218,6 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>(['default']);
     const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
     const [isLoadingNamespaces, setIsLoadingNamespaces] = useState<boolean>(false);
-    const [watcherStatus, setWatcherStatus] = useState<WatcherStatus>({}); // { resourceType: { status, error } }
     const [reconcileToken, setReconcileToken] = useState(0);
     const watcherPrevStatusRef = useRef<Record<string, string>>({});
     const reconnectRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -258,11 +241,8 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const crdsLoadedForContext = useRef<string | null>(null);
     const crdsFetchPromise = useRef<{ context: string; promise: Promise<CRD[]> } | null>(null);
 
-    // Backward compatibility: expose currentNamespace for components not yet updated
+    // Derived single-namespace value for components using single-namespace API
     const currentNamespace = selectedNamespaces.length === 1 ? selectedNamespaces[0] : '';
-    const setCurrentNamespace = (ns: string | string[]): void => {
-        setSelectedNamespaces(Array.isArray(ns) ? ns : [ns]);
-    };
 
     // Persistence Helpers
     const loadContextState = (ctx: string): ContextState => {
@@ -450,7 +430,6 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // Clear state immediately to prevent stale data display
             setNamespaces([]);
             setSelectedNamespaces([]);
-            setWatcherStatus({});
 
             // Set loading flag to prevent saves during switch
             setIsLoadingNamespaces(true);
@@ -599,10 +578,6 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
 
             Logger.warn("Watcher error received", { resourceType, namespace, error, recoverable }, 'k8s');
-            setWatcherStatus(prev => ({
-                ...prev,
-                [resourceType]: { status: 'error', error, namespace, recoverable }
-            }));
 
             // Check if this is an auth/connection error that should show the connection error UI
             const errorStr = String(error);
@@ -652,11 +627,6 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }, 500);
             }
 
-            setWatcherStatus(prev => ({
-                ...prev,
-                [resourceType]: { status, namespace, error: null }
-            }));
-
             // Clear connection error if a watcher successfully connects
             if (status === 'running' || status === 'connected') {
                 setConnectionError(null);
@@ -678,9 +648,8 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentContextRef.current = currentContext;
     }, [currentContext]);
 
-    // Clear watcher status on context switch
+    // Clear watcher reconnection tracking on context switch
     useEffect(() => {
-        setWatcherStatus({});
         watcherPrevStatusRef.current = {};
         if (reconnectRefreshTimerRef.current) {
             clearTimeout(reconnectRefreshTimerRef.current);
@@ -762,24 +731,6 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return fetchPromise;
     }, [currentContext]);
 
-    // Look up CRD by apiVersion and kind (for resolving owner references)
-    const findCRD = useCallback((apiVersion: string, kind: string): CRD | null => {
-        if (!apiVersion || !kind) return null;
-
-        // Parse apiVersion: "group/version" or just "version" for core API
-        const parts = apiVersion.split('/');
-        const group = parts.length === 2 ? parts[0] : '';
-        const version = parts.length === 2 ? parts[1] : parts[0];
-
-        // Find matching CRD
-        return crds.find((crd: any) => {
-            const crdGroup = crd.spec?.group || '';
-            const crdKind = crd.spec?.names?.kind || '';
-            // Match group and kind
-            return crdGroup === group && crdKind === kind;
-        }) || null;
-    }, [crds]);
-
     // Clear CRDs on context switch
     // Note: don't clear crdsFetchPromise — the context tag handles staleness
     useEffect(() => {
@@ -794,7 +745,6 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentContext,
         namespaces,
         currentNamespace,
-        setCurrentNamespace,
         selectedNamespaces,
         setSelectedNamespaces,
         switchContext,
@@ -804,12 +754,10 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         lastRefresh,
         triggerRefresh,
         reconcileToken,
-        watcherStatus,
         // CRD lookup for owner reference resolution
         crds,
         crdsLoading,
         ensureCRDsLoaded,
-        findCRD,
         // Connection state
         connectionError,
         isConnecting,
@@ -829,11 +777,9 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         lastRefresh,
         triggerRefresh,
         reconcileToken,
-        watcherStatus,
         crds,
         crdsLoading,
         ensureCRDsLoaded,
-        findCRD,
         connectionError,
         isConnecting,
         retryConnection,

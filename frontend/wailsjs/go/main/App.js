@@ -42,6 +42,10 @@ export function ClearAISession(arg1) {
   return window['go']['main']['App']['ClearAISession'](arg1);
 }
 
+export function ClearAnthropicAPIKey() {
+  return window['go']['main']['App']['ClearAnthropicAPIKey']();
+}
+
 export function ClearPrometheusConfig() {
   return window['go']['main']['App']['ClearPrometheusConfig']();
 }
@@ -270,6 +274,14 @@ export function ForceHelmReleaseStatus(arg1, arg2, arg3) {
   return window['go']['main']['App']['ForceHelmReleaseStatus'](arg1, arg2, arg3);
 }
 
+export function GetAIModels() {
+  return window['go']['main']['App']['GetAIModels']();
+}
+
+export function GetAIProviders() {
+  return window['go']['main']['App']['GetAIProviders']();
+}
+
 export function GetActivePortForwards() {
   return window['go']['main']['App']['GetActivePortForwards']();
 }
@@ -320,6 +332,10 @@ export function GetAllPodsLogsBefore(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
 
 export function GetAllPodsLogsFromStart(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['GetAllPodsLogsFromStart'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function GetAnthropicAPIKeyStatus() {
+  return window['go']['main']['App']['GetAnthropicAPIKeyStatus']();
 }
 
 export function GetAvailablePort(arg1) {
@@ -694,10 +710,6 @@ export function GetVersionInfo() {
   return window['go']['main']['App']['GetVersionInfo']();
 }
 
-export function Greet(arg1) {
-  return window['go']['main']['App']['Greet'](arg1);
-}
-
 export function HelmDryRunUpgrade(arg1, arg2, arg3) {
   return window['go']['main']['App']['HelmDryRunUpgrade'](arg1, arg2, arg3);
 }
@@ -1064,6 +1076,10 @@ export function SendAIMessage(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
 
 export function SendTerminalInput(arg1, arg2) {
   return window['go']['main']['App']['SendTerminalInput'](arg1, arg2);
+}
+
+export function SetAnthropicAPIKey(arg1) {
+  return window['go']['main']['App']['SetAnthropicAPIKey'](arg1);
 }
 
 export function SetClientPoolSize(arg1) {

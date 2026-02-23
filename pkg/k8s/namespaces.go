@@ -96,11 +96,13 @@ func (c *Client) GetNamespaceResourceCounts(namespace string) (*NamespaceResourc
 	var mu sync.Mutex
 	errChan := make(chan error, 12)
 
-	// Pods
+	// Pods (exclude terminal phases to match node metrics behavior)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		list, err := cs.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+		list, err := cs.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+			FieldSelector: "status.phase!=Succeeded,status.phase!=Failed",
+		})
 		if err != nil {
 			errChan <- err
 			return

@@ -39,17 +39,3 @@ export const portForwardConfigSchema = z.object({
 
 export type PortForwardConfigFormValues = z.infer<typeof portForwardConfigSchema>;
 
-/**
- * Edit mode schema (less strict - some fields are read-only)
- */
-export const portForwardEditSchema = z.object({
-  id: requiredStringSchema,
-  localPort: portSchema,
-  label: optionalStringSchema.default(''),
-  favorite: z.boolean().default(false),
-  https: z.boolean().default(false),
-  autoStart: z.boolean().default(false),
-  keepAlive: z.boolean().default(false),
-});
-
-export type PortForwardEditFormValues = z.infer<typeof portForwardEditSchema>;

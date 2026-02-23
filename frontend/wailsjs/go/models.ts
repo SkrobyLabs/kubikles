@@ -1633,6 +1633,44 @@ export namespace k8s {
 
 export namespace main {
 	
+	export class AIModelOption {
+	    value: string;
+	    label: string;
+	    provider: string;
+	    providerLabel: string;
+	    available: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AIModelOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.value = source["value"];
+	        this.label = source["label"];
+	        this.provider = source["provider"];
+	        this.providerLabel = source["providerLabel"];
+	        this.available = source["available"];
+	    }
+	}
+	export class AIProviderInfo {
+	    name: string;
+	    id: string;
+	    available: boolean;
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AIProviderInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.id = source["id"];
+	        this.available = source["available"];
+	        this.status = source["status"];
+	    }
+	}
 	export class AIProviderStatus {
 	    available: boolean;
 	    status: string;

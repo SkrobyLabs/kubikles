@@ -27,23 +27,6 @@ export const stripAnsiCodes = (text: any) => {
     return text.replace(/\x1b\[[0-9;]*m/g, '');
 };
 
-/**
- * Validate RFC3339 datetime format (e.g., 2024-11-26T14:30:00Z).
- * Accepts multiple common formats.
- */
-export const isValidDateTime = (str: any) => {
-    if (!str) return false;
-    // Accept formats like: 2024-11-26T14:30:00Z, 2024-11-26T14:30:00, 2024-11-26 14:30:00
-    const patterns = [
-        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z?$/,
-        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/,
-        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/,
-        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/
-    ];
-    if (!patterns.some((p: any) => p.test(str))) return false;
-    const date = new Date(str.replace(' ', 'T'));
-    return !isNaN(date.getTime());
-};
 
 /**
  * Convert input datetime string to RFC3339 format.

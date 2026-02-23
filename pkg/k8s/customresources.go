@@ -195,14 +195,6 @@ func (c *Client) getDynamicClientForContext(contextName string) (dynamic.Interfa
 	return dynamic.NewForConfig(config)
 }
 
-// CustomResourceInfo represents metadata about a custom resource instance
-type CustomResourceInfo struct {
-	Name              string `json:"name"`
-	Namespace         string `json:"namespace,omitempty"`
-	CreationTimestamp string `json:"creationTimestamp"`
-	UID               string `json:"uid"`
-}
-
 // ListCustomResources lists instances of a custom resource
 func (c *Client) ListCustomResources(contextName, group, version, resource, namespace string) ([]map[string]interface{}, error) {
 	ctx, cancel := c.contextWithTimeout()

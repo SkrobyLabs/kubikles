@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
     normalizeAnsiCodes,
     stripAnsiCodes,
-    isValidDateTime,
     toRFC3339,
     parseLogLines,
     highlightMatchesInHtml,
@@ -63,42 +62,6 @@ describe('stripAnsiCodes', () => {
 
     it('handles empty string', () => {
         expect(stripAnsiCodes('')).toBe('');
-    });
-});
-
-describe('isValidDateTime', () => {
-    it('accepts RFC3339 format with Z suffix', () => {
-        expect(isValidDateTime('2024-11-26T14:30:00Z')).toBe(true);
-    });
-
-    it('accepts RFC3339 format without Z suffix', () => {
-        expect(isValidDateTime('2024-11-26T14:30:00')).toBe(true);
-    });
-
-    it('accepts space-separated format', () => {
-        expect(isValidDateTime('2024-11-26 14:30:00')).toBe(true);
-    });
-
-    it('accepts short format with T', () => {
-        expect(isValidDateTime('2024-11-26T14:30')).toBe(true);
-    });
-
-    it('accepts short format with space', () => {
-        expect(isValidDateTime('2024-11-26 14:30')).toBe(true);
-    });
-
-    it('rejects invalid date', () => {
-        expect(isValidDateTime('2024-13-45T99:99:99Z')).toBe(false);
-    });
-
-    it('rejects random strings', () => {
-        expect(isValidDateTime('not a date')).toBe(false);
-    });
-
-    it('rejects null/undefined', () => {
-        expect(isValidDateTime(null)).toBe(false);
-        expect(isValidDateTime(undefined)).toBe(false);
-        expect(isValidDateTime('')).toBe(false);
     });
 });
 

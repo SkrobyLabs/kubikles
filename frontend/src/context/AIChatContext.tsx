@@ -530,7 +530,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
         generationRef.current++;
         currentUsageRef.current = null;
 
-        const model = getConfig('ai.model') || 'sonnet';
+        const model = getConfig('ai.model') || 'anthropic-api/sonnet';
         const systemPrompt = buildSystemPrompt();
 
         // Prepend current UI context to the message sent to the provider

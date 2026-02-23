@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createFilter, filterData } from './filterEngine';
+import { createFilter } from './filterEngine';
 
 // Mock pod data for testing
 const mockPods = [
@@ -169,24 +169,3 @@ describe('createFilter', () => {
     });
 });
 
-describe('filterData', () => {
-    it('filters array with query string', () => {
-        const results = filterData(mockPods, 'pods', 'nginx');
-        expect(results).toHaveLength(2);
-    });
-
-    it('returns all items for empty query', () => {
-        const results = filterData(mockPods, 'pods', '');
-        expect(results).toHaveLength(4);
-    });
-
-    it('returns empty array for no matches', () => {
-        const results = filterData(mockPods, 'pods', 'nonexistent');
-        expect(results).toHaveLength(0);
-    });
-
-    it('handles empty data array', () => {
-        const results = filterData([], 'pods', 'nginx');
-        expect(results).toHaveLength(0);
-    });
-});

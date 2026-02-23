@@ -25,10 +25,6 @@ const DependencyGraphImpl = lazy(() => import('../shared/DependencyGraph'));
 const TerminalImpl = lazy(() => import('../shared/Terminal'));
 const PodFileBrowserImpl = lazy(() => import('../shared/PodFileBrowser'));
 
-// Monaco editor direct (for ConfigEditor, SecretEditor, etc.)
-const MonacoEditorImpl = lazy(() =>
-    import('@monaco-editor/react').then(mod => ({ default: mod.default }))
-);
 
 /**
  * Lazy-loaded YAML Editor with Suspense boundary
@@ -58,16 +54,6 @@ export const LazyTerminal = (props: any) => (
 );
 
 /**
- * Lazy-loaded Monaco Editor with Suspense boundary
- * Use this for direct Monaco usage (ConfigEditor, SecretEditor, etc.)
- */
-export const LazyMonacoEditor = (props: any) => (
-    <Suspense fallback={<LoadingSpinner text="Loading editor..." />}>
-        <MonacoEditorImpl {...props} />
-    </Suspense>
-);
-
-/**
  * Lazy-loaded Pod File Browser with Suspense boundary
  */
 export const LazyPodFileBrowser = (props: any) => (
@@ -76,5 +62,3 @@ export const LazyPodFileBrowser = (props: any) => (
     </Suspense>
 );
 
-// Also export the loading spinner for custom use
-export { LoadingSpinner };

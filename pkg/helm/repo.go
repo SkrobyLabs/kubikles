@@ -192,50 +192,6 @@ func (c *Client) RefreshACRTokenIfNeeded(repoName string) error {
 	return nil
 }
 
-// ForceRefreshACRCredentials forces a credential refresh for an ACR repo, ignoring expiry check
-func (c *Client) ForceRefreshACRCredentials(repoName string) error {
-	repoFile := c.settings.RepositoryConfig
-	f, err := repo.LoadFile(repoFile)
-	if err != nil {
-		return fmt.Errorf("failed to load repository file: %w", err)
-	}
-
-	var entry *repo.Entry
-	for _, r := range f.Repositories {
-		if r.Name == repoName {
-			entry = r
-			break
-		}
-	}
-
-	if entry == nil {
-		return fmt.Errorf("repository %q not found", repoName)
-	}
-
-	if !isACRURL(entry.URL) {
-		return fmt.Errorf("repository %q is not an ACR repository", repoName)
-	}
-
-	registryName := extractACRName(entry.URL)
-	if registryName == "" {
-		return fmt.Errorf("could not extract registry name from URL: %s", entry.URL)
-	}
-
-	creds, err := refreshACRCredentials(registryName)
-	if err != nil {
-		return fmt.Errorf("failed to refresh ACR credentials: %w", err)
-	}
-
-	entry.Username = creds.Username
-	entry.Password = creds.Password
-
-	if err := f.WriteFile(repoFile, 0644); err != nil {
-		return fmt.Errorf("failed to save updated credentials: %w", err)
-	}
-
-	return nil
-}
-
 // RefreshAllACRTokens refreshes credentials for all ACR repos that need it
 func (c *Client) RefreshAllACRTokens() error {
 	repoFile := c.settings.RepositoryConfig

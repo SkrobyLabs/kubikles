@@ -75,22 +75,6 @@ export const useDebug = (): DebugContextValue => {
     return context;
 };
 
-interface UseDebugLogReturn {
-    log: (message: string, details?: unknown | null) => void;
-    isDebugEnabled: boolean;
-}
-
-export function useDebugLog(category: DebugCategory): UseDebugLogReturn {
-    const { isDebugMode } = useDebug();
-    // This hook is a convenience for components - logs go through the FE event system
-    const log = useCallback((message: string, details: unknown | null = null): void => {
-        if (!isDebugMode) return;
-        window.dispatchEvent(new CustomEvent('frontend-debug-log', {
-            detail: { category, message, details }
-        }));
-    }, [isDebugMode, category]);
-    return { log, isDebugEnabled: isDebugMode };
-}
 
 export const DebugProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isDebugMode, setIsDebugMode] = useState<boolean>(() => {

@@ -16,6 +16,13 @@ type Provider interface {
 	Capabilities() ProviderCapabilities
 }
 
+// Session represents a persistent CLI session for bidirectional streaming.
+type Session interface {
+	SendMessage(message string) error
+	Close()
+	IsAlive() bool
+}
+
 // ProviderCapabilities describes what features a provider supports.
 type ProviderCapabilities struct {
 	// SupportsStreaming indicates if the provider can stream responses token-by-token.

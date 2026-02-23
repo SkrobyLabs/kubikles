@@ -402,17 +402,6 @@ nav.overflow-y-auto {
   contain: strict;
 }
 
-/* Modal backdrops - optimize hidden modals */
-.modal-hidden {
-  content-visibility: hidden;
-  contain-intrinsic-size: 0 500px;
-}
-
-/* Large detail panels in the bottom panel */
-.detail-panel {
-  contain: layout style paint;
-}
-
 /* Collapse sections that aren't visible */
 details:not([open]) > :not(summary) {
   content-visibility: hidden;

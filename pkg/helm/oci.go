@@ -303,35 +303,6 @@ func (c *Client) LogoutOCIRegistry(registry string) error {
 	return nil
 }
 
-// IsOCIRegistryAuthenticated checks if we're authenticated to a registry
-func (c *Client) IsOCIRegistryAuthenticated(registry string) bool {
-	configPath := getDockerConfigPath()
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return false
-	}
-
-	var config DockerConfig
-	if err := json.Unmarshal(data, &config); err != nil {
-		return false
-	}
-
-	// Check various forms of the registry URL
-	registryVariants := []string{
-		registry,
-		strings.TrimPrefix(registry, "https://"),
-		strings.TrimPrefix(registry, "http://"),
-	}
-
-	for _, variant := range registryVariants {
-		if auth, ok := config.Auths[variant]; ok {
-			return auth.Auth != "" || auth.Password != ""
-		}
-	}
-
-	return false
-}
-
 // OCIChartVersion represents a version of a chart from an OCI registry
 type OCIChartVersion struct {
 	Version string `json:"version"`
@@ -436,34 +407,4 @@ func (c *Client) SearchOCIChart(chartName string) ([]OCIChartSource, error) {
 	})
 
 	return sources, nil
-}
-
-// GetOCIChartVersions gets versions for a specific chart from an OCI registry
-func (c *Client) GetOCIChartVersions(registryURL, repository string) ([]OCIChartVersion, error) {
-	if strings.Contains(registryURL, ".azurecr.io") {
-		acrName := extractACRNameFromURL(registryURL)
-		if acrName == "" {
-			return nil, fmt.Errorf("could not extract ACR name from URL: %s", registryURL)
-		}
-
-		cmd := exec.Command("az", "acr", "repository", "show-tags", "-n", acrName, "--repository", repository, "-o", "json", "--orderby", "time_desc")
-		output, err := cmd.Output()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get tags: %w", err)
-		}
-
-		var tags []string
-		if err := json.Unmarshal(output, &tags); err != nil {
-			return nil, fmt.Errorf("failed to parse tags: %w", err)
-		}
-
-		versions := make([]OCIChartVersion, 0, len(tags))
-		for _, tag := range tags {
-			versions = append(versions, OCIChartVersion{Version: tag})
-		}
-
-		return versions, nil
-	}
-
-	return nil, fmt.Errorf("OCI registry type not supported for version listing")
 }

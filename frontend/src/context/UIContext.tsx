@@ -60,7 +60,6 @@ interface UIContextValue {
 
     // Tab operations
     openTab: (tab: BottomTab) => void;
-    updateTab: (tabId: string, updates: Partial<BottomTab>) => void;
     closeTab: (tabId: string) => void;
     closeOtherTabs: (tabId: string) => void;
     closeTabsToRight: (tabId: string) => void;
@@ -277,12 +276,6 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         setActiveTabId(tab.id);
     }, [currentContext]);
 
-    const updateTab = useCallback((tabId: string, updates: Partial<BottomTab>): void => {
-        setBottomTabs(prev => prev.map((t: any) =>
-            t.id === tabId ? { ...t, ...updates } : t
-        ));
-    }, []);
-
     const togglePinTab = useCallback((tabId: string): void => {
         setBottomTabs(prev => {
             const newTabs = prev.map((t: any) =>
@@ -383,7 +376,6 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         activeTabId,
         setActiveTabId,
         openTab,
-        updateTab,
         closeTab,
         closeOtherTabs,
         closeTabsToRight,
@@ -413,7 +405,6 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         bottomTabs,
         activeTabId,
         openTab,
-        updateTab,
         closeTab,
         closeOtherTabs,
         closeTabsToRight,
