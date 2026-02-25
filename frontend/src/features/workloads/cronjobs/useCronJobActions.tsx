@@ -3,12 +3,12 @@ import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBa
 import { DeleteCronJob, TriggerCronJob, SuspendCronJob, ListJobs, ListPods } from 'wailsjs/go/main/App';
 import { useK8s } from '~/context';
 import CronJobDetails from '~/components/shared/CronJobDetails';
-import LogViewer from '~/components/shared/log-viewer';
+import { DeferredLogViewer, ResolvedLogViewerProps } from '~/components/shared/log-viewer';
 import Logger from '~/utils/Logger';
 import { K8sCronJob } from '~/types/k8s';
 
 interface CronJobActionsReturn extends BaseResourceActionsReturn<K8sCronJob> {
-    handleViewLogs: (cronJob: K8sCronJob) => Promise<void>;
+    handleViewLogs: (cronJob: K8sCronJob) => void;
     handleRunNow: (cronJob: K8sCronJob) => Promise<void>;
     handleSuspend: (cronJob: K8sCronJob) => Promise<void>;
     handleDelete: (cronJob: K8sCronJob) => void;
@@ -33,74 +33,67 @@ export const useCronJobActions = (): any => {
         detailsPropName: 'cronJob',
     });
 
-    const handleViewLogs = async (cronJob: K8sCronJob): Promise<void> => {
+    const handleViewLogs = (cronJob: K8sCronJob): void => {
         Logger.info("View logs for CronJob", { namespace: cronJob.metadata.namespace, name: cronJob.metadata.name }, 'k8s');
         const namespace = cronJob.metadata.namespace;
 
-        try {
-            const allJobs = await ListJobs('', namespace);
-            const cronJobJobs = allJobs.filter((job: any) => {
-                const ownerRefs = job.metadata?.ownerReferences || [];
-                return ownerRefs.some((ref: any) =>
-                    ref.kind === 'CronJob' && ref.name === cronJob.metadata.name
-                );
-            });
+        openTab({
+            id: `logs-cronjob-${cronJob.metadata.name}`,
+            title: `Logs: ${cronJob.metadata.name}`,
+            keepAlive: true,
+            content: (
+                <DeferredLogViewer
+                    resolve={async (): Promise<ResolvedLogViewerProps | null> => {
+                        const allJobs = await ListJobs('', namespace);
+                        const cronJobJobs = allJobs.filter((job: any) => {
+                            const ownerRefs = job.metadata?.ownerReferences || [];
+                            return ownerRefs.some((ref: any) =>
+                                ref.kind === 'CronJob' && ref.name === cronJob.metadata.name
+                            );
+                        });
 
-            if (cronJobJobs.length === 0) {
-                addNotification({ type: 'warning', title: 'No jobs found', message: `No jobs found for cronjob "${cronJob.metadata.name}". The cronjob may not have run yet.` });
-                return;
-            }
+                        if (cronJobJobs.length === 0) return null;
 
-            cronJobJobs.sort((a: any, b: any) =>
-                new Date(b.metadata.creationTimestamp).getTime() - new Date(a.metadata.creationTimestamp).getTime()
-            );
-            const mostRecentJob = cronJobJobs[0];
+                        cronJobJobs.sort((a: any, b: any) =>
+                            new Date(b.metadata.creationTimestamp).getTime() - new Date(a.metadata.creationTimestamp).getTime()
+                        );
+                        const mostRecentJob = cronJobJobs[0];
 
-            const allPods = await ListPods('', namespace);
-            const jobPods = allPods.filter((pod: any) =>
-                pod.metadata?.labels?.['job-name'] === mostRecentJob.metadata.name
-            );
+                        const allPods = await ListPods('', namespace);
+                        const jobPods = allPods.filter((pod: any) =>
+                            pod.metadata?.labels?.['job-name'] === mostRecentJob.metadata.name
+                        );
 
-            if (jobPods.length === 0) {
-                addNotification({ type: 'warning', title: 'No pods found', message: `No pods found for job "${mostRecentJob.metadata.name}".` });
-                return;
-            }
+                        if (jobPods.length === 0) return null;
 
-            const pod = jobPods[0];
-            const containers = [
-                ...(pod.spec?.initContainers || []).map((c: any) => c.name),
-                ...(pod.spec?.containers || []).map((c: any) => c.name)
-            ];
+                        const pod = jobPods[0];
+                        const containers = [
+                            ...(pod.spec?.initContainers || []).map((c: any) => c.name),
+                            ...(pod.spec?.containers || []).map((c: any) => c.name)
+                        ];
 
-            const podContainerMap: Record<string, string[]> = {};
-            for (const p of jobPods) {
-                podContainerMap[p.metadata.name] = [
-                    ...(p.spec?.initContainers || []).map((c: any) => c.name),
-                    ...(p.spec?.containers || []).map((c: any) => c.name)
-                ];
-            }
+                        const podContainerMap: Record<string, string[]> = {};
+                        for (const p of jobPods) {
+                            podContainerMap[p.metadata.name] = [
+                                ...(p.spec?.initContainers || []).map((c: any) => c.name),
+                                ...(p.spec?.containers || []).map((c: any) => c.name)
+                            ];
+                        }
 
-            openTab({
-                id: `logs-cronjob-${cronJob.metadata.name}`,
-                title: `Logs: ${cronJob.metadata.name}`,
-                keepAlive: true,
-                content: (
-                    <LogViewer
-                        namespace={namespace}
-                        pod={pod.metadata.name}
-                        containers={containers}
-                        siblingPods={jobPods.map((p: any) => p.metadata.name)}
-                        podContainerMap={podContainerMap}
-                        ownerName={cronJob.metadata.name}
-                        tabContext={currentContext}
-                    />
-                ),
-                resourceMeta: { kind: 'CronJob', name: cronJob.metadata.name, namespace },
-            });
-        } catch (err: any) {
-            Logger.error("Failed to get logs for CronJob", err, 'k8s');
-            addNotification({ type: 'error', title: 'Failed to get logs for cronjob', message: String(err.message || err) });
-        }
+                        return {
+                            namespace,
+                            pod: pod.metadata.name,
+                            containers,
+                            siblingPods: jobPods.map((p: any) => p.metadata.name),
+                            podContainerMap,
+                            ownerName: cronJob.metadata.name,
+                        };
+                    }}
+                    tabContext={currentContext}
+                />
+            ),
+            resourceMeta: { kind: 'CronJob', name: cronJob.metadata.name, namespace },
+        });
     };
 
     const handleRunNow = async (cronJob: K8sCronJob): Promise<void> => {

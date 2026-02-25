@@ -19,6 +19,8 @@
 
 export { default } from './LogViewer';
 export { default as LogViewer } from './LogViewer';
+export { default as DeferredLogViewer } from './DeferredLogViewer';
+export type { ResolvedLogViewerProps } from './DeferredLogViewer';
 
 // Export sub-components for advanced usage
 export { LogLine, Spinner } from './LogLine';

@@ -1,13 +1,17 @@
 package k8s
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -400,10 +404,85 @@ func (c *Client) TestConnection(ctx context.Context) error {
 	// Hits /api which is lightweight and respects the context deadline
 	err = cs.CoreV1().RESTClient().Get().AbsPath("/api").Do(ctx).Error()
 	if err != nil {
-		return fmt.Errorf("cluster unreachable: %w", err)
+		enriched := c.enrichExecError(err)
+		return fmt.Errorf("cluster unreachable: %w", enriched)
 	}
 
 	return nil
+}
+
+// enrichExecError checks if an error is from an exec-based credential plugin
+// (e.g. "executable aws failed with exit code 254") and tries to capture the
+// actual stderr from the plugin command for a more useful error message.
+// client-go pipes exec plugin stderr directly to os.Stderr, so it never appears
+// in the Go error. We re-run the command briefly to capture the real error.
+func (c *Client) enrichExecError(origErr error) error {
+	errStr := origErr.Error()
+	if !strings.Contains(errStr, "failed with exit code") || !strings.Contains(errStr, "exec:") {
+		return origErr
+	}
+
+	// Look up the exec config from kubeconfig
+	c.mu.RLock()
+	configLoading := c.configLoading
+	currentCtx := c.currentContext
+	c.mu.RUnlock()
+
+	if configLoading == nil {
+		return origErr
+	}
+
+	rawConfig, err := configLoading.RawConfig()
+	if err != nil {
+		return origErr
+	}
+
+	// Use c.currentContext (the overridden context) rather than rawConfig.CurrentContext
+	// which only reflects the kubeconfig file's default context.
+	if currentCtx == "" {
+		currentCtx = rawConfig.CurrentContext
+	}
+	ctxObj, ok := rawConfig.Contexts[currentCtx]
+	if !ok || ctxObj == nil {
+		return origErr
+	}
+
+	authInfo, ok := rawConfig.AuthInfos[ctxObj.AuthInfo]
+	if !ok || authInfo == nil || authInfo.Exec == nil {
+		return origErr
+	}
+
+	execCfg := authInfo.Exec
+
+	// Run the exec command with captured stderr to get the real error message.
+	// Inherit the process environment so PATH, AWS_PROFILE, etc. are available,
+	// then overlay any env vars from the kubeconfig exec config.
+	cmdCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(cmdCtx, execCfg.Command, execCfg.Args...)
+	if len(execCfg.Env) > 0 {
+		cmd.Env = os.Environ()
+		for _, env := range execCfg.Env {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+		}
+	}
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Run() // We expect this to fail — we want the stderr
+
+	stderrStr := strings.TrimSpace(stderr.String())
+	if stderrStr == "" {
+		return origErr
+	}
+
+	debug.LogK8s("enrichExecError: captured exec plugin stderr", map[string]interface{}{
+		"command": execCfg.Command,
+		"stderr":  stderrStr,
+	})
+
+	return fmt.Errorf("%w\n\n%s stderr:\n%s", origErr, execCfg.Command, stderrStr)
 }
 
 func (c *Client) ListContexts() ([]string, error) {

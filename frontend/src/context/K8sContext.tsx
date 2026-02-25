@@ -141,6 +141,31 @@ const parseConnectionError = (error: unknown): Omit<ConnectionError, 'raw'> => {
         };
     }
 
+    // AWS STS AssumeRole denied
+    if (errorStr.includes('AssumeRole') && errorStr.includes('AccessDenied')) {
+        // Extract the IAM user and target role from the error for a helpful message
+        const userMatch = errorStr.match(/User: (arn:aws:iam::\S+)/);
+        const roleMatch = errorStr.match(/resource: (arn:aws:iam::\S+)/);
+        const user = userMatch ? userMatch[1] : 'your IAM identity';
+        const role = roleMatch ? roleMatch[1] : 'the target role';
+        return {
+            title: 'AWS Role Assumption Denied',
+            message: `${user} is not authorized to assume ${role}. The IAM user/role does not have permission to call sts:AssumeRole on this EKS cluster's role.`,
+            suggestion: 'Verify the IAM trust policy on the target role allows your user/role to assume it. Check that your AWS credentials are correct and not expired.',
+            provider: 'aws'
+        };
+    }
+
+    // AWS CLI auth failure (exit code from aws credential plugin)
+    if (errorStr.includes('executable aws failed with exit code')) {
+        return {
+            title: 'AWS Authentication Failed',
+            message: 'The AWS CLI credential plugin returned an error. This usually means AWS authentication failed.',
+            suggestion: 'Check your AWS credentials (aws sts get-caller-identity), verify your AWS profile configuration, and ensure your session/token is not expired.',
+            provider: 'aws'
+        };
+    }
+
     // Azure CLI not found
     if (errorStr.includes('executable az not found') || errorStr.includes('az: executable file not found')) {
         return {
@@ -151,12 +176,32 @@ const parseConnectionError = (error: unknown): Omit<ConnectionError, 'raw'> => {
         };
     }
 
+    // Azure CLI auth failure
+    if (errorStr.includes('executable az failed with exit code') || errorStr.includes('executable kubelogin failed with exit code')) {
+        return {
+            title: 'Azure Authentication Failed',
+            message: 'The Azure credential plugin returned an error. This usually means your Azure session has expired.',
+            suggestion: 'Run "az login" to re-authenticate, or check your Azure subscription access.',
+            provider: 'azure'
+        };
+    }
+
     // Google Cloud CLI not found
     if (errorStr.includes('executable gcloud not found') || errorStr.includes('gcloud: executable file not found')) {
         return {
             title: 'Google Cloud CLI Not Found',
             message: 'Your kubeconfig requires gcloud CLI for authentication, but it was not found in PATH.',
             suggestion: 'Install gcloud: https://cloud.google.com/sdk/docs/install',
+            provider: 'gcloud'
+        };
+    }
+
+    // GKE auth plugin failure
+    if (errorStr.includes('executable gke-gcloud-auth-plugin failed with exit code') || errorStr.includes('executable gcloud failed with exit code')) {
+        return {
+            title: 'Google Cloud Authentication Failed',
+            message: 'The GKE credential plugin returned an error. This usually means your Google Cloud session has expired.',
+            suggestion: 'Run "gcloud auth login" to re-authenticate, and ensure the gke-gcloud-auth-plugin is installed.',
             provider: 'gcloud'
         };
     }
@@ -201,6 +246,18 @@ const parseConnectionError = (error: unknown): Omit<ConnectionError, 'raw'> => {
         };
     }
 
+    // Generic credential exec plugin failure (catch-all for exec-based auth)
+    const execMatch = errorStr.match(/executable (\S+) failed with exit code (\d+)/);
+    if (execMatch || errorStr.includes('getting credentials: exec:')) {
+        const execName = execMatch ? execMatch[1] : 'credential plugin';
+        return {
+            title: 'Credential Plugin Failed',
+            message: `The kubeconfig exec-based credential plugin "${execName}" returned an error. Authentication could not be completed.`,
+            suggestion: `Verify that "${execName}" is properly configured, your credentials are valid, and you have the required permissions.`,
+            provider: 'unknown'
+        };
+    }
+
     // Default fallback
     return {
         title: 'Connection Error',
@@ -223,6 +280,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const reconnectRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [connectionError, setConnectionError] = useState<ConnectionError | null>(null); // { title, message, suggestion, provider, raw }
     const [isConnecting, setIsConnecting] = useState<boolean>(true); // Initial loading state
+    const [retryToken, setRetryToken] = useState<number>(0); // Incremented to force data loading effect to re-run
 
     // Track when each context was last accessed (for sorting)
     const [contextAccessTimes, setContextAccessTimes] = useState<ContextAccessTimes>(() => {
@@ -554,7 +612,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return () => {
             cancelled = true;
         };
-    }, [currentContext]);
+    }, [currentContext, retryToken]);
 
     // Save namespaces when they change (but not while loading)
     useEffect(() => {
@@ -664,8 +722,10 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const retryConnection = useCallback((): void => {
         Logger.info("Retrying connection...", undefined, 'k8s');
-        fetchContexts();
-    }, [fetchContexts]);
+        setConnectionError(null);
+        setIsConnecting(true);
+        setRetryToken(prev => prev + 1);
+    }, []);
 
     // Check if an error is an auth/connection error and set connectionError if so
     const checkConnectionError = useCallback((error: unknown): boolean => {

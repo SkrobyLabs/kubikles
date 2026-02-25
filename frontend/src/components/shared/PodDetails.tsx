@@ -14,6 +14,7 @@ import { useUI } from '~/context';
 import { usePodActions } from '~/features/workloads/pods/usePodActions';
 import { ListPods } from 'wailsjs/go/main/App';
 import { getPodController } from '~/utils/k8s-helpers';
+import { DeferredLogViewer, ResolvedLogViewerProps } from './log-viewer';
 import Tooltip from './Tooltip';
 import PodInfoTab from './PodInfoTab';
 import PodVolumesTab from './PodVolumesTab';
@@ -30,8 +31,8 @@ const TAB_METRICS = 'metrics';
 
 export default function PodDetails({ pod, tabContext = '' }: any) {
     const { currentContext } = useK8s();
-    const { openLogs, handleShell, handleEditYaml, handleShowDependencies, handleFiles } = usePodActions();
-    const { getDetailTab, setDetailTab, openDiagnostic } = useUI();
+    const { handleShell, handleEditYaml, handleShowDependencies, handleFiles } = usePodActions();
+    const { getDetailTab, setDetailTab, openDiagnostic, openTab } = useUI();
     const activeTab = getDetailTab('pod', TAB_BASIC);
     const setActiveTab = (tab: any) => setDetailTab('pod', tab);
 
@@ -45,48 +46,62 @@ export default function PodDetails({ pod, tabContext = '' }: any) {
     ];
 
     // Handle opening logs with sibling pod discovery
-    const handleOpenLogs = useCallback(async () => {
+    const handleOpenLogs = useCallback(() => {
         const namespace = pod.metadata?.namespace;
-        const controller = getPodController(pod);
+        const podName = pod.metadata?.name;
 
-        let siblingPods = [pod.metadata?.name];
-        let podContainerMap = { [pod.metadata?.name]: containers };
-        let ownerName = '';
+        openTab({
+            id: `logs-pod-${podName}`,
+            title: podName,
+            keepAlive: true,
+            content: (
+                <DeferredLogViewer
+                    resolve={async (): Promise<ResolvedLogViewerProps | null> => {
+                        const controller = getPodController(pod);
+                        let siblingPods = [podName];
+                        let podContainerMap: Record<string, string[]> = { [podName]: containers };
+                        let ownerName = '';
 
-        if (controller) {
-            try {
-                const allPods = await ListPods('', namespace);
-                const siblings = allPods.filter((p: any) => {
-                    const c = getPodController(p);
-                    return c && c.uid === controller.uid;
-                });
+                        if (controller) {
+                            try {
+                                const allPods = await ListPods('', namespace);
+                                const siblings = allPods.filter((p: any) => {
+                                    const c = getPodController(p);
+                                    return c && c.uid === controller.uid;
+                                });
 
-                if (siblings.length > 0) {
-                    siblingPods = siblings.map((p: any) => p.metadata.name);
-                    podContainerMap = {};
-                    for (const p of siblings) {
-                        podContainerMap[p.metadata.name] = [
-                            ...(p.spec?.initContainers || []).map((c: any) => c.name),
-                            ...(p.spec?.containers || []).map((c: any) => c.name)
-                        ];
-                    }
-                    ownerName = controller.name;
-                }
-            } catch (err: any) {
-                console.error('Failed to fetch sibling pods:', err);
-            }
-        }
+                                if (siblings.length > 0) {
+                                    siblingPods = siblings.map((p: any) => p.metadata.name);
+                                    podContainerMap = {};
+                                    for (const p of siblings) {
+                                        podContainerMap[p.metadata.name] = [
+                                            ...(p.spec?.initContainers || []).map((c: any) => c.name),
+                                            ...(p.spec?.containers || []).map((c: any) => c.name)
+                                        ];
+                                    }
+                                    ownerName = controller.name;
+                                }
+                            } catch (err: any) {
+                                console.error('Failed to fetch sibling pods:', err);
+                            }
+                        }
 
-        openLogs(
-            namespace,
-            pod.metadata?.name,
-            containers,
-            siblingPods,
-            podContainerMap,
-            ownerName,
-            pod.metadata?.creationTimestamp
-        );
-    }, [pod, containers, openLogs]);
+                        return {
+                            namespace,
+                            pod: podName,
+                            containers,
+                            siblingPods,
+                            podContainerMap,
+                            ownerName,
+                            podCreationTime: pod.metadata?.creationTimestamp,
+                        };
+                    }}
+                    tabContext={currentContext}
+                />
+            ),
+            resourceMeta: { kind: 'Pod', name: podName, namespace },
+        });
+    }, [pod, containers, openTab, currentContext]);
 
     // Handle opening Flow Timeline for this pod
     const handleFlowTimeline = useCallback(() => {

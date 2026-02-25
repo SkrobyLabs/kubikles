@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useUI } from '~/context';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 export default function ConfirmModal() {
     const { modal, closeModal } = useUI();
+    const [loading, setLoading] = useState(false);
 
     if (!modal) return null;
 
@@ -12,11 +13,17 @@ export default function ConfirmModal() {
 
     const handleConfirm = async () => {
         if (onConfirm) {
-            await onConfirm();
+            setLoading(true);
+            try {
+                await onConfirm();
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
     const handleCancel = () => {
+        if (loading) return;
         closeModal();
     };
 
@@ -42,15 +49,18 @@ export default function ConfirmModal() {
                 <div className="flex justify-end gap-2 px-4 py-3 border-t border-border">
                     <button
                         onClick={handleCancel}
-                        className="px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-surface-hover rounded transition-colors"
+                        disabled={loading}
+                        className="px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-surface-hover rounded transition-colors disabled:opacity-50"
                     >
                         Cancel
                     </button>
                     {onConfirm && (
                         <button
                             onClick={handleConfirm}
-                            className={`px-4 py-2 text-sm rounded transition-colors ${confirmButtonClass}`}
+                            disabled={loading}
+                            className={`px-4 py-2 text-sm rounded transition-colors disabled:opacity-50 ${confirmButtonClass} flex items-center gap-2`}
                         >
+                            {loading && <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>}
                             {confirmText}
                         </button>
                     )}

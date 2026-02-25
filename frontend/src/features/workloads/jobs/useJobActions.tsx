@@ -2,13 +2,13 @@ import React from 'react';
 import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBaseResourceActions';
 import { DeleteJob, ListPods } from 'wailsjs/go/main/App';
 import JobDetails from '~/components/shared/JobDetails';
-import LogViewer from '~/components/shared/log-viewer';
+import { DeferredLogViewer, ResolvedLogViewerProps } from '~/components/shared/log-viewer';
 import Logger from '~/utils/Logger';
 import { K8sJob } from '~/types/k8s';
 
 interface JobActionsReturn extends BaseResourceActionsReturn<K8sJob> {
     handleDelete: (job: K8sJob) => void;
-    handleViewLogs: (job: K8sJob) => Promise<void>;
+    handleViewLogs: (job: K8sJob) => void;
 }
 
 export const useJobActions = (onRefresh?: () => void): any => {
@@ -49,56 +49,52 @@ export const useJobActions = (onRefresh?: () => void): any => {
         });
     };
 
-    const handleViewLogs = async (job: K8sJob): Promise<void> => {
+    const handleViewLogs = (job: K8sJob): void => {
         const namespace = job.metadata.namespace;
         Logger.info("View logs for Job", { namespace, name: job.metadata.name }, 'k8s');
 
-        try {
-            const allPods = await ListPods('', namespace);
-            const jobPods = allPods.filter((pod: any) =>
-                pod.metadata?.labels?.['job-name'] === job.metadata.name
-            );
+        openTab({
+            id: `logs-job-${job.metadata.name}`,
+            title: `Logs: ${job.metadata.name}`,
+            keepAlive: true,
+            content: (
+                <DeferredLogViewer
+                    resolve={async (): Promise<ResolvedLogViewerProps | null> => {
+                        const allPods = await ListPods('', namespace);
+                        const jobPods = allPods.filter((pod: any) =>
+                            pod.metadata?.labels?.['job-name'] === job.metadata.name
+                        );
 
-            if (jobPods.length === 0) {
-                addNotification({ type: 'warning', title: 'No pods found', message: `No pods found for job "${job.metadata.name}". The job may not have created any pods yet.` });
-                return;
-            }
+                        if (jobPods.length === 0) return null;
 
-            const pod = jobPods[0];
-            const containers = [
-                ...(pod.spec?.initContainers || []).map((c: any) => c.name),
-                ...(pod.spec?.containers || []).map((c: any) => c.name)
-            ];
+                        const pod = jobPods[0];
+                        const containers = [
+                            ...(pod.spec?.initContainers || []).map((c: any) => c.name),
+                            ...(pod.spec?.containers || []).map((c: any) => c.name)
+                        ];
 
-            const podContainerMap: Record<string, string[]> = {};
-            for (const p of jobPods) {
-                podContainerMap[p.metadata.name] = [
-                    ...(p.spec?.initContainers || []).map((c: any) => c.name),
-                    ...(p.spec?.containers || []).map((c: any) => c.name)
-                ];
-            }
+                        const podContainerMap: Record<string, string[]> = {};
+                        for (const p of jobPods) {
+                            podContainerMap[p.metadata.name] = [
+                                ...(p.spec?.initContainers || []).map((c: any) => c.name),
+                                ...(p.spec?.containers || []).map((c: any) => c.name)
+                            ];
+                        }
 
-            openTab({
-                id: `logs-job-${job.metadata.name}`,
-                title: `Logs: ${job.metadata.name}`,
-                keepAlive: true,
-                content: (
-                    <LogViewer
-                        namespace={namespace}
-                        pod={pod.metadata.name}
-                        containers={containers}
-                        siblingPods={jobPods.map((p: any) => p.metadata.name)}
-                        podContainerMap={podContainerMap}
-                        ownerName={job.metadata.name}
-                        tabContext={currentContext}
-                    />
-                ),
-                resourceMeta: { kind: 'Job', name: job.metadata.name, namespace },
-            });
-        } catch (err: any) {
-            Logger.error("Failed to get pods for Job", err, 'k8s');
-            addNotification({ type: 'error', title: 'Failed to get pods for job', message: String(err.message || err) });
-        }
+                        return {
+                            namespace,
+                            pod: pod.metadata.name,
+                            containers,
+                            siblingPods: jobPods.map((p: any) => p.metadata.name),
+                            podContainerMap,
+                            ownerName: job.metadata.name,
+                        };
+                    }}
+                    tabContext={currentContext}
+                />
+            ),
+            resourceMeta: { kind: 'Job', name: job.metadata.name, namespace },
+        });
     };
 
     return {
