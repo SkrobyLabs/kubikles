@@ -98,6 +98,10 @@ export function DeleteConfigMap(arg1, arg2) {
   return window['go']['main']['App']['DeleteConfigMap'](arg1, arg2);
 }
 
+export function DeleteContext(arg1) {
+  return window['go']['main']['App']['DeleteContext'](arg1);
+}
+
 export function DeleteCronJob(arg1, arg2) {
   return window['go']['main']['App']['DeleteCronJob'](arg1, arg2);
 }
@@ -380,6 +384,10 @@ export function GetConfigMapData(arg1, arg2) {
 
 export function GetConfigMapYaml(arg1, arg2) {
   return window['go']['main']['App']['GetConfigMapYaml'](arg1, arg2);
+}
+
+export function GetContextDetails() {
+  return window['go']['main']['App']['GetContextDetails']();
 }
 
 export function GetControllerMetricsHistory(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
@@ -990,6 +998,10 @@ export function RemoveOCIRegistry(arg1) {
   return window['go']['main']['App']['RemoveOCIRegistry'](arg1);
 }
 
+export function RenameContext(arg1, arg2) {
+  return window['go']['main']['App']['RenameContext'](arg1, arg2);
+}
+
 export function ResetDebugCluster() {
   return window['go']['main']['App']['ResetDebugCluster']();
 }
@@ -1070,6 +1082,10 @@ export function SearchHelmChart(arg1) {
   return window['go']['main']['App']['SearchHelmChart'](arg1);
 }
 
+export function SelectKubeconfigFile() {
+  return window['go']['main']['App']['SelectKubeconfigFile']();
+}
+
 export function SendAIMessage(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
   return window['go']['main']['App']['SendAIMessage'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
@@ -1100,6 +1116,10 @@ export function SetEmitter(arg1) {
 
 export function SetEventCoalescerFrameInterval(arg1) {
   return window['go']['main']['App']['SetEventCoalescerFrameInterval'](arg1);
+}
+
+export function SetExtraKubeconfigPaths(arg1) {
+  return window['go']['main']['App']['SetExtraKubeconfigPaths'](arg1);
 }
 
 export function SetForceHTTP1(arg1) {

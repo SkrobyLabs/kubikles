@@ -616,6 +616,28 @@ export namespace k8s {
 		    return a;
 		}
 	}
+	export class ContextDetail {
+	    name: string;
+	    cluster: string;
+	    server: string;
+	    authInfo: string;
+	    namespace: string;
+	    isActive: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContextDetail(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.cluster = source["cluster"];
+	        this.server = source["server"];
+	        this.authInfo = source["authInfo"];
+	        this.namespace = source["namespace"];
+	        this.isActive = source["isActive"];
+	    }
+	}
 	export class NetworkMetrics {
 	    receiveBytes: MetricsDataPoint[];
 	    transmitBytes: MetricsDataPoint[];

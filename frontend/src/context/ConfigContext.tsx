@@ -42,6 +42,7 @@ interface KubernetesConfig {
     metricsPollIntervalMs: number;
     connectionTestTimeoutSeconds: number;
     nodeDebugImage: string;
+    extraKubeconfigPaths?: string[];
 }
 
 interface MetricsConfig {

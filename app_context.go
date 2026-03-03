@@ -6,6 +6,9 @@ import (
 	"time"
 
 	"kubikles/pkg/debug"
+	"kubikles/pkg/k8s"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // =============================================================================
@@ -90,6 +93,41 @@ func (a *App) TestConnection(timeoutSeconds int) error {
 	defer cancel()
 
 	return a.k8sClient.TestConnection(ctx)
+}
+
+func (a *App) GetContextDetails() ([]k8s.ContextDetail, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetContextDetails()
+}
+
+func (a *App) DeleteContext(name string) error {
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.DeleteContext(name)
+}
+
+func (a *App) RenameContext(oldName, newName string) error {
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.RenameContext(oldName, newName)
+}
+
+func (a *App) SetExtraKubeconfigPaths(paths []string) {
+	if a.k8sClient != nil {
+		a.k8sClient.SetExtraKubeconfigPaths(paths)
+		debug.LogConfig("Extra kubeconfig paths", map[string]interface{}{"paths": paths})
+	}
+}
+
+// SelectKubeconfigFile opens a native file dialog for selecting a kubeconfig file.
+func (a *App) SelectKubeconfigFile() (string, error) {
+	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Kubeconfig File",
+	})
 }
 
 // CancelConnectionTest cancels any in-progress connection test.

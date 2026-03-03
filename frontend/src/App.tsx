@@ -26,7 +26,7 @@ import { HelmReleaseList, HelmRepoList } from '~/features/helm';
 import { PortForwardList } from '~/features/portforwards';
 import { FlowTimeline, MultiLogViewer, ResourceDiff, RBACChecker, IssueDetector } from '~/features/diagnostics';
 import { usePerformancePanel } from '~/hooks/usePerformancePanel';
-import { LogMessage, SetEventCoalescerFrameInterval, SetK8sAPITimeout } from 'wailsjs/go/main/App';
+import { LogMessage, SetEventCoalescerFrameInterval, SetExtraKubeconfigPaths, SetK8sAPITimeout } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import ConfirmModal from '~/components/shared/ConfirmModal';
 import ConfigEditorDialog from '~/components/shared/ConfigEditorDialog';
@@ -493,6 +493,12 @@ function MainLayout() {
     useEffect(() => {
         SetK8sAPITimeout(apiTimeoutMs);
     }, [apiTimeoutMs]);
+
+    // Apply extra kubeconfig paths from config
+    const extraKubeconfigPaths = getConfig('kubernetes.extraKubeconfigPaths') || [];
+    useEffect(() => {
+        SetExtraKubeconfigPaths(extraKubeconfigPaths);
+    }, [JSON.stringify(extraKubeconfigPaths)]);
 
     // Resizing Logic
     const handleMouseDown = (e: React.MouseEvent) => {

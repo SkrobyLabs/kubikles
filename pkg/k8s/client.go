@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/homedir"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 	"sigs.k8s.io/yaml"
@@ -131,6 +132,9 @@ type Client struct {
 	clientPool     []kubernetes.Interface
 	clientPoolSize int
 	clientPoolIdx  uint64 // atomic counter for round-robin
+
+	// Additional kubeconfig file paths beyond the default ~/.kube/config
+	extraKubeconfigPaths []string
 }
 
 // DefaultAPITimeout is the default timeout for Kubernetes API calls
@@ -161,6 +165,156 @@ func (c *Client) SetClientPoolSize(size int) {
 	defer c.mu.Unlock()
 	c.clientPoolSize = size
 	log.Printf("[K8s Client] Client pool size: %d", size)
+}
+
+// SetExtraKubeconfigPaths sets additional kubeconfig file paths to merge contexts from.
+func (c *Client) SetExtraKubeconfigPaths(paths []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.extraKubeconfigPaths = paths
+}
+
+// getLoadingRules builds ClientConfigLoadingRules that include all kubeconfig paths.
+func (c *Client) getLoadingRules() *clientcmd.ClientConfigLoadingRules {
+	home := homedir.HomeDir()
+	primary := filepath.Join(home, ".kube", "config")
+
+	c.mu.RLock()
+	extra := c.extraKubeconfigPaths
+	c.mu.RUnlock()
+
+	if len(extra) == 0 {
+		return &clientcmd.ClientConfigLoadingRules{ExplicitPath: primary}
+	}
+
+	// Use Precedence instead of ExplicitPath to merge multiple files
+	allPaths := append([]string{primary}, extra...)
+	return &clientcmd.ClientConfigLoadingRules{Precedence: allPaths}
+}
+
+// ContextDetail contains metadata about a kubeconfig context.
+type ContextDetail struct {
+	Name      string `json:"name"`
+	Cluster   string `json:"cluster"`
+	Server    string `json:"server"`
+	AuthInfo  string `json:"authInfo"`
+	Namespace string `json:"namespace"`
+	IsActive  bool   `json:"isActive"`
+}
+
+// GetContextDetails returns detailed info for all kubeconfig contexts.
+func (c *Client) GetContextDetails() ([]ContextDetail, error) {
+	loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		c.getLoadingRules(), &clientcmd.ConfigOverrides{},
+	)
+	rawConfig, err := loader.RawConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	currentCtx := c.GetCurrentContext()
+	details := make([]ContextDetail, 0, len(rawConfig.Contexts))
+	for name, ctx := range rawConfig.Contexts {
+		d := ContextDetail{
+			Name:      name,
+			Cluster:   ctx.Cluster,
+			AuthInfo:  ctx.AuthInfo,
+			Namespace: ctx.Namespace,
+			IsActive:  name == currentCtx,
+		}
+		if cluster, ok := rawConfig.Clusters[ctx.Cluster]; ok {
+			d.Server = cluster.Server
+		}
+		details = append(details, d)
+	}
+	return details, nil
+}
+
+// DeleteContext removes a context from the kubeconfig file.
+func (c *Client) DeleteContext(name string) error {
+	if name == c.GetCurrentContext() {
+		return fmt.Errorf("cannot delete the active context %q; switch to another context first", name)
+	}
+
+	// Find and modify the kubeconfig file containing this context
+	return c.modifyKubeconfigContext(name, func(config *clientcmdapi.Config) error {
+		if _, ok := config.Contexts[name]; !ok {
+			return fmt.Errorf("context %q not found", name)
+		}
+		delete(config.Contexts, name)
+		if config.CurrentContext == name {
+			config.CurrentContext = ""
+		}
+		return nil
+	})
+}
+
+// RenameContext renames a context in the kubeconfig file.
+func (c *Client) RenameContext(oldName, newName string) error {
+	if newName == "" {
+		return fmt.Errorf("new context name cannot be empty")
+	}
+	if oldName == newName {
+		return nil
+	}
+
+	err := c.modifyKubeconfigContext(oldName, func(config *clientcmdapi.Config) error {
+		if _, ok := config.Contexts[oldName]; !ok {
+			return fmt.Errorf("context %q not found", oldName)
+		}
+		if _, exists := config.Contexts[newName]; exists {
+			return fmt.Errorf("context %q already exists", newName)
+		}
+		config.Contexts[newName] = config.Contexts[oldName]
+		delete(config.Contexts, oldName)
+		if config.CurrentContext == oldName {
+			config.CurrentContext = newName
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Update internal state if renaming the active context
+	if oldName == c.GetCurrentContext() {
+		c.mu.Lock()
+		c.currentContext = newName
+		c.mu.Unlock()
+	}
+	return nil
+}
+
+// modifyKubeconfigContext finds the kubeconfig file containing the named context,
+// applies the mutation, and writes the file back.
+func (c *Client) modifyKubeconfigContext(contextName string, mutate func(*clientcmdapi.Config) error) error {
+	home := homedir.HomeDir()
+	primary := filepath.Join(home, ".kube", "config")
+
+	c.mu.RLock()
+	extra := c.extraKubeconfigPaths
+	c.mu.RUnlock()
+
+	allPaths := append([]string{primary}, extra...)
+
+	for _, path := range allPaths {
+		rules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: path}
+		loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, &clientcmd.ConfigOverrides{})
+		rawConfig, err := loader.RawConfig()
+		if err != nil {
+			continue
+		}
+		if _, ok := rawConfig.Contexts[contextName]; !ok {
+			continue
+		}
+		// Found the file — apply mutation
+		if err := mutate(&rawConfig); err != nil {
+			return err
+		}
+		return clientcmd.WriteToFile(rawConfig, path)
+	}
+
+	return fmt.Errorf("context %q not found in any kubeconfig file", contextName)
 }
 
 // contextWithTimeout returns a context with the configured API timeout
@@ -486,7 +640,12 @@ func (c *Client) enrichExecError(origErr error) error {
 }
 
 func (c *Client) ListContexts() ([]string, error) {
-	rawConfig, err := c.configLoading.RawConfig()
+	// Use a fresh loader each call to pick up externally added/removed contexts.
+	// The shared c.configLoading may cache internal state after ClientConfig() is called.
+	loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		c.getLoadingRules(), &clientcmd.ConfigOverrides{},
+	)
+	rawConfig, err := loader.RawConfig()
 	if err != nil {
 		return nil, err
 	}

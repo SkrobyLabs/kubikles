@@ -99,6 +99,7 @@ export function CollectIngressHostnames(...args) { return AppProxy.CollectIngres
 export function ConfirmDialog(...args) { return AppProxy.ConfirmDialog(...args); }
 export function CreateNodeDebugPod(...args) { return AppProxy.CreateNodeDebugPod(...args); }
 export function CreatePodDirectory(...args) { return AppProxy.CreatePodDirectory(...args); }
+export function DeleteContext(...args) { return AppProxy.DeleteContext(...args); }
 export function DeleteCRD(...args) { return AppProxy.DeleteCRD(...args); }
 export function DeleteCSIDriver(...args) { return AppProxy.DeleteCSIDriver(...args); }
 export function DeleteCSINode(...args) { return AppProxy.DeleteCSINode(...args); }
@@ -176,6 +177,7 @@ export function GetClusterRoleBindingYaml(...args) { return AppProxy.GetClusterR
 export function GetClusterRoleYaml(...args) { return AppProxy.GetClusterRoleYaml(...args); }
 export function GetConfigMapData(...args) { return AppProxy.GetConfigMapData(...args); }
 export function GetConfigMapYaml(...args) { return AppProxy.GetConfigMapYaml(...args); }
+export function GetContextDetails(...args) { return AppProxy.GetContextDetails(...args); }
 export function GetControllerMetricsHistory(...args) { return AppProxy.GetControllerMetricsHistory(...args); }
 export function GetControllerMetricsHistoryRange(...args) { return AppProxy.GetControllerMetricsHistoryRange(...args); }
 export function GetCrashLogPath(...args) { return AppProxy.GetCrashLogPath(...args); }
@@ -326,6 +328,7 @@ export function OpenThemesDir(...args) { return AppProxy.OpenThemesDir(...args);
 export function RefreshIngressHostnames(...args) { return AppProxy.RefreshIngressHostnames(...args); }
 export function ReloadIssueRules(...args) { return AppProxy.ReloadIssueRules(...args); }
 export function ReloadThemes(...args) { return AppProxy.ReloadThemes(...args); }
+export function RenameContext(...args) { return AppProxy.RenameContext(...args); }
 export function RemoveHelmRepository(...args) { return AppProxy.RemoveHelmRepository(...args); }
 export function RemoveOCIRegistry(...args) { return AppProxy.RemoveOCIRegistry(...args); }
 export function ResetDebugCluster(...args) { return AppProxy.ResetDebugCluster(...args); }
@@ -348,6 +351,7 @@ export function ScaleReplicaSet(...args) { return AppProxy.ScaleReplicaSet(...ar
 export function ScaleStatefulSet(...args) { return AppProxy.ScaleStatefulSet(...args); }
 export function SearchChartInSource(...args) { return AppProxy.SearchChartInSource(...args); }
 export function SearchHelmChart(...args) { return AppProxy.SearchHelmChart(...args); }
+export function SelectKubeconfigFile(...args) { return AppProxy.SelectKubeconfigFile(...args); }
 export function SendAIMessage(...args) { return AppProxy.SendAIMessage(...args); }
 export function SendTerminalInput(...args) { return AppProxy.SendTerminalInput(...args); }
 export function SetAnthropicAPIKey(...args) { return AppProxy.SetAnthropicAPIKey(...args); }
@@ -356,6 +360,7 @@ export function SetDebugClusterConfig(...args) { return AppProxy.SetDebugCluster
 export function SetDebugEnabled(...args) { return AppProxy.SetDebugEnabled(...args); }
 export function SetEventCoalescerFrameInterval(...args) { return AppProxy.SetEventCoalescerFrameInterval(...args); }
 export function SetEmitter(...args) { return AppProxy.SetEmitter(...args); }
+export function SetExtraKubeconfigPaths(...args) { return AppProxy.SetExtraKubeconfigPaths(...args); }
 export function SetForceHTTP1(...args) { return AppProxy.SetForceHTTP1(...args); }
 export function SetHelmRepositoryPriority(...args) { return AppProxy.SetHelmRepositoryPriority(...args); }
 export function SetK8sAPITimeout(...args) { return AppProxy.SetK8sAPITimeout(...args); }

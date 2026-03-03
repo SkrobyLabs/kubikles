@@ -9,8 +9,10 @@ import {
     Cog6ToothIcon,
     ChartBarIcon,
     BugAntIcon,
-    SparklesIcon
+    SparklesIcon,
+    WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
+import ContextManager from './ContextManager';
 import { useConfig, useK8s } from '~/context';
 import { useAIChat } from '~/context';
 import {
@@ -58,6 +60,7 @@ export default function Sidebar({
     const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
     const [isMac, setIsMac] = useState(() => navigator.platform.includes('Mac'));
     const [debugClusterEnabled, setDebugClusterEnabled] = useState(false);
+    const [showContextManager, setShowContextManager] = useState(false);
 
     useEffect(() => {
         GetVersionInfo().then(setVersionInfo).catch(() => {});
@@ -238,9 +241,18 @@ export default function Sidebar({
 
             {/* Context Selector */}
             <div className="p-4 border-b border-border shrink-0">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">
-                    Context
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Context
+                    </label>
+                    <button
+                        onClick={() => setShowContextManager(true)}
+                        className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                        title="Manage contexts"
+                    >
+                        <WrenchScrewdriverIcon className="h-3.5 w-3.5" />
+                    </button>
+                </div>
                 <SearchSelect
                     options={contexts}
                     value={currentContext}
@@ -435,6 +447,13 @@ export default function Sidebar({
                     )}
                 </div>
             </div>
+
+            {showContextManager && (
+                <ContextManager
+                    onClose={() => setShowContextManager(false)}
+                    onContextsChanged={() => onContextSelectorOpen?.()}
+                />
+            )}
         </div>
     );
 }

@@ -135,6 +135,12 @@ export const configSchema: Record<string, any> = {
             description: 'Default container image for node debug shell sessions',
             placeholder: 'e.g., alpine:latest, nicolaka/netshoot:latest',
             default: 'alpine:latest'
+        },
+        extraKubeconfigPaths: {
+            type: 'hidden',
+            label: 'Additional Kubeconfig Paths',
+            description: 'Extra kubeconfig files to merge contexts from',
+            default: []
         }
     },
     performance: {

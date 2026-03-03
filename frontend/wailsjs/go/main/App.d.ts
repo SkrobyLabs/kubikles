@@ -58,6 +58,8 @@ export function DeleteClusterRoleBinding(arg1:string):Promise<void>;
 
 export function DeleteConfigMap(arg1:string,arg2:string):Promise<void>;
 
+export function DeleteContext(arg1:string):Promise<void>;
+
 export function DeleteCronJob(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteCustomResource(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
@@ -199,6 +201,8 @@ export function GetClusterRoleYaml(arg1:string):Promise<string>;
 export function GetConfigMapData(arg1:string,arg2:string):Promise<Record<string, string>>;
 
 export function GetConfigMapYaml(arg1:string,arg2:string):Promise<string>;
+
+export function GetContextDetails():Promise<Array<k8s.ContextDetail>>;
 
 export function GetControllerMetricsHistory(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string,arg7:string,arg8:string):Promise<k8s.ControllerMetricsHistory>;
 
@@ -504,6 +508,8 @@ export function RemoveHelmRepository(arg1:string):Promise<void>;
 
 export function RemoveOCIRegistry(arg1:string):Promise<void>;
 
+export function RenameContext(arg1:string,arg2:string):Promise<void>;
+
 export function ResetDebugCluster():Promise<void>;
 
 export function ResizePVC(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -544,6 +550,8 @@ export function SearchChartInSource(arg1:string,arg2:string):Promise<helm.ChartS
 
 export function SearchHelmChart(arg1:string):Promise<Array<helm.ChartSource>>;
 
+export function SelectKubeconfigFile():Promise<string>;
+
 export function SendAIMessage(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<string>,arg6:Array<string>,arg7:number):Promise<boolean>;
 
 export function SendTerminalInput(arg1:string,arg2:string):Promise<void>;
@@ -559,6 +567,8 @@ export function SetDebugEnabled(arg1:boolean):Promise<void>;
 export function SetEmitter(arg1:events.Emitter):Promise<void>;
 
 export function SetEventCoalescerFrameInterval(arg1:number):Promise<void>;
+
+export function SetExtraKubeconfigPaths(arg1:Array<string>):Promise<void>;
 
 export function SetForceHTTP1(arg1:boolean):Promise<void>;
 
