@@ -1,22 +1,20 @@
-//go:build helm
+//go:build !helm
 
 package main
 
 import (
-	"fmt"
-
 	"kubikles/pkg/debug"
 	"kubikles/pkg/helm"
 )
 
-// initHelm creates a new Helm client for use in the App.
+// initHelm creates a CLI-backed Helm client when the SDK is not compiled in.
 func initHelm() *helm.Client {
 	return helm.NewClient()
 }
 
-// IsHelmAvailable returns true when Helm support is compiled in.
+// IsHelmAvailable returns true when a helm binary is found in PATH.
 func (a *App) IsHelmAvailable() bool {
-	return true
+	return a.helmClient != nil && a.helmClient.IsAvailable()
 }
 
 // =============================================================================
@@ -27,8 +25,8 @@ func (a *App) IsHelmAvailable() bool {
 func (a *App) ListHelmReleases(namespaces []string) ([]helm.Release, error) {
 	currentContext := a.GetCurrentContext()
 	debug.LogHelm("ListHelmReleases", map[string]interface{}{"context": currentContext, "namespaces": namespaces})
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.ListReleases(currentContext, namespaces)
 }
@@ -37,8 +35,8 @@ func (a *App) ListHelmReleases(namespaces []string) ([]helm.Release, error) {
 func (a *App) GetHelmRelease(namespace, name string) (*helm.ReleaseDetail, error) {
 	currentContext := a.GetCurrentContext()
 	debug.LogHelm("GetHelmRelease", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.GetRelease(currentContext, namespace, name)
 }
@@ -47,8 +45,8 @@ func (a *App) GetHelmRelease(namespace, name string) (*helm.ReleaseDetail, error
 func (a *App) GetHelmReleaseValues(namespace, name string) (map[string]interface{}, error) {
 	currentContext := a.GetCurrentContext()
 	debug.LogHelm("GetHelmReleaseValues", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.GetReleaseValues(currentContext, namespace, name)
 }
@@ -57,8 +55,8 @@ func (a *App) GetHelmReleaseValues(namespace, name string) (map[string]interface
 func (a *App) GetHelmReleaseAllValues(namespace, name string) (map[string]interface{}, error) {
 	currentContext := a.GetCurrentContext()
 	debug.LogHelm("GetHelmReleaseAllValues", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.GetReleaseAllValues(currentContext, namespace, name)
 }
@@ -67,8 +65,8 @@ func (a *App) GetHelmReleaseAllValues(namespace, name string) (map[string]interf
 func (a *App) GetHelmReleaseHistory(namespace, name string) ([]helm.ReleaseHistory, error) {
 	currentContext := a.GetCurrentContext()
 	debug.LogHelm("GetHelmReleaseHistory", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.GetReleaseHistory(currentContext, namespace, name)
 }
@@ -77,8 +75,8 @@ func (a *App) GetHelmReleaseHistory(namespace, name string) ([]helm.ReleaseHisto
 func (a *App) UninstallHelmRelease(namespace, name string) error {
 	currentContext := a.GetCurrentContext()
 	debug.LogHelm("UninstallHelmRelease", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.Uninstall(currentContext, namespace, name)
 }
@@ -87,8 +85,8 @@ func (a *App) UninstallHelmRelease(namespace, name string) error {
 func (a *App) RollbackHelmRelease(namespace, name string, revision int) error {
 	currentContext := a.GetCurrentContext()
 	debug.LogHelm("RollbackHelmRelease", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name, "revision": revision})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.Rollback(currentContext, namespace, name, revision)
 }
@@ -97,8 +95,8 @@ func (a *App) RollbackHelmRelease(namespace, name string, revision int) error {
 func (a *App) GetHelmReleaseResources(namespace, name string) ([]helm.ResourceReference, error) {
 	currentContext := a.GetCurrentContext()
 	debug.LogHelm("GetHelmReleaseResources", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name})
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.GetReleaseResources(currentContext, namespace, name)
 }
@@ -110,8 +108,8 @@ func (a *App) GetHelmReleaseResources(namespace, name string) ([]helm.ResourceRe
 // ListHelmRepositories returns all configured Helm repositories with priorities
 func (a *App) ListHelmRepositories() ([]helm.Repository, error) {
 	debug.LogHelm("ListHelmRepositories", nil)
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.ListRepositories()
 }
@@ -119,8 +117,8 @@ func (a *App) ListHelmRepositories() ([]helm.Repository, error) {
 // AddHelmRepository adds a new Helm repository
 func (a *App) AddHelmRepository(name, url string, priority int) error {
 	debug.LogHelm("AddHelmRepository", map[string]interface{}{"name": name, "url": url, "priority": priority})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.AddRepository(name, url, priority)
 }
@@ -128,8 +126,8 @@ func (a *App) AddHelmRepository(name, url string, priority int) error {
 // RemoveHelmRepository removes a Helm repository
 func (a *App) RemoveHelmRepository(name string) error {
 	debug.LogHelm("RemoveHelmRepository", map[string]interface{}{"name": name})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.RemoveRepository(name)
 }
@@ -137,18 +135,17 @@ func (a *App) RemoveHelmRepository(name string) error {
 // UpdateHelmRepository updates the index for a repository
 func (a *App) UpdateHelmRepository(name string) error {
 	debug.LogHelm("UpdateHelmRepository", map[string]interface{}{"name": name})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.UpdateRepository(name)
 }
 
 // UpdateAllHelmRepositories updates the index for all repositories
 func (a *App) UpdateAllHelmRepositories() error {
-	fmt.Println(">>> UpdateAllHelmRepositories called <<<")
 	debug.LogHelm("UpdateAllHelmRepositories", nil)
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.UpdateAllRepositories()
 }
@@ -156,8 +153,8 @@ func (a *App) UpdateAllHelmRepositories() error {
 // SetHelmRepositoryPriority sets the priority for a repository
 func (a *App) SetHelmRepositoryPriority(name string, priority int) error {
 	debug.LogHelm("SetHelmRepositoryPriority", map[string]interface{}{"name": name, "priority": priority})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.SetRepositoryPriority(name, priority)
 }
@@ -165,8 +162,8 @@ func (a *App) SetHelmRepositoryPriority(name string, priority int) error {
 // SearchHelmChart searches for a chart across all repositories
 func (a *App) SearchHelmChart(chartName string) ([]helm.ChartSource, error) {
 	debug.LogHelm("SearchHelmChart", map[string]interface{}{"chartName": chartName})
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.SearchChart(chartName)
 }
@@ -174,8 +171,8 @@ func (a *App) SearchHelmChart(chartName string) ([]helm.ChartSource, error) {
 // GetHelmChartVersions returns available versions for a chart from a specific repo
 func (a *App) GetHelmChartVersions(repoName, chartName string) ([]helm.ChartVersion, error) {
 	debug.LogHelm("GetHelmChartVersions", map[string]interface{}{"repo": repoName, "chart": chartName})
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.GetChartVersions(repoName, chartName)
 }
@@ -184,8 +181,8 @@ func (a *App) GetHelmChartVersions(repoName, chartName string) ([]helm.ChartVers
 func (a *App) UpgradeHelmRelease(namespace, name string, opts helm.UpgradeOptions) error {
 	currentContext := a.GetCurrentContext()
 	debug.LogHelm("UpgradeHelmRelease", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name, "repo": opts.RepoName, "chart": opts.ChartName, "version": opts.Version})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.UpgradeRelease(currentContext, namespace, name, opts)
 }
@@ -194,8 +191,8 @@ func (a *App) UpgradeHelmRelease(namespace, name string, opts helm.UpgradeOption
 func (a *App) ForceHelmReleaseStatus(namespace, name, status string) error {
 	currentContext := a.GetCurrentContext()
 	debug.LogHelm("ForceHelmReleaseStatus", map[string]interface{}{"context": currentContext, "ns": namespace, "name": name, "status": status})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.ForceReleaseStatus(currentContext, namespace, name, status)
 }
@@ -203,8 +200,8 @@ func (a *App) ForceHelmReleaseStatus(namespace, name, status string) error {
 // ListOCIRegistries returns a list of OCI registries with authentication status
 func (a *App) ListOCIRegistries() ([]helm.OCIRegistry, error) {
 	debug.LogHelm("ListOCIRegistries", nil)
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.ListOCIRegistries()
 }
@@ -212,8 +209,8 @@ func (a *App) ListOCIRegistries() ([]helm.OCIRegistry, error) {
 // LoginOCIRegistry authenticates to an OCI registry with username/password
 func (a *App) LoginOCIRegistry(registry, username, password string) error {
 	debug.LogHelm("LoginOCIRegistry", map[string]interface{}{"registry": registry, "username": username})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.LoginOCIRegistry(registry, username, password)
 }
@@ -221,8 +218,8 @@ func (a *App) LoginOCIRegistry(registry, username, password string) error {
 // LoginACRWithAzureCLI logs into an Azure Container Registry using Azure CLI
 func (a *App) LoginACRWithAzureCLI(registry string) error {
 	debug.LogHelm("LoginACRWithAzureCLI", map[string]interface{}{"registry": registry})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.LoginACRWithAzureCLI(registry)
 }
@@ -230,8 +227,8 @@ func (a *App) LoginACRWithAzureCLI(registry string) error {
 // LogoutOCIRegistry logs out from an OCI registry
 func (a *App) LogoutOCIRegistry(registry string) error {
 	debug.LogHelm("LogoutOCIRegistry", map[string]interface{}{"registry": registry})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.LogoutOCIRegistry(registry)
 }
@@ -239,8 +236,8 @@ func (a *App) LogoutOCIRegistry(registry string) error {
 // SetOCIRegistryPriority sets the priority for an OCI registry
 func (a *App) SetOCIRegistryPriority(registryURL string, priority int) error {
 	debug.LogHelm("SetOCIRegistryPriority", map[string]interface{}{"registry": registryURL, "priority": priority})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.SetOCIRegistryPriority(registryURL, priority)
 }
@@ -248,8 +245,8 @@ func (a *App) SetOCIRegistryPriority(registryURL string, priority int) error {
 // RemoveOCIRegistry removes an OCI registry (logout and remove priority)
 func (a *App) RemoveOCIRegistry(registry string) error {
 	debug.LogHelm("RemoveOCIRegistry", map[string]interface{}{"registry": registry})
-	if a.helmClient == nil {
-		return fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.RemoveOCIRegistry(registry)
 }
@@ -257,8 +254,8 @@ func (a *App) RemoveOCIRegistry(registry string) error {
 // ListChartSources returns all available chart sources (HTTP repos + OCI registries)
 func (a *App) ListChartSources() ([]helm.ChartSourceInfo, error) {
 	debug.LogHelm("ListChartSources", nil)
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.ListChartSources()
 }
@@ -266,8 +263,8 @@ func (a *App) ListChartSources() ([]helm.ChartSourceInfo, error) {
 // SearchChartInSource searches for a chart in a specific source
 func (a *App) SearchChartInSource(sourceName, chartName string) (*helm.ChartSearchResult, error) {
 	debug.LogHelm("SearchChartInSource", map[string]interface{}{"source": sourceName, "chart": chartName})
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.SearchChartInSource(sourceName, chartName)
 }
@@ -279,8 +276,8 @@ func (a *App) SearchChartInSource(sourceName, chartName string) (*helm.ChartSear
 // HelmTemplateRelease renders templates locally without contacting the cluster
 func (a *App) HelmTemplateRelease(releaseName, namespace string, opts helm.UpgradeOptions) (*helm.TemplateResult, error) {
 	debug.LogHelm("HelmTemplateRelease", map[string]interface{}{"name": releaseName, "ns": namespace, "chart": opts.ChartName, "version": opts.Version})
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.TemplateRelease(releaseName, namespace, opts)
 }
@@ -289,8 +286,8 @@ func (a *App) HelmTemplateRelease(releaseName, namespace string, opts helm.Upgra
 func (a *App) HelmDryRunUpgrade(namespace, releaseName string, opts helm.UpgradeOptions) (*helm.DryRunResult, error) {
 	currentContext := a.GetCurrentContext()
 	debug.LogHelm("HelmDryRunUpgrade", map[string]interface{}{"context": currentContext, "ns": namespace, "name": releaseName, "chart": opts.ChartName, "version": opts.Version})
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.DryRunUpgrade(currentContext, namespace, releaseName, opts)
 }
@@ -298,8 +295,8 @@ func (a *App) HelmDryRunUpgrade(namespace, releaseName string, opts helm.Upgrade
 // HelmValidateValues validates values against the chart's JSON schema
 func (a *App) HelmValidateValues(opts helm.UpgradeOptions) ([]helm.ValidationError, error) {
 	debug.LogHelm("HelmValidateValues", map[string]interface{}{"chart": opts.ChartName, "version": opts.Version})
-	if a.helmClient == nil {
-		return nil, fmt.Errorf("helm client not initialized")
+	if a.helmClient == nil || !a.helmClient.IsAvailable() {
+		return nil, helm.ErrHelmNotAvailable
 	}
 	return a.helmClient.ValidateValues(opts)
 }

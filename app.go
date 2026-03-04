@@ -95,7 +95,7 @@ func NewApp() *App {
 	return &App{
 		k8sClient:             client,
 		k8sInitError:          err,
-		helmClient:            helm.NewClient(),
+		helmClient:            initHelm(),
 		terminalManager:       terminal.NewManager(),
 		aiManager:             newAIManager(client),
 		logStreams:            make(map[string]context.CancelFunc),

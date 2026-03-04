@@ -1,7 +1,8 @@
+//go:build helm
+
 package helm
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,47 +26,7 @@ import (
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"sigs.k8s.io/yaml"
 )
-
-// Release represents a Helm release with relevant information for the UI
-type Release struct {
-	Name         string    `json:"name"`
-	Namespace    string    `json:"namespace"`
-	Revision     int       `json:"revision"`
-	Status       string    `json:"status"`
-	Chart        string    `json:"chart"`
-	ChartVersion string    `json:"chartVersion"`
-	AppVersion   string    `json:"appVersion"`
-	Updated      time.Time `json:"updated"`
-	Description  string    `json:"description"`
-}
-
-// ReleaseDetail contains full release information including values
-type ReleaseDetail struct {
-	Release
-	Values         map[string]interface{} `json:"values"`
-	ComputedValues map[string]interface{} `json:"computedValues"`
-	Notes          string                 `json:"notes"`
-	Manifest       string                 `json:"manifest"`
-}
-
-// ReleaseHistory represents a single revision in release history
-type ReleaseHistory struct {
-	Revision    int       `json:"revision"`
-	Status      string    `json:"status"`
-	Chart       string    `json:"chart"`
-	AppVersion  string    `json:"appVersion"`
-	Updated     time.Time `json:"updated"`
-	Description string    `json:"description"`
-}
-
-// ResourceReference represents a reference to a Kubernetes resource
-type ResourceReference struct {
-	Kind      string `json:"kind"`
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
-}
 
 // Client provides Helm operations
 type Client struct {
@@ -79,6 +40,9 @@ func NewClient() *Client {
 		settings: settings,
 	}
 }
+
+// IsAvailable returns true when using the SDK-backed Helm client.
+func (c *Client) IsAvailable() bool { return true }
 
 // getActionConfig creates a Helm action configuration for the given namespace and context
 func (c *Client) getActionConfig(namespace, contextName string) (*action.Configuration, error) {
@@ -303,73 +267,6 @@ func (c *Client) GetReleaseResources(contextName, namespace, name string) ([]Res
 	return parseManifestResources(r.Manifest, namespace)
 }
 
-// parseManifestResources extracts resource references from a Helm manifest
-func parseManifestResources(manifest, defaultNamespace string) ([]ResourceReference, error) {
-	var resources []ResourceReference
-
-	// Split manifest into individual documents
-	scanner := bufio.NewScanner(strings.NewReader(manifest))
-	scanner.Split(splitYAMLDocuments)
-
-	for scanner.Scan() {
-		doc := strings.TrimSpace(scanner.Text())
-		if doc == "" || doc == "---" {
-			continue
-		}
-
-		// Parse the YAML document to extract metadata
-		var obj struct {
-			Kind     string `json:"kind"`
-			Metadata struct {
-				Name      string `json:"name"`
-				Namespace string `json:"namespace"`
-			} `json:"metadata"`
-		}
-
-		if err := yaml.Unmarshal([]byte(doc), &obj); err != nil {
-			continue // Skip invalid documents
-		}
-
-		if obj.Kind == "" || obj.Metadata.Name == "" {
-			continue
-		}
-
-		ns := obj.Metadata.Namespace
-		if ns == "" {
-			ns = defaultNamespace
-		}
-
-		resources = append(resources, ResourceReference{
-			Kind:      obj.Kind,
-			Name:      obj.Metadata.Name,
-			Namespace: ns,
-		})
-	}
-
-	return resources, nil
-}
-
-// splitYAMLDocuments is a split function for Scanner that splits on YAML document separators
-func splitYAMLDocuments(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if atEOF && len(data) == 0 {
-		return 0, nil, nil
-	}
-
-	// Look for document separator
-	sep := []byte("\n---")
-	if i := strings.Index(string(data), string(sep)); i >= 0 {
-		return i + len(sep), data[0:i], nil
-	}
-
-	// If at EOF, return what's left
-	if atEOF {
-		return len(data), data, nil
-	}
-
-	// Request more data
-	return 0, nil, nil
-}
-
 // releaseToModel converts a Helm release to our model
 func releaseToModel(r *release.Release) Release {
 	return Release{
@@ -434,22 +331,6 @@ func (g *contextAwareGetter) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 	}
 
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
-}
-
-// UpgradeOptions contains options for upgrading a release
-type UpgradeOptions struct {
-	RepoName      string                 `json:"repoName"`      // Repository name (or oci://registry for OCI)
-	RepoURL       string                 `json:"repoUrl"`       // Repository URL
-	ChartName     string                 `json:"chartName"`     // Chart name
-	Version       string                 `json:"version"`       // Target version (empty = latest)
-	Values        map[string]interface{} `json:"values"`        // Override values
-	ReuseValues   bool                   `json:"reuseValues"`   // Reuse values from current release
-	ResetValues   bool                   `json:"resetValues"`   // Reset to chart defaults
-	Force         bool                   `json:"force"`         // Force resource updates
-	Wait          bool                   `json:"wait"`          // Wait for resources ready
-	Timeout       int                    `json:"timeout"`       // Timeout in seconds
-	IsOCI         bool                   `json:"isOci"`         // True if this is an OCI registry source
-	OCIRepository string                 `json:"ociRepository"` // For OCI: the repository path within registry
 }
 
 // UpgradeRelease upgrades or reinstalls a release
@@ -684,25 +565,6 @@ func (c *Client) locateOCIChart(registryURL, repository, version string) (string
 	}
 
 	return "", fmt.Errorf("chart archive not found after pull")
-}
-
-// TemplateResult contains the rendered manifests from a template operation
-type TemplateResult struct {
-	Manifests string `json:"manifests"` // Rendered YAML manifests
-	Notes     string `json:"notes"`     // Release notes
-}
-
-// DryRunResult contains the diff between current and proposed state
-type DryRunResult struct {
-	CurrentManifest  string `json:"currentManifest"`  // Current deployed manifest
-	ProposedManifest string `json:"proposedManifest"` // Proposed manifest from dry-run
-	Notes            string `json:"notes"`            // Release notes from dry-run
-}
-
-// ValidationError represents a single values validation error with path info
-type ValidationError struct {
-	Path    string `json:"path"`    // JSON path to the invalid field (e.g. ".service.type")
-	Message string `json:"message"` // Error message describing the validation failure
 }
 
 // TemplateRelease renders templates locally using Helm's template engine (client-only, no cluster access)

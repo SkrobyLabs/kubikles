@@ -1,13 +1,13 @@
+//go:build helm
+
 package helm
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -17,121 +17,6 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
 )
-
-// ACR token refresh functionality
-
-// Pre-compiled regex for ACR URL parsing (avoid recompiling on every call)
-var acrURLRegex = regexp.MustCompile(`https?://([^.]+)\.azurecr\.io`)
-
-// isACRURL checks if a URL is an Azure Container Registry URL
-func isACRURL(url string) bool {
-	return strings.Contains(url, ".azurecr.io")
-}
-
-// extractACRName extracts the registry name from an ACR URL
-func extractACRName(url string) string {
-	matches := acrURLRegex.FindStringSubmatch(url)
-	if len(matches) >= 2 {
-		return matches[1]
-	}
-	return ""
-}
-
-// isJWTExpired checks if a JWT token is expired (with 5 minute buffer)
-func isJWTExpired(token string) bool {
-	if token == "" {
-		return true
-	}
-
-	// JWT has 3 parts separated by dots
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		// Not a valid JWT - might be a static password, treat as not expired
-		return false
-	}
-
-	// Decode the payload (second part) - JWT uses base64url encoding
-	// Add padding if needed
-	payload := parts[1]
-	switch len(payload) % 4 {
-	case 2:
-		payload += "=="
-	case 3:
-		payload += "="
-	}
-
-	decoded, err := base64.URLEncoding.DecodeString(payload)
-	if err != nil {
-		// Try standard encoding as fallback
-		decoded, err = base64.StdEncoding.DecodeString(payload)
-		if err != nil {
-			return false // Can't decode, assume not expired
-		}
-	}
-
-	var claims struct {
-		Exp int64 `json:"exp"`
-	}
-	if err := json.Unmarshal(decoded, &claims); err != nil {
-		return false // Can't parse, assume not expired
-	}
-
-	now := time.Now().Unix()
-	return now > (claims.Exp - 300)
-}
-
-// ACRCredentials holds username and password for ACR authentication
-type ACRCredentials struct {
-	Username string
-	Password string
-}
-
-// refreshACRCredentials attempts to get ACR admin credentials using Azure CLI
-func refreshACRCredentials(registryName string) (*ACRCredentials, error) {
-	// Try to get admin credentials (more reliable than refresh tokens)
-	cmd := exec.Command("az", "acr", "credential", "show", "-n", registryName,
-		"--query", "{username:username, password:passwords[0].value}", "-o", "json")
-	output, err := cmd.Output()
-	if err != nil {
-		// Admin might be disabled, try token approach as fallback
-		return refreshACRToken(registryName)
-	}
-
-	var creds struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-	if err := json.Unmarshal(output, &creds); err != nil {
-		return nil, fmt.Errorf("failed to parse ACR credentials: %w", err)
-	}
-
-	if creds.Username == "" || creds.Password == "" {
-		return refreshACRToken(registryName)
-	}
-
-	return &ACRCredentials{Username: creds.Username, Password: creds.Password}, nil
-}
-
-// refreshACRToken attempts to get a fresh ACR token using Azure CLI (fallback)
-func refreshACRToken(registryName string) (*ACRCredentials, error) {
-	// Try to get token using az acr login --expose-token
-	cmd := exec.Command("az", "acr", "login", "-n", registryName, "--expose-token", "--query", "accessToken", "-o", "tsv")
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get ACR credentials (is Azure CLI installed and logged in?): %w", err)
-	}
-
-	token := strings.TrimSpace(string(output))
-	if token == "" {
-		return nil, fmt.Errorf("empty token returned from Azure CLI")
-	}
-
-	// Token auth uses special username
-	return &ACRCredentials{
-		Username: "00000000-0000-0000-0000-000000000000",
-		Password: token,
-	}, nil
-}
 
 // RefreshACRTokenIfNeeded checks if an ACR repo needs credential refresh and does it
 func (c *Client) RefreshACRTokenIfNeeded(repoName string) error {
@@ -252,105 +137,6 @@ func (c *Client) RefreshAllACRTokens() error {
 	}
 
 	return nil
-}
-
-// Repository represents a Helm chart repository with priority
-type Repository struct {
-	Name     string `json:"name"`
-	URL      string `json:"url"`
-	Priority int    `json:"priority"` // Lower number = higher priority (0 is highest)
-}
-
-// ChartVersion represents an available version of a chart
-type ChartVersion struct {
-	Version     string    `json:"version"`
-	AppVersion  string    `json:"appVersion"`
-	Description string    `json:"description"`
-	Created     time.Time `json:"created"`
-	Deprecated  bool      `json:"deprecated"`
-}
-
-// ChartSource represents a chart available from a repository or OCI registry
-type ChartSource struct {
-	RepoName      string         `json:"repoName"`
-	RepoURL       string         `json:"repoUrl"`
-	Priority      int            `json:"priority"`
-	ChartName     string         `json:"chartName"`
-	Versions      []ChartVersion `json:"versions"`
-	IsOCI         bool           `json:"isOci"`         // True if this is an OCI registry source
-	OCIRepository string         `json:"ociRepository"` // For OCI: the full repository path within registry
-}
-
-// ChartSourceInfo provides basic info about a chart source for listing
-type ChartSourceInfo struct {
-	Name     string `json:"name"`     // Display name (repo name or oci://registry)
-	URL      string `json:"url"`      // URL of the source
-	IsOCI    bool   `json:"isOci"`    // True if OCI registry
-	IsACR    bool   `json:"isAcr"`    // True if Azure Container Registry
-	Priority int    `json:"priority"` // Priority (lower = higher priority)
-}
-
-// ChartSearchResult contains the result of searching a single source
-type ChartSearchResult struct {
-	Found    bool         `json:"found"`    // Whether chart was found
-	Source   *ChartSource `json:"source"`   // The source details if found
-	Log      string       `json:"log"`      // Log message describing what happened
-	Duration int64        `json:"duration"` // Search duration in milliseconds
-}
-
-// RepoPriorities stores priority settings for repositories
-type RepoPriorities struct {
-	Priorities map[string]int `json:"priorities"` // repo name -> priority
-}
-
-// getRepoPrioritiesPath returns the path to the priorities config file
-func getRepoPrioritiesPath() string {
-	home := os.Getenv("HOME")
-	if home == "" {
-		home = os.Getenv("USERPROFILE") // Windows
-	}
-	return filepath.Join(home, ".config", "kubikles", "helm-repo-priorities.json")
-}
-
-// loadRepoPriorities loads repository priorities from config
-func loadRepoPriorities() (*RepoPriorities, error) {
-	path := getRepoPrioritiesPath()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return &RepoPriorities{Priorities: make(map[string]int)}, nil
-		}
-		return nil, err
-	}
-
-	var priorities RepoPriorities
-	if err := json.Unmarshal(data, &priorities); err != nil {
-		return nil, err
-	}
-
-	if priorities.Priorities == nil {
-		priorities.Priorities = make(map[string]int)
-	}
-
-	return &priorities, nil
-}
-
-// saveRepoPriorities saves repository priorities to config
-func saveRepoPriorities(priorities *RepoPriorities) error {
-	path := getRepoPrioritiesPath()
-
-	// Ensure directory exists
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-
-	data, err := json.MarshalIndent(priorities, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(path, data, 0600)
 }
 
 // ListRepositories returns all configured Helm repositories with priorities

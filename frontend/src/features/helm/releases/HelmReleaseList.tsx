@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { EllipsisVerticalIcon, ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import ResourceList from '~/components/shared/ResourceList';
 import BulkActionModal from '~/components/shared/BulkActionModal';
@@ -63,7 +63,17 @@ export default function HelmReleaseList({ isVisible }: { isVisible: boolean }) {
     const [upgradeRelease, setUpgradeRelease] = useState<any>(null);
     const selection = useSelection();
 
-    const { releases, loading, refresh } = useHelmReleases(currentContext, selectedNamespaces, isVisible) as any;
+    const { releases, loading, error, refresh } = useHelmReleases(currentContext, selectedNamespaces, isVisible) as any;
+
+    useEffect(() => {
+        if (error) {
+            addNotification({
+                type: 'error',
+                title: 'Failed to fetch Helm releases',
+                message: error?.message || String(error)
+            });
+        }
+    }, [error, addNotification]);
     const {
         handleOpenDetails,
         handleViewValues,
@@ -152,10 +162,14 @@ export default function HelmReleaseList({ isVisible }: { isVisible: boolean }) {
                         refresh();
                     })
                     .catch((err: any) => {
+                        const msg = err?.message || String(err);
+                        const isUnsupported = msg.includes('not supported without the Helm SDK');
                         addNotification({
-                            type: 'error',
-                            title: 'Failed to update status',
-                            message: err?.message || String(err)
+                            type: isUnsupported ? 'warning' : 'error',
+                            title: isUnsupported ? 'Not available' : 'Failed to update status',
+                            message: isUnsupported
+                                ? 'Force status requires the full build with embedded Helm SDK. Use "helm rollback" or upgrade the release instead.'
+                                : msg
                         });
                     });
             }

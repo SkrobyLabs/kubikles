@@ -22,8 +22,8 @@ func RunServer(assets embed.FS, port int, label string) {
 	// Create app instance
 	app := NewApp()
 
-	// Create server
-	srv := server.New(app, assets, port)
+	// Create server with generated switch-based dispatcher (enables DCE)
+	srv := server.New(NewAppMethodCaller(app), assets, port)
 
 	// Set up the app's event emitter to use the server's WebSocket broadcast
 	app.SetEmitter(events.EmitterFunc(func(name string, data ...interface{}) {

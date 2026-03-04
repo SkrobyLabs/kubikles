@@ -1,49 +1,83 @@
 #!/bin/sh
 #
 # Pre-commit hook that runs linting and tests before allowing a commit.
+# All checks run in parallel for faster feedback.
 # To skip this hook, use: git commit --no-verify
 
 cd "$(git rev-parse --show-toplevel)"
 
-# Run Go linter first (fast, catches issues early)
-echo "Running Go linter..."
+TMPDIR=$(mktemp -d)
+trap "rm -rf \"$TMPDIR\"" EXIT
+
+# Determine golangci-lint availability
 GOLANGCI_LINT="${GOLANGCI_LINT:-$(command -v golangci-lint || echo "$HOME/go/bin/golangci-lint")}"
-if [ -x "$GOLANGCI_LINT" ]; then
-    "$GOLANGCI_LINT" run ./...
-    if [ $? -ne 0 ]; then
-        echo ""
-        echo "Linting failed. Commit aborted."
-        echo "Run 'make lint-fix' to auto-fix issues, or 'git commit --no-verify' to skip."
-        exit 1
-    fi
-    echo "Linting passed!"
-else
+SKIP_LINT=0
+if [ ! -x "$GOLANGCI_LINT" ]; then
     echo "Warning: golangci-lint not found, skipping Go lint"
+    SKIP_LINT=1
 fi
 
-# Run frontend type checking
-echo "Running frontend type checking..."
-cd frontend && npm run typecheck
+echo "Running checks in parallel..."
 
-if [ $? -ne 0 ]; then
+# Launch Go linter (if available)
+if [ "$SKIP_LINT" = "0" ]; then
+    ( "$GOLANGCI_LINT" run ./... > "$TMPDIR/lint.out" 2>&1; echo $? > "$TMPDIR/lint.rc" ) &
+else
+    echo 0 > "$TMPDIR/lint.rc"
+    echo "Skipped (golangci-lint not found)" > "$TMPDIR/lint.out"
+fi
+
+# Launch frontend type checking
+( cd frontend && npm run typecheck > "$TMPDIR/typecheck.out" 2>&1; echo $? > "$TMPDIR/typecheck.rc" ) &
+
+# Launch frontend tests
+( cd frontend && npm test > "$TMPDIR/test.out" 2>&1; echo $? > "$TMPDIR/test.rc" ) &
+
+# Wait for all background jobs
+wait
+
+# Collect results
+FAIL=0
+
+# Check lint result
+LINT_RC=$(cat "$TMPDIR/lint.rc")
+if [ "$LINT_RC" != "0" ]; then
     echo ""
-    echo "Type checking failed. Commit aborted."
-    echo "Fix the type errors or use 'git commit --no-verify' to skip."
+    echo "=== Go Lint FAILED ==="
+    cat "$TMPDIR/lint.out"
+    FAIL=1
+else
+    echo "Go lint passed!"
+fi
+
+# Check typecheck result
+TC_RC=$(cat "$TMPDIR/typecheck.rc")
+if [ "$TC_RC" != "0" ]; then
+    echo ""
+    echo "=== Type Checking FAILED ==="
+    cat "$TMPDIR/typecheck.out"
+    FAIL=1
+else
+    echo "Type checking passed!"
+fi
+
+# Check test result
+TEST_RC=$(cat "$TMPDIR/test.rc")
+if [ "$TEST_RC" != "0" ]; then
+    echo ""
+    echo "=== Tests FAILED ==="
+    cat "$TMPDIR/test.out"
+    FAIL=1
+else
+    echo "Tests passed!"
+fi
+
+# Final summary
+if [ "$FAIL" != "0" ]; then
+    echo ""
+    echo "Pre-commit checks failed. Commit aborted."
+    echo "Fix the issues above, or use 'git commit --no-verify' to skip."
     exit 1
 fi
 
-echo "Type checking passed!"
-
-# Run frontend tests
-echo "Running frontend tests..."
-npm test
-
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "Tests failed. Commit aborted."
-    echo "Fix the failing tests or use 'git commit --no-verify' to skip."
-    exit 1
-fi
-
-echo "Tests passed!"
 exit 0

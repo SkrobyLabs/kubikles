@@ -614,7 +614,7 @@ func (c *Client) enrichExecError(origErr error) error {
 	cmdCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(cmdCtx, execCfg.Command, execCfg.Args...)
+	cmd := exec.CommandContext(cmdCtx, execCfg.Command, execCfg.Args...) //nolint:gosec // args come from user's kubeconfig
 	if len(execCfg.Env) > 0 {
 		cmd.Env = os.Environ()
 		for _, env := range execCfg.Env {
@@ -624,7 +624,7 @@ func (c *Client) enrichExecError(origErr error) error {
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
-	cmd.Run() // We expect this to fail — we want the stderr
+	_ = cmd.Run() // We expect this to fail — we want the stderr
 
 	stderrStr := strings.TrimSpace(stderr.String())
 	if stderrStr == "" {

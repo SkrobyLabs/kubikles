@@ -31,6 +31,8 @@ Read the AI reference documentation for full project context:
 | Server mode | `server_mode.go` |
 | Event batching | `eventcoalescer.go` |
 | Log batching | `logcoalescer.go` |
+| Generated method dispatch | `dispatch_gen.go` (do NOT edit, use `make generate`) |
+| go:generate directive | `generate.go` |
 
 ### App Domain Files (Wails bindings split by domain)
 | Domain | File |
@@ -57,7 +59,8 @@ Read the AI reference documentation for full project context:
 | Network (HPA/PDB/NetPol) | `app_network.go` |
 | Scheduling | `app_scheduling.go` |
 | Webhooks | `app_webhooks.go` |
-| Helm | `app_helm.go` |
+| Helm (build tag: helm) | `app_helm.go` |
+| Helm stubs (build tag: !helm) | `app_helm_stub.go` |
 | Port forwarding | `app_portforward.go` |
 | Ingress forwarding | `app_ingressfwd.go` |
 | Log streaming | `app_logs.go` |
@@ -116,9 +119,13 @@ Read the AI reference documentation for full project context:
 | StatefulSet operations | `pkg/k8s/statefulsets.go` |
 | PVC, PV, StorageClass | `pkg/k8s/storage.go` |
 | Webhook configurations | `pkg/k8s/webhooks.go` |
-| Helm operations | `pkg/helm/client.go` |
-| Helm repositories | `pkg/helm/repo.go` |
-| OCI registries | `pkg/helm/oci.go` |
+| Helm operations (build tag: helm) | `pkg/helm/client.go` |
+| Helm stub client (build tag: !helm) | `pkg/helm/client_stub.go` |
+| Helm pure data types | `pkg/helm/types.go` |
+| Helm repositories (build tag: helm) | `pkg/helm/repo.go` |
+| OCI registries (build tag: helm) | `pkg/helm/oci.go` |
+| Compressed asset serving | `pkg/compressedassets/handler.go` |
+| Dispatcher code generator | `cmd/gen-dispatcher/main.go` |
 | Terminal (Unix) | `pkg/terminal/session_unix.go` |
 | Terminal (Windows) | `pkg/terminal/session_windows.go` |
 | Terminal manager | `pkg/terminal/manager.go` |

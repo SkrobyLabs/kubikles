@@ -37,12 +37,15 @@ kubikles/
 │   ├── app_pods.go         # Pod operations
 │   ├── app_deployments.go  # Deployment operations
 │   ├── app_services.go     # Service operations
-│   ├── app_helm.go         # Helm releases/repos
+│   ├── app_helm.go         # Helm releases/repos (//go:build helm)
+│   ├── app_helm_stub.go    # Helm stubs for lite builds (//go:build !helm)
 │   ├── app_logs.go         # Log streaming
 │   ├── app_terminal.go     # Terminal sessions
 │   ├── app_ai.go           # AI assistant
 │   ├── app_issuedetector.go # Issue detection Wails bindings
 │   └── ...                 # (see rule file for complete list)
+├── dispatch_gen.go         # Generated method dispatch (go generate)
+├── generate.go             # go:generate directive for dispatcher
 ├── runtime_darwin_arm64.go # Apple Silicon runtime tuning
 ├── runtime_other.go        # Other platform runtime
 ├── eventcoalescer.go       # 16ms event batching for IPC efficiency
@@ -92,9 +95,13 @@ kubikles/
 │   │   ├── session_unix.go # Unix/macOS PTY
 │   │   └── session_windows.go # Windows conpty
 │   ├── helm/
-│   │   ├── client.go       # Helm operations
-│   │   ├── oci.go          # OCI registry
-│   │   └── repo.go         # Repository management
+│   │   ├── client.go       # Helm operations (//go:build helm)
+│   │   ├── client_stub.go  # Stub client for lite builds (//go:build !helm)
+│   │   ├── types.go        # Pure data types (no build tag)
+│   │   ├── oci.go          # OCI registry (//go:build helm)
+│   │   └── repo.go         # Repository management (//go:build helm)
+│   ├── compressedassets/
+│   │   └── handler.go      # Wails middleware + gzip-aware file server
 │   ├── ai/                 # AI integration
 │   │   ├── claude_cli.go   # Claude CLI integration
 │   │   ├── manager.go      # AI session manager
@@ -123,12 +130,19 @@ kubikles/
 │   │   └── tools.go        # Tool implementations
 │   ├── server/             # Server mode
 │   │   ├── api.go          # REST API handlers
-│   │   └── server.go       # HTTP server
+│   │   └── server.go       # HTTP server (uses MethodCaller interface)
 │   ├── events/             # Event system
 │   │   └── emitter.go      # Event emitter
 │   ├── hosts/              # Platform-specific hosts file
 │   ├── certviewer/         # Certificate inspection
 │   └── crashlog/           # Crash logging
+│
+├── cmd/
+│   └── gen-dispatcher/
+│       └── main.go         # Code generator for method dispatch switch
+│
+├── scripts/
+│   └── compress-dist.sh    # Post-build gzip compression of frontend dist
 │
 ├── frontend/src/
 │   ├── App.tsx             # Root component, providers, view routing
@@ -323,13 +337,29 @@ Each resource type (`features/[category]/[resource]/`):
 
 ```bash
 make dev              # Development with hot-reload
-make build            # Current platform
+make build            # Current platform (with BUILD_TAGS=helm)
+make build-lite       # Current platform without Helm
 make build-release    # Optimized portable
-make build-all        # All platforms
+make build-all        # All platforms (parallel)
 make test             # Frontend tests
+make generate         # Regenerate dispatch_gen.go
+make analyze-size     # Binary size analysis
 make profile          # Collect PGO profile
 make build-pgo        # Build with PGO
 ```
+
+## Build System
+
+### Build Tags
+- `helm` (default): Includes full Helm support. Controlled by `BUILD_TAGS` Makefile variable.
+- `!helm` (lite): Stubs return `ErrHelmNotAvailable`. Build with `make build-lite`.
+- Pattern follows `debugcluster` / `debugcluster_stub` convention.
+
+### Generated Dispatcher
+`dispatch_gen.go` maps method names to App methods (replaces reflect.MethodByName for DCE). Regenerate after adding/changing App methods: `make generate` or `go generate ./...`.
+
+### Pre-compressed Assets
+Frontend dist is gzip'd at build time (`scripts/compress-dist.sh`). Desktop mode decompresses via Wails middleware (`pkg/compressedassets`). Server mode serves `.gz` directly.
 
 ## Performance Notes
 

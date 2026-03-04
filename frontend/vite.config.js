@@ -1,6 +1,6 @@
 /// <reference types="vitest" />
 import {defineConfig} from 'vite'
-import react from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react-swc'
 import {viteStaticCopy} from 'vite-plugin-static-copy'
 import {visualizer} from 'rollup-plugin-visualizer'
 import path from 'path'
@@ -44,12 +44,12 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    visualizer({
+    ...(process.env.ANALYZE ? [visualizer({
       filename: 'dist/stats.html',
-      open: false,
+      open: true,
       gzipSize: true,
       brotliSize: true,
-    }),
+    })] : []),
     viteStaticCopy({
       targets: [
         // Core Monaco loader

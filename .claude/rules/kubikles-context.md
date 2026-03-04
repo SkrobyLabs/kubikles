@@ -25,6 +25,10 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 | App struct & lifecycle | `app.go` |
 | K8s API operations | `pkg/k8s/client.go` |
 | Event batching | `eventcoalescer.go` |
+| Generated method dispatch | `dispatch_gen.go` (do NOT edit, use `make generate`) |
+| go:generate directive | `generate.go` |
+| Dispatcher code generator | `cmd/gen-dispatcher/main.go` |
+| Compressed asset serving | `pkg/compressedassets/handler.go` |
 | AI integration | `pkg/ai/` |
 | Issue detection engine | `pkg/issuedetector/` |
 | MCP server | `pkg/mcp/server.go` |
@@ -55,7 +59,8 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 | Network (HPA/PDB/NetPol) | `app_network.go` |
 | Scheduling | `app_scheduling.go` |
 | Webhooks | `app_webhooks.go` |
-| Helm | `app_helm.go` |
+| Helm (build tag: helm) | `app_helm.go` |
+| Helm stubs (build tag: !helm) | `app_helm_stub.go` |
 | Port forwarding | `app_portforward.go` |
 | Ingress forwarding | `app_ingressfwd.go` |
 | Log streaming | `app_logs.go` |
@@ -128,6 +133,20 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 | Deprecation rules (DEP001-DEP005) | `pkg/issuedetector/rules_deprecation.go` |
 | Unit tests | `pkg/issuedetector/engine_test.go` |
 
+### Helm Package (`pkg/helm/`)
+| Purpose | File |
+|---------|------|
+| Helm operations (build tag: helm) | `pkg/helm/client.go` |
+| Stub client (build tag: !helm) | `pkg/helm/client_stub.go` |
+| Pure data types (no build tag) | `pkg/helm/types.go` |
+| OCI registry (build tag: helm) | `pkg/helm/oci.go` |
+| Repository management (build tag: helm) | `pkg/helm/repo.go` |
+
+### Compressed Assets Package (`pkg/compressedassets/`)
+| Purpose | File |
+|---------|------|
+| Wails middleware + gzip-aware file server | `pkg/compressedassets/handler.go` |
+
 ### Frontend Core
 | Purpose | File |
 |---------|------|
@@ -166,8 +185,12 @@ Resources are at `frontend/src/features/{category}/{resource}/`:
 ## Build Commands
 ```bash
 make dev          # Development with hot-reload
-make build        # Current platform
+make build        # Current platform (BUILD_TAGS=helm)
+make build-lite   # Current platform without Helm
+make build-all    # All platforms (parallel)
 make test         # Frontend tests
+make generate     # Regenerate dispatch_gen.go
+make analyze-size # Binary size analysis
 ```
 
 ## Full Reference

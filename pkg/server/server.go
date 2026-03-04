@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"kubikles/pkg/compressedassets"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -63,10 +65,10 @@ type Event struct {
 }
 
 // New creates a new server instance.
-// The app parameter should be a struct whose public methods will be exposed via the API.
-func New(app interface{}, assets embed.FS, port int) *Server {
+// The caller parameter implements MethodCaller for dispatching API calls.
+func New(caller MethodCaller, assets embed.FS, port int) *Server {
 	return &Server{
-		caller:    NewReflectMethodCaller(app),
+		caller:    caller,
 		assets:    assets,
 		port:      port,
 		clients:   make(map[*wsClient]bool),
@@ -90,20 +92,13 @@ func (s *Server) Run(ctx context.Context) error {
 	// Serve API endpoints
 	mux.HandleFunc("/api/", s.handleAPI)
 
-	// Serve static files from embedded assets
+	// Serve static files from embedded assets (pre-compressed with gzip)
 	subFS, err := fs.Sub(s.assets, "frontend/dist")
 	if err != nil {
 		return fmt.Errorf("failed to create sub filesystem: %w", err)
 	}
-	fileServer := http.FileServer(http.FS(subFS))
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// For SPA routing, serve index.html for non-file requests
-		path := r.URL.Path
-		if path != "/" && !strings.Contains(path, ".") {
-			r.URL.Path = "/"
-		}
-		fileServer.ServeHTTP(w, r)
-	})
+	fileServer := compressedassets.GzipAwareFileServer(subFS)
+	mux.Handle("/", fileServer)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", s.port),

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && ../scripts/compress-dist.sh",
+    "analyze": "ANALYZE=1 vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -40,7 +41,7 @@
     "@biomejs/biome": "^2.3.14",
     "@types/react": "^18.0.17",
     "@types/react-dom": "^18.0.6",
-    "@vitejs/plugin-react": "^2.0.1",
+    "@vitejs/plugin-react-swc": "^3.8.0",
     "acorn": "^8.15.0",
     "acorn-walk": "^8.3.4",
     "autoprefixer": "^10.4.22",
@@ -48,7 +49,7 @@
     "rollup-plugin-visualizer": "^6.0.5",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.9.3",
-    "vite": "^3.0.7",
+    "vite": "^5.0.0",
     "vite-plugin-static-copy": "^0.17.1",
     "vitest": "^2.1.0"
   }

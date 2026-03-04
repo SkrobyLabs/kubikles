@@ -376,6 +376,8 @@ export function HelmValidateValues(arg1:helm.UpgradeOptions):Promise<Array<helm.
 
 export function IsDebugClusterEnabled():Promise<boolean>;
 
+export function IsHelmAvailable():Promise<boolean>;
+
 export function IsRequestCancellationEnabled():Promise<boolean>;
 
 export function ListCRDs():Promise<Array<v1.CustomResourceDefinition>>;

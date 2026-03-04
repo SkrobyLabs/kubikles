@@ -734,6 +734,10 @@ export function IsDebugClusterEnabled() {
   return window['go']['main']['App']['IsDebugClusterEnabled']();
 }
 
+export function IsHelmAvailable() {
+  return window['go']['main']['App']['IsHelmAvailable']();
+}
+
 export function IsRequestCancellationEnabled() {
   return window['go']['main']['App']['IsRequestCancellationEnabled']();
 }

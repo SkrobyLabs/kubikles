@@ -1,7 +1,7 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev build build-release build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon
+.PHONY: help dev build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate
 
 .DEFAULT_GOAL := help
 
@@ -22,8 +22,10 @@ help:
 	@echo "  dev                Start development server with hot-reload"
 	@echo ""
 	@echo "Build:"
-	@echo "  build              Build for current platform"
-	@echo "  build-release      Build optimized portable executable"
+	@echo "  build              Build for current platform (includes Helm)"
+	@echo "  build-release      Build optimized portable executable (includes Helm)"
+	@echo "  build-lite         Build for current platform WITHOUT Helm (smaller binary)"
+	@echo "  build-release-lite Build optimized portable WITHOUT Helm (smaller binary)"
 	@echo "  build-mac          Build for macOS (amd64)"
 	@echo "  build-mac-arm      Build for macOS (Apple Silicon)"
 	@echo "  build-windows-amd64  Build for Windows (amd64)"
@@ -64,6 +66,13 @@ help:
 	@echo "  cluster-load       Load sample resources into cluster"
 	@echo "  install-kind       Install kind (Kubernetes IN Docker)"
 	@echo ""
+	@echo "Analysis:"
+	@echo "  analyze-size       Analyze binary size (produces HTML + text reports)"
+	@echo "  install-gsa        Install go-size-analyzer (gsa) tool"
+	@echo ""
+	@echo "Code Generation:"
+	@echo "  generate           Regenerate dispatch_gen.go (go generate)"
+	@echo ""
 	@echo "Utilities:"
 	@echo "  clean              Remove build artifacts"
 	@echo ""
@@ -82,6 +91,9 @@ ifeq (,$(wildcard $(WAILS)))
 endif
 PGO_FILE := default.pgo
 
+# Build tags: default builds include Helm; "lite" builds exclude it for smaller binaries
+BUILD_TAGS := helm
+
 # Version info from git
 GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "")
 GIT_DIRTY := $(shell git diff --quiet 2>/dev/null && echo "false" || echo "true")
@@ -89,40 +101,50 @@ VERSION_LDFLAGS := -X main.GitCommit=$(GIT_COMMIT) -X main.GitDirty=$(GIT_DIRTY)
 BUILD_FLAGS := -trimpath -ldflags "-s -w $(VERSION_LDFLAGS)"
 
 # Generate app icon PNG from SVG source (Wails generates icon.ico from this)
-appicon:
-	magick -background none build/appicon.svg -resize 1024x1024 build/appicon.png
+build/appicon.png: build/appicon.svg
+	magick -background none $< -resize 1024x1024 $@
+
+appicon: build/appicon.png
 
 dev:
-	$(WAILS) dev -tags debugcluster
+	$(WAILS) dev -tags "debugcluster $(BUILD_TAGS)"
 
 build: appicon
-	$(WAILS) build -ldflags "$(VERSION_LDFLAGS)"
+	$(WAILS) build -tags "$(BUILD_TAGS)" -ldflags "$(VERSION_LDFLAGS)"
 
 # Build optimized portable executable for current platform
 build-release: appicon
+	$(WAILS) build -tags "$(BUILD_TAGS)" $(BUILD_FLAGS)
+
+# Build WITHOUT Helm for smaller binary (lite variant)
+build-lite: appicon
+	$(WAILS) build -ldflags "$(VERSION_LDFLAGS)"
+
+# Build optimized portable WITHOUT Helm (lite variant)
+build-release-lite: appicon
 	$(WAILS) build $(BUILD_FLAGS)
 
 # Build portable Windows executables (requires mingw-w64 on non-Windows: brew install mingw-w64)
 build-windows-amd64: appicon
-	$(WAILS) build -platform windows/amd64 $(BUILD_FLAGS) -o Kubikles-amd64.exe
+	$(WAILS) build -platform windows/amd64 -tags "$(BUILD_TAGS)" $(BUILD_FLAGS) -o Kubikles-amd64.exe
 
 build-windows-arm64: appicon
-	$(WAILS) build -platform windows/arm64 $(BUILD_FLAGS) -o Kubikles-arm64.exe
+	$(WAILS) build -platform windows/arm64 -tags "$(BUILD_TAGS)" $(BUILD_FLAGS) -o Kubikles-arm64.exe
 
 # Build portable macOS executable
 build-mac: appicon
-	$(WAILS) build -platform darwin/amd64 $(BUILD_FLAGS) -o Kubikles-amd64
+	$(WAILS) build -platform darwin/amd64 -tags "$(BUILD_TAGS)" $(BUILD_FLAGS) -o Kubikles-amd64
 
 # Build portable macOS ARM executable (Apple Silicon)
 build-mac-arm: appicon
-	$(WAILS) build -platform darwin/arm64 $(BUILD_FLAGS) -o Kubikles-arm64
+	$(WAILS) build -platform darwin/arm64 -tags "$(BUILD_TAGS)" $(BUILD_FLAGS) -o Kubikles-arm64
 
 # Build portable Linux executables
 build-linux-amd64: appicon
-	$(WAILS) build -platform linux/amd64 $(BUILD_FLAGS) -o Kubikles-linux-amd64
+	$(WAILS) build -platform linux/amd64 -tags "$(BUILD_TAGS)" $(BUILD_FLAGS) -o Kubikles-linux-amd64
 
 build-linux-arm64: appicon
-	$(WAILS) build -platform linux/arm64 $(BUILD_FLAGS) -o Kubikles-linux-arm64
+	$(WAILS) build -platform linux/arm64 -tags "$(BUILD_TAGS)" $(BUILD_FLAGS) -o Kubikles-linux-arm64
 
 # Build portable Linux AppImage (bundles into single executable) - Unix only
 build-appimage:
@@ -132,8 +154,9 @@ else
 	@./scripts/build-appimage.sh
 endif
 
-# Build all platforms
-build-all: clean build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64
+# Build all platforms (clean+appicon first, then platform builds in parallel)
+build-all: clean appicon
+	$(MAKE) build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 -j6
 
 # ===========================================
 # Headless Server Builds (no Wails/GUI dependencies)
@@ -146,7 +169,7 @@ build-headless:
 	@echo "Building headless server..."
 	@cd frontend && npm run build 2>&1 | grep -v "WARNING\|nesting\|css-syntax-error\|invalid-@nest" || true
 	@mkdir -p build/bin
-	CGO_ENABLED=0 go build -tags headless $(BUILD_FLAGS) -o build/bin/kubikles-server
+	CGO_ENABLED=0 go build -tags "headless $(BUILD_TAGS)" $(BUILD_FLAGS) -o build/bin/kubikles-server
 	@echo "Built build/bin/kubikles-server"
 
 # Build headless for Linux AMD64 (static binary for containers)
@@ -154,7 +177,7 @@ build-headless-linux-amd64:
 	@echo "Building headless server for Linux AMD64..."
 	@cd frontend && npm run build 2>&1 | grep -v "WARNING\|nesting\|css-syntax-error\|invalid-@nest" || true
 	@mkdir -p build/bin
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags headless $(BUILD_FLAGS) -o build/bin/kubikles-server-linux-amd64
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "headless $(BUILD_TAGS)" $(BUILD_FLAGS) -o build/bin/kubikles-server-linux-amd64
 	@echo "Built build/bin/kubikles-server-linux-amd64"
 
 # Build headless for Linux ARM64
@@ -162,7 +185,7 @@ build-headless-linux-arm64:
 	@echo "Building headless server for Linux ARM64..."
 	@cd frontend && npm run build 2>&1 | grep -v "WARNING\|nesting\|css-syntax-error\|invalid-@nest" || true
 	@mkdir -p build/bin
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags headless $(BUILD_FLAGS) -o build/bin/kubikles-server-linux-arm64
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags "headless $(BUILD_TAGS)" $(BUILD_FLAGS) -o build/bin/kubikles-server-linux-arm64
 	@echo "Built build/bin/kubikles-server-linux-arm64"
 
 # Build headless for all Linux platforms
@@ -244,6 +267,10 @@ fmt:
 	gofmt -w .
 	goimports -w .
 
+# Regenerate code (dispatch_gen.go for server-mode method dispatch)
+generate:
+	go generate ./...
+
 # ===========================================
 # Profile-Guided Optimization (PGO)
 # ===========================================
@@ -281,7 +308,7 @@ build-pgo:
 		exit 1; \
 	fi
 	@echo "Building with PGO optimization from $(PGO_FILE)..."
-	$(WAILS) build $(BUILD_FLAGS) -tags pgo
+	$(WAILS) build $(BUILD_FLAGS) -tags "pgo $(BUILD_TAGS)"
 
 # Build optimized release for Apple Silicon with PGO (macOS only)
 build-mac-arm-pgo:
@@ -307,6 +334,10 @@ clean-pgo:
 CLUSTER_NAME := kubikles-dev
 # Find kind - check PATH first, then ~/go/bin
 KIND := $(shell command -v kind 2>/dev/null || (test -x "$(HOME)/go/bin/kind" && echo "$(HOME)/go/bin/kind"))
+
+# Find gsa (go-size-analyzer) - check PATH first, then ~/go/bin
+GSA := $(shell command -v gsa 2>/dev/null || (test -x "$(HOME)/go/bin/gsa" && echo "$(HOME)/go/bin/gsa"))
+
 
 # Install kind if not present (requires Docker to run)
 install-kind:
@@ -414,3 +445,59 @@ cluster-load:
 	@kubectl get all,configmaps,secrets -n demo
 	@echo ""
 	@echo "Sample resources loaded! Run 'make dev' to test Kubikles."
+
+# =============================================================================
+# Binary Size Analysis
+# =============================================================================
+# Uses go-size-analyzer (gsa) to produce per-package size breakdowns.
+# Install: make install-gsa (requires internet or pre-cached Go modules)
+
+# Install gsa if not present
+install-gsa:
+	@if [ -n "$(GSA)" ]; then \
+		echo "gsa is already installed: $(GSA)"; \
+	else \
+		echo "Installing go-size-analyzer (gsa)..."; \
+		go install github.com/Zxilly/go-size-analyzer/cmd/gsa@latest; \
+		echo "gsa installed to ~/go/bin/gsa"; \
+		echo "Note: Under airgap, pre-cache the module in your Go module cache."; \
+	fi
+
+# Analyze binary size - auto-detects binary path based on OS
+# Override with: BINARY=path/to/binary make analyze-size
+analyze-size:
+ifndef BINARY
+ifeq ($(DETECTED_OS),Darwin)
+	$(eval BINARY := $(wildcard build/bin/kubikles.app/Contents/MacOS/kubikles))
+else ifeq ($(DETECTED_OS),Windows)
+	$(eval BINARY := $(or $(wildcard build/bin/Kubikles-amd64.exe),$(wildcard build/bin/Kubikles-arm64.exe)))
+else
+	$(eval BINARY := $(or $(wildcard build/bin/Kubikles-linux-amd64),$(wildcard build/bin/Kubikles-linux-arm64),$(wildcard build/bin/kubikles-server)))
+endif
+endif
+	@if [ -z "$(BINARY)" ]; then \
+		echo "Error: No binary found. Build first with 'make build' or specify: BINARY=path make analyze-size"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(BINARY)" ]; then \
+		echo "Error: Binary not found at $(BINARY)"; \
+		exit 1; \
+	fi
+	@if [ -z "$(GSA)" ]; then \
+		echo "Error: gsa not found. Install with: make install-gsa"; \
+		exit 1; \
+	fi
+	@mkdir -p build
+	@echo "Analyzing binary: $(BINARY)"
+	@echo "Binary size: $$(du -h "$(BINARY)" | cut -f1)"
+	@echo ""
+	@echo "Generating HTML report -> build/size-report.html"
+	@$(GSA) --format html -o build/size-report.html "$(BINARY)"
+	@echo "Generating text report -> build/size-report.txt"
+	@$(GSA) --format text -o build/size-report.txt "$(BINARY)"
+	@echo ""
+	@echo "=== Top Packages by Size ==="
+	@head -40 build/size-report.txt
+	@echo ""
+	@echo "Full reports: build/size-report.html (interactive), build/size-report.txt (text)"
+

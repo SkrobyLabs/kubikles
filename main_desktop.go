@@ -3,6 +3,7 @@
 package main
 
 import (
+	"kubikles/pkg/compressedassets"
 	"kubikles/pkg/crashlog"
 
 	"github.com/wailsapp/wails/v2"
@@ -35,7 +36,8 @@ func runDesktopMode() {
 		Width:  1024,
 		Height: 768,
 		AssetServer: &assetserver.Options{
-			Assets: assets,
+			Assets:     assets,
+			Middleware: compressedassets.WailsMiddleware(assets, "frontend/dist"),
 		},
 		BackgroundColour: &options.RGBA{R: 30, G: 30, B: 30, A: 1},
 		WindowStartState: options.Maximised,

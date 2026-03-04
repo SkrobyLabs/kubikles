@@ -264,6 +264,7 @@ export function HelmDryRunUpgrade(...args) { return AppProxy.HelmDryRunUpgrade(.
 export function HelmTemplateRelease(...args) { return AppProxy.HelmTemplateRelease(...args); }
 export function HelmValidateValues(...args) { return AppProxy.HelmValidateValues(...args); }
 export function IsDebugClusterEnabled(...args) { return AppProxy.IsDebugClusterEnabled(...args); }
+export function IsHelmAvailable(...args) { return AppProxy.IsHelmAvailable(...args); }
 export function IsRequestCancellationEnabled(...args) { return AppProxy.IsRequestCancellationEnabled(...args); }
 export function ListCRDs(...args) { return AppProxy.ListCRDs(...args); }
 export function ListCSIDrivers(...args) { return AppProxy.ListCSIDrivers(...args); }
