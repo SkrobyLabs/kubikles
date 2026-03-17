@@ -9,6 +9,9 @@ import { useK8s } from '~/context';
 import { useNotification } from '~/context';
 import { ExclamationTriangleIcon, InformationCircleIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 
+// Persist editor viewport state across tab switches (component unmounts for non-keepAlive tabs)
+const editorStateCache = new Map<string, { scrollTop: number; position: { lineNumber: number; column: number } }>();
+
 export default function YamlEditor({
     resourceType,
     namespace,
@@ -36,6 +39,7 @@ export default function YamlEditor({
     const [saving, setSaving] = useState(false);
     const [hasConflict, setHasConflict] = useState(false);
     const editorRef = useRef<any>(null);
+    const cacheKey = `${resourceType}-${namespace}-${resourceName}`;
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
@@ -247,6 +251,24 @@ export default function YamlEditor({
                 handleSave();
             }
         });
+
+        // Save viewport state continuously so it survives unmount (non-keepAlive tabs)
+        const saveState = () => {
+            const pos = editor.getPosition();
+            if (pos) {
+                editorStateCache.set(cacheKey, { scrollTop: editor.getScrollTop(), position: pos });
+            }
+        };
+        editor.onDidScrollChange(saveState);
+        editor.onDidChangeCursorPosition(saveState);
+
+        // Restore viewport state from a previous mount
+        const cached = editorStateCache.get(cacheKey);
+        if (cached) {
+            requestAnimationFrame(() => {
+                restoreEditorState(cached);
+            });
+        }
     };
 
     if (loading) {

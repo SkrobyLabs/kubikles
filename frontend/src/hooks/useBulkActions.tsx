@@ -17,7 +17,7 @@ interface Resource {
 }
 
 // Bulk action type
-type BulkActionType = 'delete' | 'restart';
+type BulkActionType = 'delete' | 'restart' | string;
 
 // Modal state
 interface BulkActionModalState {
@@ -54,6 +54,7 @@ interface UseBulkActionsConfig {
     isNamespaced?: boolean;
     deleteApi: NamespacedApiFn | ClusterScopedApiFn;
     restartApi?: NamespacedApiFn | ClusterScopedApiFn;
+    customApis?: Record<string, NamespacedApiFn | ClusterScopedApiFn>;
     getYamlApi: GetYamlApiFn;
 }
 
@@ -81,6 +82,7 @@ interface UseBulkActionsReturn {
     bulkModalProps: BulkModalProps;
     openBulkDelete: (items: Resource[]) => void;
     openBulkRestart?: (items: Resource[]) => void;
+    openBulkCustomAction: (items: Resource[], actionType: string) => void;
     closeBulkAction: () => void;
     confirmBulkAction: (items: Resource[], delayMs?: number) => Promise<void>;
     pauseBulkAction: () => void;
@@ -103,6 +105,7 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
         isNamespaced = true,
         deleteApi,
         restartApi,
+        customApis,
         getYamlApi,
     } = config;
 
@@ -146,6 +149,18 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
     }, [restartApi]);
 
     /**
+     * Open bulk action modal for a custom action type
+     */
+    const openBulkCustomAction = useCallback((items: Resource[], actionType: string): void => {
+        if (!customApis?.[actionType]) {
+            Logger.warn(`No API configured for custom action: ${actionType}`, undefined, 'k8s');
+            return;
+        }
+        setBulkActionModal({ isOpen: true, action: actionType, items });
+        setBulkProgress({ current: 0, total: items.length, status: 'idle', results: [] });
+    }, [customApis]);
+
+    /**
      * Close bulk action modal and reset state
      */
     const closeBulkAction = useCallback((): void => {
@@ -180,7 +195,7 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
      */
     const confirmBulkAction = useCallback(async (items: Resource[], delayMs: number = 0): Promise<void> => {
         const action = bulkActionModal.action;
-        const api = action === 'delete' ? deleteApi : restartApi;
+        const api = action === 'delete' ? deleteApi : action === 'restart' ? restartApi : customApis?.[action!];
 
         if (!api) {
             Logger.error(`No API configured for action: ${action}`, undefined, 'k8s');
@@ -238,7 +253,7 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
             success: results.filter((r: any) => r.success).length,
             failed: results.filter((r: any) => !r.success).length,
         }, 'k8s');
-    }, [bulkActionModal.action, deleteApi, restartApi, isNamespaced, resourceLabel, resourceType]);
+    }, [bulkActionModal.action, deleteApi, restartApi, customApis, isNamespaced, resourceLabel, resourceType]);
 
     /**
      * Export YAML backup for items
@@ -328,6 +343,7 @@ export function useBulkActions(config: UseBulkActionsConfig): UseBulkActionsRetu
         // Handlers
         openBulkDelete,
         openBulkRestart: restartApi ? openBulkRestart : undefined,
+        openBulkCustomAction,
         closeBulkAction,
         confirmBulkAction,
         pauseBulkAction,

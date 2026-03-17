@@ -1,7 +1,7 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate
+.PHONY: help dev build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate
 
 .DEFAULT_GOAL := help
 
@@ -14,7 +14,8 @@ help:
 	@echo "Setup:"
 	@echo "  setup              Full setup (system deps, Go, Node, Wails, npm, hooks)"
 	@echo "  setup-quick        Setup without system dependencies"
-	@echo "  install-frontend   Install frontend npm dependencies only"
+	@echo "  install-frontend   Install frontend npm dependencies only (auto-fixes broken rollup)"
+	@echo "  nuke-frontend      Wipe node_modules + package-lock.json and reinstall"
 	@echo "  install-wails      Install Wails CLI tool"
 	@echo "  install-hooks      Install git pre-commit hooks"
 	@echo ""
@@ -106,10 +107,17 @@ build/appicon.png: build/appicon.svg
 
 appicon: build/appicon.png
 
-dev:
+# Detect and auto-fix broken rollup optional deps (npm bug with optional dependencies)
+check-rollup:
+	@if [ -d frontend/node_modules ] && ! node -e "require('./frontend/node_modules/rollup/dist/native.js')" 2>/dev/null; then \
+		echo "Broken rollup optional deps detected — wiping node_modules and package-lock.json..."; \
+		rm -rf frontend/node_modules frontend/package-lock.json; \
+	fi
+
+dev: check-rollup
 	$(WAILS) dev -tags "debugcluster $(BUILD_TAGS)"
 
-build: appicon
+build: check-rollup appicon
 	$(WAILS) build -tags "$(BUILD_TAGS)" -ldflags "$(VERSION_LDFLAGS)"
 
 # Build optimized portable executable for current platform
@@ -218,7 +226,13 @@ else
 endif
 
 # Install frontend dependencies only
-install-frontend:
+install-frontend: check-rollup
+	cd frontend && npm install
+
+# Nuke frontend node_modules and package-lock.json, then reinstall
+nuke-frontend:
+	@echo "Removing frontend/node_modules and frontend/package-lock.json..."
+	rm -rf frontend/node_modules frontend/package-lock.json
 	cd frontend && npm install
 
 # Install git hooks from tracked .githooks directory

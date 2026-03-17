@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { BookmarkIcon } from '@heroicons/react/24/solid';
 import { PencilSquareIcon, ShareIcon, DocumentTextIcon, CommandLineIcon, FolderIcon } from '@heroicons/react/24/outline';
 import { useConfig } from '~/context';
@@ -57,8 +57,43 @@ export default function BottomPanel({
     const [dropTarget, setDropTarget] = useState<number | null>(null);
     const contextMenuRef = useRef<HTMLDivElement | null>(null);
     const tabRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const scrollPositions = useRef<Record<string, number>>({});
+    const contentRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-    // Scroll active tab into view when it changes
+    // Track scroll position continuously via capture (works even for non-keepAlive tabs
+    // that unmount — we already have the latest position saved before unmount happens)
+    const handleScrollCapture = useCallback((tabId: string, e: React.UIEvent) => {
+        const target = e.target as HTMLElement;
+        if (target.scrollTop > 0) {
+            scrollPositions.current[tabId] = target.scrollTop;
+        }
+    }, []);
+
+    // Restore scroll position when a tab becomes active (content may remount asynchronously)
+    useEffect(() => {
+        if (!activeTabId) return;
+        const saved = scrollPositions.current[activeTabId];
+        if (!saved) return;
+
+        const container = contentRefs.current[activeTabId];
+        if (!container) return;
+
+        // Retry a few times — non-keepAlive tabs remount and content may render asynchronously
+        let attempts = 0;
+        const tryRestore = () => {
+            const scrollables = container.querySelectorAll<HTMLElement>('*');
+            for (const el of scrollables) {
+                if (el.scrollHeight > el.clientHeight + 1) {
+                    el.scrollTop = saved;
+                    if (el.scrollTop > 0) return; // success
+                }
+            }
+            if (++attempts < 5) requestAnimationFrame(tryRestore);
+        };
+        requestAnimationFrame(tryRestore);
+    }, [activeTabId]);
+
+    // Scroll active tab header into view when it changes
     useEffect(() => {
         if (activeTabId && tabRefs.current[activeTabId]) {
             tabRefs.current[activeTabId].scrollIntoView({
@@ -259,8 +294,12 @@ export default function BottomPanel({
                     return (
                         <div
                             key={tab.id}
+                            ref={(el) => { contentRefs.current[tab.id] = el; }}
                             className="absolute inset-0 h-full w-full"
                             style={{ display: isActive ? 'block' : 'none' }}
+                            data-selectable-region
+                            tabIndex={-1}
+                            onScrollCapture={(e) => handleScrollCapture(tab.id, e)}
                         >
                             {tab.content}
                         </div>

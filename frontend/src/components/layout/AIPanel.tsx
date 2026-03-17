@@ -311,7 +311,7 @@ export default function AIPanel() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3" data-selectable-region tabIndex={-1}>
                 {messages.length === 0 && (
                     <div className="text-center text-sm text-gray-500 mt-8">
                         <p>Ask anything about Kubernetes.</p>

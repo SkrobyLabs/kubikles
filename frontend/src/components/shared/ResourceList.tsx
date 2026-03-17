@@ -97,6 +97,7 @@ interface ResourceListProps {
     onBulkDelete?: ((items: any[]) => void) | null;
     onBulkRestart?: ((items: any[]) => void) | null;
     onBulkExportYaml?: ((items: any[]) => void) | null;
+    bulkCustomActions?: React.ReactNode | null;
     onFilteredUidsChange?: ((uids: Set<string>) => void) | null;
 }
 
@@ -452,6 +453,7 @@ export default function ResourceList({
     onBulkDelete = null,
     onBulkRestart = null,
     onBulkExportYaml = null,
+    bulkCustomActions = null,
     onFilteredUidsChange = null,
 }: ResourceListProps) {
     const { pendingSearch, consumePendingSearch } = useUI();
@@ -1756,6 +1758,7 @@ export default function ResourceList({
                     onDelete={onBulkDelete ? handleBulkDelete : undefined}
                     onRestart={onBulkRestart ? handleBulkRestart : undefined}
                     onExportYaml={onBulkExportYaml ? handleBulkExportYaml : undefined}
+                    customActions={bulkCustomActions}
                     resourceType={resourceType || title.toLowerCase()}
                     position="bottom"
                 />

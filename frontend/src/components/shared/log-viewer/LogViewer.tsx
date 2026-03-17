@@ -697,7 +697,7 @@ export default function LogViewer({
             )}
 
             {/* Logs Content */}
-            <div ref={logsContainerRef} className="flex-1 overflow-hidden text-gray-300 font-mono text-xs">
+            <div ref={logsContainerRef} className="flex-1 overflow-hidden text-gray-300 font-mono text-xs" data-selectable-region tabIndex={-1}>
                 {stream.loading || stream.loadingAll ? (
                     <div className="flex flex-col items-center justify-center h-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

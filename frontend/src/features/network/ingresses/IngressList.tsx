@@ -12,6 +12,7 @@ import { useBulkActions } from '~/hooks/useBulkActions';
 import { DeleteIngress, GetIngressYaml } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
+import { CopyableLabel } from '~/components/shared/DetailComponents';
 
 export default function IngressList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
@@ -153,7 +154,12 @@ export default function IngressList({ isVisible }: { isVisible: boolean }) {
             getValue: (item: any) => getIngressStatus(item).status
         },
         { key: 'class', label: 'Class', render: (item: any) => getIngressClass(item), getValue: (item: any) => getIngressClass(item) },
-        { key: 'hosts', label: 'Hosts', render: (item: any) => getHosts(item), getValue: (item: any) => getHosts(item) },
+        { key: 'hosts', label: 'Hosts', render: (item: any) => {
+            const rules = item.spec?.rules || [];
+            const hosts = rules.map((r: any) => r.host).filter(Boolean);
+            if (hosts.length === 0) return '*';
+            return <span className="flex flex-wrap gap-1">{hosts.map((h: string) => <CopyableLabel key={h} value={h} />)}</span>;
+        }, getValue: (item: any) => getHosts(item) },
         { key: 'address', label: 'Address', render: (item: any) => getAddress(item), getValue: (item: any) => getAddress(item) },
         { key: 'age', label: 'Age', render: (item: any) => formatAge(item.metadata?.creationTimestamp), getValue: (item: any) => item.metadata?.creationTimestamp },
         // Hidden by default columns

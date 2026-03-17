@@ -290,6 +290,11 @@ pre, code, .monaco-editor, .xterm,
   -webkit-user-select: text;
 }
 
+/* Hide focus ring on selectable regions (focused via tabIndex for Cmd+A scoping) */
+[data-selectable-region]:focus {
+  outline: none;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

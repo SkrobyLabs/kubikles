@@ -125,6 +125,17 @@ const Terminal = ({ namespace, pod, container, context, command, onClose }: { na
 
         const cancelTerminalOutput = EventsOn('terminal:output', handleTerminalOutput);
 
+        // Let the browser handle Ctrl+C (copy when selected) and Ctrl+V (paste) on Windows/Linux
+        term.attachCustomKeyEventHandler((e) => {
+            if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey) {
+                // Ctrl+C with selection → copy; without selection → SIGINT (let xterm handle)
+                if (e.key === 'c' && term.hasSelection()) return false;
+                // Ctrl+V → paste
+                if (e.key === 'v') return false;
+            }
+            return true;
+        });
+
         // Send input to terminal
         term.onData((data) => {
             if (sessionIdRef.current) {

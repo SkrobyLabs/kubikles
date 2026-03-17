@@ -2,13 +2,17 @@ import React, { useMemo, useState, useCallback, useEffect, memo } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
 import AggregateResourceBar from '~/components/shared/AggregateResourceBar';
 import ResourceBar from '~/components/shared/ResourceBar';
+import BulkActionModal from '~/components/shared/BulkActionModal';
 import { useNodes } from '~/hooks/resources';
 import { useNodeMetrics } from '~/hooks/useNodeMetrics';
+import { useSelection } from '~/hooks/useSelection';
+import { useBulkActions } from '~/hooks/useBulkActions';
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { useMenu } from '~/context';
 import { formatAge, formatBytes, formatCpu } from '~/utils/formatting';
-import { EllipsisVerticalIcon, TableCellsIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
+import { EllipsisVerticalIcon, TableCellsIcon, Squares2X2Icon, NoSymbolIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { SetNodeSchedulable, DeleteNode, GetNodeYaml } from 'wailsjs/go/main/App';
 import NodeActionsMenu from './NodeActionsMenu';
 import { useNodeActions } from './useNodeActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
@@ -112,6 +116,54 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
     const { metrics, available: metricsAvailable } = useNodeMetrics(isVisible, !loading && nodes.length > 0);
     const nodeActions = useNodeActions(refetch);
     const { handleShowDetails, handleEditYaml, handleCordonUncordon, handleShell, handleDelete } = nodeActions;
+
+    // Multi-select
+    const selection = useSelection();
+    const cordonNode = useCallback((name: string) => SetNodeSchedulable(name, false), []);
+    const uncordonNode = useCallback((name: string) => SetNodeSchedulable(name, true), []);
+    const {
+        bulkModalProps,
+        bulkActionModal,
+        openBulkCustomAction,
+        exportYaml,
+    } = useBulkActions({
+        resourceLabel: 'Node',
+        resourceType: 'nodes',
+        isNamespaced: false,
+        deleteApi: DeleteNode,
+        customApis: { cordon: cordonNode, uncordon: uncordonNode },
+        getYamlApi: GetNodeYaml,
+    });
+
+    // Compute cordon/uncordon button visibility from selected items
+    const selectedItems = selection.getSelectedItems(nodes);
+    const hasSchedulable = selectedItems.some((n: any) => !n.spec?.unschedulable);
+    const hasCordoned = selectedItems.some((n: any) => n.spec?.unschedulable === true);
+
+    const bulkCustomActions = selectedItems.length > 0 ? (
+        <>
+            {hasSchedulable && (
+                <button
+                    onClick={() => openBulkCustomAction(selectedItems, 'cordon')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 rounded transition-colors"
+                    title="Cordon selected nodes"
+                >
+                    <NoSymbolIcon className="h-4 w-4" />
+                    <span>Cordon</span>
+                </button>
+            )}
+            {hasCordoned && (
+                <button
+                    onClick={() => openBulkCustomAction(selectedItems, 'uncordon')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-green-400 hover:text-green-300 hover:bg-green-500/10 rounded transition-colors"
+                    title="Uncordon selected nodes"
+                >
+                    <CheckCircleIcon className="h-4 w-4" />
+                    <span>Uncordon</span>
+                </button>
+            )}
+        </>
+    ) : null;
 
     // View mode: list or topology, persisted to localStorage
     const [viewMode, setViewMode] = useState<'list' | 'topology'>(() =>
@@ -365,16 +417,28 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
     }
 
     return (
-        <ResourceList
-            title="Nodes"
-            columns={columns}
-            data={nodes}
-            isLoading={loading}
-            showNamespaceSelector={false}
-            initialSort={{ key: 'age', direction: 'desc' }}
-            resourceType="nodes"
-            onRowClick={handleShowDetails}
-            customHeaderActions={viewToggle}
-        />
+        <>
+            <ResourceList
+                title="Nodes"
+                columns={columns}
+                data={nodes}
+                isLoading={loading}
+                showNamespaceSelector={false}
+                initialSort={{ key: 'age', direction: 'desc' }}
+                resourceType="nodes"
+                onRowClick={handleShowDetails}
+                customHeaderActions={viewToggle}
+                selectable={true}
+                selection={selection}
+                onBulkExportYaml={exportYaml}
+                bulkCustomActions={bulkCustomActions}
+            />
+            <BulkActionModal
+                {...bulkModalProps}
+                action={bulkActionModal.action || 'cordon'}
+                actionLabel={bulkActionModal.action === 'uncordon' ? 'Uncordon' : 'Cordon'}
+                onExportYaml={exportYaml}
+            />
+        </>
     );
 }

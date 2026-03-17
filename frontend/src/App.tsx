@@ -425,6 +425,7 @@ function MainLayout() {
     const { openPerformancePanel } = usePerformancePanel();
     const { isOpen: aiIsOpen, togglePanel: toggleAI } = useAIChat();
     const isDragging = useRef(false);
+    const lastSelectableRegion = useRef<HTMLElement | null>(null);
     const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
     const [showGenericCreateModal, setShowGenericCreateModal] = useState(false);
 
@@ -528,6 +529,17 @@ function MainLayout() {
         document.removeEventListener('mouseup', handleMouseUp);
     };
 
+    // Track last-clicked selectable region for Cmd+A scoping
+    useEffect(() => {
+        const handleMouseDown = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            const region = target.closest('[data-selectable-region]') as HTMLElement | null;
+            if (region) lastSelectableRegion.current = region;
+        };
+        document.addEventListener('mousedown', handleMouseDown);
+        return () => document.removeEventListener('mousedown', handleMouseDown);
+    }, []);
+
     // Global Keyboard Shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -542,6 +554,41 @@ function MainLayout() {
             if ((e.metaKey || e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'p') {
                 e.preventDefault();
                 openPerformancePanel();
+                return;
+            }
+
+            // Cmd+A / Ctrl+A - Scope selection to active component
+            if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') {
+                const active = document.activeElement as HTMLElement;
+                // Let Monaco, xterm, inputs, and textareas handle their own Cmd+A
+                if (active?.closest('.monaco-editor') || active?.closest('.xterm') ||
+                    active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA' ||
+                    active?.getAttribute('contenteditable') === 'true') {
+                    return;
+                }
+                // Find nearest selectable region from focused element, or fall back to last-clicked
+                const region = active?.closest('[data-selectable-region]') as HTMLElement ||
+                    lastSelectableRegion.current;
+                if (region && document.contains(region)) {
+                    e.preventDefault();
+                    const sel = window.getSelection();
+                    if (sel) {
+                        sel.removeAllRanges();
+                        sel.selectAllChildren(region);
+                    }
+                } else {
+                    // No selectable region — prevent selecting the entire app
+                    e.preventDefault();
+                }
+                return;
+            }
+
+            // Cmd+W / Ctrl+W - Close active bottom tab
+            if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'w') {
+                e.preventDefault();
+                if (activeTabId) {
+                    closeTab(activeTabId);
+                }
                 return;
             }
 
@@ -560,7 +607,7 @@ function MainLayout() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [refreshContexts, refreshNamespaces, triggerRefresh, openPerformancePanel]);
+    }, [refreshContexts, refreshNamespaces, triggerRefresh, openPerformancePanel, activeTabId, closeTab]);
 
     // Parse custom resource view ID: cr:{group}:{version}:{plural}:{kind}:{namespaced}
     const parsedCRView = useMemo(() => {
@@ -675,6 +722,8 @@ function MainLayout() {
                             <div
                                 className="flex-1 overflow-hidden"
                                 style={{ height: bottomTabs.length > 0 ? `${100 - panelHeight}%` : '100%' }}
+                                data-selectable-region
+                                tabIndex={-1}
                             >
                                 {renderContent()}
                             </div>

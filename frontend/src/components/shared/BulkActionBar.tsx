@@ -19,6 +19,7 @@ export default function BulkActionBar({
     onDelete,
     onRestart,
     onExportYaml,
+    customActions,
     resourceType = 'items',
     position = 'top',
 }: any) {
@@ -54,6 +55,9 @@ export default function BulkActionBar({
             </div>
 
             <div className="flex items-center gap-2">
+                {/* Custom action buttons */}
+                {customActions}
+
                 {/* Export YAML button */}
                 {onExportYaml && (
                     <button
