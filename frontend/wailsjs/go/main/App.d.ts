@@ -226,6 +226,8 @@ export function GetDebugClusterConfig():Promise<k8s.DebugClusterConfig>;
 
 export function GetDeploymentYaml(arg1:string,arg2:string):Promise<string>;
 
+export function GetEmbeddedBrowserStatus():Promise<main.EmbeddedBrowserSession>;
+
 export function GetEndpointSliceYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetEndpointsYaml(arg1:string,arg2:string):Promise<string>;
@@ -558,6 +560,8 @@ export function SendAIMessage(arg1:string,arg2:string,arg3:string,arg4:string,ar
 
 export function SendTerminalInput(arg1:string,arg2:string):Promise<void>;
 
+export function SendTextToEmbeddedBrowser(arg1:string):Promise<void>;
+
 export function SetAnthropicAPIKey(arg1:string):Promise<void>;
 
 export function SetClientPoolSize(arg1:number):Promise<void>;
@@ -594,6 +598,8 @@ export function StartAllPodsLogStream(arg1:string,arg2:Array<main.PodContainerPa
 
 export function StartAutoStartPortForwards(arg1:string):Promise<void>;
 
+export function StartEmbeddedBrowser(arg1:string):Promise<main.EmbeddedBrowserSession>;
+
 export function StartIngressForward(arg1:main.IngressController,arg2:Array<string>):Promise<void>;
 
 export function StartLogStream(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
@@ -605,6 +611,8 @@ export function StartTerminalSession(arg1:terminal.SessionOptions):Promise<strin
 export function StopAllPortForwards():Promise<void>;
 
 export function StopAllWatchers():Promise<void>;
+
+export function StopEmbeddedBrowser():Promise<void>;
 
 export function StopIngressForward():Promise<void>;
 

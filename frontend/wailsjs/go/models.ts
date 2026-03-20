@@ -1969,6 +1969,26 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class EmbeddedBrowserSession {
+	    podName: string;
+	    namespace: string;
+	    localPort: number;
+	    status: string;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EmbeddedBrowserSession(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.podName = source["podName"];
+	        this.namespace = source["namespace"];
+	        this.localPort = source["localPort"];
+	        this.status = source["status"];
+	        this.error = source["error"];
+	    }
+	}
 	export class IngressController {
 	    namespace: string;
 	    name: string;

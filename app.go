@@ -69,6 +69,8 @@ type App struct {
 	connTestCancel context.CancelFunc
 	// Event emission (unified for desktop and server modes)
 	emitter events.Emitter
+	// Embedded browser session
+	embeddedBrowser embeddedBrowserState
 }
 
 // Watcher event types: see app_watchers.go (ResourceEvent, WatcherErrorEvent, WatcherStatusEvent)
@@ -294,6 +296,9 @@ func (a *App) shutdown(ctx context.Context) {
 	if a.aiManager != nil {
 		a.aiManager.CloseAllSessions()
 	}
+
+	// Stop embedded browser session (best-effort)
+	_ = a.StopEmbeddedBrowser()
 
 	debug.LogWails("App shutdown complete", nil)
 }

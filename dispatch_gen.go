@@ -1283,6 +1283,8 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		}
 		result, err := c.app.GetDeploymentYaml(p0, p1)
 		return result, err
+	case "GetEmbeddedBrowserStatus":
+		return c.app.GetEmbeddedBrowserStatus(), nil
 	case "GetEndpointSliceYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -3007,6 +3009,12 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return nil, c.app.SendTerminalInput(p0, p1)
+	case "SendTextToEmbeddedBrowser":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		return nil, c.app.SendTextToEmbeddedBrowser(p0)
 	case "SetAnthropicAPIKey":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -3162,6 +3170,13 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		}
 		c.app.StartAutoStartPortForwards(p0)
 		return nil, nil
+	case "StartEmbeddedBrowser":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.StartEmbeddedBrowser(p0)
+		return result, err
 	case "StartIngressForward":
 		p0, err := unmarshalArg[IngressController](args, 0)
 		if err != nil {
@@ -3210,6 +3225,8 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 	case "StopAllWatchers":
 		c.app.StopAllWatchers()
 		return nil, nil
+	case "StopEmbeddedBrowser":
+		return nil, c.app.StopEmbeddedBrowser()
 	case "StopIngressForward":
 		return nil, c.app.StopIngressForward()
 	case "StopLogStream":

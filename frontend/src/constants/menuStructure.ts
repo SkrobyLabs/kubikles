@@ -118,7 +118,7 @@ export const DEFAULT_MENU_SECTIONS: MenuSectionDef[] = [
     {
         id: 'diagnostics',
         title: 'Diagnostics',
-        items: ['flow-timeline', 'multi-log-viewer', 'resource-diff', 'rbac-checker', 'issue-detector'],
+        items: ['flow-timeline', 'multi-log-viewer', 'resource-diff', 'rbac-checker', 'issue-detector', 'embedded-browser'],
     },
 ];
 
@@ -131,6 +131,7 @@ export const ALL_MENU_ITEMS: Record<string, MenuItemDef> = {
     'namespaces':            { id: 'namespaces',            label: 'Namespaces',             icon: FolderIcon,                defaultSection: 'cluster' },
     'events':                { id: 'events',                label: 'Events',                 icon: BellAlertIcon,             defaultSection: 'cluster' },
     'priorityclasses':       { id: 'priorityclasses',       label: 'Priority Classes',       icon: BoltIcon,                  defaultSection: 'cluster' },
+    'embedded-browser':      { id: 'embedded-browser',      label: 'Embedded Browser',       icon: GlobeAltIcon,              defaultSection: 'diagnostics' },
     'pods':                  { id: 'pods',                  label: 'Pods',                   icon: CubeIcon,                  defaultSection: 'workloads' },
     'deployments':           { id: 'deployments',           label: 'Deployments',            icon: RocketLaunchIcon,          defaultSection: 'workloads' },
     'statefulsets':          { id: 'statefulsets',           label: 'StatefulSets',           icon: CircleStackIcon,           defaultSection: 'workloads' },

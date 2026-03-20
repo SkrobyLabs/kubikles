@@ -16,7 +16,7 @@ import AIPanel from '~/components/layout/AIPanel';
 import ToastContainer from '~/components/shared/ToastContainer';
 // Feature imports - organized by category
 import { PodList, DeploymentList, StatefulSetList, DaemonSetList, ReplicaSetList, JobList, CronJobList } from '~/features/workloads';
-import { NodeList, NamespaceList, EventList, MetricsList, MetricsOverview, ValidatingWebhookList, MutatingWebhookList, PriorityClassList } from '~/features/cluster';
+import { NodeList, NamespaceList, EventList, MetricsList, MetricsOverview, ValidatingWebhookList, MutatingWebhookList, PriorityClassList, EmbeddedBrowser } from '~/features/cluster';
 import { ServiceList, IngressList, IngressClassList, NetworkPolicyList, EndpointsList, EndpointSliceList } from '~/features/network';
 import { ConfigMapList, SecretList, HPAList, PDBList, ResourceQuotaList, LimitRangeList, LeaseList } from '~/features/config';
 import { PVCList, PVList, StorageClassList, CSIDriverList, CSINodeList } from '~/features/storage';
@@ -681,6 +681,7 @@ function MainLayout() {
             case 'validatingwebhooks': return <ValidatingWebhookList isVisible={true} />;
             case 'mutatingwebhooks': return <MutatingWebhookList isVisible={true} />;
             case 'priorityclasses': return <PriorityClassList isVisible={true} />;
+            case 'embedded-browser': return <EmbeddedBrowser />;
             case 'leases': return <LeaseList isVisible={true} />;
             case 'csidrivers': return <CSIDriverList isVisible={true} />;
             case 'csinodes': return <CSINodeList isVisible={true} />;

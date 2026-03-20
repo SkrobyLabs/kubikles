@@ -497,6 +497,20 @@ func (c *Client) execInPod(ctx context.Context, namespace, pod, container string
 	return stdout.String(), stderr.String(), nil
 }
 
+// ExecCommandInPod runs cmd in the given pod/container and returns stdout output.
+func (c *Client) ExecCommandInPod(namespace, pod, container string, cmd []string) (string, error) {
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	stdout, stderr, err := c.execInPod(ctx, namespace, pod, container, cmd)
+	if err != nil {
+		if stderr != "" {
+			return "", fmt.Errorf("%w: %s", err, stderr)
+		}
+		return "", err
+	}
+	return stdout, nil
+}
+
 // execInPodStream executes a command in a pod with streaming I/O
 func (c *Client) execInPodStream(ctx context.Context, namespace, pod, container string, cmd []string, stdin io.Reader, stdout io.Writer) error {
 	// Get REST config from the client config

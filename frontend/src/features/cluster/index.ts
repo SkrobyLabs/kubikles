@@ -7,3 +7,4 @@ export { default as MetricsOverview } from './metrics/MetricsOverview';
 export { default as ValidatingWebhookList } from './webhooks/ValidatingWebhookList';
 export { default as MutatingWebhookList } from './webhooks/MutatingWebhookList';
 export { default as PriorityClassList } from './priorityclasses/PriorityClassList';
+export { default as EmbeddedBrowser } from './embeddedbrowser/EmbeddedBrowser';

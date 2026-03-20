@@ -76,6 +76,7 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 | Themes | `app_themes.go` |
 | Debug/logging | `app_debug.go` |
 | Native dialogs | `app_dialogs.go` |
+| Embedded browser | `app_embeddedbrowser.go` |
 
 ### K8s Package
 | Purpose | File |

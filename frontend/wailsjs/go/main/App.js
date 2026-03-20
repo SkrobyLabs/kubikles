@@ -434,6 +434,10 @@ export function GetDeploymentYaml(arg1, arg2) {
   return window['go']['main']['App']['GetDeploymentYaml'](arg1, arg2);
 }
 
+export function GetEmbeddedBrowserStatus() {
+  return window['go']['main']['App']['GetEmbeddedBrowserStatus']();
+}
+
 export function GetEndpointSliceYaml(arg1, arg2) {
   return window['go']['main']['App']['GetEndpointSliceYaml'](arg1, arg2);
 }
@@ -1098,6 +1102,10 @@ export function SendTerminalInput(arg1, arg2) {
   return window['go']['main']['App']['SendTerminalInput'](arg1, arg2);
 }
 
+export function SendTextToEmbeddedBrowser(arg1) {
+  return window['go']['main']['App']['SendTextToEmbeddedBrowser'](arg1);
+}
+
 export function SetAnthropicAPIKey(arg1) {
   return window['go']['main']['App']['SetAnthropicAPIKey'](arg1);
 }
@@ -1170,6 +1178,10 @@ export function StartAutoStartPortForwards(arg1) {
   return window['go']['main']['App']['StartAutoStartPortForwards'](arg1);
 }
 
+export function StartEmbeddedBrowser(arg1) {
+  return window['go']['main']['App']['StartEmbeddedBrowser'](arg1);
+}
+
 export function StartIngressForward(arg1, arg2) {
   return window['go']['main']['App']['StartIngressForward'](arg1, arg2);
 }
@@ -1192,6 +1204,10 @@ export function StopAllPortForwards() {
 
 export function StopAllWatchers() {
   return window['go']['main']['App']['StopAllWatchers']();
+}
+
+export function StopEmbeddedBrowser() {
+  return window['go']['main']['App']['StopEmbeddedBrowser']();
 }
 
 export function StopIngressForward() {

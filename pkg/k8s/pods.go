@@ -1448,6 +1448,51 @@ func (c *Client) ForceDeletePod(contextName, namespace, name string) error {
 	})
 }
 
+// CreatePod creates a pod in the given namespace. contextName may be empty to use the current context.
+func (c *Client) CreatePod(contextName, namespace string, pod *v1.Pod) (*v1.Pod, error) {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	return cs.CoreV1().Pods(namespace).Create(ctx, pod, metav1.CreateOptions{})
+}
+
+// WaitForPodRunning polls until the pod reaches Running phase with all containers ready,
+// or until the timeout is exceeded.
+func (c *Client) WaitForPodRunning(contextName, namespace, name string, timeout time.Duration) error {
+	cs, err := c.getClientForContext(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to get client for context %s: %w", contextName, err)
+	}
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		pod, err := cs.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+		cancel()
+		if err == nil {
+			switch pod.Status.Phase {
+			case v1.PodRunning:
+				allReady := true
+				for _, cs := range pod.Status.ContainerStatuses {
+					if !cs.Ready {
+						allReady = false
+						break
+					}
+				}
+				if allReady {
+					return nil
+				}
+			case v1.PodFailed, v1.PodSucceeded:
+				return fmt.Errorf("pod %s/%s ended prematurely with phase %s", namespace, name, pod.Status.Phase)
+			}
+		}
+		time.Sleep(3 * time.Second)
+	}
+	return fmt.Errorf("timed out waiting for pod %s/%s to become ready", namespace, name)
+}
+
 // IsPodRunning checks whether a pod exists and is not in a terminal phase (Succeeded/Failed).
 func (c *Client) IsPodRunning(contextName, namespace, name string) bool {
 	cs, err := c.getClientForContext(contextName)

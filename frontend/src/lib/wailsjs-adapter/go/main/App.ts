@@ -189,6 +189,7 @@ export function GetCustomResourceYaml(...args) { return AppProxy.GetCustomResour
 export function GetDaemonSetYaml(...args) { return AppProxy.GetDaemonSetYaml(...args); }
 export function GetDebugClusterConfig(...args) { return AppProxy.GetDebugClusterConfig(...args); }
 export function GetDeploymentYaml(...args) { return AppProxy.GetDeploymentYaml(...args); }
+export function GetEmbeddedBrowserStatus(...args) { return AppProxy.GetEmbeddedBrowserStatus(...args); }
 export function GetEndpointSliceYaml(...args) { return AppProxy.GetEndpointSliceYaml(...args); }
 export function GetEndpointsYaml(...args) { return AppProxy.GetEndpointsYaml(...args); }
 export function GetEventYAML(...args) { return AppProxy.GetEventYAML(...args); }
@@ -373,11 +374,14 @@ export function StartAISession(...args) { return AppProxy.StartAISession(...args
 export function StartAllContainersLogStream(...args) { return AppProxy.StartAllContainersLogStream(...args); }
 export function StartAllPodsLogStream(...args) { return AppProxy.StartAllPodsLogStream(...args); }
 export function StartAutoStartPortForwards(...args) { return AppProxy.StartAutoStartPortForwards(...args); }
+export function SendTextToEmbeddedBrowser(...args) { return AppProxy.SendTextToEmbeddedBrowser(...args); }
+export function StartEmbeddedBrowser(...args) { return AppProxy.StartEmbeddedBrowser(...args); }
 export function StartIngressForward(...args) { return AppProxy.StartIngressForward(...args); }
 export function StartLogStream(...args) { return AppProxy.StartLogStream(...args); }
 export function StartPortForward(...args) { return AppProxy.StartPortForward(...args); }
 export function StartTerminalSession(...args) { return AppProxy.StartTerminalSession(...args); }
 export function StopAllPortForwards(...args) { return AppProxy.StopAllPortForwards(...args); }
+export function StopEmbeddedBrowser(...args) { return AppProxy.StopEmbeddedBrowser(...args); }
 export function StopAllWatchers(...args) { return AppProxy.StopAllWatchers(...args); }
 export function StopIngressForward(...args) { return AppProxy.StopIngressForward(...args); }
 export function StopLogStream(...args) { return AppProxy.StopLogStream(...args); }
