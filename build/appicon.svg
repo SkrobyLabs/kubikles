@@ -50,12 +50,11 @@
       <stop offset="100%" stop-color="#3ba0e6"/>
     </linearGradient>
   </defs>
-  <rect width="256" height="256" rx="48" fill="#1a1d23"/>
 
   <g stroke-linecap="round" stroke-linejoin="round" fill="none">
 
     <!-- Center cube -->
-    <g stroke="#3ba0e6" stroke-width="6" transform="translate(136,120) rotate(-38) scale(1.5) translate(-128,-112)">
+    <g stroke="#3ba0e6" stroke-width="10" transform="translate(142,142) rotate(-38) scale(2.55) translate(-128,-112)">
       <!-- Top face (slight tilt) -->
       <line x1="128" y1="62" x2="168" y2="86" stroke="url(#topRight)"/>
       <line x1="88" y1="86" x2="128" y2="62" stroke="url(#topLeft)"/>

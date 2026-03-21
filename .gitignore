@@ -45,3 +45,7 @@ default.pgo
 
 # Size analysis reports
 build/size-report.*
+
+build/windows/
+
+frontend/src/assets/images/appicon.svg
