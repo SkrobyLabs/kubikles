@@ -100,6 +100,12 @@ PGO_FILE := default.pgo
 
 # Build tags: default builds include Helm; "lite" builds exclude it for smaller binaries
 BUILD_TAGS := helm
+# Use webkit2gtk-4.1 API on Linux if 4.0 is not available (Ubuntu 24.04+)
+ifeq ($(DETECTED_OS),Linux)
+  ifeq ($(shell pkg-config --exists webkit2gtk-4.0 2>/dev/null && echo yes),)
+    BUILD_TAGS += webkit2_41
+  endif
+endif
 
 # Version info from git
 GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "")
