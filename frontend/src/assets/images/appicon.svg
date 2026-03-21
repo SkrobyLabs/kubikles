@@ -1,0 +1,75 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Vertex colors by position (left=bright, right=dark, bottom-left=brightest):
+         (88,136)  = #6aeee0  brightest
+         (88,88)   = #5ce0d6  bright
+         (128,160) = #3ba0e6  mid
+         (128,112) = #3ba0e6  mid
+         (128,64)  = #2d80b8  mid-dark
+         (168,136) = #1a4a8c  dark
+         (168,88)  = #1a4a8c  dark
+    -->
+    <!-- Top face -->
+    <linearGradient id="topRight" x1="128" y1="62" x2="168" y2="86" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2d80b8"/>
+      <stop offset="100%" stop-color="#1a4a8c"/>
+    </linearGradient>
+    <linearGradient id="topLeft" x1="88" y1="86" x2="128" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5ce0d6"/>
+      <stop offset="100%" stop-color="#2d80b8"/>
+    </linearGradient>
+    <!-- Left side -->
+    <linearGradient id="leftVert" x1="88" y1="86" x2="88" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5ce0d6"/>
+      <stop offset="100%" stop-color="#6aeee0"/>
+    </linearGradient>
+    <linearGradient id="leftBottom" x1="88" y1="120" x2="128" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6aeee0"/>
+      <stop offset="100%" stop-color="#3ba0e6"/>
+    </linearGradient>
+    <!-- Right side -->
+    <linearGradient id="rightVert" x1="168" y1="86" x2="168" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1a4a8c"/>
+      <stop offset="100%" stop-color="#1a4a8c"/>
+    </linearGradient>
+    <linearGradient id="rightBottom" x1="168" y1="120" x2="128" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1a4a8c"/>
+      <stop offset="100%" stop-color="#3ba0e6"/>
+    </linearGradient>
+    <!-- Center Y -->
+    <linearGradient id="yLeft" x1="128" y1="110" x2="88" y2="86" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3ba0e6"/>
+      <stop offset="100%" stop-color="#5ce0d6"/>
+    </linearGradient>
+    <linearGradient id="yRight" x1="128" y1="110" x2="168" y2="86" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3ba0e6"/>
+      <stop offset="100%" stop-color="#1a4a8c"/>
+    </linearGradient>
+    <linearGradient id="yDown" x1="128" y1="110" x2="128" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3ba0e6"/>
+      <stop offset="100%" stop-color="#3ba0e6"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="48" fill="#1a1d23"/>
+
+  <g stroke-linecap="round" stroke-linejoin="round" fill="none">
+
+    <!-- Center cube -->
+    <g stroke="#3ba0e6" stroke-width="6" transform="translate(136,120) rotate(-38) scale(1.5) translate(-128,-112)">
+      <!-- Top face (slight tilt) -->
+      <line x1="128" y1="62" x2="168" y2="86" stroke="url(#topRight)"/>
+      <line x1="88" y1="86" x2="128" y2="62" stroke="url(#topLeft)"/>
+      <!-- Left side -->
+      <line x1="88" y1="86" x2="88" y2="120" stroke="url(#leftVert)"/>
+      <line x1="88" y1="120" x2="128" y2="144" stroke="url(#leftBottom)"/>
+      <!-- Right side -->
+      <line x1="168" y1="86" x2="168" y2="120" stroke="url(#rightVert)"/>
+      <line x1="168" y1="120" x2="128" y2="144" stroke="url(#rightBottom)"/>
+      <!-- Center Y -->
+      <line x1="128" y1="110" x2="128" y2="144" stroke="url(#yDown)"/>
+      <line x1="168" y1="86" x2="128" y2="110" stroke="url(#yRight)"/>
+      <line x1="128" y1="110" x2="88" y2="86" stroke="url(#yLeft)"/>
+    </g>
+
+  </g>
+</svg>

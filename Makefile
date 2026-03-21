@@ -1,7 +1,7 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate
+.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate
 
 .DEFAULT_GOAL := help
 
@@ -21,6 +21,8 @@ help:
 	@echo ""
 	@echo "Development:"
 	@echo "  dev                Start development server with hot-reload"
+	@echo ""
+	@echo "  run                Build and launch the application"
 	@echo ""
 	@echo "Build:"
 	@echo "  build              Build for current platform (includes Helm)"
@@ -109,7 +111,10 @@ BUILD_FLAGS := -trimpath -ldflags "-s -w $(VERSION_LDFLAGS)"
 build/appicon.png: build/appicon.svg
 	magick -background none $< -resize 1024x1024 $@
 
-appicon: build/appicon.png
+frontend/src/assets/images/appicon.svg: build/appicon.svg
+	cp $< $@
+
+appicon: build/appicon.png frontend/src/assets/images/appicon.svg
 
 # Detect and auto-fix broken rollup optional deps (npm bug with optional dependencies)
 check-rollup:
@@ -123,6 +128,15 @@ dev: .require-wails check-rollup
 
 build: .require-wails check-rollup appicon
 	$(WAILS) build -tags "$(BUILD_TAGS)" -ldflags "$(VERSION_LDFLAGS)"
+
+run: build
+ifeq ($(DETECTED_OS),Windows)
+	./build/bin/kubikles.exe
+else ifeq ($(DETECTED_OS),Darwin)
+	open ./build/bin/kubikles.app
+else
+	./build/bin/kubikles
+endif
 
 # Build optimized portable executable for current platform
 build-release: .require-wails appicon
