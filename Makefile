@@ -108,8 +108,10 @@ VERSION_LDFLAGS := -X main.GitCommit=$(GIT_COMMIT) -X main.GitDirty=$(GIT_DIRTY)
 BUILD_FLAGS := -trimpath -ldflags "-s -w $(VERSION_LDFLAGS)"
 
 # Generate app icon PNG from SVG source (Wails generates icon.ico from this)
+# Uses ImageMagick v7 (magick) or v6 (convert) depending on what's installed
+MAGICK := $(shell command -v magick 2>/dev/null || command -v convert 2>/dev/null)
 build/appicon.png: build/appicon.svg
-	magick -background none $< -resize 1024x1024 $@
+	$(MAGICK) -background none $< -resize 1024x1024 $@
 
 frontend/src/assets/images/appicon.svg: build/appicon.svg
 	cp $< $@
