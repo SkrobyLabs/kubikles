@@ -48,6 +48,9 @@ jobs:
       - name: TypeScript typecheck
         run: cd frontend && npm run typecheck
 
+      - name: Build frontend
+        run: cd frontend && npx vite build
+
       - name: Go vet
         run: go vet -tags helm ./...
 
