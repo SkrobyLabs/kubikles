@@ -12,7 +12,6 @@ frontend/dist/
 frontend/node_modules/
 node_modules/
 frontend/package.json.md5
-frontend/package-lock.json
 
 # System
 .DS_Store
