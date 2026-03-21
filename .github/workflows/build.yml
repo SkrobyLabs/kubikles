@@ -1,0 +1,190 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.24"
+  NODE_VERSION: "20"
+  WAILS_VERSION: "latest"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Frontend tests
+        run: cd frontend && npm test
+
+      - name: TypeScript typecheck
+        run: cd frontend && npm run typecheck
+
+      - name: Go vet
+        run: go vet -tags helm ./...
+
+  build-linux:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            sudo dpkg --add-architecture arm64
+            sudo apt-get update
+            sudo apt-get install -y gcc-aarch64-linux-gnu
+          fi
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Build
+        env:
+          CC: ${{ matrix.arch == 'arm64' && 'aarch64-linux-gnu-gcc' || '' }}
+        run: |
+          ~/go/bin/wails build -platform linux/${{ matrix.arch }} -tags "helm" \
+            -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
+            -o Kubikles-linux-${{ matrix.arch }}
+
+      - name: Upload artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubikles-linux-${{ matrix.arch }}
+          path: build/bin/Kubikles-linux-${{ matrix.arch }}
+
+  build-windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Build amd64
+        shell: bash
+        run: |
+          ~/go/bin/wails build -platform windows/amd64 -tags "helm" \
+            -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
+            -o Kubikles-amd64.exe
+
+      - name: Build arm64
+        shell: bash
+        run: |
+          ~/go/bin/wails build -platform windows/arm64 -tags "helm" \
+            -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
+            -o Kubikles-arm64.exe
+
+      - name: Upload amd64 artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubikles-windows-amd64
+          path: build/bin/Kubikles-amd64.exe
+
+      - name: Upload arm64 artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubikles-windows-arm64
+          path: build/bin/Kubikles-arm64.exe
+
+  build-macos:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Build arm64
+        run: |
+          ~/go/bin/wails build -platform darwin/arm64 -tags "helm" \
+            -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
+            -o Kubikles-arm64
+
+      - name: Build amd64
+        run: |
+          ~/go/bin/wails build -platform darwin/amd64 -tags "helm" \
+            -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
+            -o Kubikles-amd64
