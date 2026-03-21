@@ -59,7 +59,6 @@ jobs:
           | macOS | Apple Silicon | `Kubikles-macos-arm64.zip` |
           | macOS | Intel | `Kubikles-macos-amd64.zip` |
           | Linux | x64 | `Kubikles-linux-amd64.zip` |
-          | Linux | ARM64 | `Kubikles-linux-arm64.zip` |
 
           > **macOS users:** see `README.txt` inside the zip for instructions on running unsigned builds.
           NOTES
