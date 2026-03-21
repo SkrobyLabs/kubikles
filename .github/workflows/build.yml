@@ -171,10 +171,15 @@ jobs:
       - name: Install frontend dependencies
         run: cd frontend && npm ci
 
-      - name: Build
+      - name: Build arm64
         run: |
           make build-mac-arm
+          mv build/bin/kubikles.app build/bin/Kubikles-arm64.app
+
+      - name: Build amd64
+        run: |
           make build-mac
+          mv build/bin/kubikles.app build/bin/Kubikles-amd64.app
 
       - name: Zip apps
         if: inputs.publish
@@ -192,6 +197,10 @@ jobs:
           Or: right-click the app > Open > click Open in the dialog.
           EOF
           cd build/bin
+          echo "Build output:" && ls -la
+          # Fail fast if builds didn't produce .app bundles
+          test -d Kubikles-arm64.app || { echo "ERROR: Kubikles-arm64.app not found"; exit 1; }
+          test -d Kubikles-amd64.app || { echo "ERROR: Kubikles-amd64.app not found"; exit 1; }
           zip -r Kubikles-macos-arm64.zip Kubikles-arm64.app README.txt
           zip -r Kubikles-macos-amd64.zip Kubikles-amd64.app README.txt
 
