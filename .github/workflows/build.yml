@@ -1,10 +1,12 @@
 name: Build
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_call:
+    inputs:
+      publish:
+        description: Upload build artifacts
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -94,12 +96,16 @@ jobs:
             -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
             -o Kubikles-linux-${{ matrix.arch }}
 
+      - name: Zip binary
+        if: inputs.publish
+        run: cd build/bin && zip Kubikles-linux-${{ matrix.arch }}.zip Kubikles-linux-${{ matrix.arch }}
+
       - name: Upload artifact
-        if: github.event_name == 'push'
+        if: inputs.publish
         uses: actions/upload-artifact@v4
         with:
           name: kubikles-linux-${{ matrix.arch }}
-          path: build/bin/Kubikles-linux-${{ matrix.arch }}
+          path: build/bin/Kubikles-linux-${{ matrix.arch }}.zip
 
   build-windows:
     needs: test
@@ -139,19 +145,27 @@ jobs:
             -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
             -o Kubikles-arm64.exe
 
+      - name: Zip binaries
+        if: inputs.publish
+        shell: bash
+        run: |
+          cd build/bin
+          zip Kubikles-windows-amd64.zip Kubikles-amd64.exe
+          zip Kubikles-windows-arm64.zip Kubikles-arm64.exe
+
       - name: Upload amd64 artifact
-        if: github.event_name == 'push'
+        if: inputs.publish
         uses: actions/upload-artifact@v4
         with:
           name: kubikles-windows-amd64
-          path: build/bin/Kubikles-amd64.exe
+          path: build/bin/Kubikles-windows-amd64.zip
 
       - name: Upload arm64 artifact
-        if: github.event_name == 'push'
+        if: inputs.publish
         uses: actions/upload-artifact@v4
         with:
           name: kubikles-windows-arm64
-          path: build/bin/Kubikles-arm64.exe
+          path: build/bin/Kubikles-windows-arm64.zip
 
   build-macos:
     needs: test
@@ -188,3 +202,36 @@ jobs:
           ~/go/bin/wails build -platform darwin/amd64 -tags "helm" \
             -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
             -o Kubikles-amd64
+
+      - name: Zip apps
+        if: inputs.publish
+        run: |
+          cat > build/bin/README.txt <<'EOF'
+          Kubikles for macOS (unsigned build)
+          ====================================
+
+          This build is not code-signed. macOS will block it by default.
+
+          Before opening the app, run this in Terminal:
+
+              xattr -d com.apple.quarantine Kubikles-*.app
+
+          Or: right-click the app > Open > click Open in the dialog.
+          EOF
+          cd build/bin
+          zip -r Kubikles-macos-arm64.zip Kubikles-arm64.app README.txt
+          zip -r Kubikles-macos-amd64.zip Kubikles-amd64.app README.txt
+
+      - name: Upload arm64 artifact
+        if: inputs.publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubikles-macos-arm64
+          path: build/bin/Kubikles-macos-arm64.zip
+
+      - name: Upload amd64 artifact
+        if: inputs.publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubikles-macos-amd64
+          path: build/bin/Kubikles-macos-amd64.zip

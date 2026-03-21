@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      publish: true
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+
+          # Get auto-generated changelog from GitHub
+          prev_tag=$(git tag --sort=-v:refname | grep '^v' | sed -n '2p' || true)
+          if [ -n "$prev_tag" ]; then
+            gh api repos/${{ github.repository }}/releases/generate-notes \
+              -f tag_name="$tag" -f previous_tag_name="$prev_tag" \
+              --jq '.body' > notes.md
+          else
+            gh api repos/${{ github.repository }}/releases/generate-notes \
+              -f tag_name="$tag" \
+              --jq '.body' > notes.md
+          fi
+
+          # Append download table
+          cat >> notes.md <<'NOTES'
+
+          ---
+
+          ## Downloads
+
+          | Platform | Architecture | File |
+          |----------|-------------|------|
+          | Windows | x64 | `Kubikles-windows-amd64.zip` |
+          | Windows | ARM64 | `Kubikles-windows-arm64.zip` |
+          | macOS | Apple Silicon | `Kubikles-macos-arm64.zip` |
+          | macOS | Intel | `Kubikles-macos-amd64.zip` |
+          | Linux | x64 | `Kubikles-linux-amd64.zip` |
+          | Linux | ARM64 | `Kubikles-linux-arm64.zip` |
+
+          > **macOS users:** see `README.txt` inside the zip for instructions on running unsigned builds.
+          NOTES
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          gh release create "$tag" \
+            --title "$tag" \
+            -F notes.md \
+            artifacts/*/*.zip
+
+      - name: Clean up old releases (keep last 3)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          releases=$(gh release list --limit 100 --json tagName --jq '.[].tagName')
+          count=0
+          while IFS= read -r tag; do
+            count=$((count + 1))
+            if [ "$count" -gt 3 ]; then
+              echo "Deleting release $tag"
+              gh release delete "$tag" --yes
+            fi
+          done <<< "$releases"
