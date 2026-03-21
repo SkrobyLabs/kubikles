@@ -14,7 +14,6 @@ permissions:
 env:
   GO_VERSION: "1.24"
   NODE_VERSION: "20"
-  WAILS_VERSION: "latest"
 
 jobs:
   test:
@@ -42,16 +41,14 @@ jobs:
       - name: Install frontend dependencies
         run: cd frontend && npm ci
 
-      - name: Frontend tests
-        run: cd frontend && npm test
+      - name: Test
+        run: make test
 
       - name: TypeScript typecheck
-        run: cd frontend && npm run typecheck
+        run: make typecheck
 
-      - name: Build frontend
-        run: |
-          cp build/appicon.svg frontend/src/assets/images/appicon.svg
-          cd frontend && npx vite build
+      - name: Build frontend (for go vet embed)
+        run: make appicon && cd frontend && npx vite build
 
       - name: Go vet
         run: go vet -tags helm ./...
@@ -61,7 +58,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            make_target: build-linux-amd64
+          - arch: arm64
+            make_target: build-linux-arm64
     steps:
       - uses: actions/checkout@v4
 
@@ -88,7 +89,7 @@ jobs:
           fi
 
       - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+        run: make install-wails
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
@@ -96,10 +97,7 @@ jobs:
       - name: Build
         env:
           CC: ${{ matrix.arch == 'arm64' && 'aarch64-linux-gnu-gcc' || '' }}
-        run: |
-          ~/go/bin/wails build -platform linux/${{ matrix.arch }} -tags "helm" \
-            -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
-            -o Kubikles-linux-${{ matrix.arch }}
+        run: make ${{ matrix.make_target }}
 
       - name: Zip binary
         if: inputs.publish
@@ -131,24 +129,16 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+        run: make install-wails
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
 
-      - name: Build amd64
+      - name: Build
         shell: bash
         run: |
-          ~/go/bin/wails build -platform windows/amd64 -tags "helm" \
-            -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
-            -o Kubikles-amd64.exe
-
-      - name: Build arm64
-        shell: bash
-        run: |
-          ~/go/bin/wails build -platform windows/arm64 -tags "helm" \
-            -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
-            -o Kubikles-arm64.exe
+          make build-windows-amd64
+          make build-windows-arm64
 
       - name: Zip binaries
         if: inputs.publish
@@ -191,22 +181,15 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+        run: make install-wails
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
 
-      - name: Build arm64
+      - name: Build
         run: |
-          ~/go/bin/wails build -platform darwin/arm64 -tags "helm" \
-            -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
-            -o Kubikles-arm64
-
-      - name: Build amd64
-        run: |
-          ~/go/bin/wails build -platform darwin/amd64 -tags "helm" \
-            -trimpath -ldflags "-s -w -X main.GitCommit=${{ github.sha }} -X main.GitDirty=false" \
-            -o Kubikles-amd64
+          make build-mac-arm
+          make build-mac
 
       - name: Zip apps
         if: inputs.publish
