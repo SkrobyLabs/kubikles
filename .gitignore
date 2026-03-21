@@ -1,6 +1,5 @@
-# Wails build outputs (generated from build/appicon.svg)
+# Wails build outputs
 build/bin/
-build/appicon.png
 build/windows/icon.ico
 build/icon-src/icon.svg
 build/icon-src/logo.svg
@@ -12,7 +11,6 @@ frontend/dist/
 frontend/node_modules/
 node_modules/
 frontend/package.json.md5
-frontend/package-lock.json
 
 # System
 .DS_Store
@@ -45,3 +43,7 @@ default.pgo
 
 # Size analysis reports
 build/size-report.*
+
+build/windows/
+
+frontend/src/assets/images/appicon.svg

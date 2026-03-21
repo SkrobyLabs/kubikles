@@ -1,28 +1,74 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <rect x="0" y="0" width="1024" height="1024" rx="228" ry="228" fill="#1a1d23"/>
-  <circle cx="512" cy="512" r="340" fill="none" stroke="#1e5a8a" stroke-width="7" stroke-dasharray="12 8" opacity="0.7"/>
-  <line x1="512.0" y1="392.0" x2="512.0" y2="172.0" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
-  <line x1="605.8" y1="437.2" x2="777.8" y2="300.0" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
-  <line x1="629.0" y1="538.7" x2="843.5" y2="587.7" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
-  <line x1="564.1" y1="620.1" x2="659.5" y2="818.3" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
-  <line x1="459.9" y1="620.1" x2="364.5" y2="818.3" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
-  <line x1="395.0" y1="538.7" x2="180.5" y2="587.7" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
-  <line x1="418.2" y1="437.2" x2="246.2" y2="300.0" stroke="#007acc" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
-  <circle cx="512.0" cy="172.0" r="50" fill="#007acc" opacity="0.2"/>
-  <circle cx="512.0" cy="172.0" r="38" fill="#3ba0e6"/>
-  <circle cx="777.8" cy="300.0" r="50" fill="#007acc" opacity="0.2"/>
-  <circle cx="777.8" cy="300.0" r="38" fill="#3ba0e6"/>
-  <circle cx="843.5" cy="587.7" r="50" fill="#007acc" opacity="0.2"/>
-  <circle cx="843.5" cy="587.7" r="38" fill="#3ba0e6"/>
-  <circle cx="659.5" cy="818.3" r="50" fill="#007acc" opacity="0.2"/>
-  <circle cx="659.5" cy="818.3" r="38" fill="#3ba0e6"/>
-  <circle cx="364.5" cy="818.3" r="50" fill="#007acc" opacity="0.2"/>
-  <circle cx="364.5" cy="818.3" r="38" fill="#3ba0e6"/>
-  <circle cx="180.5" cy="587.7" r="50" fill="#007acc" opacity="0.2"/>
-  <circle cx="180.5" cy="587.7" r="38" fill="#3ba0e6"/>
-  <circle cx="246.2" cy="300.0" r="50" fill="#007acc" opacity="0.2"/>
-  <circle cx="246.2" cy="300.0" r="38" fill="#3ba0e6"/>
-  <circle cx="512" cy="512" r="120" fill="#007acc"/>
-  <circle cx="512" cy="512" r="100" fill="#1a1d23"/>
-  <text x="512" y="552" text-anchor="middle" font-family="-apple-system, SF Pro Display, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="130" fill="#e8eaed">K</text>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Vertex colors by position (left=bright, right=dark, bottom-left=brightest):
+         (88,136)  = #6aeee0  brightest
+         (88,88)   = #5ce0d6  bright
+         (128,160) = #3ba0e6  mid
+         (128,112) = #3ba0e6  mid
+         (128,64)  = #2d80b8  mid-dark
+         (168,136) = #1a4a8c  dark
+         (168,88)  = #1a4a8c  dark
+    -->
+    <!-- Top face -->
+    <linearGradient id="topRight" x1="128" y1="62" x2="168" y2="86" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2d80b8"/>
+      <stop offset="100%" stop-color="#1a4a8c"/>
+    </linearGradient>
+    <linearGradient id="topLeft" x1="88" y1="86" x2="128" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5ce0d6"/>
+      <stop offset="100%" stop-color="#2d80b8"/>
+    </linearGradient>
+    <!-- Left side -->
+    <linearGradient id="leftVert" x1="88" y1="86" x2="88" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5ce0d6"/>
+      <stop offset="100%" stop-color="#6aeee0"/>
+    </linearGradient>
+    <linearGradient id="leftBottom" x1="88" y1="120" x2="128" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6aeee0"/>
+      <stop offset="100%" stop-color="#3ba0e6"/>
+    </linearGradient>
+    <!-- Right side -->
+    <linearGradient id="rightVert" x1="168" y1="86" x2="168" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1a4a8c"/>
+      <stop offset="100%" stop-color="#1a4a8c"/>
+    </linearGradient>
+    <linearGradient id="rightBottom" x1="168" y1="120" x2="128" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1a4a8c"/>
+      <stop offset="100%" stop-color="#3ba0e6"/>
+    </linearGradient>
+    <!-- Center Y -->
+    <linearGradient id="yLeft" x1="128" y1="110" x2="88" y2="86" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3ba0e6"/>
+      <stop offset="100%" stop-color="#5ce0d6"/>
+    </linearGradient>
+    <linearGradient id="yRight" x1="128" y1="110" x2="168" y2="86" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3ba0e6"/>
+      <stop offset="100%" stop-color="#1a4a8c"/>
+    </linearGradient>
+    <linearGradient id="yDown" x1="128" y1="110" x2="128" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3ba0e6"/>
+      <stop offset="100%" stop-color="#3ba0e6"/>
+    </linearGradient>
+  </defs>
+
+  <g stroke-linecap="round" stroke-linejoin="round" fill="none">
+
+    <!-- Center cube -->
+    <g stroke="#3ba0e6" stroke-width="10" transform="translate(142,142) rotate(-38) scale(2.55) translate(-128,-112)">
+      <!-- Top face (slight tilt) -->
+      <line x1="128" y1="62" x2="168" y2="86" stroke="url(#topRight)"/>
+      <line x1="88" y1="86" x2="128" y2="62" stroke="url(#topLeft)"/>
+      <!-- Left side -->
+      <line x1="88" y1="86" x2="88" y2="120" stroke="url(#leftVert)"/>
+      <line x1="88" y1="120" x2="128" y2="144" stroke="url(#leftBottom)"/>
+      <!-- Right side -->
+      <line x1="168" y1="86" x2="168" y2="120" stroke="url(#rightVert)"/>
+      <line x1="168" y1="120" x2="128" y2="144" stroke="url(#rightBottom)"/>
+      <!-- Center Y -->
+      <line x1="128" y1="110" x2="128" y2="144" stroke="url(#yDown)"/>
+      <line x1="168" y1="86" x2="128" y2="110" stroke="url(#yRight)"/>
+      <line x1="128" y1="110" x2="88" y2="86" stroke="url(#yLeft)"/>
+    </g>
+
+  </g>
 </svg>

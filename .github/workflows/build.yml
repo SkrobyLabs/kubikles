@@ -1,0 +1,211 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      publish:
+        description: Upload build artifacts
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.24"
+  NODE_VERSION: "20"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Test
+        run: make test
+
+      - name: TypeScript typecheck
+        run: make typecheck
+
+      - name: Build frontend (for go vet embed)
+        run: make appicon && cd frontend && npx vite build
+
+      - name: Go vet
+        run: go vet -tags "helm webkit2_41" ./...
+
+  build-linux:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install Wails
+        run: make install-wails
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Build
+        run: make build-linux-amd64
+
+      - name: Zip binary
+        if: inputs.publish
+        run: cd build/bin && zip Kubikles-linux-amd64.zip Kubikles-linux-amd64
+
+      - name: Upload artifact
+        if: inputs.publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubikles-linux-amd64
+          path: build/bin/Kubikles-linux-amd64.zip
+
+  build-windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails
+        run: make install-wails
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Build
+        shell: bash
+        run: |
+          make build-windows-amd64
+          make build-windows-arm64
+
+      - name: Zip binaries
+        if: inputs.publish
+        shell: bash
+        run: |
+          cd build/bin
+          zip Kubikles-windows-amd64.zip Kubikles-amd64.exe
+          zip Kubikles-windows-arm64.zip Kubikles-arm64.exe
+
+      - name: Upload amd64 artifact
+        if: inputs.publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubikles-windows-amd64
+          path: build/bin/Kubikles-windows-amd64.zip
+
+      - name: Upload arm64 artifact
+        if: inputs.publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubikles-windows-arm64
+          path: build/bin/Kubikles-windows-arm64.zip
+
+  build-macos:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails
+        run: make install-wails
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Build
+        run: |
+          make build-mac-arm
+          make build-mac
+
+      - name: Zip apps
+        if: inputs.publish
+        run: |
+          cat > build/bin/README.txt <<'EOF'
+          Kubikles for macOS (unsigned build)
+          ====================================
+
+          This build is not code-signed. macOS will block it by default.
+
+          Before opening the app, run this in Terminal:
+
+              xattr -d com.apple.quarantine Kubikles-*.app
+
+          Or: right-click the app > Open > click Open in the dialog.
+          EOF
+          cd build/bin
+          zip -r Kubikles-macos-arm64.zip Kubikles-arm64.app README.txt
+          zip -r Kubikles-macos-amd64.zip Kubikles-amd64.app README.txt
+
+      - name: Upload arm64 artifact
+        if: inputs.publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubikles-macos-arm64
+          path: build/bin/Kubikles-macos-arm64.zip
+
+      - name: Upload amd64 artifact
+        if: inputs.publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubikles-macos-amd64
+          path: build/bin/Kubikles-macos-amd64.zip

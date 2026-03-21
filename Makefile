@@ -1,7 +1,7 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate
+.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate
 
 .DEFAULT_GOAL := help
 
@@ -21,6 +21,8 @@ help:
 	@echo ""
 	@echo "Development:"
 	@echo "  dev                Start development server with hot-reload"
+	@echo ""
+	@echo "  run                Build and launch the application"
 	@echo ""
 	@echo "Build:"
 	@echo "  build              Build for current platform (includes Helm)"
@@ -85,15 +87,25 @@ else
     DETECTED_OS := $(shell uname -s)
 endif
 
-# Find wails - check PATH first, then common Go bin locations
+# Find wails - check PATH first, then common Go bin locations (lazy: only fails when needed)
 WAILS := $(shell command -v wails 2>/dev/null || echo "$(HOME)/go/bin/wails")
-ifeq (,$(wildcard $(WAILS)))
-    $(error wails not found. Run 'make install-wails' or add ~/go/bin to PATH)
-endif
+
+.PHONY: .require-wails
+.require-wails:
+	@if [ ! -x "$$(command -v wails 2>/dev/null)" ] && [ ! -x "$(HOME)/go/bin/wails" ]; then \
+		echo "Error: wails not found. Run 'make install-wails' or add ~/go/bin to PATH"; \
+		exit 1; \
+	fi
 PGO_FILE := default.pgo
 
 # Build tags: default builds include Helm; "lite" builds exclude it for smaller binaries
 BUILD_TAGS := helm
+# Use webkit2gtk-4.1 API on Linux if 4.0 is not available (Ubuntu 24.04+)
+ifeq ($(DETECTED_OS),Linux)
+  ifeq ($(shell pkg-config --exists webkit2gtk-4.0 2>/dev/null && echo yes),)
+    BUILD_TAGS += webkit2_41
+  endif
+endif
 
 # Version info from git
 GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "")
@@ -102,10 +114,15 @@ VERSION_LDFLAGS := -X main.GitCommit=$(GIT_COMMIT) -X main.GitDirty=$(GIT_DIRTY)
 BUILD_FLAGS := -trimpath -ldflags "-s -w $(VERSION_LDFLAGS)"
 
 # Generate app icon PNG from SVG source (Wails generates icon.ico from this)
+# Uses ImageMagick v7 (magick) or v6 (convert) depending on what's installed
+MAGICK := $(shell command -v magick 2>/dev/null || command -v convert 2>/dev/null)
 build/appicon.png: build/appicon.svg
-	magick -background none $< -resize 1024x1024 $@
+	"$(MAGICK)" -background none $< -resize 1024x1024 $@
 
-appicon: build/appicon.png
+frontend/src/assets/images/appicon.svg: build/appicon.svg
+	cp $< $@
+
+appicon: build/appicon.png frontend/src/assets/images/appicon.svg
 
 # Detect and auto-fix broken rollup optional deps (npm bug with optional dependencies)
 check-rollup:
@@ -114,44 +131,53 @@ check-rollup:
 		rm -rf frontend/node_modules frontend/package-lock.json; \
 	fi
 
-dev: check-rollup
+dev: .require-wails check-rollup
 	$(WAILS) dev -tags "debugcluster $(BUILD_TAGS)"
 
-build: check-rollup appicon
+build: .require-wails check-rollup appicon
 	$(WAILS) build -tags "$(BUILD_TAGS)" -ldflags "$(VERSION_LDFLAGS)"
 
+run: build
+ifeq ($(DETECTED_OS),Windows)
+	./build/bin/kubikles.exe
+else ifeq ($(DETECTED_OS),Darwin)
+	open ./build/bin/kubikles.app
+else
+	./build/bin/kubikles
+endif
+
 # Build optimized portable executable for current platform
-build-release: appicon
+build-release: .require-wails appicon
 	$(WAILS) build -tags "$(BUILD_TAGS)" $(BUILD_FLAGS)
 
 # Build WITHOUT Helm for smaller binary (lite variant)
-build-lite: appicon
+build-lite: .require-wails appicon
 	$(WAILS) build -ldflags "$(VERSION_LDFLAGS)"
 
 # Build optimized portable WITHOUT Helm (lite variant)
-build-release-lite: appicon
+build-release-lite: .require-wails appicon
 	$(WAILS) build $(BUILD_FLAGS)
 
 # Build portable Windows executables (requires mingw-w64 on non-Windows: brew install mingw-w64)
-build-windows-amd64: appicon
+build-windows-amd64: .require-wails appicon
 	$(WAILS) build -platform windows/amd64 -tags "$(BUILD_TAGS)" $(BUILD_FLAGS) -o Kubikles-amd64.exe
 
-build-windows-arm64: appicon
+build-windows-arm64: .require-wails appicon
 	$(WAILS) build -platform windows/arm64 -tags "$(BUILD_TAGS)" $(BUILD_FLAGS) -o Kubikles-arm64.exe
 
 # Build portable macOS executable
-build-mac: appicon
+build-mac: .require-wails appicon
 	$(WAILS) build -platform darwin/amd64 -tags "$(BUILD_TAGS)" $(BUILD_FLAGS) -o Kubikles-amd64
 
 # Build portable macOS ARM executable (Apple Silicon)
-build-mac-arm: appicon
+build-mac-arm: .require-wails appicon
 	$(WAILS) build -platform darwin/arm64 -tags "$(BUILD_TAGS)" $(BUILD_FLAGS) -o Kubikles-arm64
 
 # Build portable Linux executables
-build-linux-amd64: appicon
+build-linux-amd64: .require-wails appicon
 	$(WAILS) build -platform linux/amd64 -tags "$(BUILD_TAGS)" $(BUILD_FLAGS) -o Kubikles-linux-amd64
 
-build-linux-arm64: appicon
+build-linux-arm64: .require-wails appicon
 	$(WAILS) build -platform linux/arm64 -tags "$(BUILD_TAGS)" $(BUILD_FLAGS) -o Kubikles-linux-arm64
 
 # Build portable Linux AppImage (bundles into single executable) - Unix only
@@ -211,8 +237,12 @@ ifeq ($(DETECTED_OS),Windows)
 	@echo "On Windows, please ensure you have installed:"
 	@echo "  1. Go: https://go.dev/dl/"
 	@echo "  2. Node.js: https://nodejs.org/"
-	@echo "  3. Then run: make install-wails"
-	@echo "  4. Then run: make install-frontend"
+	@echo "  3. ImageMagick: winget install ImageMagick.ImageMagick (needed for app icon)"
+	@echo "  4. Then run: make install-wails"
+	@echo "  5. Then run: cd frontend && npm install"
+	@echo ""
+	@echo "If npm fails with ExecutionPolicy error, run in Admin PowerShell:"
+	@echo "  Set-ExecutionPolicy RemoteSigned -Scope CurrentUser"
 else
 	@./scripts/setup.sh
 endif
@@ -296,7 +326,7 @@ generate:
 #   1. App launches with pprof on port 6060
 #   2. Use the app normally for 30-60 seconds (typical operations)
 #   3. Press Ctrl+C to stop and save profile
-profile:
+profile: .require-wails
 	@echo "Building with profiling enabled..."
 	$(WAILS) build -tags "profiling" -skipbindings
 	@echo ""
@@ -316,7 +346,7 @@ else
 endif
 
 # Build with PGO optimization (requires profile from 'make profile')
-build-pgo:
+build-pgo: .require-wails
 	@if [ ! -f "$(PGO_FILE)" ]; then \
 		echo "Error: $(PGO_FILE) not found. Run 'make profile' first to generate it."; \
 		exit 1; \
@@ -325,7 +355,7 @@ build-pgo:
 	$(WAILS) build $(BUILD_FLAGS) -tags "pgo $(BUILD_TAGS)"
 
 # Build optimized release for Apple Silicon with PGO (macOS only)
-build-mac-arm-pgo:
+build-mac-arm-pgo: .require-wails
 ifeq ($(DETECTED_OS),Windows)
 	@echo "This target is only available on macOS"
 else

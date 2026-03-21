@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Environment } from 'wailsjs/runtime/runtime';
 import { isInServerMode } from '~/lib/wailsjs-adapter/runtime/runtime';
-import appIcon from '~/assets/images/icon-inapp.svg';
+import appIcon from '~/assets/images/appicon.svg';
 import {
     ChevronDownIcon,
     ChevronRightIcon,
