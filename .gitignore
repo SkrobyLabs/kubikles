@@ -1,6 +1,5 @@
-# Wails build outputs (generated from build/appicon.svg)
+# Wails build outputs
 build/bin/
-build/appicon.png
 build/windows/icon.ico
 build/icon-src/icon.svg
 build/icon-src/logo.svg
