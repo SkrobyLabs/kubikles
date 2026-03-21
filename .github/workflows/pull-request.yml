@@ -1,11 +1,15 @@
 name: PR
 
 on:
-  pull_request:
-    branches: [main]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
 
 jobs:
   build:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.issue.pull_request && github.event.comment.body == '/build')
     uses: ./.github/workflows/build.yml
     with:
       publish: false
