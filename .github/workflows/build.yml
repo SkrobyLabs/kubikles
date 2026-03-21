@@ -49,7 +49,9 @@ jobs:
         run: cd frontend && npm run typecheck
 
       - name: Build frontend
-        run: cd frontend && npx vite build
+        run: |
+          cp build/appicon.svg frontend/src/assets/images/appicon.svg
+          cd frontend && npx vite build
 
       - name: Go vet
         run: go vet -tags helm ./...
