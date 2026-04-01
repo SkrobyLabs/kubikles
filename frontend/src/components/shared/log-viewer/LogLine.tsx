@@ -28,8 +28,10 @@ const getColorForName = (name: any) => {
 };
 
 // Parse prefix from content: [podName/containerName] or [containerName] or [podName]
+// Only match valid K8s resource names (lowercase alphanumeric, hyphens, dots) with optional /container suffix.
+// This avoids matching application-level log prefixes like [INFO], [Microsoft.Hosting.Lifetime], or timestamps.
 const parseLogPrefix = (content: any) => {
-    const match = content.match(/^\[([^\]]+)\]\s*/);
+    const match = content.match(/^\[([a-z0-9][a-z0-9\-.]*(\/[a-z0-9][a-z0-9\-.]*)?)\]\s*/);
     if (match) {
         const prefixContent = match[1];
         const slashIndex = prefixContent.indexOf('/');

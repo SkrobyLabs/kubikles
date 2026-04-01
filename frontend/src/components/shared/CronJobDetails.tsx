@@ -38,7 +38,7 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
     const activeJobs = status.active || [];
 
     const handleEditYaml = () => {
-        const tabId = `yaml-cronjob-${cronJob.metadata.uid}`;
+        const tabId = `yaml-cronjob-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -55,7 +55,7 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-cronjob-${cronJob.metadata.uid}`;
+        const tabId = `deps-cronjob-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

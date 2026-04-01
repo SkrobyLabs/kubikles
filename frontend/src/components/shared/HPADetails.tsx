@@ -19,7 +19,7 @@ export default function HPADetails({ hpa, tabContext = '' }: any) {
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-hpa-${hpa.metadata?.uid}`;
+        const tabId = `yaml-hpa-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -38,7 +38,7 @@ export default function HPADetails({ hpa, tabContext = '' }: any) {
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-hpa-${hpa.metadata?.uid}`;
+        const tabId = `deps-hpa-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

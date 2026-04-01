@@ -568,7 +568,7 @@ export default function NodeTopology({
 
     const openPodDetails = useCallback((pod: any) => {
         const name = pod.metadata?.name;
-        const tabId = `details-pod-${pod.metadata?.uid}`;
+        const tabId = `details-pod-${pod.metadata?.namespace}/${name}`;
         openTab({
             id: tabId,
             title: name,

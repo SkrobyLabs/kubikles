@@ -41,7 +41,7 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
     const controller = ownerReferences.find((ref: any) => ref.controller);
 
     const handleEditYaml = () => {
-        const tabId = `yaml-job-${job.metadata.uid}`;
+        const tabId = `yaml-job-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -58,7 +58,7 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-job-${job.metadata.uid}`;
+        const tabId = `deps-job-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

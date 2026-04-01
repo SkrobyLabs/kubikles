@@ -18,7 +18,7 @@ export default function CSINodeDetails({ csiNode, tabContext = '' }: any) {
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-csinode-${csiNode.metadata?.uid}`;
+        const tabId = `yaml-csinode-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -37,7 +37,7 @@ export default function CSINodeDetails({ csiNode, tabContext = '' }: any) {
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-csinode-${csiNode.metadata?.uid}`;
+        const tabId = `deps-csinode-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

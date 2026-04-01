@@ -24,7 +24,7 @@ export const useSecretActions = (): any => {
 
     const handleEditYaml = (secret: K8sSecret): void => {
         Logger.info("Opening secret editor", { namespace: secret.metadata.namespace, secret: secret.metadata.name }, 'config');
-        const tabId = `secret-${secret.metadata.uid}`;
+        const tabId = `secret-${secret.metadata.namespace}/${secret.metadata.name}`;
         openTab({
             id: tabId,
             title: `${secret.metadata.name}`,
@@ -44,7 +44,7 @@ export const useSecretActions = (): any => {
 
     const handleEditKeyValue = (secret: K8sSecret): void => {
         Logger.info("Opening secret editor (key-value)", { namespace: secret.metadata.namespace, secret: secret.metadata.name }, 'config');
-        const tabId = `secret-${secret.metadata.uid}`;
+        const tabId = `secret-${secret.metadata.namespace}/${secret.metadata.name}`;
         openTab({
             id: tabId,
             title: `${secret.metadata.name}`,
@@ -65,7 +65,7 @@ export const useSecretActions = (): any => {
 
     const handleShowDependencies = (secret: K8sSecret): void => {
         Logger.info("Opening dependency graph", { namespace: secret.metadata.namespace, secret: secret.metadata.name }, 'config');
-        const tabId = `deps-secret-${secret.metadata.uid}`;
+        const tabId = `deps-secret-${secret.metadata.namespace}/${secret.metadata.name}`;
         openTab({
             id: tabId,
             title: `${secret.metadata.name}`,

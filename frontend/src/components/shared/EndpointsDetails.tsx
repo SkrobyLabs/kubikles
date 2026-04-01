@@ -18,7 +18,7 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }: { endpo
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-endpoints-${endpoints.metadata?.uid}`;
+        const tabId = `yaml-endpoints-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -37,7 +37,7 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }: { endpo
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-endpoints-${endpoints.metadata?.uid}`;
+        const tabId = `deps-endpoints-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

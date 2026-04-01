@@ -42,7 +42,7 @@ export default function RoleDetails({ role, tabContext = '' }: any) {
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-role-${metadata.uid}`;
+        const tabId = `yaml-role-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -60,7 +60,7 @@ export default function RoleDetails({ role, tabContext = '' }: any) {
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-role-${metadata.uid}`;
+        const tabId = `deps-role-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

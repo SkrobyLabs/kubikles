@@ -164,7 +164,7 @@ export function getResourceIcon(resourceType: string) {
 
 /**
  * Get icon for a tab based on its ID pattern
- * @param {string} tabId - The tab ID (e.g., 'details-pod-uid123', 'yaml-deployment-uid456')
+ * @param {string} tabId - The tab ID (e.g., 'details-pod-default/nginx', 'yaml-deployment-default/myapp')
  * @returns {React.Component|null} The icon component or null if not found
  */
 export function getTabIcon(tabId: string) {

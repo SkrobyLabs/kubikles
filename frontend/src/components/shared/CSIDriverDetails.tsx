@@ -32,7 +32,7 @@ export default function CSIDriverDetails({ csiDriver, tabContext = '' }: any) {
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-csidriver-${csiDriver.metadata?.uid}`;
+        const tabId = `yaml-csidriver-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -51,7 +51,7 @@ export default function CSIDriverDetails({ csiDriver, tabContext = '' }: any) {
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-csidriver-${csiDriver.metadata?.uid}`;
+        const tabId = `deps-csidriver-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

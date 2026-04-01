@@ -18,7 +18,7 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' }:
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-networkpolicy-${networkPolicy.metadata?.uid}`;
+        const tabId = `yaml-networkpolicy-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -37,7 +37,7 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' }:
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-networkpolicy-${networkPolicy.metadata?.uid}`;
+        const tabId = `deps-networkpolicy-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

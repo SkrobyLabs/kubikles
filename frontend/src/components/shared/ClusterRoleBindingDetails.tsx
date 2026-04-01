@@ -31,7 +31,7 @@ export default function ClusterRoleBindingDetails({ clusterRoleBinding, tabConte
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-clusterrolebinding-${metadata.uid}`;
+        const tabId = `yaml-clusterrolebinding-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -48,7 +48,7 @@ export default function ClusterRoleBindingDetails({ clusterRoleBinding, tabConte
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-clusterrolebinding-${metadata.uid}`;
+        const tabId = `deps-clusterrolebinding-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

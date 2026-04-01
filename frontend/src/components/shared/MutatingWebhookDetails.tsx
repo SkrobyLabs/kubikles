@@ -17,7 +17,7 @@ export default function MutatingWebhookDetails({ webhook, tabContext = '' }: any
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-mutatingwebhook-${webhook.metadata?.uid}`;
+        const tabId = `yaml-mutatingwebhook-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -36,7 +36,7 @@ export default function MutatingWebhookDetails({ webhook, tabContext = '' }: any
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-mutatingwebhook-${webhook.metadata?.uid}`;
+        const tabId = `deps-mutatingwebhook-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

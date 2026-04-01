@@ -19,7 +19,7 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' }:
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-endpointslice-${endpointSlice.metadata?.uid}`;
+        const tabId = `yaml-endpointslice-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -38,7 +38,7 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' }:
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-endpointslice-${endpointSlice.metadata?.uid}`;
+        const tabId = `deps-endpointslice-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

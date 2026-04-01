@@ -53,7 +53,7 @@ export default function ServiceDetails({ service, tabContext = '' }: any) {
     const namespace = service.metadata?.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-service-${service.metadata?.uid}`;
+        const tabId = `yaml-service-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -72,7 +72,7 @@ export default function ServiceDetails({ service, tabContext = '' }: any) {
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-service-${service.metadata?.uid}`;
+        const tabId = `deps-service-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

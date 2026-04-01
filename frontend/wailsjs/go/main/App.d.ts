@@ -236,6 +236,8 @@ export function GetEventYAML(arg1:string,arg2:string):Promise<string>;
 
 export function GetFlowTimeline(arg1:string,arg2:string,arg3:string,arg4:number,arg5:boolean):Promise<Array<k8s.FlowTimelineEntry>>;
 
+export function GetFullContextDetail(arg1:string):Promise<k8s.FullContextDetail>;
+
 export function GetHPAYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetHelmChartVersions(arg1:string,arg2:string):Promise<Array<helm.ChartVersion>>;
@@ -657,6 +659,8 @@ export function UpdateClusterRoleYaml(arg1:string,arg2:string):Promise<void>;
 export function UpdateConfigMapData(arg1:string,arg2:string,arg3:Record<string, string>):Promise<void>;
 
 export function UpdateConfigMapYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateContextDetail(arg1:string,arg2:k8s.ContextUpdateRequest):Promise<void>;
 
 export function UpdateCronJobYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

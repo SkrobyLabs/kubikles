@@ -19,7 +19,7 @@ export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' }:
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-resourcequota-${resourceQuota.metadata?.uid}`;
+        const tabId = `yaml-resourcequota-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -38,7 +38,7 @@ export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' }:
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-resourcequota-${resourceQuota.metadata?.uid}`;
+        const tabId = `deps-resourcequota-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

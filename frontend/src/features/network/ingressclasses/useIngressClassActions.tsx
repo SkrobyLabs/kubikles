@@ -18,7 +18,7 @@ export const useIngressClassActions = (): any => {
 
     const handleEditYaml = (ingressClass: K8sIngressClass): void => {
         Logger.info("Opening YAML editor for IngressClass", { name: ingressClass.metadata.name }, 'k8s');
-        const tabId = `yaml-ingressclass-${ingressClass.metadata.uid}`;
+        const tabId = `yaml-ingressclass-${ingressClass.metadata.name}`;
         openTab({
             id: tabId,
             title: `${ingressClass.metadata.name}`,

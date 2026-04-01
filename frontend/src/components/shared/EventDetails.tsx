@@ -40,7 +40,7 @@ export default function EventDetails({ event, tabContext = '' }: { event: any; t
     const source = event.source || {};
 
     const handleEditYaml = () => {
-        const tabId = `yaml-event-${event.metadata.uid}`;
+        const tabId = `yaml-event-${event.metadata?.namespace}/${event.metadata?.name}`;
         openTab({
             id: tabId,
             title: `${event.metadata.name}`,
@@ -57,7 +57,7 @@ export default function EventDetails({ event, tabContext = '' }: { event: any; t
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-event-${event.metadata.uid}`;
+        const tabId = `deps-event-${event.metadata?.namespace}/${event.metadata?.name}`;
         openTab({
             id: tabId,
             title: `${event.metadata.name}`,

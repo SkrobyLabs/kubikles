@@ -42,7 +42,7 @@ export default function DaemonSetDetails({ daemonSet, tabContext = '' }: { daemo
     const updateStrategy = spec.updateStrategy?.type || 'RollingUpdate';
 
     const handleEditYaml = () => {
-        const tabId = `yaml-daemonset-${daemonSet.metadata.uid}`;
+        const tabId = `yaml-daemonset-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -59,7 +59,7 @@ export default function DaemonSetDetails({ daemonSet, tabContext = '' }: { daemo
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-daemonset-${daemonSet.metadata.uid}`;
+        const tabId = `deps-daemonset-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

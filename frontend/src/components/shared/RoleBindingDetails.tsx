@@ -32,7 +32,7 @@ export default function RoleBindingDetails({ roleBinding, tabContext = '' }: any
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-rolebinding-${metadata.uid}`;
+        const tabId = `yaml-rolebinding-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -50,7 +50,7 @@ export default function RoleBindingDetails({ roleBinding, tabContext = '' }: any
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-rolebinding-${metadata.uid}`;
+        const tabId = `deps-rolebinding-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

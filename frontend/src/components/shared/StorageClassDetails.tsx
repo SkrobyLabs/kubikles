@@ -27,7 +27,7 @@ export default function StorageClassDetails({ storageClass, tabContext = '' }: {
     const isDefault = annotations['storageclass.kubernetes.io/is-default-class'] === 'true';
 
     const handleEditYaml = () => {
-        const tabId = `yaml-storageclass-${storageClass.metadata.uid}`;
+        const tabId = `yaml-storageclass-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -43,7 +43,7 @@ export default function StorageClassDetails({ storageClass, tabContext = '' }: {
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-storageclass-${storageClass.metadata.uid}`;
+        const tabId = `deps-storageclass-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

@@ -18,7 +18,7 @@ export default function LimitRangeDetails({ limitRange, tabContext = '' }: any) 
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-limitrange-${limitRange.metadata?.uid}`;
+        const tabId = `yaml-limitrange-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -37,7 +37,7 @@ export default function LimitRangeDetails({ limitRange, tabContext = '' }: any) 
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-limitrange-${limitRange.metadata?.uid}`;
+        const tabId = `deps-limitrange-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

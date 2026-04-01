@@ -52,7 +52,7 @@ export default function NodeDetails({ node, tabContext = '' }: any) {
     const taints = spec.taints || [];
 
     const handleEditYaml = () => {
-        const tabId = `yaml-node-${node.metadata.uid}`;
+        const tabId = `yaml-node-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

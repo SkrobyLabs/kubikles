@@ -8,6 +8,7 @@ import {
     FolderOpenIcon,
     CheckIcon,
     MagnifyingGlassIcon,
+    Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import { useNotification } from '~/context';
 import { useConfig } from '~/context';
@@ -17,6 +18,7 @@ import {
     RenameContext,
     SelectKubeconfigFile,
 } from 'wailsjs/go/main/App';
+import ContextEditor from './ContextEditor';
 
 interface ContextDetail {
     name: string;
@@ -40,6 +42,7 @@ export default function ContextManager({ onClose, onContextsChanged }: ContextMa
     const [deletingContext, setDeletingContext] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [editingContext, setEditingContext] = useState<string | null>(null);
     const { addNotification } = useNotification();
     const { config, setConfig } = useConfig();
 
@@ -140,6 +143,16 @@ export default function ContextManager({ onClose, onContextsChanged }: ContextMa
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
             <div className="absolute inset-0 bg-black/50" onClick={onClose} />
             <div className="relative bg-surface-light border border-border rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+                {editingContext ? (
+                    <ContextEditor
+                        contextName={editingContext}
+                        onBack={() => setEditingContext(null)}
+                        onSaved={() => {
+                            fetchContexts();
+                            onContextsChanged();
+                        }}
+                    />
+                ) : (<>
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                     <h2 className="text-lg font-medium text-white">Context Manager</h2>
@@ -232,6 +245,13 @@ export default function ContextManager({ onClose, onContextsChanged }: ContextMa
                                         {/* Actions */}
                                         {renamingContext !== ctx.name && (
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                <button
+                                                    onClick={() => setEditingContext(ctx.name)}
+                                                    className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                                                    title="Edit context details"
+                                                >
+                                                    <Cog6ToothIcon className="h-4 w-4" />
+                                                </button>
                                                 <button
                                                     onClick={() => {
                                                         setRenamingContext(ctx.name);
@@ -330,6 +350,7 @@ export default function ContextManager({ onClose, onContextsChanged }: ContextMa
                         Close
                     </button>
                 </div>
+                </>)}
             </div>
         </div>,
         document.body

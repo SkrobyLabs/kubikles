@@ -568,6 +568,102 @@ export namespace issuedetector {
 
 export namespace k8s {
 	
+	export class ExecEnvVar {
+	    name: string;
+	    value: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExecEnvVar(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.value = source["value"];
+	    }
+	}
+	export class AuthDetail {
+	    clientCertificate: string;
+	    clientKey: string;
+	    token: string;
+	    tokenFile: string;
+	    username: string;
+	    impersonate: string;
+	    impersonateGroups: string[];
+	    hasExecProvider: boolean;
+	    execAPIVersion: string;
+	    execCommand: string;
+	    execArgs: string[];
+	    execEnv: ExecEnvVar[];
+	    execInstallHint: string;
+	    execProvideCluster: boolean;
+	    hasAuthProvider: boolean;
+	    authProviderName: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AuthDetail(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.clientCertificate = source["clientCertificate"];
+	        this.clientKey = source["clientKey"];
+	        this.token = source["token"];
+	        this.tokenFile = source["tokenFile"];
+	        this.username = source["username"];
+	        this.impersonate = source["impersonate"];
+	        this.impersonateGroups = source["impersonateGroups"];
+	        this.hasExecProvider = source["hasExecProvider"];
+	        this.execAPIVersion = source["execAPIVersion"];
+	        this.execCommand = source["execCommand"];
+	        this.execArgs = source["execArgs"];
+	        this.execEnv = this.convertValues(source["execEnv"], ExecEnvVar);
+	        this.execInstallHint = source["execInstallHint"];
+	        this.execProvideCluster = source["execProvideCluster"];
+	        this.hasAuthProvider = source["hasAuthProvider"];
+	        this.authProviderName = source["authProviderName"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ClusterDetail {
+	    server: string;
+	    certificateAuthority: string;
+	    insecureSkipTLSVerify: boolean;
+	    proxyURL: string;
+	    tlsServerName: string;
+	    disableCompression: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ClusterDetail(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.server = source["server"];
+	        this.certificateAuthority = source["certificateAuthority"];
+	        this.insecureSkipTLSVerify = source["insecureSkipTLSVerify"];
+	        this.proxyURL = source["proxyURL"];
+	        this.tlsServerName = source["tlsServerName"];
+	        this.disableCompression = source["disableCompression"];
+	    }
+	}
 	export class MetricsDataPoint {
 	    timestamp: number;
 	    value: number;
@@ -637,6 +733,70 @@ export namespace k8s {
 	        this.namespace = source["namespace"];
 	        this.isActive = source["isActive"];
 	    }
+	}
+	export class ContextUpdateRequest {
+	    namespace?: string;
+	    server?: string;
+	    certificateAuthority?: string;
+	    insecureSkipTLSVerify?: boolean;
+	    proxyURL?: string;
+	    tlsServerName?: string;
+	    disableCompression?: boolean;
+	    clientCertificate?: string;
+	    clientKey?: string;
+	    token?: string;
+	    tokenFile?: string;
+	    username?: string;
+	    impersonate?: string;
+	    execCommand?: string;
+	    execArgs: string[];
+	    execEnv: ExecEnvVar[];
+	    execInstallHint?: string;
+	    setExec: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContextUpdateRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.namespace = source["namespace"];
+	        this.server = source["server"];
+	        this.certificateAuthority = source["certificateAuthority"];
+	        this.insecureSkipTLSVerify = source["insecureSkipTLSVerify"];
+	        this.proxyURL = source["proxyURL"];
+	        this.tlsServerName = source["tlsServerName"];
+	        this.disableCompression = source["disableCompression"];
+	        this.clientCertificate = source["clientCertificate"];
+	        this.clientKey = source["clientKey"];
+	        this.token = source["token"];
+	        this.tokenFile = source["tokenFile"];
+	        this.username = source["username"];
+	        this.impersonate = source["impersonate"];
+	        this.execCommand = source["execCommand"];
+	        this.execArgs = source["execArgs"];
+	        this.execEnv = this.convertValues(source["execEnv"], ExecEnvVar);
+	        this.execInstallHint = source["execInstallHint"];
+	        this.setExec = source["setExec"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class NetworkMetrics {
 	    receiveBytes: MetricsDataPoint[];
@@ -965,6 +1125,7 @@ export namespace k8s {
 		    return a;
 		}
 	}
+	
 	export class FlowTimelineEntry {
 	    // Go type: time
 	    timestamp: any;
@@ -992,6 +1153,48 @@ export namespace k8s {
 	        this.namespace = source["namespace"];
 	        this.message = source["message"];
 	        this.details = source["details"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class FullContextDetail {
+	    name: string;
+	    cluster: string;
+	    authInfo: string;
+	    namespace: string;
+	    isActive: boolean;
+	    clusterDetail: ClusterDetail;
+	    authDetail: AuthDetail;
+	
+	    static createFrom(source: any = {}) {
+	        return new FullContextDetail(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.cluster = source["cluster"];
+	        this.authInfo = source["authInfo"];
+	        this.namespace = source["namespace"];
+	        this.isActive = source["isActive"];
+	        this.clusterDetail = this.convertValues(source["clusterDetail"], ClusterDetail);
+	        this.authDetail = this.convertValues(source["authDetail"], AuthDetail);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

@@ -51,7 +51,7 @@ export const useNodeActions = (refetch?: () => void): any => {
 
     const handleShell = useCallback((node: K8sNode): void => {
         const nodeName = node.metadata.name;
-        const tabId = `terminal-node-${node.metadata.uid}`;
+        const tabId = `terminal-node-${node.metadata.name}`;
         Logger.info("Opening shell on node", { node: nodeName }, 'k8s');
 
         openTab({

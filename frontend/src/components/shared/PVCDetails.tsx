@@ -88,7 +88,7 @@ export default function PVCDetails({ pvc, tabContext = '' }: { pvc: any; tabCont
     };
 
     const handleEditYaml = () => {
-        const tabId = `yaml-pvc-${pvc.metadata.uid}`;
+        const tabId = `yaml-pvc-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -105,7 +105,7 @@ export default function PVCDetails({ pvc, tabContext = '' }: { pvc: any; tabCont
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-pvc-${pvc.metadata.uid}`;
+        const tabId = `deps-pvc-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

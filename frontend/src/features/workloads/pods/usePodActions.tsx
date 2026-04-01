@@ -156,7 +156,7 @@ export const usePodActions = (): any => {
 
     const handleEditYaml = (pod: K8sPod): void => {
         Logger.info("Opening YAML editor", { namespace: pod.metadata.namespace, pod: pod.metadata.name }, 'k8s');
-        const tabId = `yaml-pod-${pod.metadata.uid}`;
+        const tabId = `yaml-pod-${pod.metadata.namespace}/${pod.metadata.name}`;
         openTab({
             id: tabId,
             title: pod.metadata.name,
@@ -177,7 +177,7 @@ export const usePodActions = (): any => {
 
     const handleShowDependencies = (pod: K8sPod): void => {
         Logger.info("Opening dependency graph", { namespace: pod.metadata.namespace, pod: pod.metadata.name }, 'k8s');
-        const tabId = `deps-pod-${pod.metadata.uid}`;
+        const tabId = `deps-pod-${pod.metadata.namespace}/${pod.metadata.name}`;
         openTab({
             id: tabId,
             title: pod.metadata.name,
@@ -197,7 +197,7 @@ export const usePodActions = (): any => {
 
     const handleShowDetails = (pod: K8sPod): void => {
         Logger.info("Opening pod details", { namespace: pod.metadata.namespace, pod: pod.metadata.name }, 'k8s');
-        const tabId = `details-pod-${pod.metadata.uid}`;
+        const tabId = `details-pod-${pod.metadata.namespace}/${pod.metadata.name}`;
         openTab({
             id: tabId,
             title: `${pod.metadata.name}`,

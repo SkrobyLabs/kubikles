@@ -87,7 +87,7 @@ export function useBaseResourceActions<T extends K8sResource = K8sResource>(
     const namespace = resource.metadata?.namespace;
     Logger.info(`Opening ${resourceLabel} details`, { namespace, name }, 'k8s');
 
-    const tabId = `details-${resourceType}-${resource.metadata.uid}`;
+    const tabId = `details-${resourceType}-${isNamespaced && namespace ? `${namespace}/${name}` : name}`;
     const props = {
       [detailsPropName]: resource,
       tabContext: currentContext,
@@ -110,7 +110,7 @@ export function useBaseResourceActions<T extends K8sResource = K8sResource>(
     const namespace = resource.metadata?.namespace;
     Logger.info(`Opening ${resourceLabel} YAML editor`, { namespace, name }, 'k8s');
 
-    const tabId = `yaml-${resourceType}-${resource.metadata.uid}`;
+    const tabId = `yaml-${resourceType}-${isNamespaced && namespace ? `${namespace}/${name}` : name}`;
     openTab({
       id: tabId,
       title: name || 'Unknown',
@@ -141,7 +141,7 @@ export function useBaseResourceActions<T extends K8sResource = K8sResource>(
           name,
         }, 'k8s');
 
-        const tabId = `deps-${resourceType}-${resource.metadata.uid}`;
+        const tabId = `deps-${resourceType}-${isNamespaced && namespace ? `${namespace}/${name}` : name}`;
         openTab({
           id: tabId,
           title: name || 'Unknown',

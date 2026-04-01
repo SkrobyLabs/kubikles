@@ -16,7 +16,7 @@ export default function PriorityClassDetails({ priorityClass, tabContext = '' }:
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-priorityclass-${priorityClass.metadata?.uid}`;
+        const tabId = `yaml-priorityclass-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -35,7 +35,7 @@ export default function PriorityClassDetails({ priorityClass, tabContext = '' }:
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-priorityclass-${priorityClass.metadata?.uid}`;
+        const tabId = `deps-priorityclass-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

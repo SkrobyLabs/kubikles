@@ -52,7 +52,7 @@ export default function NamespaceDetails({ namespace, tabContext = '' }: { names
     }, [name, isStale]);
 
     const handleEditYaml = () => {
-        const tabId = `yaml-${namespace.metadata.uid}`;
+        const tabId = `yaml-namespace-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

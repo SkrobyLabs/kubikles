@@ -41,7 +41,7 @@ export default function IngressDetails({ ingress, tabContext = '' }: any) {
     const ingressStatus = getIngressStatus();
 
     const handleEditYaml = () => {
-        const tabId = `yaml-ingress-${ingress.metadata.uid}`;
+        const tabId = `yaml-ingress-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -58,7 +58,7 @@ export default function IngressDetails({ ingress, tabContext = '' }: any) {
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-ingress-${ingress.metadata.uid}`;
+        const tabId = `deps-ingress-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

@@ -23,7 +23,7 @@ export const useConfigMapActions = (): any => {
 
     const handleEditYaml = (configMap: K8sConfigMap): void => {
         Logger.info("Opening configmap editor", { namespace: configMap.metadata.namespace, configMap: configMap.metadata.name }, 'config');
-        const tabId = `configmap-${configMap.metadata.uid}`;
+        const tabId = `configmap-${configMap.metadata.namespace}/${configMap.metadata.name}`;
         openTab({
             id: tabId,
             title: `${configMap.metadata.name}`,
@@ -43,7 +43,7 @@ export const useConfigMapActions = (): any => {
 
     const handleEditKeyValue = (configMap: K8sConfigMap): void => {
         Logger.info("Opening configmap editor (key-value)", { namespace: configMap.metadata.namespace, configMap: configMap.metadata.name }, 'config');
-        const tabId = `configmap-${configMap.metadata.uid}`;
+        const tabId = `configmap-${configMap.metadata.namespace}/${configMap.metadata.name}`;
         openTab({
             id: tabId,
             title: `${configMap.metadata.name}`,
@@ -64,7 +64,7 @@ export const useConfigMapActions = (): any => {
 
     const handleShowDependencies = (configMap: K8sConfigMap): void => {
         Logger.info("Opening dependency graph", { namespace: configMap.metadata.namespace, configMap: configMap.metadata.name }, 'config');
-        const tabId = `deps-configmap-${configMap.metadata.uid}`;
+        const tabId = `deps-configmap-${configMap.metadata.namespace}/${configMap.metadata.name}`;
         openTab({
             id: tabId,
             title: `${configMap.metadata.name}`,

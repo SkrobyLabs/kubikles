@@ -73,7 +73,7 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
     const strategy = spec.strategy?.type || 'RollingUpdate';
 
     const handleEditYaml = () => {
-        const tabId = `yaml-deployment-${deployment.metadata.uid}`;
+        const tabId = `yaml-deployment-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -90,7 +90,7 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-deployment-${deployment.metadata.uid}`;
+        const tabId = `deps-deployment-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

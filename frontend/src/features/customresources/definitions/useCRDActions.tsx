@@ -22,7 +22,7 @@ export const useCRDActions = (): any => {
 
     const handleEditYaml = (crd: K8sCustomResourceDefinition): void => {
         Logger.info("Opening CRD YAML editor", { name: crd.metadata.name }, 'k8s');
-        const tabId = `crd-${crd.metadata.uid}`;
+        const tabId = `crd-${crd.metadata.name}`;
         openTab({
             id: tabId,
             title: `${crd.metadata.name}`,

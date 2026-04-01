@@ -1341,6 +1341,13 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		}
 		result, err := c.app.GetFlowTimeline(p0, p1, p2, p3, p4)
 		return result, err
+	case "GetFullContextDetail":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.GetFullContextDetail(p0)
+		return result, err
 	case "GetHPAYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -3427,6 +3434,16 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return nil, c.app.UpdateConfigMapYaml(p0, p1, p2)
+	case "UpdateContextDetail":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[k8s.ContextUpdateRequest](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		return nil, c.app.UpdateContextDetail(p0, p1)
 	case "UpdateCronJobYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {

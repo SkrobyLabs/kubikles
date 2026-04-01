@@ -19,7 +19,7 @@ export default function PDBDetails({ pdb, tabContext = '' }: any) {
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-pdb-${pdb.metadata?.uid}`;
+        const tabId = `yaml-pdb-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -38,7 +38,7 @@ export default function PDBDetails({ pdb, tabContext = '' }: any) {
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-pdb-${pdb.metadata?.uid}`;
+        const tabId = `deps-pdb-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

@@ -116,6 +116,20 @@ func (a *App) RenameContext(oldName, newName string) error {
 	return a.k8sClient.RenameContext(oldName, newName)
 }
 
+func (a *App) GetFullContextDetail(name string) (*k8s.FullContextDetail, error) {
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.GetFullContextDetail(name)
+}
+
+func (a *App) UpdateContextDetail(name string, req k8s.ContextUpdateRequest) error {
+	if a.k8sClient == nil {
+		return fmt.Errorf("k8s client not initialized")
+	}
+	return a.k8sClient.UpdateContextDetail(name, req)
+}
+
 func (a *App) SetExtraKubeconfigPaths(paths []string) {
 	if a.k8sClient != nil {
 		a.k8sClient.SetExtraKubeconfigPaths(paths)

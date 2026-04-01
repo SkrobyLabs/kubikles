@@ -41,7 +41,7 @@ export const useCustomResourceActions = (crdInfo: CRDInfo): any => {
     const handleShowDetails = (resource: K8sResource): void => {
         const name = resource.metadata?.name;
         const namespace = resource.metadata?.namespace || '';
-        const tabId = `details-cr-${crdInfo.group}-${crdInfo.resource}-${resource.metadata?.uid}`;
+        const tabId = `details-cr-${crdInfo.group}-${crdInfo.resource}-${namespace ? `${namespace}/${name}` : name}`;
 
         openTab({
             id: tabId,

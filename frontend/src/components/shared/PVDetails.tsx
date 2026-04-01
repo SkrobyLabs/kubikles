@@ -41,7 +41,7 @@ export default function PVDetails({ pv, tabContext = '' }: { pv: any; tabContext
     const volumeSource = getVolumeSource();
 
     const handleEditYaml = () => {
-        const tabId = `yaml-pv-${pv.metadata.uid}`;
+        const tabId = `yaml-pv-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -57,7 +57,7 @@ export default function PVDetails({ pv, tabContext = '' }: { pv: any; tabContext
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-pv-${pv.metadata.uid}`;
+        const tabId = `deps-pv-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

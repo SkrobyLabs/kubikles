@@ -43,7 +43,7 @@ export default function ClusterRoleDetails({ clusterRole, tabContext = '' }: any
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-clusterrole-${metadata.uid}`;
+        const tabId = `yaml-clusterrole-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -60,7 +60,7 @@ export default function ClusterRoleDetails({ clusterRole, tabContext = '' }: any
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-clusterrole-${metadata.uid}`;
+        const tabId = `deps-clusterrole-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

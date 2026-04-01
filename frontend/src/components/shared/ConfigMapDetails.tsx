@@ -187,7 +187,7 @@ export default function ConfigMapDetails({ configMap, tabContext = '' }: { confi
     const totalKeys = Object.keys(data).length + Object.keys(binaryData).length;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-configmap-${configMap.metadata.uid}`;
+        const tabId = `yaml-configmap-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -204,7 +204,7 @@ export default function ConfigMapDetails({ configMap, tabContext = '' }: { confi
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-configmap-${configMap.metadata.uid}`;
+        const tabId = `deps-configmap-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

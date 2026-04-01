@@ -18,7 +18,7 @@ export default function LeaseDetails({ lease, tabContext = '' }: any) {
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-lease-${lease.metadata?.uid}`;
+        const tabId = `yaml-lease-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -37,7 +37,7 @@ export default function LeaseDetails({ lease, tabContext = '' }: any) {
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-lease-${lease.metadata?.uid}`;
+        const tabId = `deps-lease-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

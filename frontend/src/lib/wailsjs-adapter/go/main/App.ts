@@ -178,6 +178,8 @@ export function GetClusterRoleYaml(...args) { return AppProxy.GetClusterRoleYaml
 export function GetConfigMapData(...args) { return AppProxy.GetConfigMapData(...args); }
 export function GetConfigMapYaml(...args) { return AppProxy.GetConfigMapYaml(...args); }
 export function GetContextDetails(...args) { return AppProxy.GetContextDetails(...args); }
+export function GetFullContextDetail(...args) { return AppProxy.GetFullContextDetail(...args); }
+export function UpdateContextDetail(...args) { return AppProxy.UpdateContextDetail(...args); }
 export function GetControllerMetricsHistory(...args) { return AppProxy.GetControllerMetricsHistory(...args); }
 export function GetControllerMetricsHistoryRange(...args) { return AppProxy.GetControllerMetricsHistoryRange(...args); }
 export function GetCrashLogPath(...args) { return AppProxy.GetCrashLogPath(...args); }

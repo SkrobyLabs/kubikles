@@ -17,7 +17,7 @@ export default function ValidatingWebhookDetails({ webhook, tabContext = '' }: a
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-validatingwebhook-${webhook.metadata?.uid}`;
+        const tabId = `yaml-validatingwebhook-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -36,7 +36,7 @@ export default function ValidatingWebhookDetails({ webhook, tabContext = '' }: a
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-validatingwebhook-${webhook.metadata?.uid}`;
+        const tabId = `deps-validatingwebhook-${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

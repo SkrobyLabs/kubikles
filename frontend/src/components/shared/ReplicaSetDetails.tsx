@@ -73,7 +73,7 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
     const controller = ownerReferences.find((ref: any) => ref.controller);
 
     const handleEditYaml = () => {
-        const tabId = `yaml-replicaset-${replicaSet.metadata.uid}`;
+        const tabId = `yaml-replicaset-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -90,7 +90,7 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-replicaset-${replicaSet.metadata.uid}`;
+        const tabId = `deps-replicaset-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,

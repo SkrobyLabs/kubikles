@@ -75,7 +75,7 @@ export default function StatefulSetDetails({ statefulSet: initialStatefulSet, ta
     const volumeClaimTemplates = spec.volumeClaimTemplates || [];
 
     const handleEditYaml = () => {
-        const tabId = `yaml-statefulset-${statefulSet.metadata.uid}`;
+        const tabId = `yaml-statefulset-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
@@ -92,7 +92,7 @@ export default function StatefulSetDetails({ statefulSet: initialStatefulSet, ta
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-statefulset-${statefulSet.metadata.uid}`;
+        const tabId = `deps-statefulset-${namespace}/${name}`;
         openTab({
             id: tabId,
             title: `${name}`,
