@@ -67,8 +67,9 @@ export const LogLine = React.memo(function LogLine({
     showTimestamps,
     searchTerm,
     searchRegex,
-    wrapLines
-}: { entry: any; showTimestamps: any; searchTerm: any; searchRegex: any; wrapLines: any }) {
+    wrapLines,
+    parsePrefixes
+}: { entry: any; showTimestamps: any; searchTerm: any; searchRegex: any; wrapLines: any; parsePrefixes?: boolean }) {
     // Skip indicator (for filtered view)
     if (entry.isSkipIndicator) {
         return (
@@ -80,8 +81,8 @@ export const LogLine = React.memo(function LogLine({
         );
     }
 
-    // Parse prefix if present (for "All Containers" or "All Pods" modes)
-    const prefixInfo = useMemo(() => parseLogPrefix(entry.content), [entry.content]);
+    // Parse prefix only when viewing multiple pods or containers
+    const prefixInfo = useMemo(() => parsePrefixes ? parseLogPrefix(entry.content) : null, [entry.content, parsePrefixes]);
 
     // Get content without prefix for ANSI processing
     const contentToProcess = prefixInfo ? prefixInfo.rest : entry.content;

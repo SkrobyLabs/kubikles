@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+    branches-ignore:
+      - "**"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write

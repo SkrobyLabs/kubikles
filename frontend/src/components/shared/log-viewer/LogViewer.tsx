@@ -325,6 +325,8 @@ export default function LogViewer({
     };
 
     // Render log item
+    const parsePrefixes = selectedPod === ALL_PODS || selectedContainer === ALL_CONTAINERS;
+
     const renderLogItem = useCallback((index: any) => {
         const entry = search.displayLogs[index];
         if (!entry) return null;
@@ -336,9 +338,10 @@ export default function LogViewer({
                 searchTerm={search.searchTerm}
                 searchRegex={search.searchRegex}
                 wrapLines={wrapLines}
+                parsePrefixes={parsePrefixes}
             />
         );
-    }, [search.displayLogs, showTimestamps, search.searchTerm, search.searchRegex, wrapLines]);
+    }, [search.displayLogs, showTimestamps, search.searchTerm, search.searchRegex, wrapLines, parsePrefixes]);
 
     return (
         <div className="flex flex-col h-full bg-background">
