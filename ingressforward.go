@@ -25,6 +25,7 @@ type IngressForwardState struct {
 	Active           bool               `json:"active"`
 	Status           string             `json:"status"` // "stopped", "starting", "running", "error"
 	Error            string             `json:"error,omitempty"`
+	Context          string             `json:"context,omitempty"` // K8s context this forward is bound to
 	Controller       *IngressController `json:"controller,omitempty"`
 	LocalHTTPPort    int                `json:"localHttpPort"`
 	LocalHTTPSPort   int                `json:"localHttpsPort"`
@@ -239,6 +240,10 @@ func (m *IngressForwardManager) CollectIngressHostnames(namespaces []string) ([]
 
 // Start begins ingress forwarding: port forwards to controller and updates hosts file
 func (m *IngressForwardManager) Start(controller *IngressController, namespaces []string) error {
+	// Capture the context at start time so the forward stays bound to this
+	// cluster even if the user switches kubeconfig contexts later.
+	currentContext := m.app.k8sClient.GetCurrentContext()
+
 	m.mutex.Lock()
 	if m.state.Active {
 		m.mutex.Unlock()
@@ -247,12 +252,12 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 	m.state.Status = "starting"
 	m.state.Active = true
 	m.state.Error = ""
+	m.state.Context = currentContext
 	m.mutex.Unlock()
 
 	m.emitEvent("starting")
 
 	// Clean up any orphaned ingress configs from previous crash/force-quit
-	currentContext := m.app.k8sClient.GetCurrentContext()
 	m.app.portForwardManager.CleanupIngressConfigs(currentContext)
 
 	// Collect hostnames
@@ -302,7 +307,7 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 	if controller.HTTPSPort > 0 {
 		httpsConfig := PortForwardConfig{
 			ID:           uuid.New().String(),
-			Context:      m.app.k8sClient.GetCurrentContext(),
+			Context:      currentContext,
 			Namespace:    controller.Namespace,
 			ResourceType: "service",
 			ResourceName: controller.Name,
@@ -310,6 +315,7 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 			RemotePort:   int(controller.HTTPSPort),
 			Label:        fmt.Sprintf("Ingress HTTPS (%s)", controller.Type),
 			HTTPS:        true,
+			KeepAlive:    true, // Survive kubeconfig context switches
 		}
 
 		addedHTTPSConfig, err := m.app.portForwardManager.AddConfig(httpsConfig)
@@ -324,13 +330,14 @@ func (m *IngressForwardManager) Start(controller *IngressController, namespaces 
 	if localHTTPPort > 0 && controller.HTTPPort > 0 {
 		httpConfig := PortForwardConfig{
 			ID:           uuid.New().String(),
-			Context:      m.app.k8sClient.GetCurrentContext(),
+			Context:      currentContext,
 			Namespace:    controller.Namespace,
 			ResourceType: "service",
 			ResourceName: controller.Name,
 			LocalPort:    localHTTPPort,
 			RemotePort:   int(controller.HTTPPort),
 			Label:        fmt.Sprintf("Ingress HTTP (%s)", controller.Type),
+			KeepAlive:    true, // Survive kubeconfig context switches
 		}
 
 		addedHTTPConfig, err := m.app.portForwardManager.AddConfig(httpConfig)

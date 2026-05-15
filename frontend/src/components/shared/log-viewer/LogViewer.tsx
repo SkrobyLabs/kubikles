@@ -458,7 +458,7 @@ export default function LogViewer({
                     <Tooltip content={showPrevious ? 'Showing previous container logs' : 'Show previous container logs'}>
                         <button
                             onClick={() => setShowPrevious(!showPrevious)}
-                            disabled={!!stream.fetchError || stream.streamDisconnected}
+                            disabled={!!stream.fetchError}
                             className={`p-1.5 rounded transition-colors disabled:opacity-50 ${showPrevious ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                         >
                             <BackwardIcon className="w-4 h-4" />

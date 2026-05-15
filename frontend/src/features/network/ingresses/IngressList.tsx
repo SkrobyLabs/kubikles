@@ -55,6 +55,8 @@ export default function IngressList({ isVisible }: { isVisible: boolean }) {
 
     const [showForwardDialog, setShowForwardDialog] = useState(false);
 
+    const isOtherContext = isActive && !!forwardState.context && forwardState.context !== currentContext;
+
     // Detect controller when dialog opens (only if not already attempted)
     // Always search ALL namespaces for ingresses, not just selected ones
     useEffect(() => {
@@ -238,6 +240,24 @@ export default function IngressList({ isVisible }: { isVisible: boolean }) {
                         <PlayIcon className="h-3.5 w-3.5" />
                         Forward All
                     </button>
+                ) : isOtherContext ? (
+                    <>
+                        <div className="flex items-center gap-1.5 text-xs text-amber-400">
+                            <ExclamationTriangleIcon className="h-4 w-4" />
+                            <span>
+                                Forwarding active in cluster: <span className="font-mono">{forwardState.context}</span>
+                            </span>
+                        </div>
+                        <button
+                            onClick={handleStopForward}
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-gray-700 rounded transition-colors"
+                            disabled={forwardLoading}
+                            title={`Stop forwarding in ${forwardState.context}`}
+                        >
+                            <StopIcon className="h-3.5 w-3.5" />
+                            Stop
+                        </button>
+                    </>
                 ) : (
                     <>
                         <div className="flex items-center gap-1.5 text-xs">
@@ -278,7 +298,7 @@ export default function IngressList({ isVisible }: { isVisible: boolean }) {
                     </>
                 )}
 
-                {forwardState.hostsFileUpdated && (
+                {!isOtherContext && forwardState.hostsFileUpdated && (
                     <span className="text-xs text-gray-500">(hosts file updated)</span>
                 )}
             </div>

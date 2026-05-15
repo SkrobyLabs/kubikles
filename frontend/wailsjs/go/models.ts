@@ -2216,22 +2216,24 @@ export namespace main {
 	    active: boolean;
 	    status: string;
 	    error?: string;
+	    context?: string;
 	    controller?: IngressController;
 	    localHttpPort: number;
 	    localHttpsPort: number;
 	    hostnames: string[];
 	    portForwardIds: string[];
 	    hostsFileUpdated: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new IngressForwardState(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.active = source["active"];
 	        this.status = source["status"];
 	        this.error = source["error"];
+	        this.context = source["context"];
 	        this.controller = this.convertValues(source["controller"], IngressController);
 	        this.localHttpPort = source["localHttpPort"];
 	        this.localHttpsPort = source["localHttpsPort"];
