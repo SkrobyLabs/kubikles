@@ -30,7 +30,7 @@ import { useLogStream, ALL_CONTAINERS, ALL_PODS } from './useLogStream';
 import { useLogSearch } from './useLogSearch';
 import { LogLine, Spinner } from './LogLine';
 import { TimePickerModal } from './TimePickerModal';
-import { logsToVisibleString, logsToDebugString } from './logUtils';
+import { logsToVisibleString, logsToDebugString, stripAnsiCodes } from './logUtils';
 import { GetAllContainersLogsAll, GetAllPodsLogsAll } from 'wailsjs/go/main/App';
 
 export default function LogViewer({
@@ -83,7 +83,16 @@ export default function LogViewer({
     const virtuosoRef = useRef<any>(null);
     const logsContainerRef = useRef<HTMLDivElement>(null);
     const isAtBottomRef = useRef(true);
-    const [isSelecting, setIsSelecting] = useState(false);
+    // Tracks the underlying-buffer position of the current selection so copy
+    // can synthesize text from stream.logs even after Virtuoso unmounts lines.
+    const selectionStateRef = useRef<{
+        anchor: { idx: number; offset: number } | null;
+        focus: { idx: number; offset: number } | null;
+    }>({ anchor: null, focus: null });
+    // True while a mouse button is held. Browser selectionchange events that
+    // fire outside of this window (e.g. scroll-driven node detach/reattach)
+    // are ignored so they cannot clobber the frozen selection state.
+    const isMouseDownRef = useRef(false);
 
     // Check if this tab is stale
     const isStale = tabContext && tabContext !== currentContext;
@@ -144,19 +153,260 @@ export default function LogViewer({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [namespace, selectedPod, selectedContainer, showPrevious, sinceTime, viewMode, stream.fetchLogs]);
 
-    // Track selection state to increase overscan during selection
-    useEffect(() => {
-        const handleMouseDown = () => setIsSelecting(true);
-        const handleMouseUp = () => setIsSelecting(false);
+    // Paint a precise selection overlay on each mounted line within the
+    // recorded buffer range. Native ::selection is hidden via CSS because
+    // Virtuoso recycles DOM nodes, making the browser's selection rectangle
+    // slide to whichever content currently occupies those nodes. We rebuild
+    // a DOM Range against the live content span and lay <div>s over each
+    // client rect, so wrap/scroll/recycling all stay visually correct.
+    const applySelectionHighlight = useCallback(() => {
+        const container = logsContainerRef.current;
+        if (!container) return;
+        container.querySelectorAll('.log-selection-overlay').forEach(el => el.remove());
 
+        const a = selectionStateRef.current.anchor;
+        const f = selectionStateRef.current.focus;
+        if (!a || !f) return;
+        if (a.idx === f.idx && a.offset === f.offset) return;
+
+        const forward = a.idx < f.idx || (a.idx === f.idx && a.offset <= f.offset);
+        const start = forward ? a : f;
+        const end = forward ? f : a;
+
+        const rangeForChars = (root: HTMLElement, from: number, to: number): Range | null => {
+            const range = document.createRange();
+            let counted = 0;
+            let startSet = false;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+            let node: Node | null;
+            while ((node = walker.nextNode())) {
+                const len = (node.textContent ?? '').length;
+                const next = counted + len;
+                if (!startSet && from <= next) {
+                    range.setStart(node, Math.max(0, from - counted));
+                    startSet = true;
+                }
+                if (startSet && to <= next) {
+                    range.setEnd(node, Math.max(0, to - counted));
+                    return range;
+                }
+                counted = next;
+            }
+            if (startSet) {
+                range.setEnd(root, root.childNodes.length);
+                return range;
+            }
+            return null;
+        };
+
+        container.querySelectorAll<HTMLElement>('[data-log-idx]').forEach(lineEl => {
+            const idx = parseInt(lineEl.dataset.logIdx as string, 10);
+            if (idx < start.idx || idx > end.idx) return;
+            const contentSpan = lineEl.querySelector('[data-log-content]') as HTMLElement | null;
+            if (!contentSpan) return;
+            const lineLen = contentSpan.textContent?.length ?? 0;
+            const fromChar = idx === start.idx ? start.offset : 0;
+            const toChar = idx === end.idx ? end.offset : lineLen;
+            if (toChar <= fromChar) return;
+            const range = rangeForChars(contentSpan, fromChar, toChar);
+            if (!range) return;
+            const rects = range.getClientRects();
+            const lineRect = lineEl.getBoundingClientRect();
+            for (let i = 0; i < rects.length; i++) {
+                const rect = rects[i];
+                if (rect.width === 0 || rect.height === 0) continue;
+                const overlay = document.createElement('div');
+                overlay.className = 'log-selection-overlay';
+                overlay.style.left = (rect.left - lineRect.left) + 'px';
+                overlay.style.top = (rect.top - lineRect.top) + 'px';
+                overlay.style.width = rect.width + 'px';
+                overlay.style.height = rect.height + 'px';
+                lineEl.appendChild(overlay);
+            }
+        });
+    }, []);
+
+    // Re-apply the selection overlay whenever Virtuoso swaps content into a
+    // recycled line div. itemsRendered runs in a useEffect (after paint), so a
+    // stale overlay would flash for a frame; MutationObserver fires in a
+    // microtask before the next paint, eliminating the flash. We filter our
+    // own overlay add/remove mutations to avoid feedback loops.
+    useEffect(() => {
+        const container = logsContainerRef.current;
+        if (!container) return;
+        let rafId: number | null = null;
+        const schedule = () => {
+            if (rafId !== null) return;
+            rafId = requestAnimationFrame(() => {
+                rafId = null;
+                applySelectionHighlight();
+            });
+        };
+        const isOurOverlayMutation = (m: MutationRecord) => {
+            if (m.type !== 'childList') return false;
+            const onlyOverlay = (nodes: NodeList) => {
+                for (let i = 0; i < nodes.length; i++) {
+                    const n = nodes[i];
+                    if (!(n instanceof Element) || !n.classList.contains('log-selection-overlay')) return false;
+                }
+                return true;
+            };
+            return onlyOverlay(m.addedNodes) && onlyOverlay(m.removedNodes);
+        };
+        const observer = new MutationObserver((mutations) => {
+            for (const m of mutations) {
+                if (isOurOverlayMutation(m)) continue;
+                schedule();
+                return;
+            }
+        });
+        observer.observe(container, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['data-log-idx']
+        });
+        return () => {
+            observer.disconnect();
+            if (rafId !== null) cancelAnimationFrame(rafId);
+        };
+    }, [applySelectionHighlight]);
+
+    // Track the underlying-buffer position of the current selection. Virtuoso
+    // unmounts off-screen lines, so a native copy would only include text that
+    // happens to be in the DOM. We record (idx, offset) into stream.logs on
+    // every selectionchange (skipping ends whose line is no longer mounted) and
+    // synthesize the copy text from the buffer below.
+    useEffect(() => {
+        const findLogLine = (node: Node | null): HTMLElement | null => {
+            let el: HTMLElement | null = node && node.nodeType === 1
+                ? (node as HTMLElement)
+                : node?.parentElement ?? null;
+            const container = logsContainerRef.current;
+            while (el && el !== document.body) {
+                if (el.dataset && el.dataset.logIdx !== undefined) return el;
+                if (container && el === container) return null;
+                el = el.parentElement;
+            }
+            return null;
+        };
+
+        const computeOffset = (lineEl: HTMLElement, container: Node, offset: number) => {
+            const span = lineEl.querySelector('[data-log-content]');
+            if (!span) return 0;
+            try {
+                const range = document.createRange();
+                range.setStart(span, 0);
+                range.setEnd(container, offset);
+                return range.toString().length;
+            } catch {
+                return 0;
+            }
+        };
+
+        const handleSelectionChange = () => {
+            const sel = document.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+
+            // Freeze the selection state once the user releases the mouse —
+            // any subsequent selectionchange is browser-driven (scroll detaches
+            // nodes, browser collapses/re-anchors the range) and would corrupt
+            // our recorded position. Allow the first update though, so we can
+            // pick up the initial selection.
+            const hasState = !!(selectionStateRef.current.anchor || selectionStateRef.current.focus);
+            if (!isMouseDownRef.current && hasState) return;
+
+            const anchorLineEl = findLogLine(sel.anchorNode);
+            const focusLineEl = findLogLine(sel.focusNode);
+
+            if (anchorLineEl) {
+                selectionStateRef.current.anchor = {
+                    idx: parseInt(anchorLineEl.dataset.logIdx as string, 10),
+                    offset: computeOffset(anchorLineEl, sel.anchorNode!, sel.anchorOffset)
+                };
+            }
+            if (focusLineEl) {
+                selectionStateRef.current.focus = {
+                    idx: parseInt(focusLineEl.dataset.logIdx as string, 10),
+                    offset: computeOffset(focusLineEl, sel.focusNode!, sel.focusOffset)
+                };
+            }
+            applySelectionHighlight();
+        };
+
+        const handleMouseDown = (e: MouseEvent) => {
+            isMouseDownRef.current = true;
+            // Click without shift inside our container starts a new selection;
+            // clear stored state so the freeze gate doesn't suppress the first
+            // selectionchange of the new interaction.
+            const target = e.target as Node | null;
+            if (logsContainerRef.current?.contains(target) && !e.shiftKey) {
+                selectionStateRef.current = { anchor: null, focus: null };
+            }
+        };
+        const handleMouseUp = () => { isMouseDownRef.current = false; };
+
+        document.addEventListener('selectionchange', handleSelectionChange);
         document.addEventListener('mousedown', handleMouseDown);
         document.addEventListener('mouseup', handleMouseUp);
-
         return () => {
+            document.removeEventListener('selectionchange', handleSelectionChange);
             document.removeEventListener('mousedown', handleMouseDown);
             document.removeEventListener('mouseup', handleMouseUp);
         };
-    }, []);
+    }, [applySelectionHighlight]);
+
+    // Intercept copy so we pull text from stream.logs (the full underlying
+    // buffer) rather than the partial DOM, using the offsets recorded above.
+    useEffect(() => {
+        const handleCopy = (e: ClipboardEvent) => {
+            const sel = document.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+            const container = logsContainerRef.current;
+            if (!container) return;
+            const inContainer = container.contains(sel.anchorNode) || container.contains(sel.focusNode);
+            if (!inContainer) return;
+
+            const state = selectionStateRef.current;
+            if (!state.anchor || !state.focus) return;
+
+            const a = state.anchor;
+            const f = state.focus;
+            const forward = a.idx < f.idx || (a.idx === f.idx && a.offset <= f.offset);
+            const start = forward ? a : f;
+            const end = forward ? f : a;
+            if (start.idx === end.idx && start.offset === end.offset) return;
+
+            const parsePrefixesNow = selectedPod === ALL_PODS || selectedContainer === ALL_CONTAINERS;
+            const prefixRe = /^\[([a-z0-9][a-z0-9\-.]*(\/[a-z0-9][a-z0-9\-.]*)?)\]\s*/;
+            const logs = stream.logs;
+            const parts: string[] = [];
+            for (let i = start.idx; i <= end.idx; i++) {
+                const entry = logs[i];
+                if (!entry) { parts.push(''); continue; }
+                let content: string = entry.content || '';
+                if (parsePrefixesNow) {
+                    const m = content.match(prefixRe);
+                    if (m) content = content.slice(m[0].length);
+                }
+                let text = stripAnsiCodes(content);
+                if (i === start.idx && i === end.idx) {
+                    text = text.slice(start.offset, end.offset);
+                } else if (i === start.idx) {
+                    text = text.slice(start.offset);
+                } else if (i === end.idx) {
+                    text = text.slice(0, end.offset);
+                }
+                parts.push(text);
+            }
+
+            e.clipboardData?.setData('text/plain', parts.join('\n'));
+            e.preventDefault();
+        };
+
+        document.addEventListener('copy', handleCopy);
+        return () => document.removeEventListener('copy', handleCopy);
+    }, [stream.logs, selectedPod, selectedContainer]);
 
 
     // Virtuoso callbacks
@@ -700,7 +950,7 @@ export default function LogViewer({
             )}
 
             {/* Logs Content */}
-            <div ref={logsContainerRef} className="flex-1 overflow-hidden text-gray-300 font-mono text-xs" data-selectable-region tabIndex={-1}>
+            <div ref={logsContainerRef} className="flex-1 overflow-hidden text-gray-300 font-mono text-xs" data-selectable-region data-log-region tabIndex={-1}>
                 {stream.loading || stream.loadingAll ? (
                     <div className="flex flex-col items-center justify-center h-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -739,8 +989,9 @@ export default function LogViewer({
                         atBottomStateChange={handleAtBottomStateChange}
                         startReached={handleStartReached}
                         endReached={handleEndReached}
-                        overscan={isSelecting ? 5000 : 200}
-                        increaseViewportBy={isSelecting ? { top: 5000, bottom: 5000 } : { top: 0, bottom: 0 }}
+                        overscan={200}
+                        increaseViewportBy={{ top: 0, bottom: 0 }}
+                        itemsRendered={applySelectionHighlight}
                         components={{
                             Header: () => (
                                 <>

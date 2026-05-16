@@ -125,6 +125,7 @@ export const LogLine = React.memo(function LogLine({
 
     return (
         <div
+            data-log-idx={entry.originalIndex}
             className={`flex ${entry.isMatch ? 'bg-yellow-500/10' : ''} ${wrapLines ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'}`}
         >
             {showTimestamps && entry.timestamp && (
@@ -133,7 +134,7 @@ export const LogLine = React.memo(function LogLine({
                 </span>
             )}
             {renderPrefix()}
-            <span dangerouslySetInnerHTML={{ __html: htmlContent }} />
+            <span data-log-content="" dangerouslySetInnerHTML={{ __html: htmlContent }} />
         </div>
     );
 });

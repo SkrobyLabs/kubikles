@@ -295,6 +295,27 @@ pre, code, .monaco-editor, .xterm,
   outline: none;
 }
 
+/* Log viewer: hide native selection rectangles (Virtuoso recycles DOM nodes so
+   they slide to the wrong content on scroll) and render a precise selection
+   overlay sourced from the recorded buffer range instead. */
+[data-log-region] *::selection {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+[data-log-region] *::-moz-selection {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+[data-log-region] [data-log-idx] {
+  position: relative;
+}
+.log-selection-overlay {
+  position: absolute;
+  background-color: rgba(59, 130, 246, 0.4);
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
