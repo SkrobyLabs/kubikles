@@ -117,6 +117,10 @@ BUILD_FLAGS := -trimpath -ldflags "-s -w $(VERSION_LDFLAGS)"
 # Uses ImageMagick v7 (magick) or v6 (convert) depending on what's installed
 MAGICK := $(shell command -v magick 2>/dev/null || command -v convert 2>/dev/null)
 build/appicon.png: build/appicon.svg
+	@if [ -z "$(MAGICK)" ]; then \
+		echo "Error: ImageMagick not found. Install it first (Ubuntu/Debian: sudo apt-get install imagemagick)."; \
+		exit 1; \
+	fi
 	"$(MAGICK)" -background none $< -resize 1024x1024 $@
 
 frontend/src/assets/images/appicon.svg: build/appicon.svg

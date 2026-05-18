@@ -29,17 +29,17 @@ For development, you also need the development headers:
 
 ```bash
 # Arch / CachyOS / Manjaro
-sudo pacman -S gtk3 webkit2gtk base-devel go nodejs npm
+sudo pacman -S gtk3 webkit2gtk base-devel imagemagick go nodejs npm
 
 # Debian / Ubuntu (< 24.04)
-sudo apt install build-essential libgtk-3-dev libwebkit2gtk-4.0-dev golang nodejs npm
+sudo apt install build-essential imagemagick libgtk-3-dev libwebkit2gtk-4.0-dev golang nodejs npm
 
 # Ubuntu 24.04+
-sudo apt install build-essential libgtk-3-dev libwebkit2gtk-4.1-dev golang nodejs npm
+sudo apt install build-essential imagemagick libgtk-3-dev libwebkit2gtk-4.1-dev golang nodejs npm
 # Note: Build with -tags webkit2_41
 
 # Fedora
-sudo dnf install gtk3-devel webkit2gtk4.1-devel gcc-c++ golang nodejs npm
+sudo dnf install gtk3-devel webkit2gtk4.1-devel gcc-c++ ImageMagick golang nodejs npm
 ```
 
 Or simply run `make setup` which handles this automatically.

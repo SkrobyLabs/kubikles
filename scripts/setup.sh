@@ -64,7 +64,7 @@ install_system_deps() {
     case "$PKG_MGR" in
         pacman)
             # Arch-based: CachyOS, Manjaro, EndeavourOS, etc.
-            local pkgs="gtk3 webkit2gtk base-devel"
+            local pkgs="gtk3 webkit2gtk base-devel imagemagick"
             info "Installing: $pkgs"
             sudo pacman -S --needed --noconfirm $pkgs
             ;;
@@ -74,20 +74,20 @@ install_system_deps() {
             # Check for webkit2gtk-4.1 (Ubuntu 24.04+) vs 4.0 (older)
             if apt-cache show libwebkit2gtk-4.1-dev &>/dev/null; then
                 info "Using webkit2gtk-4.1 (modern)"
-                sudo apt-get install -y build-essential libgtk-3-dev libwebkit2gtk-4.1-dev
+                sudo apt-get install -y build-essential imagemagick libgtk-3-dev libwebkit2gtk-4.1-dev
                 warn "Note: Build with -tags webkit2_41 flag"
             else
                 info "Using webkit2gtk-4.0"
-                sudo apt-get install -y build-essential libgtk-3-dev libwebkit2gtk-4.0-dev
+                sudo apt-get install -y build-essential imagemagick libgtk-3-dev libwebkit2gtk-4.0-dev
             fi
             ;;
         dnf)
             # Fedora/RHEL-based
-            sudo dnf install -y gtk3-devel webkit2gtk4.1-devel gcc-c++
+            sudo dnf install -y gtk3-devel webkit2gtk4.1-devel gcc-c++ ImageMagick
             ;;
         zypper)
             # openSUSE
-            sudo zypper install -y gtk3-devel webkit2gtk3-devel gcc-c++
+            sudo zypper install -y gtk3-devel webkit2gtk3-devel gcc-c++ ImageMagick
             ;;
         brew)
             # macOS - no system deps needed, but ensure Xcode CLI tools
