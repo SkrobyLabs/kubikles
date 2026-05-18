@@ -3,7 +3,7 @@ import { PencilSquareIcon, DocumentTextIcon, ShareIcon, CubeIcon } from '@heroic
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
+import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel, WorkloadImagesRow } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 import ResourceEventsTab from './ResourceEventsTab';
 
@@ -255,6 +255,7 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
                 <DetailSection title="Details">
                     <DetailRow label="Name" value={name} />
                     <DetailRow label="Namespace" value={namespace} />
+                    <WorkloadImagesRow podSpec={spec.template?.spec} />
                     <DetailRow label="Parallelism" value={parallelism} />
                     <DetailRow label="Backoff Limit" value={backoffLimit} />
                     {activeDeadlineSeconds && (

@@ -104,6 +104,37 @@ export const DetailRow = React.memo(({ label, value, children }: { label: string
     </div>
 ));
 
+const getUniqueContainerImages = (podSpec: any): string[] => {
+    const containers = [
+        ...(podSpec?.initContainers || []),
+        ...(podSpec?.containers || []),
+        ...(podSpec?.ephemeralContainers || []),
+    ];
+    const images = containers
+        .map((container: any) => container?.image)
+        .filter((image: any): image is string => typeof image === 'string' && image.length > 0);
+
+    return [...new Set(images)];
+};
+
+export const WorkloadImagesRow = React.memo(({ podSpec }: { podSpec: any }) => {
+    const images = getUniqueContainerImages(podSpec);
+
+    return (
+        <DetailRow label={images.length === 1 ? 'Image' : 'Images'}>
+            {images.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                    {images.map((image) => (
+                        <CopyableLabel key={image} value={image} className="break-all text-left" />
+                    ))}
+                </div>
+            ) : (
+                <span className="text-gray-500">N/A</span>
+            )}
+        </DetailRow>
+    );
+});
+
 /**
  * Detail section component - groups related detail rows with a title
  * Memoized to prevent re-renders when parent updates with same props

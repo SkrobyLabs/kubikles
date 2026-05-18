@@ -4,7 +4,7 @@ import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { useNotification } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
+import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel, WorkloadImagesRow } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 import ControllerMetricsTab from './ControllerMetricsTab';
 import ResourceEventsTab from './ResourceEventsTab';
@@ -283,6 +283,7 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
                 <DetailSection title="Details">
                     <DetailRow label="Name" value={name} />
                     <DetailRow label="Namespace" value={namespace} />
+                    <WorkloadImagesRow podSpec={spec.template?.spec} />
                     <DetailRow label="Created">
                         <span title={replicaSet.metadata?.creationTimestamp}>
                             {formatAge(replicaSet.metadata?.creationTimestamp)} ago

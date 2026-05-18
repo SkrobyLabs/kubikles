@@ -5,7 +5,7 @@ import { useK8s } from '~/context';
 import { getPodController } from '~/utils/k8s-helpers';
 import { formatAge } from '~/utils/formatting';
 import { getOwnerViewId } from '~/utils/owner-navigation';
-import { CopyableLabel, DetailRow } from './DetailComponents';
+import { CopyableLabel, DetailRow, WorkloadImagesRow } from './DetailComponents';
 import Tooltip from './Tooltip';
 
 function formatMatchExpr(expr: any): string {
@@ -176,6 +176,8 @@ export default function PodInfoTab({ pod }: { pod: any }) {
 
                 {/* Namespace */}
                 <DetailRow label="Namespace" value={pod.metadata?.namespace} />
+
+                <WorkloadImagesRow podSpec={pod.spec} />
 
                 {/* Owner / Controlled By */}
                 <DetailRow label="Owner">

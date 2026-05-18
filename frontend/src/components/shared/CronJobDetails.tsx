@@ -3,7 +3,7 @@ import { PencilSquareIcon, PlayIcon, PauseIcon, ShareIcon, BriefcaseIcon } from 
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
+import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel, WorkloadImagesRow } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 import ResourceEventsTab from './ResourceEventsTab';
 
@@ -211,6 +211,7 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
                 <DetailSection title="Details">
                     <DetailRow label="Name" value={name} />
                     <DetailRow label="Namespace" value={namespace} />
+                    <WorkloadImagesRow podSpec={spec.jobTemplate?.spec?.template?.spec} />
                     <DetailRow label="Concurrency Policy" value={concurrencyPolicy} />
                     <DetailRow label="Successful Jobs History" value={successfulJobsHistoryLimit} />
                     <DetailRow label="Failed Jobs History" value={failedJobsHistoryLimit} />
