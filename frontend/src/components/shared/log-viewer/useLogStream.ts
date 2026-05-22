@@ -34,19 +34,27 @@ export function useLogStream({
     viewMode,
     initialPosition,
     isStale,
-    currentContext
-}: { namespace: any; pod: any; container: any; containers: any; siblingPods: any; podContainerMap: any; showPrevious: any; sinceTime: any; viewMode: any; initialPosition: any; isStale: any; currentContext: any }) {
+    currentContext,
+    resolveFreshLogTarget
+}: { namespace: any; pod: any; container: any; containers: any; siblingPods: any; podContainerMap: any; showPrevious: any; sinceTime: any; viewMode: any; initialPosition: any; isStale: any; currentContext: any; resolveFreshLogTarget?: any }) {
     const isAllContainers = container === ALL_CONTAINERS;
     const isAllPods = pod === ALL_PODS;
 
     // Build pod-container pairs for "All Pods" mode
-    const buildPodContainerPairs = useCallback(() => {
-        if (!isAllPods || !siblingPods?.length) return [];
-        return siblingPods.map((podName: any) => ({
+    const buildPodContainerPairs = useCallback((overrides: any = {}) => {
+        const sourceIsAllPods = overrides.isAllPods ?? isAllPods;
+        const sourceIsAllContainers = overrides.isAllContainers ?? isAllContainers;
+        const sourceSiblingPods = overrides.siblingPods ?? siblingPods;
+        const sourcePodContainerMap = overrides.podContainerMap ?? podContainerMap;
+        const sourceContainers = overrides.containers ?? containers;
+        const sourceContainer = overrides.container ?? container;
+
+        if (!sourceIsAllPods || !sourceSiblingPods?.length) return [];
+        return sourceSiblingPods.map((podName: any) => ({
             podName,
-            containerNames: isAllContainers
-                ? (podContainerMap?.[podName] || containers || [])
-                : (container ? [container] : [])
+            containerNames: sourceIsAllContainers
+                ? (sourcePodContainerMap?.[podName] || sourceContainers || [])
+                : (sourceContainer ? [sourceContainer] : [])
         }));
     }, [isAllPods, isAllContainers, siblingPods, podContainerMap, containers, container]);
     const [logs, setLogs] = useState<any[]>([]); // Array of { timestamp, content, source }
@@ -108,7 +116,7 @@ export function useLogStream({
     }, []);
 
     // Fetch logs (initial or refresh)
-    const fetchLogs = useCallback(async () => {
+    const fetchLogs = useCallback(async (options: any = {}) => {
         // Set ref immediately to prevent streaming race condition
         isFetchingRef.current = true;
 
@@ -125,26 +133,60 @@ export function useLogStream({
         setLoading(true);
 
         try {
+            let effectiveNamespace = namespace;
+            let effectivePod = pod;
+            let effectiveContainer = container;
+            let effectiveContainers = containers;
+            let effectiveSiblingPods = siblingPods;
+            let effectivePodContainerMap = podContainerMap;
+            let effectiveIsAllPods = isAllPods;
+            let effectiveIsAllContainers = isAllContainers;
+
+            if (options.refreshTarget && resolveFreshLogTarget) {
+                const freshTarget = await resolveFreshLogTarget({ pod, container });
+                if (freshTarget) {
+                    effectiveNamespace = freshTarget.namespace ?? namespace;
+                    effectivePod = freshTarget.pod ?? pod;
+                    effectiveContainer = freshTarget.container ?? container;
+                    effectiveContainers = freshTarget.containers ?? containers;
+                    effectiveSiblingPods = freshTarget.siblingPods ?? siblingPods;
+                    effectivePodContainerMap = freshTarget.podContainerMap ?? podContainerMap;
+                    effectiveIsAllPods = effectivePod === ALL_PODS;
+                    effectiveIsAllContainers = effectiveContainer === ALL_CONTAINERS;
+
+                    if (effectivePod !== pod || effectiveContainer !== container) {
+                        return;
+                    }
+                }
+            }
+
             let logData;
-            const podPairs = buildPodContainerPairs();
+            const podPairs = buildPodContainerPairs({
+                isAllPods: effectiveIsAllPods,
+                isAllContainers: effectiveIsAllContainers,
+                siblingPods: effectiveSiblingPods,
+                podContainerMap: effectivePodContainerMap,
+                containers: effectiveContainers,
+                container: effectiveContainer,
+            });
 
             if (viewMode === 'start') {
-                if (isAllPods && podPairs.length > 0) {
-                    logData = await GetAllPodsLogsFromStart(namespace, podPairs, isAllContainers, true, showPrevious);
-                } else if (isAllContainers && containers?.length > 0) {
-                    logData = await GetAllContainersLogsFromStart(namespace, pod, containers, true, showPrevious);
+                if (effectiveIsAllPods && podPairs.length > 0) {
+                    logData = await GetAllPodsLogsFromStart(effectiveNamespace, podPairs, effectiveIsAllContainers, true, showPrevious);
+                } else if (effectiveIsAllContainers && effectiveContainers?.length > 0) {
+                    logData = await GetAllContainersLogsFromStart(effectiveNamespace, effectivePod, effectiveContainers, true, showPrevious);
                 } else {
-                    logData = await GetPodLogsFromStart(namespace, pod, container, true, showPrevious);
+                    logData = await GetPodLogsFromStart(effectiveNamespace, effectivePod, effectiveContainer, true, showPrevious);
                 }
                 setHasMoreBefore(false);
                 setHasMoreAfter(true);
             } else {
-                if (isAllPods && podPairs.length > 0) {
-                    logData = await GetAllPodsLogs(namespace, podPairs, isAllContainers, true, showPrevious, sinceTime);
-                } else if (isAllContainers && containers?.length > 0) {
-                    logData = await GetAllContainersLogs(namespace, pod, containers, true, showPrevious, sinceTime);
+                if (effectiveIsAllPods && podPairs.length > 0) {
+                    logData = await GetAllPodsLogs(effectiveNamespace, podPairs, effectiveIsAllContainers, true, showPrevious, sinceTime);
+                } else if (effectiveIsAllContainers && effectiveContainers?.length > 0) {
+                    logData = await GetAllContainersLogs(effectiveNamespace, effectivePod, effectiveContainers, true, showPrevious, sinceTime);
                 } else {
-                    logData = await GetPodLogs(namespace, pod, container, true, showPrevious, sinceTime);
+                    logData = await GetPodLogs(effectiveNamespace, effectivePod, effectiveContainer, true, showPrevious, sinceTime);
                 }
                 setHasMoreBefore(true);
                 setHasMoreAfter(false);
@@ -171,7 +213,7 @@ export function useLogStream({
             setLoading(false);
             isFetchingRef.current = false;
         }
-    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, logs.length, sinceTime, viewMode]);
+    }, [namespace, pod, container, containers, siblingPods, podContainerMap, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, logs.length, sinceTime, viewMode, resolveFreshLogTarget]);
 
     // Load all logs at once
     const loadAllLogs = useCallback(async () => {

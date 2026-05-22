@@ -2,7 +2,7 @@ import React from 'react';
 import { useUI } from '~/context';
 import { useK8s } from '~/context';
 import { useNotification } from '~/context';
-import { DeletePod, ForceDeletePod } from 'wailsjs/go/main/App';
+import { DeletePod, EvictPod, ForceDeletePod, GetPodEvictionInfo } from 'wailsjs/go/main/App';
 import LogViewer from '~/components/shared/log-viewer';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph, LazyPodFileBrowser as PodFileBrowser } from '~/components/lazy';
 import PodShellTab from './PodShellTab';
@@ -33,6 +33,7 @@ export interface PodActionsReturn {
     handleShowDependencies: (pod: K8sPod) => void;
     handleShowDetails: (pod: K8sPod) => void;
     handleDelete: (namespace: string, name: string, isTerminating?: boolean) => void;
+    handleEvict: (pod: K8sPod) => void;
 }
 
 export const usePodActions = (): any => {
@@ -240,6 +241,71 @@ export const usePodActions = (): any => {
         });
     };
 
+    const handleEvict = async (pod: K8sPod): Promise<void> => {
+        const namespace = pod.metadata?.namespace;
+        const name = pod.metadata?.name;
+        if (!namespace || !name) return;
+
+        Logger.info("Action: Evict Pod", { namespace, name, context: currentContext }, 'k8s');
+
+        let info: { category?: string; ownerKind?: string; ownerName?: string };
+        try {
+            info = await GetPodEvictionInfo(namespace, name);
+        } catch (err: any) {
+            Logger.error("Failed to get pod eviction info", err, 'k8s');
+            addNotification({ type: 'error', title: 'Failed to get eviction info', message: String(err) });
+            return;
+        }
+
+        const ownerLabel = info.ownerKind ? `${info.ownerKind}/${info.ownerName}` : '';
+        const doEvict = async () => {
+            closeModal();
+            try {
+                await EvictPod(namespace, name);
+                Logger.info("Pod evicted successfully", { namespace, name }, 'k8s');
+                addNotification({ type: 'success', message: `Pod "${name}" evicted` });
+            } catch (err: any) {
+                Logger.error("Failed to evict pod", err, 'k8s');
+                addNotification({ type: 'error', title: 'Eviction failed', message: String(err) });
+            }
+        };
+
+        if (info.category === 'daemon') {
+            openModal({
+                title: `Cannot Evict "${name}"`,
+                content: (
+                    <div className="text-sm text-gray-300 space-y-2">
+                        <p>Managed by <span className="font-medium text-white">{ownerLabel}</span>. Evicting will just respawn it on this node.</p>
+                    </div>
+                ),
+            });
+        } else if (info.category === 'killable') {
+            const desc = info.ownerKind === 'Job' ? 'a Job pod' : 'a standalone pod';
+            openModal({
+                title: `Kill Pod "${name}"?`,
+                content: (
+                    <div className="text-sm text-gray-300 space-y-2">
+                        <p>This is {desc}. It will <span className="font-medium text-red-400">NOT</span> be rescheduled.</p>
+                    </div>
+                ),
+                confirmText: 'Kill',
+                confirmStyle: 'danger',
+                onConfirm: doEvict,
+            });
+        } else {
+            openModal({
+                title: `Evict Pod "${name}"?`,
+                content: (
+                    <div className="text-sm text-gray-300 space-y-2">
+                        <p>Managed by <span className="font-medium text-white">{ownerLabel}</span>. A new pod will be scheduled on another node.</p>
+                    </div>
+                ),
+                confirmText: 'Evict',
+                onConfirm: doEvict,
+            });
+        }
+    };
+
     return {
         openLogs,
         handleShell,
@@ -247,6 +313,7 @@ export const usePodActions = (): any => {
         handleEditYaml,
         handleShowDependencies,
         handleShowDetails,
-        handleDelete
+        handleDelete,
+        handleEvict
     };
 };

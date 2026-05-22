@@ -34,17 +34,47 @@ import { logsToVisibleString, logsToDebugString, stripAnsiCodes } from './logUti
 import { GetAllContainersLogsAll, GetAllPodsLogsAll } from 'wailsjs/go/main/App';
 
 export default function LogViewer({
-    namespace,
-    pod,
-    containers = [],
-    siblingPods = [],
-    podContainerMap = {},
-    ownerName = '',
-    podCreationTime = '',
+    namespace: initialNamespace,
+    pod: initialPod,
+    containers: initialContainers = [],
+    siblingPods: initialSiblingPods = [],
+    podContainerMap: initialPodContainerMap = {},
+    ownerName: initialOwnerName = '',
+    podCreationTime: initialPodCreationTime = '',
+    resolveFreshPods,
     tabContext = ''
-}: { namespace: any; pod: any; containers?: any; siblingPods?: any; podContainerMap?: any; ownerName?: any; podCreationTime?: any; tabContext?: any }) {
+}: { namespace: any; pod: any; containers?: any; siblingPods?: any; podContainerMap?: any; ownerName?: any; podCreationTime?: any; resolveFreshPods?: any; tabContext?: any }) {
     const { currentContext } = useK8s();
     const { getConfig } = useConfig();
+    const [logTarget, setLogTarget] = useState(() => ({
+        namespace: initialNamespace,
+        pod: initialPod,
+        containers: initialContainers,
+        siblingPods: initialSiblingPods,
+        podContainerMap: initialPodContainerMap,
+        ownerName: initialOwnerName,
+        podCreationTime: initialPodCreationTime,
+    }));
+
+    useEffect(() => {
+        setLogTarget({
+            namespace: initialNamespace,
+            pod: initialPod,
+            containers: initialContainers,
+            siblingPods: initialSiblingPods,
+            podContainerMap: initialPodContainerMap,
+            ownerName: initialOwnerName,
+            podCreationTime: initialPodCreationTime,
+        });
+    }, [initialNamespace, initialPod, initialContainers, initialSiblingPods, initialPodContainerMap, initialOwnerName, initialPodCreationTime]);
+
+    const namespace = logTarget.namespace;
+    const pod = logTarget.pod;
+    const containers = logTarget.containers;
+    const siblingPods = logTarget.siblingPods;
+    const podContainerMap = logTarget.podContainerMap;
+    const ownerName = logTarget.ownerName;
+    const podCreationTime = logTarget.podCreationTime;
 
     // Helper to safely get config with validation and fallback
     const getSafeConfig = useCallback((path: any, defaultValue: any, validator: any) => {
@@ -64,7 +94,7 @@ export default function LogViewer({
 
     // UI state
     // Always default to the specific pod that was requested
-    const [selectedPod, setSelectedPod] = useState(pod);
+    const [selectedPod, setSelectedPod] = useState(initialPod);
     // Default to first container for the selected pod
     const [selectedContainer, setSelectedContainer] = useState(containers[0] || '');
     const [wrapLines, setWrapLines] = useState(() => getSafeConfig('logs.lineWrap', true, (v: any) => typeof v === 'boolean'));
@@ -102,6 +132,50 @@ export default function LogViewer({
         ? ((podContainerMap as Record<string, any>)[siblingPods[0]] || containers)
         : ((podContainerMap as Record<string, any>)[selectedPod] || containers);
 
+    const resolveFreshLogTarget = useCallback(async ({ pod: requestedPod, container: requestedContainer }: any) => {
+        if (!resolveFreshPods) return null;
+
+        const fresh = await resolveFreshPods();
+        if (!fresh) return null;
+
+        const freshSiblingPods = fresh.siblingPods || [];
+        const freshPodContainerMap = fresh.podContainerMap || {};
+        const nextPod = requestedPod === ALL_PODS
+            ? ALL_PODS
+            : freshSiblingPods.includes(requestedPod)
+            ? requestedPod
+            : fresh.pod;
+        const nextContainers = nextPod === ALL_PODS
+            ? (freshPodContainerMap[freshSiblingPods[0]] || fresh.containers || [])
+            : (freshPodContainerMap[nextPod] || fresh.containers || []);
+        const nextContainer = requestedContainer === ALL_CONTAINERS
+            ? ALL_CONTAINERS
+            : nextContainers.includes(requestedContainer)
+            ? requestedContainer
+            : (nextContainers[0] || '');
+
+        setLogTarget({
+            namespace: fresh.namespace,
+            pod: fresh.pod,
+            containers: fresh.containers || [],
+            siblingPods: freshSiblingPods,
+            podContainerMap: freshPodContainerMap,
+            ownerName: fresh.ownerName || '',
+            podCreationTime: fresh.podCreationTime || '',
+        });
+        setSelectedPod(nextPod);
+        setSelectedContainer(nextContainer);
+
+        return {
+            namespace: fresh.namespace,
+            pod: nextPod,
+            container: nextContainer,
+            containers: nextContainers,
+            siblingPods: freshSiblingPods,
+            podContainerMap: freshPodContainerMap,
+        };
+    }, [resolveFreshPods]);
+
     // Log streaming hook
     const stream = useLogStream({
         namespace,
@@ -115,7 +189,8 @@ export default function LogViewer({
         viewMode,
         initialPosition,
         isStale,
-        currentContext
+        currentContext,
+        resolveFreshLogTarget
     });
 
     // Search hook
@@ -145,7 +220,7 @@ export default function LogViewer({
         const handleKeyDown = (e: any) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
                 if (namespace && selectedPod) {
-                    stream.fetchLogs();
+                    stream.fetchLogs({ refreshTarget: true });
                 }
             }
         };
@@ -622,7 +697,7 @@ export default function LogViewer({
                             </button>
                         )}
                         <button
-                            onClick={stream.fetchLogs}
+                            onClick={() => stream.fetchLogs({ refreshTarget: true })}
                             disabled={stream.loading}
                             className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-500 transition-colors disabled:opacity-50"
                         >

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import { EllipsisVerticalIcon, BellAlertIcon, BellSlashIcon } from '@heroicons/react/24/outline';
+import { EllipsisVerticalIcon, BellAlertIcon, BellSlashIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
 import ResourceList from '~/components/shared/ResourceList';
 import AggregateResourceBar from '~/components/shared/AggregateResourceBar';
 import BulkActionModal from '~/components/shared/BulkActionModal';
@@ -14,7 +14,7 @@ import { useUI } from '~/context';
 import { useMenu } from '~/context';
 import { useSelection } from '~/hooks/useSelection';
 import { useBulkActions } from '~/hooks/useBulkActions';
-import { DeletePod, GetPodYaml } from 'wailsjs/go/main/App';
+import { DeletePod, EvictPod, GetPodYaml } from 'wailsjs/go/main/App';
 import { formatAge, formatBytes, formatCpu } from '~/utils/formatting';
 import { getPodStatus, getPodStatusColor, getContainerStatusColor, getPodStatusPriority, getPodController } from '~/utils/k8s-helpers';
 import { getOwnerViewId } from '~/utils/owner-navigation';
@@ -36,14 +36,19 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
     const selection = useSelection();
 
     const {
+        bulkActionModal,
         bulkModalProps,
         openBulkDelete,
+        openBulkCustomAction,
         exportYaml,
     } = useBulkActions({
         resourceLabel: 'Pod',
         resourceType: 'pods',
         isNamespaced: true,
         deleteApi: DeletePod,
+        customApis: {
+            evict: EvictPod,
+        },
         getYamlApi: GetPodYaml,
 
     });
@@ -51,7 +56,7 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
     const pods: any[] = rawPods || [];
     // Delay metrics fetch until pods are loaded to prioritize showing pod list first
     const { metrics, available: metricsAvailable } = usePodMetrics(isVisible, !loading && pods.length > 0);
-    const { openLogs, handleShell, handleFiles, handleEditYaml, handleShowDependencies, handleShowDetails } = usePodActions();
+    const { openLogs, handleShell, handleFiles, handleEditYaml, handleShowDependencies, handleShowDetails, handleEvict } = usePodActions();
 
     // Pod notifications toggle and settings (persisted to localStorage)
     const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
@@ -87,6 +92,30 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
         soundKey: notificationSound,
         throttleSeconds: notificationThrottle,
     });
+
+    const isEvictablePod = useCallback((pod: any) => {
+        const isTerminating = !!pod.metadata?.deletionTimestamp;
+        const isTerminal = pod.status?.phase === 'Succeeded' || pod.status?.phase === 'Failed';
+        return !isTerminating && !isTerminal;
+    }, []);
+
+    const selectedPods = useMemo(() => selection.getSelectedItems(pods), [selection, pods]);
+    const selectedEvictablePods = useMemo(() => selectedPods.filter(isEvictablePod), [selectedPods, isEvictablePod]);
+    const canBulkEvict = selectedEvictablePods.length > 0;
+
+    const bulkPodActions = useMemo(() => {
+        if (!canBulkEvict) return null;
+        return (
+            <button
+                onClick={() => openBulkCustomAction(selectedEvictablePods, 'evict')}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 rounded transition-colors"
+                title="Evict selected pods that are still running or pending"
+            >
+                <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
+                <span>Evict</span>
+            </button>
+        );
+    }, [canBulkEvict, openBulkCustomAction, selectedEvictablePods]);
 
     const handleBellClick = useCallback((e: any) => {
         if (e.shiftKey) {
@@ -381,6 +410,7 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
                     onFiles={() => handleFiles(item)}
                     onDelete={() => openBulkDelete([item])}
                     onForceDelete={() => openBulkDelete([item])}
+                    onEvict={() => handleEvict(item)}
                     onEditYaml={() => handleEditYaml(item)}
                     onShowDependencies={() => handleShowDependencies(item)}
                     onShowDetails={() => handleShowDetails(item)}
@@ -390,7 +420,7 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
             isColumnSelector: true,
             disableSort: true
         },
-    ], [activeMenuId, menuPosition, handleMenuOpenChange, openLogs, handleShell, handleFiles, openBulkDelete, handleEditYaml, handleShowDependencies, handleShowDetails, handlePortForward, pods, navigateWithSearch, metrics, metricsAvailable, crds]);
+    ], [activeMenuId, menuPosition, handleMenuOpenChange, openLogs, handleShell, handleFiles, openBulkDelete, handleEvict, handleEditYaml, handleShowDependencies, handleShowDetails, handlePortForward, pods, navigateWithSearch, metrics, metricsAvailable, crds]);
 
     return (
         <>
@@ -411,6 +441,7 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
                 selectable={true}
                 selection={selection}
                 onBulkDelete={openBulkDelete}
+                bulkCustomActions={bulkPodActions}
                 onFilteredUidsChange={handleFilteredUidsChange}
                 customHeaderActions={
                     <button
@@ -444,8 +475,8 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
 
             <BulkActionModal
                 {...bulkModalProps}
-                action="delete"
-                actionLabel="Delete"
+                action={bulkActionModal.action || 'delete'}
+                actionLabel={bulkActionModal.action === 'evict' ? 'Evict' : 'Delete'}
                 onExportYaml={exportYaml}
             />
 

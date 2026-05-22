@@ -86,6 +86,7 @@ export default function DeferredLogViewer({ resolve, tabContext }: DeferredLogVi
             podContainerMap={props!.podContainerMap}
             ownerName={props!.ownerName}
             podCreationTime={props!.podCreationTime}
+            resolveFreshPods={resolve}
             tabContext={tabContext}
         />
     );

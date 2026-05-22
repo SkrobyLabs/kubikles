@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PencilSquareIcon, DocumentTextIcon, CommandLineIcon, TrashIcon, EllipsisVerticalIcon, ShareIcon, InformationCircleIcon, SignalIcon, DocumentDuplicateIcon, FolderIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, DocumentTextIcon, CommandLineIcon, TrashIcon, EllipsisVerticalIcon, ShareIcon, InformationCircleIcon, SignalIcon, FolderIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
 import ComparisonMenuItems from '~/components/shared/ComparisonMenuItems';
 
-export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange, onLogs, onEditYaml, onShowDependencies, onShowDetails, onDelete, onForceDelete, onShell, onFiles, onPortForward }: any) {
+export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange, onLogs, onEditYaml, onShowDependencies, onShowDetails, onDelete, onForceDelete, onEvict, onShell, onFiles, onPortForward }: any) {
     const buttonRef = useRef<any>(null);
     const menuRef = useRef<any>(null);
 
@@ -41,6 +41,8 @@ export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange
     };
 
     const isTerminating = pod.metadata.deletionTimestamp;
+    const isTerminal = pod.status?.phase === 'Succeeded' || pod.status?.phase === 'Failed';
+    const canEvict = onEvict && !isTerminating && !isTerminal;
 
     const menu = (
         <div
@@ -108,6 +110,15 @@ export default function PodActionsMenu({ pod, isOpen, menuPosition, onOpenChange
                 onAction={() => onOpenChange(false)}
             />
             <div className="h-px bg-surface-hover my-1" />
+            {canEvict && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); handleAction(() => onEvict(pod)); }}
+                    className="w-full text-left px-4 py-2 text-sm text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 flex items-center gap-2"
+                >
+                    <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
+                    Evict
+                </button>
+            )}
             <button
                 onClick={(e) => {
                     e.stopPropagation();
