@@ -1,5 +1,6 @@
 # Wails build outputs
 build/bin/
+build/darwin/
 build/windows/icon.ico
 build/icon-src/icon.svg
 build/icon-src/logo.svg

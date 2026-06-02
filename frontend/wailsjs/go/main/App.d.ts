@@ -534,9 +534,9 @@ export function RollbackHelmRelease(arg1:string,arg2:string,arg3:number):Promise
 
 export function RunIssueScan(arg1:Array<string>,arg2:Array<string>,arg3:Array<string>,arg4:boolean):Promise<issuedetector.ScanResult>;
 
-export function SaveDebugLogs(arg1:string,arg2:string):Promise<void>;
-
 export function SaveDataEntryValue(arg1:k8s.DataEntry,arg2:string):Promise<void>;
+
+export function SaveDebugLogs(arg1:string,arg2:string):Promise<void>;
 
 export function SaveLogFile(arg1:string):Promise<void>;
 

@@ -91,6 +91,7 @@ function SANItem({ type, value }: { type: string; value: any }) {
 
 export default function CertificateModal({ certificates, pemData, onClose }: { certificates: any; pemData: any; onClose: any }) {
     const [showRaw, setShowRaw] = useState(false);
+    const [expiredOnly, setExpiredOnly] = useState(false);
     const [pemCopied, setPemCopied] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [currentInput, setCurrentInput] = useState('1');
@@ -98,39 +99,61 @@ export default function CertificateModal({ certificates, pemData, onClose }: { c
     // Handle both single cert (legacy) and array of certs
     const certArray = Array.isArray(certificates) ? certificates : (certificates ? [certificates] : []);
     const totalCerts = certArray.length;
+    const hasMultiple = totalCerts > 1;
+    const isExpiredOrCriticalCert = (cert: any) => cert?.isExpired || cert?.daysUntilExpiry <= 7;
+    const allNavigationCerts = certArray.map((cert: any, originalIndex: number) => ({ cert, originalIndex }));
+    const visibleCerts = expiredOnly ? allNavigationCerts.filter(({ cert }) => isExpiredOrCriticalCert(cert)) : allNavigationCerts;
+    const activeTotal = visibleCerts.length;
 
     useEffect(() => {
-        if (totalCerts > 0 && currentIndex >= totalCerts) {
-            setCurrentIndex(totalCerts - 1);
+        if (activeTotal === 0 && currentIndex !== 0) {
+            setCurrentIndex(0);
+            return;
         }
-    }, [currentIndex, totalCerts]);
+        if (activeTotal > 0 && currentIndex >= activeTotal) {
+            setCurrentIndex(activeTotal - 1);
+        }
+    }, [activeTotal, currentIndex]);
 
     useEffect(() => {
-        setCurrentInput(String(currentIndex + 1));
-    }, [currentIndex]);
+        setCurrentInput(activeTotal === 0 ? '0' : String(currentIndex + 1));
+    }, [activeTotal, currentIndex]);
 
     if (certArray.length === 0 || !certArray[0]?.isCertificate) return null;
 
-    const certInfo = certArray[Math.min(currentIndex, totalCerts - 1)];
-    const hasMultiple = totalCerts > 1;
+    const visibleItem = visibleCerts[currentIndex];
+    const certInfo = visibleItem?.cert;
+    const originalIndex = visibleItem?.originalIndex ?? currentIndex;
 
     const goToIndex = (index: number) => {
-        const nextIndex = Math.min(totalCerts - 1, Math.max(0, index));
+        if (activeTotal === 0) return;
+        const nextIndex = Math.min(activeTotal - 1, Math.max(0, index));
         setCurrentIndex(nextIndex);
     };
 
     const restoreCurrentInput = () => {
-        setCurrentInput(String(currentIndex + 1));
+        setCurrentInput(activeTotal === 0 ? '0' : String(currentIndex + 1));
     };
 
     const commitCurrentInput = () => {
         const parsedIndex = Number(currentInput);
-        if (Number.isInteger(parsedIndex) && parsedIndex > 0 && parsedIndex <= totalCerts) {
+        if (Number.isInteger(parsedIndex) && parsedIndex > 0 && parsedIndex <= activeTotal) {
             goToIndex(parsedIndex - 1);
             return;
         }
 
         restoreCurrentInput();
+    };
+
+    const handleExpiredOnlyChange = (checked: boolean) => {
+        if (checked) {
+            setExpiredOnly(true);
+            setCurrentIndex(0);
+            return;
+        }
+
+        setExpiredOnly(false);
+        setCurrentIndex(originalIndex);
     };
 
     const handleCurrentInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -195,8 +218,8 @@ export default function CertificateModal({ certificates, pemData, onClose }: { c
         };
     };
 
-    const status = getStatus();
-    const StatusIcon = status.icon;
+    const status = certInfo ? getStatus() : null;
+    const StatusIcon = status?.icon;
 
     // Format expiry text
     const getExpiryText = () => {
@@ -241,9 +264,9 @@ export default function CertificateModal({ certificates, pemData, onClose }: { c
 
     // Collect all SANs
     const allSANs = [
-        ...(certInfo.dnsNames || []).map((v: any) => ({ type: 'DNS', value: v })),
-        ...(certInfo.ipAddresses || []).map((v: any) => ({ type: 'IP', value: v })),
-        ...(certInfo.emailAddresses || []).map((v: any) => ({ type: 'Email', value: v })),
+        ...(certInfo?.dnsNames || []).map((v: any) => ({ type: 'DNS', value: v })),
+        ...(certInfo?.ipAddresses || []).map((v: any) => ({ type: 'IP', value: v })),
+        ...(certInfo?.emailAddresses || []).map((v: any) => ({ type: 'Email', value: v })),
     ];
 
     return createPortal(
@@ -258,7 +281,7 @@ export default function CertificateModal({ certificates, pemData, onClose }: { c
                             <div className="flex flex-wrap items-center gap-1">
                                 <button
                                     onClick={() => goToIndex(0)}
-                                    disabled={currentIndex === 0}
+                                    disabled={activeTotal === 0 || currentIndex === 0}
                                     className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                                     title="First certificate"
                                 >
@@ -266,7 +289,7 @@ export default function CertificateModal({ certificates, pemData, onClose }: { c
                                 </button>
                                 <button
                                     onClick={() => goToIndex(currentIndex - 1)}
-                                    disabled={currentIndex === 0}
+                                    disabled={activeTotal === 0 || currentIndex === 0}
                                     className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                                     title="Previous certificate"
                                 >
@@ -274,37 +297,49 @@ export default function CertificateModal({ certificates, pemData, onClose }: { c
                                 </button>
                                 <input
                                     type="number"
-                                    min={1}
-                                    max={totalCerts}
+                                    min={activeTotal === 0 ? 0 : 1}
+                                    max={activeTotal}
                                     value={currentInput}
                                     onChange={(e) => setCurrentInput(e.target.value)}
                                     onBlur={commitCurrentInput}
                                     onKeyDown={handleCurrentInputKeyDown}
+                                    disabled={activeTotal === 0}
                                     className="w-14 px-2 py-1 text-sm text-center bg-background border border-border text-text rounded focus:border-primary"
                                     aria-label="Current certificate number"
                                 />
                                 <span className="text-sm text-text-muted whitespace-nowrap">
-                                    / {totalCerts}
+                                    / {activeTotal}
                                 </span>
                                 <button
                                     onClick={() => goToIndex(currentIndex + 1)}
-                                    disabled={currentIndex === totalCerts - 1}
+                                    disabled={activeTotal === 0 || currentIndex === activeTotal - 1}
                                     className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                                     title="Next certificate"
                                 >
                                     <ChevronRightIcon className="h-4 w-4" />
                                 </button>
                                 <button
-                                    onClick={() => goToIndex(totalCerts - 1)}
-                                    disabled={currentIndex === totalCerts - 1}
+                                    onClick={() => goToIndex(activeTotal - 1)}
+                                    disabled={activeTotal === 0 || currentIndex === activeTotal - 1}
                                     className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                                     title="Last certificate"
                                 >
                                     <ChevronDoubleRightIcon className="h-4 w-4" />
                                 </button>
-                                <span className="text-xs px-2 py-0.5 rounded bg-surface-light text-gray-400 ml-1">
-                                    {getCertTypeLabel(certInfo, currentIndex)}
-                                </span>
+                                {certInfo && (
+                                    <span className="text-xs px-2 py-0.5 rounded bg-surface-light text-gray-400 ml-1">
+                                        {getCertTypeLabel(certInfo, originalIndex)}
+                                    </span>
+                                )}
+                                <label className="ml-2 flex items-center gap-1.5 text-xs text-gray-400 whitespace-nowrap">
+                                    <input
+                                        type="checkbox"
+                                        checked={expiredOnly}
+                                        onChange={(e) => handleExpiredOnlyChange(e.target.checked)}
+                                        className="w-3 h-3 rounded border-gray-600 bg-background text-primary focus:ring-primary"
+                                    />
+                                    expired only
+                                </label>
                             </div>
                         )}
                     </div>
@@ -318,7 +353,11 @@ export default function CertificateModal({ certificates, pemData, onClose }: { c
 
                 {/* Content - Scrollable */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {showRaw ? (
+                    {!certInfo ? (
+                        <div className="rounded-lg border border-border bg-surface-light p-4 text-sm text-gray-400">
+                            No expired certificates
+                        </div>
+                    ) : showRaw ? (
                         /* Raw PEM view */
                         <div className="bg-background rounded-lg p-4">
                             <pre className="text-xs font-mono text-gray-300 whitespace-pre-wrap break-all">
@@ -328,18 +367,18 @@ export default function CertificateModal({ certificates, pemData, onClose }: { c
                     ) : (
                         <>
                             {/* Status Banner */}
-                            <div className={`rounded-lg border p-4 ${status.color}`}>
+                            <div className={`rounded-lg border p-4 ${status?.color}`}>
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
-                                        <StatusIcon className="h-5 w-5" />
-                                        <span className="font-medium">{status.label}</span>
+                                        {StatusIcon && <StatusIcon className="h-5 w-5" />}
+                                        <span className="font-medium">{status?.label}</span>
                                     </div>
                                     <span className="text-sm">{getExpiryText()}</span>
                                 </div>
                                 {/* Progress bar */}
                                 <div className="relative h-2 bg-black/30 rounded-full overflow-hidden">
                                     <div
-                                        className={`absolute inset-y-0 left-0 ${status.barColor} transition-all`}
+                                        className={`absolute inset-y-0 left-0 ${status?.barColor} transition-all`}
                                         style={{ width: `${Math.min(100, Math.max(0, certInfo.validityPercentage))}%` }}
                                     />
                                 </div>
