@@ -3,6 +3,7 @@ import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBa
 import { DeleteDaemonSet, RestartDaemonSet, ListPods } from 'wailsjs/go/main/App';
 import DaemonSetDetails from '~/components/shared/DaemonSetDetails';
 import { DeferredLogViewer, ResolvedLogViewerProps } from '~/components/shared/log-viewer';
+import { resolveLogTargetFromPods } from '~/components/shared/log-viewer/logTarget';
 import Logger from '~/utils/Logger';
 import { K8sDaemonSet } from '~/types/k8s';
 
@@ -49,7 +50,7 @@ export const useDaemonSetActions = (): any => {
 
     const handleViewLogs = (daemonSet: K8sDaemonSet): void => {
         Logger.info("View logs for DaemonSet", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name }, 'k8s');
-        const namespace = daemonSet.metadata.namespace;
+        const namespace = daemonSet.metadata.namespace!;
 
         openTab({
             id: `logs-daemonset-${daemonSet.metadata.name}`,
@@ -68,28 +69,7 @@ export const useDaemonSetActions = (): any => {
 
                         if (daemonSetPods.length === 0) return null;
 
-                        const pod = daemonSetPods[0];
-                        const containers = [
-                            ...(pod.spec?.initContainers || []).map((c: any) => c.name),
-                            ...(pod.spec?.containers || []).map((c: any) => c.name)
-                        ];
-
-                        const podContainerMap: Record<string, string[]> = {};
-                        for (const p of daemonSetPods) {
-                            podContainerMap[p.metadata.name] = [
-                                ...(p.spec?.initContainers || []).map((c: any) => c.name),
-                                ...(p.spec?.containers || []).map((c: any) => c.name)
-                            ];
-                        }
-
-                        return {
-                            namespace,
-                            pod: pod.metadata.name,
-                            containers,
-                            siblingPods: daemonSetPods.map((p: any) => p.metadata.name),
-                            podContainerMap,
-                            ownerName: daemonSet.metadata.name,
-                        };
+                        return resolveLogTargetFromPods(namespace, daemonSetPods, daemonSet.metadata.name);
                     }}
                     tabContext={currentContext}
                 />

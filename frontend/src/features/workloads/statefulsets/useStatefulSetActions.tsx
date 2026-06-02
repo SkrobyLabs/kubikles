@@ -3,6 +3,7 @@ import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBa
 import { DeleteStatefulSet, RestartStatefulSet, ListPods } from 'wailsjs/go/main/App';
 import StatefulSetDetails from '~/components/shared/StatefulSetDetails';
 import { DeferredLogViewer, ResolvedLogViewerProps } from '~/components/shared/log-viewer';
+import { resolveLogTargetFromPods } from '~/components/shared/log-viewer/logTarget';
 import Logger from '~/utils/Logger';
 import { K8sStatefulSet, K8sPod } from '~/types/k8s';
 
@@ -68,28 +69,7 @@ export const useStatefulSetActions = (): any => {
 
                         if (statefulSetPods.length === 0) return null;
 
-                        const pod = statefulSetPods[0];
-                        const containers: string[] = [
-                            ...(pod.spec?.initContainers || []).map((c: any) => c.name),
-                            ...(pod.spec?.containers || []).map((c: any) => c.name)
-                        ];
-
-                        const podContainerMap: Record<string, string[]> = {};
-                        for (const p of statefulSetPods) {
-                            podContainerMap[p.metadata.name] = [
-                                ...(p.spec?.initContainers || []).map((c: any) => c.name),
-                                ...(p.spec?.containers || []).map((c: any) => c.name)
-                            ];
-                        }
-
-                        return {
-                            namespace,
-                            pod: pod.metadata.name,
-                            containers,
-                            siblingPods: statefulSetPods.map((p: any) => p.metadata.name),
-                            podContainerMap,
-                            ownerName: statefulSet.metadata.name,
-                        };
+                        return resolveLogTargetFromPods(namespace, statefulSetPods, statefulSet.metadata.name);
                     }}
                     tabContext={currentContext}
                 />

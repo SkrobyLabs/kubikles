@@ -21,6 +21,7 @@ import { getOwnerViewId } from '~/utils/owner-navigation';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
 import { usePodNotifications, warmUpAudio, playNotificationSound } from '~/hooks/usePodNotifications';
 import { ALL_PODS } from '~/components/shared/log-viewer';
+import { getLogContainerNames } from '~/components/shared/log-viewer/logTarget';
 
 export default function PodList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces, crds, ensureCRDsLoaded } = useK8s();
@@ -386,25 +387,26 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
                     menuPosition={menuPosition}
                     onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `pod-${item.metadata.uid}`, buttonElement)}
                     onLogs={() => {
-                        const containers = [
-                            ...(item.spec?.initContainers || []).map((c: any) => c.name),
-                            ...(item.spec?.containers || []).map((c: any) => c.name)
-                        ];
+                        const containers = getLogContainerNames(item);
 
                         const controller = getPodController(item);
                         let siblingPods = [];
+                        const podContainerMap: Record<string, string[]> = {};
                         if (controller) {
-                            siblingPods = pods
-                                .filter((p: any) => {
-                                    const c = getPodController(p);
-                                    return c && c.uid === controller.uid;
-                                })
-                                .map((p: any) => p.metadata.name);
+                            const relatedPods = pods.filter((p: any) => {
+                                const c = getPodController(p);
+                                return c && c.uid === controller.uid;
+                            });
+                            siblingPods = relatedPods.map((p: any) => p.metadata.name);
+                            for (const pod of relatedPods) {
+                                podContainerMap[pod.metadata.name] = getLogContainerNames(pod);
+                            }
                         } else {
                             siblingPods = [item.metadata.name];
                         }
+                        podContainerMap[item.metadata.name] = containers;
 
-                        openLogs(item.metadata.namespace, item.metadata.name, containers, siblingPods, {}, '', item.metadata.creationTimestamp);
+                        openLogs(item.metadata.namespace, item.metadata.name, containers, siblingPods, podContainerMap, '', item.metadata.creationTimestamp);
                     }}
                     onShell={() => handleShell(item)}
                     onFiles={() => handleFiles(item)}

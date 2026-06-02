@@ -3,6 +3,7 @@ import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBa
 import { DeleteReplicaSet, ListPods } from 'wailsjs/go/main/App';
 import ReplicaSetDetails from '~/components/shared/ReplicaSetDetails';
 import { DeferredLogViewer, ResolvedLogViewerProps } from '~/components/shared/log-viewer';
+import { resolveLogTargetFromPods } from '~/components/shared/log-viewer/logTarget';
 import Logger from '~/utils/Logger';
 import { K8sReplicaSet, K8sPod } from '~/types/k8s';
 
@@ -58,28 +59,7 @@ export const useReplicaSetActions = (): any => {
 
                         if (replicaSetPods.length === 0) return null;
 
-                        const pod: K8sPod = replicaSetPods[0];
-                        const containers: string[] = [
-                            ...(pod.spec?.initContainers || []).map((c: any) => c.name),
-                            ...(pod.spec?.containers || []).map((c: any) => c.name)
-                        ];
-
-                        const podContainerMap: Record<string, string[]> = {};
-                        for (const p of replicaSetPods) {
-                            podContainerMap[p.metadata.name] = [
-                                ...(p.spec?.initContainers || []).map((c: any) => c.name),
-                                ...(p.spec?.containers || []).map((c: any) => c.name)
-                            ];
-                        }
-
-                        return {
-                            namespace,
-                            pod: pod.metadata.name,
-                            containers,
-                            siblingPods: replicaSetPods.map((p: any) => p.metadata.name),
-                            podContainerMap,
-                            ownerName: replicaSet.metadata.name,
-                        };
+                        return resolveLogTargetFromPods(namespace, replicaSetPods, replicaSet.metadata.name);
                     }}
                     tabContext={currentContext}
                 />

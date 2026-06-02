@@ -4,6 +4,7 @@ import { DeleteCronJob, TriggerCronJob, SuspendCronJob, ListJobs, ListPods } fro
 import { useK8s } from '~/context';
 import CronJobDetails from '~/components/shared/CronJobDetails';
 import { DeferredLogViewer, ResolvedLogViewerProps } from '~/components/shared/log-viewer';
+import { resolveLogTargetFromPods } from '~/components/shared/log-viewer/logTarget';
 import Logger from '~/utils/Logger';
 import { K8sCronJob } from '~/types/k8s';
 
@@ -35,7 +36,7 @@ export const useCronJobActions = (): any => {
 
     const handleViewLogs = (cronJob: K8sCronJob): void => {
         Logger.info("View logs for CronJob", { namespace: cronJob.metadata.namespace, name: cronJob.metadata.name }, 'k8s');
-        const namespace = cronJob.metadata.namespace;
+        const namespace = cronJob.metadata.namespace!;
 
         openTab({
             id: `logs-cronjob-${cronJob.metadata.name}`,
@@ -66,28 +67,7 @@ export const useCronJobActions = (): any => {
 
                         if (jobPods.length === 0) return null;
 
-                        const pod = jobPods[0];
-                        const containers = [
-                            ...(pod.spec?.initContainers || []).map((c: any) => c.name),
-                            ...(pod.spec?.containers || []).map((c: any) => c.name)
-                        ];
-
-                        const podContainerMap: Record<string, string[]> = {};
-                        for (const p of jobPods) {
-                            podContainerMap[p.metadata.name] = [
-                                ...(p.spec?.initContainers || []).map((c: any) => c.name),
-                                ...(p.spec?.containers || []).map((c: any) => c.name)
-                            ];
-                        }
-
-                        return {
-                            namespace,
-                            pod: pod.metadata.name,
-                            containers,
-                            siblingPods: jobPods.map((p: any) => p.metadata.name),
-                            podContainerMap,
-                            ownerName: cronJob.metadata.name,
-                        };
+                        return resolveLogTargetFromPods(namespace, jobPods, cronJob.metadata.name);
                     }}
                     tabContext={currentContext}
                 />
@@ -99,7 +79,7 @@ export const useCronJobActions = (): any => {
     const handleRunNow = async (cronJob: K8sCronJob): Promise<void> => {
         try {
             const name = cronJob.metadata.name;
-            const namespace = cronJob.metadata.namespace;
+            const namespace = cronJob.metadata.namespace!;
             Logger.info("Run now requested for CronJob", { namespace, name }, 'k8s');
             await TriggerCronJob(namespace, name);
             Logger.info("TriggerCronJob returned successfully", { namespace, name }, 'k8s');
@@ -115,7 +95,7 @@ export const useCronJobActions = (): any => {
             const isSuspended = cronJob.spec?.suspend || false;
             const action = isSuspended ? "Resume" : "Suspend";
             const name = cronJob.metadata.name;
-            const namespace = cronJob.metadata.namespace;
+            const namespace = cronJob.metadata.namespace!;
 
             Logger.info(`${action} requested for CronJob`, { namespace, name }, 'k8s');
             await SuspendCronJob(namespace, name, !isSuspended);
@@ -130,7 +110,7 @@ export const useCronJobActions = (): any => {
 
     const handleDelete = (cronJob: K8sCronJob): void => {
         const name = cronJob.metadata.name;
-        const namespace = cronJob.metadata.namespace;
+        const namespace = cronJob.metadata.namespace!;
         Logger.info("Delete CronJob requested", { namespace, name }, 'k8s');
 
         openModal({

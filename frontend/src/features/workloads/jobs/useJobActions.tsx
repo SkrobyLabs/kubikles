@@ -3,6 +3,7 @@ import { useBaseResourceActions, BaseResourceActionsReturn } from '~/hooks/useBa
 import { DeleteJob, ListPods } from 'wailsjs/go/main/App';
 import JobDetails from '~/components/shared/JobDetails';
 import { DeferredLogViewer, ResolvedLogViewerProps } from '~/components/shared/log-viewer';
+import { resolveLogTargetFromPods } from '~/components/shared/log-viewer/logTarget';
 import Logger from '~/utils/Logger';
 import { K8sJob } from '~/types/k8s';
 
@@ -30,7 +31,7 @@ export const useJobActions = (onRefresh?: () => void): any => {
     });
 
     const handleDelete = (job: K8sJob): void => {
-        const namespace = job.metadata.namespace;
+        const namespace = job.metadata.namespace!;
         Logger.info("Delete Job requested", { namespace, name: job.metadata.name }, 'k8s');
         openModal({
             title: 'Confirm Delete',
@@ -50,7 +51,7 @@ export const useJobActions = (onRefresh?: () => void): any => {
     };
 
     const handleViewLogs = (job: K8sJob): void => {
-        const namespace = job.metadata.namespace;
+        const namespace = job.metadata.namespace!;
         Logger.info("View logs for Job", { namespace, name: job.metadata.name }, 'k8s');
 
         openTab({
@@ -67,28 +68,7 @@ export const useJobActions = (onRefresh?: () => void): any => {
 
                         if (jobPods.length === 0) return null;
 
-                        const pod = jobPods[0];
-                        const containers = [
-                            ...(pod.spec?.initContainers || []).map((c: any) => c.name),
-                            ...(pod.spec?.containers || []).map((c: any) => c.name)
-                        ];
-
-                        const podContainerMap: Record<string, string[]> = {};
-                        for (const p of jobPods) {
-                            podContainerMap[p.metadata.name] = [
-                                ...(p.spec?.initContainers || []).map((c: any) => c.name),
-                                ...(p.spec?.containers || []).map((c: any) => c.name)
-                            ];
-                        }
-
-                        return {
-                            namespace,
-                            pod: pod.metadata.name,
-                            containers,
-                            siblingPods: jobPods.map((p: any) => p.metadata.name),
-                            podContainerMap,
-                            ownerName: job.metadata.name,
-                        };
+                        return resolveLogTargetFromPods(namespace, jobPods, job.metadata.name);
                     }}
                     tabContext={currentContext}
                 />
