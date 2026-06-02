@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { PencilSquareIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, PencilSquareIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel } from './DetailComponents';
+import { DetailRow, DetailSection, StatusBadge, CopyableLabel } from './DetailComponents';
 import { LazyYamlEditor as YamlEditor } from '../lazy';
 import NodeMetricsTab from './NodeMetricsTab';
 
@@ -24,6 +24,63 @@ function formatCPU(cpu: any) {
     }
     return `${cpu} cores`;
 }
+
+const normalizeSearchTerm = (term: string) => term.trim().toLowerCase();
+
+const matchesSearch = (parts: any[], term: string) => {
+    const normalizedTerm = normalizeSearchTerm(term);
+    if (!normalizedTerm) return true;
+
+    return parts.some((part) => {
+        if (part === null || part === undefined) return false;
+        return String(part).toLowerCase().includes(normalizedTerm);
+    });
+};
+
+const entriesFromObject = (obj: any) => Object.entries(obj || {})
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => ({
+        key,
+        value,
+        display: `${key}=${value}`
+    }));
+
+const SectionSearchInput = ({
+    value,
+    onChange,
+    placeholder
+}: { value: string; onChange: (value: string) => void; placeholder: string }) => (
+    <div className="relative w-40 max-w-full sm:w-48">
+        <MagnifyingGlassIcon className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+        <input
+            type="text"
+            value={value}
+            onChange={(e: any) => onChange(e.target.value)}
+            placeholder={placeholder}
+            className="w-full pl-7 pr-7 py-1 text-xs bg-surface border border-border rounded text-gray-200 placeholder:text-gray-500 focus:outline-none focus:border-primary transition-colors"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck="false"
+        />
+        {value && (
+            <button
+                type="button"
+                onClick={() => onChange('')}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-500 hover:text-gray-300 rounded"
+                title="Clear search"
+            >
+                <XMarkIcon className="w-3.5 h-3.5" />
+            </button>
+        )}
+    </div>
+);
+
+const NoSectionMatches = ({ term }: { term: string }) => (
+    <div className="text-gray-500 text-sm text-center py-4">
+        No matches for "{term}"
+    </div>
+);
 
 export default function NodeDetails({ node, tabContext = '' }: any) {
     const { currentContext } = useK8s();
@@ -50,6 +107,108 @@ export default function NodeDetails({ node, tabContext = '' }: any) {
     const capacity = status.capacity || {};
     const allocatable = status.allocatable || {};
     const taints = spec.taints || [];
+    const [sectionSearch, setSectionSearch] = useState<Record<string, string>>({});
+
+    const getSectionTerm = (sectionKey: string) => sectionSearch[sectionKey] || '';
+    const setSectionTerm = (sectionKey: string, value: string) => {
+        setSectionSearch((prev) => ({
+            ...prev,
+            [sectionKey]: value
+        }));
+    };
+
+    const systemInfoRows = useMemo(() => [
+        { label: 'OS Image', value: nodeInfo.osImage },
+        { label: 'Architecture', value: nodeInfo.architecture },
+        { label: 'Kernel', value: nodeInfo.kernelVersion },
+        { label: 'Container Runtime', value: nodeInfo.containerRuntimeVersion },
+        { label: 'Kubelet', value: nodeInfo.kubeletVersion },
+        { label: 'Kube-Proxy', value: nodeInfo.kubeProxyVersion },
+    ], [nodeInfo]);
+
+    const metadataRows = useMemo(() => [
+        { label: 'Name', value: name, copyValue: name },
+        {
+            label: 'Created',
+            value: node.metadata?.creationTimestamp ? `${formatAge(node.metadata.creationTimestamp)} ago` : 'N/A',
+            title: node.metadata?.creationTimestamp
+        },
+        {
+            label: 'UID',
+            value: node.metadata?.uid ? `${node.metadata.uid.substring(0, 8)}...` : 'N/A',
+            copyValue: node.metadata?.uid
+        },
+    ], [name, node.metadata?.creationTimestamp, node.metadata?.uid]);
+
+    const labelEntries = useMemo(() => entriesFromObject(labels), [labels]);
+    const annotationEntries = useMemo(() => entriesFromObject(annotations), [annotations]);
+
+    const filteredConditions = useMemo(() => (
+        conditions.filter((condition: any) => matchesSearch([
+            condition.type,
+            condition.status,
+            condition.reason,
+            condition.message,
+            condition.lastHeartbeatTime,
+            condition.lastTransitionTime,
+        ], getSectionTerm('conditions')))
+    ), [conditions, sectionSearch]);
+
+    const filteredAddresses = useMemo(() => (
+        addresses.filter((addr: any) => matchesSearch([
+            addr.type,
+            addr.address,
+        ], getSectionTerm('addresses')))
+    ), [addresses, sectionSearch]);
+
+    const filteredSystemInfoRows = useMemo(() => (
+        systemInfoRows.filter((row) => matchesSearch([
+            row.label,
+            row.value,
+        ], getSectionTerm('systemInfo')))
+    ), [systemInfoRows, sectionSearch]);
+
+    const filteredTaints = useMemo(() => (
+        taints.filter((taint: any) => matchesSearch([
+            taint.key,
+            taint.value,
+            taint.effect,
+            `${taint.key}=${taint.value || ''}:${taint.effect}`,
+        ], getSectionTerm('taints')))
+    ), [taints, sectionSearch]);
+
+    const filteredMetadataRows = useMemo(() => (
+        metadataRows.filter((row) => matchesSearch([
+            row.label,
+            row.value,
+            row.copyValue,
+            row.title,
+        ], getSectionTerm('metadata')))
+    ), [metadataRows, sectionSearch]);
+
+    const filteredLabels = useMemo(() => (
+        labelEntries.filter((entry) => matchesSearch([
+            entry.key,
+            entry.value,
+            entry.display,
+        ], getSectionTerm('labels')))
+    ), [labelEntries, sectionSearch]);
+
+    const filteredAnnotations = useMemo(() => (
+        annotationEntries.filter((entry) => matchesSearch([
+            entry.key,
+            entry.value,
+            entry.display,
+        ], getSectionTerm('annotations')))
+    ), [annotationEntries, sectionSearch]);
+
+    const renderSearch = (sectionKey: string, placeholder: string) => (
+        <SectionSearchInput
+            value={getSectionTerm(sectionKey)}
+            onChange={(value) => setSectionTerm(sectionKey, value)}
+            placeholder={placeholder}
+        />
+    );
 
     const handleEditYaml = () => {
         const tabId = `yaml-node-${name}`;
@@ -164,9 +323,9 @@ export default function NodeDetails({ node, tabContext = '' }: any) {
                 </DetailSection>
 
                 {/* Conditions */}
-                <DetailSection title="Conditions">
+                <DetailSection title="Conditions" headerAction={renderSearch('conditions', 'Search conditions...')}>
                     <div className="space-y-2">
-                        {conditions.map((condition: any, idx: number) => (
+                        {filteredConditions.map((condition: any, idx: number) => (
                             <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                                 <div className="flex items-center gap-2">
                                     <StatusBadge status={condition.type} variant={getConditionVariant(condition)} />
@@ -177,64 +336,103 @@ export default function NodeDetails({ node, tabContext = '' }: any) {
                                 </span>
                             </div>
                         ))}
+                        {conditions.length > 0 && normalizeSearchTerm(getSectionTerm('conditions')) && filteredConditions.length === 0 && (
+                            <NoSectionMatches term={getSectionTerm('conditions')} />
+                        )}
                     </div>
                 </DetailSection>
 
                 {/* Addresses */}
-                <DetailSection title="Addresses">
-                    {addresses.map((addr: any, idx: number) => (
+                <DetailSection title="Addresses" headerAction={renderSearch('addresses', 'Search addresses...')}>
+                    {filteredAddresses.map((addr: any, idx: number) => (
                         <DetailRow key={idx} label={addr.type}>
                             <CopyableLabel value={addr.address} />
                         </DetailRow>
                     ))}
+                    {addresses.length > 0 && normalizeSearchTerm(getSectionTerm('addresses')) && filteredAddresses.length === 0 && (
+                        <NoSectionMatches term={getSectionTerm('addresses')} />
+                    )}
                 </DetailSection>
 
                 {/* System Info */}
-                <DetailSection title="System Info">
-                    <DetailRow label="OS Image" value={nodeInfo.osImage} />
-                    <DetailRow label="Architecture" value={nodeInfo.architecture} />
-                    <DetailRow label="Kernel" value={nodeInfo.kernelVersion} />
-                    <DetailRow label="Container Runtime" value={nodeInfo.containerRuntimeVersion} />
-                    <DetailRow label="Kubelet" value={nodeInfo.kubeletVersion} />
-                    <DetailRow label="Kube-Proxy" value={nodeInfo.kubeProxyVersion} />
+                <DetailSection title="System Info" headerAction={renderSearch('systemInfo', 'Search system info...')}>
+                    {filteredSystemInfoRows.map((row) => (
+                        <DetailRow key={row.label} label={row.label} value={row.value} />
+                    ))}
+                    {systemInfoRows.length > 0 && normalizeSearchTerm(getSectionTerm('systemInfo')) && filteredSystemInfoRows.length === 0 && (
+                        <NoSectionMatches term={getSectionTerm('systemInfo')} />
+                    )}
                 </DetailSection>
 
                 {/* Taints */}
                 {taints.length > 0 && (
-                    <DetailSection title="Taints">
+                    <DetailSection title="Taints" headerAction={renderSearch('taints', 'Search taints...')}>
                         <div className="space-y-1.5">
-                            {taints.map((taint: any, idx: number) => (
+                            {filteredTaints.map((taint: any, idx: number) => (
                                 <div key={idx} className="flex items-center gap-2">
                                     <CopyableLabel
                                         value={`${taint.key}=${taint.value || ''}:${taint.effect}`}
                                     />
                                 </div>
                             ))}
+                            {normalizeSearchTerm(getSectionTerm('taints')) && filteredTaints.length === 0 && (
+                                <NoSectionMatches term={getSectionTerm('taints')} />
+                            )}
                         </div>
                     </DetailSection>
                 )}
 
                 {/* Metadata */}
-                <DetailSection title="Metadata">
-                    <DetailRow label="Name" value={name} />
-                    <DetailRow label="Created">
-                        <span title={node.metadata?.creationTimestamp}>
-                            {formatAge(node.metadata?.creationTimestamp)} ago
-                        </span>
-                    </DetailRow>
-                    <DetailRow label="UID">
-                        <CopyableLabel value={node.metadata?.uid?.substring(0, 8) + '...'} copyValue={node.metadata?.uid} />
-                    </DetailRow>
+                <DetailSection title="Metadata" headerAction={renderSearch('metadata', 'Search metadata...')}>
+                    {filteredMetadataRows.map((row) => (
+                        <DetailRow key={row.label} label={row.label}>
+                            {row.label === 'UID' ? (
+                                <CopyableLabel value={row.value} copyValue={row.copyValue} />
+                            ) : row.title ? (
+                                <span title={row.title}>{row.value}</span>
+                            ) : (
+                                row.value
+                            )}
+                        </DetailRow>
+                    ))}
+                    {metadataRows.length > 0 && normalizeSearchTerm(getSectionTerm('metadata')) && filteredMetadataRows.length === 0 && (
+                        <NoSectionMatches term={getSectionTerm('metadata')} />
+                    )}
                 </DetailSection>
 
                 {/* Labels */}
-                <DetailSection title="Labels">
-                    <LabelsDisplay labels={labels} />
+                <DetailSection title="Labels" headerAction={renderSearch('labels', 'Search labels...')}>
+                    {labelEntries.length === 0 ? (
+                        <span className="text-gray-500">None</span>
+                    ) : filteredLabels.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                            {filteredLabels.map((entry) => (
+                                <CopyableLabel key={entry.key} value={entry.display} />
+                            ))}
+                        </div>
+                    ) : (
+                        <NoSectionMatches term={getSectionTerm('labels')} />
+                    )}
                 </DetailSection>
 
                 {/* Annotations */}
-                <DetailSection title="Annotations">
-                    <AnnotationsDisplay annotations={annotations} />
+                <DetailSection title="Annotations" headerAction={renderSearch('annotations', 'Search annotations...')}>
+                    {annotationEntries.length === 0 ? (
+                        <span className="text-gray-500">None</span>
+                    ) : filteredAnnotations.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                            {filteredAnnotations.map((entry) => (
+                                <CopyableLabel
+                                    key={entry.key}
+                                    value={entry.key.length > 40 ? `${entry.key.substring(0, 40)}...` : entry.key}
+                                    copyValue={entry.display}
+                                    className="bg-purple-500/10 border-purple-500/30"
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <NoSectionMatches term={getSectionTerm('annotations')} />
+                    )}
                 </DetailSection>
             </div>
             )}
