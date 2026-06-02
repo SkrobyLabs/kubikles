@@ -114,6 +114,33 @@ describe('createFilter', () => {
     });
 
     describe('regex queries', () => {
+        it('filters names with bare regex pattern', () => {
+            const filter = createFilter('pods', '/^nginx/');
+            const results = mockPods.filter(filter);
+            expect(results).toHaveLength(2);
+            expect(results.every(p => p.metadata.name.startsWith('nginx'))).toBe(true);
+        });
+
+        it('filters names with case-insensitive bare regex', () => {
+            const filter = createFilter('pods', '/NGINX/i');
+            const results = mockPods.filter(filter);
+            expect(results).toHaveLength(2);
+        });
+
+        it('treats invalid bare regex as literal name text', () => {
+            const filter = createFilter('pods', '/[invalid/');
+            const results = mockPods.filter(filter);
+            expect(results).toHaveLength(0);
+        });
+
+        it('resets stateful bare regex flags between items', () => {
+            const filter = createFilter('pods', '/nginx/g');
+            const firstPass = mockPods.filter(filter);
+            const secondPass = mockPods.filter(filter);
+            expect(firstPass).toHaveLength(2);
+            expect(secondPass).toHaveLength(2);
+        });
+
         it('filters with regex pattern', () => {
             const filter = createFilter('pods', 'name:/^nginx/');
             const results = mockPods.filter(filter);
@@ -136,6 +163,12 @@ describe('createFilter', () => {
             const filter = createFilter('pods', 'name:/^(nginx|redis)-[a-z]+\\d+$/');
             const results = mockPods.filter(filter);
             expect(results).toHaveLength(3); // nginx-abc123, nginx-def456, redis-xyz789
+        });
+
+        it('keeps field regex behavior for non-name fields', () => {
+            const filter = createFilter('pods', 'status:/Running|Pending/');
+            const results = mockPods.filter(filter);
+            expect(results).toHaveLength(4);
         });
     });
 
@@ -168,4 +201,3 @@ describe('createFilter', () => {
         });
     });
 });
-

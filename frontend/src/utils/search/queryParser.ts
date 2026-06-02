@@ -6,7 +6,7 @@
  * Supported syntax:
  * - Plain text: "my-pod" -> matches name containing "my-pod"
  * - Field-specific: name:"my-pod", nodeName:"node1"
- * - Regex: name:/^prefix/, status:/running/i
+ * - Regex: /^prefix/, name:/^prefix/, status:/running/i
  * - Multiple conditions: name:"api" status:"Running" (AND-ed)
  * - OR groups: name:/^web-/ OR name:/^api-/ (OR-ed groups)
  */
@@ -66,6 +66,18 @@ function parseSegment(segment: string): any[] {
             conditions.push(fieldMatch.condition);
             remaining = remaining.slice(fieldMatch.consumed);
         } else {
+            const regexMatch = matchRegexToken(remaining);
+
+            if (regexMatch) {
+                conditions.push({
+                    type: 'plain',
+                    value: regexMatch.value,
+                    isRegex: regexMatch.isRegex
+                });
+                remaining = remaining.slice(regexMatch.consumed);
+                continue;
+            }
+
             // Plain text - extract next word (stop at whitespace or field pattern)
             const wordMatch = remaining.match(/^([^\s:]+)(?=\s|$|[a-zA-Z]+:)/);
             if (wordMatch) {
@@ -95,6 +107,28 @@ function parseSegment(segment: string): any[] {
     return conditions;
 }
 
+function matchRegexToken(str: string): { value: RegExp | string; isRegex: boolean; consumed: number } | null {
+    const regexMatch = str.match(/^\/(.+?)\/([gimsuy]*)?(?=\s|,|$)/);
+    if (!regexMatch) return null;
+
+    const pattern = regexMatch[1];
+    const flags = regexMatch[2] || '';
+
+    try {
+        return {
+            value: new RegExp(pattern, flags),
+            isRegex: true,
+            consumed: regexMatch[0].length
+        };
+    } catch (e: any) {
+        return {
+            value: regexMatch[0],
+            isRegex: false,
+            consumed: regexMatch[0].length
+        };
+    }
+}
+
 /**
  * Try to match a field:value condition at the start of the string.
  *
@@ -111,33 +145,17 @@ function matchFieldCondition(str: string): { condition: any; consumed: number } 
     const afterColon = str.slice(pos);
 
     // Try regex pattern: /pattern/flags
-    const regexMatch = afterColon.match(/^\/(.+?)\/([gimsuy]*)?(?=\s|,|$)/);
+    const regexMatch = matchRegexToken(afterColon);
     if (regexMatch) {
-        const pattern = regexMatch[1];
-        const flags = regexMatch[2] || '';
-        try {
-            const regex = new RegExp(pattern, flags);
-            return {
-                condition: {
-                    type: 'field',
-                    field: fieldName,
-                    value: regex,
-                    isRegex: true
-                },
-                consumed: pos + regexMatch[0].length
-            };
-        } catch (e: any) {
-            // Invalid regex - treat as literal string
-            return {
-                condition: {
-                    type: 'field',
-                    field: fieldName,
-                    value: regexMatch[0],
-                    isRegex: false
-                },
-                consumed: pos + regexMatch[0].length
-            };
-        }
+        return {
+            condition: {
+                type: 'field',
+                field: fieldName,
+                value: regexMatch.value,
+                isRegex: regexMatch.isRegex
+            },
+            consumed: pos + regexMatch.consumed
+        };
     }
 
     // Try double-quoted value: "value"

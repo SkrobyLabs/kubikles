@@ -52,6 +52,11 @@ function matchCondition(item: any, condition: any, resourceType: string): boolea
     if (condition.type === 'plain') {
         // Plain text matches name only (backward compatible)
         const name = item.metadata?.name || '';
+
+        if (condition.isRegex) {
+            return testRegex(condition.value, name);
+        }
+
         return name.toLowerCase().includes(condition.value.toLowerCase());
     }
 
@@ -67,11 +72,7 @@ function matchCondition(item: any, condition: any, resourceType: string): boolea
 
         if (condition.isRegex) {
             // Regex match
-            try {
-                return condition.value.test(fieldValue);
-            } catch (e: any) {
-                return false;
-            }
+            return testRegex(condition.value, fieldValue);
         } else {
             // Case-insensitive partial match
             return fieldValue.toLowerCase().includes(condition.value.toLowerCase());
@@ -81,3 +82,13 @@ function matchCondition(item: any, condition: any, resourceType: string): boolea
     return false;
 }
 
+function testRegex(regex: any, value: any): boolean {
+    if (!(regex instanceof RegExp)) return false;
+
+    try {
+        regex.lastIndex = 0;
+        return regex.test(String(value || ''));
+    } catch (e: any) {
+        return false;
+    }
+}

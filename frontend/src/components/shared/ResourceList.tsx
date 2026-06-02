@@ -1379,8 +1379,8 @@ export default function ResourceList({
                                                 <div className="text-xs text-gray-500 ml-2">name:"my-pod" status:Running</div>
                                             </div>
                                             <div>
-                                                <span className="text-gray-300">Regex:</span> field:/pattern/
-                                                <div className="text-xs text-gray-500 ml-2">name:/^nginx-/ name:/end$/</div>
+                                                <span className="text-gray-300">Regex:</span> /pattern/ or field:/pattern/
+                                                <div className="text-xs text-gray-500 ml-2">/^nginx-/ name:/end$/</div>
                                             </div>
                                             <div>
                                                 <span className="text-gray-300">OR groups:</span> condition OR condition

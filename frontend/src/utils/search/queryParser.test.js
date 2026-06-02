@@ -95,6 +95,39 @@ describe('parseQuery', () => {
     });
 
     describe('regex queries', () => {
+        it('parses bare regex pattern as a plain regex condition', () => {
+            const result = parseQuery('/^nginx-/');
+            expect(result.groups).toHaveLength(1);
+            expect(result.groups[0]).toHaveLength(1);
+            expect(result.groups[0][0].type).toBe('plain');
+            expect(result.groups[0][0].isRegex).toBe(true);
+            expect(result.groups[0][0].value).toBeInstanceOf(RegExp);
+            expect(result.groups[0][0].value.source).toBe('^nginx-');
+        });
+
+        it('parses bare regex with flags', () => {
+            const result = parseQuery('/NGINX/i');
+            expect(result.groups[0][0].type).toBe('plain');
+            expect(result.groups[0][0].isRegex).toBe(true);
+            expect(result.groups[0][0].value.flags).toBe('i');
+        });
+
+        it('parses complex bare regex patterns', () => {
+            const result = parseQuery('/^(api|web)-\\d+$/');
+            expect(result.groups[0][0].value.test('api-123')).toBe(true);
+            expect(result.groups[0][0].value.test('web-456')).toBe(true);
+            expect(result.groups[0][0].value.test('db-789')).toBe(false);
+        });
+
+        it('treats invalid bare regex as literal plain text', () => {
+            const result = parseQuery('/[invalid/');
+            expect(result.groups[0][0]).toEqual({
+                type: 'plain',
+                value: '/[invalid/',
+                isRegex: false
+            });
+        });
+
         it('parses regex pattern', () => {
             const result = parseQuery('name:/^nginx/');
             expect(result.groups).toHaveLength(1);
@@ -132,6 +165,15 @@ describe('parseQuery', () => {
     });
 
     describe('mixed queries', () => {
+        it('parses bare regex with field conditions', () => {
+            const result = parseQuery('/^nginx-/ namespace:default');
+            expect(result.groups).toHaveLength(1);
+            expect(result.groups[0]).toHaveLength(2);
+            expect(result.groups[0][0].type).toBe('plain');
+            expect(result.groups[0][0].isRegex).toBe(true);
+            expect(result.groups[0][1]).toEqual({ type: 'field', field: 'namespace', value: 'default', isRegex: false });
+        });
+
         it('parses plain text with field conditions', () => {
             const result = parseQuery('api name:nginx status:Running');
             expect(result.groups).toHaveLength(1);
@@ -156,6 +198,15 @@ describe('parseQuery', () => {
     });
 
     describe('OR groups', () => {
+        it('splits bare regex OR groups', () => {
+            const result = parseQuery('/^web-/ OR /^api-/');
+            expect(result.groups).toHaveLength(2);
+            expect(result.groups[0][0].type).toBe('plain');
+            expect(result.groups[0][0].isRegex).toBe(true);
+            expect(result.groups[1][0].type).toBe('plain');
+            expect(result.groups[1][0].isRegex).toBe(true);
+        });
+
         it('splits conditions by OR keyword', () => {
             const result = parseQuery('name:/^web-/ OR name:/^api-/');
             expect(result.groups).toHaveLength(2);
