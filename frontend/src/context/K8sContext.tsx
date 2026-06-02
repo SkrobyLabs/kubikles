@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespaces, StartAutoStartPortForwards, ListCRDs, GetK8sInitError } from 'wailsjs/go/main/App';
+import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespaces, StartAutoStartPortForwards, ListCRDs, GetK8sInitError, SubscribeResourceWatcher, UnsubscribeWatcher } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
 
@@ -56,6 +56,14 @@ interface WatcherStatusEvent {
     resourceType: string;
     namespace?: string;
     status: 'running' | 'connected' | 'error' | 'stopped';
+    context?: string;
+}
+
+interface ResourceEvent {
+    type: 'ADDED' | 'MODIFIED' | 'DELETED';
+    resourceType: string;
+    namespace?: string;
+    resource?: any;
     context?: string;
 }
 
@@ -267,17 +275,41 @@ const parseConnectionError = (error: unknown): Omit<ConnectionError, 'raw'> => {
     };
 };
 
+const normalizeNamespaceNames = (list: any[]): string[] => {
+    const names = new Set<string>();
+
+    for (const item of list || []) {
+        const name = typeof item === 'string' ? item : item?.metadata?.name;
+        if (name) names.add(name);
+    }
+
+    return ['', ...Array.from(names).sort((a, b) => a.localeCompare(b))];
+};
+
+const areStringArraysEqual = (a: string[], b: string[]): boolean => (
+    a.length === b.length && a.every((value, index) => value === b[index])
+);
+
+const pruneSelectedNamespaces = (selected: string[], available: string[]): string[] => {
+    const availableSet = new Set(available.filter((namespace) => namespace !== ''));
+    return (selected || []).filter((namespace) => (
+        namespace === '*' || namespace === '' || availableSet.has(namespace)
+    ));
+};
+
 export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [contexts, setContexts] = useState<string[]>([]);
     const [currentContext, setCurrentContext] = useState<string>('');
     const currentContextRef = useRef<string>(''); // Ref for event handlers to avoid stale closures
     const [namespaces, setNamespaces] = useState<string[]>([]);
+    const namespacesRef = useRef<string[]>([]);
     const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>(['default']);
     const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
     const [isLoadingNamespaces, setIsLoadingNamespaces] = useState<boolean>(false);
     const [reconcileToken, setReconcileToken] = useState(0);
     const watcherPrevStatusRef = useRef<Record<string, string>>({});
     const reconnectRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const namespaceRefreshPromiseRef = useRef<{ context: string; promise: Promise<string[] | void> } | null>(null);
     const [connectionError, setConnectionError] = useState<ConnectionError | null>(null); // { title, message, suggestion, provider, raw }
     const [isConnecting, setIsConnecting] = useState<boolean>(true); // Initial loading state
     const [retryToken, setRetryToken] = useState<number>(0); // Incremented to force data loading effect to re-run
@@ -441,31 +473,120 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     }, []);
 
-    const fetchNamespaces = useCallback(async (): Promise<void> => {
-        if (!currentContext) return;
-        try {
-            Logger.debug("Fetching namespaces...", { context: currentContext }, 'k8s');
-            const list: Namespace[] = await ListNamespaces(currentContext);
-            // Extract namespace names from objects
-            const namespaceNames = (list || []).map((ns: any) => ns.metadata?.name || ns).filter(Boolean) as string[];
-            // Prepend "All Namespaces" option (empty string value)
-            const namespacesWithAll = ['', ...namespaceNames];
-            setNamespaces(namespacesWithAll);
-            Logger.info("Namespaces fetched", { count: namespaceNames.length }, 'k8s');
-            // Note: Don't clear connectionError here - other API calls might still be failing.
-            // Error is only cleared when a watcher successfully connects.
-            setIsConnecting(false);
-        } catch (err: any) {
-            Logger.error("Failed to fetch namespaces", err, 'k8s');
-            // Set connection error - this is the first actual cluster call
-            const parsed = parseConnectionError(err);
-            setConnectionError({
-                ...parsed,
-                raw: String(err)
-            });
-            setIsConnecting(false);
+    const applyNamespaceOptions = useCallback((nextNamespaces: string[], reason: string): void => {
+        namespacesRef.current = nextNamespaces;
+        setNamespaces(prev => {
+            if (areStringArraysEqual(prev, nextNamespaces)) {
+                return prev;
+            }
+
+            Logger.debug("Namespace options changed", { reason, previous: prev, current: nextNamespaces }, 'k8s');
+            return nextNamespaces;
+        });
+
+        setSelectedNamespaces(prev => {
+            const pruned = pruneSelectedNamespaces(prev, nextNamespaces);
+            return areStringArraysEqual(prev, pruned) ? prev : pruned;
+        });
+    }, []);
+
+    const refreshNamespacesInternal = useCallback(async ({
+        background = false,
+        context = currentContext
+    }: { background?: boolean; context?: string } = {}): Promise<string[] | void> => {
+        if (!context) return;
+
+        if (namespaceRefreshPromiseRef.current?.context === context) {
+            return namespaceRefreshPromiseRef.current.promise;
         }
-    }, [currentContext]);
+
+        let refreshPromise: Promise<string[] | void>;
+        const runRefresh = async (): Promise<string[] | void> => {
+            const contextForRequest = context;
+            if (!background) {
+                Logger.debug("Fetching namespaces...", { context: contextForRequest }, 'k8s');
+            } else {
+                Logger.debug("Refreshing namespaces in background...", { context: contextForRequest }, 'k8s');
+            }
+
+            try {
+                const list: Namespace[] = await ListNamespaces(contextForRequest);
+
+                if (currentContextRef.current !== contextForRequest) {
+                    Logger.debug("Namespace refresh completed for stale context, ignoring", {
+                        requestedContext: contextForRequest,
+                        currentContext: currentContextRef.current
+                    }, 'k8s');
+                    return;
+                }
+
+                const nextNamespaces = normalizeNamespaceNames(list);
+                applyNamespaceOptions(nextNamespaces, background ? 'background-refresh' : 'foreground-load');
+                Logger.info("Namespaces refreshed", { count: nextNamespaces.length - 1, changedOnly: true, background }, 'k8s');
+
+                if (!background) {
+                    // Note: Don't clear connectionError here - other API calls might still be failing.
+                    // Error is only cleared when a watcher successfully connects.
+                    setIsConnecting(false);
+                }
+                return nextNamespaces;
+            } catch (err: any) {
+                Logger.error(background ? "Failed to refresh namespaces in background" : "Failed to fetch namespaces", err, 'k8s');
+                if (!background) {
+                    const parsed = parseConnectionError(err);
+                    setConnectionError({
+                        ...parsed,
+                        raw: String(err)
+                    });
+                    setIsConnecting(false);
+                }
+            } finally {
+                if (namespaceRefreshPromiseRef.current?.promise === refreshPromise) {
+                    namespaceRefreshPromiseRef.current = null;
+                }
+            }
+        };
+        refreshPromise = runRefresh();
+
+        namespaceRefreshPromiseRef.current = { context, promise: refreshPromise };
+        return refreshPromise;
+    }, [applyNamespaceOptions, currentContext]);
+
+    const fetchNamespaces = useCallback(async (): Promise<void> => {
+        await refreshNamespacesInternal({ background: true, context: currentContext });
+    }, [currentContext, refreshNamespacesInternal]);
+
+    const loadNamespaces = useCallback(async (context: string): Promise<string[] | void> => {
+        return refreshNamespacesInternal({ background: false, context });
+    }, [refreshNamespacesInternal]);
+
+    const applyNamespaceEvent = useCallback((event: ResourceEvent): void => {
+        const namespaceName = typeof event.resource === 'string' ? event.resource : event.resource?.metadata?.name;
+        if (!namespaceName) return;
+
+        const previousNamespaces = namespacesRef.current;
+        let nextNamespaces: string[];
+
+        if (event.type === 'DELETED') {
+            nextNamespaces = previousNamespaces.filter((namespace) => namespace !== namespaceName);
+        } else {
+            nextNamespaces = normalizeNamespaceNames([...previousNamespaces, namespaceName]);
+        }
+
+        if (areStringArraysEqual(previousNamespaces, nextNamespaces)) {
+            return;
+        }
+
+        Logger.debug("Namespace watcher updated options", { type: event.type, namespace: namespaceName }, 'k8s');
+        namespacesRef.current = nextNamespaces;
+        setNamespaces(prev => {
+            return areStringArraysEqual(prev, nextNamespaces) ? prev : nextNamespaces;
+        });
+        setSelectedNamespaces(selected => {
+            const pruned = pruneSelectedNamespaces(selected, nextNamespaces);
+            return areStringArraysEqual(selected, pruned) ? selected : pruned;
+        });
+    }, []);
 
     const switchContext = useCallback(async (newContext: string): Promise<void> => {
         // No-op when clicking the same context we're already on.
@@ -487,6 +608,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             // Clear state immediately to prevent stale data display
             setNamespaces([]);
+            namespacesRef.current = [];
             setSelectedNamespaces([]);
 
             // Set loading flag to prevent saves during switch
@@ -579,7 +701,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return; // Don't proceed with namespace loading if connection fails
             }
 
-            await fetchNamespaces();
+            const loadedNamespaces = await loadNamespaces(contextForThisEffect);
 
             // Check again after namespace fetch
             if (cancelled || currentContextRef.current !== contextForThisEffect) {
@@ -590,8 +712,10 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // After namespaces are loaded, restore saved state
             const savedState = loadContextState(contextForThisEffect);
             if (savedState.namespaces && savedState.namespaces.length > 0) {
-                setSelectedNamespaces(savedState.namespaces);
-                Logger.debug("Restored namespaces after context switch", { namespaces: savedState.namespaces }, 'k8s');
+                const availableNamespaces = Array.isArray(loadedNamespaces) ? loadedNamespaces : namespacesRef.current;
+                const restoredNamespaces = pruneSelectedNamespaces(savedState.namespaces, availableNamespaces);
+                setSelectedNamespaces(prev => areStringArraysEqual(prev, restoredNamespaces) ? prev : restoredNamespaces);
+                Logger.debug("Restored namespaces after context switch", { namespaces: restoredNamespaces }, 'k8s');
             }
             setIsLoadingNamespaces(false);
             setIsConnecting(false);
@@ -612,7 +736,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return () => {
             cancelled = true;
         };
-    }, [currentContext, retryToken]);
+    }, [currentContext, retryToken, loadNamespaces]);
 
     // Save namespaces when they change (but not while loading)
     useEffect(() => {
@@ -700,6 +824,63 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             cancelStatus();
         };
     }, []);
+
+    // Keep namespace selector options current with a cluster-scoped namespace watcher.
+    useEffect(() => {
+        if (!(window as any).runtime || !currentContext) return;
+
+        const contextForWatcher = currentContext;
+        const subscribedKeys: string[] = [];
+        let isMounted = true;
+
+        const subscribe = async (): Promise<void> => {
+            try {
+                const key = await SubscribeResourceWatcher('namespaces', '');
+                if (key && isMounted) {
+                    subscribedKeys.push(key);
+                } else if (key) {
+                    UnsubscribeWatcher(key).catch(() => {});
+                }
+            } catch (err: any) {
+                Logger.error("Failed to subscribe to namespace watcher", err, 'k8s');
+            }
+        };
+
+        const handleEvent = (event: ResourceEvent): void => {
+            if (!isMounted || event?.resourceType !== 'namespaces') return;
+            if (event.context && event.context !== currentContextRef.current) {
+                Logger.debug("Ignoring stale namespace event from old context", { context: event.context, currentContext: currentContextRef.current }, 'k8s');
+                return;
+            }
+            if (contextForWatcher !== currentContextRef.current) {
+                Logger.debug("Ignoring namespace event for inactive watcher context", { contextForWatcher, currentContext: currentContextRef.current }, 'k8s');
+                return;
+            }
+            applyNamespaceEvent(event);
+        };
+
+        const handleBatchEvents = (events: ResourceEvent[]): void => {
+            if (!isMounted || !Array.isArray(events)) return;
+            for (const event of events) {
+                handleEvent(event);
+            }
+        };
+
+        subscribe();
+        const cancelEvent = EventsOn("resource-event", handleEvent);
+        const cancelBatch = EventsOn("resource-events-batch", handleBatchEvents);
+
+        return () => {
+            isMounted = false;
+            cancelEvent();
+            cancelBatch();
+            subscribedKeys.forEach((key) => {
+                UnsubscribeWatcher(key).catch((err: any) => {
+                    Logger.error("Failed to unsubscribe namespace watcher", err, 'k8s');
+                });
+            });
+        };
+    }, [currentContext, applyNamespaceEvent]);
 
     // Keep context ref in sync for event handlers (avoids stale closures)
     useEffect(() => {

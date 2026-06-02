@@ -29,7 +29,7 @@ export default function SearchSelect({
     getOptionLabel?: ((option: any) => string) | null;
     renderOption?: ((option: any, isSelected: boolean) => React.ReactNode) | null;
     disabled?: boolean;
-    onOpen?: (() => void) | null;
+    onOpen?: (() => void | Promise<void>) | null;
     preserveOrder?: boolean;
     searchable?: boolean;
     multiSelectLabels?: { all: string; count: (n: number) => string } | null;

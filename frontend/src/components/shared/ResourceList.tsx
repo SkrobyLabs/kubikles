@@ -24,8 +24,7 @@ import SavedViewsDropdown from './SavedViewsDropdown';
 import { createFilter, getFieldsMetadata } from '~/utils/search';
 import { useSavedViews } from '~/hooks/useSavedViews';
 import type { SavedView } from '~/hooks/useSavedViews';
-import { useUI } from '~/context';
-import { useConfig } from '~/context';
+import { useConfig, useK8s, useUI } from '~/context';
 
 // Internal filter type used by columnFilters state
 interface ColumnFilter {
@@ -458,6 +457,7 @@ export default function ResourceList({
 }: ResourceListProps) {
     const { pendingSearch, consumePendingSearch } = useUI();
     const { getConfig } = useConfig();
+    const { refreshNamespaces } = useK8s();
 
     // Loading progress: prefer external prop, fall back to internal listener
     const [internalProgress, setInternalProgress] = useState<LoadingProgress | null>(null);
@@ -1435,6 +1435,7 @@ export default function ResourceList({
                                 onChange={onNamespaceChange}
                                 placeholder="Select Namespace..."
                                 multiSelect={multiSelectNamespaces}
+                                onOpen={refreshNamespaces}
                             />
                         </div>
                     )}
