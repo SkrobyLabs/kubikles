@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseQuery } from './queryParser';
+import { tokenizeSearchHighlights } from './highlightTokens';
 
 describe('parseQuery', () => {
     describe('edge cases', () => {
@@ -239,5 +240,41 @@ describe('parseQuery', () => {
             expect(result.groups[0][0].value.test('worker-1')).toBe(true);
             expect(result.groups[0][0].value.test('master-1')).toBe(false);
         });
+    });
+});
+
+describe('tokenizeSearchHighlights', () => {
+    it('classifies valid bare regex tokens', () => {
+        expect(tokenizeSearchHighlights('/^nginx-/')).toEqual([
+            { text: '/^nginx-/', kind: 'regex' }
+        ]);
+    });
+
+    it('classifies valid field regex tokens with the field prefix plain', () => {
+        expect(tokenizeSearchHighlights('name:/api|web/i')).toEqual([
+            { text: 'name:', kind: 'plain' },
+            { text: '/api|web/i', kind: 'regex' }
+        ]);
+    });
+
+    it('classifies invalid bare regex tokens', () => {
+        expect(tokenizeSearchHighlights('/[invalid/')).toEqual([
+            { text: '/[invalid/', kind: 'invalidRegex' }
+        ]);
+    });
+
+    it('classifies invalid field regex tokens', () => {
+        expect(tokenizeSearchHighlights('name:/[invalid/')).toEqual([
+            { text: 'name:', kind: 'plain' },
+            { text: '/[invalid/', kind: 'invalidRegex' }
+        ]);
+    });
+
+    it('preserves mixed plain text around regex tokens', () => {
+        expect(tokenizeSearchHighlights('api /^nginx-/ status:Running')).toEqual([
+            { text: 'api ', kind: 'plain' },
+            { text: '/^nginx-/', kind: 'regex' },
+            { text: ' status:Running', kind: 'plain' }
+        ]);
     });
 });

@@ -22,6 +22,7 @@ import BulkActionBar from './BulkActionBar';
 import ColumnConfigurator from './ColumnConfigurator';
 import SavedViewsDropdown from './SavedViewsDropdown';
 import { createFilter, getFieldsMetadata } from '~/utils/search';
+import { tokenizeSearchHighlights } from '~/utils/search/highlightTokens';
 import { useSavedViews } from '~/hooks/useSavedViews';
 import type { SavedView } from '~/hooks/useSavedViews';
 import { useConfig, useK8s, useUI } from '~/context';
@@ -38,6 +39,33 @@ interface ColumnFilter {
 }
 
 type ColumnFiltersMap = Record<string, ColumnFilter>;
+
+const SearchHighlightOverlay = React.memo(({ query }: { query: string }) => {
+    const tokens = useMemo(() => tokenizeSearchHighlights(query), [query]);
+    if (!query) return null;
+
+    return (
+        <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-0 overflow-hidden whitespace-pre rounded-md border border-transparent pl-9 pr-4 py-1.5 text-sm leading-5 text-text"
+        >
+            {tokens.map((token, index) => (
+                <span
+                    key={`${index}-${token.text}`}
+                    className={
+                        token.kind === 'regex'
+                            ? 'font-semibold text-primary'
+                            : token.kind === 'invalidRegex'
+                                ? 'font-semibold text-error'
+                                : undefined
+                    }
+                >
+                    {token.text}
+                </span>
+            ))}
+        </div>
+    );
+});
 
 // Position state for the column filter dropdown
 interface ColumnFilterPosition {
@@ -1344,12 +1372,15 @@ export default function ResourceList({
 
                     {/* Search Bar */}
                     <div className="relative max-w-md w-full flex items-center gap-1 no-drag">
-                        <div className="relative flex-1">
-                            <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                        <div className="relative flex-1 rounded-md bg-background">
+                            <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2 z-30" />
+                            <SearchHighlightOverlay query={searchInput} />
                             <input
                                 type="text"
                                 placeholder={resourceType ? `Search... (name:"x" status:Running)` : `Search ${title}...`}
-                                className="w-full bg-background border border-border rounded-md pl-9 pr-4 py-1.5 text-sm text-text focus:outline-none focus:border-primary transition-colors"
+                                className={`relative z-10 w-full bg-transparent border border-border rounded-md pl-9 pr-4 py-1.5 text-sm caret-text focus:outline-none focus:border-primary transition-colors ${
+                                    searchInput ? 'text-transparent' : 'text-text'
+                                }`}
                                 value={searchInput}
                                 onChange={(e: any) => setSearchInput(e.target.value)}
                                 autoComplete="off"
