@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { GetSecretYaml, UpdateSecretYaml, GetSecretData, UpdateSecretData, GetCertificateInfo, GetAllCertificateInfo } from 'wailsjs/go/main/App';
+import { GetSecretYaml, UpdateSecretYaml, GetSecretData, UpdateSecretData, GetAllCertificateInfo } from 'wailsjs/go/main/App';
 import { useK8s } from '~/context';
 import { useNotification } from '~/context';
 import Logger from '~/utils/Logger';
 import { EyeIcon, EyeSlashIcon, TrashIcon, PlusIcon, LockClosedIcon, MagnifyingGlassIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import CertificateModal from './CertificateModal';
+import { CertificateBadge, makeCertificateCacheEntry } from './certificateBadge';
 
 const MODE_YAML = 'yaml';
 const MODE_KEYVALUE = 'keyvalue';
@@ -54,15 +55,15 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
 
     const isPEMCertificate = (entry: any) => getTextValue(entry)?.includes('-----BEGIN CERTIFICATE-----');
 
-    // Load certificate info for entries that look like certificates
+    // Load certificate chain info for entries that look like certificates
     useEffect(() => {
         const loadCertInfo = async () => {
             for (const entry of secretEntries) {
                 if (isPEMCertificate(entry) && !certInfoCache[entry.id]) {
                     try {
-                        const info = await GetCertificateInfo(getTextValue(entry));
-                        if (info?.isCertificate) {
-                            setCertInfoCache(prev => ({ ...prev, [entry.id]: info }));
+                        const certificates = await GetAllCertificateInfo(getTextValue(entry));
+                        if (certificates?.length > 0) {
+                            setCertInfoCache(prev => ({ ...prev, [entry.id]: makeCertificateCacheEntry(certificates) }));
                         }
                     } catch (err: any) {
                         Logger.debug("Failed to parse certificate", { key: entry.key, error: err }, 'config');
@@ -78,12 +79,11 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
     // Handle opening certificate modal
     const handleViewCertificate = async (entry: any) => {
         try {
-            // Fetch all certificates in the chain
-            const certificates = await GetAllCertificateInfo(getTextValue(entry));
+            const cached = certInfoCache[entry.id];
+            const certificates = cached?.certificates || await GetAllCertificateInfo(getTextValue(entry));
             if (certificates?.length > 0) {
-                // Cache the first cert for the badge display
                 if (!certInfoCache[entry.id]) {
-                    setCertInfoCache(prev => ({ ...prev, [entry.id]: certificates[0] }));
+                    setCertInfoCache(prev => ({ ...prev, [entry.id]: makeCertificateCacheEntry(certificates) }));
                 }
                 setSelectedCert({ certificates, pemData: getTextValue(entry) });
             }
@@ -91,41 +91,6 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
             Logger.error("Failed to get certificate info", err, 'config');
             addNotification({ type: 'error', title: 'Failed to parse certificate', message: String(err) });
         }
-    };
-
-    // Get expiry badge color based on days until expiry
-    const getExpiryBadgeStyle = (certInfo: any) => {
-        if (!certInfo) return null;
-        if (certInfo.isExpired || certInfo.daysUntilExpiry < 7) {
-            return 'bg-red-600/20 text-red-400 border-red-500/30';
-        }
-        if (certInfo.daysUntilExpiry <= 30) {
-            return 'bg-amber-600/20 text-amber-400 border-amber-500/30';
-        }
-        return 'bg-green-600/20 text-green-400 border-green-500/30';
-    };
-
-    // Format expiry text
-    const getExpiryText = (certInfo: any) => {
-        if (!certInfo) return '';
-        if (certInfo.isExpired) return 'Expired';
-        if (certInfo.daysUntilExpiry === 0) return 'Expires today';
-        if (certInfo.daysUntilExpiry === 1) return 'Expires tomorrow';
-        return `${certInfo.daysUntilExpiry}d`;
-    };
-
-    // Get first SAN or subject for display
-    const getCertSummary = (certInfo: any) => {
-        if (!certInfo) return '';
-        if (certInfo.dnsNames?.length > 0) {
-            const first = certInfo.dnsNames[0];
-            if (certInfo.dnsNames.length > 1) {
-                return `${first} +${certInfo.dnsNames.length - 1}`;
-            }
-            return first;
-        }
-        // Use subject.commonName if no SANs
-        return certInfo.subject?.commonName || '';
     };
 
     const generateId = () => {
@@ -460,13 +425,10 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                                                     {/* Certificate expiry badge - aligned under textarea */}
                                                     {isCert && certInfo && (
                                                         <div className="mt-1.5">
-                                                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs rounded border ${getExpiryBadgeStyle(certInfo)}`}>
-                                                                <ShieldCheckIcon className="h-3 w-3" />
-                                                                <span>{getExpiryText(certInfo)}</span>
-                                                                {getCertSummary(certInfo) && (
-                                                                    <span className="text-gray-400">({getCertSummary(certInfo)})</span>
-                                                                )}
-                                                            </span>
+                                                            <CertificateBadge
+                                                                cacheEntry={certInfo}
+                                                                onClick={() => handleViewCertificate(entry)}
+                                                            />
                                                         </div>
                                                     )}
                                                     {!showBase64 && entry.isBinary && (
