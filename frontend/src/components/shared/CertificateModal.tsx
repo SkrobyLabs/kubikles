@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
     XMarkIcon,
@@ -8,6 +8,8 @@ import {
     ExclamationTriangleIcon,
     XCircleIcon,
     ClockIcon,
+    ChevronDoubleLeftIcon,
+    ChevronDoubleRightIcon,
     ChevronLeftIcon,
     ChevronRightIcon
 } from '@heroicons/react/24/outline';
@@ -91,15 +93,58 @@ export default function CertificateModal({ certificates, pemData, onClose }: { c
     const [showRaw, setShowRaw] = useState(false);
     const [pemCopied, setPemCopied] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [currentInput, setCurrentInput] = useState('1');
 
     // Handle both single cert (legacy) and array of certs
     const certArray = Array.isArray(certificates) ? certificates : (certificates ? [certificates] : []);
+    const totalCerts = certArray.length;
+
+    useEffect(() => {
+        if (totalCerts > 0 && currentIndex >= totalCerts) {
+            setCurrentIndex(totalCerts - 1);
+        }
+    }, [currentIndex, totalCerts]);
+
+    useEffect(() => {
+        setCurrentInput(String(currentIndex + 1));
+    }, [currentIndex]);
 
     if (certArray.length === 0 || !certArray[0]?.isCertificate) return null;
 
-    const certInfo = certArray[currentIndex];
-    const totalCerts = certArray.length;
+    const certInfo = certArray[Math.min(currentIndex, totalCerts - 1)];
     const hasMultiple = totalCerts > 1;
+
+    const goToIndex = (index: number) => {
+        const nextIndex = Math.min(totalCerts - 1, Math.max(0, index));
+        setCurrentIndex(nextIndex);
+    };
+
+    const restoreCurrentInput = () => {
+        setCurrentInput(String(currentIndex + 1));
+    };
+
+    const commitCurrentInput = () => {
+        const parsedIndex = Number(currentInput);
+        if (Number.isInteger(parsedIndex) && parsedIndex > 0 && parsedIndex <= totalCerts) {
+            goToIndex(parsedIndex - 1);
+            return;
+        }
+
+        restoreCurrentInput();
+    };
+
+    const handleCurrentInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            commitCurrentInput();
+            e.currentTarget.blur();
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            restoreCurrentInput();
+            e.currentTarget.blur();
+        }
+    };
 
     // Get cert type label for navigation
     const getCertTypeLabel = (cert: any, index: number) => {
@@ -206,29 +251,56 @@ export default function CertificateModal({ certificates, pemData, onClose }: { c
             <div className="absolute inset-0 bg-black/60" onClick={onClose} />
             <div className="relative bg-surface border border-border rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-                    <div className="flex items-center gap-3">
+                <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-border shrink-0">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
                         <h2 className="text-lg font-medium text-white">Certificate Details</h2>
                         {hasMultiple && (
-                            <div className="flex items-center gap-1">
+                            <div className="flex flex-wrap items-center gap-1">
                                 <button
-                                    onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
+                                    onClick={() => goToIndex(0)}
+                                    disabled={currentIndex === 0}
+                                    className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    title="First certificate"
+                                >
+                                    <ChevronDoubleLeftIcon className="h-4 w-4" />
+                                </button>
+                                <button
+                                    onClick={() => goToIndex(currentIndex - 1)}
                                     disabled={currentIndex === 0}
                                     className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                                     title="Previous certificate"
                                 >
                                     <ChevronLeftIcon className="h-4 w-4" />
                                 </button>
-                                <span className="text-sm text-gray-400 min-w-[80px] text-center">
-                                    {currentIndex + 1} of {totalCerts}
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={totalCerts}
+                                    value={currentInput}
+                                    onChange={(e) => setCurrentInput(e.target.value)}
+                                    onBlur={commitCurrentInput}
+                                    onKeyDown={handleCurrentInputKeyDown}
+                                    className="w-14 px-2 py-1 text-sm text-center bg-background border border-border text-text rounded focus:border-primary"
+                                    aria-label="Current certificate number"
+                                />
+                                <span className="text-sm text-text-muted whitespace-nowrap">
+                                    / {totalCerts}
                                 </span>
                                 <button
-                                    onClick={() => setCurrentIndex(i => Math.min(totalCerts - 1, i + 1))}
+                                    onClick={() => goToIndex(currentIndex + 1)}
                                     disabled={currentIndex === totalCerts - 1}
                                     className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                                     title="Next certificate"
                                 >
                                     <ChevronRightIcon className="h-4 w-4" />
+                                </button>
+                                <button
+                                    onClick={() => goToIndex(totalCerts - 1)}
+                                    disabled={currentIndex === totalCerts - 1}
+                                    className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    title="Last certificate"
+                                >
+                                    <ChevronDoubleRightIcon className="h-4 w-4" />
                                 </button>
                                 <span className="text-xs px-2 py-0.5 rounded bg-surface-light text-gray-400 ml-1">
                                     {getCertTypeLabel(certInfo, currentIndex)}
