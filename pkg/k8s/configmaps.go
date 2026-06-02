@@ -59,6 +59,11 @@ func bytesFromDataEntry(entry DataEntry) ([]byte, error) {
 	return []byte(entry.Value), nil
 }
 
+// BytesFromDataEntry returns the raw bytes represented by a DataEntry.
+func BytesFromDataEntry(entry DataEntry) ([]byte, error) {
+	return bytesFromDataEntry(entry)
+}
+
 func (c *Client) ListConfigMaps(namespace string) ([]v1.ConfigMap, error) {
 	ctx, cancel := c.contextWithTimeout()
 	defer cancel()

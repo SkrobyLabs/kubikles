@@ -536,6 +536,8 @@ export function RunIssueScan(arg1:Array<string>,arg2:Array<string>,arg3:Array<st
 
 export function SaveDebugLogs(arg1:string,arg2:string):Promise<void>;
 
+export function SaveDataEntryValue(arg1:k8s.DataEntry,arg2:string):Promise<void>;
+
 export function SaveLogFile(arg1:string):Promise<void>;
 
 export function SaveLogsBundle(arg1:Array<main.PodLogEntry>,arg2:string):Promise<void>;

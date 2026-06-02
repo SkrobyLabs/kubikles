@@ -50,6 +50,50 @@ func TestGetCurrentContext_Empty(t *testing.T) {
 	}
 }
 
+func TestBytesFromDataEntryText(t *testing.T) {
+	got, err := BytesFromDataEntry(DataEntry{
+		Key:      "config.txt",
+		Value:    "plain text value",
+		Source:   DataEntrySourceData,
+		Encoding: DataEntryEncodingText,
+	})
+	if err != nil {
+		t.Fatalf("BytesFromDataEntry() error = %v", err)
+	}
+	if string(got) != "plain text value" {
+		t.Errorf("BytesFromDataEntry() = %q, want %q", string(got), "plain text value")
+	}
+}
+
+func TestBytesFromDataEntryBase64(t *testing.T) {
+	want := []byte{0, 1, 2, 255}
+	got, err := BytesFromDataEntry(DataEntry{
+		Key:         "secret.bin",
+		Base64Value: base64.StdEncoding.EncodeToString(want),
+		IsBinary:    true,
+		Source:      DataEntrySourceBinaryData,
+		Encoding:    DataEntryEncodingBase64,
+	})
+	if err != nil {
+		t.Fatalf("BytesFromDataEntry() error = %v", err)
+	}
+	if string(got) != string(want) {
+		t.Errorf("BytesFromDataEntry() = %v, want %v", got, want)
+	}
+}
+
+func TestBytesFromDataEntryInvalidBase64(t *testing.T) {
+	_, err := BytesFromDataEntry(DataEntry{
+		Key:         "bad",
+		Base64Value: "not valid base64",
+		IsBinary:    true,
+		Encoding:    DataEntryEncodingBase64,
+	})
+	if err == nil {
+		t.Fatal("BytesFromDataEntry() error = nil, want error")
+	}
+}
+
 // ============================================================================
 // Pod Tests
 // ============================================================================

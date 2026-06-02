@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { GetConfigMapYaml, UpdateConfigMapYaml, GetConfigMapData, UpdateConfigMapData, GetAllCertificateInfo } from 'wailsjs/go/main/App';
+import { GetConfigMapYaml, UpdateConfigMapYaml, GetConfigMapData, UpdateConfigMapData, GetAllCertificateInfo, SaveDataEntryValue } from 'wailsjs/go/main/App';
 import { useK8s } from '~/context';
 import { useNotification } from '~/context';
 import Logger from '~/utils/Logger';
-import { TrashIcon, PlusIcon, LockClosedIcon, MagnifyingGlassIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, PlusIcon, LockClosedIcon, MagnifyingGlassIcon, ShieldCheckIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import CertificateModal from './CertificateModal';
 import { CertificateBadge, makeCertificateCacheEntry } from './certificateBadge';
 
@@ -24,12 +24,14 @@ const dataToEntries = (entries: any[] = []) => {
     }));
 };
 
+const entryToData = ({ id, ...entry }: any) => ({
+    ...entry,
+    encoding: entry.encoding || (entry.isBinary ? 'base64' : 'text'),
+});
+
 const entriesToData = (entries: any[]) => entries
     .filter((entry: any) => entry.key)
-    .map(({ id, ...entry }: any) => ({
-        ...entry,
-        encoding: entry.encoding || (entry.isBinary ? 'base64' : 'text'),
-    }));
+    .map(entryToData);
 
 export default function ConfigMapEditor({ namespace, resourceName, onClose, tabContext = '', initialMode = MODE_YAML }: any) {
     const { currentContext } = useK8s();
@@ -205,6 +207,15 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
 
     const handleDeleteEntry = (id: any) => {
         setConfigMapEntries(entries => entries.filter((entry: any) => entry.id !== id));
+    };
+
+    const handleDownloadEntry = async (entry: any) => {
+        try {
+            await SaveDataEntryValue(entryToData(entry), entry.key || 'value');
+        } catch (err: any) {
+            Logger.error("Failed to download configmap value", err, 'config');
+            addNotification({ type: 'error', title: 'Failed to download value', message: String(err) });
+        }
     };
 
     const handleAddKey = () => {
@@ -433,6 +444,13 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                                                     title="Delete key"
                                                 >
                                                     <TrashIcon className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDownloadEntry(entry)}
+                                                    className="p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded transition-colors"
+                                                    title="Download value"
+                                                >
+                                                    <ArrowDownTrayIcon className="h-4 w-4" />
                                                 </button>
                                             </div>
                                         </div>

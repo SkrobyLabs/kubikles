@@ -4,8 +4,11 @@ import (
 	"archive/zip"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"kubikles/pkg/debug"
+	"kubikles/pkg/k8s"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -79,6 +82,54 @@ func (a *App) SavePodLogs(content string, defaultFilename string) error {
 	}
 
 	return os.WriteFile(filePath, []byte(content), 0644) //nolint:gosec // User-exported file, 0644 is intentional
+}
+
+func (a *App) SaveDataEntryValue(entry k8s.DataEntry, defaultFilename string) error {
+	filename := sanitizeDataEntryFilename(defaultFilename)
+	if filename == "value" && entry.Key != "" {
+		filename = sanitizeDataEntryFilename(entry.Key)
+	}
+
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: filename,
+		Title:           "Save Value",
+	})
+	if err != nil {
+		return err
+	}
+
+	if filePath == "" {
+		return nil // User canceled
+	}
+
+	data, err := k8s.BytesFromDataEntry(entry)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filePath, data, 0644) //nolint:gosec // User-exported file, 0644 is intentional
+}
+
+func sanitizeDataEntryFilename(name string) string {
+	name = strings.TrimSpace(filepath.Base(strings.ReplaceAll(name, "\\", "/")))
+	if name == "" || name == "." || name == ".." {
+		return "value"
+	}
+
+	replacer := strings.NewReplacer(
+		":", "_",
+		"*", "_",
+		"?", "_",
+		"\"", "_",
+		"<", "_",
+		">", "_",
+		"|", "_",
+	)
+	name = replacer.Replace(name)
+	if strings.Trim(name, "._ ") == "" {
+		return "value"
+	}
+	return name
 }
 
 // PodLogEntry represents a single container's logs for the bundle

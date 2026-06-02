@@ -1054,6 +1054,10 @@ export function SaveDebugLogs(arg1, arg2) {
   return window['go']['main']['App']['SaveDebugLogs'](arg1, arg2);
 }
 
+export function SaveDataEntryValue(arg1, arg2) {
+  return window['go']['main']['App']['SaveDataEntryValue'](arg1, arg2);
+}
+
 export function SaveLogFile(arg1) {
   return window['go']['main']['App']['SaveLogFile'](arg1);
 }

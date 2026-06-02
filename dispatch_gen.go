@@ -2863,6 +2863,16 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return nil, c.app.SaveDebugLogs(p0, p1)
+	case "SaveDataEntryValue":
+		p0, err := unmarshalArg[k8s.DataEntry](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[string](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		return nil, c.app.SaveDataEntryValue(p0, p1)
 	case "SaveLogFile":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {

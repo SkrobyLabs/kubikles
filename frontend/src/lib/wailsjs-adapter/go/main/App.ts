@@ -345,6 +345,7 @@ export function RestartStatefulSet(...args) { return AppProxy.RestartStatefulSet
 export function RollbackHelmRelease(...args) { return AppProxy.RollbackHelmRelease(...args); }
 export function RunIssueScan(...args) { return AppProxy.RunIssueScan(...args); }
 export function SaveDebugLogs(...args) { return AppProxy.SaveDebugLogs(...args); }
+export function SaveDataEntryValue(...args) { return AppProxy.SaveDataEntryValue(...args); }
 export function SaveLogFile(...args) { return AppProxy.SaveLogFile(...args); }
 export function SaveLogsBundle(...args) { return AppProxy.SaveLogsBundle(...args); }
 export function SavePodLogs(...args) { return AppProxy.SavePodLogs(...args); }
