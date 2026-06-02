@@ -10,23 +10,25 @@ import CertificateModal from './CertificateModal';
 const MODE_YAML = 'yaml';
 const MODE_KEYVALUE = 'keyvalue';
 
-// Convert object to array with stable IDs
-const objectToEntries = (obj: any) => {
-    return Object.entries(obj || {}).map(([key, value], index) => ({
+// Add stable UI IDs to byte-safe backend entries.
+const dataToEntries = (entries: any[] = []) => {
+    return entries.map((entry: any, index) => ({
         id: `entry-${Date.now()}-${index}`,
-        key,
-        value
+        key: entry.key || '',
+        value: entry.value || '',
+        base64Value: entry.base64Value || '',
+        isBinary: !!entry.isBinary,
+        source: entry.source || 'data',
+        encoding: entry.encoding || (entry.isBinary ? 'base64' : 'text'),
     }));
 };
 
-// Convert array back to object for saving
-const entriesToObject = (entries: any) => {
-    const result: Record<string, any> = {};
-    entries.forEach(({ key, value }: { key: any; value: any }) => {
-        if (key) result[key] = value;
-    });
-    return result;
-};
+const entriesToData = (entries: any[]) => entries
+    .filter((entry: any) => entry.key)
+    .map(({ id, ...entry }: any) => ({
+        ...entry,
+        encoding: entry.encoding || (entry.isBinary ? 'base64' : 'text'),
+    }));
 
 export default function ConfigMapEditor({ namespace, resourceName, onClose, tabContext = '', initialMode = MODE_YAML }: any) {
     const { currentContext } = useK8s();
@@ -47,15 +49,17 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
     const isStale = tabContext && tabContext !== currentContext;
 
     // Check if a value looks like a PEM certificate
-    const isPEMCertificate = (value: any) => value?.includes('-----BEGIN CERTIFICATE-----');
+    const getTextValue = (entry: any) => (!entry.isBinary && entry.encoding !== 'base64' && entry.source !== 'binaryData' ? entry.value : '');
+
+    const isPEMCertificate = (entry: any) => getTextValue(entry)?.includes('-----BEGIN CERTIFICATE-----');
 
     // Load certificate info for entries that look like certificates
     useEffect(() => {
         const loadCertInfo = async () => {
             for (const entry of configMapEntries) {
-                if (isPEMCertificate(entry.value) && !certInfoCache[entry.id]) {
+                if (isPEMCertificate(entry) && !certInfoCache[entry.id]) {
                     try {
-                        const info = await GetCertificateInfo(entry.value);
+                        const info = await GetCertificateInfo(getTextValue(entry));
                         if (info?.isCertificate) {
                             setCertInfoCache(prev => ({ ...prev, [entry.id]: info }));
                         }
@@ -73,12 +77,12 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
     // Handle opening certificate modal
     const handleViewCertificate = async (entry: any) => {
         try {
-            const certificates = await GetAllCertificateInfo(entry.value);
+            const certificates = await GetAllCertificateInfo(getTextValue(entry));
             if (certificates?.length > 0) {
                 if (!certInfoCache[entry.id]) {
                     setCertInfoCache(prev => ({ ...prev, [entry.id]: certificates[0] }));
                 }
-                setSelectedCert({ certificates, pemData: entry.value });
+                setSelectedCert({ certificates, pemData: getTextValue(entry) });
             }
         } catch (err: any) {
             Logger.error("Failed to get certificate info", err, 'config');
@@ -139,7 +143,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                 GetConfigMapData(namespace, resourceName)
             ]);
             setYamlContent(yaml);
-            setConfigMapEntries(objectToEntries(data));
+            setConfigMapEntries(dataToEntries(data));
             Logger.info("ConfigMap data fetched successfully", { namespace, name: resourceName }, 'config');
         } catch (err: any) {
             Logger.error("Failed to load configmap", err, 'config');
@@ -158,7 +162,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
             addNotification({ type: 'success', title: 'ConfigMap saved successfully', message: '' });
             // Refresh key-value data after YAML save
             const data = await GetConfigMapData(namespace, resourceName);
-            setConfigMapEntries(objectToEntries(data));
+            setConfigMapEntries(dataToEntries(data));
         } catch (err: any) {
             Logger.error("Failed to save configmap", err, 'config');
             addNotification({ type: 'error', title: 'Failed to save ConfigMap', message: String(err) });
@@ -171,13 +175,16 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
         setSaving(true);
         Logger.info("Saving configmap data...", { namespace, name: resourceName }, 'config');
         try {
-            const dataToSave = entriesToObject(configMapEntries);
+            const dataToSave = entriesToData(configMapEntries);
             await UpdateConfigMapData(namespace, resourceName, dataToSave);
             Logger.info("ConfigMap data saved successfully", { namespace, name: resourceName }, 'config');
             addNotification({ type: 'success', title: 'ConfigMap saved successfully', message: '' });
-            // Refresh YAML after key-value save
-            const yaml = await GetConfigMapYaml(namespace, resourceName);
+            const [yaml, data] = await Promise.all([
+                GetConfigMapYaml(namespace, resourceName),
+                GetConfigMapData(namespace, resourceName)
+            ]);
             setYamlContent(yaml);
+            setConfigMapEntries(dataToEntries(data));
         } catch (err: any) {
             Logger.error("Failed to save configmap", err, 'config');
             addNotification({ type: 'error', title: 'Failed to save ConfigMap', message: String(err) });
@@ -220,10 +227,10 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
         );
     };
 
-    const handleValueChange = (id: any, newValue: any) => {
+    const handleValueChange = (id: any, patch: any) => {
         setConfigMapEntries(entries =>
             entries.map((entry: any) =>
-                entry.id === id ? { ...entry, value: newValue } : entry
+                entry.id === id ? { ...entry, ...patch } : entry
             )
         );
     };
@@ -240,7 +247,42 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
             newKey = `NEW_KEY_${counter}`;
             counter++;
         }
-        setConfigMapEntries([...configMapEntries, { id: generateId(), key: newKey, value: '' }]);
+        setConfigMapEntries([...configMapEntries, {
+            id: generateId(),
+            key: newKey,
+            value: '',
+            base64Value: '',
+            isBinary: false,
+            source: 'data',
+            encoding: 'text'
+        }]);
+    };
+
+    const getDisplayValue = (entry: any) => {
+        if (entry.source === 'binaryData' || entry.isBinary || entry.encoding === 'base64') {
+            return entry.base64Value || '';
+        }
+        return entry.value || '';
+    };
+
+    const setValueFromDisplay = (entry: any, displayValue: string) => {
+        if (entry.source === 'binaryData' || entry.isBinary || entry.encoding === 'base64') {
+            handleValueChange(entry.id, {
+                base64Value: displayValue,
+                value: '',
+                source: 'binaryData',
+                encoding: 'base64',
+                isBinary: true
+            });
+            return;
+        }
+
+        handleValueChange(entry.id, {
+            value: displayValue,
+            encoding: 'text',
+            isBinary: false,
+            source: 'data'
+        });
     };
 
     if (loading) {
@@ -361,7 +403,7 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                             {configMapEntries
                                 .filter((entry: any) => !keySearchTerm || entry.key.toLowerCase().includes(keySearchTerm.toLowerCase()))
                                 .map((entry) => {
-                                    const isCert = isPEMCertificate(entry.value);
+                                    const isCert = isPEMCertificate(entry);
                                     const certInfo = certInfoCache[entry.id];
                                     return (
                                         <div key={entry.id} className="flex items-start gap-2 bg-surface-light rounded-md p-3">
@@ -379,8 +421,8 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                                             />
                                             <div className="flex-1 min-w-0">
                                                 <textarea
-                                                    value={entry.value}
-                                                    onChange={(e: any) => !isStale && handleValueChange(entry.id, e.target.value)}
+                                                    value={getDisplayValue(entry)}
+                                                    onChange={(e: any) => !isStale && setValueFromDisplay(entry, e.target.value)}
                                                     disabled={isStale}
                                                     className={`w-full min-h-[60px] px-2 py-1.5 text-sm bg-background border border-border rounded text-gray-200 font-mono focus:outline-none focus:border-primary resize-y ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
                                                     placeholder="Value"
@@ -398,6 +440,13 @@ export default function ConfigMapEditor({ namespace, resourceName, onClose, tabC
                                                             {getCertSummary(certInfo) && (
                                                                 <span className="text-gray-400">({getCertSummary(certInfo)})</span>
                                                             )}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {entry.source === 'binaryData' && (
+                                                    <div className="mt-1.5">
+                                                        <span className="inline-flex items-center px-2 py-0.5 text-xs rounded border bg-amber-600/20 text-amber-400 border-amber-500/30">
+                                                            binaryData, Base64
                                                         </span>
                                                     </div>
                                                 )}

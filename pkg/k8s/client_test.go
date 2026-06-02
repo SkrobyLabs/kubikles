@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"encoding/base64"
 	"strings"
 	"testing"
 	"time"
@@ -494,9 +495,13 @@ func TestListSecrets(t *testing.T) {
 }
 
 func TestGetSecretData(t *testing.T) {
+	binaryValue := []byte{0x50, 0x4b, 0x03, 0x04, 0xba, 0xa0, 0xff}
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-secret", Namespace: "default"},
-		Data:       map[string][]byte{"password": []byte("secret123")},
+		Data: map[string][]byte{
+			"password": []byte("secret123"),
+			"bundle":   binaryValue,
+		},
 	}
 	client := newTestClient(secret)
 
@@ -504,19 +509,33 @@ func TestGetSecretData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSecretData() error = %v", err)
 	}
-	if data["password"] != "secret123" {
-		t.Errorf("GetSecretData() password = %q, want %q", data["password"], "secret123")
+	entries := dataEntriesByKey(data)
+	if entries["password"].Value != "secret123" {
+		t.Errorf("GetSecretData() password = %q, want %q", entries["password"].Value, "secret123")
+	}
+	if entries["password"].Base64Value != base64.StdEncoding.EncodeToString([]byte("secret123")) {
+		t.Errorf("GetSecretData() password base64 = %q", entries["password"].Base64Value)
+	}
+	if !entries["bundle"].IsBinary {
+		t.Error("GetSecretData() binary bundle should be marked binary")
+	}
+	if entries["bundle"].Base64Value != base64.StdEncoding.EncodeToString(binaryValue) {
+		t.Errorf("GetSecretData() bundle base64 = %q, want %q", entries["bundle"].Base64Value, base64.StdEncoding.EncodeToString(binaryValue))
 	}
 }
 
 func TestUpdateSecretData(t *testing.T) {
+	binaryValue := []byte{0x50, 0x4b, 0x03, 0x04, 0xba, 0xa0, 0xff}
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-secret", Namespace: "default"},
 		Data:       map[string][]byte{"old": []byte("data")},
 	}
 	client := newTestClient(secret)
 
-	newData := map[string]string{"new": "value"}
+	newData := []DataEntry{
+		{Key: "new", Value: "value", Encoding: DataEntryEncodingText, Source: DataEntrySourceData},
+		{Key: "bundle", Base64Value: base64.StdEncoding.EncodeToString(binaryValue), Encoding: DataEntryEncodingBase64, IsBinary: true, Source: DataEntrySourceData},
+	}
 	err := client.UpdateSecretData("default", "test-secret", newData)
 	if err != nil {
 		t.Fatalf("UpdateSecretData() error = %v", err)
@@ -527,6 +546,57 @@ func TestUpdateSecretData(t *testing.T) {
 	if string(updated.Data["new"]) != "value" {
 		t.Error("UpdateSecretData() did not update secret data")
 	}
+	if string(updated.Data["bundle"]) != string(binaryValue) {
+		t.Errorf("UpdateSecretData() binary bytes = %v, want %v", updated.Data["bundle"], binaryValue)
+	}
+}
+
+func TestConfigMapBinaryDataRoundTrip(t *testing.T) {
+	binaryValue := []byte{0x50, 0x4b, 0x03, 0x04, 0xba, 0xa0, 0xff}
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-cm", Namespace: "default"},
+		Data:       map[string]string{"text": "hello"},
+		BinaryData: map[string][]byte{"bundle": binaryValue},
+	}
+	client := newTestClient(cm)
+
+	data, err := client.GetConfigMapData("default", "test-cm")
+	if err != nil {
+		t.Fatalf("GetConfigMapData() error = %v", err)
+	}
+	entries := dataEntriesByKey(data)
+	if entries["text"].Value != "hello" {
+		t.Errorf("GetConfigMapData() text = %q, want hello", entries["text"].Value)
+	}
+	if entries["bundle"].Source != DataEntrySourceBinaryData {
+		t.Errorf("GetConfigMapData() binary source = %q, want %q", entries["bundle"].Source, DataEntrySourceBinaryData)
+	}
+	if entries["bundle"].Base64Value != base64.StdEncoding.EncodeToString(binaryValue) {
+		t.Errorf("GetConfigMapData() bundle base64 = %q", entries["bundle"].Base64Value)
+	}
+
+	err = client.UpdateConfigMapData("default", "test-cm", []DataEntry{
+		{Key: "text", Value: "updated", Encoding: DataEntryEncodingText, Source: DataEntrySourceData},
+		{Key: "bundle", Base64Value: base64.StdEncoding.EncodeToString(binaryValue), Encoding: DataEntryEncodingBase64, IsBinary: true, Source: DataEntrySourceBinaryData},
+	})
+	if err != nil {
+		t.Fatalf("UpdateConfigMapData() error = %v", err)
+	}
+	updated, _ := client.clientset.CoreV1().ConfigMaps("default").Get(context.TODO(), "test-cm", metav1.GetOptions{})
+	if updated.Data["text"] != "updated" {
+		t.Errorf("UpdateConfigMapData() text = %q, want updated", updated.Data["text"])
+	}
+	if string(updated.BinaryData["bundle"]) != string(binaryValue) {
+		t.Errorf("UpdateConfigMapData() binary bytes = %v, want %v", updated.BinaryData["bundle"], binaryValue)
+	}
+}
+
+func dataEntriesByKey(entries []DataEntry) map[string]DataEntry {
+	result := map[string]DataEntry{}
+	for _, entry := range entries {
+		result[entry.Key] = entry
+	}
+	return result
 }
 
 func TestDeleteSecret(t *testing.T) {

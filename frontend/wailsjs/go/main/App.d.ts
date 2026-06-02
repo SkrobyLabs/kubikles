@@ -198,7 +198,7 @@ export function GetClusterRoleBindingYaml(arg1:string):Promise<string>;
 
 export function GetClusterRoleYaml(arg1:string):Promise<string>;
 
-export function GetConfigMapData(arg1:string,arg2:string):Promise<Record<string, string>>;
+export function GetConfigMapData(arg1:string,arg2:string):Promise<Array<k8s.DataEntry>>;
 
 export function GetConfigMapYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -346,7 +346,7 @@ export function GetRoleBindingYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetRoleYaml(arg1:string,arg2:string):Promise<string>;
 
-export function GetSecretData(arg1:string,arg2:string):Promise<Record<string, string>>;
+export function GetSecretData(arg1:string,arg2:string):Promise<Array<k8s.DataEntry>>;
 
 export function GetSecretYaml(arg1:string,arg2:string):Promise<string>;
 
@@ -656,7 +656,7 @@ export function UpdateClusterRoleBindingYaml(arg1:string,arg2:string):Promise<vo
 
 export function UpdateClusterRoleYaml(arg1:string,arg2:string):Promise<void>;
 
-export function UpdateConfigMapData(arg1:string,arg2:string,arg3:Record<string, string>):Promise<void>;
+export function UpdateConfigMapData(arg1:string,arg2:string,arg3:Array<k8s.DataEntry>):Promise<void>;
 
 export function UpdateConfigMapYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
@@ -718,7 +718,7 @@ export function UpdateRoleBindingYaml(arg1:string,arg2:string,arg3:string):Promi
 
 export function UpdateRoleYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 
-export function UpdateSecretData(arg1:string,arg2:string,arg3:Record<string, string>):Promise<void>;
+export function UpdateSecretData(arg1:string,arg2:string,arg3:Array<k8s.DataEntry>):Promise<void>;
 
 export function UpdateSecretYaml(arg1:string,arg2:string,arg3:string):Promise<void>;
 

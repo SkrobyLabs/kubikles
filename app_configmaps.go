@@ -97,7 +97,7 @@ func (a *App) DeleteConfigMap(namespace, name string) error {
 	return a.k8sClient.DeleteConfigMap(contextName, namespace, name)
 }
 
-func (a *App) GetConfigMapData(namespace, name string) (map[string]string, error) {
+func (a *App) GetConfigMapData(namespace, name string) ([]k8s.DataEntry, error) {
 	debug.LogConfig("GetConfigMapData called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
@@ -105,7 +105,7 @@ func (a *App) GetConfigMapData(namespace, name string) (map[string]string, error
 	return a.k8sClient.GetConfigMapData(namespace, name)
 }
 
-func (a *App) UpdateConfigMapData(namespace, name string, data map[string]string) error {
+func (a *App) UpdateConfigMapData(namespace, name string, data []k8s.DataEntry) error {
 	debug.LogConfig("UpdateConfigMapData called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
@@ -139,7 +139,7 @@ func (a *App) DeleteSecret(namespace, name string) error {
 	return a.k8sClient.DeleteSecret(contextName, namespace, name)
 }
 
-func (a *App) GetSecretData(namespace, name string) (map[string]string, error) {
+func (a *App) GetSecretData(namespace, name string) ([]k8s.DataEntry, error) {
 	debug.LogConfig("GetSecretData called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
@@ -147,7 +147,7 @@ func (a *App) GetSecretData(namespace, name string) (map[string]string, error) {
 	return a.k8sClient.GetSecretData(namespace, name)
 }
 
-func (a *App) UpdateSecretData(namespace, name string, data map[string]string) error {
+func (a *App) UpdateSecretData(namespace, name string, data []k8s.DataEntry) error {
 	debug.LogConfig("UpdateSecretData called", map[string]interface{}{"namespace": namespace, "name": name})
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")

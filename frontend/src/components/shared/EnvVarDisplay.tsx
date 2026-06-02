@@ -24,6 +24,27 @@ const cachePrefix = (type: string) => type === 'configMap' ? 'configmap' : 'secr
 
 const hasConcreteValue = (value: any): boolean => value !== undefined && value !== null;
 
+const entryTextValue = (entry: any) => {
+    if (!entry || entry.isBinary || entry.encoding === 'base64' || entry.source === 'binaryData') {
+        return undefined;
+    }
+    return entry.value;
+};
+
+const entryTextMap = (entries: any) => {
+    if (!Array.isArray(entries)) {
+        return entries || {};
+    }
+
+    return entries.reduce((acc: Record<string, string>, entry: any) => {
+        const value = entryTextValue(entry);
+        if (entry.key && value !== undefined) {
+            acc[entry.key] = value;
+        }
+        return acc;
+    }, {});
+};
+
 const copyToClipboard = async (value: any): Promise<boolean> => {
     if (!hasConcreteValue(value)) return false;
     try {
@@ -539,8 +560,9 @@ export default function EnvVarSection({
                 ? await GetConfigMapData(namespace, name)
                 : await GetSecretData(namespace, name);
 
-            if (data && key && key in data) {
-                const value = data[key as string];
+            const textData = entryTextMap(data);
+            if (textData && key && key in textData) {
+                const value = textData[key as string];
                 setResolvedValues(prev => ({
                     ...prev,
                     [cacheKey]: { resolved: true, value }
@@ -575,8 +597,9 @@ export default function EnvVarSection({
                 ? await GetConfigMapData(namespace, name)
                 : await GetSecretData(namespace, name);
 
-            if (data) {
-                const entries = Object.entries(data).map(([key, value]: [string, any]) => ({ key, value }));
+            const textData = entryTextMap(data);
+            if (textData) {
+                const entries = Object.entries(textData).map(([key, value]: [string, any]) => ({ key, value }));
                 setResolvedEnvFrom(prev => ({
                     ...prev,
                     [cacheKey]: { resolved: true, entries }

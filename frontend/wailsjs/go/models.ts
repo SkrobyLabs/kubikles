@@ -568,6 +568,28 @@ export namespace issuedetector {
 
 export namespace k8s {
 	
+	export class DataEntry {
+	    key: string;
+	    value: string;
+	    base64Value: string;
+	    isBinary: boolean;
+	    source: string;
+	    encoding: string;
+
+	    static createFrom(source: any = {}) {
+	        return new DataEntry(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.value = source["value"];
+	        this.base64Value = source["base64Value"];
+	        this.isBinary = source["isBinary"];
+	        this.source = source["source"];
+	        this.encoding = source["encoding"];
+	    }
+	}
 	export class ExecEnvVar {
 	    name: string;
 	    value: string;

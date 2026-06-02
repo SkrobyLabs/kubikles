@@ -2,15 +2,62 @@ package k8s
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"time"
+	"unicode/utf8"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
+
+const (
+	DataEntrySourceData       = "data"
+	DataEntrySourceBinaryData = "binaryData"
+	DataEntryEncodingText     = "text"
+	DataEntryEncodingBase64   = "base64"
+)
+
+// DataEntry is a byte-safe key-value representation for Secret data and ConfigMap data/binaryData.
+type DataEntry struct {
+	Key         string `json:"key"`
+	Value       string `json:"value"`
+	Base64Value string `json:"base64Value"`
+	IsBinary    bool   `json:"isBinary"`
+	Source      string `json:"source"`
+	Encoding    string `json:"encoding"`
+}
+
+func dataEntryFromBytes(key string, data []byte, source string) DataEntry {
+	entry := DataEntry{
+		Key:         key,
+		Base64Value: base64.StdEncoding.EncodeToString(data),
+		Source:      source,
+	}
+	if utf8.Valid(data) {
+		entry.Value = string(data)
+		entry.Encoding = DataEntryEncodingText
+		return entry
+	}
+
+	entry.IsBinary = true
+	entry.Encoding = DataEntryEncodingBase64
+	return entry
+}
+
+func bytesFromDataEntry(entry DataEntry) ([]byte, error) {
+	if entry.Encoding == DataEntryEncodingBase64 || entry.IsBinary {
+		decoded, err := base64.StdEncoding.DecodeString(entry.Base64Value)
+		if err != nil {
+			return nil, fmt.Errorf("invalid base64 for key %q: %w", entry.Key, err)
+		}
+		return decoded, nil
+	}
+	return []byte(entry.Value), nil
+}
 
 func (c *Client) ListConfigMaps(namespace string) ([]v1.ConfigMap, error) {
 	ctx, cancel := c.contextWithTimeout()
@@ -346,7 +393,7 @@ func (c *Client) DeleteConfigMap(contextName, namespace, name string) error {
 	return cs.CoreV1().ConfigMaps(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
-func (c *Client) GetConfigMapData(namespace, name string) (map[string]string, error) {
+func (c *Client) GetConfigMapData(namespace, name string) ([]DataEntry, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
@@ -357,15 +404,24 @@ func (c *Client) GetConfigMapData(namespace, name string) (map[string]string, er
 	if err != nil {
 		return nil, err
 	}
-	result := make(map[string]string)
+	result := make([]DataEntry, 0, len(cm.Data)+len(cm.BinaryData))
 	for k, v := range cm.Data {
-		result[k] = v
+		result = append(result, DataEntry{
+			Key:         k,
+			Value:       v,
+			Base64Value: base64.StdEncoding.EncodeToString([]byte(v)),
+			Source:      DataEntrySourceData,
+			Encoding:    DataEntryEncodingText,
+		})
+	}
+	for k, v := range cm.BinaryData {
+		result = append(result, dataEntryFromBytes(k, v, DataEntrySourceBinaryData))
 	}
 	return result, nil
 }
 
-// UpdateConfigMapData updates the configmap's data from a map of key -> value
-func (c *Client) UpdateConfigMapData(namespace, name string, data map[string]string) error {
+// UpdateConfigMapData updates ConfigMap text data and binaryData from byte-safe entries.
+func (c *Client) UpdateConfigMapData(namespace, name string, data []DataEntry) error {
 	cs, err := c.getClientset()
 	if err != nil {
 		return err
@@ -376,7 +432,28 @@ func (c *Client) UpdateConfigMapData(namespace, name string, data map[string]str
 	if err != nil {
 		return err
 	}
-	cm.Data = data
+	cm.Data = map[string]string{}
+	cm.BinaryData = map[string][]byte{}
+	for _, entry := range data {
+		if entry.Key == "" {
+			continue
+		}
+		if entry.Source == DataEntrySourceBinaryData || entry.IsBinary || entry.Encoding == DataEntryEncodingBase64 {
+			decoded, err := bytesFromDataEntry(entry)
+			if err != nil {
+				return err
+			}
+			cm.BinaryData[entry.Key] = decoded
+			continue
+		}
+		cm.Data[entry.Key] = entry.Value
+	}
+	if len(cm.Data) == 0 {
+		cm.Data = nil
+	}
+	if len(cm.BinaryData) == 0 {
+		cm.BinaryData = nil
+	}
 	_, err = cs.CoreV1().ConfigMaps(namespace).Update(ctx, cm, metav1.UpdateOptions{})
 	return err
 }
@@ -430,8 +507,8 @@ func (c *Client) DeleteSecret(contextName, namespace, name string) error {
 	return cs.CoreV1().Secrets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
-// GetSecretData returns the secret's data as a map of key -> base64-encoded value
-func (c *Client) GetSecretData(namespace, name string) (map[string]string, error) {
+// GetSecretData returns secret data as byte-safe entries with canonical base64 values.
+func (c *Client) GetSecretData(namespace, name string) ([]DataEntry, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
@@ -442,15 +519,15 @@ func (c *Client) GetSecretData(namespace, name string) (map[string]string, error
 	if err != nil {
 		return nil, err
 	}
-	result := make(map[string]string)
+	result := make([]DataEntry, 0, len(secret.Data))
 	for k, v := range secret.Data {
-		result[k] = string(v)
+		result = append(result, dataEntryFromBytes(k, v, DataEntrySourceData))
 	}
 	return result, nil
 }
 
-// UpdateSecretData updates the secret's data from a map of key -> value (values are raw strings, will be stored as bytes)
-func (c *Client) UpdateSecretData(namespace, name string, data map[string]string) error {
+// UpdateSecretData updates secret data from byte-safe entries.
+func (c *Client) UpdateSecretData(namespace, name string, data []DataEntry) error {
 	cs, err := c.getClientset()
 	if err != nil {
 		return err
@@ -462,8 +539,15 @@ func (c *Client) UpdateSecretData(namespace, name string, data map[string]string
 		return err
 	}
 	secret.Data = make(map[string][]byte)
-	for k, v := range data {
-		secret.Data[k] = []byte(v)
+	for _, entry := range data {
+		if entry.Key == "" {
+			continue
+		}
+		value, err := bytesFromDataEntry(entry)
+		if err != nil {
+			return err
+		}
+		secret.Data[entry.Key] = value
 	}
 	_, err = cs.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	return err

@@ -3415,7 +3415,7 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		p2, err := unmarshalArg[map[string]string](args, 2)
+		p2, err := unmarshalArg[[]k8s.DataEntry](args, 2)
 		if err != nil {
 			return nil, err
 		}
@@ -3817,7 +3817,7 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		p2, err := unmarshalArg[map[string]string](args, 2)
+		p2, err := unmarshalArg[[]k8s.DataEntry](args, 2)
 		if err != nil {
 			return nil, err
 		}

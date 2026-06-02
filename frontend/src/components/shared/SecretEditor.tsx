@@ -10,23 +10,25 @@ import CertificateModal from './CertificateModal';
 const MODE_YAML = 'yaml';
 const MODE_KEYVALUE = 'keyvalue';
 
-// Convert object to array with stable IDs
-const objectToEntries = (obj: Record<string, any>) => {
-    return Object.entries(obj || {}).map(([key, value]: [string, any], index: number) => ({
+// Add stable UI IDs to byte-safe backend entries.
+const dataToEntries = (entries: any[] = []) => {
+    return entries.map((entry: any, index: number) => ({
         id: `entry-${Date.now()}-${index}`,
-        key,
-        value
+        key: entry.key || '',
+        value: entry.value || '',
+        base64Value: entry.base64Value || '',
+        isBinary: !!entry.isBinary,
+        source: entry.source || 'data',
+        encoding: entry.encoding || (entry.isBinary ? 'base64' : 'text'),
     }));
 };
 
-// Convert array back to object for saving
-const entriesToObject = (entries: any[]) => {
-    const result: Record<string, any> = {};
-    entries.forEach(({ key, value }: { key: string; value: any }) => {
-        if (key) result[key] = value;
-    });
-    return result;
-};
+const entriesToData = (entries: any[]) => entries
+    .filter((entry: any) => entry.key)
+    .map(({ id, ...entry }: any) => ({
+        ...entry,
+        encoding: entry.encoding || (entry.isBinary ? 'base64' : 'text'),
+    }));
 
 export default function SecretEditor({ namespace, resourceName, onClose, tabContext = '', initialMode = MODE_YAML }: { namespace: string; resourceName: string; onClose: () => void; tabContext?: string; initialMode?: string }) {
     const { currentContext } = useK8s();
@@ -48,15 +50,17 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
     const isStale = tabContext && tabContext !== currentContext;
 
     // Check if a value looks like a PEM certificate
-    const isPEMCertificate = (value: string) => value?.includes('-----BEGIN CERTIFICATE-----');
+    const getTextValue = (entry: any) => (!entry.isBinary && entry.encoding !== 'base64' ? entry.value : '');
+
+    const isPEMCertificate = (entry: any) => getTextValue(entry)?.includes('-----BEGIN CERTIFICATE-----');
 
     // Load certificate info for entries that look like certificates
     useEffect(() => {
         const loadCertInfo = async () => {
             for (const entry of secretEntries) {
-                if (isPEMCertificate(entry.value) && !certInfoCache[entry.id]) {
+                if (isPEMCertificate(entry) && !certInfoCache[entry.id]) {
                     try {
-                        const info = await GetCertificateInfo(entry.value);
+                        const info = await GetCertificateInfo(getTextValue(entry));
                         if (info?.isCertificate) {
                             setCertInfoCache(prev => ({ ...prev, [entry.id]: info }));
                         }
@@ -75,13 +79,13 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
     const handleViewCertificate = async (entry: any) => {
         try {
             // Fetch all certificates in the chain
-            const certificates = await GetAllCertificateInfo(entry.value);
+            const certificates = await GetAllCertificateInfo(getTextValue(entry));
             if (certificates?.length > 0) {
                 // Cache the first cert for the badge display
                 if (!certInfoCache[entry.id]) {
                     setCertInfoCache(prev => ({ ...prev, [entry.id]: certificates[0] }));
                 }
-                setSelectedCert({ certificates, pemData: entry.value });
+                setSelectedCert({ certificates, pemData: getTextValue(entry) });
             }
         } catch (err: any) {
             Logger.error("Failed to get certificate info", err, 'config');
@@ -143,7 +147,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                 GetSecretData(namespace, resourceName)
             ]);
             setYamlContent(yaml);
-            setSecretEntries(objectToEntries(data));
+            setSecretEntries(dataToEntries(data));
             Logger.info("Secret data fetched successfully", { namespace, name: resourceName }, 'config');
         } catch (err: any) {
             Logger.error("Failed to load secret", err, 'config');
@@ -162,7 +166,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
             addNotification({ type: 'success', title: 'Secret saved successfully', message: '' });
             // Refresh key-value data after YAML save
             const data = await GetSecretData(namespace, resourceName);
-            setSecretEntries(objectToEntries(data));
+            setSecretEntries(dataToEntries(data));
         } catch (err: any) {
             Logger.error("Failed to save secret", err, 'config');
             addNotification({ type: 'error', title: 'Failed to save secret', message: String(err) });
@@ -175,13 +179,16 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
         setSaving(true);
         Logger.info("Saving secret data...", { namespace, name: resourceName }, 'config');
         try {
-            const dataToSave = entriesToObject(secretEntries);
+            const dataToSave = entriesToData(secretEntries);
             await UpdateSecretData(namespace, resourceName, dataToSave);
             Logger.info("Secret data saved successfully", { namespace, name: resourceName }, 'config');
             addNotification({ type: 'success', title: 'Secret saved successfully', message: '' });
-            // Refresh YAML after key-value save
-            const yaml = await GetSecretYaml(namespace, resourceName);
+            const [yaml, data] = await Promise.all([
+                GetSecretYaml(namespace, resourceName),
+                GetSecretData(namespace, resourceName)
+            ]);
             setYamlContent(yaml);
+            setSecretEntries(dataToEntries(data));
         } catch (err: any) {
             Logger.error("Failed to save secret", err, 'config');
             addNotification({ type: 'error', title: 'Failed to save secret', message: String(err) });
@@ -224,10 +231,10 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
         );
     };
 
-    const handleValueChange = (id: string, newValue: string) => {
+    const handleValueChange = (id: string, patch: any) => {
         setSecretEntries(entries =>
             entries.map((entry: any) =>
-                entry.id === id ? { ...entry, value: newValue } : entry
+                entry.id === id ? { ...entry, ...patch } : entry
             )
         );
     };
@@ -244,38 +251,38 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
             newKey = `NEW_KEY_${counter}`;
             counter++;
         }
-        setSecretEntries([...secretEntries, { id: generateId(), key: newKey, value: '' }]);
+        setSecretEntries([...secretEntries, {
+            id: generateId(),
+            key: newKey,
+            value: '',
+            base64Value: '',
+            isBinary: false,
+            source: 'data',
+            encoding: 'text'
+        }]);
     };
 
-    const encodeBase64 = (str: string) => {
-        try {
-            return btoa(str);
-        } catch {
-            // Handle binary data that can't be encoded with btoa
-            return btoa(unescape(encodeURIComponent(str)));
+    const getDisplayValue = (entry: any) => {
+        if (showBase64 || entry.isBinary || entry.encoding === 'base64') {
+            return entry.base64Value || '';
         }
+        return entry.value || '';
     };
 
-    const decodeBase64 = (str: string) => {
-        try {
-            return atob(str);
-        } catch {
-            return str;
-        }
-    };
-
-    const getDisplayValue = (value: string) => {
-        if (showBase64) {
-            return encodeBase64(value);
-        }
-        return value;
-    };
-
-    const setValueFromDisplay = (id: string, displayValue: string) => {
-        if (showBase64) {
-            handleValueChange(id, decodeBase64(displayValue));
+    const setValueFromDisplay = (entry: any, displayValue: string) => {
+        if (showBase64 || entry.isBinary || entry.encoding === 'base64') {
+            handleValueChange(entry.id, {
+                base64Value: displayValue,
+                value: '',
+                encoding: 'base64',
+                isBinary: true
+            });
         } else {
-            handleValueChange(id, displayValue);
+            handleValueChange(entry.id, {
+                value: displayValue,
+                encoding: 'text',
+                isBinary: false
+            });
         }
     };
 
@@ -422,7 +429,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                             {secretEntries
                                 .filter((entry: any) => !keySearchTerm || entry.key.toLowerCase().includes(keySearchTerm.toLowerCase()))
                                 .map((entry) => {
-                                    const isCert = isPEMCertificate(entry.value);
+                                    const isCert = isPEMCertificate(entry);
                                     const certInfo = certInfoCache[entry.id];
                                     return (
                                         <div key={entry.id} className="flex items-start gap-2 bg-surface-light rounded-md p-3">
@@ -440,8 +447,8 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                                                 />
                                                 <div className="flex-1 min-w-0">
                                                     <textarea
-                                                        value={getDisplayValue(entry.value)}
-                                                        onChange={(e: any) => !isStale && setValueFromDisplay(entry.id, e.target.value)}
+                                                        value={getDisplayValue(entry)}
+                                                        onChange={(e: any) => !isStale && setValueFromDisplay(entry, e.target.value)}
                                                         disabled={!!isStale}
                                                         className={`w-full min-h-[60px] px-2 py-1.5 text-sm bg-background border border-border rounded text-gray-200 font-mono focus:outline-none focus:border-primary resize-y ${isStale ? 'opacity-60 cursor-not-allowed' : ''}`}
                                                         placeholder="Value"
@@ -460,6 +467,11 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                                                                     <span className="text-gray-400">({getCertSummary(certInfo)})</span>
                                                                 )}
                                                             </span>
+                                                        </div>
+                                                    )}
+                                                    {!showBase64 && entry.isBinary && (
+                                                        <div className="mt-1.5 text-xs text-amber-400">
+                                                            Binary value shown as Base64.
                                                         </div>
                                                     )}
                                                 </div>
