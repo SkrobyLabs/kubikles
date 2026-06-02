@@ -57,14 +57,33 @@ export default function LogViewer({
     }));
 
     useEffect(() => {
+        const nextSiblingPods = initialSiblingPods || [];
+        const nextPodContainerMap = initialPodContainerMap || {};
+        const nextContainers = initialContainers || [];
+
         setLogTarget({
             namespace: initialNamespace,
             pod: initialPod,
-            containers: initialContainers,
-            siblingPods: initialSiblingPods,
-            podContainerMap: initialPodContainerMap,
+            containers: nextContainers,
+            siblingPods: nextSiblingPods,
+            podContainerMap: nextPodContainerMap,
             ownerName: initialOwnerName,
             podCreationTime: initialPodCreationTime,
+        });
+
+        setSelectedPod((prevPod: any) => {
+            if (prevPod === ALL_PODS && nextSiblingPods.length > 1) return prevPod;
+            return nextSiblingPods.includes(prevPod) ? prevPod : initialPod;
+        });
+
+        setSelectedContainer((prevContainer: any) => {
+            const selectedPodForContainers = nextSiblingPods.includes(selectedPod) ? selectedPod : initialPod;
+            const availableContainers = selectedPodForContainers === ALL_PODS
+                ? (nextPodContainerMap[nextSiblingPods[0]] || nextContainers)
+                : (nextPodContainerMap[selectedPodForContainers] || nextContainers);
+
+            if (prevContainer === ALL_CONTAINERS && availableContainers.length > 1) return prevContainer;
+            return availableContainers.includes(prevContainer) ? prevContainer : (availableContainers[0] || '');
         });
     }, [initialNamespace, initialPod, initialContainers, initialSiblingPods, initialPodContainerMap, initialOwnerName, initialPodCreationTime]);
 

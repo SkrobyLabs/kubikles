@@ -41,6 +41,7 @@ export const useReplicaSetActions = (): any => {
     const handleViewLogs = (replicaSet: K8sReplicaSet): void => {
         Logger.info("View logs for ReplicaSet", { namespace: replicaSet.metadata.namespace, name: replicaSet.metadata.name }, 'k8s');
         const namespace = replicaSet.metadata.namespace!;
+        const refreshToken = Date.now();
 
         openTab({
             id: `logs-replicaset-${replicaSet.metadata.name}`,
@@ -48,6 +49,7 @@ export const useReplicaSetActions = (): any => {
             keepAlive: true,
             content: (
                 <DeferredLogViewer
+                    refreshToken={refreshToken}
                     resolve={async (): Promise<ResolvedLogViewerProps | null> => {
                         const allPods: K8sPod[] = await ListPods('', namespace);
                         const replicaSetPods: K8sPod[] = allPods.filter((pod: K8sPod) => {

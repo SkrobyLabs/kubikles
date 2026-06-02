@@ -53,6 +53,7 @@ export const useJobActions = (onRefresh?: () => void): any => {
     const handleViewLogs = (job: K8sJob): void => {
         const namespace = job.metadata.namespace!;
         Logger.info("View logs for Job", { namespace, name: job.metadata.name }, 'k8s');
+        const refreshToken = Date.now();
 
         openTab({
             id: `logs-job-${job.metadata.name}`,
@@ -60,6 +61,7 @@ export const useJobActions = (onRefresh?: () => void): any => {
             keepAlive: true,
             content: (
                 <DeferredLogViewer
+                    refreshToken={refreshToken}
                     resolve={async (): Promise<ResolvedLogViewerProps | null> => {
                         const allPods = await ListPods('', namespace);
                         const jobPods = allPods.filter((pod: any) =>

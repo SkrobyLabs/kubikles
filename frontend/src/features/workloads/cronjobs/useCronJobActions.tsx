@@ -37,6 +37,7 @@ export const useCronJobActions = (): any => {
     const handleViewLogs = (cronJob: K8sCronJob): void => {
         Logger.info("View logs for CronJob", { namespace: cronJob.metadata.namespace, name: cronJob.metadata.name }, 'k8s');
         const namespace = cronJob.metadata.namespace!;
+        const refreshToken = Date.now();
 
         openTab({
             id: `logs-cronjob-${cronJob.metadata.name}`,
@@ -44,6 +45,7 @@ export const useCronJobActions = (): any => {
             keepAlive: true,
             content: (
                 <DeferredLogViewer
+                    refreshToken={refreshToken}
                     resolve={async (): Promise<ResolvedLogViewerProps | null> => {
                         const allJobs = await ListJobs('', namespace);
                         const cronJobJobs = allJobs.filter((job: any) => {

@@ -51,6 +51,7 @@ export const useDeploymentActions = (): any => {
     const handleViewLogs = (deployment: K8sDeployment): void => {
         Logger.info("View logs for Deployment", { namespace: deployment.metadata.namespace, name: deployment.metadata.name }, 'k8s');
         const namespace = deployment.metadata.namespace!;
+        const refreshToken = Date.now();
 
         openTab({
             id: `logs-deploy-${deployment.metadata.name}`,
@@ -58,6 +59,7 @@ export const useDeploymentActions = (): any => {
             keepAlive: true,
             content: (
                 <DeferredLogViewer
+                    refreshToken={refreshToken}
                     resolve={async (): Promise<ResolvedLogViewerProps | null> => {
                         const allPods: K8sPod[] = await ListPods('', namespace);
                         const deploymentPods: K8sPod[] = allPods.filter((pod: K8sPod) => {

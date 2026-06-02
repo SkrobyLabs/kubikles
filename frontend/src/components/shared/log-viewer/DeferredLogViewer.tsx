@@ -15,9 +15,10 @@ export interface ResolvedLogViewerProps {
 interface DeferredLogViewerProps {
     resolve: () => Promise<ResolvedLogViewerProps | null>;
     tabContext?: string;
+    refreshToken?: number;
 }
 
-export default function DeferredLogViewer({ resolve, tabContext }: DeferredLogViewerProps) {
+export default function DeferredLogViewer({ resolve, tabContext, refreshToken = 0 }: DeferredLogViewerProps) {
     const [state, setState] = useState<'loading' | 'resolved' | 'empty' | 'error'>('loading');
     const [props, setProps] = useState<ResolvedLogViewerProps | null>(null);
     const [error, setError] = useState('');
@@ -26,6 +27,8 @@ export default function DeferredLogViewer({ resolve, tabContext }: DeferredLogVi
     useEffect(() => {
         mountedRef.current = true;
         let cancelled = false;
+        setState('loading');
+        setError('');
 
         resolve()
             .then((result) => {
@@ -47,7 +50,7 @@ export default function DeferredLogViewer({ resolve, tabContext }: DeferredLogVi
             cancelled = true;
             mountedRef.current = false;
         };
-    }, []);
+    }, [resolve, refreshToken]);
 
     if (state === 'loading') {
         return (

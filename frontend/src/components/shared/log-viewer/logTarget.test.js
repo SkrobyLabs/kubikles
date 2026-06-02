@@ -52,4 +52,45 @@ describe('log target resolution', () => {
         expect(result?.containers[0]).toBe('app');
         expect(result?.siblingPods).toEqual(['workload-running', 'workload-old']);
     });
+
+    it('prefers a non-deleting pod over a deleting pod with running containers', () => {
+        const deletingPod = pod({
+            name: 'workload-deleting',
+            deleting: true,
+            initState: { terminated: { exitCode: 0 } },
+            appState: { running: { startedAt: '2026-01-01T00:00:10Z' } },
+        });
+        const replacementPod = pod({
+            name: 'workload-replacement',
+            phase: 'Pending',
+            initState: { waiting: { reason: 'PodInitializing' } },
+            appState: { waiting: { reason: 'ContainerCreating' } },
+        });
+
+        const result = resolveLogTargetFromPods('default', [deletingPod, replacementPod], 'workload');
+
+        expect(result?.pod).toBe('workload-replacement');
+        expect(result?.siblingPods).toEqual(['workload-replacement', 'workload-deleting']);
+    });
+
+    it('uses fresh running pods before stale terminated pods for container fallback', () => {
+        const stalePod = pod({
+            name: 'workload-stale',
+            phase: 'Succeeded',
+            initState: { terminated: { exitCode: 0 } },
+            appState: { terminated: { exitCode: 0 } },
+        });
+        const freshPod = pod({
+            name: 'workload-fresh',
+            initState: { terminated: { exitCode: 0 } },
+            appState: { running: { startedAt: '2026-01-01T00:00:10Z' } },
+        });
+
+        const result = resolveLogTargetFromPods('default', [stalePod, freshPod], 'workload');
+
+        expect(result?.pod).toBe('workload-fresh');
+        expect(result?.containers).toEqual(['app', 'sidecar', 'init-volume']);
+        expect(result?.podContainerMap['workload-stale']).toEqual(['app', 'sidecar', 'init-volume']);
+        expect(result?.podContainerMap['workload-fresh']).toEqual(['app', 'sidecar', 'init-volume']);
+    });
 });

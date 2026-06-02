@@ -131,6 +131,7 @@ export function useLogStream({
         setDisconnectReason('');
         setIsAllLoaded(false);
         setLoading(true);
+        resetChunkState();
 
         try {
             let effectiveNamespace = namespace;
@@ -141,6 +142,7 @@ export function useLogStream({
             let effectivePodContainerMap = podContainerMap;
             let effectiveIsAllPods = isAllPods;
             let effectiveIsAllContainers = isAllContainers;
+            let refreshedTargetChanged = false;
 
             if (options.refreshTarget && resolveFreshLogTarget) {
                 const freshTarget = await resolveFreshLogTarget({ pod, container });
@@ -153,10 +155,7 @@ export function useLogStream({
                     effectivePodContainerMap = freshTarget.podContainerMap ?? podContainerMap;
                     effectiveIsAllPods = effectivePod === ALL_PODS;
                     effectiveIsAllContainers = effectiveContainer === ALL_CONTAINERS;
-
-                    if (effectivePod !== pod || effectiveContainer !== container) {
-                        return;
-                    }
+                    refreshedTargetChanged = effectivePod !== pod || effectiveContainer !== container;
                 }
             }
 
@@ -192,7 +191,7 @@ export function useLogStream({
                 setHasMoreAfter(false);
             }
             const parsed = parseLogLines(logData, 'initial');
-            if (parsed.length === 0 && logs.length > 0) {
+            if (parsed.length === 0 && logs.length > 0 && !refreshedTargetChanged) {
                 // Container gone but we have existing logs — keep them and show warning
                 setFetchError('Container no longer available');
             } else {
@@ -213,7 +212,7 @@ export function useLogStream({
             setLoading(false);
             isFetchingRef.current = false;
         }
-    }, [namespace, pod, container, containers, siblingPods, podContainerMap, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, logs.length, sinceTime, viewMode, resolveFreshLogTarget]);
+    }, [namespace, pod, container, containers, siblingPods, podContainerMap, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious, logs.length, sinceTime, viewMode, resolveFreshLogTarget, resetChunkState]);
 
     // Load all logs at once
     const loadAllLogs = useCallback(async () => {

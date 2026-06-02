@@ -51,6 +51,7 @@ export const useStatefulSetActions = (): any => {
     const handleViewLogs = (statefulSet: K8sStatefulSet): void => {
         Logger.info("View logs for StatefulSet", { namespace: statefulSet.metadata.namespace, name: statefulSet.metadata.name }, 'k8s');
         const namespace = statefulSet.metadata.namespace!;
+        const refreshToken = Date.now();
 
         openTab({
             id: `logs-statefulset-${statefulSet.metadata.name}`,
@@ -58,6 +59,7 @@ export const useStatefulSetActions = (): any => {
             keepAlive: true,
             content: (
                 <DeferredLogViewer
+                    refreshToken={refreshToken}
                     resolve={async (): Promise<ResolvedLogViewerProps | null> => {
                         const allPods: K8sPod[] = await ListPods('', namespace);
                         const statefulSetPods = allPods.filter((pod: K8sPod) => {

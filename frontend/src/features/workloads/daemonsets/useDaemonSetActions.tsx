@@ -51,6 +51,7 @@ export const useDaemonSetActions = (): any => {
     const handleViewLogs = (daemonSet: K8sDaemonSet): void => {
         Logger.info("View logs for DaemonSet", { namespace: daemonSet.metadata.namespace, name: daemonSet.metadata.name }, 'k8s');
         const namespace = daemonSet.metadata.namespace!;
+        const refreshToken = Date.now();
 
         openTab({
             id: `logs-daemonset-${daemonSet.metadata.name}`,
@@ -58,6 +59,7 @@ export const useDaemonSetActions = (): any => {
             keepAlive: true,
             content: (
                 <DeferredLogViewer
+                    refreshToken={refreshToken}
                     resolve={async (): Promise<ResolvedLogViewerProps | null> => {
                         const allPods = await ListPods('', namespace);
                         const daemonSetPods = allPods.filter((pod: any) => {
