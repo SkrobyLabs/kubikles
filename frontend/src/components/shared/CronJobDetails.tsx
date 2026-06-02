@@ -3,7 +3,8 @@ import { PencilSquareIcon, PlayIcon, PauseIcon, ShareIcon, BriefcaseIcon } from 
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel, WorkloadImagesRow } from './DetailComponents';
+import { DetailRow, DetailSection, StatusBadge, CopyableLabel, WorkloadImagesRow, getUniqueContainerImages } from './DetailComponents';
+import { entriesFromObject, matchesSearch, normalizeSearchTerm, NoSectionMatches, useSectionSearch } from './detailSearch';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 import ResourceEventsTab from './ResourceEventsTab';
 
@@ -23,6 +24,7 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
     const uid = cronJob.metadata?.uid;
     const labels = cronJob.metadata?.labels || {};
     const annotations = cronJob.metadata?.annotations || {};
+    const { sectionSearch, getSectionTerm, renderSearch } = useSectionSearch();
     const spec = cronJob.spec || {};
     const status = cronJob.status || {};
 
@@ -36,6 +38,41 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
     const lastScheduleTime = status.lastScheduleTime;
     const lastSuccessfulTime = status.lastSuccessfulTime;
     const activeJobs = status.active || [];
+    const imageStrings = getUniqueContainerImages(spec.jobTemplate?.spec?.template?.spec);
+    const detailRows: any[] = [
+        { label: 'Name', value: name },
+        { label: 'Namespace', value: namespace },
+        { label: 'Concurrency Policy', value: concurrencyPolicy },
+        { label: 'Successful Jobs History', value: successfulJobsHistoryLimit },
+        { label: 'Failed Jobs History', value: failedJobsHistoryLimit },
+        ...(startingDeadlineSeconds ? [{ label: 'Starting Deadline', value: `${startingDeadlineSeconds}s` }] : []),
+        { label: 'Created', value: `${formatAge(cronJob.metadata?.creationTimestamp)} ago`, title: cronJob.metadata?.creationTimestamp },
+        { label: 'UID', value: cronJob.metadata?.uid?.substring(0, 8) + '...', copyValue: cronJob.metadata?.uid },
+    ];
+    const labelEntries = useMemo(() => entriesFromObject(labels), [labels]);
+    const annotationEntries = useMemo(() => entriesFromObject(annotations), [annotations]);
+    const filteredActiveJobs = useMemo(() => activeJobs.filter((jobRef: any) => matchesSearch([
+        jobRef.name,
+        jobRef.uid,
+        'Running',
+    ], getSectionTerm('activeJobs'))), [activeJobs, sectionSearch]);
+    const filteredDetailRows = useMemo(() => detailRows.filter((row: any) => matchesSearch([
+        row.label,
+        row.value,
+        row.copyValue,
+        row.title,
+    ], getSectionTerm('details'))), [detailRows, sectionSearch]);
+    const detailsTermMatchesImages = matchesSearch(['Images', ...imageStrings], getSectionTerm('details'));
+    const filteredLabels = useMemo(() => labelEntries.filter((entry) => matchesSearch([
+        entry.key,
+        entry.value,
+        entry.display,
+    ], getSectionTerm('labels'))), [labelEntries, sectionSearch]);
+    const filteredAnnotations = useMemo(() => annotationEntries.filter((entry) => matchesSearch([
+        entry.key,
+        entry.value,
+        entry.display,
+    ], getSectionTerm('annotations'))), [annotationEntries, sectionSearch]);
 
     const handleEditYaml = () => {
         const tabId = `yaml-cronjob-${namespace}/${name}`;
@@ -190,9 +227,9 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
 
                 {/* Active Jobs */}
                 {activeJobs.length > 0 && (
-                    <DetailSection title="Active Jobs">
+                    <DetailSection title="Active Jobs" headerAction={renderSearch('activeJobs', 'Search jobs...')}>
                         <div className="space-y-1.5">
-                            {activeJobs.map((jobRef: any, idx: number) => (
+                            {filteredActiveJobs.map((jobRef: any, idx: number) => (
                                 <div key={idx} className="flex items-center gap-2">
                                     <StatusBadge status="Running" variant="warning" />
                                     <button
@@ -203,39 +240,70 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
                                     </button>
                                 </div>
                             ))}
+                            {normalizeSearchTerm(getSectionTerm('activeJobs')) && filteredActiveJobs.length === 0 && (
+                                <NoSectionMatches term={getSectionTerm('activeJobs')} />
+                            )}
                         </div>
                     </DetailSection>
                 )}
 
                 {/* Details */}
-                <DetailSection title="Details">
-                    <DetailRow label="Name" value={name} />
-                    <DetailRow label="Namespace" value={namespace} />
-                    <WorkloadImagesRow podSpec={spec.jobTemplate?.spec?.template?.spec} />
-                    <DetailRow label="Concurrency Policy" value={concurrencyPolicy} />
-                    <DetailRow label="Successful Jobs History" value={successfulJobsHistoryLimit} />
-                    <DetailRow label="Failed Jobs History" value={failedJobsHistoryLimit} />
-                    {startingDeadlineSeconds && (
-                        <DetailRow label="Starting Deadline" value={`${startingDeadlineSeconds}s`} />
+                <DetailSection title="Details" headerAction={renderSearch('details', 'Search details...')}>
+                    {filteredDetailRows.map((row: any) => (
+                        <React.Fragment key={row.label}>
+                            <DetailRow label={row.label}>
+                                {row.label === 'UID' ? (
+                                    <CopyableLabel value={row.value} copyValue={row.copyValue} />
+                                ) : row.title ? (
+                                    <span title={row.title}>{row.value}</span>
+                                ) : (
+                                    row.value
+                                )}
+                            </DetailRow>
+                            {row.label === 'Namespace' && detailsTermMatchesImages && (
+                                <WorkloadImagesRow podSpec={spec.jobTemplate?.spec?.template?.spec} />
+                            )}
+                        </React.Fragment>
+                    ))}
+                    {filteredDetailRows.length === 0 && detailsTermMatchesImages && <WorkloadImagesRow podSpec={spec.jobTemplate?.spec?.template?.spec} />}
+                    {normalizeSearchTerm(getSectionTerm('details')) && !detailsTermMatchesImages && filteredDetailRows.length === 0 && (
+                        <NoSectionMatches term={getSectionTerm('details')} />
                     )}
-                    <DetailRow label="Created">
-                        <span title={cronJob.metadata?.creationTimestamp}>
-                            {formatAge(cronJob.metadata?.creationTimestamp)} ago
-                        </span>
-                    </DetailRow>
-                    <DetailRow label="UID">
-                        <CopyableLabel value={cronJob.metadata?.uid?.substring(0, 8) + '...'} copyValue={cronJob.metadata?.uid} />
-                    </DetailRow>
                 </DetailSection>
 
                 {/* Labels */}
-                <DetailSection title="Labels">
-                    <LabelsDisplay labels={labels} />
+                <DetailSection title="Labels" headerAction={renderSearch('labels', 'Search labels...')}>
+                    {labelEntries.length === 0 ? (
+                        <span className="text-gray-500">None</span>
+                    ) : filteredLabels.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                            {filteredLabels.map((entry) => (
+                                <CopyableLabel key={entry.key} value={entry.display} />
+                            ))}
+                        </div>
+                    ) : (
+                        <NoSectionMatches term={getSectionTerm('labels')} />
+                    )}
                 </DetailSection>
 
                 {/* Annotations */}
-                <DetailSection title="Annotations">
-                    <AnnotationsDisplay annotations={annotations} />
+                <DetailSection title="Annotations" headerAction={renderSearch('annotations', 'Search annotations...')}>
+                    {annotationEntries.length === 0 ? (
+                        <span className="text-gray-500">None</span>
+                    ) : filteredAnnotations.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                            {filteredAnnotations.map((entry) => (
+                                <CopyableLabel
+                                    key={entry.key}
+                                    value={entry.key.length > 40 ? `${entry.key.substring(0, 40)}...` : entry.key}
+                                    copyValue={entry.display}
+                                    className="bg-purple-500/10 border-purple-500/30"
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <NoSectionMatches term={getSectionTerm('annotations')} />
+                    )}
                 </DetailSection>
             </div>
             )}

@@ -3,7 +3,8 @@ import { PencilSquareIcon, DocumentTextIcon, ShareIcon, CubeIcon } from '@heroic
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel, WorkloadImagesRow } from './DetailComponents';
+import { DetailRow, DetailSection, StatusBadge, CopyableLabel, WorkloadImagesRow, getUniqueContainerImages } from './DetailComponents';
+import { entriesFromObject, matchesSearch, normalizeSearchTerm, NoSectionMatches, useSectionSearch } from './detailSearch';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 import ResourceEventsTab from './ResourceEventsTab';
 
@@ -23,6 +24,7 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
     const uid = job.metadata?.uid;
     const labels = job.metadata?.labels || {};
     const annotations = job.metadata?.annotations || {};
+    const { sectionSearch, getSectionTerm, renderSearch } = useSectionSearch();
     const spec = job.spec || {};
     const status = job.status || {};
     const ownerReferences = job.metadata?.ownerReferences || [];
@@ -39,6 +41,50 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
     const conditions = status.conditions || [];
 
     const controller = ownerReferences.find((ref: any) => ref.controller);
+    const imageStrings = getUniqueContainerImages(spec.template?.spec);
+    const detailRows: any[] = [
+        { label: 'Name', value: name },
+        { label: 'Namespace', value: namespace },
+        { label: 'Parallelism', value: parallelism },
+        { label: 'Backoff Limit', value: backoffLimit },
+        ...(activeDeadlineSeconds ? [{ label: 'Active Deadline', value: `${activeDeadlineSeconds}s` }] : []),
+        ...(ttlSecondsAfterFinished !== undefined ? [{ label: 'TTL After Finished', value: `${ttlSecondsAfterFinished}s` }] : []),
+        ...(status.startTime ? [{ label: 'Started', value: `${formatAge(status.startTime)} ago`, title: status.startTime }] : []),
+        ...(status.completionTime ? [{ label: 'Completed', value: `${formatAge(status.completionTime)} ago`, title: status.completionTime }] : []),
+        { label: 'Created', value: `${formatAge(job.metadata?.creationTimestamp)} ago`, title: job.metadata?.creationTimestamp },
+        { label: 'UID', value: job.metadata?.uid?.substring(0, 8) + '...', copyValue: job.metadata?.uid },
+    ];
+    const labelEntries = useMemo(() => entriesFromObject(labels), [labels]);
+    const annotationEntries = useMemo(() => entriesFromObject(annotations), [annotations]);
+    const filteredConditions = useMemo(() => conditions.filter((condition: any) => matchesSearch([
+        condition.type,
+        condition.status,
+        condition.reason,
+        condition.message,
+        condition.lastTransitionTime,
+    ], getSectionTerm('conditions'))), [conditions, sectionSearch]);
+    const filteredDetailRows = useMemo(() => detailRows.filter((row: any) => matchesSearch([
+        row.label,
+        row.value,
+        row.copyValue,
+        row.title,
+    ], getSectionTerm('details'))), [detailRows, sectionSearch]);
+    const detailsTermMatchesImages = matchesSearch(['Images', ...imageStrings], getSectionTerm('details'));
+    const controllerMatches = !controller || matchesSearch([
+        controller.kind,
+        controller.name,
+        controller.uid,
+    ], getSectionTerm('controlledBy'));
+    const filteredLabels = useMemo(() => labelEntries.filter((entry) => matchesSearch([
+        entry.key,
+        entry.value,
+        entry.display,
+    ], getSectionTerm('labels'))), [labelEntries, sectionSearch]);
+    const filteredAnnotations = useMemo(() => annotationEntries.filter((entry) => matchesSearch([
+        entry.key,
+        entry.value,
+        entry.display,
+    ], getSectionTerm('annotations'))), [annotationEntries, sectionSearch]);
 
     const handleEditYaml = () => {
         const tabId = `yaml-job-${namespace}/${name}`;
@@ -219,9 +265,9 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
 
                 {/* Conditions */}
                 {conditions.length > 0 && (
-                    <DetailSection title="Conditions">
+                    <DetailSection title="Conditions" headerAction={renderSearch('conditions', 'Search conditions...')}>
                         <div className="space-y-2">
-                            {conditions.map((condition: any, idx: number) => (
+                            {filteredConditions.map((condition: any, idx: number) => (
                                 <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                                     <div className="flex items-center gap-2">
                                         <StatusBadge status={condition.type} variant={getConditionVariant(condition)} />
@@ -232,70 +278,89 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
                                     </span>
                                 </div>
                             ))}
+                            {normalizeSearchTerm(getSectionTerm('conditions')) && filteredConditions.length === 0 && (
+                                <NoSectionMatches term={getSectionTerm('conditions')} />
+                            )}
                         </div>
                     </DetailSection>
                 )}
 
                 {/* Controller */}
                 {controller && (
-                    <DetailSection title="Controlled By">
-                        <div className="flex items-center gap-2">
-                            <span className="text-gray-400">{controller.kind}:</span>
-                            <button
-                                onClick={handleViewController}
-                                className="text-primary hover:text-primary/80 hover:underline"
-                            >
-                                {controller.name}
-                            </button>
-                        </div>
+                    <DetailSection title="Controlled By" headerAction={renderSearch('controlledBy', 'Search owner...')}>
+                        {controllerMatches ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-gray-400">{controller.kind}:</span>
+                                <button
+                                    onClick={handleViewController}
+                                    className="text-primary hover:text-primary/80 hover:underline"
+                                >
+                                    {controller.name}
+                                </button>
+                            </div>
+                        ) : (
+                            <NoSectionMatches term={getSectionTerm('controlledBy')} />
+                        )}
                     </DetailSection>
                 )}
 
                 {/* Details */}
-                <DetailSection title="Details">
-                    <DetailRow label="Name" value={name} />
-                    <DetailRow label="Namespace" value={namespace} />
-                    <WorkloadImagesRow podSpec={spec.template?.spec} />
-                    <DetailRow label="Parallelism" value={parallelism} />
-                    <DetailRow label="Backoff Limit" value={backoffLimit} />
-                    {activeDeadlineSeconds && (
-                        <DetailRow label="Active Deadline" value={`${activeDeadlineSeconds}s`} />
+                <DetailSection title="Details" headerAction={renderSearch('details', 'Search details...')}>
+                    {filteredDetailRows.map((row: any) => (
+                        <React.Fragment key={row.label}>
+                            <DetailRow label={row.label}>
+                                {row.label === 'UID' ? (
+                                    <CopyableLabel value={row.value} copyValue={row.copyValue} />
+                                ) : row.title ? (
+                                    <span title={row.title}>{row.value}</span>
+                                ) : (
+                                    row.value
+                                )}
+                            </DetailRow>
+                            {row.label === 'Namespace' && detailsTermMatchesImages && (
+                                <WorkloadImagesRow podSpec={spec.template?.spec} />
+                            )}
+                        </React.Fragment>
+                    ))}
+                    {filteredDetailRows.length === 0 && detailsTermMatchesImages && <WorkloadImagesRow podSpec={spec.template?.spec} />}
+                    {normalizeSearchTerm(getSectionTerm('details')) && !detailsTermMatchesImages && filteredDetailRows.length === 0 && (
+                        <NoSectionMatches term={getSectionTerm('details')} />
                     )}
-                    {ttlSecondsAfterFinished !== undefined && (
-                        <DetailRow label="TTL After Finished" value={`${ttlSecondsAfterFinished}s`} />
-                    )}
-                    {status.startTime && (
-                        <DetailRow label="Started">
-                            <span title={status.startTime}>
-                                {formatAge(status.startTime)} ago
-                            </span>
-                        </DetailRow>
-                    )}
-                    {status.completionTime && (
-                        <DetailRow label="Completed">
-                            <span title={status.completionTime}>
-                                {formatAge(status.completionTime)} ago
-                            </span>
-                        </DetailRow>
-                    )}
-                    <DetailRow label="Created">
-                        <span title={job.metadata?.creationTimestamp}>
-                            {formatAge(job.metadata?.creationTimestamp)} ago
-                        </span>
-                    </DetailRow>
-                    <DetailRow label="UID">
-                        <CopyableLabel value={job.metadata?.uid?.substring(0, 8) + '...'} copyValue={job.metadata?.uid} />
-                    </DetailRow>
                 </DetailSection>
 
                 {/* Labels */}
-                <DetailSection title="Labels">
-                    <LabelsDisplay labels={labels} />
+                <DetailSection title="Labels" headerAction={renderSearch('labels', 'Search labels...')}>
+                    {labelEntries.length === 0 ? (
+                        <span className="text-gray-500">None</span>
+                    ) : filteredLabels.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                            {filteredLabels.map((entry) => (
+                                <CopyableLabel key={entry.key} value={entry.display} />
+                            ))}
+                        </div>
+                    ) : (
+                        <NoSectionMatches term={getSectionTerm('labels')} />
+                    )}
                 </DetailSection>
 
                 {/* Annotations */}
-                <DetailSection title="Annotations">
-                    <AnnotationsDisplay annotations={annotations} />
+                <DetailSection title="Annotations" headerAction={renderSearch('annotations', 'Search annotations...')}>
+                    {annotationEntries.length === 0 ? (
+                        <span className="text-gray-500">None</span>
+                    ) : filteredAnnotations.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                            {filteredAnnotations.map((entry) => (
+                                <CopyableLabel
+                                    key={entry.key}
+                                    value={entry.key.length > 40 ? `${entry.key.substring(0, 40)}...` : entry.key}
+                                    copyValue={entry.display}
+                                    className="bg-purple-500/10 border-purple-500/30"
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <NoSectionMatches term={getSectionTerm('annotations')} />
+                    )}
                 </DetailSection>
             </div>
             )}

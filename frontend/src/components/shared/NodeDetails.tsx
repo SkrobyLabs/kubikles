@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { MagnifyingGlassIcon, PencilSquareIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useMemo } from 'react';
+import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { formatAge } from '~/utils/formatting';
 import { DetailRow, DetailSection, StatusBadge, CopyableLabel } from './DetailComponents';
+import { entriesFromObject, matchesSearch, normalizeSearchTerm, NoSectionMatches, useSectionSearch } from './detailSearch';
 import { LazyYamlEditor as YamlEditor } from '../lazy';
 import NodeMetricsTab from './NodeMetricsTab';
 
@@ -24,63 +25,6 @@ function formatCPU(cpu: any) {
     }
     return `${cpu} cores`;
 }
-
-const normalizeSearchTerm = (term: string) => term.trim().toLowerCase();
-
-const matchesSearch = (parts: any[], term: string) => {
-    const normalizedTerm = normalizeSearchTerm(term);
-    if (!normalizedTerm) return true;
-
-    return parts.some((part) => {
-        if (part === null || part === undefined) return false;
-        return String(part).toLowerCase().includes(normalizedTerm);
-    });
-};
-
-const entriesFromObject = (obj: any) => Object.entries(obj || {})
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => ({
-        key,
-        value,
-        display: `${key}=${value}`
-    }));
-
-const SectionSearchInput = ({
-    value,
-    onChange,
-    placeholder
-}: { value: string; onChange: (value: string) => void; placeholder: string }) => (
-    <div className="relative w-44 max-w-full">
-        <MagnifyingGlassIcon className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-        <input
-            type="text"
-            value={value}
-            onChange={(e: any) => onChange(e.target.value)}
-            placeholder={placeholder}
-            className="w-full pl-7 pr-7 py-1 text-xs bg-surface border border-border rounded text-gray-200 placeholder:text-gray-500 focus:outline-none focus:border-primary transition-colors"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck="false"
-        />
-        {value && (
-            <button
-                type="button"
-                onClick={() => onChange('')}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-500 hover:text-gray-300 rounded"
-                title="Clear search"
-            >
-                <XMarkIcon className="w-3.5 h-3.5" />
-            </button>
-        )}
-    </div>
-);
-
-const NoSectionMatches = ({ term }: { term: string }) => (
-    <div className="text-gray-500 text-sm text-center py-4">
-        No matches for "{term}"
-    </div>
-);
 
 export default function NodeDetails({ node, tabContext = '' }: any) {
     const { currentContext } = useK8s();
@@ -107,15 +51,7 @@ export default function NodeDetails({ node, tabContext = '' }: any) {
     const capacity = status.capacity || {};
     const allocatable = status.allocatable || {};
     const taints = spec.taints || [];
-    const [sectionSearch, setSectionSearch] = useState<Record<string, string>>({});
-
-    const getSectionTerm = (sectionKey: string) => sectionSearch[sectionKey] || '';
-    const setSectionTerm = (sectionKey: string, value: string) => {
-        setSectionSearch((prev) => ({
-            ...prev,
-            [sectionKey]: value
-        }));
-    };
+    const { sectionSearch, getSectionTerm, renderSearch } = useSectionSearch();
 
     const systemInfoRows = useMemo(() => [
         { label: 'OS Image', value: nodeInfo.osImage },
@@ -201,14 +137,6 @@ export default function NodeDetails({ node, tabContext = '' }: any) {
             entry.display,
         ], getSectionTerm('annotations')))
     ), [annotationEntries, sectionSearch]);
-
-    const renderSearch = (sectionKey: string, placeholder: string) => (
-        <SectionSearchInput
-            value={getSectionTerm(sectionKey)}
-            onChange={(value) => setSectionTerm(sectionKey, value)}
-            placeholder={placeholder}
-        />
-    );
 
     const handleEditYaml = () => {
         const tabId = `yaml-node-${name}`;

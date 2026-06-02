@@ -4,7 +4,8 @@ import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { useNotification } from '~/context';
 import { formatAge } from '~/utils/formatting';
-import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadge, CopyableLabel, WorkloadImagesRow } from './DetailComponents';
+import { DetailRow, DetailSection, StatusBadge, CopyableLabel, WorkloadImagesRow, getUniqueContainerImages } from './DetailComponents';
+import { entriesFromObject, matchesSearch, normalizeSearchTerm, NoSectionMatches, useSectionSearch } from './detailSearch';
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 import ControllerMetricsTab from './ControllerMetricsTab';
 import ResourceEventsTab from './ResourceEventsTab';
@@ -35,6 +36,7 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
     const uid = deployment.metadata?.uid;
     const labels = deployment.metadata?.labels || {};
     const annotations = deployment.metadata?.annotations || {};
+    const { sectionSearch, getSectionTerm, renderSearch } = useSectionSearch();
 
     // Subscribe to deployment updates for this specific resource
     const handleWatcherEvent = useCallback((event: any) => {
@@ -71,6 +73,54 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
     const conditions = status.conditions || [];
     const selector = spec.selector?.matchLabels || {};
     const strategy = spec.strategy?.type || 'RollingUpdate';
+    const imageStrings = getUniqueContainerImages(spec.template?.spec);
+    const detailRows: any[] = [
+        { label: 'Name', value: name },
+        { label: 'Namespace', value: namespace },
+        { label: 'Strategy', value: strategy },
+        {
+            label: 'Created',
+            value: `${formatAge(deployment.metadata?.creationTimestamp)} ago`,
+            title: deployment.metadata?.creationTimestamp
+        },
+        {
+            label: 'UID',
+            value: deployment.metadata?.uid?.substring(0, 8) + '...',
+            copyValue: deployment.metadata?.uid
+        },
+    ];
+    const labelEntries = useMemo(() => entriesFromObject(labels), [labels]);
+    const annotationEntries = useMemo(() => entriesFromObject(annotations), [annotations]);
+    const selectorEntries = useMemo(() => entriesFromObject(selector), [selector]);
+    const filteredConditions = useMemo(() => conditions.filter((condition: any) => matchesSearch([
+        condition.type,
+        condition.status,
+        condition.reason,
+        condition.message,
+        condition.lastTransitionTime,
+    ], getSectionTerm('conditions'))), [conditions, sectionSearch]);
+    const filteredDetailRows = useMemo(() => detailRows.filter((row) => matchesSearch([
+        row.label,
+        row.value,
+        row.copyValue,
+        row.title,
+    ], getSectionTerm('details'))), [detailRows, sectionSearch]);
+    const detailsTermMatchesImages = matchesSearch(['Images', ...imageStrings], getSectionTerm('details'));
+    const filteredSelector = useMemo(() => selectorEntries.filter((entry) => matchesSearch([
+        entry.key,
+        entry.value,
+        entry.display,
+    ], getSectionTerm('selector'))), [selectorEntries, sectionSearch]);
+    const filteredLabels = useMemo(() => labelEntries.filter((entry) => matchesSearch([
+        entry.key,
+        entry.value,
+        entry.display,
+    ], getSectionTerm('labels'))), [labelEntries, sectionSearch]);
+    const filteredAnnotations = useMemo(() => annotationEntries.filter((entry) => matchesSearch([
+        entry.key,
+        entry.value,
+        entry.display,
+    ], getSectionTerm('annotations'))), [annotationEntries, sectionSearch]);
 
     const handleEditYaml = () => {
         const tabId = `yaml-deployment-${namespace}/${name}`;
@@ -278,9 +328,9 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
 
                 {/* Conditions */}
                 {conditions.length > 0 && (
-                    <DetailSection title="Conditions">
+                    <DetailSection title="Conditions" headerAction={renderSearch('conditions', 'Search conditions...')}>
                         <div className="space-y-2">
-                            {conditions.map((condition: any, idx: number) => (
+                            {filteredConditions.map((condition: any, idx: number) => (
                                 <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                                     <div className="flex items-center gap-2">
                                         <StatusBadge status={condition.type} variant={getConditionVariant(condition)} />
@@ -291,47 +341,85 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
                                     </span>
                                 </div>
                             ))}
+                            {normalizeSearchTerm(getSectionTerm('conditions')) && filteredConditions.length === 0 && (
+                                <NoSectionMatches term={getSectionTerm('conditions')} />
+                            )}
                         </div>
                     </DetailSection>
                 )}
 
                 {/* Details */}
-                <DetailSection title="Details">
-                    <DetailRow label="Name" value={name} />
-                    <DetailRow label="Namespace" value={namespace} />
-                    <WorkloadImagesRow podSpec={spec.template?.spec} />
-                    <DetailRow label="Strategy" value={strategy} />
-                    <DetailRow label="Created">
-                        <span title={deployment.metadata?.creationTimestamp}>
-                            {formatAge(deployment.metadata?.creationTimestamp)} ago
-                        </span>
-                    </DetailRow>
-                    <DetailRow label="UID">
-                        <CopyableLabel value={deployment.metadata?.uid?.substring(0, 8) + '...'} copyValue={deployment.metadata?.uid} />
-                    </DetailRow>
+                <DetailSection title="Details" headerAction={renderSearch('details', 'Search details...')}>
+                    {filteredDetailRows.map((row: any) => (
+                        <React.Fragment key={row.label}>
+                            <DetailRow label={row.label}>
+                                {row.label === 'UID' ? (
+                                    <CopyableLabel value={row.value} copyValue={row.copyValue} />
+                                ) : row.title ? (
+                                    <span title={row.title}>{row.value}</span>
+                                ) : (
+                                    row.value
+                                )}
+                            </DetailRow>
+                            {row.label === 'Namespace' && detailsTermMatchesImages && (
+                                <WorkloadImagesRow podSpec={spec.template?.spec} />
+                            )}
+                        </React.Fragment>
+                    ))}
+                    {filteredDetailRows.length === 0 && detailsTermMatchesImages && <WorkloadImagesRow podSpec={spec.template?.spec} />}
+                    {normalizeSearchTerm(getSectionTerm('details')) && !detailsTermMatchesImages && filteredDetailRows.length === 0 && (
+                        <NoSectionMatches term={getSectionTerm('details')} />
+                    )}
                 </DetailSection>
 
                 {/* Selector */}
-                <DetailSection title="Selector">
-                    {Object.keys(selector).length > 0 ? (
+                <DetailSection title="Selector" headerAction={renderSearch('selector', 'Search selector...')}>
+                    {selectorEntries.length === 0 ? (
+                        <span className="text-gray-500">None</span>
+                    ) : filteredSelector.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
-                            {Object.entries(selector).map(([key, value]) => (
-                                <CopyableLabel key={key} value={`${key}=${value}`} />
+                            {filteredSelector.map((entry) => (
+                                <CopyableLabel key={entry.key} value={entry.display} />
                             ))}
                         </div>
                     ) : (
-                        <span className="text-gray-500">None</span>
+                        <NoSectionMatches term={getSectionTerm('selector')} />
                     )}
                 </DetailSection>
 
                 {/* Labels */}
-                <DetailSection title="Labels">
-                    <LabelsDisplay labels={labels} />
+                <DetailSection title="Labels" headerAction={renderSearch('labels', 'Search labels...')}>
+                    {labelEntries.length === 0 ? (
+                        <span className="text-gray-500">None</span>
+                    ) : filteredLabels.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                            {filteredLabels.map((entry) => (
+                                <CopyableLabel key={entry.key} value={entry.display} />
+                            ))}
+                        </div>
+                    ) : (
+                        <NoSectionMatches term={getSectionTerm('labels')} />
+                    )}
                 </DetailSection>
 
                 {/* Annotations */}
-                <DetailSection title="Annotations">
-                    <AnnotationsDisplay annotations={annotations} />
+                <DetailSection title="Annotations" headerAction={renderSearch('annotations', 'Search annotations...')}>
+                    {annotationEntries.length === 0 ? (
+                        <span className="text-gray-500">None</span>
+                    ) : filteredAnnotations.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                            {filteredAnnotations.map((entry) => (
+                                <CopyableLabel
+                                    key={entry.key}
+                                    value={entry.key.length > 40 ? `${entry.key.substring(0, 40)}...` : entry.key}
+                                    copyValue={entry.display}
+                                    className="bg-purple-500/10 border-purple-500/30"
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <NoSectionMatches term={getSectionTerm('annotations')} />
+                    )}
                 </DetailSection>
             </div>
             )}

@@ -104,7 +104,7 @@ export const DetailRow = React.memo(({ label, value, children }: { label: string
     </div>
 ));
 
-const getUniqueContainerImages = (podSpec: any): string[] => {
+export const getUniqueContainerImages = (podSpec: any): string[] => {
     const containers = [
         ...(podSpec?.initContainers || []),
         ...(podSpec?.containers || []),
