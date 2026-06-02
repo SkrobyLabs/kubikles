@@ -50,7 +50,7 @@ const SectionSearchInput = ({
     onChange,
     placeholder
 }: { value: string; onChange: (value: string) => void; placeholder: string }) => (
-    <div className="relative w-40 max-w-full sm:w-48">
+    <div className="relative w-44 max-w-full">
         <MagnifyingGlassIcon className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
         <input
             type="text"

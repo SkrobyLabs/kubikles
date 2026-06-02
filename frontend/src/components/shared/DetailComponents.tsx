@@ -143,8 +143,8 @@ export const DetailSection = React.memo(({ title, headerAction, children }: { ti
     <div className="bg-surface rounded-lg border border-border p-4 mb-4">
         {title && (
             headerAction ? (
-                <div className="flex flex-wrap items-center gap-2 justify-between mb-3 pb-2 border-b border-border">
-                    <h3 className="text-sm font-medium text-gray-300">
+                <div className="flex flex-wrap items-center gap-3 mb-3 pb-2 border-b border-border">
+                    <h3 className="text-sm font-medium text-gray-300 shrink-0">
                         {title}
                     </h3>
                     {headerAction}
