@@ -148,15 +148,29 @@ function parseMemoryQuantity(q: string | undefined): number {
     return Number.isFinite(v) ? v : 0;
 }
 
-/** Sum CPU and memory requests across all containers in a pod */
+/** Calculate scheduler-visible CPU and memory requests for a pod. */
 export function getPodResourceRequests(pod: any): { cpuMillis: number; memBytes: number } {
-    let cpuMillis = 0;
-    let memBytes = 0;
+    const podCpuMillis = parseCpuQuantity(pod.spec?.resources?.requests?.cpu);
+    const podMemBytes = parseMemoryQuantity(pod.spec?.resources?.requests?.memory);
+
+    let containerCpuMillis = 0;
+    let containerMemBytes = 0;
     for (const c of pod.spec?.containers || []) {
-        cpuMillis += parseCpuQuantity(c.resources?.requests?.cpu);
-        memBytes += parseMemoryQuantity(c.resources?.requests?.memory);
+        containerCpuMillis += parseCpuQuantity(c.resources?.requests?.cpu);
+        containerMemBytes += parseMemoryQuantity(c.resources?.requests?.memory);
     }
-    return { cpuMillis, memBytes };
+
+    let initCpuMillis = 0;
+    let initMemBytes = 0;
+    for (const c of pod.spec?.initContainers || []) {
+        initCpuMillis = Math.max(initCpuMillis, parseCpuQuantity(c.resources?.requests?.cpu));
+        initMemBytes = Math.max(initMemBytes, parseMemoryQuantity(c.resources?.requests?.memory));
+    }
+
+    return {
+        cpuMillis: Math.max(podCpuMillis, containerCpuMillis, initCpuMillis) + parseCpuQuantity(pod.spec?.overhead?.cpu),
+        memBytes: Math.max(podMemBytes, containerMemBytes, initMemBytes) + parseMemoryQuantity(pod.spec?.overhead?.memory),
+    };
 }
 
 /** Pod metrics map: keyed by "namespace/name" */

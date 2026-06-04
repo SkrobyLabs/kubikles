@@ -565,8 +565,8 @@ type NodeMetrics struct {
 	MemCapacity  int64  `json:"memCapacity"`  // bytes
 	CPURequested int64  `json:"cpuRequested"` // millicores (sum of pod requests)
 	MemRequested int64  `json:"memRequested"` // bytes (sum of pod requests)
-	CPUCommitted int64  `json:"cpuCommitted"` // millicores (sum of max(usage, request) per container)
-	MemCommitted int64  `json:"memCommitted"` // bytes (sum of max(usage, request) per container)
+	CPUCommitted int64  `json:"cpuCommitted"` // millicores (sum of max(usage, effective request) per pod)
+	MemCommitted int64  `json:"memCommitted"` // bytes (sum of max(usage, effective request) per pod)
 	PodCount     int64  `json:"podCount"`     // number of running pods on node
 	PodCapacity  int64  `json:"podCapacity"`  // max pods allowed on node
 }

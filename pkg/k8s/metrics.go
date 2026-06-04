@@ -14,6 +14,58 @@ import (
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
+func resourceRequestValue(requests v1.ResourceList, resourceName v1.ResourceName) int64 {
+	if requests == nil {
+		return 0
+	}
+	quantity, ok := requests[resourceName]
+	if !ok {
+		return 0
+	}
+	if resourceName == v1.ResourceCPU {
+		return quantity.MilliValue()
+	}
+	return quantity.Value()
+}
+
+func effectivePodResourceRequest(pod *v1.Pod, resourceName v1.ResourceName) int64 {
+	var podRequest int64
+	if pod.Spec.Resources != nil {
+		podRequest = resourceRequestValue(pod.Spec.Resources.Requests, resourceName)
+	}
+
+	var containerSum int64
+	for _, container := range pod.Spec.Containers {
+		containerSum += resourceRequestValue(container.Resources.Requests, resourceName)
+	}
+
+	var maxInitRequest int64
+	for _, container := range pod.Spec.InitContainers {
+		request := resourceRequestValue(container.Resources.Requests, resourceName)
+		if request > maxInitRequest {
+			maxInitRequest = request
+		}
+	}
+
+	effectiveRequest := podRequest
+	if containerSum > effectiveRequest {
+		effectiveRequest = containerSum
+	}
+	if maxInitRequest > effectiveRequest {
+		effectiveRequest = maxInitRequest
+	}
+
+	return effectiveRequest + resourceRequestValue(pod.Spec.Overhead, resourceName)
+}
+
+func effectivePodRequests(pod *v1.Pod) (cpu, memory int64) {
+	return effectivePodResourceRequest(pod, v1.ResourceCPU), effectivePodResourceRequest(pod, v1.ResourceMemory)
+}
+
+func isScheduledNonTerminalPod(pod *v1.Pod) bool {
+	return pod.Spec.NodeName != "" && pod.Status.Phase != v1.PodSucceeded && pod.Status.Phase != v1.PodFailed
+}
+
 func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 	if IsDebugClusterContext(c.GetCurrentContext()) {
 		return &NodeMetricsResult{Available: false, Error: "metrics not available on debug cluster"}, nil
@@ -128,7 +180,7 @@ func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 
 	for _, pod := range pods.Items {
 		// Skip pods not scheduled or in terminal states
-		if pod.Spec.NodeName == "" || pod.Status.Phase == v1.PodSucceeded || pod.Status.Phase == v1.PodFailed {
+		if !isScheduledNonTerminalPod(&pod) {
 			continue
 		}
 		nodeName := pod.Spec.NodeName
@@ -138,33 +190,29 @@ func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 		res := resourcesMap[nodeName]
 		res.podCount++
 
-		for _, container := range pod.Spec.Containers {
-			var reqCPU, reqMem int64
-			if container.Resources.Requests != nil {
-				reqCPU = container.Resources.Requests.Cpu().MilliValue()
-				reqMem = container.Resources.Requests.Memory().Value()
-			}
-			res.requestedCPU += reqCPU
-			res.requestedMem += reqMem
+		reqCPU, reqMem := effectivePodRequests(&pod)
+		res.requestedCPU += reqCPU
+		res.requestedMem += reqMem
 
-			// Calculate committed: max(usage, request)
+		var podCPUUsage, podMemUsage int64
+		for _, container := range pod.Spec.Containers {
 			key := pod.Namespace + "/" + pod.Name + "/" + container.Name
 			if usage, ok := containerUsageMap[key]; ok {
-				if usage.cpu > reqCPU {
-					res.committedCPU += usage.cpu
-				} else {
-					res.committedCPU += reqCPU
-				}
-				if usage.memory > reqMem {
-					res.committedMem += usage.memory
-				} else {
-					res.committedMem += reqMem
-				}
-			} else {
-				// No usage data, use request as committed
-				res.committedCPU += reqCPU
-				res.committedMem += reqMem
+				podCPUUsage += usage.cpu
+				podMemUsage += usage.memory
 			}
+		}
+
+		// Calculate committed: max(pod usage, effective pod request)
+		if podCPUUsage > reqCPU {
+			res.committedCPU += podCPUUsage
+		} else {
+			res.committedCPU += reqCPU
+		}
+		if podMemUsage > reqMem {
+			res.committedMem += podMemUsage
+		} else {
+			res.committedMem += reqMem
 		}
 	}
 
@@ -230,6 +278,11 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 		return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
 	}
 
+	pods, err := cs.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
 	// Build capacity map from node specs
 	type nodeCapacity struct {
 		cpu    int64
@@ -245,11 +298,26 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 		}
 	}
 
+	type nodeRequests struct {
+		cpu, memory, pods int64
+	}
+	requestsMap := make(map[string]nodeRequests)
+	for _, pod := range pods.Items {
+		if !isScheduledNonTerminalPod(&pod) {
+			continue
+		}
+		cpu, memory := effectivePodRequests(&pod)
+		requests := requestsMap[pod.Spec.NodeName]
+		requests.cpu += cpu
+		requests.memory += memory
+		requests.pods++
+		requestsMap[pod.Spec.NodeName] = requests
+	}
+
 	// Query Prometheus for current metrics - run all queries in parallel
 	// Try node_exporter metrics first (node-level, matches metrics-server), fall back to container metrics
 	var nodeExporterCpuResult, nodeExporterMemResult *PrometheusQueryResult
 	var containerCpuResult, containerMemResult *PrometheusQueryResult
-	var cpuRequestsResult, memRequestsResult, podCountResult *PrometheusQueryResult
 
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -278,27 +346,6 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 	g.Go(func() error {
 		containerMemResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
 			`sum by (node) (container_memory_working_set_bytes{container!="", container!="POD"})`)
-		return nil
-	})
-
-	// CPU Requests (optional)
-	g.Go(func() error {
-		cpuRequestsResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
-			`sum by (node) (kube_pod_container_resource_requests{resource="cpu", unit="core"})`)
-		return nil
-	})
-
-	// Memory Requests (optional)
-	g.Go(func() error {
-		memRequestsResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
-			`sum by (node) (kube_pod_container_resource_requests{resource="memory", unit="byte"})`)
-		return nil
-	})
-
-	// Pod count (optional) - exclude terminal states (Succeeded/Failed) to match K8s metrics behavior
-	g.Go(func() error {
-		podCountResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
-			`count by (node) (kube_pod_info{node!=""} unless on(namespace, pod) kube_pod_status_phase{phase=~"Succeeded|Failed"} == 1)`)
 		return nil
 	})
 
@@ -341,30 +388,24 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 		return &NodeMetricsResult{Available: false, Error: "prometheus returned no usage metrics"}, nil
 	}
 
-	cpuRequests := extractValues(cpuRequestsResult, "node")
-	memRequests := extractValues(memRequestsResult, "node")
-	podCounts := extractValues(podCountResult, "node")
-
 	// Build result
 	result := make([]NodeMetrics, 0, len(nodes.Items))
 	for _, node := range nodes.Items {
 		name := node.Name
 		cap := capacityMap[name]
+		requests := requestsMap[name]
 
 		cpuUsageMilli := int64(cpuUsage[name] * 1000) // cores to millicores
 		memUsageBytes := int64(memUsage[name])
-		cpuReqMilli := int64(cpuRequests[name] * 1000) // cores to millicores
-		memReqBytes := int64(memRequests[name])
-		pods := int64(podCounts[name])
 
 		// Committed = max(usage, requested)
 		cpuCommitted := cpuUsageMilli
-		if cpuReqMilli > cpuCommitted {
-			cpuCommitted = cpuReqMilli
+		if requests.cpu > cpuCommitted {
+			cpuCommitted = requests.cpu
 		}
 		memCommitted := memUsageBytes
-		if memReqBytes > memCommitted {
-			memCommitted = memReqBytes
+		if requests.memory > memCommitted {
+			memCommitted = requests.memory
 		}
 
 		result = append(result, NodeMetrics{
@@ -373,11 +414,11 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 			MemoryUsage:  memUsageBytes,
 			CPUCapacity:  cap.cpu,
 			MemCapacity:  cap.memory,
-			CPURequested: cpuReqMilli,
-			MemRequested: memReqBytes,
+			CPURequested: requests.cpu,
+			MemRequested: requests.memory,
 			CPUCommitted: cpuCommitted,
 			MemCommitted: memCommitted,
-			PodCount:     pods,
+			PodCount:     requests.pods,
 			PodCapacity:  cap.pods,
 		})
 	}
@@ -402,6 +443,11 @@ func (c *Client) GetPodMetricsFromPrometheus(contextName string, info *Prometheu
 		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
 	}
 
+	pods, err := cs.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return &PodMetricsResult{Available: false, Error: err.Error()}, nil
+	}
+
 	// Build node capacity map
 	nodeCapacityMap := make(map[string]struct{ cpu, memory int64 })
 	for _, node := range nodes.Items {
@@ -411,9 +457,26 @@ func (c *Client) GetPodMetricsFromPrometheus(contextName string, info *Prometheu
 		}
 	}
 
+	type podInfo struct {
+		nodeName string
+		cpuReq   int64
+		memReq   int64
+	}
+	podInfoMap := make(map[string]podInfo, len(pods.Items))
+	for _, pod := range pods.Items {
+		if !isScheduledNonTerminalPod(&pod) {
+			continue
+		}
+		cpuReq, memReq := effectivePodRequests(&pod)
+		podInfoMap[pod.Namespace+"/"+pod.Name] = podInfo{
+			nodeName: pod.Spec.NodeName,
+			cpuReq:   cpuReq,
+			memReq:   memReq,
+		}
+	}
+
 	// Query Prometheus for pod-level metrics in parallel
 	var cpuUsageResult, memUsageResult *PrometheusQueryResult
-	var cpuRequestsResult, memRequestsResult *PrometheusQueryResult
 	var podInfoResult *PrometheusQueryResult
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -429,20 +492,6 @@ func (c *Client) GetPodMetricsFromPrometheus(contextName string, info *Prometheu
 	g.Go(func() error {
 		memUsageResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
 			`sum by (namespace, pod) (container_memory_working_set_bytes{container!="", container!="POD"})`)
-		return nil
-	})
-
-	// Pod CPU requests
-	g.Go(func() error {
-		cpuRequestsResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
-			`sum by (namespace, pod) (kube_pod_container_resource_requests{resource="cpu", unit="core"})`)
-		return nil
-	})
-
-	// Pod Memory requests
-	g.Go(func() error {
-		memRequestsResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
-			`sum by (namespace, pod) (kube_pod_container_resource_requests{resource="memory", unit="byte"})`)
 		return nil
 	})
 
@@ -486,9 +535,6 @@ func (c *Client) GetPodMetricsFromPrometheus(contextName string, info *Prometheu
 		return &PodMetricsResult{Available: false, Error: "prometheus returned no pod usage metrics"}, nil
 	}
 
-	cpuRequests := extractPodValues(cpuRequestsResult)
-	memRequests := extractPodValues(memRequestsResult)
-
 	// Build pod-to-node mapping from kube_pod_info
 	podNodeMap := make(map[string]string) // "namespace/pod" -> node
 	if podInfoResult != nil && podInfoResult.Data.Result != nil {
@@ -522,22 +568,26 @@ func (c *Client) GetPodMetricsFromPrometheus(contextName string, info *Prometheu
 
 		nodeName := podNodeMap[key]
 		if nodeName == "" {
-			continue // Skip pods without a node mapping
+			if info, ok := podInfoMap[key]; ok {
+				nodeName = info.nodeName
+			}
+		}
+		info, ok := podInfoMap[key]
+		if !ok || nodeName == "" {
+			continue // Skip pods without API request data or a node mapping
 		}
 
 		cpuUsageMilli := int64(cpuUsage[key] * 1000) // cores to millicores
 		memUsageBytes := int64(memUsage[key])
-		cpuReqMilli := int64(cpuRequests[key] * 1000) // cores to millicores
-		memReqBytes := int64(memRequests[key])
 
 		// Committed = max(usage, requested)
 		cpuCommitted := cpuUsageMilli
-		if cpuReqMilli > cpuCommitted {
-			cpuCommitted = cpuReqMilli
+		if info.cpuReq > cpuCommitted {
+			cpuCommitted = info.cpuReq
 		}
 		memCommitted := memUsageBytes
-		if memReqBytes > memCommitted {
-			memCommitted = memReqBytes
+		if info.memReq > memCommitted {
+			memCommitted = info.memReq
 		}
 
 		nodeCap := nodeCapacityMap[nodeName]
@@ -548,8 +598,8 @@ func (c *Client) GetPodMetricsFromPrometheus(contextName string, info *Prometheu
 			NodeName:        nodeName,
 			CPUUsage:        cpuUsageMilli,
 			MemoryUsage:     memUsageBytes,
-			CPURequested:    cpuReqMilli,
-			MemRequested:    memReqBytes,
+			CPURequested:    info.cpuReq,
+			MemRequested:    info.memReq,
 			CPUCommitted:    cpuCommitted,
 			MemCommitted:    memCommitted,
 			NodeCPUCapacity: nodeCap.cpu,
@@ -646,13 +696,7 @@ func (c *Client) GetPodMetrics() (*PodMetricsResult, error) {
 	podInfoMap := make(map[string]podInfo, len(pods.Items))
 	for _, pod := range pods.Items {
 		key := pod.Namespace + "/" + pod.Name
-		var cpuReq, memReq int64
-		for _, container := range pod.Spec.Containers {
-			if container.Resources.Requests != nil {
-				cpuReq += container.Resources.Requests.Cpu().MilliValue()
-				memReq += container.Resources.Requests.Memory().Value()
-			}
-		}
+		cpuReq, memReq := effectivePodRequests(&pod)
 		podInfoMap[key] = podInfo{
 			nodeName: pod.Spec.NodeName,
 			cpuReq:   cpuReq,
