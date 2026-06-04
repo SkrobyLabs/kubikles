@@ -153,23 +153,38 @@ export function getPodResourceRequests(pod: any): { cpuMillis: number; memBytes:
     const podCpuMillis = parseCpuQuantity(pod.spec?.resources?.requests?.cpu);
     const podMemBytes = parseMemoryQuantity(pod.spec?.resources?.requests?.memory);
 
-    let containerCpuMillis = 0;
-    let containerMemBytes = 0;
+    let containerAndSidecarCpuMillis = 0;
+    let containerAndSidecarMemBytes = 0;
     for (const c of pod.spec?.containers || []) {
-        containerCpuMillis += parseCpuQuantity(c.resources?.requests?.cpu);
-        containerMemBytes += parseMemoryQuantity(c.resources?.requests?.memory);
+        containerAndSidecarCpuMillis += parseCpuQuantity(c.resources?.requests?.cpu);
+        containerAndSidecarMemBytes += parseMemoryQuantity(c.resources?.requests?.memory);
     }
 
     let initCpuMillis = 0;
     let initMemBytes = 0;
+    let restartableInitCpuMillis = 0;
+    let restartableInitMemBytes = 0;
     for (const c of pod.spec?.initContainers || []) {
-        initCpuMillis = Math.max(initCpuMillis, parseCpuQuantity(c.resources?.requests?.cpu));
-        initMemBytes = Math.max(initMemBytes, parseMemoryQuantity(c.resources?.requests?.memory));
+        let cpuMillis = parseCpuQuantity(c.resources?.requests?.cpu);
+        let memBytes = parseMemoryQuantity(c.resources?.requests?.memory);
+        if (c.restartPolicy === 'Always') {
+            containerAndSidecarCpuMillis += cpuMillis;
+            containerAndSidecarMemBytes += memBytes;
+            restartableInitCpuMillis += cpuMillis;
+            restartableInitMemBytes += memBytes;
+            cpuMillis = restartableInitCpuMillis;
+            memBytes = restartableInitMemBytes;
+        } else {
+            cpuMillis += restartableInitCpuMillis;
+            memBytes += restartableInitMemBytes;
+        }
+        initCpuMillis = Math.max(initCpuMillis, cpuMillis);
+        initMemBytes = Math.max(initMemBytes, memBytes);
     }
 
     return {
-        cpuMillis: Math.max(podCpuMillis, containerCpuMillis, initCpuMillis) + parseCpuQuantity(pod.spec?.overhead?.cpu),
-        memBytes: Math.max(podMemBytes, containerMemBytes, initMemBytes) + parseMemoryQuantity(pod.spec?.overhead?.memory),
+        cpuMillis: Math.max(podCpuMillis, containerAndSidecarCpuMillis, initCpuMillis) + parseCpuQuantity(pod.spec?.overhead?.cpu),
+        memBytes: Math.max(podMemBytes, containerAndSidecarMemBytes, initMemBytes) + parseMemoryQuantity(pod.spec?.overhead?.memory),
     };
 }
 

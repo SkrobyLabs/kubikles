@@ -96,3 +96,92 @@ func TestEffectivePodRequestsUsesMaxOfPodContainersAndInitContainers(t *testing.
 		t.Fatalf("expected memory request 512Mi, got %d bytes", memory)
 	}
 }
+
+func TestEffectivePodRequestsAddsRestartableInitSidecarsToAppContainers(t *testing.T) {
+	always := v1.ContainerRestartPolicyAlways
+	pod := &v1.Pod{
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name: "main",
+					Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("500m"),
+							v1.ResourceMemory: resource.MustParse("128Mi"),
+						},
+					},
+				},
+			},
+			InitContainers: []v1.Container{
+				{
+					Name:          "log-sidecar",
+					RestartPolicy: &always,
+					Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("200m"),
+							v1.ResourceMemory: resource.MustParse("64Mi"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	cpu, memory := effectivePodRequests(pod)
+
+	if cpu != 700 {
+		t.Fatalf("expected CPU request 700m, got %dm", cpu)
+	}
+	if memory != resourceValue("192Mi") {
+		t.Fatalf("expected memory request 192Mi, got %d bytes", memory)
+	}
+}
+
+func TestEffectivePodRequestsIncludesEarlierSidecarsWithLaterInitContainers(t *testing.T) {
+	always := v1.ContainerRestartPolicyAlways
+	pod := &v1.Pod{
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name: "main",
+					Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("500m"),
+							v1.ResourceMemory: resource.MustParse("128Mi"),
+						},
+					},
+				},
+			},
+			InitContainers: []v1.Container{
+				{
+					Name:          "log-sidecar",
+					RestartPolicy: &always,
+					Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("200m"),
+							v1.ResourceMemory: resource.MustParse("64Mi"),
+						},
+					},
+				},
+				{
+					Name: "setup",
+					Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("800m"),
+							v1.ResourceMemory: resource.MustParse("256Mi"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	cpu, memory := effectivePodRequests(pod)
+
+	if cpu != 1000 {
+		t.Fatalf("expected CPU request 1000m, got %dm", cpu)
+	}
+	if memory != resourceValue("320Mi") {
+		t.Fatalf("expected memory request 320Mi, got %d bytes", memory)
+	}
+}

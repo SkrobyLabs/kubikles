@@ -50,4 +50,41 @@ describe('getPodResourceRequests', () => {
             memBytes: 512 * 1024 ** 2,
         });
     });
+
+    it('adds restartable init sidecars to app container requests', () => {
+        const pod = {
+            spec: {
+                containers: [
+                    { name: 'main', resources: { requests: { cpu: '500m', memory: '128Mi' } } },
+                ],
+                initContainers: [
+                    { name: 'log-sidecar', restartPolicy: 'Always', resources: { requests: { cpu: '200m', memory: '64Mi' } } },
+                ],
+            },
+        };
+
+        expect(getPodResourceRequests(pod)).toEqual({
+            cpuMillis: 700,
+            memBytes: 192 * 1024 ** 2,
+        });
+    });
+
+    it('includes earlier sidecars with later init container requests', () => {
+        const pod = {
+            spec: {
+                containers: [
+                    { name: 'main', resources: { requests: { cpu: '500m', memory: '128Mi' } } },
+                ],
+                initContainers: [
+                    { name: 'log-sidecar', restartPolicy: 'Always', resources: { requests: { cpu: '200m', memory: '64Mi' } } },
+                    { name: 'setup', resources: { requests: { cpu: '800m', memory: '256Mi' } } },
+                ],
+            },
+        };
+
+        expect(getPodResourceRequests(pod)).toEqual({
+            cpuMillis: 1000,
+            memBytes: 320 * 1024 ** 2,
+        });
+    });
 });

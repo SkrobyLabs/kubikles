@@ -34,22 +34,30 @@ func effectivePodResourceRequest(pod *v1.Pod, resourceName v1.ResourceName) int6
 		podRequest = resourceRequestValue(pod.Spec.Resources.Requests, resourceName)
 	}
 
-	var containerSum int64
+	var containerAndSidecarSum int64
 	for _, container := range pod.Spec.Containers {
-		containerSum += resourceRequestValue(container.Resources.Requests, resourceName)
+		containerAndSidecarSum += resourceRequestValue(container.Resources.Requests, resourceName)
 	}
 
+	var restartableInitSum int64
 	var maxInitRequest int64
 	for _, container := range pod.Spec.InitContainers {
 		request := resourceRequestValue(container.Resources.Requests, resourceName)
+		if container.RestartPolicy != nil && *container.RestartPolicy == v1.ContainerRestartPolicyAlways {
+			containerAndSidecarSum += request
+			restartableInitSum += request
+			request = restartableInitSum
+		} else {
+			request += restartableInitSum
+		}
 		if request > maxInitRequest {
 			maxInitRequest = request
 		}
 	}
 
 	effectiveRequest := podRequest
-	if containerSum > effectiveRequest {
-		effectiveRequest = containerSum
+	if containerAndSidecarSum > effectiveRequest {
+		effectiveRequest = containerAndSidecarSum
 	}
 	if maxInitRequest > effectiveRequest {
 		effectiveRequest = maxInitRequest
