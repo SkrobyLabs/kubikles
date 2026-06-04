@@ -3,6 +3,9 @@
  */
 
 import { getPodStatus } from '~/utils/k8s-helpers';
+import { getPodResourceRequests } from '~/utils/resourceQuantities';
+
+export { getPodResourceRequests } from '~/utils/resourceQuantities';
 
 /** 20-color palette for namespace coloring */
 const NAMESPACE_COLORS = [
@@ -119,74 +122,6 @@ export function getPodStatusBgColor(status: string): string {
 // ---------------------------------------------------------------------------
 // Resource-based coloring
 // ---------------------------------------------------------------------------
-
-/** Parse k8s CPU quantity to millicores. Returns 0 for malformed input. */
-function parseCpuQuantity(q: string | undefined): number {
-    if (!q) return 0;
-    let v: number;
-    if (q.endsWith('n')) v = parseInt(q, 10) / 1e6;
-    else if (q.endsWith('u')) v = parseInt(q, 10) / 1e3;
-    else if (q.endsWith('m')) v = parseInt(q, 10);
-    else v = parseFloat(q) * 1000;
-    return Number.isFinite(v) ? v : 0;
-}
-
-/** Parse k8s memory quantity to bytes. Returns 0 for malformed input. */
-function parseMemoryQuantity(q: string | undefined): number {
-    if (!q) return 0;
-    const units: [string, number][] = [
-        ['Ti', 1024 ** 4], ['Gi', 1024 ** 3], ['Mi', 1024 ** 2], ['Ki', 1024],
-        ['T', 1e12], ['G', 1e9], ['M', 1e6], ['K', 1e3],
-    ];
-    for (const [suffix, mult] of units) {
-        if (q.endsWith(suffix)) {
-            const v = parseFloat(q.slice(0, -suffix.length)) * mult;
-            return Number.isFinite(v) ? v : 0;
-        }
-    }
-    const v = parseFloat(q);
-    return Number.isFinite(v) ? v : 0;
-}
-
-/** Calculate scheduler-visible CPU and memory requests for a pod. */
-export function getPodResourceRequests(pod: any): { cpuMillis: number; memBytes: number } {
-    const podCpuMillis = parseCpuQuantity(pod.spec?.resources?.requests?.cpu);
-    const podMemBytes = parseMemoryQuantity(pod.spec?.resources?.requests?.memory);
-
-    let containerAndSidecarCpuMillis = 0;
-    let containerAndSidecarMemBytes = 0;
-    for (const c of pod.spec?.containers || []) {
-        containerAndSidecarCpuMillis += parseCpuQuantity(c.resources?.requests?.cpu);
-        containerAndSidecarMemBytes += parseMemoryQuantity(c.resources?.requests?.memory);
-    }
-
-    let initCpuMillis = 0;
-    let initMemBytes = 0;
-    let restartableInitCpuMillis = 0;
-    let restartableInitMemBytes = 0;
-    for (const c of pod.spec?.initContainers || []) {
-        let cpuMillis = parseCpuQuantity(c.resources?.requests?.cpu);
-        let memBytes = parseMemoryQuantity(c.resources?.requests?.memory);
-        if (c.restartPolicy === 'Always') {
-            containerAndSidecarCpuMillis += cpuMillis;
-            containerAndSidecarMemBytes += memBytes;
-            restartableInitCpuMillis += cpuMillis;
-            restartableInitMemBytes += memBytes;
-            cpuMillis = restartableInitCpuMillis;
-            memBytes = restartableInitMemBytes;
-        } else {
-            cpuMillis += restartableInitCpuMillis;
-            memBytes += restartableInitMemBytes;
-        }
-        initCpuMillis = Math.max(initCpuMillis, cpuMillis);
-        initMemBytes = Math.max(initMemBytes, memBytes);
-    }
-
-    return {
-        cpuMillis: Math.max(podCpuMillis, containerAndSidecarCpuMillis, initCpuMillis) + parseCpuQuantity(pod.spec?.overhead?.cpu),
-        memBytes: Math.max(podMemBytes, containerAndSidecarMemBytes, initMemBytes) + parseMemoryQuantity(pod.spec?.overhead?.memory),
-    };
-}
 
 /** Pod metrics map: keyed by "namespace/name" */
 export type PodMetricsMap = Record<string, { cpuCommitted: number; memCommitted: number }>;

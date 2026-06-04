@@ -29,7 +29,7 @@ export const formatAge = (timestamp: string | undefined): string => {
 
 export const formatBytes = (bytes: number | null | undefined): string => {
     if (bytes === 0 || bytes == null) return '0 B';
-    const k = 1024;
+    const k = 1000;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(Math.abs(bytes)) / Math.log(k));
     const value = bytes / Math.pow(k, i);

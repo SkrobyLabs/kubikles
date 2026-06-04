@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { ChartBarIcon, ExclamationTriangleIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { DetectPrometheus, GetPodMetricsHistory, GetPodMetricsHistoryRange, GetMetricsEventMarkers } from 'wailsjs/go/main/App';
-import { formatBytes } from '~/utils/formatting';
+import { formatBytes, formatCpu } from '~/utils/formatting';
+import { getPodResourceRequests, parseCpuQuantity, parseMemoryQuantity } from '~/utils/resourceQuantities';
 
 interface EventMarker {
     timestamp: number;
@@ -18,38 +19,8 @@ const MARKER_COLORS: Record<string, { line: string; fill: string; text: string }
     info: { line: 'stroke-gray-500', fill: 'fill-gray-500', text: 'text-gray-400' },
 };
 
-// Parse Kubernetes CPU quantity (e.g., "100m", "0.5", "1") to millicores
-const parseCPU = (value: any) => {
-    if (!value) return null;
-    const str = String(value);
-    if (str.endsWith('m')) {
-        return parseFloat(str.slice(0, -1));
-    }
-    // Cores to millicores
-    return parseFloat(str) * 1000;
-};
-
-// Parse Kubernetes memory quantity (e.g., "128Mi", "1Gi", "1000000") to bytes
-const parseMemory = (value: any) => {
-    if (!value) return null;
-    const str = String(value);
-    const units = {
-        'Ki': 1024,
-        'Mi': 1024 * 1024,
-        'Gi': 1024 * 1024 * 1024,
-        'Ti': 1024 * 1024 * 1024 * 1024,
-        'K': 1000,
-        'M': 1000 * 1000,
-        'G': 1000 * 1000 * 1000,
-        'T': 1000 * 1000 * 1000 * 1000,
-    };
-    for (const [suffix, multiplier] of Object.entries(units)) {
-        if (str.endsWith(suffix)) {
-            return parseFloat(str.slice(0, -suffix.length)) * multiplier;
-        }
-    }
-    return parseFloat(str);
-};
+const parseOptionalCPU = (value: any) => value ? parseCpuQuantity(String(value)) : null;
+const parseOptionalMemory = (value: any) => value ? parseMemoryQuantity(String(value)) : null;
 
 // Format time for display (timestamp is already in milliseconds from backend)
 const formatTime = (timestamp: string, duration: string) => {
@@ -813,15 +784,19 @@ export default function PodMetricsTab({ pod, isStale }: { pod: any; isStale: boo
         const initContainers = (pod.spec?.initContainers || []).map((c: any) => ({
             name: c.name,
             isInit: true,
+            isSidecarInit: c.restartPolicy === 'Always',
             resources: c.resources || {}
         }));
         const regularContainers = (pod.spec?.containers || []).map((c: any) => ({
             name: c.name,
             isInit: false,
+            isSidecarInit: false,
             resources: c.resources || {}
         }));
         return [...initContainers, ...regularContainers];
     }, [pod]);
+
+    const podReservation = useMemo(() => getPodResourceRequests(pod), [pod]);
 
     // Get resources for a specific container
     const getContainerResources = useCallback((containerName: string) => {
@@ -829,10 +804,10 @@ export default function PodMetricsTab({ pod, isStale }: { pod: any; isStale: boo
         if (!container) return { cpuRequest: null, cpuLimit: null, memRequest: null, memLimit: null };
 
         return {
-            cpuRequest: parseCPU(container.resources?.requests?.cpu),
-            cpuLimit: parseCPU(container.resources?.limits?.cpu),
-            memRequest: parseMemory(container.resources?.requests?.memory),
-            memLimit: parseMemory(container.resources?.limits?.memory),
+            cpuRequest: parseOptionalCPU(container.resources?.requests?.cpu),
+            cpuLimit: parseOptionalCPU(container.resources?.limits?.cpu),
+            memRequest: parseOptionalMemory(container.resources?.requests?.memory),
+            memLimit: parseOptionalMemory(container.resources?.limits?.memory),
         };
     }, [containers]);
 
@@ -980,6 +955,7 @@ export default function PodMetricsTab({ pod, isStale }: { pod: any; isStale: boo
     }
 
     const selectedContainerInfo = containers.find((c: any) => c.name === selectedContainer);
+    const selectedContainerKind = selectedContainerInfo?.isSidecarInit ? 'sidecar init' : selectedContainerInfo?.isInit ? 'init' : null;
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
@@ -997,7 +973,7 @@ export default function PodMetricsTab({ pod, isStale }: { pod: any; isStale: boo
                         >
                             <span className="flex-1 text-left text-gray-200">
                                 {selectedContainer === 'all' ? 'All Containers' : selectedContainer}
-                                {selectedContainerInfo?.isInit && <span className="ml-2 text-xs text-yellow-400">(init)</span>}
+                                {selectedContainerKind && <span className="ml-2 text-xs text-yellow-400">({selectedContainerKind})</span>}
                             </span>
                             <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                         </button>
@@ -1026,7 +1002,7 @@ export default function PodMetricsTab({ pod, isStale }: { pod: any; isStale: boo
                                         }`}
                                     >
                                         {c.name}
-                                        {c.isInit && <span className="ml-2 text-xs text-yellow-400">(init)</span>}
+                                        {(c.isSidecarInit || c.isInit) && <span className="ml-2 text-xs text-yellow-400">({c.isSidecarInit ? 'sidecar init' : 'init'})</span>}
                                     </button>
                                 ))}
                             </div>
@@ -1088,6 +1064,11 @@ export default function PodMetricsTab({ pod, isStale }: { pod: any; isStale: boo
 
                 {metricsData && (
                     <div className="space-y-6">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-300">
+                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Effective Pod Request</span>
+                            <span>CPU: <span className="text-blue-300">{formatCpu(podReservation.cpuMillis)}</span></span>
+                            <span>Memory: <span className="text-purple-300">{formatBytes(podReservation.memBytes)}</span></span>
+                        </div>
                         {metricsData.containers && metricsData.containers.length > 0 ? (
                             <>
                                 {metricsData.containers.map((container: any) => {

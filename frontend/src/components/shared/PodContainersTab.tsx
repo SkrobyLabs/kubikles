@@ -110,6 +110,11 @@ const formatResources = (resources: any) => {
     return parts.length > 0 ? parts.join(', ') : 'Not set';
 };
 
+const containerKindLabel = (container: any) => {
+    if (!container?.isInit) return null;
+    return container.spec?.restartPolicy === 'Always' ? 'sidecar init' : 'init';
+};
+
 // Status badge component
 const StatusBadge = ({ state }: any) => {
     if (!state) return <span className="text-gray-500">Unknown</span>;
@@ -352,7 +357,7 @@ export default function PodContainersTab({ pod, isStale }: any) {
                         >
                             <span className="flex-1 text-left">
                                 {currentContainer?.name}
-                                {isInit && <span className="ml-2 text-xs text-yellow-400">(init)</span>}
+                                {containerKindLabel(currentContainer) && <span className="ml-2 text-xs text-yellow-400">({containerKindLabel(currentContainer)})</span>}
                             </span>
                             <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                         </button>
@@ -370,7 +375,7 @@ export default function PodContainersTab({ pod, isStale }: any) {
                                         }`}
                                     >
                                         {c.name}
-                                        {c.isInit && <span className="ml-2 text-xs text-yellow-400">(init)</span>}
+                                        {containerKindLabel(c) && <span className="ml-2 text-xs text-yellow-400">({containerKindLabel(c)})</span>}
                                     </button>
                                 ))}
                             </div>
@@ -396,6 +401,8 @@ export default function PodContainersTab({ pod, isStale }: any) {
                         </span>
                     )}
                 </DetailRow>
+
+                {spec?.restartPolicy && <DetailRow label="Restart Policy" value={spec.restartPolicy} />}
 
                 <DetailRow label="Image">
                     <div className="flex items-center gap-1">

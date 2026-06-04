@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { formatAge } from './formatting';
+import { formatAge, formatBytes } from './formatting';
 
 describe('formatAge', () => {
     beforeEach(() => {
@@ -65,5 +65,12 @@ describe('formatAge', () => {
     it('handles edge case at 24 hours', () => {
         // Exactly 24 hours should show 1d
         expect(formatAge('2024-01-14T12:00:00.000Z')).toBe('1d');
+    });
+});
+
+describe('formatBytes', () => {
+    it('uses decimal labels for Kubernetes resource byte values', () => {
+        expect(formatBytes(200_000_000)).toBe('200.0 MB');
+        expect(formatBytes(1_000_000_000)).toBe('1.0 GB');
     });
 });

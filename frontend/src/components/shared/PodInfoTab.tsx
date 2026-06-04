@@ -3,10 +3,30 @@ import { ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { useUI } from '~/context';
 import { useK8s } from '~/context';
 import { getPodController } from '~/utils/k8s-helpers';
-import { formatAge } from '~/utils/formatting';
+import { formatAge, formatBytes, formatCpu } from '~/utils/formatting';
 import { getOwnerViewId } from '~/utils/owner-navigation';
+import { getPodResourceRequests, hasResourceValues } from '~/utils/resourceQuantities';
 import { CopyableLabel, DetailRow, WorkloadImagesRow } from './DetailComponents';
 import Tooltip from './Tooltip';
+
+const formatResources = (resources: any) => {
+    if (!resources || Object.keys(resources).length === 0) {
+        return 'Not set';
+    }
+    const parts = [];
+    if (resources.cpu) parts.push(`CPU: ${resources.cpu}`);
+    if (resources.memory) parts.push(`Mem: ${resources.memory}`);
+    if (resources['ephemeral-storage']) parts.push(`Storage: ${resources['ephemeral-storage']}`);
+    return parts.length > 0 ? parts.join(', ') : 'Not set';
+};
+
+const formatEffectiveReservation = (pod: any) => {
+    const requests = getPodResourceRequests(pod);
+    const parts = [];
+    if (requests.cpuMillis > 0) parts.push(`CPU: ${formatCpu(requests.cpuMillis)}`);
+    if (requests.memBytes > 0) parts.push(`Mem: ${formatBytes(requests.memBytes)}`);
+    return parts.length > 0 ? parts.join(', ') : 'Not set';
+};
 
 function formatMatchExpr(expr: any): string {
     if (!expr?.key) return String(expr);
@@ -178,6 +198,16 @@ export default function PodInfoTab({ pod }: { pod: any }) {
                 <DetailRow label="Namespace" value={pod.metadata?.namespace} />
 
                 <WorkloadImagesRow podSpec={pod.spec} />
+
+                <DetailRow label="Reservation" value={formatEffectiveReservation(pod)} />
+
+                {(hasResourceValues(pod.spec?.resources?.requests) || hasResourceValues(pod.spec?.resources?.limits) || hasResourceValues(pod.spec?.overhead)) && (
+                    <>
+                        <DetailRow label="Requests" value={formatResources(pod.spec?.resources?.requests)} />
+                        <DetailRow label="Limits" value={formatResources(pod.spec?.resources?.limits)} />
+                        <DetailRow label="Overhead" value={formatResources(pod.spec?.overhead)} />
+                    </>
+                )}
 
                 {/* Owner / Controlled By */}
                 <DetailRow label="Owner">
