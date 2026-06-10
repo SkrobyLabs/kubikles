@@ -3,6 +3,8 @@
 package main
 
 import (
+	"runtime"
+
 	"kubikles/pkg/compressedassets"
 	"kubikles/pkg/crashlog"
 
@@ -18,17 +20,16 @@ func runDesktopMode() {
 	// Create an instance of the app structure
 	app := NewApp()
 
-	// Create application menu
-	appMenu := menu.NewMenu()
-
-	// App menu (required for macOS)
-	appMenu.Append(menu.AppMenu())
-
-	// Edit menu (standard copy/paste/etc)
-	appMenu.Append(menu.EditMenu())
-
-	// Window menu (standard minimize/fullscreen/etc)
-	appMenu.Append(menu.WindowMenu())
+	// Application menu — only on macOS, where it lives in the system menu bar.
+	// On Windows/Linux a Menu is drawn as a native strip inside the window
+	// (a white bar below the title bar), so leave it nil there.
+	var appMenu *menu.Menu
+	if runtime.GOOS == "darwin" {
+		appMenu = menu.NewMenu()
+		appMenu.Append(menu.AppMenu())    // App menu (required for macOS)
+		appMenu.Append(menu.EditMenu())   // Edit menu (standard copy/paste/etc)
+		appMenu.Append(menu.WindowMenu()) // Window menu (standard minimize/fullscreen/etc)
+	}
 
 	// Create application with options
 	err := wails.Run(&options.App{
