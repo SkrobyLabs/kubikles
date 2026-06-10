@@ -68,7 +68,12 @@ kubikles/
 │   │   ├── csi.go              # CSI Drivers & CSI Nodes
 │   │   ├── customresources.go  # CRDs + custom resource CRUD
 │   │   ├── daemonsets.go       # DaemonSet operations
-│   │   ├── dependencies.go     # Dependency graph computation
+│   │   ├── dependencies.go     # Dependency graph types + GetResourceDependencies/ExpandDependencyNode entry points
+│   │   ├── deps_cache.go       # Request-scoped resourceCache + getters
+│   │   ├── deps_graph.go       # Graph aggregation + node/edge primitives
+│   │   ├── deps_pod.go         # Pod dependency resolution (owner refs, volumes, PVC/PV, container refs)
+│   │   ├── deps_controllers.go # Workload resolvers (deployment, statefulset, daemonset, replicaset, job, cronjob)
+│   │   ├── deps_resources.go   # Remaining resource resolvers + selector/find helpers
 │   │   ├── deployments.go      # Deployment operations
 │   │   ├── diff.go             # Resource diff/comparison
 │   │   ├── events.go           # Event operations
@@ -81,7 +86,8 @@ kubikles/
 │   │   ├── namespaces.go       # Namespace operations + resource counts
 │   │   ├── networkpolicies.go  # NetworkPolicies, HPAs, PDBs, Quotas, LimitRanges, Endpoints
 │   │   ├── nodes.go            # Node operations
-│   │   ├── pods.go             # Pod CRUD, logs, eviction, owner resolution
+│   │   ├── pods.go             # Pod listing, CRUD, eviction, owner resolution
+│   │   ├── podlogs.go          # Pod log retrieval + streaming (single/all containers, all pods)
 │   │   ├── prometheus.go       # Prometheus types + detection
 │   │   ├── prometheus_query.go # Raw query plumbing + range helpers
 │   │   ├── prometheus_history.go # Pod/controller/namespace/node metrics-history builders
