@@ -2,20 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { ChartBarIcon, ExclamationTriangleIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { DetectPrometheus, GetNodeMetricsHistory, GetNodeMetricsHistoryRange, GetMetricsEventMarkers } from 'wailsjs/go/main/App';
 import { formatBytes, formatChartTime as formatTime } from '~/utils/formatting';
-
-interface EventMarker {
-    timestamp: number;
-    reason: string;
-    severity: string;
-    message: string;
-    kind: string;
-}
-
-const MARKER_COLORS: Record<string, { line: string; fill: string; text: string }> = {
-    error: { line: 'stroke-red-500', fill: 'fill-red-500', text: 'text-red-400' },
-    warning: { line: 'stroke-amber-500', fill: 'fill-amber-500', text: 'text-amber-400' },
-    info: { line: 'stroke-gray-500', fill: 'fill-gray-500', text: 'text-gray-400' },
-};
+import { MARKER_COLORS, type EventMarker } from './metrics/MetricsChart';
 
 // Format time for display
 // Node resource chart with toggleable lines:
