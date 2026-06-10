@@ -39,23 +39,21 @@ func (c *Client) getPVCDependencies(cs kubernetes.Interface, cache *resourceCach
 	pods, err := cache.getPods(namespace)
 	if err == nil {
 		for _, pod := range pods {
-			for _, vol := range pod.Spec.Volumes {
-				if vol.PersistentVolumeClaim != nil && vol.PersistentVolumeClaim.ClaimName == name {
-					podID := nodeID("Pod", namespace, pod.Name)
-					c.addNode(graph, nodeMap, DependencyNode{
-						ID:        podID,
-						Kind:      "Pod",
-						Name:      pod.Name,
-						Namespace: namespace,
-						Status:    string(pod.Status.Phase),
-					})
-					c.addEdge(graph, podID, pvcID, "uses")
+			if podUsesPVC(&pod, name) {
+				podID := nodeID("Pod", namespace, pod.Name)
+				c.addNode(graph, nodeMap, DependencyNode{
+					ID:        podID,
+					Kind:      "Pod",
+					Name:      pod.Name,
+					Namespace: namespace,
+					Status:    string(pod.Status.Phase),
+				})
+				c.addEdge(graph, podID, pvcID, "uses")
 
-					// Add pod's owner refs
-					c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, namespace, pod.OwnerReferences)
-					// Find Services selecting this pod (and their Ingresses)
-					c.findServicesSelectingPod(cache, graph, nodeMap, namespace, pod.Labels, podID)
-				}
+				// Add pod's owner refs
+				c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, namespace, pod.OwnerReferences)
+				// Find Services selecting this pod (and their Ingresses)
+				c.findServicesSelectingPod(cache, graph, nodeMap, namespace, pod.Labels, podID)
 			}
 		}
 	}
@@ -114,21 +112,19 @@ func (c *Client) getPVDependencies(cs kubernetes.Interface, cache *resourceCache
 			pods, err := cache.getPods(pvcNamespace)
 			if err == nil {
 				for _, pod := range pods {
-					for _, vol := range pod.Spec.Volumes {
-						if vol.PersistentVolumeClaim != nil && vol.PersistentVolumeClaim.ClaimName == pvcName {
-							podID := nodeID("Pod", pvcNamespace, pod.Name)
-							c.addNode(graph, nodeMap, DependencyNode{
-								ID:        podID,
-								Kind:      "Pod",
-								Name:      pod.Name,
-								Namespace: pvcNamespace,
-								Status:    string(pod.Status.Phase),
-							})
-							c.addEdge(graph, podID, pvcID, "uses")
-							c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, pvcNamespace, pod.OwnerReferences)
-							// Find Services selecting this pod (and their Ingresses)
-							c.findServicesSelectingPod(cache, graph, nodeMap, pvcNamespace, pod.Labels, podID)
-						}
+					if podUsesPVC(&pod, pvcName) {
+						podID := nodeID("Pod", pvcNamespace, pod.Name)
+						c.addNode(graph, nodeMap, DependencyNode{
+							ID:        podID,
+							Kind:      "Pod",
+							Name:      pod.Name,
+							Namespace: pvcNamespace,
+							Status:    string(pod.Status.Phase),
+						})
+						c.addEdge(graph, podID, pvcID, "uses")
+						c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, pvcNamespace, pod.OwnerReferences)
+						// Find Services selecting this pod (and their Ingresses)
+						c.findServicesSelectingPod(cache, graph, nodeMap, pvcNamespace, pod.Labels, podID)
 					}
 				}
 			}
@@ -331,7 +327,7 @@ func (c *Client) findOwnedPods(cs kubernetes.Interface, cache *resourceCache, gr
 				c.addEdge(graph, ownerID, podID, "owns")
 
 				// Resolve pod's downward dependencies (volumes, configs)
-				c.resolvePodVolumes(cs, graph, nodeMap, podID, namespace, pod.Spec.Volumes)
+				c.resolvePodVolumes(cs, graph, nodeMap, podID, pod.Name, namespace, pod.Spec.Volumes)
 				c.resolvePodContainerRefs(cs, graph, nodeMap, podID, namespace, pod.Spec.Containers)
 				c.resolvePodContainerRefs(cs, graph, nodeMap, podID, namespace, pod.Spec.InitContainers)
 			}
@@ -381,11 +377,22 @@ func (c *Client) findPodsUsingConfigMap(cs kubernetes.Interface, cache *resource
 	for _, pod := range pods {
 		usesConfigMap := false
 
-		// Check volumes
+		// Check volumes (plain configMap and projected sources)
 		for _, vol := range pod.Spec.Volumes {
 			if vol.ConfigMap != nil && vol.ConfigMap.Name == cmName {
 				usesConfigMap = true
 				break
+			}
+			if vol.Projected != nil {
+				for _, src := range vol.Projected.Sources {
+					if src.ConfigMap != nil && src.ConfigMap.Name == cmName {
+						usesConfigMap = true
+						break
+					}
+				}
+				if usesConfigMap {
+					break
+				}
 			}
 		}
 
@@ -439,11 +446,22 @@ func (c *Client) findPodsUsingSecret(cs kubernetes.Interface, cache *resourceCac
 	for _, pod := range pods {
 		usesSecret := false
 
-		// Check volumes
+		// Check volumes (plain secret and projected sources)
 		for _, vol := range pod.Spec.Volumes {
 			if vol.Secret != nil && vol.Secret.SecretName == secretName {
 				usesSecret = true
 				break
+			}
+			if vol.Projected != nil {
+				for _, src := range vol.Projected.Sources {
+					if src.Secret != nil && src.Secret.Name == secretName {
+						usesSecret = true
+						break
+					}
+				}
+				if usesSecret {
+					break
+				}
 			}
 		}
 
@@ -486,6 +504,20 @@ func (c *Client) findPodsUsingSecret(cs kubernetes.Interface, cache *resourceCac
 			c.findServicesSelectingPod(cache, graph, nodeMap, namespace, pod.Labels, podID)
 		}
 	}
+}
+
+// podUsesPVC reports whether a pod mounts the claim directly or through a
+// generic ephemeral volume (which creates a PVC named <pod>-<volume>)
+func podUsesPVC(pod *v1.Pod, claimName string) bool {
+	for _, vol := range pod.Spec.Volumes {
+		if vol.PersistentVolumeClaim != nil && vol.PersistentVolumeClaim.ClaimName == claimName {
+			return true
+		}
+		if vol.Ephemeral != nil && pod.Name+"-"+vol.Name == claimName {
+			return true
+		}
+	}
+	return false
 }
 
 func matchesSelector(labels, selector map[string]string) bool {

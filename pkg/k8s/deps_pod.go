@@ -44,7 +44,7 @@ func (c *Client) getPodDependencies(cs kubernetes.Interface, cache *resourceCach
 	c.resolveOwnerRefs(cs, cache, graph, nodeMap, podID, namespace, pod.OwnerReferences)
 
 	// Resolve volume dependencies (downward)
-	c.resolvePodVolumes(cs, graph, nodeMap, podID, namespace, pod.Spec.Volumes)
+	c.resolvePodVolumes(cs, graph, nodeMap, podID, name, namespace, pod.Spec.Volumes)
 
 	// Resolve container env references
 	c.resolvePodContainerRefs(cs, graph, nodeMap, podID, namespace, pod.Spec.Containers)
@@ -200,13 +200,19 @@ func extractOwnerRefs(obj *unstructured.Unstructured) []metav1.OwnerReference {
 	return refs
 }
 
-// resolvePodVolumes resolves PVC, ConfigMap, Secret volume references
-func (c *Client) resolvePodVolumes(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, podID, namespace string, volumes []v1.Volume) {
+// resolvePodVolumes resolves PVC, ephemeral, ConfigMap, Secret and projected volume references
+func (c *Client) resolvePodVolumes(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, podID, podName, namespace string, volumes []v1.Volume) {
 	debug.LogK8s("resolvePodVolumes called", map[string]interface{}{"volumeCount": len(volumes), "podID": podID})
 	for _, vol := range volumes {
-		// PVC references
+		// PVC references — direct claims and generic ephemeral volumes
+		// (the ephemeral volume controller creates a PVC named <pod>-<volume>)
+		pvcName := ""
 		if vol.PersistentVolumeClaim != nil {
-			pvcName := vol.PersistentVolumeClaim.ClaimName
+			pvcName = vol.PersistentVolumeClaim.ClaimName
+		} else if vol.Ephemeral != nil {
+			pvcName = podName + "-" + vol.Name
+		}
+		if pvcName != "" {
 			pvcID := nodeID("PersistentVolumeClaim", namespace, pvcName)
 			debug.LogK8s("Processing PVC volume", map[string]interface{}{"pvcName": pvcName})
 
@@ -245,42 +251,62 @@ func (c *Client) resolvePodVolumes(cs kubernetes.Interface, graph *DependencyGra
 
 		// ConfigMap volume references
 		if vol.ConfigMap != nil {
-			cmName := vol.ConfigMap.Name
-			cmID := nodeID("ConfigMap", namespace, cmName)
-			var cmMeta map[string]string
-			if cm, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{}); err == nil {
-				keyCount := len(cm.Data) + len(cm.BinaryData)
-				cmMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
-			}
-			c.addNode(graph, nodeMap, DependencyNode{
-				ID:        cmID,
-				Kind:      "ConfigMap",
-				Name:      cmName,
-				Namespace: namespace,
-				Metadata:  cmMeta,
-			})
-			c.addEdge(graph, podID, cmID, "uses")
+			c.addConfigMapNode(cs, graph, nodeMap, podID, namespace, vol.ConfigMap.Name)
 		}
 
 		// Secret volume references
 		if vol.Secret != nil {
-			secretName := vol.Secret.SecretName
-			secretID := nodeID("Secret", namespace, secretName)
-			var secretMeta map[string]string
-			if secret, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), secretName, metav1.GetOptions{}); err == nil {
-				keyCount := len(secret.Data) + len(secret.StringData)
-				secretMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
+			c.addSecretNode(cs, graph, nodeMap, podID, namespace, vol.Secret.SecretName)
+		}
+
+		// Projected volume references (configMap/secret sources)
+		if vol.Projected != nil {
+			for _, src := range vol.Projected.Sources {
+				if src.ConfigMap != nil {
+					c.addConfigMapNode(cs, graph, nodeMap, podID, namespace, src.ConfigMap.Name)
+				}
+				if src.Secret != nil {
+					c.addSecretNode(cs, graph, nodeMap, podID, namespace, src.Secret.Name)
+				}
 			}
-			c.addNode(graph, nodeMap, DependencyNode{
-				ID:        secretID,
-				Kind:      "Secret",
-				Name:      secretName,
-				Namespace: namespace,
-				Metadata:  secretMeta,
-			})
-			c.addEdge(graph, podID, secretID, "uses")
 		}
 	}
+}
+
+// addConfigMapNode adds a ConfigMap node (with key-count metadata) and a "uses" edge from the pod
+func (c *Client) addConfigMapNode(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, podID, namespace, cmName string) {
+	cmID := nodeID("ConfigMap", namespace, cmName)
+	var cmMeta map[string]string
+	if cm, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{}); err == nil {
+		keyCount := len(cm.Data) + len(cm.BinaryData)
+		cmMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
+	}
+	c.addNode(graph, nodeMap, DependencyNode{
+		ID:        cmID,
+		Kind:      "ConfigMap",
+		Name:      cmName,
+		Namespace: namespace,
+		Metadata:  cmMeta,
+	})
+	c.addEdge(graph, podID, cmID, "uses")
+}
+
+// addSecretNode adds a Secret node (with key-count metadata) and a "uses" edge from the pod
+func (c *Client) addSecretNode(cs kubernetes.Interface, graph *DependencyGraph, nodeMap map[string]bool, podID, namespace, secretName string) {
+	secretID := nodeID("Secret", namespace, secretName)
+	var secretMeta map[string]string
+	if secret, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), secretName, metav1.GetOptions{}); err == nil {
+		keyCount := len(secret.Data) + len(secret.StringData)
+		secretMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
+	}
+	c.addNode(graph, nodeMap, DependencyNode{
+		ID:        secretID,
+		Kind:      "Secret",
+		Name:      secretName,
+		Namespace: namespace,
+		Metadata:  secretMeta,
+	})
+	c.addEdge(graph, podID, secretID, "uses")
 }
 
 // resolvePVFromPVC adds PV and StorageClass nodes from a PVC
@@ -331,38 +357,10 @@ func (c *Client) resolvePodContainerRefs(cs kubernetes.Interface, graph *Depende
 		// envFrom references
 		for _, envFrom := range container.EnvFrom {
 			if envFrom.ConfigMapRef != nil {
-				cmName := envFrom.ConfigMapRef.Name
-				cmID := nodeID("ConfigMap", namespace, cmName)
-				var cmMeta map[string]string
-				if cm, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{}); err == nil {
-					keyCount := len(cm.Data) + len(cm.BinaryData)
-					cmMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
-				}
-				c.addNode(graph, nodeMap, DependencyNode{
-					ID:        cmID,
-					Kind:      "ConfigMap",
-					Name:      cmName,
-					Namespace: namespace,
-					Metadata:  cmMeta,
-				})
-				c.addEdge(graph, podID, cmID, "uses")
+				c.addConfigMapNode(cs, graph, nodeMap, podID, namespace, envFrom.ConfigMapRef.Name)
 			}
 			if envFrom.SecretRef != nil {
-				secretName := envFrom.SecretRef.Name
-				secretID := nodeID("Secret", namespace, secretName)
-				var secretMeta map[string]string
-				if secret, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), secretName, metav1.GetOptions{}); err == nil {
-					keyCount := len(secret.Data) + len(secret.StringData)
-					secretMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
-				}
-				c.addNode(graph, nodeMap, DependencyNode{
-					ID:        secretID,
-					Kind:      "Secret",
-					Name:      secretName,
-					Namespace: namespace,
-					Metadata:  secretMeta,
-				})
-				c.addEdge(graph, podID, secretID, "uses")
+				c.addSecretNode(cs, graph, nodeMap, podID, namespace, envFrom.SecretRef.Name)
 			}
 		}
 
@@ -370,38 +368,10 @@ func (c *Client) resolvePodContainerRefs(cs kubernetes.Interface, graph *Depende
 		for _, env := range container.Env {
 			if env.ValueFrom != nil {
 				if env.ValueFrom.ConfigMapKeyRef != nil {
-					cmName := env.ValueFrom.ConfigMapKeyRef.Name
-					cmID := nodeID("ConfigMap", namespace, cmName)
-					var cmMeta map[string]string
-					if cm, err := cs.CoreV1().ConfigMaps(namespace).Get(context.TODO(), cmName, metav1.GetOptions{}); err == nil {
-						keyCount := len(cm.Data) + len(cm.BinaryData)
-						cmMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
-					}
-					c.addNode(graph, nodeMap, DependencyNode{
-						ID:        cmID,
-						Kind:      "ConfigMap",
-						Name:      cmName,
-						Namespace: namespace,
-						Metadata:  cmMeta,
-					})
-					c.addEdge(graph, podID, cmID, "uses")
+					c.addConfigMapNode(cs, graph, nodeMap, podID, namespace, env.ValueFrom.ConfigMapKeyRef.Name)
 				}
 				if env.ValueFrom.SecretKeyRef != nil {
-					secretName := env.ValueFrom.SecretKeyRef.Name
-					secretID := nodeID("Secret", namespace, secretName)
-					var secretMeta map[string]string
-					if secret, err := cs.CoreV1().Secrets(namespace).Get(context.TODO(), secretName, metav1.GetOptions{}); err == nil {
-						keyCount := len(secret.Data) + len(secret.StringData)
-						secretMeta = map[string]string{"keys": strconv.Itoa(keyCount)}
-					}
-					c.addNode(graph, nodeMap, DependencyNode{
-						ID:        secretID,
-						Kind:      "Secret",
-						Name:      secretName,
-						Namespace: namespace,
-						Metadata:  secretMeta,
-					})
-					c.addEdge(graph, podID, secretID, "uses")
+					c.addSecretNode(cs, graph, nodeMap, podID, namespace, env.ValueFrom.SecretKeyRef.Name)
 				}
 			}
 		}

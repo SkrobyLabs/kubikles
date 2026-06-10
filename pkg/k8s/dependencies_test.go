@@ -1331,3 +1331,274 @@ func TestResolveOwnerRefs_CRDOwnerFetchFails(t *testing.T) {
 		t.Error("expected 'owns' edge from Widget to Pod even on fetch failure")
 	}
 }
+
+func TestGetPodDependencies_EphemeralVolumePVC(t *testing.T) {
+	// A generic ephemeral volume creates a PVC named <pod>-<volume>;
+	// the graph must include that PVC (and its PV) like a direct claim.
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "eph-pod", Namespace: "default"},
+		Spec: corev1.PodSpec{
+			Volumes: []corev1.Volume{
+				{
+					Name: "cache",
+					VolumeSource: corev1.VolumeSource{
+						Ephemeral: &corev1.EphemeralVolumeSource{
+							VolumeClaimTemplate: &corev1.PersistentVolumeClaimTemplate{
+								Spec: corev1.PersistentVolumeClaimSpec{},
+							},
+						},
+					},
+				},
+			},
+			Containers: []corev1.Container{{Name: "main", Image: "nginx"}},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: "eph-pod-cache", Namespace: "default"},
+		Spec:       corev1.PersistentVolumeClaimSpec{VolumeName: "pv-eph"},
+		Status:     corev1.PersistentVolumeClaimStatus{Phase: corev1.ClaimBound},
+	}
+	pv := &corev1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{Name: "pv-eph"},
+		Status:     corev1.PersistentVolumeStatus{Phase: corev1.VolumeBound},
+	}
+
+	cs := fake.NewSimpleClientset(pod, pvc, pv)
+	client := &Client{}
+	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs, nil)
+
+	result, err := client.getPodDependencies(cs, cache, "default", "eph-pod", graph, nodeMap)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	nodeIDs := make(map[string]bool)
+	for _, node := range result.Nodes {
+		nodeIDs[node.ID] = true
+	}
+	if !nodeIDs["PersistentVolumeClaim/default/eph-pod-cache"] {
+		t.Error("expected PVC node for generic ephemeral volume")
+	}
+	if !nodeIDs["PersistentVolume/pv-eph"] {
+		t.Error("expected PV node resolved from ephemeral volume's PVC")
+	}
+
+	usesEdge := false
+	for _, edge := range result.Edges {
+		if edge.Source == "Pod/default/eph-pod" && edge.Target == "PersistentVolumeClaim/default/eph-pod-cache" && edge.Relation == "uses" {
+			usesEdge = true
+		}
+	}
+	if !usesEdge {
+		t.Error("expected 'uses' edge from Pod to ephemeral volume's PVC")
+	}
+}
+
+func TestGetPodDependencies_ProjectedVolumeSources(t *testing.T) {
+	// ConfigMaps and Secrets mounted through a projected volume are
+	// dependencies just like plain configMap/secret volumes.
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "proj-pod", Namespace: "default"},
+		Spec: corev1.PodSpec{
+			Volumes: []corev1.Volume{
+				{
+					Name: "bundle",
+					VolumeSource: corev1.VolumeSource{
+						Projected: &corev1.ProjectedVolumeSource{
+							Sources: []corev1.VolumeProjection{
+								{ConfigMap: &corev1.ConfigMapProjection{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "proj-cm"},
+								}},
+								{Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "proj-secret"},
+								}},
+							},
+						},
+					},
+				},
+			},
+			Containers: []corev1.Container{{Name: "main", Image: "nginx"}},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "proj-cm", Namespace: "default"},
+		Data:       map[string]string{"k": "v"},
+	}
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "proj-secret", Namespace: "default"},
+		Data:       map[string][]byte{"k": []byte("v")},
+	}
+
+	cs := fake.NewSimpleClientset(pod, cm, secret)
+	client := &Client{}
+	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs, nil)
+
+	result, err := client.getPodDependencies(cs, cache, "default", "proj-pod", graph, nodeMap)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	nodeIDs := make(map[string]bool)
+	for _, node := range result.Nodes {
+		nodeIDs[node.ID] = true
+	}
+	if !nodeIDs["ConfigMap/default/proj-cm"] {
+		t.Error("expected ConfigMap node for projected volume source")
+	}
+	if !nodeIDs["Secret/default/proj-secret"] {
+		t.Error("expected Secret node for projected volume source")
+	}
+}
+
+func TestGetPVCDependencies_EphemeralVolumeConsumer(t *testing.T) {
+	// Reverse direction: viewing a PVC created by a generic ephemeral
+	// volume must find the consuming pod.
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: "web-0-cache", Namespace: "default"},
+		Status:     corev1.PersistentVolumeClaimStatus{Phase: corev1.ClaimBound},
+	}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "web-0", Namespace: "default"},
+		Spec: corev1.PodSpec{
+			Volumes: []corev1.Volume{
+				{
+					Name: "cache",
+					VolumeSource: corev1.VolumeSource{
+						Ephemeral: &corev1.EphemeralVolumeSource{
+							VolumeClaimTemplate: &corev1.PersistentVolumeClaimTemplate{
+								Spec: corev1.PersistentVolumeClaimSpec{},
+							},
+						},
+					},
+				},
+			},
+			Containers: []corev1.Container{{Name: "main", Image: "nginx"}},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+
+	cs := fake.NewSimpleClientset(pvc, pod)
+	client := &Client{}
+	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs, nil)
+
+	result, err := client.getPVCDependencies(cs, cache, "default", "web-0-cache", graph, nodeMap)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	podFound := false
+	for _, node := range result.Nodes {
+		if node.ID == "Pod/default/web-0" {
+			podFound = true
+		}
+	}
+	if !podFound {
+		t.Error("expected consuming Pod node for PVC mounted via ephemeral volume")
+	}
+}
+
+func TestGetConfigMapDependencies_ProjectedConsumer(t *testing.T) {
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "proj-cm", Namespace: "default"},
+		Data:       map[string]string{"k": "v"},
+	}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "proj-pod", Namespace: "default"},
+		Spec: corev1.PodSpec{
+			Volumes: []corev1.Volume{
+				{
+					Name: "bundle",
+					VolumeSource: corev1.VolumeSource{
+						Projected: &corev1.ProjectedVolumeSource{
+							Sources: []corev1.VolumeProjection{
+								{ConfigMap: &corev1.ConfigMapProjection{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "proj-cm"},
+								}},
+							},
+						},
+					},
+				},
+			},
+			Containers: []corev1.Container{{Name: "main", Image: "nginx"}},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+
+	cs := fake.NewSimpleClientset(cm, pod)
+	client := &Client{}
+	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs, nil)
+
+	result, err := client.getConfigMapDependencies(cs, cache, "", "default", "proj-cm", graph, nodeMap)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	podFound := false
+	for _, node := range result.Nodes {
+		if node.ID == "Pod/default/proj-pod" {
+			podFound = true
+		}
+	}
+	if !podFound {
+		t.Error("expected consuming Pod node for ConfigMap mounted via projected volume")
+	}
+}
+
+func TestGetSecretDependencies_ProjectedConsumer(t *testing.T) {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "proj-secret", Namespace: "default"},
+		Data:       map[string][]byte{"k": []byte("v")},
+	}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "proj-pod", Namespace: "default"},
+		Spec: corev1.PodSpec{
+			Volumes: []corev1.Volume{
+				{
+					Name: "bundle",
+					VolumeSource: corev1.VolumeSource{
+						Projected: &corev1.ProjectedVolumeSource{
+							Sources: []corev1.VolumeProjection{
+								{Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "proj-secret"},
+								}},
+							},
+						},
+					},
+				},
+			},
+			Containers: []corev1.Container{{Name: "main", Image: "nginx"}},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+
+	cs := fake.NewSimpleClientset(secret, pod)
+	client := &Client{}
+	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs, nil)
+
+	result, err := client.getSecretDependencies(cs, cache, "", "default", "proj-secret", graph, nodeMap)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	podFound := false
+	for _, node := range result.Nodes {
+		if node.ID == "Pod/default/proj-pod" {
+			podFound = true
+		}
+	}
+	if !podFound {
+		t.Error("expected consuming Pod node for Secret mounted via projected volume")
+	}
+}
