@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { formatAge, formatBytes } from './formatting';
+import { formatAge, formatBytes, formatChartTime } from './formatting';
 
 describe('formatAge', () => {
     beforeEach(() => {
@@ -72,5 +72,27 @@ describe('formatBytes', () => {
     it('uses decimal labels for Kubernetes resource byte values', () => {
         expect(formatBytes(200_000_000)).toBe('200.0 MB');
         expect(formatBytes(1_000_000_000)).toBe('1.0 GB');
+    });
+});
+
+describe('formatChartTime', () => {
+    // Use a midday UTC timestamp so the date is stable across the timezones CI may run in.
+    const ts = '2024-06-15T12:00:00.000Z';
+
+    it('renders date-only labels (no clock time) for wide windows', () => {
+        expect(formatChartTime(ts, 'all')).not.toContain(':');
+        expect(formatChartTime(ts, '30d')).not.toContain(':');
+    });
+
+    it('includes clock time for mid-range windows', () => {
+        expect(formatChartTime(ts, '7d')).toContain(':');
+        expect(formatChartTime(ts, '24h')).toContain(':');
+    });
+
+    it('renders time-only labels for short/default windows', () => {
+        const short = formatChartTime(ts, '1h');
+        expect(short).toContain(':');
+        // time-only: no month abbreviation like "Jun"
+        expect(short).not.toMatch(/[A-Za-z]{3}/);
     });
 });

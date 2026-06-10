@@ -43,3 +43,16 @@ export const formatCpu = (millicores: number | null | undefined): string => {
     }
     return `${Math.round(millicores)}m`;
 };
+
+// formatChartTime formats a metrics-chart axis label, choosing date vs time
+// granularity based on the selected duration window.
+export const formatChartTime = (timestamp: string, duration: string): string => {
+    const date = new Date(timestamp);
+    if (duration === '30d' || duration === 'all') {
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
+    if (duration === '7d' || duration === '24h') {
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+};

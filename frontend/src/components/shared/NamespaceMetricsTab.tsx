@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { ChartBarIcon, ExclamationTriangleIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { DetectPrometheus, GetNamespaceMetricsHistory, GetNamespaceMetricsHistoryRange, GetMetricsEventMarkers } from 'wailsjs/go/main/App';
-import { formatBytes } from '~/utils/formatting';
+import { formatBytes, formatChartTime as formatTime } from '~/utils/formatting';
 
 interface EventMarker {
     timestamp: number;
@@ -18,17 +18,6 @@ const MARKER_COLORS: Record<string, { line: string; fill: string; text: string }
 };
 
 // Format time for display
-const formatTime = (timestamp: string, duration: string) => {
-    const date = new Date(timestamp);
-    if (duration === '30d' || duration === 'all') {
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    }
-    if (duration === '7d' || duration === '24h') {
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    }
-    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-};
-
 // Interactive line chart component
 const MetricsChart = React.memo(({ data, color, label, formatValue, duration, markers, onZoomSelect }: { data: any; color: string; label: string; formatValue: (value: number) => string; duration: string; markers?: EventMarker[]; onZoomSelect?: (startMs: number, endMs: number) => void }) => {
     const containerRef = useRef<HTMLDivElement>(null);

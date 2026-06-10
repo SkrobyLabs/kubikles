@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { ChartBarIcon, ExclamationTriangleIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { DetectPrometheus, GetPodMetricsHistory, GetPodMetricsHistoryRange, GetMetricsEventMarkers } from 'wailsjs/go/main/App';
-import { formatBytes, formatCpu } from '~/utils/formatting';
+import { formatBytes, formatCpu, formatChartTime as formatTime } from '~/utils/formatting';
 import { getPodResourceRequests, parseCpuQuantity, parseMemoryQuantity } from '~/utils/resourceQuantities';
 
 interface EventMarker {
@@ -23,17 +23,6 @@ const parseOptionalCPU = (value: any) => value ? parseCpuQuantity(String(value))
 const parseOptionalMemory = (value: any) => value ? parseMemoryQuantity(String(value)) : null;
 
 // Format time for display (timestamp is already in milliseconds from backend)
-const formatTime = (timestamp: string, duration: string) => {
-    const date = new Date(timestamp);
-    if (duration === '30d' || duration === 'all') {
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    }
-    if (duration === '7d' || duration === '24h') {
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    }
-    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-};
-
 // Interactive line chart component with proper axes
 // Memoized to prevent re-renders when parent updates with same props
 const MetricsChart = React.memo(({ data, color, label, formatValue, duration, request, limit, markers, onZoomSelect }: { data: any; color: string; label: string; formatValue: (value: number) => string; duration: string; request?: any; limit?: any; markers?: EventMarker[]; onZoomSelect?: (startMs: number, endMs: number) => void }) => {

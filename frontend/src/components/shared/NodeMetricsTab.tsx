@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ChartBarIcon, ExclamationTriangleIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { DetectPrometheus, GetNodeMetricsHistory, GetNodeMetricsHistoryRange, GetMetricsEventMarkers } from 'wailsjs/go/main/App';
-import { formatBytes } from '~/utils/formatting';
+import { formatBytes, formatChartTime as formatTime } from '~/utils/formatting';
 
 interface EventMarker {
     timestamp: number;
@@ -18,17 +18,6 @@ const MARKER_COLORS: Record<string, { line: string; fill: string; text: string }
 };
 
 // Format time for display
-const formatTime = (timestamp: string, duration: string) => {
-    const date = new Date(timestamp);
-    if (duration === '30d' || duration === 'all') {
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    }
-    if (duration === '7d' || duration === '24h') {
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    }
-    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-};
-
 // Node resource chart with toggleable lines:
 // - Usage (blue), Allocatable (gray dashed), Uncommitted (green) visible by default
 // - Committed (orange) toggleable, off by default
