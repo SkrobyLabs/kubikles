@@ -60,7 +60,9 @@ kubikles/
 │
 ├── pkg/
 │   ├── k8s/
-│   │   ├── client.go           # Core client struct, config, context switching, watch
+│   │   ├── client.go           # Core client struct, config, lifecycle, per-context clientsets
+│   │   ├── contexts.go         # Context DTOs + kubeconfig CRUD (get/delete/rename/update)
+│   │   ├── watch.go            # WatchResource + WatchCRD
 │   │   ├── apply.go            # ApplyYAML + kindToResource map
 │   │   ├── configmaps.go       # ConfigMaps & Secrets CRUD
 │   │   ├── csi.go              # CSI Drivers & CSI Nodes
@@ -80,7 +82,9 @@ kubikles/
 │   │   ├── networkpolicies.go  # NetworkPolicies, HPAs, PDBs, Quotas, LimitRanges, Endpoints
 │   │   ├── nodes.go            # Node operations
 │   │   ├── pods.go             # Pod CRUD, logs, eviction, owner resolution
-│   │   ├── prometheus.go       # Prometheus detection, queries, metrics history
+│   │   ├── prometheus.go       # Prometheus types + detection
+│   │   ├── prometheus_query.go # Raw query plumbing + range helpers
+│   │   ├── prometheus_history.go # Pod/controller/namespace/node metrics-history builders
 │   │   ├── rbac.go             # RBAC permission checking
 │   │   ├── rbacresources.go    # Roles, ClusterRoles, Bindings CRUD
 │   │   ├── replicasets.go      # ReplicaSet operations
@@ -127,7 +131,12 @@ kubikles/
 │   ├── tools/              # Tool registry for AI
 │   │   ├── registry.go     # Tool registration
 │   │   ├── run_command.go  # Controlled shell command execution with prefix allowlist
-│   │   └── tools.go        # Tool implementations
+│   │   ├── tools.go        # Tool registry (AllToolDefs), dispatch (CallTool), arg helpers
+│   │   ├── tools_resources.go   # Resource tools: logs, yaml, list, events, describe
+│   │   ├── tools_metrics.go     # Metrics & dependency tools
+│   │   ├── tools_crd.go         # CRD & custom-resource tools
+│   │   ├── tools_diagnostics.go # Flow timeline, multi-pod logs, diff, RBAC
+│   │   └── tools_format.go      # Formatting & string helpers
 │   ├── server/             # Server mode
 │   │   ├── api.go          # REST API handlers
 │   │   └── server.go       # HTTP server (uses MethodCaller interface)
