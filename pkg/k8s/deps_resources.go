@@ -354,11 +354,15 @@ func (c *Client) findSelectingServices(cache *resourceCache, graph *DependencyGr
 				Name:      svc.Name,
 				Namespace: namespace,
 			})
-			// Service selects the workload's pods - find a pod to link to
-			for id := range nodeMap {
-				if len(id) > 4 && id[:4] == "Pod/" {
-					c.addEdge(graph, svcID, id, "selects")
-					break
+			// Link the Service to the pods already in the graph that its
+			// selector actually matches (deterministic, all matching pods)
+			pods, err := cache.getPods(namespace)
+			if err == nil {
+				for _, pod := range pods {
+					podID := nodeID("Pod", namespace, pod.Name)
+					if nodeMap[podID] && matchesSelector(pod.Labels, svc.Spec.Selector) {
+						c.addEdge(graph, svcID, podID, "selects")
+					}
 				}
 			}
 

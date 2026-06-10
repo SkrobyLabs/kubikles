@@ -1602,3 +1602,72 @@ func TestGetSecretDependencies_ProjectedConsumer(t *testing.T) {
 		t.Error("expected consuming Pod node for Secret mounted via projected volume")
 	}
 }
+
+func TestGetDeploymentDependencies_ServiceSelectsMatchingPods(t *testing.T) {
+	// The Service must be linked to every pod it actually selects —
+	// deterministically — and never to a pod outside its selector.
+	deploy := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "web"}},
+		},
+	}
+	rs := &appsv1.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "web-abc",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{Kind: "Deployment", Name: "web", Controller: boolPtr(true)},
+			},
+		},
+	}
+	makePod := func(name string, labels map[string]string) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: "default",
+				Labels:    labels,
+				OwnerReferences: []metav1.OwnerReference{
+					{Kind: "ReplicaSet", Name: "web-abc", Controller: boolPtr(true)},
+				},
+			},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning},
+		}
+	}
+	pod1 := makePod("web-abc-1", map[string]string{"app": "web"})
+	pod2 := makePod("web-abc-2", map[string]string{"app": "web"})
+	// Canary: owned by the same ReplicaSet but NOT matching the service selector
+	pod3 := makePod("web-abc-canary", map[string]string{"app": "canary"})
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{Name: "web-svc", Namespace: "default"},
+		Spec:       corev1.ServiceSpec{Selector: map[string]string{"app": "web"}},
+	}
+
+	cs := fake.NewSimpleClientset(deploy, rs, pod1, pod2, pod3, svc)
+	client := &Client{}
+	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs, nil)
+
+	result, err := client.getDeploymentDependencies(cs, cache, "", "default", "web", graph, nodeMap)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	selected := make(map[string]bool)
+	for _, edge := range result.Edges {
+		if edge.Source == "Service/default/web-svc" && edge.Relation == "selects" {
+			selected[edge.Target] = true
+		}
+	}
+
+	if !selected["Pod/default/web-abc-1"] {
+		t.Error("expected 'selects' edge from Service to web-abc-1")
+	}
+	if !selected["Pod/default/web-abc-2"] {
+		t.Error("expected 'selects' edge from Service to web-abc-2")
+	}
+	if selected["Pod/default/web-abc-canary"] {
+		t.Error("Service must not select a pod outside its selector")
+	}
+}
