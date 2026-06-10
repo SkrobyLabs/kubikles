@@ -7,10 +7,10 @@ allowed-tools: Bash, Read
 
 ## CRITICAL: No hard line wrapping
 
-Every bullet must be a single line — no exceptions. The git hook WILL BLOCK the commit if two plain text lines appear consecutively.
+Every bullet must be a single line — no exceptions. Never break a bullet across two lines.
 
 ```
-WRONG (blocked):
+WRONG:
 - Ensure feature work is committed before the
   merge/next-item decision.
 
@@ -23,7 +23,7 @@ CORRECT:
 Write each section header directly followed by its bullets. Keep bullets in the same section contiguous. Use exactly one blank line between categories, and do not leave a blank line after the final bullet.
 
 ```
-WRONG (blocked):
+WRONG:
 Features:
 
 - Add authentication
@@ -93,7 +93,7 @@ Only include sections with changes. Order: Features, Fixes, Refactors, Docs, Tes
 2. **Categorise every changed file** — feat/fix/refactor/docs/test/chore — then pick the main type, treating docs/tests as supplementary when they serve the primary change
 3. **Stage files** — never stage `.env` or credentials
 4. **Draft message** — scan every bullet: if any continues on the next line, rewrite it as one line
-5. **Commit** — use `git commit -m "$(cat <<'EOF' ... EOF)"` so hooks can validate the message; never `--no-verify` or `--amend` unless explicitly asked
+5. **Commit** — use `git commit -F -` with a heredoc (or `-m`) to preserve formatting; never `--no-verify` or `--amend` unless explicitly asked
 
 ## Other rules
 
