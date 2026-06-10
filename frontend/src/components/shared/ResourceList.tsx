@@ -14,19 +14,17 @@ import {
     arrayMove,
     SortableContext,
     horizontalListSortingStrategy,
-    useSortable,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import SearchSelect from './SearchSelect';
 import BulkActionBar from './BulkActionBar';
 import ColumnConfigurator from './ColumnConfigurator';
 import SavedViewsDropdown from './SavedViewsDropdown';
 import { createFilter, getFieldsMetadata } from '~/utils/search';
-import { tokenizeSearchHighlights } from '~/utils/search/highlightTokens';
 import { useSavedViews } from '~/hooks/useSavedViews';
 import type { SavedView } from '~/hooks/useSavedViews';
 import { useConfig, useK8s, useUI } from '~/context';
 import { type ColumnDef, type ColumnWidths, MIN_COLUMN_WIDTHS, DEFAULT_COLUMN_WIDTHS, calculateColumnWidths, formatCount } from './resourceListColumns';
+import { SearchHighlightOverlay, TriStateCheckbox, RowCheckbox, SortableHeader } from './ResourceListControls';
 
 // Internal filter type used by columnFilters state
 interface ColumnFilter {
@@ -40,33 +38,6 @@ interface ColumnFilter {
 }
 
 type ColumnFiltersMap = Record<string, ColumnFilter>;
-
-const SearchHighlightOverlay = React.memo(({ query }: { query: string }) => {
-    const tokens = useMemo(() => tokenizeSearchHighlights(query), [query]);
-    if (!query) return null;
-
-    return (
-        <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-0 overflow-hidden whitespace-pre rounded-md border border-transparent pl-9 pr-4 py-1.5 text-sm leading-5 text-text"
-        >
-            {tokens.map((token, index) => (
-                <span
-                    key={`${index}-${token.text}`}
-                    className={
-                        token.kind === 'regex'
-                            ? 'font-semibold text-primary'
-                            : token.kind === 'invalidRegex'
-                                ? 'font-semibold text-error'
-                                : undefined
-                    }
-                >
-                    {token.text}
-                </span>
-            ))}
-        </div>
-    );
-});
 
 // Position state for the column filter dropdown
 interface ColumnFilterPosition {
@@ -129,100 +100,7 @@ interface ResourceListProps {
     onFilteredUidsChange?: ((uids: Set<string>) => void) | null;
 }
 
-// Tri-state checkbox props
-interface TriStateCheckboxProps {
-    state: 'none' | 'some' | 'all';
-    onChange: () => void;
-    disabled?: boolean;
-}
-
-// Tri-state checkbox component for header (memoized to prevent re-renders)
-const TriStateCheckbox = React.memo(({ state, onChange, disabled = false }: TriStateCheckboxProps) => {
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        e.stopPropagation();
-        if (!disabled) onChange();
-    };
-
-    return (
-        <input
-            type="checkbox"
-            checked={state === 'all'}
-            ref={(el) => { if (el) el.indeterminate = state === 'some'; }}
-            onChange={handleChange}
-            disabled={disabled}
-            className={disabled ? 'opacity-50 cursor-not-allowed' : ''}
-        />
-    );
-});
-
-// Row checkbox props
-interface RowCheckboxProps {
-    checked: boolean;
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    disabled?: boolean;
-}
-
-// Row checkbox component (memoized to prevent re-renders on scroll)
-const RowCheckbox = React.memo(({ checked, onChange, disabled = false }: RowCheckboxProps) => {
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        e.stopPropagation();
-        if (!disabled) onChange(e);
-    };
-
-    return (
-        <input
-            type="checkbox"
-            checked={checked}
-            onChange={handleChange}
-            disabled={disabled}
-            className={disabled ? 'opacity-50 cursor-not-allowed' : ''}
-        />
-    );
-});
-
 // Minimum column widths - ensure columns never get too narrow
-
-// Sortable header cell for column reordering via DnD
-interface SortableHeaderProps {
-    id: string;
-    disabled: boolean;
-    children: React.ReactNode;
-    className: string;
-    style: React.CSSProperties;
-    onClick?: () => void;
-}
-
-const SortableHeader = ({ id, disabled, children, className, style, onClick }: SortableHeaderProps) => {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging,
-    } = useSortable({ id, disabled });
-
-    const combinedStyle: React.CSSProperties = {
-        ...style,
-        transform: CSS.Translate.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : undefined,
-        zIndex: isDragging ? 30 : undefined,
-    };
-
-    return (
-        <th
-            ref={setNodeRef}
-            className={className}
-            style={combinedStyle}
-            {...attributes}
-            {...listeners}
-            onClick={onClick}
-        >
-            {children}
-        </th>
-    );
-};
 
 // Large dataset banner — shows progress during loading or warning after load
 function LargeDatasetBanner({ isLoading, progress, dataCount, threshold }: {
