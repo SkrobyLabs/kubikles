@@ -1671,3 +1671,96 @@ func TestGetDeploymentDependencies_ServiceSelectsMatchingPods(t *testing.T) {
 		t.Error("Service must not select a pod outside its selector")
 	}
 }
+
+func TestGetNetworkPolicyDependencies_MatchExpressions(t *testing.T) {
+	// An expression-only podSelector must be evaluated, not treated as match-all.
+	np := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{Name: "db-policy", Namespace: "default"},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{Key: "role", Operator: metav1.LabelSelectorOpIn, Values: []string{"db"}},
+				},
+			},
+		},
+	}
+	podDB := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "pod-db", Namespace: "default", Labels: map[string]string{"role": "db"}},
+		Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+	podWeb := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "pod-web", Namespace: "default", Labels: map[string]string{"role": "web"}},
+		Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+
+	cs := fake.NewSimpleClientset(np, podDB, podWeb)
+	client := &Client{}
+	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs, nil)
+
+	result, err := client.getNetworkPolicyDependencies(cs, cache, "", "default", "db-policy", graph, nodeMap)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	applied := make(map[string]bool)
+	for _, edge := range result.Edges {
+		if edge.Relation == "applies-to" {
+			applied[edge.Target] = true
+		}
+	}
+	if !applied["Pod/default/pod-db"] {
+		t.Error("expected 'applies-to' edge to pod matching matchExpressions")
+	}
+	if applied["Pod/default/pod-web"] {
+		t.Error("'applies-to' edge must not reach a pod excluded by matchExpressions")
+	}
+}
+
+func TestGetPDBDependencies_MatchExpressions(t *testing.T) {
+	// matchExpressions must narrow the PDB's pod set alongside matchLabels.
+	pdb := &policyv1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{Name: "web-pdb", Namespace: "default"},
+		Spec: policyv1.PodDisruptionBudgetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "web"},
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{Key: "role", Operator: metav1.LabelSelectorOpNotIn, Values: []string{"canary"}},
+				},
+			},
+		},
+	}
+	podStable := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "web-1", Namespace: "default", Labels: map[string]string{"app": "web", "role": "server"}},
+		Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+	podCanary := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "web-canary", Namespace: "default", Labels: map[string]string{"app": "web", "role": "canary"}},
+		Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+
+	cs := fake.NewSimpleClientset(pdb, podStable, podCanary)
+	client := &Client{}
+	graph := &DependencyGraph{Nodes: []DependencyNode{}, Edges: []DependencyEdge{}}
+	nodeMap := make(map[string]bool)
+	cache := newResourceCache(context.Background(), cs, nil)
+
+	result, err := client.getPDBDependencies(cs, cache, "", "default", "web-pdb", graph, nodeMap)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	protected := make(map[string]bool)
+	for _, edge := range result.Edges {
+		if edge.Relation == "protects" {
+			protected[edge.Target] = true
+		}
+	}
+	if !protected["Pod/default/web-1"] {
+		t.Error("expected 'protects' edge to pod satisfying both matchLabels and matchExpressions")
+	}
+	if protected["Pod/default/web-canary"] {
+		t.Error("'protects' edge must not reach a pod excluded by matchExpressions")
+	}
+}

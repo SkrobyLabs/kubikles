@@ -8,6 +8,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -533,6 +534,19 @@ func matchesSelector(labels, selector map[string]string) bool {
 	return true
 }
 
+// matchesLabelSelector evaluates a full LabelSelector, honoring both
+// matchLabels and matchExpressions (In/NotIn/Exists/DoesNotExist)
+func matchesLabelSelector(podLabels map[string]string, selector *metav1.LabelSelector) bool {
+	if selector == nil {
+		return false
+	}
+	sel, err := metav1.LabelSelectorAsSelector(selector)
+	if err != nil {
+		return false
+	}
+	return sel.Matches(labels.Set(podLabels))
+}
+
 // findServicesSelectingPod finds all Services that select a given Pod
 func (c *Client) findServicesSelectingPod(cache *resourceCache, graph *DependencyGraph, nodeMap map[string]bool, namespace string, podLabels map[string]string, podID string) {
 	if len(podLabels) == 0 {
@@ -721,7 +735,7 @@ func (c *Client) getNetworkPolicyDependencies(cs kubernetes.Interface, cache *re
 		pods, err := cache.getPods(namespace)
 		if err == nil {
 			for _, pod := range pods {
-				if matchesSelector(pod.Labels, np.Spec.PodSelector.MatchLabels) {
+				if matchesLabelSelector(pod.Labels, &np.Spec.PodSelector) {
 					podID := nodeID("Pod", namespace, pod.Name)
 					c.addNode(graph, nodeMap, DependencyNode{
 						ID:        podID,
@@ -1057,7 +1071,7 @@ func (c *Client) getPDBDependencies(cs kubernetes.Interface, cache *resourceCach
 		pods, err := cache.getPods(namespace)
 		if err == nil {
 			for _, pod := range pods {
-				if matchesSelector(pod.Labels, pdb.Spec.Selector.MatchLabels) {
+				if matchesLabelSelector(pod.Labels, pdb.Spec.Selector) {
 					podID := nodeID("Pod", namespace, pod.Name)
 					c.addNode(graph, nodeMap, DependencyNode{
 						ID:        podID,
