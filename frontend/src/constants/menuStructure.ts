@@ -32,6 +32,7 @@ import {
     FingerPrintIcon,
     BoltIcon,
     BugAntIcon,
+    PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 
 // ---- Types ----
@@ -118,7 +119,7 @@ export const DEFAULT_MENU_SECTIONS: MenuSectionDef[] = [
     {
         id: 'diagnostics',
         title: 'Diagnostics',
-        items: ['flow-timeline', 'multi-log-viewer', 'resource-diff', 'rbac-checker', 'issue-detector', 'embedded-browser'],
+        items: ['flow-timeline', 'multi-log-viewer', 'resource-diff', 'rbac-checker', 'issue-detector', 'scratchpad', 'embedded-browser'],
     },
 ];
 
@@ -172,6 +173,7 @@ export const ALL_MENU_ITEMS: Record<string, MenuItemDef> = {
     'resource-diff':         { id: 'resource-diff',         label: 'Resource Diff',          icon: ArrowsRightLeftIcon,       defaultSection: 'diagnostics' },
     'rbac-checker':          { id: 'rbac-checker',          label: 'RBAC Checker',           icon: ShieldCheckIcon,           defaultSection: 'diagnostics' },
     'issue-detector':        { id: 'issue-detector',        label: 'Issue Detector',         icon: BugAntIcon,                defaultSection: 'diagnostics' },
+    'scratchpad':            { id: 'scratchpad',            label: 'Scratch Pad',            icon: PencilSquareIcon,          defaultSection: 'diagnostics' },
     // Custom Resources "Definitions" is a special entry
     'crds':                  { id: 'crds',                  label: 'Definitions',            icon: PuzzlePieceIcon,           defaultSection: 'custom-resources' },
 };

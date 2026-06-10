@@ -24,7 +24,7 @@ import { ServiceAccountList, RoleList, ClusterRoleList, RoleBindingList, Cluster
 import { CRDList, CustomResourceList } from '~/features/customresources';
 import { HelmReleaseList, HelmRepoList } from '~/features/helm';
 import { PortForwardList } from '~/features/portforwards';
-import { FlowTimeline, MultiLogViewer, ResourceDiff, RBACChecker, IssueDetector } from '~/features/diagnostics';
+import { FlowTimeline, MultiLogViewer, ResourceDiff, RBACChecker, IssueDetector, ScratchPad } from '~/features/diagnostics';
 import { usePerformancePanel } from '~/hooks/usePerformancePanel';
 import { LogMessage, SetEventCoalescerFrameInterval, SetExtraKubeconfigPaths, SetK8sAPITimeout } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
@@ -654,6 +654,7 @@ function MainLayout() {
             case 'resource-diff': return <ResourceDiff {...(diagnosticParams || {})} onClose={undefined} />;
             case 'rbac-checker': return <RBACChecker {...(diagnosticParams || {})} onClose={undefined} />;
             case 'issue-detector': return <IssueDetector onClose={undefined} />;
+            case 'scratchpad': return <ScratchPad onClose={undefined} />;
             case 'services': return <ServiceList isVisible={true} />;
             case 'ingresses': return <IngressList isVisible={true} />;
             case 'ingressclasses': return <IngressClassList isVisible={true} />;

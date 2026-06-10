@@ -189,7 +189,7 @@ kubikles/
 │   │   │                   # clusterrolebindings/, serviceaccounts/
 │   │   ├── customresources/ # CRDs and custom instances
 │   │   ├── helm/           # Helm releases, repos, OCI
-│   │   ├── diagnostics/    # Resource comparison, diagnostics, issue detection
+│   │   ├── diagnostics/    # Resource comparison, diagnostics, issue detection, ScratchPad.tsx (notepad)
 │   │   └── portforwards/   # Port forward management UI
 │   ├── components/
 │   │   ├── layout/         # Sidebar.tsx, BottomPanel.tsx
