@@ -4,7 +4,7 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 
 ## Documentation Guidelines
 
-**DO NOT** store in these docs:
+**DO NOT** store in any docs:
 - Line counts, file sizes, or any metrics that change with edits
 - Counts of files (e.g., "38 files", "28 more files")
 - Any statistics that become stale after code changes
@@ -17,163 +17,11 @@ Lightweight, high-performance desktop Kubernetes client. Go+React via Wails fram
 - **Frontend**: React 18, Vite, TailwindCSS
 - **Editor**: Monaco | **Terminal**: xterm.js | **Graphs**: React Flow + dagre
 
-## Quick File Reference
+## File Index — Single Source of Truth
 
-### Backend Core
-| Purpose | File |
-|---------|------|
-| App struct & lifecycle | `app.go` |
-| K8s API operations | `pkg/k8s/client.go` |
-| Event batching | `eventcoalescer.go` |
-| Generated method dispatch | `dispatch_gen.go` (do NOT edit, use `make generate`) |
-| go:generate directive | `generate.go` |
-| Dispatcher code generator | `cmd/gen-dispatcher/main.go` |
-| Compressed asset serving | `pkg/compressedassets/handler.go` |
-| AI integration | `pkg/ai/` |
-| Issue detection engine | `pkg/issuedetector/` |
-| MCP server | `pkg/mcp/server.go` |
-| Tool registry & implementations | `pkg/tools/` |
-
-### App Domain Files (split from app.go)
-| Domain | File |
-|--------|------|
-| Watcher manager | `app_watchermgr.go` |
-| Watch loops | `app_watchers.go` |
-| Performance metrics | `app_perfmetrics.go` |
-| Pods | `app_pods.go` |
-| Deployments | `app_deployments.go` |
-| StatefulSets | `app_statefulsets.go` |
-| DaemonSets | `app_daemonsets.go` |
-| ReplicaSets | `app_replicasets.go` |
-| Jobs & CronJobs | `app_jobs.go` |
-| Services | `app_services.go` |
-| Ingresses | `app_ingresses.go` |
-| ConfigMaps & Secrets | `app_configmaps.go` |
-| Namespaces | `app_namespaces.go` |
-| Nodes | `app_nodes.go` |
-| Events | `app_events.go` |
-| Storage (PVC/PV) | `app_storage.go` |
-| CSI | `app_csi.go` |
-| Custom Resources | `app_customresources.go` |
-| RBAC | `app_rbac.go` |
-| Network (HPA/PDB/NetPol) | `app_network.go` |
-| Scheduling | `app_scheduling.go` |
-| Webhooks | `app_webhooks.go` |
-| Helm (build tag: helm) | `app_helm.go` |
-| Helm stubs (build tag: !helm) | `app_helm_stub.go` |
-| Port forwarding | `app_portforward.go` |
-| Ingress forwarding | `app_ingressfwd.go` |
-| Log streaming | `app_logs.go` |
-| Terminal | `app_terminal.go` |
-| File transfer | `app_filetransfer.go` |
-| Prometheus | `app_prometheus.go` |
-| Certificates | `app_certificates.go` |
-| Diagnostics | `app_diagnostics.go` |
-| Issue detection | `app_issuedetector.go` |
-| AI assistant | `app_ai.go` |
-| K8s context | `app_context.go` |
-| Config settings | `app_config.go` |
-| Themes | `app_themes.go` |
-| Debug/logging | `app_debug.go` |
-| Native dialogs | `app_dialogs.go` |
-| Embedded browser | `app_embeddedbrowser.go` |
-
-### K8s Package
-| Purpose | File |
-|---------|------|
-| Core client, config, watch | `pkg/k8s/client.go` |
-| ApplyYAML + kindToResource | `pkg/k8s/apply.go` |
-| ConfigMaps & Secrets CRUD | `pkg/k8s/configmaps.go` |
-| CSI Drivers & Nodes | `pkg/k8s/csi.go` |
-| CRDs + custom resource CRUD | `pkg/k8s/customresources.go` |
-| DaemonSet operations | `pkg/k8s/daemonsets.go` |
-| Dependency graphs | `pkg/k8s/dependencies.go` |
-| Deployment operations | `pkg/k8s/deployments.go` |
-| Resource diff | `pkg/k8s/diff.go` |
-| Event operations | `pkg/k8s/events.go` |
-| File operations | `pkg/k8s/fileops.go` |
-| Flow timeline | `pkg/k8s/flowtimeline.go` |
-| Ingress & IngressClass | `pkg/k8s/ingresses.go` |
-| Job & CronJob operations | `pkg/k8s/jobs.go` |
-| Metrics-server metrics | `pkg/k8s/metrics.go` |
-| Multi-resource logging | `pkg/k8s/multilog.go` |
-| Namespace ops + resource counts | `pkg/k8s/namespaces.go` |
-| NetPol, HPA, PDB, Quota, LimitRange, Endpoints | `pkg/k8s/networkpolicies.go` |
-| Node operations | `pkg/k8s/nodes.go` |
-| Pod CRUD, logs, eviction, owner resolution | `pkg/k8s/pods.go` |
-| Prometheus detection, queries, history | `pkg/k8s/prometheus.go` |
-| RBAC permission checking | `pkg/k8s/rbac.go` |
-| Roles, ClusterRoles, Bindings CRUD | `pkg/k8s/rbacresources.go` |
-| ReplicaSet operations | `pkg/k8s/replicasets.go` |
-| PriorityClasses & Leases | `pkg/k8s/scheduling.go` |
-| ServiceAccount operations | `pkg/k8s/serviceaccounts.go` |
-| Service ops + backing pods | `pkg/k8s/services.go` |
-| StatefulSet operations | `pkg/k8s/statefulsets.go` |
-| PVC, PV, StorageClass | `pkg/k8s/storage.go` |
-| Webhook configurations | `pkg/k8s/webhooks.go` |
-
-### Debug Package (`pkg/debug/`)
-| Purpose | File |
-|---------|------|
-| Structured debug logging with categories | `pkg/debug/logger.go` |
-
-### Issue Detector Package (`pkg/issuedetector/`)
-| Purpose | File |
-|---------|------|
-| Core types (Finding, ScanResult, etc.) | `pkg/issuedetector/types.go` |
-| Rule interface & base helper | `pkg/issuedetector/rule.go` |
-| Parallel resource cache | `pkg/issuedetector/resourcecache.go` |
-| ScanEngine orchestration | `pkg/issuedetector/engine.go` |
-| YAML rule parser (6 check types) | `pkg/issuedetector/yamlloader.go` |
-| Built-in rule registration | `pkg/issuedetector/rules_builtin.go` |
-| Networking rules (NET001-NET005) | `pkg/issuedetector/rules_networking.go` |
-| Workload rules (WRK001-WRK004) | `pkg/issuedetector/rules_workloads.go` |
-| Storage rules (STR001-STR002) | `pkg/issuedetector/rules_storage.go` |
-| Security rules (SEC001-SEC002) | `pkg/issuedetector/rules_security.go` |
-| Config rules (CFG001-CFG002) | `pkg/issuedetector/rules_config.go` |
-| Deprecation rules (DEP001-DEP005) | `pkg/issuedetector/rules_deprecation.go` |
-| Unit tests | `pkg/issuedetector/engine_test.go` |
-
-### Helm Package (`pkg/helm/`)
-| Purpose | File |
-|---------|------|
-| Helm operations (build tag: helm) | `pkg/helm/client.go` |
-| Stub client (build tag: !helm) | `pkg/helm/client_stub.go` |
-| Pure data types (no build tag) | `pkg/helm/types.go` |
-| OCI registry (build tag: helm) | `pkg/helm/oci.go` |
-| Repository management (build tag: helm) | `pkg/helm/repo.go` |
-
-### Compressed Assets Package (`pkg/compressedassets/`)
-| Purpose | File |
-|---------|------|
-| Wails middleware + gzip-aware file server | `pkg/compressedassets/handler.go` |
-
-### Frontend Core
-| Purpose | File |
-|---------|------|
-| App entry/routing | `frontend/src/App.tsx` |
-| K8s state | `frontend/src/context/K8sContext.tsx` |
-| UI state | `frontend/src/context/UIContext.tsx` |
-| Config state | `frontend/src/context/ConfigContext.tsx` |
-| AI Chat | `frontend/src/context/AIChatContext.tsx` |
-| Issue Detection | `frontend/src/context/IssueDetectorContext.tsx` |
-| Sidebar nav | `frontend/src/components/layout/Sidebar.tsx` |
-| Menu structure | `frontend/src/constants/menuStructure.ts` |
-| Sidebar layout utils | `frontend/src/constants/sidebarLayoutUtils.ts` |
-| Resource table | `frontend/src/components/shared/ResourceList.tsx` |
-
-### Feature Modules
-Resources are at `frontend/src/features/{category}/{resource}/`:
-- **workloads**: pods, deployments, statefulsets, daemonsets, replicasets, jobs, cronjobs
-- **network**: services, ingresses, networkpolicies, endpoints, endpointslices, ingressclasses
-- **config**: configmaps, secrets, hpas, pdbs, resourcequotas, leases, limitranges
-- **storage**: pv, pvc, storageclass, csidrivers, csinodes
-- **cluster**: nodes, namespaces, events, metrics, webhooks, priorityclasses, topology
-- **access-control**: roles, clusterroles, rolebindings, clusterrolebindings, serviceaccounts
-- **customresources**: definitions, instances
-- **helm**: releases, repos, oci
-- **diagnostics**: resource comparison, diagnostics, issue detection
-- **portforwards**: port forward management UI
+The complete project structure and file locator lives in **`docs/ai/README.md`**.
+Do not duplicate the file tables here; read that doc (or run the `kubikles-ref`
+skill, which loads it) to locate code.
 
 ## Adding New K8s Resource
 1. Backend: `pkg/k8s/client.go` (List/Get/Update/Delete) + `app_[domain].go` (expose + watcher)
@@ -194,24 +42,11 @@ make generate     # Regenerate dispatch_gen.go
 make analyze-size # Binary size analysis
 ```
 
-## Full Reference
-For complete documentation: `docs/ai/README.md`
-
 ## Required: Update Docs After Structural Changes
 
-After adding/removing/renaming files in these locations, you MUST update the documentation:
-
-| Changed Location | Update These Files |
-|------------------|-------------------|
-| `pkg/k8s/*.go` | All three docs below |
-| `frontend/src/features/*/` | All three docs below |
-| `frontend/src/hooks/*.tsx` | All three docs below |
-| `frontend/src/context/*.tsx` | All three docs below |
-| Root `*.go` files | All three docs below |
-
-**Files to update:**
-1. `docs/ai/README.md` - Project structure section
-2. `.claude/rules/kubikles-context.md` - Quick reference tables
-3. `.claude/skills/kubikles-ref/SKILL.md` - File locator tables
+After adding/removing/renaming files in `pkg/k8s/`, `frontend/src/features/`,
+`frontend/src/hooks/`, `frontend/src/context/`, or root `*.go` files, update
+**`docs/ai/README.md`** in the same session. That doc is the only file index;
+this rule file and the `kubikles-ref` skill reference it rather than copying it.
 
 This is not optional. Do it in the same session as the structural change.

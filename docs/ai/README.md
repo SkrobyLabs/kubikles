@@ -2,7 +2,7 @@
 
 Quick-access reference for AI assistants. This document eliminates the need to re-scan the codebase.
 
-> **Required**: When adding/removing files in `pkg/k8s/`, `frontend/src/features/`, `frontend/src/hooks/`, `frontend/src/context/`, or root `.go` files, update this document and `.claude/rules/kubikles-context.md` and `.claude/skills/kubikles-ref/SKILL.md` in the same session.
+> **Required**: This document is the single source of truth for the file index. When adding/removing files in `pkg/k8s/`, `frontend/src/features/`, `frontend/src/hooks/`, `frontend/src/context/`, or root `.go` files, update **this document** in the same session. `.claude/rules/kubikles-context.md` and `.claude/skills/kubikles-ref/SKILL.md` reference this doc rather than duplicating it, so there is only one index to maintain.
 
 > **DO NOT** store line counts, file sizes, file counts, or any metrics that become stale after code changes.
 
