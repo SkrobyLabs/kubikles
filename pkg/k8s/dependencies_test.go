@@ -156,6 +156,9 @@ func TestGetDeploymentDependencies(t *testing.T) {
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "test"},
 			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": "test"}},
+			},
 		},
 	}
 
@@ -1610,6 +1613,9 @@ func TestGetDeploymentDependencies_ServiceSelectsMatchingPods(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "web"}},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": "web"}},
+			},
 		},
 	}
 	rs := &appsv1.ReplicaSet{

@@ -1030,21 +1030,19 @@ func (c *Client) getHPADependencies(cs kubernetes.Interface, cache *resourceCach
 					}
 				}
 			}
-			c.findSelectingServices(cache, graph, nodeMap, namespace, deploy.Spec.Selector.MatchLabels)
+			c.findSelectingServices(cache, graph, nodeMap, namespace, deploy.Spec.Template.Labels)
 		}
 	case "StatefulSet":
 		sts, err := cs.AppsV1().StatefulSets(namespace).Get(context.TODO(), targetName, metav1.GetOptions{})
 		if err == nil {
 			c.findOwnedPods(cs, cache, graph, nodeMap, targetID, namespace, targetName, "StatefulSet")
-			c.findSelectingServices(cache, graph, nodeMap, namespace, sts.Spec.Selector.MatchLabels)
+			c.findSelectingServices(cache, graph, nodeMap, namespace, sts.Spec.Template.Labels)
 		}
 	case "ReplicaSet":
 		rs, err := cs.AppsV1().ReplicaSets(namespace).Get(context.TODO(), targetName, metav1.GetOptions{})
 		if err == nil {
 			c.findOwnedPods(cs, cache, graph, nodeMap, targetID, namespace, targetName, "ReplicaSet")
-			if rs.Spec.Selector != nil {
-				c.findSelectingServices(cache, graph, nodeMap, namespace, rs.Spec.Selector.MatchLabels)
-			}
+			c.findSelectingServices(cache, graph, nodeMap, namespace, rs.Spec.Template.Labels)
 		}
 	}
 

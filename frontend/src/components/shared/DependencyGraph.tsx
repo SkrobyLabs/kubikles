@@ -88,6 +88,7 @@ const getStatusColor = (status: string | undefined): string => {
 const parseRatio = (value: string | undefined): { ready: number; total: number } | null => {
     if (!value) return null;
     const [ready, total] = value.split('/').map(Number);
+    if (!Number.isFinite(ready) || !Number.isFinite(total)) return null;
     return { ready, total };
 };
 

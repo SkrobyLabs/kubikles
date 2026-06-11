@@ -53,7 +53,7 @@ func (c *Client) getDeploymentDependencies(cs kubernetes.Interface, cache *resou
 	}
 
 	// Resolve Services that select this deployment's pods
-	c.findSelectingServices(cache, graph, nodeMap, namespace, deploy.Spec.Selector.MatchLabels)
+	c.findSelectingServices(cache, graph, nodeMap, namespace, deploy.Spec.Template.Labels)
 
 	return graph, nil
 }
@@ -80,7 +80,7 @@ func (c *Client) getStatefulSetDependencies(cs kubernetes.Interface, cache *reso
 	c.findOwnedPods(cs, cache, graph, nodeMap, stsID, namespace, name, "StatefulSet")
 
 	// Resolve Services
-	c.findSelectingServices(cache, graph, nodeMap, namespace, sts.Spec.Selector.MatchLabels)
+	c.findSelectingServices(cache, graph, nodeMap, namespace, sts.Spec.Template.Labels)
 
 	return graph, nil
 }
@@ -107,7 +107,7 @@ func (c *Client) getDaemonSetDependencies(cs kubernetes.Interface, cache *resour
 	c.findOwnedPods(cs, cache, graph, nodeMap, dsID, namespace, name, "DaemonSet")
 
 	// Resolve Services
-	c.findSelectingServices(cache, graph, nodeMap, namespace, ds.Spec.Selector.MatchLabels)
+	c.findSelectingServices(cache, graph, nodeMap, namespace, ds.Spec.Template.Labels)
 
 	return graph, nil
 }
@@ -137,9 +137,7 @@ func (c *Client) getReplicaSetDependencies(cs kubernetes.Interface, cache *resou
 	c.findOwnedPods(cs, cache, graph, nodeMap, rsID, namespace, name, "ReplicaSet")
 
 	// Find Services that select these pods (and their Ingresses)
-	if rs.Spec.Selector != nil {
-		c.findSelectingServices(cache, graph, nodeMap, namespace, rs.Spec.Selector.MatchLabels)
-	}
+	c.findSelectingServices(cache, graph, nodeMap, namespace, rs.Spec.Template.Labels)
 
 	return graph, nil
 }
@@ -173,9 +171,7 @@ func (c *Client) getJobDependencies(cs kubernetes.Interface, cache *resourceCach
 	c.findOwnedPods(cs, cache, graph, nodeMap, jobID, namespace, name, "Job")
 
 	// Find Services that select job pods (and their Ingresses)
-	if job.Spec.Selector != nil {
-		c.findSelectingServices(cache, graph, nodeMap, namespace, job.Spec.Selector.MatchLabels)
-	}
+	c.findSelectingServices(cache, graph, nodeMap, namespace, job.Spec.Template.Labels)
 
 	return graph, nil
 }

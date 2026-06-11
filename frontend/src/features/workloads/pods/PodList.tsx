@@ -243,9 +243,9 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
             filterable: false,
             render: (item: any) => (
                 <div className="flex gap-1">
-                    {(item.status?.containerStatuses || []).map((status: any, i: number) => (
+                    {(item.status?.containerStatuses || []).map((status: any) => (
                         <div
-                            key={i}
+                            key={status.name}
                             className={`w-3 h-3 rounded-sm ${getContainerStatusColor(status)}`}
                             title={`${status.name}: ${Object.keys(status.state || {})[0]} (${status.state?.waiting?.reason || ''})`}
                         />
@@ -501,9 +501,9 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
                         <div className="px-4 py-2 text-sm font-medium text-gray-300 border-b border-border">
                             Select port to forward
                         </div>
-                        {portSelectMenu.ports.map((port: any, idx: number) => (
+                        {portSelectMenu.ports.map((port: any) => (
                             <button
-                                key={idx}
+                                key={`${port.containerName}/${port.containerPort}/${port.protocol || 'TCP'}`}
                                 onClick={() => {
                                     setPortSelectMenu({ open: false, pod: null, ports: [] });
                                     setPortForwardDialog({ open: true, pod: portSelectMenu.pod, port });

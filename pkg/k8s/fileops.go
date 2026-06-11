@@ -233,7 +233,7 @@ func (c *Client) DownloadFile(ctx context.Context, namespace, pod, container, re
 		operation: "download",
 	}
 
-	err = c.execInPodStream(ctx, namespace, pod, effectiveContainer, cmd, nil, pw)
+	err = c.execInPodStream(ctx, namespace, pod, effectiveContainer, cmd, nil, pw, nil)
 	if err != nil {
 		os.Remove(localPath)
 		return fmt.Errorf("failed to download file: %w", err)
@@ -278,7 +278,7 @@ func (c *Client) DownloadFolder(ctx context.Context, namespace, pod, container, 
 		operation: "download",
 	}
 
-	err = c.execInPodStream(ctx, namespace, pod, effectiveContainer, cmd, nil, pw)
+	err = c.execInPodStream(ctx, namespace, pod, effectiveContainer, cmd, nil, pw, nil)
 	if err != nil {
 		os.Remove(localPath)
 		return fmt.Errorf("failed to download folder: %w", err)
@@ -324,7 +324,7 @@ func (c *Client) DownloadFiles(ctx context.Context, namespace, pod, container, b
 		operation: "download",
 	}
 
-	err = c.execInPodStream(ctx, namespace, pod, effectiveContainer, cmd, nil, pw)
+	err = c.execInPodStream(ctx, namespace, pod, effectiveContainer, cmd, nil, pw, nil)
 	if err != nil {
 		os.Remove(localPath)
 		return fmt.Errorf("failed to download files: %w", err)
@@ -395,7 +395,7 @@ func (c *Client) UploadFile(ctx context.Context, namespace, pod, container, loca
 		operation: "upload",
 	}
 
-	err = c.execInPodStream(ctx, namespace, pod, effectiveContainer, cmd, pr, io.Discard)
+	err = c.execInPodStream(ctx, namespace, pod, effectiveContainer, cmd, pr, io.Discard, nil)
 	if err != nil {
 		return fmt.Errorf("failed to upload file: %w", err)
 	}
@@ -443,7 +443,7 @@ func (c *Client) UploadFolder(ctx context.Context, namespace, pod, container, lo
 		operation: "upload",
 	}
 
-	err = c.execInPodStream(ctx, namespace, pod, effectiveContainer, cmd, pr, io.Discard)
+	err = c.execInPodStream(ctx, namespace, pod, effectiveContainer, cmd, pr, io.Discard, nil)
 	if err != nil {
 		return fmt.Errorf("failed to upload folder: %w", err)
 	}
@@ -489,7 +489,7 @@ func (c *Client) DeleteFile(ctx context.Context, namespace, pod, container, file
 func (c *Client) execInPod(ctx context.Context, namespace, pod, container string, cmd []string) (string, string, error) {
 	var stdout, stderr bytes.Buffer
 
-	err := c.execInPodStream(ctx, namespace, pod, container, cmd, nil, &stdout)
+	err := c.execInPodStream(ctx, namespace, pod, container, cmd, nil, &stdout, &stderr)
 	if err != nil {
 		return "", stderr.String(), err
 	}
@@ -511,8 +511,9 @@ func (c *Client) ExecCommandInPod(namespace, pod, container string, cmd []string
 	return stdout, nil
 }
 
-// execInPodStream executes a command in a pod with streaming I/O
-func (c *Client) execInPodStream(ctx context.Context, namespace, pod, container string, cmd []string, stdin io.Reader, stdout io.Writer) error {
+// execInPodStream executes a command in a pod with streaming I/O.
+// If stderr is nil, stderr output is captured internally and embedded in the returned error.
+func (c *Client) execInPodStream(ctx context.Context, namespace, pod, container string, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	// Get REST config from the client config
 	restConfig, err := c.configLoading.ClientConfig()
 	if err != nil {
@@ -539,10 +540,14 @@ func (c *Client) execInPodStream(ctx context.Context, namespace, pod, container 
 	}
 
 	var stderrBuf bytes.Buffer
+	stderrDst := stderr
+	if stderrDst == nil {
+		stderrDst = &stderrBuf
+	}
 
 	streamOpts := remotecommand.StreamOptions{
 		Stdout: stdout,
-		Stderr: &stderrBuf,
+		Stderr: stderrDst,
 		Tty:    false,
 	}
 
@@ -552,8 +557,7 @@ func (c *Client) execInPodStream(ctx context.Context, namespace, pod, container 
 
 	err = exec.StreamWithContext(ctx, streamOpts)
 	if err != nil {
-		stderrStr := stderrBuf.String()
-		if stderrStr != "" {
+		if stderrStr := stderrBuf.String(); stderrStr != "" {
 			return fmt.Errorf("%w: %s", err, stderrStr)
 		}
 		return err
@@ -619,17 +623,16 @@ func (c *Client) injectEphemeralContainer(ctx context.Context, namespace, podNam
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Command:         []string{"sh", "-c", "sleep 3600"},
 			VolumeMounts:    volumeMounts,
-			SecurityContext: &corev1.SecurityContext{
-				RunAsUser:  pod.Spec.SecurityContext.RunAsUser,
-				RunAsGroup: pod.Spec.SecurityContext.RunAsGroup,
-			},
 		},
 		TargetContainerName: targetContainer,
 	}
 
-	// Clear security context if pod doesn't have one
-	if pod.Spec.SecurityContext == nil {
-		ec.SecurityContext = nil
+	// Inherit the pod-level security context if one is set
+	if sc := pod.Spec.SecurityContext; sc != nil {
+		ec.SecurityContext = &corev1.SecurityContext{
+			RunAsUser:  sc.RunAsUser,
+			RunAsGroup: sc.RunAsGroup,
+		}
 	}
 
 	// Patch the pod to add the ephemeral container

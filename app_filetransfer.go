@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path"
@@ -36,7 +35,7 @@ func (a *App) ListPodFiles(namespace, pod, container, path string) ([]PodFileInf
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 
-	files, err := a.k8sClient.ListFiles(context.Background(), namespace, pod, container, path)
+	files, err := a.k8sClient.ListFiles(a.ctx, namespace, pod, container, path)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +88,7 @@ func (a *App) DownloadPodFile(namespace, pod, container, remotePath string) erro
 	}
 
 	// Get file size for progress
-	size, _ := a.k8sClient.GetFileSize(context.Background(), namespace, pod, container, remotePath)
+	size, _ := a.k8sClient.GetFileSize(a.ctx, namespace, pod, container, remotePath)
 
 	// Emit initial progress
 	a.emitEvent("file:progress", map[string]interface{}{
@@ -101,7 +100,7 @@ func (a *App) DownloadPodFile(namespace, pod, container, remotePath string) erro
 	})
 
 	// Download with progress callback
-	err = a.k8sClient.DownloadFile(context.Background(), namespace, pod, container, remotePath, localPath, func(p k8s.FileProgress) {
+	err = a.k8sClient.DownloadFile(a.ctx, namespace, pod, container, remotePath, localPath, func(p k8s.FileProgress) {
 		a.emitEvent("file:progress", map[string]interface{}{
 			"operation":        p.Operation,
 			"fileName":         p.FileName,
@@ -173,7 +172,7 @@ func (a *App) DownloadPodFolder(namespace, pod, container, remotePath string) er
 	})
 
 	// Download with progress callback
-	err = a.k8sClient.DownloadFolder(context.Background(), namespace, pod, container, remotePath, localPath, func(p k8s.FileProgress) {
+	err = a.k8sClient.DownloadFolder(a.ctx, namespace, pod, container, remotePath, localPath, func(p k8s.FileProgress) {
 		a.emitEvent("file:progress", map[string]interface{}{
 			"operation":        p.Operation,
 			"fileName":         p.FileName,
@@ -229,7 +228,7 @@ func (a *App) DownloadPodFiles(namespace, pod, container, basePath string, names
 	})
 
 	// Download with progress callback
-	err = a.k8sClient.DownloadFiles(context.Background(), namespace, pod, container, basePath, names, localPath, func(p k8s.FileProgress) {
+	err = a.k8sClient.DownloadFiles(a.ctx, namespace, pod, container, basePath, names, localPath, func(p k8s.FileProgress) {
 		a.emitEvent("file:progress", map[string]interface{}{
 			"operation":        p.Operation,
 			"fileName":         p.FileName,
@@ -309,7 +308,7 @@ func (a *App) uploadFileInternal(namespace, pod, container, localPath, remotePat
 
 	var uploadErr error
 	if stat.IsDir() {
-		uploadErr = a.k8sClient.UploadFolder(context.Background(), namespace, pod, container, localPath, remotePath, func(p k8s.FileProgress) {
+		uploadErr = a.k8sClient.UploadFolder(a.ctx, namespace, pod, container, localPath, remotePath, func(p k8s.FileProgress) {
 			a.emitEvent("file:progress", map[string]interface{}{
 				"operation":        p.Operation,
 				"fileName":         p.FileName,
@@ -320,7 +319,7 @@ func (a *App) uploadFileInternal(namespace, pod, container, localPath, remotePat
 			})
 		})
 	} else {
-		uploadErr = a.k8sClient.UploadFile(context.Background(), namespace, pod, container, localPath, targetPath, func(p k8s.FileProgress) {
+		uploadErr = a.k8sClient.UploadFile(a.ctx, namespace, pod, container, localPath, targetPath, func(p k8s.FileProgress) {
 			a.emitEvent("file:progress", map[string]interface{}{
 				"operation":        p.Operation,
 				"fileName":         p.FileName,
@@ -351,7 +350,7 @@ func (a *App) CreatePodDirectory(namespace, pod, container, dirPath string) erro
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.CreateDirectory(context.Background(), namespace, pod, container, dirPath)
+	return a.k8sClient.CreateDirectory(a.ctx, namespace, pod, container, dirPath)
 }
 
 // DeletePodFile deletes a file or directory in a pod
@@ -360,5 +359,5 @@ func (a *App) DeletePodFile(namespace, pod, container, filePath string) error {
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.DeleteFile(context.Background(), namespace, pod, container, filePath)
+	return a.k8sClient.DeleteFile(a.ctx, namespace, pod, container, filePath)
 }
