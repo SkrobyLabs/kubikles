@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useUI } from '~/context';
+import { ListPVCs } from 'wailsjs/go/main/App';
 
 // Volume type badge
 const VolumeTypeBadge = ({ type }: { type: string }) => {
@@ -12,6 +13,7 @@ const VolumeTypeBadge = ({ type }: { type: string }) => {
         hostPath: 'bg-red-500/10 text-red-400 border-red-500/30',
         downwardAPI: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
         nfs: 'bg-orange-500/10 text-orange-400 border-orange-500/30',
+        ephemeral: 'bg-teal-500/10 text-teal-400 border-teal-500/30',
     };
 
     return (
@@ -73,6 +75,15 @@ const getVolumeInfo = (volume: any) => {
             items: volume.downwardAPI.items
         };
     }
+    if (volume.ephemeral) {
+        const claimSpec = volume.ephemeral.volumeClaimTemplate?.spec || {};
+        return {
+            type: 'ephemeral',
+            storageSize: claimSpec.resources?.requests?.storage,
+            storageClassName: claimSpec.storageClassName,
+            accessModes: claimSpec.accessModes
+        };
+    }
     if (volume.nfs) {
         return {
             type: 'nfs',
@@ -131,7 +142,7 @@ const ProjectedSources = ({ sources }: { sources: any[] }) => {
 };
 
 // Volume card component
-const VolumeCard = ({ volume, namespace, onNavigate }: { volume: any; namespace: any; onNavigate: any }) => {
+const VolumeCard = ({ volume, namespace, onNavigate, pvcSizes }: { volume: any; namespace: any; onNavigate: any; pvcSizes: Record<string, string> }) => {
     const info = getVolumeInfo(volume);
 
     const handlePVCClick = (claimName: any) => {
@@ -163,6 +174,7 @@ const VolumeCard = ({ volume, namespace, onNavigate }: { volume: any; namespace:
                         >
                             {info.claimName}
                         </button>
+                        {pvcSizes[info.claimName] && <span className="ml-2 text-xs text-gray-500">(size: {pvcSizes[info.claimName]})</span>}
                         {info.readOnly && <span className="ml-2 text-xs text-gray-500">(readOnly)</span>}
                     </div>
                 )}
@@ -197,6 +209,14 @@ const VolumeCard = ({ volume, namespace, onNavigate }: { volume: any; namespace:
                     <div className="text-gray-500">
                         {info.sizeLimit ? `Size limit: ${info.sizeLimit}` : 'No size limit'}
                         {info.details && ` • ${info.details}`}
+                    </div>
+                )}
+
+                {info.type === 'ephemeral' && (
+                    <div className="text-gray-500">
+                        {info.storageSize ? `Size: ${info.storageSize}` : 'No size defined'}
+                        {info.storageClassName && ` • storageClass: ${info.storageClassName}`}
+                        {info.accessModes && info.accessModes.length > 0 && ` • ${info.accessModes.join(', ')}`}
                     </div>
                 )}
 
@@ -251,6 +271,23 @@ export default function PodVolumesTab({ pod }: { pod: any }) {
     const { navigateWithSearch } = useUI();
     const volumes = pod.spec?.volumes || [];
     const namespace = pod.metadata?.namespace;
+    const [pvcSizes, setPvcSizes] = useState<Record<string, string>>({});
+
+    const hasPVC = volumes.some((v: any) => v.persistentVolumeClaim);
+    useEffect(() => {
+        if (!hasPVC || !namespace) return;
+        let cancelled = false;
+        ListPVCs('', namespace).then((pvcs: any[]) => {
+            if (cancelled || !pvcs) return;
+            const sizes: Record<string, string> = {};
+            for (const pvc of pvcs) {
+                const size = pvc.status?.capacity?.storage || pvc.spec?.resources?.requests?.storage;
+                if (pvc.metadata?.name && size) sizes[pvc.metadata.name] = size;
+            }
+            setPvcSizes(sizes);
+        }).catch(() => { });
+        return () => { cancelled = true; };
+    }, [hasPVC, namespace]);
 
     if (volumes.length === 0) {
         return (
@@ -269,6 +306,7 @@ export default function PodVolumesTab({ pod }: { pod: any }) {
                         volume={volume}
                         namespace={namespace}
                         onNavigate={navigateWithSearch}
+                        pvcSizes={pvcSizes}
                     />
                 ))}
             </div>
