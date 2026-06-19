@@ -191,6 +191,7 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
                         usagePercent={m.cpuPercent}
                         reservedPercent={m.cpuReservedPercent}
                         committedPercent={m.cpuCommittedPercent}
+                        displayPercent={m.cpuPercent}
                         type="cpu"
                         label="CPU"
                         usageValue={m.cpuUsage}
@@ -201,7 +202,7 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
                     />
                 );
             },
-            getValue: (item: any) => metrics[item.metadata?.name]?.cpuCommittedPercent ?? -1,
+            getValue: (item: any) => metrics[item.metadata?.name]?.cpuPercent ?? -1,
             getNumericValue: (item: any) => metrics[item.metadata?.name]?.cpuPercent ?? NaN
         },
         {
@@ -219,6 +220,7 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
                         usagePercent={m.memPercent}
                         reservedPercent={m.memReservedPercent}
                         committedPercent={m.memCommittedPercent}
+                        displayPercent={m.memPercent}
                         type="memory"
                         label="Memory"
                         usageValue={m.memoryUsage}
@@ -229,7 +231,7 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
                     />
                 );
             },
-            getValue: (item: any) => metrics[item.metadata?.name]?.memCommittedPercent ?? -1,
+            getValue: (item: any) => metrics[item.metadata?.name]?.memPercent ?? -1,
             getNumericValue: (item: any) => metrics[item.metadata?.name]?.memPercent ?? NaN
         },
         {

@@ -9,6 +9,7 @@ const OVERCOMMIT_TOOLTIP = "Over-committed: Some containers use more than their 
  * @param {number} usagePercent - Actual usage percentage
  * @param {number} reservedPercent - Reserved/requested percentage (optional, for nodes)
  * @param {number} committedPercent - Committed percentage (max of usage, reserved per container)
+ * @param {number} displayPercent - Percentage shown next to the bar. Defaults to committed when available.
  * @param {string} type - "cpu" or "memory" (currently unused, kept for future use)
  * @param {string} label - Optional label prefix for tooltip
  * @param {boolean} showPercent - Whether to show percentage text next to bar (default: true)
@@ -23,6 +24,7 @@ interface AggregateResourceBarProps {
     usagePercent?: number;
     reservedPercent?: number;
     committedPercent?: number;
+    displayPercent?: number;
     type?: string;
     label?: string;
     showPercent?: boolean;
@@ -38,6 +40,7 @@ const AggregateResourceBar = memo(function AggregateResourceBar({
     usagePercent = 0,
     reservedPercent,
     committedPercent,
+    displayPercent,
     type = 'cpu',
     label = '',
     showPercent = true,
@@ -88,7 +91,7 @@ const AggregateResourceBar = memo(function AggregateResourceBar({
     const usageColor = 'bg-blue-500';
 
     // Display percentage (show committed if available, otherwise usage)
-    const displayPercent = committed != null ? Math.round(committed) : Math.round(usage);
+    const visiblePercent = displayPercent != null ? Math.round(displayPercent) : (committed != null ? Math.round(committed) : Math.round(usage));
 
     return (
         <div className="flex items-center gap-1.5" title={tooltip}>
@@ -115,7 +118,7 @@ const AggregateResourceBar = memo(function AggregateResourceBar({
             </div>
             {showPercent && (
                 <span className={`text-[10px] w-8 text-right ${isOverCommitted ? 'text-yellow-400' : 'text-gray-400'}`}>
-                    {displayPercent}%{isOverCommitted && '*'}
+                    {visiblePercent}%{isOverCommitted && displayPercent == null && '*'}
                 </span>
             )}
         </div>

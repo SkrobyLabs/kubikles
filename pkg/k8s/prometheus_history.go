@@ -573,10 +573,10 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 	}
 
 	// --- CPU Metrics ---
-	// CPU Usage (all pods on this node, in cores)
+	// CPU Usage (node-level when node-exporter is available, fallback to all pods on this node, in cores)
 	cpuUsageQuery := fmt.Sprintf(
-		`sum(rate(container_cpu_usage_seconds_total{node="%s", container!="", container!="POD"}[5m]))`,
-		nodeName,
+		`sum((1 - rate(node_cpu_seconds_total{mode="idle"}[5m])) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(container_cpu_usage_seconds_total{node="%s", container!="", container!="POD"}[5m]))`,
+		nodeName, nodeName,
 	)
 	result.CPU.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuUsageQuery, start, end, step)
 
@@ -603,10 +603,10 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 	result.CPU.Committed = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuCommittedQuery, start, end, step)
 
 	// --- Memory Metrics ---
-	// Memory Usage (all pods on this node)
+	// Memory Usage (node-level when node-exporter is available, fallback to all pods on this node)
 	memUsageQuery := fmt.Sprintf(
-		`sum(container_memory_working_set_bytes{node="%s", container!="", container!="POD"})`,
-		nodeName,
+		`sum((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(container_memory_working_set_bytes{node="%s", container!="", container!="POD"})`,
+		nodeName, nodeName,
 	)
 	result.Memory.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memUsageQuery, start, end, step)
 
