@@ -64,7 +64,7 @@ export function executeNavLink(href: string, { setActiveView, navigateWithSearch
             if (!parts[1]) break;
             const podName = parts[1];
             const namespace = parts[2];
-            const tabId = `logs-pod-${podName}`;
+            const tabId = `logs-pod-${currentContext}-${namespace || ''}/${podName}`;
             openTab({
                 id: tabId,
                 title: podName,

@@ -56,7 +56,7 @@ export const useJobActions = (onRefresh?: () => void): any => {
         const refreshToken = Date.now();
 
         openTab({
-            id: `logs-job-${job.metadata.name}`,
+            id: `logs-job-${currentContext}-${namespace}/${job.metadata.name}`,
             title: `Logs: ${job.metadata.name}`,
             keepAlive: true,
             content: (

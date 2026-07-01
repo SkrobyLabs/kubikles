@@ -51,7 +51,7 @@ export default function PodDetails({ pod, tabContext = '' }: any) {
         const podName = pod.metadata?.name;
 
         openTab({
-            id: `logs-pod-${podName}`,
+            id: `logs-pod-${currentContext}-${namespace}/${podName}`,
             title: podName,
             keepAlive: true,
             content: (

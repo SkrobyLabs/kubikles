@@ -54,7 +54,7 @@ export const useStatefulSetActions = (): any => {
         const refreshToken = Date.now();
 
         openTab({
-            id: `logs-statefulset-${statefulSet.metadata.name}`,
+            id: `logs-statefulset-${currentContext}-${namespace}/${statefulSet.metadata.name}`,
             title: `Logs: ${statefulSet.metadata.name}`,
             keepAlive: true,
             content: (

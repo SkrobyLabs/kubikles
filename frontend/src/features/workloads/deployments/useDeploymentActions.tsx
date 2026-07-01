@@ -54,7 +54,7 @@ export const useDeploymentActions = (): any => {
         const refreshToken = Date.now();
 
         openTab({
-            id: `logs-deploy-${deployment.metadata.name}`,
+            id: `logs-deploy-${currentContext}-${namespace}/${deployment.metadata.name}`,
             title: `Logs: ${deployment.metadata.name}`,
             keepAlive: true,
             content: (

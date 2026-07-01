@@ -49,6 +49,7 @@ export default function BottomPanel({
 }: BottomPanelProps) {
     // Filter out stale tabs unless they are pinned
     const visibleTabs = tabs.filter((tab: any) => !isTabStale?.(tab) || tab.pinned);
+    const activeTabIsVisible = activeTabId ? visibleTabs.some((tab: any) => tab.id === activeTabId) : true;
     const { getConfig } = useConfig();
     const showTabIcons = getConfig('ui.showTabIcons');
 
@@ -103,6 +104,13 @@ export default function BottomPanel({
             });
         }
     }, [activeTabId]);
+
+    // Keep the selected tab aligned with the filtered header list. Without this,
+    // hidden stale tabs can still render content while no visible tab is selected.
+    useEffect(() => {
+        if (!activeTabId || activeTabIsVisible || visibleTabs.length === 0) return;
+        onTabChange(visibleTabs[0].id);
+    }, [activeTabId, activeTabIsVisible, visibleTabs, onTabChange]);
 
     // Close context menu on click outside
     useEffect(() => {
@@ -288,7 +296,8 @@ export default function BottomPanel({
             */}
             <div className="flex-1 overflow-hidden relative">
                 {tabs.map((tab) => {
-                    const isActive = tab.id === activeTabId;
+                    const isVisible = visibleTabs.some((visibleTab: any) => visibleTab.id === tab.id);
+                    const isActive = isVisible && tab.id === activeTabId;
                     // keepAlive tabs stay mounted, others only render when active
                     if (!tab.keepAlive && !isActive) return null;
                     return (

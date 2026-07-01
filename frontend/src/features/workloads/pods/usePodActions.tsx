@@ -52,7 +52,9 @@ export const usePodActions = (): any => {
     ): void => {
         Logger.info("Opening logs", { namespace, pod: podName }, 'k8s');
         const isAllPods = podName === '__ALL_PODS__';
-        const tabId = isAllPods ? `logs-all-${ownerName || namespace}` : `logs-pod-${podName}`;
+        const tabId = isAllPods
+            ? `logs-all-${currentContext}-${namespace}/${ownerName || namespace}`
+            : `logs-pod-${currentContext}-${namespace}/${podName}`;
         openTab({
             id: tabId,
             title: isAllPods ? (ownerName || 'All Pods') : podName,

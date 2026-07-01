@@ -44,7 +44,7 @@ export const useReplicaSetActions = (): any => {
         const refreshToken = Date.now();
 
         openTab({
-            id: `logs-replicaset-${replicaSet.metadata.name}`,
+            id: `logs-replicaset-${currentContext}-${namespace}/${replicaSet.metadata.name}`,
             title: `Logs: ${replicaSet.metadata.name}`,
             keepAlive: true,
             content: (

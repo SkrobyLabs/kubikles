@@ -54,7 +54,7 @@ export const useDaemonSetActions = (): any => {
         const refreshToken = Date.now();
 
         openTab({
-            id: `logs-daemonset-${daemonSet.metadata.name}`,
+            id: `logs-daemonset-${currentContext}-${namespace}/${daemonSet.metadata.name}`,
             title: `Logs: ${daemonSet.metadata.name}`,
             keepAlive: true,
             content: (

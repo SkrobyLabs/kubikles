@@ -40,7 +40,7 @@ export const useCronJobActions = (): any => {
         const refreshToken = Date.now();
 
         openTab({
-            id: `logs-cronjob-${cronJob.metadata.name}`,
+            id: `logs-cronjob-${currentContext}-${namespace}/${cronJob.metadata.name}`,
             title: `Logs: ${cronJob.metadata.name}`,
             keepAlive: true,
             content: (
