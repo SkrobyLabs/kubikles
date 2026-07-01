@@ -215,7 +215,7 @@ export const AnnotationsDisplay = React.memo(({ annotations, emptyText = 'None' 
                 .map(([key, value]) => (
                     <CopyableLabel
                         key={key}
-                        value={key.length > 40 ? `${key.substring(0, 40)}...` : key}
+                        value={`${key}=${value}`}
                         copyValue={`${key}=${value}`}
                         className="bg-purple-500/10 border-purple-500/30"
                     />

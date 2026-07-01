@@ -352,7 +352,7 @@ export default function NodeDetails({ node, tabContext = '' }: any) {
                             {filteredAnnotations.map((entry) => (
                                 <CopyableLabel
                                     key={entry.key}
-                                    value={entry.key.length > 40 ? `${entry.key.substring(0, 40)}...` : entry.key}
+                                    value={entry.display}
                                     copyValue={entry.display}
                                     className="bg-purple-500/10 border-purple-500/30"
                                 />
