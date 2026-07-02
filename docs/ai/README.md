@@ -192,7 +192,9 @@ kubikles/
 │   │   ├── diagnostics/    # Resource comparison, diagnostics, issue detection, ScratchPad.tsx (notepad)
 │   │   └── portforwards/   # Port forward management UI
 │   ├── components/
-│   │   ├── layout/         # Sidebar.tsx, BottomPanel.tsx
+│   │   ├── layout/         # Sidebar.tsx, BottomPanel.tsx, AIPanel.tsx,
+│   │   │                   # MessageBubble.tsx (one bubble per turn),
+│   │   │                   # ToolCallCard.tsx (inline collapsible tool call), AIMarkdown.tsx
 │   │   └── shared/         # ResourceList.tsx, YamlEditor.tsx, LogViewer.tsx,
 │   │                       # Terminal.tsx, DependencyGraph.tsx, ConfigEditor/
 │   ├── hooks/              # useResource.tsx, useResourceWatcher.tsx,
@@ -206,6 +208,8 @@ kubikles/
 │       ├── resourceRegistry.ts  # Central resource type definitions
 │       ├── k8s-helpers.ts       # Status helpers
 │       ├── Logger.ts            # Logging utility
+│       ├── aiChatBlocks.ts      # Pure reducer for AI turn blocks (text + tool cards)
+│       ├── aiChatBlocks.test.ts # Unit tests for the block reducer
 │       └── formatting.ts        # Date/time formatting
 │
 ├── docs/

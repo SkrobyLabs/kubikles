@@ -22,13 +22,30 @@ func toolGetPodLogs(client *k8s.Client, args map[string]interface{}) (string, bo
 		return "namespace and pod are required", true
 	}
 
+	// A pod with multiple containers requires a container name; when the caller
+	// omits it, default to the first container so the call succeeds instead of
+	// erroring, and note which container was chosen.
+	var containerNote string
+	if container == "" {
+		if p, err := client.GetPod(ns, pod); err == nil {
+			names := make([]string, 0, len(p.Spec.Containers))
+			for _, c := range p.Spec.Containers {
+				names = append(names, c.Name)
+			}
+			if len(names) > 1 {
+				container = names[0]
+				containerNote = fmt.Sprintf("# pod %q has multiple containers %v; showing logs for %q (pass \"container\" to choose another)\n", pod, names, container)
+			}
+		}
+	}
+
 	logs, err := client.GetPodLogs(ns, pod, container, false, previous, "")
 	if err != nil {
 		return fmt.Sprintf("Error getting logs: %v", err), true
 	}
 
 	if logs == "" {
-		return "(no logs)", false
+		return containerNote + "(no logs)", false
 	}
 
 	tailLines := intArg(args, "tail_lines", 100)
@@ -37,7 +54,7 @@ func toolGetPodLogs(client *k8s.Client, args map[string]interface{}) (string, bo
 		lines = lines[len(lines)-tailLines:]
 	}
 
-	return truncate(strings.Join(lines, "\n"), MaxPodLogChars), false
+	return truncate(containerNote+strings.Join(lines, "\n"), MaxPodLogChars), false
 }
 
 func toolGetResourceYaml(client *k8s.Client, args map[string]interface{}) (string, bool) {
@@ -377,6 +394,104 @@ func toolListResources(client *k8s.Client, args map[string]interface{}) (string,
 		lines = append(lines, fmt.Sprintf("%-50s %-20s %-10s", "NAME", "NAMESPACE", "AGE"))
 		for _, sa := range items {
 			lines = append(lines, fmt.Sprintf("%-50s %-20s %-10s", sa.Name, sa.Namespace, age(sa.CreationTimestamp.Time)))
+		}
+		return strings.Join(lines, "\n"), false
+
+	case "networkpolicy", "networkpolicies":
+		items, err := client.ListNetworkPolicies(ns)
+		if err != nil {
+			return fmt.Sprintf("Error: %v", err), true
+		}
+		var lines []string
+		lines = append(lines, fmt.Sprintf("%-50s %-20s %-10s", "NAME", "NAMESPACE", "AGE"))
+		for _, np := range items {
+			lines = append(lines, fmt.Sprintf("%-50s %-20s %-10s", np.Name, np.Namespace, age(np.CreationTimestamp.Time)))
+		}
+		return strings.Join(lines, "\n"), false
+
+	case "role", "roles":
+		items, err := client.ListRoles(ns)
+		if err != nil {
+			return fmt.Sprintf("Error: %v", err), true
+		}
+		var lines []string
+		lines = append(lines, fmt.Sprintf("%-50s %-20s %-10s", "NAME", "NAMESPACE", "AGE"))
+		for _, r := range items {
+			lines = append(lines, fmt.Sprintf("%-50s %-20s %-10s", r.Name, r.Namespace, age(r.CreationTimestamp.Time)))
+		}
+		return strings.Join(lines, "\n"), false
+
+	case "clusterrole", "clusterroles":
+		items, err := client.ListClusterRoles()
+		if err != nil {
+			return fmt.Sprintf("Error: %v", err), true
+		}
+		var lines []string
+		lines = append(lines, fmt.Sprintf("%-60s %-10s", "NAME", "AGE"))
+		for _, r := range items {
+			lines = append(lines, fmt.Sprintf("%-60s %-10s", r.Name, age(r.CreationTimestamp.Time)))
+		}
+		return strings.Join(lines, "\n"), false
+
+	case "rolebinding", "rolebindings":
+		items, err := client.ListRoleBindings(ns)
+		if err != nil {
+			return fmt.Sprintf("Error: %v", err), true
+		}
+		var lines []string
+		lines = append(lines, fmt.Sprintf("%-50s %-20s %-30s %-10s", "NAME", "NAMESPACE", "ROLE", "AGE"))
+		for _, rb := range items {
+			role := fmt.Sprintf("%s/%s", rb.RoleRef.Kind, rb.RoleRef.Name)
+			lines = append(lines, fmt.Sprintf("%-50s %-20s %-30s %-10s", rb.Name, rb.Namespace, role, age(rb.CreationTimestamp.Time)))
+		}
+		return strings.Join(lines, "\n"), false
+
+	case "clusterrolebinding", "clusterrolebindings":
+		items, err := client.ListClusterRoleBindings()
+		if err != nil {
+			return fmt.Sprintf("Error: %v", err), true
+		}
+		var lines []string
+		lines = append(lines, fmt.Sprintf("%-50s %-30s %-10s", "NAME", "ROLE", "AGE"))
+		for _, crb := range items {
+			role := fmt.Sprintf("%s/%s", crb.RoleRef.Kind, crb.RoleRef.Name)
+			lines = append(lines, fmt.Sprintf("%-50s %-30s %-10s", crb.Name, role, age(crb.CreationTimestamp.Time)))
+		}
+		return strings.Join(lines, "\n"), false
+
+	case "storageclass", "storageclasses":
+		items, err := client.ListStorageClasses("")
+		if err != nil {
+			return fmt.Sprintf("Error: %v", err), true
+		}
+		var lines []string
+		lines = append(lines, fmt.Sprintf("%-50s %-30s %-10s", "NAME", "PROVISIONER", "AGE"))
+		for _, sc := range items {
+			lines = append(lines, fmt.Sprintf("%-50s %-30s %-10s", sc.Name, sc.Provisioner, age(sc.CreationTimestamp.Time)))
+		}
+		return strings.Join(lines, "\n"), false
+
+	case "ingressclass", "ingressclasses":
+		items, err := client.ListIngressClasses("")
+		if err != nil {
+			return fmt.Sprintf("Error: %v", err), true
+		}
+		var lines []string
+		lines = append(lines, fmt.Sprintf("%-50s %-30s %-10s", "NAME", "CONTROLLER", "AGE"))
+		for _, ic := range items {
+			lines = append(lines, fmt.Sprintf("%-50s %-30s %-10s", ic.Name, ic.Spec.Controller, age(ic.CreationTimestamp.Time)))
+		}
+		return strings.Join(lines, "\n"), false
+
+	case "pdb", "poddisruptionbudget", "poddisruptionbudgets":
+		items, err := client.ListPDBs(ns)
+		if err != nil {
+			return fmt.Sprintf("Error: %v", err), true
+		}
+		var lines []string
+		lines = append(lines, fmt.Sprintf("%-50s %-20s %-15s %-10s", "NAME", "NAMESPACE", "ALLOWED-DISRUPT", "AGE"))
+		for _, pdb := range items {
+			lines = append(lines, fmt.Sprintf("%-50s %-20s %-15d %-10s", pdb.Name, pdb.Namespace, pdb.Status.DisruptionsAllowed, age(pdb.CreationTimestamp.Time)))
 		}
 		return strings.Join(lines, "\n"), false
 

@@ -1,10 +1,12 @@
 package ai
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
+	"unicode/utf8"
 
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/tools"
@@ -32,6 +34,12 @@ func buildToolParams(allowedTools []string) []anthropic.ToolUnionParam {
 			},
 		}
 		params = append(params, tp)
+	}
+	// Cache the tool definitions as part of the stable prefix (tools precede the
+	// system prompt in the prefix hash). Marking only the last tool caches all of
+	// them as one block.
+	if len(params) > 0 {
+		params[len(params)-1].OfTool.CacheControl = anthropic.NewCacheControlEphemeralParam()
 	}
 	return params
 }
@@ -77,14 +85,56 @@ func extractToolUses(msg *anthropic.Message) []anthropic.ToolUseBlock {
 	return uses
 }
 
+// toolResultTruncateLimit caps the tool result text forwarded to the UI.
+const toolResultTruncateLimit = 2000
+
+// compactJSON removes insignificant whitespace from a JSON payload for a compact
+// single-line representation. Returns the raw string if compaction fails.
+func compactJSON(raw []byte) string {
+	var buf bytes.Buffer
+	if err := json.Compact(&buf, raw); err != nil {
+		return string(raw)
+	}
+	return buf.String()
+}
+
+// truncateForUI shortens s to at most max bytes, appending a marker when cut.
+// The cut is backed up to a UTF-8 rune boundary so a multibyte character is
+// never split (which would render as a replacement glyph in the UI).
+func truncateForUI(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	cut := max
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut--
+	}
+	return s[:cut] + "… [truncated]"
+}
+
 // executeToolsAndBuildResult executes each tool call and returns a user message containing tool results.
-func executeToolsAndBuildResult(k8sClient *k8s.Client, toolUses []anthropic.ToolUseBlock) anthropic.MessageParam {
+// onEvent (may be nil) receives a tool_result StreamEvent per tool right after execution.
+func executeToolsAndBuildResult(k8sClient *k8s.Client, toolUses []anthropic.ToolUseBlock, onEvent func(StreamEvent)) anthropic.MessageParam {
+	emitResult := func(tu anthropic.ToolUseBlock, result string, isError bool) {
+		if onEvent != nil {
+			onEvent(StreamEvent{
+				Type:     "tool_result",
+				ToolID:   tu.ID,
+				ToolName: tu.Name,
+				Content:  truncateForUI(result, toolResultTruncateLimit),
+				IsError:  isError,
+			})
+		}
+	}
+
 	var resultBlocks []anthropic.ContentBlockParamUnion
 	if k8sClient == nil {
 		for _, tu := range toolUses {
+			const msg = "Kubernetes client not initialized — cannot execute tools"
 			resultBlocks = append(resultBlocks,
-				anthropic.NewToolResultBlock(tu.ID, "Kubernetes client not initialized — cannot execute tools", true),
+				anthropic.NewToolResultBlock(tu.ID, msg, true),
 			)
+			emitResult(tu, msg, true)
 		}
 		return anthropic.NewUserMessage(resultBlocks...)
 	}
@@ -93,9 +143,11 @@ func executeToolsAndBuildResult(k8sClient *k8s.Client, toolUses []anthropic.Tool
 		var args map[string]interface{}
 		if err := json.Unmarshal(tu.Input, &args); err != nil {
 			log.Printf("[AI] Failed to parse tool input for %s: %v", tu.Name, err)
+			errMsg := fmt.Sprintf("error parsing tool input: %v", err)
 			resultBlocks = append(resultBlocks,
-				anthropic.NewToolResultBlock(tu.ID, fmt.Sprintf("error parsing tool input: %v", err), true),
+				anthropic.NewToolResultBlock(tu.ID, errMsg, true),
 			)
+			emitResult(tu, errMsg, true)
 			continue
 		}
 
@@ -104,6 +156,7 @@ func executeToolsAndBuildResult(k8sClient *k8s.Client, toolUses []anthropic.Tool
 		resultBlocks = append(resultBlocks,
 			anthropic.NewToolResultBlock(tu.ID, result, isError),
 		)
+		emitResult(tu, result, isError)
 	}
 
 	return anthropic.NewUserMessage(resultBlocks...)

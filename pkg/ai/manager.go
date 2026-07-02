@@ -18,12 +18,23 @@ const defaultRequestTimeout = 10 * time.Minute
 
 // AIResponseEvent is emitted to the frontend via Wails events.
 type AIResponseEvent struct {
-	SessionID  string      `json:"sessionId"`
-	Generation uint64      `json:"generation"`
-	Chunk      string      `json:"chunk,omitempty"`
-	Done       bool        `json:"done,omitempty"`
-	Error      string      `json:"error,omitempty"`
-	Usage      *TokenUsage `json:"usage,omitempty"`
+	SessionID  string       `json:"sessionId"`
+	Generation uint64       `json:"generation"`
+	Chunk      string       `json:"chunk,omitempty"`
+	Done       bool         `json:"done,omitempty"`
+	Error      string       `json:"error,omitempty"`
+	Usage      *TokenUsage  `json:"usage,omitempty"`
+	Tool       *AIToolEvent `json:"tool,omitempty"`
+}
+
+// AIToolEvent describes a tool call lifecycle event forwarded to the frontend.
+type AIToolEvent struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Input  string `json:"input,omitempty"`  // compact JSON, tool_use only
+	Result string `json:"result,omitempty"` // truncated, tool_result only
+	Error  bool   `json:"error,omitempty"`
+	Done   bool   `json:"done,omitempty"` // true on tool_result
 }
 
 // session tracks a single AI chat session.
@@ -272,6 +283,10 @@ func (m *Manager) sendMessagePersistent(sess *session, sessionID, message, syste
 			switch event.Type {
 			case "text":
 				m.emit(AIResponseEvent{SessionID: sessionID, Generation: currentGen, Chunk: event.Content, Usage: event.Usage})
+			case "tool_use":
+				m.emit(AIResponseEvent{SessionID: sessionID, Generation: currentGen, Tool: &AIToolEvent{ID: event.ToolID, Name: event.ToolName, Input: event.Content}})
+			case "tool_result":
+				m.emit(AIResponseEvent{SessionID: sessionID, Generation: currentGen, Tool: &AIToolEvent{ID: event.ToolID, Name: event.ToolName, Result: event.Content, Error: event.IsError, Done: true}})
 			case "done":
 				m.emit(AIResponseEvent{SessionID: sessionID, Generation: currentGen, Done: true, Usage: event.Usage})
 			case "error":
@@ -359,6 +374,10 @@ func (m *Manager) sendMessageOneShot(sess *session, sessionID, message, systemPr
 			case "text":
 				responseText.WriteString(event.Content)
 				m.emit(AIResponseEvent{SessionID: sessionID, Generation: gen, Chunk: event.Content, Usage: event.Usage})
+			case "tool_use":
+				m.emit(AIResponseEvent{SessionID: sessionID, Generation: gen, Tool: &AIToolEvent{ID: event.ToolID, Name: event.ToolName, Input: event.Content}})
+			case "tool_result":
+				m.emit(AIResponseEvent{SessionID: sessionID, Generation: gen, Tool: &AIToolEvent{ID: event.ToolID, Name: event.ToolName, Result: event.Content, Error: event.IsError, Done: true}})
 			case "done":
 				m.emit(AIResponseEvent{SessionID: sessionID, Generation: gen, Done: true, Usage: event.Usage})
 			case "error":

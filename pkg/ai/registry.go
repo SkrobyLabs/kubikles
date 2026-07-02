@@ -123,19 +123,20 @@ func (r *Registry) GetModels() map[string][]ModelInfo {
 var DefaultRegistry = NewRegistry()
 
 // AnthropicModels are the suggested models for the Anthropic API provider.
+// Name values (sonnet/opus/haiku) are the stable aliases stored in user config;
+// only the labels are refreshed when the underlying model versions change.
 var AnthropicModels = []ModelInfo{
-	{Name: "sonnet", Label: "Sonnet (Fast)"},
-	{Name: "opus", Label: "Opus (Smart)"},
-	{Name: "haiku", Label: "Haiku (Fastest)"},
+	{Name: "sonnet", Label: "Sonnet 5 (Balanced)"},
+	{Name: "opus", Label: "Opus 4.8 (Smartest)"},
+	{Name: "haiku", Label: "Haiku 4.5 (Fastest)"},
 }
 
 // CodexModels are the suggested models for the Codex CLI provider.
 var CodexModels = []ModelInfo{
-	{Name: "gpt-5.3-codex", Label: "GPT-5.3 Codex"},
-	{Name: "gpt-5.2-codex", Label: "GPT-5.2 Codex"},
-	{Name: "gpt-5.1-codex-max", Label: "GPT-5.1 Codex Max"},
-	{Name: "gpt-5.2", Label: "GPT-5.2"},
-	{Name: "gpt-5.1-codex-mini", Label: "GPT-5.1 Codex Mini"},
+	{Name: "gpt-5.5", Label: "GPT-5.5"},
+	{Name: "gpt-5.4", Label: "GPT-5.4"},
+	{Name: "gpt-5.4-mini", Label: "GPT-5.4 Mini (Fast)"},
+	{Name: "gpt-5.3-codex-spark", Label: "GPT-5.3 Codex Spark (Preview)"},
 }
 
 func init() {

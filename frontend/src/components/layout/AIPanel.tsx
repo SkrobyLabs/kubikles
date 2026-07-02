@@ -153,7 +153,6 @@ export default function AIPanel() {
     const handleCopyConversation = useCallback(() => {
         if (messages.length === 0) return;
         const text = messages.map((m: any) => {
-            if (m.role === 'thought') return `_${m.content}_`;
             const label = m.role === 'user' ? '## Me' : '## AI';
             return `${label}\n\n${m.content}`;
         }).join('\n\n---\n\n');

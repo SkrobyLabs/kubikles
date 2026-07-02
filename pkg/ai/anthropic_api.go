@@ -73,11 +73,12 @@ func (p *AnthropicAPIProvider) SendMessage(ctx context.Context, req Request, onC
 	messages := convertHistory(req.History, req.Message)
 	toolParams := buildToolParams(req.AllowedTools)
 
-	// Build system prompt blocks
+	// Build system prompt blocks. Cache the single system block (trivially the
+	// last) so the system + tool prefix is reused across turns and tool loops.
 	var systemBlocks []anthropic.TextBlockParam
 	if req.SystemPrompt != "" {
 		systemBlocks = []anthropic.TextBlockParam{
-			{Text: req.SystemPrompt},
+			{Text: req.SystemPrompt, CacheControl: anthropic.NewCacheControlEphemeralParam()},
 		}
 	}
 
@@ -90,6 +91,11 @@ func (p *AnthropicAPIProvider) SendMessage(ctx context.Context, req Request, onC
 			return ctx.Err()
 		default:
 		}
+
+		// Recompute cache breakpoints on the (mutated, growing) messages slice
+		// every iteration so stale markers never accumulate past the 4-breakpoint
+		// budget (system + last tool + message writer + message reader).
+		applyMessageCacheBreakpoints(messages)
 
 		params := anthropic.MessageNewParams{
 			Model:     resolvedModel,
@@ -138,9 +144,21 @@ func (p *AnthropicAPIProvider) SendMessage(ctx context.Context, req Request, onC
 		// Execute tools and continue the loop
 		log.Printf("[AI] Tool loop iteration %d: %d tool call(s)", i+1, len(toolUses))
 
+		// Stop before executing tools if the request was cancelled mid-turn
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// Surface each tool call to the frontend before executing it
+		for _, tu := range toolUses {
+			onChunk(StreamEvent{Type: "tool_use", ToolID: tu.ID, ToolName: tu.Name, Content: compactJSON(tu.Input)})
+		}
+
 		// Append the assistant message (with tool_use blocks) and tool results
 		messages = append(messages, assistantMessageParam(&msg))
-		messages = append(messages, executeToolsAndBuildResult(p.k8sClient, toolUses))
+		messages = append(messages, executeToolsAndBuildResult(p.k8sClient, toolUses, onChunk))
 	}
 
 	// Safety: exceeded max tool loops
@@ -154,11 +172,13 @@ func (p *AnthropicAPIProvider) SendMessage(ctx context.Context, req Request, onC
 func mapModel(name string) anthropic.Model {
 	switch name {
 	case "sonnet":
-		return anthropic.ModelClaudeSonnet4_6
+		// No SDK constant for Sonnet 5 in v1.26.0; anthropic.Model is a plain string.
+		return anthropic.Model("claude-sonnet-5")
 	case "opus":
-		return anthropic.ModelClaudeOpus4_6
+		// No SDK constant for Opus 4.8 in v1.26.0; anthropic.Model is a plain string.
+		return anthropic.Model("claude-opus-4-8")
 	case "haiku":
-		return anthropic.ModelClaudeHaiku4_5_20251001
+		return anthropic.ModelClaudeHaiku4_5
 	default:
 		// Passthrough for full model IDs
 		return anthropic.Model(name)
@@ -187,6 +207,53 @@ func convertHistory(history []Message, newMessage string) []anthropic.MessagePar
 	return messages
 }
 
+// applyMessageCacheBreakpoints clears every cache_control marker from the message
+// content blocks, then re-marks the cascading writer/reader pair:
+//   - writer at index len-2 (when len >= 3)
+//   - reader at index len-4 (when len >= 5)
+//
+// Each tool-loop iteration (and each new turn) appends two messages, so the marker
+// written at len-2 this call sits at len-4 next call: its prefix hash matches and
+// reads at the cheap cache-read rate, while the new writer extends the cache. The
+// clearing pass is required because SendMessage mutates and re-sends the same slice
+// across iterations — without it, markers would accumulate past Anthropic's hard
+// limit of 4 breakpoints and the API would reject the request.
+func applyMessageCacheBreakpoints(messages []anthropic.MessageParam) {
+	// Clearing pass: reset every cache-capable block to a zero-value marker. The
+	// accessor returns a non-nil pointer for every variant that supports caching
+	// (nil for thinking / redacted-thinking), so this covers all supported types.
+	for mi := range messages {
+		for bi := range messages[mi].Content {
+			if p := messages[mi].Content[bi].GetCacheControl(); p != nil {
+				*p = anthropic.CacheControlEphemeralParam{}
+			}
+		}
+	}
+
+	n := len(messages)
+	if n >= 3 {
+		markMessageCacheBreakpoint(messages[n-2])
+	}
+	if n >= 5 {
+		markMessageCacheBreakpoint(messages[n-4])
+	}
+}
+
+// markMessageCacheBreakpoint sets an ephemeral cache_control marker on the last
+// cache-capable content block of the message, walking backwards. Assistant messages
+// appended via ToParam() may end in a block type that does not accept cache_control
+// (e.g. thinking); marking the last supported block still caches the whole message
+// prefix. If no block supports caching, the breakpoint is silently skipped — a benign
+// missed cache hit, not an error.
+func markMessageCacheBreakpoint(msg anthropic.MessageParam) {
+	for bi := len(msg.Content) - 1; bi >= 0; bi-- {
+		if p := msg.Content[bi].GetCacheControl(); p != nil {
+			*p = anthropic.NewCacheControlEphemeralParam()
+			return
+		}
+	}
+}
+
 // assistantMessageParam converts a response Message into a MessageParam preserving all content blocks.
 func assistantMessageParam(msg *anthropic.Message) anthropic.MessageParam {
 	return msg.ToParam()
@@ -209,13 +276,13 @@ type modelPricing struct {
 }
 
 // pricingTable maps model ID prefixes to pricing (USD per million tokens).
-// Prices as of Feb 2026. Falls back to Sonnet pricing for unknown models.
+// Prices as of Jul 2026. Falls back to Sonnet pricing for unknown models.
 var pricingTable = map[string]modelPricing{
 	"claude-opus": {
-		InputPerMillion:      15.0,
-		OutputPerMillion:     75.0,
-		CacheReadPerMillion:  1.5,
-		CacheWritePerMillion: 18.75,
+		InputPerMillion:      5.0,
+		OutputPerMillion:     25.0,
+		CacheReadPerMillion:  0.5,
+		CacheWritePerMillion: 6.25,
 	},
 	"claude-sonnet": {
 		InputPerMillion:      3.0,
@@ -224,21 +291,23 @@ var pricingTable = map[string]modelPricing{
 		CacheWritePerMillion: 3.75,
 	},
 	"claude-haiku": {
-		InputPerMillion:      0.80,
-		OutputPerMillion:     4.0,
-		CacheReadPerMillion:  0.08,
-		CacheWritePerMillion: 1.0,
+		InputPerMillion:      1.0,
+		OutputPerMillion:     5.0,
+		CacheReadPerMillion:  0.1,
+		CacheWritePerMillion: 1.25,
 	},
 }
 
-// estimateCost computes an estimated USD cost from token counts and model.
+// estimateCost computes an estimated USD cost from token counts and model. It also
+// populates the per-component cost fields on usage; the components sum to the returned
+// total.
 func estimateCost(usage *TokenUsage, model anthropic.Model) float64 {
 	pricing := lookupPricing(string(model))
-	cost := float64(usage.InputTokens)*pricing.InputPerMillion/1_000_000 +
-		float64(usage.OutputTokens)*pricing.OutputPerMillion/1_000_000 +
-		float64(usage.CacheReadTokens)*pricing.CacheReadPerMillion/1_000_000 +
-		float64(usage.CacheCreationTokens)*pricing.CacheWritePerMillion/1_000_000
-	return cost
+	usage.InputCostUSD = float64(usage.InputTokens) * pricing.InputPerMillion / 1_000_000
+	usage.OutputCostUSD = float64(usage.OutputTokens) * pricing.OutputPerMillion / 1_000_000
+	usage.CacheReadCostUSD = float64(usage.CacheReadTokens) * pricing.CacheReadPerMillion / 1_000_000
+	usage.CacheWriteCostUSD = float64(usage.CacheCreationTokens) * pricing.CacheWritePerMillion / 1_000_000
+	return usage.InputCostUSD + usage.OutputCostUSD + usage.CacheReadCostUSD + usage.CacheWriteCostUSD
 }
 
 func lookupPricing(model string) modelPricing {

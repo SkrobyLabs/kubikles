@@ -331,6 +331,17 @@ func (c *Client) EvictPod(contextName, namespace, name string) error {
 	return cs.CoreV1().Pods(namespace).EvictV1(ctx, eviction)
 }
 
+// GetPod fetches a single pod by namespace and name.
+func (c *Client) GetPod(namespace, name string) (*v1.Pod, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	return cs.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+}
+
 func (c *Client) GetPodYaml(namespace, name string) (string, error) {
 	cs, err := c.getClientset()
 	if err != nil {

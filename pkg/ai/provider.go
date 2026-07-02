@@ -56,9 +56,13 @@ type Request struct {
 
 // StreamEvent represents a streaming response chunk from the AI provider.
 type StreamEvent struct {
-	Type    string // "text", "done", "error"
-	Content string
+	Type    string // "text", "done", "error", "tool_use", "tool_result"
+	Content string // text delta; compact JSON tool input (tool_use); truncated result (tool_result)
 	Usage   *TokenUsage // token usage stats (may be nil)
+
+	ToolID   string // tool_use block id, correlates use → result
+	ToolName string // e.g. "get_pod_logs"
+	IsError  bool   // tool_result only
 }
 
 // TokenUsage contains token usage statistics from the AI provider.
@@ -68,4 +72,8 @@ type TokenUsage struct {
 	CacheReadTokens     int     `json:"cacheReadTokens"`
 	CacheCreationTokens int     `json:"cacheCreationTokens"`
 	CostUSD             float64 `json:"costUSD"`
+	InputCostUSD        float64 `json:"inputCostUSD,omitempty"`
+	OutputCostUSD       float64 `json:"outputCostUSD,omitempty"`
+	CacheReadCostUSD    float64 `json:"cacheReadCostUSD,omitempty"`
+	CacheWriteCostUSD   float64 `json:"cacheWriteCostUSD,omitempty"`
 }

@@ -39,6 +39,38 @@ func TestCodexCLIProvider_Capabilities(t *testing.T) {
 	}
 }
 
+func TestMapCodexModel(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		// Deprecated slugs remap to the current default frontier model.
+		{"gpt-5.3-codex", "gpt-5.5"},
+		{"gpt-5.2-codex", "gpt-5.5"},
+		{"gpt-5.2", "gpt-5.5"},
+		{"gpt-5.1-codex-max", "gpt-5.5"},
+		{"gpt-5-codex", "gpt-5.5"},
+		// Deprecated mini slugs remap to the current fast variant.
+		{"gpt-5.1-codex-mini", "gpt-5.4-mini"},
+		{"gpt-5-codex-mini", "gpt-5.4-mini"},
+		// Current slugs and unknown strings pass through unchanged.
+		{"gpt-5.5", "gpt-5.5"},
+		{"gpt-5.4", "gpt-5.4"},
+		{"gpt-5.4-mini", "gpt-5.4-mini"},
+		{"gpt-5.3-codex-spark", "gpt-5.3-codex-spark"},
+		{"some-custom-model", "some-custom-model"},
+		{"", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			if got := mapCodexModel(tt.input); got != tt.want {
+				t.Errorf("mapCodexModel(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestCodexStreamParser_AgentMessage(t *testing.T) {
 	parser := &codexStreamParser{}
 

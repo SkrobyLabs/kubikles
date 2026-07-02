@@ -5,6 +5,7 @@ import { CheckAIProvider, StartAISession, SendAIMessage, CancelAIRequest, ClearA
 import { useK8s } from './K8sContext';
 import { useUI } from './UIContext';
 import { useConfig } from './ConfigContext';
+import { MessageBlock, ToolEventPayload, appendText, applyToolEvent, finalizeBlocks } from '../utils/aiChatBlocks';
 
 // ===========================
 // Type Definitions
@@ -20,6 +21,13 @@ interface TokenUsage {
     inputTokens?: number;
     outputTokens?: number;
     totalTokens?: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
+    costUSD?: number;
+    inputCostUSD?: number;
+    outputCostUSD?: number;
+    cacheReadCostUSD?: number;
+    cacheWriteCostUSD?: number;
 }
 
 interface AIResponseEvent {
@@ -27,11 +35,12 @@ interface AIResponseEvent {
     generation?: number;
     error?: string;
     chunk?: string;
+    tool?: ToolEventPayload;
     usage?: TokenUsage;
     done?: boolean;
 }
 
-type MessageRole = 'user' | 'assistant' | 'thought';
+type MessageRole = 'user' | 'assistant';
 
 interface ChatMessage {
     id: string;
@@ -40,6 +49,7 @@ interface ChatMessage {
     streaming: boolean;
     isError: boolean;
     usage?: TokenUsage;
+    blocks?: MessageBlock[];
 }
 
 interface ConversationHistoryItem {
@@ -133,7 +143,13 @@ const MAX_CONVERSATIONS = 10;
 function loadConversationHistory(): ConversationHistoryItem[] {
     try {
         const data = localStorage.getItem(HISTORY_STORAGE_KEY);
-        return data ? JSON.parse(data) : [];
+        if (!data) return [];
+        const parsed = JSON.parse(data) as ConversationHistoryItem[];
+        // Drop legacy synthetic thought-role messages from older saved conversations
+        return parsed.map(conv => ({
+            ...conv,
+            messages: (conv.messages || []).filter((m: any) => m.role !== 'thought'),
+        }));
     } catch {
         return [];
     }
@@ -186,15 +202,12 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
     const [conversationHistory, setConversationHistory] = useState<ConversationHistoryItem[]>(() => loadConversationHistory());
 
     const streamingMessageRef = useRef<string | null>(null);
-    const lastChunkTimeRef = useRef<number | null>(null);
-    const streamStartTimeRef = useRef<number | null>(null);
     const autoExecutedNavRef = useRef<Set<string>>(new Set<any>());
     const generationRef = useRef<number>(0);
     const currentUsageRef = useRef<TokenUsage | null>(null); // track latest token usage
     const pendingMessageRef = useRef<string | null>(null); // queued message for openAndSend
     const sessionIdRef = useRef<string | null>(sessionId);
     sessionIdRef.current = sessionId;
-    const THINKING_THRESHOLD = 500; // ms — pause longer than this inserts a thought bubble
 
     // Check provider on mount
     useEffect(() => {
@@ -242,9 +255,10 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
                     if (streamingMessageRef.current) {
                         const msgId = streamingMessageRef.current;
                         streamingMessageRef.current = null;
+                        const marker = '\n\n[Error: ' + event.error + ']';
                         return prev.map((m: any) =>
                             m.id === msgId
-                                ? { ...m, content: m.content + '\n\n[Error: ' + event.error + ']', streaming: false, isError: true }
+                                ? { ...m, content: m.content + marker, streaming: false, isError: true, blocks: m.blocks ? appendText(finalizeBlocks(m.blocks, 'error'), marker) : m.blocks }
                                 : m
                         );
                     }
@@ -264,10 +278,31 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
                 return;
             }
 
+            // Tool lifecycle event — fold into the streaming assistant bubble's blocks.
+            // A single AIResponseEvent carries either a tool or a chunk, never both.
+            if (event.tool) {
+                const tool = event.tool;
+                setMessages(prev => {
+                    if (streamingMessageRef.current) {
+                        const msgId = streamingMessageRef.current;
+                        return prev.map((m: any) =>
+                            m.id === msgId
+                                ? { ...m, blocks: applyToolEvent(m.blocks ?? [], tool) }
+                                : m
+                        );
+                    }
+                    // No streaming message yet — create an empty assistant bubble first.
+                    const newId = `msg-${++messageCounter}`;
+                    streamingMessageRef.current = newId;
+                    const newMsg: ChatMessage = {
+                        id: newId, role: 'assistant', content: '',
+                        streaming: true, isError: false, blocks: applyToolEvent([], tool),
+                    };
+                    return [...prev, newMsg];
+                });
+            }
+
             if (event.chunk) {
-                const now = Date.now();
-                const lastTime = lastChunkTimeRef.current;
-                lastChunkTimeRef.current = now;
                 const chunk: string = event.chunk;
 
                 // Track usage for attaching to final message
@@ -277,43 +312,21 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
 
                 setMessages(prev => {
                     if (streamingMessageRef.current) {
-                        // Detect thinking pause — split into thought bubble + new message
-                        if (lastTime && (now - lastTime) > THINKING_THRESHOLD) {
-                            const pauseSec = Math.round((now - lastTime) / 1000);
-                            const oldMsgId = streamingMessageRef.current;
-                            const thoughtId = `msg-${++messageCounter}`;
-                            const newMsgId = `msg-${++messageCounter}`;
-                            streamingMessageRef.current = newMsgId;
-                            return [
-                                ...prev.map((m: any) => m.id === oldMsgId ? { ...m, streaming: false } : m),
-                                { id: thoughtId, role: 'thought' as MessageRole, content: `Thought for ${pauseSec}s`, streaming: false, isError: false },
-                                { id: newMsgId, role: 'assistant' as MessageRole, content: chunk, streaming: true, isError: false },
-                            ];
-                        }
-                        // Append to existing streaming message
+                        // Append to the single streaming assistant message
                         const msgId = streamingMessageRef.current;
                         return prev.map((m: any) =>
                             m.id === msgId
-                                ? { ...m, content: m.content + chunk }
+                                ? { ...m, content: m.content + chunk, blocks: appendText(m.blocks ?? [{ type: 'text', content: m.content }], chunk) }
                                 : m
                         );
                     }
-                    // Create new assistant message
+                    // Create a new assistant message
                     const newId = `msg-${++messageCounter}`;
                     streamingMessageRef.current = newId;
-                    const newMsg: ChatMessage = { id: newId, role: 'assistant', content: chunk, streaming: true, isError: false };
-
-                    // Record initial thinking time if significant
-                    if (streamStartTimeRef.current && (now - streamStartTimeRef.current) > THINKING_THRESHOLD) {
-                        const pauseSec = Math.round((now - streamStartTimeRef.current) / 1000);
-                        const thoughtId = `msg-${++messageCounter}`;
-                        streamStartTimeRef.current = null;
-                        return [...prev,
-                            { id: thoughtId, role: 'thought' as MessageRole, content: `Thought for ${pauseSec}s`, streaming: false, isError: false },
-                            newMsg,
-                        ];
-                    }
-                    streamStartTimeRef.current = null;
+                    const newMsg: ChatMessage = {
+                        id: newId, role: 'assistant', content: chunk,
+                        streaming: true, isError: false, blocks: [{ type: 'text', content: chunk }],
+                    };
                     return [...prev, newMsg];
                 });
             }
@@ -328,11 +341,12 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
                     const msgId = streamingMessageRef.current;
                     const finalUsage = event.usage || currentUsageRef.current || undefined;
                     setMessages(prev => prev.map((m: any) =>
-                        m.id === msgId ? { ...m, streaming: false, usage: finalUsage } : m
+                        m.id === msgId
+                            ? { ...m, streaming: false, usage: finalUsage, blocks: m.blocks ? finalizeBlocks(m.blocks) : m.blocks }
+                            : m
                     ));
                 }
                 streamingMessageRef.current = null;
-                lastChunkTimeRef.current = null;
                 setIsStreaming(false);
             }
         };
@@ -352,7 +366,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
 
     // Auto-save current conversation to history when messages change
     useEffect(() => {
-        // Only save if there are user messages (not just empty or only thought bubbles)
+        // Only save if there are user messages
         const hasUserMessages = messages.some((m: any) => m.role === 'user');
         if (!hasUserMessages) return;
 
@@ -368,7 +382,8 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
             const updatedConv: ConversationHistoryItem = {
                 id,
                 title: generateTitle(messages),
-                messages: messages.filter((m: any) => m.role !== 'thought'), // Don't persist thought bubbles
+                // Persist text-only: drop the transient tool-call blocks, keep flattened content
+                messages: messages.map(({ blocks, ...m }) => m),
                 updatedAt: Date.now()
             };
 
@@ -557,7 +572,6 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
             .then((success: boolean) => {
                 if (success) {
                     setIsStreaming(true);
-                    streamStartTimeRef.current = Date.now();
                 }
                 // If not successful, error event will be emitted by backend
             })
@@ -586,7 +600,7 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
             if (streamingMessageRef.current) {
                 const msgId = streamingMessageRef.current;
                 setMessages(prev => prev.map((m: any) =>
-                    m.id === msgId ? { ...m, streaming: false, content: m.content + '\n\n[Cancelled]' } : m
+                    m.id === msgId ? { ...m, streaming: false, content: m.content + '\n\n[Cancelled]', blocks: m.blocks ? appendText(finalizeBlocks(m.blocks, 'error'), '\n\n[Cancelled]') : m.blocks } : m
                 ));
                 streamingMessageRef.current = null;
             }
@@ -598,8 +612,6 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
         setMessages([]);
         setIsStreaming(false);
         streamingMessageRef.current = null;
-        lastChunkTimeRef.current = null;
-        streamStartTimeRef.current = null;
         generationRef.current = 0;
         autoExecutedNavRef.current.clear();
         setConversationId(null);
@@ -632,14 +644,12 @@ export const AIChatProvider: React.FC<AIChatProviderProps> = ({ children }) => {
         }, 0);
         messageCounter = Math.max(messageCounter, maxMsgId);
 
-        // Helper to load the conversation state
+        // Helper to load the conversation state (defensively drop legacy thought entries)
         const loadState = () => {
-            setMessages(conv.messages);
+            setMessages(conv.messages.filter((m: any) => m.role !== 'thought'));
             setConversationId(convId);
             setIsStreaming(false);
             streamingMessageRef.current = null;
-            lastChunkTimeRef.current = null;
-            streamStartTimeRef.current = null;
             generationRef.current = 0;
             autoExecutedNavRef.current.clear();
         };

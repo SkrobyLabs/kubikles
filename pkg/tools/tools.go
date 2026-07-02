@@ -56,7 +56,7 @@ func AllToolDefs() []ToolDef {
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
-					"kind":      map[string]interface{}{"type": "string", "description": "Resource kind (e.g. Pod, Deployment, Service, Node, Namespace, or a CRD kind)"},
+					"kind":      map[string]interface{}{"type": "string", "description": "Resource kind. Built-in kinds are supported natively (e.g. Pod, Deployment, StatefulSet, Service, Node, Namespace, ConfigMap, Secret, Ingress, NetworkPolicy, Role, ClusterRole, RoleBinding, ClusterRoleBinding, StorageClass, IngressClass, PDB, HPA, PVC, PV); pass group/version/resource only for CRDs"},
 					"namespace": map[string]interface{}{"type": "string", "description": "Namespace to list from (optional; omit for cluster-scoped resources or all namespaces)"},
 					"group":     map[string]interface{}{"type": "string", "description": "API group for custom resources (e.g. traefik.io)"},
 					"version":   map[string]interface{}{"type": "string", "description": "API version for custom resources (e.g. v1alpha1)"},

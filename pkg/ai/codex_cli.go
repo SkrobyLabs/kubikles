@@ -29,6 +29,19 @@ func (c *CodexCLIProvider) Name() string {
 	return "Codex CLI"
 }
 
+// mapCodexModel remaps deprecated Codex model slugs (possibly saved in older
+// config) to current equivalents. Unknown/current names pass through unchanged.
+func mapCodexModel(name string) string {
+	switch name {
+	case "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.2", "gpt-5.1-codex-max", "gpt-5-codex":
+		return "gpt-5.5"
+	case "gpt-5.1-codex-mini", "gpt-5-codex-mini":
+		return "gpt-5.4-mini"
+	default:
+		return name
+	}
+}
+
 func (c *CodexCLIProvider) resolveCLI() (string, error) {
 	c.initOnce.Do(func() {
 		path, err := findCodexCLI()
@@ -87,7 +100,7 @@ func (c *CodexCLIProvider) SendMessage(ctx context.Context, req Request, onChunk
 	}
 
 	if req.Model != "" {
-		args = append(args, "--model", req.Model)
+		args = append(args, "--model", mapCodexModel(req.Model))
 	}
 
 	// Generate MCP config and set CODEX_HOME to a temp dir containing config.toml

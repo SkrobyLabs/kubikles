@@ -151,6 +151,35 @@ func TestListPods_EmptyNamespace(t *testing.T) {
 	}
 }
 
+func TestGetPod(t *testing.T) {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "multi", Namespace: "default"},
+		Spec: corev1.PodSpec{Containers: []corev1.Container{
+			{Name: "mongodb", Image: "mongo"},
+			{Name: "metrics", Image: "exporter"},
+		}},
+	}
+	client := newTestClient(pod)
+
+	got, err := client.GetPod("default", "multi")
+	if err != nil {
+		t.Fatalf("GetPod() error = %v", err)
+	}
+	if got.Name != "multi" {
+		t.Errorf("GetPod() name = %q, want %q", got.Name, "multi")
+	}
+	if len(got.Spec.Containers) != 2 {
+		t.Errorf("GetPod() containers = %d, want 2", len(got.Spec.Containers))
+	}
+}
+
+func TestGetPod_NotFound(t *testing.T) {
+	client := newTestClient()
+	if _, err := client.GetPod("default", "missing"); err == nil {
+		t.Error("GetPod() expected error for missing pod, got nil")
+	}
+}
+
 // ============================================================================
 // Node Tests
 // ============================================================================

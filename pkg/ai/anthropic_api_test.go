@@ -1,8 +1,10 @@
 package ai
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/anthropics/anthropic-sdk-go"
@@ -13,9 +15,9 @@ func TestMapModel(t *testing.T) {
 		input string
 		want  anthropic.Model
 	}{
-		{"sonnet", anthropic.ModelClaudeSonnet4_6},
-		{"opus", anthropic.ModelClaudeOpus4_6},
-		{"haiku", anthropic.ModelClaudeHaiku4_5_20251001},
+		{"sonnet", anthropic.Model("claude-sonnet-5")},
+		{"opus", anthropic.Model("claude-opus-4-8")},
+		{"haiku", anthropic.ModelClaudeHaiku4_5},
 		{"claude-sonnet-4-6", anthropic.Model("claude-sonnet-4-6")},
 		{"custom-model-id", anthropic.Model("custom-model-id")},
 	}
@@ -260,17 +262,178 @@ func TestEstimateCost(t *testing.T) {
 		t.Errorf("expected sonnet cost ~$18, got %f", cost)
 	}
 
-	// Opus: $15/M input + $75/M output = $90
-	cost = estimateCost(usage, "claude-opus-4-6")
-	if cost < 89.99 || cost > 90.01 {
-		t.Errorf("expected opus cost ~$90, got %f", cost)
+	// Opus: $5/M input + $25/M output = $30
+	cost = estimateCost(usage, "claude-opus-4-8")
+	if cost < 29.99 || cost > 30.01 {
+		t.Errorf("expected opus cost ~$30, got %f", cost)
 	}
 
-	// Haiku: $0.80/M input + $4/M output = $4.80
-	cost = estimateCost(usage, "claude-haiku-4-5-20251001")
-	if cost < 4.79 || cost > 4.81 {
-		t.Errorf("expected haiku cost ~$4.80, got %f", cost)
+	// Haiku: $1/M input + $5/M output = $6
+	cost = estimateCost(usage, "claude-haiku-4-5")
+	if cost < 5.99 || cost > 6.01 {
+		t.Errorf("expected haiku cost ~$6, got %f", cost)
 	}
+}
+
+// markedMessageIndices returns the indices of messages that carry at least one
+// ephemeral cache_control marker. A marker is set iff GetCacheControl().Type ==
+// "ephemeral"; a non-nil pointer alone only means the block *supports* caching.
+func markedMessageIndices(messages []anthropic.MessageParam) []int {
+	var marked []int
+	for mi := range messages {
+		for bi := range messages[mi].Content {
+			if p := messages[mi].Content[bi].GetCacheControl(); p != nil && p.Type == "ephemeral" {
+				marked = append(marked, mi)
+				break
+			}
+		}
+	}
+	return marked
+}
+
+func intsEqual(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func makeTextMessages(n int) []anthropic.MessageParam {
+	msgs := make([]anthropic.MessageParam, 0, n)
+	for i := 0; i < n; i++ {
+		if i%2 == 0 {
+			msgs = append(msgs, anthropic.NewUserMessage(anthropic.NewTextBlock("user")))
+		} else {
+			msgs = append(msgs, anthropic.NewAssistantMessage(anthropic.NewTextBlock("assistant")))
+		}
+	}
+	return msgs
+}
+
+func TestApplyMessageCacheBreakpoints_Placement(t *testing.T) {
+	tests := []struct {
+		count int
+		want  []int // expected marked message indices
+	}{
+		{1, nil},          // too short for any breakpoint
+		{2, nil},          // still too short (need >= 3 for writer)
+		{3, []int{1}},     // writer at len-2
+		{4, []int{2}},     // writer at len-2
+		{5, []int{1, 3}},  // reader at len-4, writer at len-2
+		{6, []int{2, 4}},  // reader at len-4, writer at len-2
+	}
+
+	for _, tt := range tests {
+		msgs := makeTextMessages(tt.count)
+		applyMessageCacheBreakpoints(msgs)
+		got := markedMessageIndices(msgs)
+		if !intsEqual(got, tt.want) {
+			t.Errorf("count=%d: marked indices = %v, want %v", tt.count, got, tt.want)
+		}
+	}
+}
+
+func TestApplyMessageCacheBreakpoints_ClearsStaleMarkers(t *testing.T) {
+	// Start with 5 messages and mark them.
+	msgs := makeTextMessages(5)
+	applyMessageCacheBreakpoints(msgs)
+	if got := markedMessageIndices(msgs); !intsEqual(got, []int{1, 3}) {
+		t.Fatalf("initial marked = %v, want [1 3]", got)
+	}
+
+	// Simulate a tool-loop iteration appending assistant + tool_result (2 messages).
+	msgs = append(msgs,
+		anthropic.NewAssistantMessage(anthropic.NewTextBlock("tool call")),
+		anthropic.NewUserMessage(anthropic.NewTextBlock("tool result")),
+	)
+	applyMessageCacheBreakpoints(msgs)
+
+	// Now 7 messages: writer at 5, reader at 3. Old markers at 1 must be cleared.
+	if got := markedMessageIndices(msgs); !intsEqual(got, []int{3, 5}) {
+		t.Errorf("after append marked = %v, want [3 5] (no stale marker at 1)", got)
+	}
+}
+
+func TestApplyMessageCacheBreakpoints_WireFormat(t *testing.T) {
+	// Build a 5-message list carrying prior stale markers on every message.
+	msgs := makeTextMessages(5)
+	for mi := range msgs {
+		for bi := range msgs[mi].Content {
+			if p := msgs[mi].Content[bi].GetCacheControl(); p != nil {
+				*p = anthropic.NewCacheControlEphemeralParam()
+			}
+		}
+	}
+
+	applyMessageCacheBreakpoints(msgs)
+
+	// Serialize each message and count cache_control occurrences on the wire — must
+	// be exactly 2 (writer + reader). This proves the SDK's omitzero tag drops
+	// cleared zero-value markers from the request body, guarding the 4-breakpoint
+	// budget against SDK upgrades.
+	count := 0
+	for mi := range msgs {
+		data, err := json.Marshal(msgs[mi])
+		if err != nil {
+			t.Fatalf("marshal message %d: %v", mi, err)
+		}
+		count += strings.Count(string(data), "cache_control")
+	}
+	if count != 2 {
+		t.Errorf("cache_control occurrences on wire = %d, want 2", count)
+	}
+}
+
+func TestBuildToolParams_LastToolHasCacheControl(t *testing.T) {
+	params := buildToolParams([]string{
+		"mcp__kubikles__get_pod_logs",
+		"mcp__kubikles__list_resources",
+	})
+	if len(params) < 2 {
+		t.Fatalf("expected at least 2 tool params, got %d", len(params))
+	}
+
+	last := params[len(params)-1]
+	if last.OfTool == nil || last.OfTool.CacheControl.Type != "ephemeral" {
+		t.Errorf("expected last tool to carry ephemeral cache_control, got %+v", last.OfTool.CacheControl)
+	}
+	for i := 0; i < len(params)-1; i++ {
+		if params[i].OfTool != nil && params[i].OfTool.CacheControl.Type == "ephemeral" {
+			t.Errorf("expected tool %d to have no cache_control marker", i)
+		}
+	}
+}
+
+func TestEstimateCost_Components(t *testing.T) {
+	usage := &TokenUsage{
+		InputTokens:         1_000_000,
+		OutputTokens:        1_000_000,
+		CacheReadTokens:     1_000_000,
+		CacheCreationTokens: 1_000_000,
+	}
+
+	total := estimateCost(usage, "claude-sonnet-4-6")
+
+	// Sonnet: input 3.0 + output 15.0 + cache read 0.3 + cache write 3.75 = 22.05
+	const eps = 0.0001
+	checkClose := func(name string, got, want float64) {
+		if got < want-eps || got > want+eps {
+			t.Errorf("%s = %f, want %f", name, got, want)
+		}
+	}
+	checkClose("InputCostUSD", usage.InputCostUSD, 3.0)
+	checkClose("OutputCostUSD", usage.OutputCostUSD, 15.0)
+	checkClose("CacheReadCostUSD", usage.CacheReadCostUSD, 0.3)
+	checkClose("CacheWriteCostUSD", usage.CacheWriteCostUSD, 3.75)
+
+	sum := usage.InputCostUSD + usage.OutputCostUSD + usage.CacheReadCostUSD + usage.CacheWriteCostUSD
+	checkClose("sum vs total", sum, total)
+	checkClose("total", total, 22.05)
 }
 
 func TestLookupPricing_UnknownModel(t *testing.T) {
@@ -293,5 +456,17 @@ func TestEstimateCost_WithCache(t *testing.T) {
 	cost := estimateCost(usage, "claude-sonnet-4-6")
 	if cost < 4.04 || cost > 4.06 {
 		t.Errorf("expected sonnet cache cost ~$4.05, got %f", cost)
+	}
+
+	// Opus cache: $0.5/M read + $6.25/M write = $6.75
+	cost = estimateCost(usage, "claude-opus-4-8")
+	if cost < 6.74 || cost > 6.76 {
+		t.Errorf("expected opus cache cost ~$6.75, got %f", cost)
+	}
+
+	// Haiku cache: $0.1/M read + $1.25/M write = $1.35
+	cost = estimateCost(usage, "claude-haiku-4-5")
+	if cost < 1.34 || cost > 1.36 {
+		t.Errorf("expected haiku cache cost ~$1.35, got %f", cost)
 	}
 }
