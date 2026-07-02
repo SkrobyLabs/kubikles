@@ -4,6 +4,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -572,11 +573,16 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 		Network:  &NetworkMetrics{},
 	}
 
+	// node_uname_info's nodename is the OS hostname, which can differ in case from the
+	// (always lowercase) Kubernetes node name — e.g. AKS VMSS instance "vmss00000A".
+	// Match it case-insensitively; PromQL regex matchers are fully anchored.
+	unameNodeMatcher := "(?i)" + regexp.QuoteMeta(nodeName)
+
 	// --- CPU Metrics ---
 	// CPU Usage (node-level when node-exporter is available, fallback to all pods on this node, in cores)
 	cpuUsageQuery := fmt.Sprintf(
-		`sum((1 - rate(node_cpu_seconds_total{mode="idle"}[5m])) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(container_cpu_usage_seconds_total{node="%s", container!="", container!="POD"}[5m]))`,
-		nodeName, nodeName,
+		`sum((1 - rate(node_cpu_seconds_total{mode="idle"}[5m])) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(container_cpu_usage_seconds_total{node="%s", container!="", container!="POD"}[5m]))`,
+		unameNodeMatcher, nodeName,
 	)
 	result.CPU.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, cpuUsageQuery, start, end, step)
 
@@ -605,8 +611,8 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 	// --- Memory Metrics ---
 	// Memory Usage (node-level when node-exporter is available, fallback to all pods on this node)
 	memUsageQuery := fmt.Sprintf(
-		`sum((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(container_memory_working_set_bytes{node="%s", container!="", container!="POD"})`,
-		nodeName, nodeName,
+		`sum((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(container_memory_working_set_bytes{node="%s", container!="", container!="POD"})`,
+		unameNodeMatcher, nodeName,
 	)
 	result.Memory.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memUsageQuery, start, end, step)
 
@@ -652,43 +658,43 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 	// Use positive device filter for physical interfaces (eth*, en*) which works across Linux distributions
 	// Fallback to node/kubernetes_node labels for clusters where those are available
 	rxBytesQuery := fmt.Sprintf(
-		`sum(rate(node_network_receive_bytes_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(node_network_receive_bytes_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_receive_bytes_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
-		nodeName, nodeName, nodeName,
+		`sum(rate(node_network_receive_bytes_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(node_network_receive_bytes_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_receive_bytes_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
+		unameNodeMatcher, nodeName, nodeName,
 	)
 	result.Network.ReceiveBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxBytesQuery, start, end, step)
 
 	// Network transmit bytes/s
 	txBytesQuery := fmt.Sprintf(
-		`sum(rate(node_network_transmit_bytes_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(node_network_transmit_bytes_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_transmit_bytes_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
-		nodeName, nodeName, nodeName,
+		`sum(rate(node_network_transmit_bytes_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(node_network_transmit_bytes_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_transmit_bytes_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
+		unameNodeMatcher, nodeName, nodeName,
 	)
 	result.Network.TransmitBytes = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txBytesQuery, start, end, step)
 
 	// Network receive packets/s
 	rxPacketsQuery := fmt.Sprintf(
-		`sum(rate(node_network_receive_packets_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(node_network_receive_packets_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_receive_packets_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
-		nodeName, nodeName, nodeName,
+		`sum(rate(node_network_receive_packets_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(node_network_receive_packets_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_receive_packets_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
+		unameNodeMatcher, nodeName, nodeName,
 	)
 	result.Network.ReceivePackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxPacketsQuery, start, end, step)
 
 	// Network transmit packets/s
 	txPacketsQuery := fmt.Sprintf(
-		`sum(rate(node_network_transmit_packets_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(node_network_transmit_packets_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_transmit_packets_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
-		nodeName, nodeName, nodeName,
+		`sum(rate(node_network_transmit_packets_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(node_network_transmit_packets_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_transmit_packets_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
+		unameNodeMatcher, nodeName, nodeName,
 	)
 	result.Network.TransmitPackets = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txPacketsQuery, start, end, step)
 
 	// Network receive dropped packets/s
 	rxDroppedQuery := fmt.Sprintf(
-		`sum(rate(node_network_receive_drop_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(node_network_receive_drop_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_receive_drop_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
-		nodeName, nodeName, nodeName,
+		`sum(rate(node_network_receive_drop_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(node_network_receive_drop_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_receive_drop_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
+		unameNodeMatcher, nodeName, nodeName,
 	)
 	result.Network.ReceiveDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rxDroppedQuery, start, end, step)
 
 	// Network transmit dropped packets/s
 	txDroppedQuery := fmt.Sprintf(
-		`sum(rate(node_network_transmit_drop_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename="%s"}) or sum(rate(node_network_transmit_drop_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_transmit_drop_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
-		nodeName, nodeName, nodeName,
+		`sum(rate(node_network_transmit_drop_total{device=~"eth.*|en.*"}[5m]) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"}) or sum(rate(node_network_transmit_drop_total{node="%s", device=~"eth.*|en.*"}[5m])) or sum(rate(node_network_transmit_drop_total{kubernetes_node="%s", device=~"eth.*|en.*"}[5m]))`,
+		unameNodeMatcher, nodeName, nodeName,
 	)
 	result.Network.TransmitDropped = c.queryRangeToDataPointsWithContext(ctx, contextName, info, txDroppedQuery, start, end, step)
 

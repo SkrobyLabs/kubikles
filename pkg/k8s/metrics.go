@@ -359,7 +359,9 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 
 	_ = g.Wait() // All goroutines return nil, wait just for synchronization
 
-	// Helper to extract values from Prometheus result, checking for both "node" and "nodename" labels
+	// Helper to extract values from Prometheus result, checking for both "node" and "nodename" labels.
+	// Keys are lowercased: node_uname_info's nodename is the OS hostname, which can differ in case
+	// from the (always lowercase) Kubernetes node name — e.g. AKS VMSS instance "vmss00000A".
 	extractValues := func(result *PrometheusQueryResult, labelKey string) map[string]float64 {
 		values := make(map[string]float64)
 		if result == nil || result.Data.Result == nil {
@@ -373,7 +375,7 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 			if len(r.Value) >= 2 {
 				if valStr, ok := r.Value[1].(string); ok {
 					if val, err := strconv.ParseFloat(valStr, 64); err == nil {
-						values[node] = val
+						values[strings.ToLower(node)] = val
 					}
 				}
 			}
@@ -403,8 +405,9 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 		cap := capacityMap[name]
 		requests := requestsMap[name]
 
-		cpuUsageMilli := int64(cpuUsage[name] * 1000) // cores to millicores
-		memUsageBytes := int64(memUsage[name])
+		lowerName := strings.ToLower(name)
+		cpuUsageMilli := int64(cpuUsage[lowerName] * 1000) // cores to millicores
+		memUsageBytes := int64(memUsage[lowerName])
 
 		// Committed = max(usage, requested)
 		cpuCommitted := cpuUsageMilli
