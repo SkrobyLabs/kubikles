@@ -1,166 +1,107 @@
+<!-- solution-docs:begin architecture -->
 # Architecture
 
-## Overview
+Kubikles is a Go backend and a React frontend joined by the [Wails](https://wails.io/)
+framework. The backend owns all Kubernetes interaction; the frontend is a pure
+view layer that calls backend methods and reacts to events. The same backend core
+drives three different frontends (a native desktop window, a browser over HTTP, or
+no UI at all) without knowing which one it is talking to.
 
-Kubikles is a desktop application built with the [Wails](https://wails.io/) framework, combining a Go backend with a React frontend.
+> For the authoritative, file-by-file layout of the codebase, see the
+> [AI Reference](ai/README.md). This document covers the high-level shape and
+> deliberately does not duplicate the file index.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Desktop Window                        │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │                 React Frontend                     │  │
-│  │  (Vite + TailwindCSS + Monaco Editor + xterm)     │  │
-│  └───────────────────────────────────────────────────┘  │
-│                          │                               │
-│                    Wails Bindings                        │
-│                    + IPC Events                          │
-│                          │                               │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │                  Go Backend                        │  │
-│  │        (client-go + WebSocket Terminal)           │  │
-│  └───────────────────────────────────────────────────┘  │
-│                          │                               │
-│                   Kubernetes API                         │
-└─────────────────────────────────────────────────────────┘
+## Context
+
+```mermaid
+flowchart LR
+    user([Operator / Developer]) --> kbk[Kubikles]
+    kbk -->|client-go: list, watch, exec, logs| api[(Kubernetes API)]
+    kbk -->|optional| prom[(Prometheus / metrics-server)]
+    kbk -->|optional, read tools| ai[AI provider]
+    kbk -->|optional| helm[(Helm / OCI registries)]
+    kbk -.reads.-> kube[kubeconfig or in-cluster SA]
 ```
 
-> For the complete, authoritative file-by-file layout, see
-> [`docs/ai/README.md`](ai/README.md). This document covers the high-level
-> concepts; it deliberately does not duplicate the file index.
+## Components
 
-## Tech Stack
+```mermaid
+flowchart TB
+    subgraph frontend[React Frontend]
+        views[Feature views + shared components]
+        ctx[Context providers - state]
+    end
+    subgraph backend[Go Backend]
+        app[App - composition root]
+        k8s[k8s: client-go wrapper, watch, diff, deps, metrics]
+        detect[issuedetector: rule engine]
+        aimgr[ai / mcp / tools: assistant + tool registry]
+        term[terminal: PTY / conpty sessions]
+        helm[helm: releases, repos, OCI]
+    end
+    emitter{{events.Emitter}}
+    transport[Wails IPC  |  HTTP+WebSocket  |  headless]
 
-| Layer | Technology |
-|-------|------------|
-| Desktop Framework | Wails v2 |
-| Backend | Go 1.24+ |
-| Kubernetes Client | client-go |
-| Frontend | React 18 + TypeScript + Vite |
-| Styling | TailwindCSS |
-| Code Editor | Monaco Editor |
-| Terminal | xterm.js |
-| Graphs | React Flow + dagre |
-
-## Run Modes
-
-The same `App` core runs in three modes (see `main_desktop.go`, `main_headless.go`, `server_mode.go`):
-
-- **Desktop** — Wails window; events flow over the native IPC bridge.
-- **Server** — HTTP/WebSocket server (`pkg/server/`) exposing the same methods for a remote/browser frontend.
-- **Headless** — no UI; used for programmatic/MCP access.
-
-Modes are unified behind an `events.Emitter` interface (`pkg/events/`), so backend code emits events without knowing whether it is talking to Wails IPC or a WebSocket.
-
-## Communication
-
-### Wails Bindings
-
-Go methods on the `App` struct are exposed to JavaScript:
-
-```go
-// Go (app_pods.go)
-func (a *App) ListPods(namespace string) ([]v1.Pod, error)
+    views --> transport
+    transport --> app
+    app --> k8s & detect & aimgr & term & helm
+    app --> emitter --> transport --> ctx
+    ctx --> views
 ```
 
-```javascript
-// JavaScript
-import { ListPods } from '../wailsjs/go/main/App';
-const pods = await ListPods('default');
-```
+- **App (composition root)** — a single `App` struct wires everything together.
+  Its Kubernetes-facing methods are split by domain into many `app_*.go` files so
+  no one file owns every operation. These methods are what the frontend calls.
+- **k8s package** — the `client-go` wrapper: per-context clientsets, resource
+  CRUD, watching, YAML diffing, dependency-graph resolution, and metrics
+  (metrics-server and Prometheus). The heart of the backend.
+- **issuedetector** — a rule engine that scans cached cluster state and emits
+  findings. Rules are built-in Go plus user-supplied YAML.
+- **ai / mcp / tools** — the AI assistant, an MCP server, and the allowlisted tool
+  registry that lets the assistant read the cluster safely.
+- **terminal** — platform-specific interactive session lifecycle (PTY on Unix,
+  conpty on Windows).
+- **helm** — release, repository, and OCI operations, compiled only into the full
+  build.
 
-Method dispatch is code-generated into `dispatch_gen.go` (via `make generate`)
-rather than using reflection, which keeps dead-code elimination effective and
-the binary small. Regenerate it after adding or changing `App` methods.
+## Run modes and the emitter
 
-### IPC Events
+The same `App` core runs in three modes, chosen at startup:
 
-For real-time updates, the backend emits events through the active emitter:
+- **Desktop** — a native Wails window; calls and events cross the native IPC bridge.
+- **Server** — an HTTP + WebSocket server serving the embedded frontend to any
+  browser, including from inside a cluster. See [Server Mode](server-mode.md).
+- **Headless** — no UI; used for programmatic and MCP access.
 
-```go
-// Go
-a.emitEvent("pod-event", event)
-```
+The backend never hard-codes which of these it is in. All real-time updates flow
+through an `events.Emitter` abstraction, so domain code emits an event without
+knowing whether it lands on Wails IPC or a WebSocket. This is the single seam that
+makes one codebase serve three deployment shapes.
 
-```javascript
-// JavaScript
-window.runtime.EventsOn("pod-event", (event) => {
-  // Handle event
-});
-```
+## How data flows
 
-Watch events are batched in ~16ms windows (`eventcoalescer.go`, `logcoalescer.go`)
-to cap IPC overhead at roughly 60fps; DELETE events are flushed immediately.
+1. **Initial load** — a view calls a backend method; the backend queries the API
+   and returns the result.
+2. **Live updates** — a backend watcher observes a change and emits a (batched)
+   event; the matching context provider updates and the view re-renders.
+3. **Actions** — a view calls a backend method (edit, delete, scale, forward…);
+   the backend performs the API operation and returns the outcome.
 
-## Backend Structure
+## Why this shape
 
-The `App` struct (`app.go`) is the composition root. Wails bindings are split by
-domain into `app_*.go` files (e.g. `app_pods.go`, `app_logs.go`, `app_terminal.go`)
-so no single file owns every method.
+Three decisions define the architecture, each in service of *small and fast*:
 
-Domain logic lives under `pkg/`. The main packages:
+- **Bindings are code-generated, not reflected.** Backend methods are dispatched
+  through generated code rather than runtime reflection, which keeps dead-code
+  elimination effective and the binary small.
+- **Watch events are coalesced.** Rapid updates are batched into short windows and
+  deduplicated before crossing to the frontend, capping IPC/WebSocket overhead on
+  busy clusters; deletions flush immediately for correctness.
+- **Watchers are reference-counted.** A resource watcher starts on its first
+  subscriber and stops shortly after the last one leaves, so the client only pays
+  for what is on screen.
 
-| Package | Responsibility |
-|---------|----------------|
-| `pkg/k8s/` | client-go wrapper: list/get/update/delete, watch, logs, diff, dependency graphs, metrics, Prometheus |
-| `pkg/terminal/` | PTY/conpty session lifecycle (`manager.go`, `session_unix.go`, `session_windows.go`) |
-| `pkg/helm/` | Helm releases, repos, OCI (behind the `helm` build tag; stubs for lite builds) |
-| `pkg/issuedetector/` | Rule-based cluster scanning engine (built-in Go rules + YAML custom rules) |
-| `pkg/ai/`, `pkg/mcp/`, `pkg/tools/` | AI assistant, MCP server, and the allowlisted tool/command registry |
-| `pkg/server/` | HTTP/WebSocket server for server mode |
-| `pkg/events/` | Emitter abstraction shared across run modes |
-| `pkg/compressedassets/` | gzip-aware static asset serving |
-| `pkg/debug/`, `pkg/crashlog/` | Structured debug logging and crash capture |
+For the rationale behind these and other trade-offs, see [Decisions](decisions.md).
 
-The `Client` struct in `pkg/k8s/` wraps the clientset and provides resource
-listing, YAML get/update, deletion, log streaming, and watcher setup.
-
-### Build Tags
-
-- `helm` (default, via `BUILD_TAGS`) compiles full Helm support; the lite build
-  (`make build-lite`, `!helm`) swaps in stub implementations.
-
-## Frontend Structure
-
-```
-frontend/src/
-├── context/         # State management (K8sContext, UIContext, ConfigContext, …)
-├── features/        # Feature-based modules, one folder per resource type
-│   ├── workloads/   # pods, deployments, statefulsets, daemonsets, replicasets, jobs, cronjobs
-│   ├── cluster/     # nodes, namespaces, events, metrics, webhooks, priorityclasses, topology
-│   ├── config/      # configmaps, secrets, hpas, pdbs, resourcequotas, leases, limitranges
-│   ├── network/     # services, ingresses, networkpolicies, endpoints, …
-│   ├── storage/     # pv, pvc, storageclass, csidrivers, csinodes
-│   ├── access-control/, customresources/, helm/, diagnostics/, portforwards/
-├── components/
-│   ├── layout/      # Sidebar, BottomPanel
-│   └── shared/      # ResourceList, YamlEditor, LogViewer, Terminal, DependencyGraph, …
-├── hooks/           # Data fetching hooks (TypeScript)
-└── utils/           # Helpers, formatting, resource registry
-```
-
-### Key Components
-
-- **ResourceList**: Universal data table with sorting, filtering, virtualization, column config, and saved views
-- **YamlEditor**: Monaco-based YAML editor for resources
-- **LogViewer**: Real-time pod log streaming
-- **Terminal**: WebSocket-based terminal for pod exec
-- **DependencyGraph**: React Flow visualization of resource relationships
-
-## Data Flow
-
-1. **Initial Load**: React component calls a Wails binding → Go fetches from the K8s API → returns to the frontend
-2. **Real-time Updates**: Go watcher detects a change → emits a (coalesced) IPC event → React updates state
-3. **User Actions**: React calls a Wails binding → Go executes the K8s operation → returns the result
-
-## Resource Patterns
-
-Each Kubernetes resource type follows a consistent frontend pattern under
-`features/[category]/[resource]/`:
-
-- `use[Resource].tsx` — data-fetching hook with a reference-counted watcher
-- `[Resource]List.tsx` — list view built on `ResourceList`
-- `use[Resource]Actions.tsx` — action handlers (edit, delete, view YAML, …)
-
-Watchers start on the first subscriber and clean up shortly after the last one
-unsubscribes. See [AI Reference](ai/README.md) for the full patterns and the
-step-by-step guide to adding a new resource.
+_Generated by solution-docs against commit `b504296` on 2026-07-03._
+<!-- solution-docs:end architecture -->

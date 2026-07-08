@@ -1,93 +1,60 @@
+<!-- solution-docs:begin readme -->
 # Kubikles™
 
-Open-source Kubernetes desktop monitoring app by [SkrobyLabs](https://kubikles.app).
+A lightweight, high-performance desktop Kubernetes client. Kubikles gives you a
+fast native window onto one or many clusters — browse and edit resources in real
+time, tail logs, exec into pods, forward ports, visualise how resources depend on
+one another, scan for problems, and ask an AI assistant about what it finds.
 
-## Features
+Open-source, by [SkrobyLabs](https://kubikles.app).
 
-- Multi-cluster context switching
-- Real-time resource monitoring with watchers
-- Pod logs, terminal access, YAML editing
-- Dependency graph visualization
-- Support for Pods, Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, Services, ConfigMaps, Secrets, PVs, PVCs, StorageClasses, Nodes, Namespaces, Events
+## Why this exists
 
-## Quick Start
+The obvious alternative is an Electron-based dashboard (e.g. Lens) or `kubectl` in
+a terminal. Kubikles takes a different bet: a Go backend talking to `client-go`
+directly, paired with a React UI, shipped through [Wails](https://wails.io/)
+rather than a bundled browser runtime. The result is a small binary with a low
+memory footprint that still feels like a real desktop app — and, because the
+backend is plain Go, the *same* engine also runs headless as an in-cluster
+dashboard or as an AI/MCP tool host. Speed and small size are the whole point:
+every architectural decision (code-generated bindings, batched watch events,
+reference-counted watchers) exists to keep the client responsive against large,
+busy clusters. See [Overview](docs/overview.md) for the full argument.
 
-### 1. Install Dependencies
+## Key features
 
-```bash
-make setup
-```
+- **[Real-time resource browsing](docs/features/resource-browsing.md)** — watch, filter, and edit workloads, config, storage, network, and RBAC resources live.
+- **[Workload access](docs/features/workload-access.md)** — stream logs, open interactive shells, and browse/transfer files in pods.
+- **[Port & ingress forwarding](docs/features/forwarding.md)** — persistent, browser-friendly forwards to pods, services, and ingresses.
+- **[Dependency & topology graphs](docs/features/dependency-graph.md)** — visualise how a resource relates to the things around it.
+- **[Metrics & monitoring](docs/features/metrics.md)** — live CPU/memory from metrics-server plus optional Prometheus history.
+- **[Diagnostics & comparison](docs/features/diagnostics.md)** — flow timeline, resource diff, and an RBAC access checker.
+- **[Issue detector](docs/features/issue-detector.md)** — rule-based cluster scanning with built-in and custom YAML rules.
+- **[AI assistant](docs/features/ai-assistant.md)** — a pluggable AI pair with read-only cluster tools.
+- **[Helm management](docs/features/helm.md)** — releases, repositories, and OCI charts (optional build).
 
-This runs the cross-platform setup script that:
-- Detects your OS and package manager
-- Installs system dependencies (GTK3, WebKit2GTK on Linux)
-- Installs Go and Node.js if missing
-- Installs Wails CLI
-- Installs frontend npm dependencies
-- Runs `wails doctor` to verify the setup
-
-**Supported platforms:** macOS, Linux (Arch, Debian/Ubuntu, Fedora, openSUSE)
-
-### 2. Development
-
-```bash
-make dev
-```
-
-### 3. Build
-
-```bash
-# Build for current platform
-make build
-
-# Build optimized release
-make build-release
-
-# Build for Windows
-make build-windows-amd64    # Intel/AMD (most PCs)
-make build-windows-arm64    # ARM64 (Surface Pro X, etc.)
-
-# Build for macOS
-make build-mac              # Intel
-make build-mac-arm          # Apple Silicon
-
-# Build for Linux
-make build-linux-amd64      # Intel/AMD
-make build-linux-arm64      # ARM64
-make build-appimage         # Portable AppImage
-
-# Build all platforms
-make build-all
-```
-
-Output binaries are in `build/bin/`.
-
-**Linux users:** GTK3 and WebKit2GTK runtime libraries are required. See [Linux Support](docs/linux.md) for installation instructions.
-
-See [Getting Started](docs/getting-started.md) for detailed setup instructions.
+Also included: X.509 certificate inspection, an in-cluster embedded browser
+(noVNC), customisable hot-reloadable themes, and a multi-language scratchpad.
 
 ## Documentation
 
-- [Developer Guide](docs/README.md) - Setup, architecture, development workflow
-- [Server / Headless Mode](docs/server-mode.md) - Run without a desktop environment
-- [Linux Support](docs/linux.md) - Runtime dependencies and AppImage packaging
-- [AI Reference](docs/ai/README.md) - Codebase patterns for AI assistants
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| Backend | Go + client-go |
-| Frontend | React + Vite + TailwindCSS |
-| Desktop | Wails v2 |
-| Editor | Monaco |
-| Terminal | xterm.js |
-| AI Pair | Claude (Anthropic) |
-
-## Contributing
-
-Contributions are welcome - see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+| I want to... | Read this |
+|--------------|-----------|
+| Understand what this solves and its scope | [Overview](docs/overview.md) |
+| Understand the architecture | [Architecture](docs/architecture.md) |
+| Understand a specific feature | [Features](docs/features/) |
+| Understand why key choices were made | [Decisions](docs/decisions.md) |
+| Set up and run the app locally | [Getting Started](docs/getting-started.md) |
+| Run it headless / in a browser / in-cluster | [Server Mode](docs/server-mode.md) |
+| Install Linux runtime dependencies | [Linux Support](docs/linux.md) |
+| Write custom issue-detector rules | [Custom Rules](docs/custom-issue-rules.md) |
+| Work on the code as an AI assistant | [AI Reference](docs/ai/README.md) |
+| Contribute changes | [Contributing](CONTRIBUTING.md) |
 
 ## License
 
-Kubikles™ is a trademark of SkrobyLabs. The source code is licensed under the MIT License. See [LICENSE](LICENSE) and [TRADEMARKS.md](TRADEMARKS.md) for details.
+Kubikles™ is a trademark of SkrobyLabs. The source code is licensed under the MIT
+License. See [LICENSE](LICENSE) and [TRADEMARKS.md](TRADEMARKS.md) for details.
+
+_Generated by solution-docs against commit `b504296` on 2026-07-03._
+<!-- solution-docs:end readme -->
