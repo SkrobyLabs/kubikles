@@ -28,6 +28,18 @@ richer view "just works" on clusters that have it.
   detected, the app falls back to current-only metrics.
 - Figures reflect what the underlying metrics source reports and inherit its
   scrape interval and retention.
+- Node CPU/memory can come from either metrics-server or Prometheus, and the two
+  are reconciled to line up rather than measure different things. metrics-server
+  reports the kubelet/cAdvisor working set (usage minus inactive file cache). The
+  Prometheus path reconstructs the same value from node-exporter meminfo as
+  `node_memory_AnonPages_bytes + node_memory_Active_file_bytes` — not
+  `MemTotal - MemAvailable`, which excludes active page cache and reads roughly
+  half. CPU is close between the two sources; the notable gap was memory.
+- A node with no node-exporter instance (e.g. a tainted system pool the
+  node-exporter DaemonSet doesn't tolerate) has no node-level Prometheus series.
+  Its usage falls back to the per-container working-set sum, which omits memory
+  not charged to a pod container (OS, kubelet, system daemons) and so reads lower
+  than metrics-server. Scheduling node-exporter onto that pool is the only fix.
 
 Code entry points: `app_perfmetrics.go`, `app_prometheus.go`, `pkg/k8s/metrics.go`,
 the `pkg/k8s/prometheus*.go` files, and `frontend/src/features/cluster/metrics/`.

@@ -307,7 +307,8 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 	}
 
 	type nodeRequests struct {
-		cpu, memory, pods int64
+		cpu, memory, pods          int64
+		committedCPU, committedMem int64 // filled in after per-pod usage is queried
 	}
 	requestsMap := make(map[string]nodeRequests)
 	for _, pod := range pods.Items {
@@ -326,6 +327,7 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 	// Try node_exporter metrics first (node-level, matches metrics-server), fall back to container metrics
 	var nodeExporterCpuResult, nodeExporterMemResult *PrometheusQueryResult
 	var containerCpuResult, containerMemResult *PrometheusQueryResult
+	var podCpuResult, podMemResult *PrometheusQueryResult
 
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -336,10 +338,15 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 		return nil
 	})
 
-	// Node-exporter Memory Usage (preferred - matches metrics-server)
+	// Node-exporter Memory Usage — working-set equivalent to match metrics-server.
+	// kubelet/cAdvisor report node memory as the root cgroup working set, which is
+	// usage - inactive_file = anon + active file cache. In node-exporter meminfo
+	// terms that is AnonPages + Active(file); verified within 1% of metrics-server
+	// on AKS. (MemTotal - MemAvailable, used before, also drops active page cache
+	// and reads roughly half of what metrics-server shows.)
 	g.Go(func() error {
 		nodeExporterMemResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
-			`sum by (nodename) ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) * on(instance) group_left(nodename) node_uname_info)`)
+			`sum by (nodename) ((node_memory_AnonPages_bytes + node_memory_Active_file_bytes) * on(instance) group_left(nodename) node_uname_info)`)
 		return nil
 	})
 
@@ -354,6 +361,21 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 	g.Go(func() error {
 		containerMemResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
 			`sum by (node) (container_memory_working_set_bytes{container!="", container!="POD"})`)
+		return nil
+	})
+
+	// Per-pod CPU/Memory usage — needed to compute committed as the per-pod
+	// sum of max(usage, request), which can exceed both node-total usage and
+	// node-total requests (the red "over-committed" segment). A node-level
+	// max(usage, requests) can never exceed that and would drop the red bit.
+	g.Go(func() error {
+		podCpuResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
+			`sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{container!="", container!="POD"}[5m]))`)
+		return nil
+	})
+	g.Go(func() error {
+		podMemResult, _ = c.QueryPrometheusWithContext(gctx, contextName, info,
+			`sum by (namespace, pod) (container_memory_working_set_bytes{container!="", container!="POD"})`)
 		return nil
 	})
 
@@ -384,18 +406,84 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 	}
 
 	// Prefer node_exporter metrics (node-level), fall back to container metrics
-	cpuUsage := extractValues(nodeExporterCpuResult, "nodename")
-	if len(cpuUsage) == 0 {
-		cpuUsage = extractValues(containerCpuResult, "node")
+	// per-node: a node missing from the node_uname_info join (e.g. an AKS system
+	// pool node whose OS hostname doesn't line up) still gets its container value,
+	// instead of falling to 0% while node-exporter nodes report fine.
+	mergeUsage := func(preferred, fallback map[string]float64) map[string]float64 {
+		merged := make(map[string]float64, len(preferred)+len(fallback))
+		for k, v := range fallback {
+			merged[k] = v
+		}
+		for k, v := range preferred {
+			merged[k] = v
+		}
+		return merged
 	}
-	memUsage := extractValues(nodeExporterMemResult, "nodename")
-	if len(memUsage) == 0 {
-		memUsage = extractValues(containerMemResult, "node")
-	}
+	cpuUsage := mergeUsage(
+		extractValues(nodeExporterCpuResult, "nodename"),
+		extractValues(containerCpuResult, "node"),
+	)
+	// Memory prefers the node-exporter working-set equivalent (matches
+	// metrics-server), falling back per-node to the per-container working-set
+	// sum for nodes node-exporter doesn't cover (e.g. tainted system pools).
+	memUsage := mergeUsage(
+		extractValues(nodeExporterMemResult, "nodename"),
+		extractValues(containerMemResult, "node"),
+	)
 
 	// Check if we have any usage data
 	if len(cpuUsage) == 0 && len(memUsage) == 0 {
 		return &NodeMetricsResult{Available: false, Error: "prometheus returned no usage metrics"}, nil
+	}
+
+	// Per-pod usage maps (namespace/pod -> usage), used to compute committed the
+	// same way the metrics-server path does: per pod, max(usage, request), summed.
+	extractPodValues := func(result *PrometheusQueryResult) map[string]float64 {
+		values := make(map[string]float64)
+		if result == nil || result.Data.Result == nil {
+			return values
+		}
+		for _, r := range result.Data.Result {
+			ns, okNs := r.Metric["namespace"]
+			pod, okPod := r.Metric["pod"]
+			if !okNs || !okPod {
+				continue
+			}
+			if len(r.Value) >= 2 {
+				if valStr, ok := r.Value[1].(string); ok {
+					if val, err := strconv.ParseFloat(valStr, 64); err == nil {
+						values[ns+"/"+pod] = val
+					}
+				}
+			}
+		}
+		return values
+	}
+	podCPUUsage := extractPodValues(podCpuResult) // cores
+	podMemUsage := extractPodValues(podMemResult) // bytes
+
+	// Committed per pod: max(usage, effective request), summed per node.
+	for _, pod := range pods.Items {
+		if !isScheduledNonTerminalPod(&pod) {
+			continue
+		}
+		reqCPU, reqMem := effectivePodRequests(&pod)
+		key := pod.Namespace + "/" + pod.Name
+		usageCPU := int64(podCPUUsage[key] * 1000) // cores to millicores
+		usageMem := int64(podMemUsage[key])
+
+		requests := requestsMap[pod.Spec.NodeName]
+		if usageCPU > reqCPU {
+			requests.committedCPU += usageCPU
+		} else {
+			requests.committedCPU += reqCPU
+		}
+		if usageMem > reqMem {
+			requests.committedMem += usageMem
+		} else {
+			requests.committedMem += reqMem
+		}
+		requestsMap[pod.Spec.NodeName] = requests
 	}
 
 	// Build result
@@ -409,14 +497,17 @@ func (c *Client) GetNodeMetricsFromPrometheus(contextName string, info *Promethe
 		cpuUsageMilli := int64(cpuUsage[lowerName] * 1000) // cores to millicores
 		memUsageBytes := int64(memUsage[lowerName])
 
-		// Committed = max(usage, requested)
-		cpuCommitted := cpuUsageMilli
-		if requests.cpu > cpuCommitted {
-			cpuCommitted = requests.cpu
+		// Committed = per-pod sum of max(usage, requested), clamped to at least
+		// node-level usage (container sums can trail node usage due to system
+		// processes) — mirrors the metrics-server path so the red over-committed
+		// segment renders identically.
+		cpuCommitted := requests.committedCPU
+		if cpuUsageMilli > cpuCommitted {
+			cpuCommitted = cpuUsageMilli
 		}
-		memCommitted := memUsageBytes
-		if requests.memory > memCommitted {
-			memCommitted = requests.memory
+		memCommitted := requests.committedMem
+		if memUsageBytes > memCommitted {
+			memCommitted = memUsageBytes
 		}
 
 		result = append(result, NodeMetrics{
