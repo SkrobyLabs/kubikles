@@ -411,7 +411,6 @@ function MainLayout() {
         sortedContexts,
         currentContext,
         switchContext,
-        refreshContexts,
         refreshContextsIfChanged,
         refreshNamespaces,
         triggerRefresh,
@@ -599,7 +598,11 @@ function MainLayout() {
                 console.log(msg);
                 LogMessage(msg).catch((err: any) => console.error("Failed to log debug:", err));
 
-                refreshContexts();
+                // Use the lightweight context refresh: fetchContexts() sets
+                // isConnecting(true) and only clears it when currentContext changes,
+                // so on a same-context refresh the UI gets stuck on the connecting
+                // screen. refreshContextsIfChanged() updates the list without that.
+                refreshContextsIfChanged();
                 refreshNamespaces();
                 triggerRefresh(); // Signal all data hooks to re-fetch
             }
@@ -607,7 +610,7 @@ function MainLayout() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [refreshContexts, refreshNamespaces, triggerRefresh, openPerformancePanel, activeTabId, closeTab]);
+    }, [refreshContextsIfChanged, refreshNamespaces, triggerRefresh, openPerformancePanel, activeTabId, closeTab]);
 
     // Parse custom resource view ID: cr:{group}:{version}:{plural}:{kind}:{namespaced}
     const parsedCRView = useMemo(() => {
