@@ -203,6 +203,37 @@ const knownCommandPrefixes = new Set(
     (configSchema.ai?.commandAllowlist?.options || []).map((o: any) => o.value as string)
 );
 
+// Split a markdown table row into trimmed cells, tolerating optional leading/trailing pipes
+function splitTableRow(row: string): string[] {
+    let s = row.trim();
+    if (s.startsWith('|')) s = s.slice(1);
+    if (s.endsWith('|')) s = s.slice(0, -1);
+    // Split on unescaped pipes
+    const cells = [];
+    let cur = '';
+    for (let i = 0; i < s.length; i++) {
+        if (s[i] === '\\' && s[i + 1] === '|') { cur += '|'; i++; continue; }
+        if (s[i] === '|') { cells.push(cur.trim()); cur = ''; continue; }
+        cur += s[i];
+    }
+    cells.push(cur.trim());
+    return cells;
+}
+
+// A line qualifies as a table separator: only |, -, :, spaces, and at least one dash
+const tableSeparatorRegex = /^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$/;
+
+// Parse alignment (:---, :--:, ---:) from separator cells
+function parseAlignments(sep: string): ('left' | 'center' | 'right')[] {
+    return splitTableRow(sep).map((c) => {
+        const left = c.startsWith(':');
+        const right = c.endsWith(':');
+        if (left && right) return 'center';
+        if (right) return 'right';
+        return 'left';
+    });
+}
+
 function renderInline(text: string): any {
     const parts = [];
     let remaining = text;
@@ -327,6 +358,43 @@ export default function SimpleMarkdown({ text }: { text: string }) {
                 <ol key={elements.length} className="list-decimal list-inside space-y-0.5 my-0.5">
                     {items.map((item: any, j: number) => <li key={j} className="text-xs">{renderInline(item)}</li>)}
                 </ol>
+            );
+            continue;
+        }
+
+        // Table — a header row followed by a separator row (GFM)
+        if (line.includes('|') && i + 1 < lines.length && tableSeparatorRegex.test(lines[i + 1]) && lines[i + 1].includes('-')) {
+            const headers = splitTableRow(line);
+            const aligns = parseAlignments(lines[i + 1]);
+            i += 2; // consume header + separator
+            const rows = [];
+            while (i < lines.length && lines[i].includes('|') && lines[i].trim() !== '') {
+                rows.push(splitTableRow(lines[i]));
+                i++;
+            }
+            const alignClass = (idx: number) =>
+                aligns[idx] === 'right' ? 'text-right' : aligns[idx] === 'center' ? 'text-center' : 'text-left';
+            elements.push(
+                <div key={elements.length} className="my-1.5 overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                        <thead>
+                            <tr className="border-b border-white/20">
+                                {headers.map((h: string, j: number) => (
+                                    <th key={j} className={`px-2 py-1 font-semibold ${alignClass(j)}`}>{renderInline(h)}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((cells: string[], r: number) => (
+                                <tr key={r} className="border-b border-white/5">
+                                    {headers.map((_h: string, c: number) => (
+                                        <td key={c} className={`px-2 py-1 align-top ${alignClass(c)}`}>{renderInline(cells[c] ?? '')}</td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             );
             continue;
         }
