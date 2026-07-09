@@ -406,6 +406,20 @@ const getEdgeStyle = (relation: any) => {
     }
 };
 
+const getClampedContextMenuPosition = (clientX: number, clientY: number) => {
+    const margin = 8;
+    const estimatedWidth = 180;
+    const estimatedHeight = 180;
+    const x = Math.max(margin, Math.min(clientX, window.innerWidth - estimatedWidth - margin));
+    const y = Math.max(margin, Math.min(clientY, window.innerHeight - estimatedHeight - margin));
+
+    return {
+        x,
+        y,
+        maxHeight: Math.max(48, window.innerHeight - y - margin),
+    };
+};
+
 export default function DependencyGraph({ resourceType, namespace, resourceName, onClose }: any) {
     const { openTab, closeTab, openDiagnostic, navigateWithSearch } = useUI();
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -476,9 +490,11 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
 
     const handleNodeContextMenu = useCallback((event: any, nodeData: any) => {
         event.preventDefault();
+        const position = getClampedContextMenuPosition(event.clientX, event.clientY);
         setContextMenu({
-            x: event.clientX,
-            y: event.clientY,
+            x: position.x,
+            y: position.y,
+            maxHeight: position.maxHeight,
             node: nodeData,
         });
     }, []);
@@ -846,7 +862,7 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
             {contextMenu && (
                 <div
                     className="fixed bg-surface-light border border-border rounded-md shadow-lg z-50 py-1"
-                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                    style={{ top: contextMenu.y, left: contextMenu.x, maxHeight: contextMenu.maxHeight, overflowY: 'auto' }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {contextMenu.node.isSummary ? (

@@ -5,8 +5,10 @@ import ComparisonMenuItems from '~/components/shared/ComparisonMenuItems';
 import type { K8sDeployment } from '~/types/k8s';
 
 interface MenuPosition {
-    top: number;
+    top?: number;
+    bottom?: number;
     left: number;
+    maxHeight: number;
 }
 
 interface DeploymentActionsMenuProps {
@@ -74,7 +76,7 @@ export default function DeploymentActionsMenu({
         <div
             ref={menuRef}
             className="w-48 bg-surface-light border border-border rounded-md shadow-lg py-1"
-            style={{ position: 'fixed', top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, zIndex: 99999 }}
+            style={{ position: 'fixed', top: menuPosition.top === undefined ? undefined : `${menuPosition.top}px`, bottom: menuPosition.bottom === undefined ? undefined : `${menuPosition.bottom}px`, left: `${menuPosition.left}px`, maxHeight: `${menuPosition.maxHeight}px`, overflowY: 'auto', zIndex: 99999 }}
             onClick={(e) => e.stopPropagation()}
         >
             <button

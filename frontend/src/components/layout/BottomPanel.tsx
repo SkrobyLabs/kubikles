@@ -16,9 +16,24 @@ const actionIconMap: Record<string, any> = {
 interface ContextMenuState {
     x: number;
     y: number;
+    maxHeight: number;
     tabId: string;
     index: number;
 }
+
+const getClampedContextMenuPosition = (clientX: number, clientY: number) => {
+    const margin = 8;
+    const estimatedWidth = 180;
+    const estimatedHeight = 220;
+    const x = Math.max(margin, Math.min(clientX, window.innerWidth - estimatedWidth - margin));
+    const y = Math.max(margin, Math.min(clientY, window.innerHeight - estimatedHeight - margin));
+
+    return {
+        x,
+        y,
+        maxHeight: Math.max(48, window.innerHeight - y - margin),
+    };
+};
 
 interface BottomPanelProps {
     tabs: any[];
@@ -138,9 +153,11 @@ export default function BottomPanel({
 
     const handleContextMenu = (e: React.MouseEvent, tabId: string, index: number) => {
         e.preventDefault();
+        const position = getClampedContextMenuPosition(e.clientX, e.clientY);
         setContextMenu({
-            x: e.clientX,
-            y: e.clientY,
+            x: position.x,
+            y: position.y,
+            maxHeight: position.maxHeight,
             tabId,
             index
         });
@@ -321,7 +338,7 @@ export default function BottomPanel({
                 <div
                     ref={contextMenuRef}
                     className="fixed bg-surface border border-border rounded shadow-lg py-1 z-50 min-w-[160px]"
-                    style={{ left: contextMenu.x, top: contextMenu.y }}
+                    style={{ left: contextMenu.x, top: contextMenu.y, maxHeight: contextMenu.maxHeight, overflowY: 'auto' }}
                 >
                     <button
                         className="w-full px-3 py-1.5 text-left text-xs hover:bg-background text-text flex items-center gap-2"
