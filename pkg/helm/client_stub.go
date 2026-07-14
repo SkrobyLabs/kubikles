@@ -188,12 +188,40 @@ func splitChartNameVersion(chart string) (string, string) {
 // Tier 1 — Core release operations
 // =============================================================================
 
+// allReleaseStatusArgs returns status filters understood by both Helm 3 and
+// Helm 4. Helm 4 removed --all because listing every status is now the default,
+// while Helm 3 still requires filters to include releases in every state.
+func allReleaseStatusArgs() []string {
+	return []string{
+		"--deployed",
+		"--failed",
+		"--pending",
+		"--superseded",
+		"--uninstalled",
+		"--uninstalling",
+	}
+}
+
+func buildListArgs(contextName, namespace, filter string, allNamespaces bool) []string {
+	args := []string{"list"}
+	if allNamespaces {
+		args = append(args, "-A")
+	}
+	args = append(args, "-o", "json")
+	args = append(args, allReleaseStatusArgs()...)
+	if filter != "" {
+		args = append(args, "-f", filter)
+	}
+	args = append(args, nsArgs(namespace)...)
+	args = append(args, contextArgs(contextName)...)
+	return args
+}
+
 // ListReleases returns all releases, optionally filtered by namespaces.
 func (c *Client) ListReleases(contextName string, namespaces []string) ([]Release, error) {
 	if len(namespaces) == 0 {
 		// List all namespaces
-		args := []string{"list", "-A", "-o", "json", "--all"}
-		args = append(args, contextArgs(contextName)...)
+		args := buildListArgs(contextName, "", "", true)
 		out, err := c.runHelm(args...)
 		if err != nil {
 			return nil, err
@@ -203,9 +231,7 @@ func (c *Client) ListReleases(contextName string, namespaces []string) ([]Releas
 
 	var allReleases []Release
 	for _, ns := range namespaces {
-		args := []string{"list", "-o", "json", "--all"}
-		args = append(args, nsArgs(ns)...)
-		args = append(args, contextArgs(contextName)...)
+		args := buildListArgs(contextName, ns, "", false)
 		out, err := c.runHelm(args...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list releases in namespace %s: %w", ns, err)
@@ -244,9 +270,7 @@ func (c *Client) GetRelease(contextName, namespace, name string) (*ReleaseDetail
 	ns := nsArgs(namespace)
 
 	// Get basic release info
-	args := []string{"list", "-f", "^" + name + "$", "-o", "json"}
-	args = append(args, ns...)
-	args = append(args, ctx...)
+	args := buildListArgs(contextName, namespace, "^"+name+"$", false)
 	listOut, err := c.runHelm(args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get release %s: %w", name, err)
