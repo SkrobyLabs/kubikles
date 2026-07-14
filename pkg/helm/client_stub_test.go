@@ -3,9 +3,64 @@
 package helm
 
 import (
+	"slices"
 	"testing"
 	"time"
 )
+
+func TestBuildListArgs(t *testing.T) {
+	statusArgs := []string{
+		"--deployed", "--failed", "--pending", "--superseded", "--uninstalled", "--uninstalling",
+	}
+	tests := []struct {
+		name          string
+		contextName   string
+		namespace     string
+		filter        string
+		allNamespaces bool
+		want          []string
+	}{
+		{
+			name:          "all namespaces with context",
+			contextName:   "production",
+			allNamespaces: true,
+			want: slices.Concat(
+				[]string{"list", "-A", "-o", "json"},
+				statusArgs,
+				[]string{"--kube-context", "production"},
+			),
+		},
+		{
+			name:      "single namespace",
+			namespace: "default",
+			want: slices.Concat(
+				[]string{"list", "-o", "json"},
+				statusArgs,
+				[]string{"-n", "default"},
+			),
+		},
+		{
+			name:        "filtered release",
+			contextName: "staging",
+			namespace:   "apps",
+			filter:      "^my-release$",
+			want: slices.Concat(
+				[]string{"list", "-o", "json"},
+				statusArgs,
+				[]string{"-f", "^my-release$", "-n", "apps", "--kube-context", "staging"},
+			),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := buildListArgs(tt.contextName, tt.namespace, tt.filter, tt.allNamespaces)
+			if !slices.Equal(got, tt.want) {
+				t.Fatalf("buildListArgs() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func TestParseHelmTime(t *testing.T) {
 	tests := []struct {
