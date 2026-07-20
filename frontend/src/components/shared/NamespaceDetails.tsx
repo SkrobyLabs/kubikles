@@ -21,6 +21,7 @@ export default function NamespaceDetails({ namespace, tabContext = '' }: { names
 
     // Check if this tab is stale
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = namespace.metadata?.name;
 
@@ -52,9 +53,10 @@ export default function NamespaceDetails({ namespace, tabContext = '' }: { names
     }, [name, isStale]);
 
     const handleEditYaml = () => {
-        const tabId = `yaml-namespace-${name}`;
+        const tabId = `${resourceContext}-yaml-namespace-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
@@ -62,7 +64,7 @@ export default function NamespaceDetails({ namespace, tabContext = '' }: { names
                     namespace=""
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });

@@ -38,13 +38,15 @@ export default function RoleDetails({ role, tabContext = '' }: any) {
     const rules = role?.rules || [];
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-role-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-role-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             actionLabel: 'Edit',
             content: (
@@ -53,19 +55,21 @@ export default function RoleDetails({ role, tabContext = '' }: any) {
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-role-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-role-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="role"
                     namespace={namespace}
                     resourceName={name}

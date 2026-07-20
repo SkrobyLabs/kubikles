@@ -15,12 +15,14 @@ export default function CSINodeDetails({ csiNode, tabContext = '' }: any) {
     const drivers = spec.drivers || [];
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-csinode-${name}`;
+        const tabId = `${resourceContext}-yaml-csinode-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ServerIcon,
             actionLabel: 'Edit',
@@ -30,20 +32,22 @@ export default function CSINodeDetails({ csiNode, tabContext = '' }: any) {
                     namespace=""
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-csinode-${name}`;
+        const tabId = `${resourceContext}-deps-csinode-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ServerIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="csinode"
                     namespace=""
                     resourceName={name}

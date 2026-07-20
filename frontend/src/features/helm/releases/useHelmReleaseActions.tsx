@@ -26,9 +26,10 @@ export const useHelmReleaseActions = (): any => {
     // Open details tab with specific initial tab
     const handleOpenDetails = useCallback((release: K8sHelmRelease, initialTab: string = 'basic'): void => {
         Logger.info("Open details for Helm release", { namespace: release.namespace, name: release.name, initialTab }, 'helm');
-        const tabId = `helm-details-${release.namespace}-${release.name}`;
+        const tabId = `${currentContext}-helm-details-${release.namespace}-${release.name}`;
         openTab({
             id: tabId,
+            context: currentContext,
             title: `${release.name}`,
             content: (
                 <HelmReleaseDetails

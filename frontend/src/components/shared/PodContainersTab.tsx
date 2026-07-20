@@ -257,9 +257,10 @@ export default function PodContainersTab({ pod, isStale }: any) {
 
     // Handle shell into container
     const handleShell = useCallback((containerName: any) => {
-        const tabId = `terminal-pod-${pod.metadata?.name}-${containerName}`;
+        const tabId = `${currentContext}-terminal-pod-${pod.metadata?.namespace}/${pod.metadata?.name}-${containerName}`;
         openTab({
             id: tabId,
+            context: currentContext,
             title: `${pod.metadata?.name}/${containerName}`,
             icon: CubeIcon,
             actionLabel: 'Shell',

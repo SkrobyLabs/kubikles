@@ -15,13 +15,15 @@ export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' }:
     const status = resourceQuota?.status || {};
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-resourcequota-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-resourcequota-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: AdjustmentsHorizontalIcon,
             actionLabel: 'Edit',
@@ -31,20 +33,22 @@ export default function ResourceQuotaDetails({ resourceQuota, tabContext = '' }:
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-resourcequota-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-resourcequota-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: AdjustmentsHorizontalIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="resourcequota"
                     namespace={namespace}
                     resourceName={name}

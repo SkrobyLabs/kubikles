@@ -31,6 +31,7 @@ export default function EventDetails({ event, tabContext = '' }: { event: any; t
 
     // Check if this tab is stale
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const type = event.type || 'Unknown';
     const reason = event.reason || 'Unknown';
@@ -40,9 +41,10 @@ export default function EventDetails({ event, tabContext = '' }: { event: any; t
     const source = event.source || {};
 
     const handleEditYaml = () => {
-        const tabId = `yaml-event-${event.metadata?.namespace}/${event.metadata?.name}`;
+        const tabId = `${resourceContext}-yaml-event-${event.metadata?.namespace}/${event.metadata?.name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${event.metadata.name}`,
             content: (
                 <YamlEditor
@@ -50,19 +52,21 @@ export default function EventDetails({ event, tabContext = '' }: { event: any; t
                     namespace={event.metadata?.namespace}
                     resourceName={event.metadata?.name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-event-${event.metadata?.namespace}/${event.metadata?.name}`;
+        const tabId = `${resourceContext}-deps-event-${event.metadata?.namespace}/${event.metadata?.name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${event.metadata.name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="event"
                     namespace={event.metadata?.namespace}
                     resourceName={event.metadata?.name}

@@ -11,6 +11,7 @@ export default function IngressDetails({ ingress, tabContext = '' }: any) {
     const { openTab, closeTab, navigateWithSearch } = useUI();
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = ingress.metadata?.name;
     const namespace = ingress.metadata?.namespace;
@@ -41,9 +42,10 @@ export default function IngressDetails({ ingress, tabContext = '' }: any) {
     const ingressStatus = getIngressStatus();
 
     const handleEditYaml = () => {
-        const tabId = `yaml-ingress-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-ingress-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
@@ -51,19 +53,21 @@ export default function IngressDetails({ ingress, tabContext = '' }: any) {
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-ingress-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-ingress-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="ingress"
                     namespace={namespace}
                     resourceName={name}

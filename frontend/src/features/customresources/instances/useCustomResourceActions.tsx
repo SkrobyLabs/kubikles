@@ -61,10 +61,11 @@ export const useCustomResourceActions = (crdInfo: CRDInfo): any => {
     const handleEditYaml = (resource: K8sResource): void => {
         const name = resource.metadata?.name;
         const namespace = resource.metadata?.namespace || '';
-        const tabId = `cr-yaml-${crdInfo.group}-${crdInfo.resource}-${namespace}-${name}`;
+        const tabId = `${currentContext}-cr-yaml-${crdInfo.group}-${crdInfo.resource}-${namespace}-${name}`;
 
         openTab({
             id: tabId,
+            context: currentContext,
             title: `${name} (${crdInfo.kind})`,
             content: (
                 <YamlEditor

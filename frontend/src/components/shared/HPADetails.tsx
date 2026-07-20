@@ -15,13 +15,15 @@ export default function HPADetails({ hpa, tabContext = '' }: any) {
     const status = hpa?.status || {};
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-hpa-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-hpa-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ChartBarIcon,
             actionLabel: 'Edit',
@@ -31,20 +33,22 @@ export default function HPADetails({ hpa, tabContext = '' }: any) {
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-hpa-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-hpa-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ChartBarIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="hpa"
                     namespace={namespace}
                     resourceName={name}

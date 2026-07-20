@@ -15,13 +15,15 @@ export default function PDBDetails({ pdb, tabContext = '' }: any) {
     const status = pdb?.status || {};
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-pdb-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-pdb-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ShieldExclamationIcon,
             actionLabel: 'Edit',
@@ -31,20 +33,22 @@ export default function PDBDetails({ pdb, tabContext = '' }: any) {
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-pdb-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-pdb-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ShieldExclamationIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="pdb"
                     namespace={namespace}
                     resourceName={name}

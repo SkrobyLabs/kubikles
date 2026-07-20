@@ -11,6 +11,7 @@ export default function StorageClassDetails({ storageClass, tabContext = '' }: {
     const { openTab, closeTab } = useUI();
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = storageClass.metadata?.name;
     const labels = storageClass.metadata?.labels || {};
@@ -27,28 +28,31 @@ export default function StorageClassDetails({ storageClass, tabContext = '' }: {
     const isDefault = annotations['storageclass.kubernetes.io/is-default-class'] === 'true';
 
     const handleEditYaml = () => {
-        const tabId = `yaml-storageclass-${name}`;
+        const tabId = `${resourceContext}-yaml-storageclass-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="storageclass"
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-storageclass-${name}`;
+        const tabId = `${resourceContext}-deps-storageclass-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="storageclass"
                     resourceName={name}
                     onClose={() => closeTab(tabId)}

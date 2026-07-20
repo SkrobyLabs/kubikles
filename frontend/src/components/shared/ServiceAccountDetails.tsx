@@ -16,13 +16,15 @@ export default function ServiceAccountDetails({ serviceAccount, tabContext = '' 
     const automountToken = serviceAccount?.automountServiceAccountToken;
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-serviceaccount-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-serviceaccount-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             actionLabel: 'Edit',
             content: (
@@ -31,19 +33,21 @@ export default function ServiceAccountDetails({ serviceAccount, tabContext = '' 
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-serviceaccount-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-serviceaccount-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="serviceaccount"
                     namespace={namespace}
                     resourceName={name}

@@ -40,12 +40,14 @@ export default function ClusterRoleDetails({ clusterRole, tabContext = '' }: any
     const selectors = aggregationRule?.clusterRoleSelectors || [];
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-clusterrole-${name}`;
+        const tabId = `${resourceContext}-yaml-clusterrole-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             actionLabel: 'Edit',
             content: (
@@ -53,19 +55,21 @@ export default function ClusterRoleDetails({ clusterRole, tabContext = '' }: any
                     resourceType="clusterrole"
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-clusterrole-${name}`;
+        const tabId = `${resourceContext}-deps-clusterrole-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="clusterrole"
                     resourceName={name}
                     onClose={() => closeTab(tabId)}

@@ -13,12 +13,14 @@ export default function PriorityClassDetails({ priorityClass, tabContext = '' }:
     const metadata = priorityClass?.metadata || {};
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-priorityclass-${name}`;
+        const tabId = `${resourceContext}-yaml-priorityclass-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: BoltIcon,
             actionLabel: 'Edit',
@@ -28,20 +30,22 @@ export default function PriorityClassDetails({ priorityClass, tabContext = '' }:
                     namespace=""
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-priorityclass-${name}`;
+        const tabId = `${resourceContext}-deps-priorityclass-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: BoltIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="priorityclass"
                     namespace=""
                     resourceName={name}

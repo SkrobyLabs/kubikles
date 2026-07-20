@@ -14,13 +14,15 @@ export default function LeaseDetails({ lease, tabContext = '' }: any) {
     const spec = lease?.spec || {};
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-lease-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-lease-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ClockIcon,
             actionLabel: 'Edit',
@@ -30,20 +32,22 @@ export default function LeaseDetails({ lease, tabContext = '' }: any) {
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-lease-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-lease-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ClockIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="lease"
                     namespace={namespace}
                     resourceName={name}

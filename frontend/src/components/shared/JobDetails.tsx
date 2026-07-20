@@ -18,6 +18,7 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
     const setActiveTab = (tab: string) => setDetailTab('job', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = job.metadata?.name;
     const namespace = job.metadata?.namespace;
@@ -87,9 +88,10 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
     ], getSectionTerm('annotations'))), [annotationEntries, sectionSearch]);
 
     const handleEditYaml = () => {
-        const tabId = `yaml-job-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-job-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
@@ -97,19 +99,21 @@ export default function JobDetails({ job, tabContext = '' }: { job: any; tabCont
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-job-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-job-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="job"
                     namespace={namespace}
                     resourceName={name}

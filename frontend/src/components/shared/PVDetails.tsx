@@ -11,6 +11,7 @@ export default function PVDetails({ pv, tabContext = '' }: { pv: any; tabContext
     const { openTab, closeTab, navigateWithSearch } = useUI();
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = pv.metadata?.name;
     const labels = pv.metadata?.labels || {};
@@ -41,28 +42,31 @@ export default function PVDetails({ pv, tabContext = '' }: { pv: any; tabContext
     const volumeSource = getVolumeSource();
 
     const handleEditYaml = () => {
-        const tabId = `yaml-pv-${name}`;
+        const tabId = `${resourceContext}-yaml-pv-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
                     resourceType="pv"
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-pv-${name}`;
+        const tabId = `${resourceContext}-deps-pv-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="pv"
                     resourceName={name}
                     onClose={() => closeTab(tabId)}

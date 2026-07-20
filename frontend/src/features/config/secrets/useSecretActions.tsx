@@ -72,6 +72,7 @@ export const useSecretActions = (): any => {
             icon: LockClosedIcon,
             content: (
                 <DependencyGraph
+                    tabContext={currentContext}
                     resourceType="secret"
                     namespace={secret.metadata.namespace}
                     resourceName={secret.metadata.name}

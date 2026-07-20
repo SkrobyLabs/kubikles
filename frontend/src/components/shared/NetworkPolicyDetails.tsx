@@ -14,13 +14,15 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' }:
     const spec = networkPolicy?.spec || {};
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-networkpolicy-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-networkpolicy-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ShieldCheckIcon,
             actionLabel: 'Edit',
@@ -30,20 +32,22 @@ export default function NetworkPolicyDetails({ networkPolicy, tabContext = '' }:
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-networkpolicy-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-networkpolicy-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ShieldCheckIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="networkpolicy"
                     namespace={namespace}
                     resourceName={name}

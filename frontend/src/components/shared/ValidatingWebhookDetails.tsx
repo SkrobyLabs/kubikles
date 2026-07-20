@@ -14,12 +14,14 @@ export default function ValidatingWebhookDetails({ webhook, tabContext = '' }: a
     const webhooks = webhook?.webhooks || [];
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-validatingwebhook-${name}`;
+        const tabId = `${resourceContext}-yaml-validatingwebhook-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ShieldCheckIcon,
             actionLabel: 'Edit',
@@ -29,20 +31,22 @@ export default function ValidatingWebhookDetails({ webhook, tabContext = '' }: a
                     namespace=""
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-validatingwebhook-${name}`;
+        const tabId = `${resourceContext}-deps-validatingwebhook-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ShieldCheckIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="validatingwebhookconfiguration"
                     namespace=""
                     resourceName={name}

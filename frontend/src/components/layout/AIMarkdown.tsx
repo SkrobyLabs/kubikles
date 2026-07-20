@@ -36,10 +36,11 @@ export function executeNavLink(href: string, { setActiveView, navigateWithSearch
             const cr = parseCrKind(kind);
             const displayKind = cr ? cr.kind : kind;
             const tabId = cr
-                ? `cr-yaml-${cr.group}-${cr.resource}-${namespace || ''}-${name}`
-                : `yaml-${kind}-${name}`;
+                ? `${currentContext}-cr-yaml-${cr.group}-${cr.resource}-${namespace || ''}-${name}`
+                : `${currentContext}-yaml-${kind}-${namespace || ''}/${name}`;
             openTab({
                 id: tabId,
+                context: currentContext,
                 title: cr ? `${name} (${cr.kind})` : name,
                 icon: getResourceIcon(displayKind) || CubeIcon,
                 actionLabel: 'Edit',

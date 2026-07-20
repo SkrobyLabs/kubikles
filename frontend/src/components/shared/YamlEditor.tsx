@@ -39,7 +39,8 @@ export default function YamlEditor({
     const [saving, setSaving] = useState(false);
     const [hasConflict, setHasConflict] = useState(false);
     const editorRef = useRef<any>(null);
-    const cacheKey = `${resourceType}-${namespace}-${resourceName}`;
+    const resourceContext = tabContext || currentContext;
+    const cacheKey = `${resourceContext}-${resourceType}-${namespace}-${resourceName}`;
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
@@ -93,10 +94,11 @@ export default function YamlEditor({
         }
 
         const ownerType = editTarget.kind.toLowerCase();
-        const tabId = `yaml-${ownerType}-${namespace}-${editTarget.name}`;
+        const tabId = `${resourceContext}-yaml-${ownerType}-${namespace}-${editTarget.name}`;
 
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${editTarget.name}`,
             content: (
                 <YamlEditor
@@ -104,6 +106,7 @@ export default function YamlEditor({
                     namespace={namespace}
                     resourceName={editTarget.name}
                     onClose={() => closeTab(tabId)}
+                    tabContext={resourceContext}
                 />
             )
         });

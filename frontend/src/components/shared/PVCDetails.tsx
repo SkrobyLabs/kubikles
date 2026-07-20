@@ -12,6 +12,7 @@ export default function PVCDetails({ pvc, tabContext = '' }: { pvc: any; tabCont
     const { openTab, closeTab, navigateWithSearch } = useUI();
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = pvc.metadata?.name;
     const namespace = pvc.metadata?.namespace;
@@ -88,9 +89,10 @@ export default function PVCDetails({ pvc, tabContext = '' }: { pvc: any; tabCont
     };
 
     const handleEditYaml = () => {
-        const tabId = `yaml-pvc-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-pvc-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
@@ -98,19 +100,21 @@ export default function PVCDetails({ pvc, tabContext = '' }: { pvc: any; tabCont
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-pvc-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-pvc-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="pvc"
                     namespace={namespace}
                     resourceName={name}

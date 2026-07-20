@@ -28,12 +28,14 @@ export default function ClusterRoleBindingDetails({ clusterRoleBinding, tabConte
     const roleRef = clusterRoleBinding?.roleRef || {};
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-clusterrolebinding-${name}`;
+        const tabId = `${resourceContext}-yaml-clusterrolebinding-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             actionLabel: 'Edit',
             content: (
@@ -41,19 +43,21 @@ export default function ClusterRoleBindingDetails({ clusterRoleBinding, tabConte
                     resourceType="clusterrolebinding"
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-clusterrolebinding-${name}`;
+        const tabId = `${resourceContext}-deps-clusterrolebinding-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="clusterrolebinding"
                     resourceName={name}
                     onClose={() => closeTab(tabId)}

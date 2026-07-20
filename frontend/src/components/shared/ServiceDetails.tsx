@@ -48,14 +48,16 @@ export default function ServiceDetails({ service, tabContext = '' }: any) {
 
     // Check if this tab is stale (opened in a different context)
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = service.metadata?.name;
     const namespace = service.metadata?.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-service-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-service-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: GlobeAltIcon,
             actionLabel: 'Edit',
@@ -65,20 +67,22 @@ export default function ServiceDetails({ service, tabContext = '' }: any) {
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-service-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-service-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: GlobeAltIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="service"
                     namespace={namespace}
                     resourceName={name}

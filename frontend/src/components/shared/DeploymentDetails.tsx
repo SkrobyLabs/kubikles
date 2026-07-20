@@ -30,6 +30,7 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
     const [deployment, setDeployment] = useState(initialDeployment);
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = deployment.metadata?.name;
     const namespace = deployment.metadata?.namespace;
@@ -123,9 +124,10 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
     ], getSectionTerm('annotations'))), [annotationEntries, sectionSearch]);
 
     const handleEditYaml = () => {
-        const tabId = `yaml-deployment-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-deployment-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
@@ -133,19 +135,21 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-deployment-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-deployment-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="deployment"
                     namespace={namespace}
                     resourceName={name}

@@ -30,6 +30,7 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
     const [replicaSet, setReplicaSet] = useState(initialReplicaSet);
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = replicaSet.metadata?.name;
     const namespace = replicaSet.metadata?.namespace;
@@ -120,9 +121,10 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
     ], getSectionTerm('annotations'))), [annotationEntries, sectionSearch]);
 
     const handleEditYaml = () => {
-        const tabId = `yaml-replicaset-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-replicaset-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
@@ -130,19 +132,21 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-replicaset-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-replicaset-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="replicaset"
                     namespace={namespace}
                     resourceName={name}

@@ -149,6 +149,7 @@ export function useBaseResourceActions<T extends K8sResource = K8sResource>(
           actionLabel: 'Deps',
           content: (
             <LazyDependencyGraph
+              tabContext={currentContext}
               resourceType={resourceType}
               namespace={isNamespaced ? namespace : undefined}
               resourceName={name}

@@ -14,12 +14,14 @@ export default function MutatingWebhookDetails({ webhook, tabContext = '' }: any
     const webhooks = webhook?.webhooks || [];
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-mutatingwebhook-${name}`;
+        const tabId = `${resourceContext}-yaml-mutatingwebhook-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: FingerPrintIcon,
             actionLabel: 'Edit',
@@ -29,20 +31,22 @@ export default function MutatingWebhookDetails({ webhook, tabContext = '' }: any
                     namespace=""
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-mutatingwebhook-${name}`;
+        const tabId = `${resourceContext}-deps-mutatingwebhook-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: FingerPrintIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="mutatingwebhookconfiguration"
                     namespace=""
                     resourceName={name}

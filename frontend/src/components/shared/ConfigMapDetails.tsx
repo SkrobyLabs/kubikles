@@ -178,6 +178,7 @@ export default function ConfigMapDetails({ configMap, tabContext = '' }: { confi
     const setActiveTab = (tab: string) => setDetailTab('configmap', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = configMap.metadata?.name;
     const namespace = configMap.metadata?.namespace;
@@ -187,9 +188,10 @@ export default function ConfigMapDetails({ configMap, tabContext = '' }: { confi
     const totalKeys = Object.keys(data).length + Object.keys(binaryData).length;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-configmap-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-configmap-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
@@ -197,19 +199,21 @@ export default function ConfigMapDetails({ configMap, tabContext = '' }: { confi
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-configmap-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-configmap-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="configmap"
                     namespace={namespace}
                     resourceName={name}

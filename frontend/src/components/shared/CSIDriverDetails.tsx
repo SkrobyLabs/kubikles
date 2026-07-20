@@ -29,12 +29,14 @@ export default function CSIDriverDetails({ csiDriver, tabContext = '' }: any) {
     const spec = csiDriver?.spec || {};
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-csidriver-${name}`;
+        const tabId = `${resourceContext}-yaml-csidriver-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: CpuChipIcon,
             actionLabel: 'Edit',
@@ -44,20 +46,22 @@ export default function CSIDriverDetails({ csiDriver, tabContext = '' }: any) {
                     namespace=""
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-csidriver-${name}`;
+        const tabId = `${resourceContext}-deps-csidriver-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: CpuChipIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="csidriver"
                     namespace=""
                     resourceName={name}

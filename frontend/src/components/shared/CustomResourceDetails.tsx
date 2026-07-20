@@ -46,6 +46,7 @@ export default function CustomResourceDetails({ resource: initialResource, crdIn
     const [eventsLoading, setEventsLoading] = useState(false);
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = resource.metadata?.name;
     const namespace = resource.metadata?.namespace || '';
@@ -110,9 +111,10 @@ export default function CustomResourceDetails({ resource: initialResource, crdIn
     }, [events]);
 
     const handleEditYaml = () => {
-        const tabId = `cr-yaml-${crdInfo.group}-${crdInfo.resource}-${namespace}-${name}`;
+        const tabId = `${resourceContext}-cr-yaml-${crdInfo.group}-${crdInfo.resource}-${namespace}-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name} (${crdInfo.kind})`,
             content: (
                 <YamlEditor
@@ -122,7 +124,7 @@ export default function CustomResourceDetails({ resource: initialResource, crdIn
                     onClose={() => closeTab(tabId)}
                     getYamlFn={() => GetCustomResourceYaml(crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name)}
                     updateYamlFn={(content: string) => UpdateCustomResourceYaml(crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name, content)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             ),
             resourceMeta: { kind: crdInfo.kind, name, namespace: namespace || undefined },
@@ -130,12 +132,14 @@ export default function CustomResourceDetails({ resource: initialResource, crdIn
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-cr-${crdInfo.group}-${crdInfo.resource}-${namespace}-${name}`;
+        const tabId = `${resourceContext}-deps-cr-${crdInfo.group}-${crdInfo.resource}-${namespace}-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name} (${crdInfo.kind})`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="customresource"
                     namespace={namespace}
                     resourceName={name}

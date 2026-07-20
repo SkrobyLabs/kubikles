@@ -18,6 +18,7 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
     const setActiveTab = (tab: string) => setDetailTab('cronjob', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = cronJob.metadata?.name;
     const namespace = cronJob.metadata?.namespace;
@@ -75,9 +76,10 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
     ], getSectionTerm('annotations'))), [annotationEntries, sectionSearch]);
 
     const handleEditYaml = () => {
-        const tabId = `yaml-cronjob-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-cronjob-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
@@ -85,19 +87,21 @@ export default function CronJobDetails({ cronJob, tabContext = '' }: { cronJob: 
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-cronjob-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-cronjob-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="cronjob"
                     namespace={namespace}
                     resourceName={name}

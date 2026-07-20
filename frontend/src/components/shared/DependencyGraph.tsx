@@ -13,7 +13,7 @@ import {
 import dagre from 'dagre';
 import '@xyflow/react/dist/style.css';
 import { GetResourceDependencies, ExpandDependencyNode } from 'wailsjs/go/main/App';
-import { useUI } from '~/context';
+import { useK8s, useUI } from '~/context';
 import { LazyYamlEditor as YamlEditor } from '../lazy';
 import Logger from '~/utils/Logger';
 import {
@@ -420,8 +420,10 @@ const getClampedContextMenuPosition = (clientX: number, clientY: number) => {
     };
 };
 
-export default function DependencyGraph({ resourceType, namespace, resourceName, onClose }: any) {
+export default function DependencyGraph({ resourceType, namespace, resourceName, onClose, tabContext = '' }: any) {
     const { openTab, closeTab, openDiagnostic, navigateWithSearch } = useUI();
+    const { currentContext } = useK8s();
+    const resourceContext = tabContext || currentContext;
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [loading, setLoading] = useState(true);
@@ -501,10 +503,11 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
 
     const handleEditYaml = useCallback((node: any) => {
         const resType = getResourceTypeFromKind(node.kind);
-        const tabId = `yaml-${resType}-${node.namespace || ''}-${node.label}`;
+        const tabId = `${resourceContext}-yaml-${resType}-${node.namespace || ''}-${node.label}`;
 
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${node.label}`,
             content: (
                 <YamlEditor
@@ -512,18 +515,20 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                     namespace={node.namespace}
                     resourceName={node.label}
                     onClose={() => closeTab(tabId)}
+                    tabContext={resourceContext}
                 />
             ),
         });
         setContextMenu(null);
-    }, [openTab, closeTab]);
+    }, [openTab, closeTab, resourceContext]);
 
     const handleShowDependencies = useCallback((node: any) => {
         const resType = getResourceTypeFromKind(node.kind);
-        const tabId = `deps-${resType}-${node.namespace || ''}-${node.label}`;
+        const tabId = `${resourceContext}-deps-${resType}-${node.namespace || ''}-${node.label}`;
 
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${node.label}`,
             content: (
                 <DependencyGraph
@@ -531,11 +536,12 @@ export default function DependencyGraph({ resourceType, namespace, resourceName,
                     namespace={node.namespace}
                     resourceName={node.label}
                     onClose={() => closeTab(tabId)}
+                    tabContext={resourceContext}
                 />
             ),
         });
         setContextMenu(null);
-    }, [openTab, closeTab]);
+    }, [openTab, closeTab, resourceContext]);
 
     const handleCompareResource = useCallback((node: any) => {
         const resType = getResourceTypeFromKind(node.kind);

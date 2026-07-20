@@ -14,13 +14,15 @@ export default function LimitRangeDetails({ limitRange, tabContext = '' }: any) 
     const spec = limitRange?.spec || {};
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-limitrange-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-limitrange-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ArrowsPointingOutIcon,
             actionLabel: 'Edit',
@@ -30,20 +32,22 @@ export default function LimitRangeDetails({ limitRange, tabContext = '' }: any) 
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-limitrange-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-limitrange-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: ArrowsPointingOutIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="limitrange"
                     namespace={namespace}
                     resourceName={name}

@@ -23,6 +23,7 @@ export default function DaemonSetDetails({ daemonSet, tabContext = '' }: { daemo
     const setActiveTab = (tab: string) => setDetailTab('daemonset', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = daemonSet.metadata?.name;
     const namespace = daemonSet.metadata?.namespace;
@@ -85,9 +86,10 @@ export default function DaemonSetDetails({ daemonSet, tabContext = '' }: { daemo
     ], getSectionTerm('annotations'))), [annotationEntries, sectionSearch]);
 
     const handleEditYaml = () => {
-        const tabId = `yaml-daemonset-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-daemonset-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
@@ -95,19 +97,21 @@ export default function DaemonSetDetails({ daemonSet, tabContext = '' }: { daemo
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-daemonset-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-daemonset-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="daemonset"
                     namespace={namespace}
                     resourceName={name}

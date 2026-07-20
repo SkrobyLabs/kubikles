@@ -110,9 +110,10 @@ export const usePodActions = (): any => {
 
         const containers = getContainersWithStatus(pod);
 
-        const tabId = `terminal-pod-${podName}`;
+        const tabId = `${currentContext}-terminal-pod-${namespace}/${podName}`;
         openTab({
             id: tabId,
+            context: currentContext,
             title: podName || 'Unknown Pod',
             icon: CubeIcon,
             actionLabel: 'Shell',
@@ -138,9 +139,10 @@ export const usePodActions = (): any => {
         const containers = getContainersWithStatus(pod);
 
         // Always open tab - PodFileBrowser handles container selection inline
-        const tabId = `files-${podName}`;
+        const tabId = `${currentContext}-files-pod-${namespace}/${podName}`;
         openTab({
             id: tabId,
+            context: currentContext,
             title: podName || 'Unknown Pod',
             icon: CubeIcon,
             actionLabel: 'Files',
@@ -188,6 +190,7 @@ export const usePodActions = (): any => {
             actionLabel: 'Deps',
             content: (
                 <DependencyGraph
+                    tabContext={currentContext}
                     resourceType="pod"
                     namespace={pod.metadata.namespace}
                     resourceName={pod.metadata.name}

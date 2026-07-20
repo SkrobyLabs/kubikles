@@ -30,6 +30,7 @@ export default function StatefulSetDetails({ statefulSet: initialStatefulSet, ta
     const [statefulSet, setStatefulSet] = useState(initialStatefulSet);
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const name = statefulSet.metadata?.name;
     const namespace = statefulSet.metadata?.namespace;
@@ -127,9 +128,10 @@ export default function StatefulSetDetails({ statefulSet: initialStatefulSet, ta
     ], getSectionTerm('annotations'))), [annotationEntries, sectionSearch]);
 
     const handleEditYaml = () => {
-        const tabId = `yaml-statefulset-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-statefulset-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
@@ -137,19 +139,21 @@ export default function StatefulSetDetails({ statefulSet: initialStatefulSet, ta
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-statefulset-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-statefulset-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="statefulset"
                     namespace={namespace}
                     resourceName={name}

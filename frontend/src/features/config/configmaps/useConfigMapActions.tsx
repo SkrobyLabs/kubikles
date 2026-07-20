@@ -71,6 +71,7 @@ export const useConfigMapActions = (): any => {
             icon: DocumentTextIcon,
             content: (
                 <DependencyGraph
+                    tabContext={currentContext}
                     resourceType="configmap"
                     namespace={configMap.metadata.namespace}
                     resourceName={configMap.metadata.name}

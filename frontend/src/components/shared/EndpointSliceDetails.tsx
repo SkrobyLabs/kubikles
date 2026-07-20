@@ -15,13 +15,15 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' }:
     const ports = endpointSlice?.ports || [];
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-endpointslice-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-endpointslice-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: QueueListIcon,
             actionLabel: 'Edit',
@@ -31,20 +33,22 @@ export default function EndpointSliceDetails({ endpointSlice, tabContext = '' }:
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-endpointslice-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-endpointslice-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: QueueListIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="endpointslice"
                     namespace={namespace}
                     resourceName={name}

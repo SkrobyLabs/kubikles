@@ -28,13 +28,15 @@ export default function RoleBindingDetails({ roleBinding, tabContext = '' }: any
     const roleRef = roleBinding?.roleRef || {};
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-rolebinding-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-rolebinding-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             actionLabel: 'Edit',
             content: (
@@ -43,19 +45,21 @@ export default function RoleBindingDetails({ roleBinding, tabContext = '' }: any
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-rolebinding-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-rolebinding-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="rolebinding"
                     namespace={namespace}
                     resourceName={name}

@@ -14,13 +14,15 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }: { endpo
     const subsets = endpoints?.subsets || [];
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
     const name = metadata.name;
     const namespace = metadata.namespace;
 
     const handleEditYaml = () => {
-        const tabId = `yaml-endpoints-${namespace}/${name}`;
+        const tabId = `${resourceContext}-yaml-endpoints-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: QueueListIcon,
             actionLabel: 'Edit',
@@ -30,20 +32,22 @@ export default function EndpointsDetails({ endpoints, tabContext = '' }: { endpo
                     namespace={namespace}
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
     };
 
     const handleShowDependencies = () => {
-        const tabId = `deps-endpoints-${namespace}/${name}`;
+        const tabId = `${resourceContext}-deps-endpoints-${namespace}/${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             icon: QueueListIcon,
             content: (
                 <DependencyGraph
+                    tabContext={resourceContext}
                     resourceType="endpoints"
                     namespace={namespace}
                     resourceName={name}

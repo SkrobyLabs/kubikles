@@ -33,6 +33,7 @@ export default function NodeDetails({ node, tabContext = '' }: any) {
     const setActiveTab = (tab: any) => setDetailTab('node', tab);
 
     const isStale = tabContext && tabContext !== currentContext;
+    const resourceContext = tabContext || currentContext;
 
     const tabs = useMemo(() => [
         { id: TAB_BASIC, label: 'Basic' },
@@ -139,9 +140,10 @@ export default function NodeDetails({ node, tabContext = '' }: any) {
     ), [annotationEntries, sectionSearch]);
 
     const handleEditYaml = () => {
-        const tabId = `yaml-node-${name}`;
+        const tabId = `${resourceContext}-yaml-node-${name}`;
         openTab({
             id: tabId,
+            context: resourceContext,
             title: `${name}`,
             content: (
                 <YamlEditor
@@ -149,7 +151,7 @@ export default function NodeDetails({ node, tabContext = '' }: any) {
                     namespace=""
                     resourceName={name}
                     onClose={() => closeTab(tabId)}
-                    tabContext={currentContext}
+                    tabContext={resourceContext}
                 />
             )
         });
