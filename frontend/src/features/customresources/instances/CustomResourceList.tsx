@@ -101,9 +101,9 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
     const { handleShowDetails, handleEditYaml } = useCustomResourceActions(crdInfo);
     const selection = useSelection();
 
-    // Wrap APIs to match useBulkActions signature
-    // For namespaced: (context, namespace, name), for cluster-scoped: (context, name)
-    const deleteApi = useCallback((_context: any, namespaceOrName: any, maybeName: any) => {
+    // Wrap APIs to match useBulkActions signature:
+    // namespaced: (namespace, name), cluster-scoped: (name)
+    const deleteApi = useCallback((namespaceOrName: any, maybeName?: any) => {
         if (crdInfo.namespaced) {
             return DeleteCustomResource(crdInfo.group, crdInfo.version, crdInfo.resource, namespaceOrName, maybeName);
         } else {
