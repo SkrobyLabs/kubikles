@@ -4,6 +4,7 @@ import { useK8s } from '../context';
 import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 import { useCRDWatcher } from './useResourceWatcher';
 import { K8sResource } from '../types/k8s';
+import { useCompletionPolling } from './useCompletionPolling';
 
 interface UseCustomResourcesResult {
     resources: K8sResource[];
@@ -40,32 +41,30 @@ export const useCustomResources = (
     const [resourceMap, setResourceMap] = useState<Map<string, K8sResource>>(new Map());
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
-    const { namespaces: allNamespaces, lastRefresh } = useK8s();
+    const { namespaces: allNamespaces, lastRefresh, connectionMode } = useK8s();
 
     // Derive array from map for consumers
     const resources = useMemo(() => Array.from(resourceMap.values()), [resourceMap]);
 
-    useEffect(() => {
+    const fetchResources = useCallback(async (isCurrent: () => boolean = () => true): Promise<void> => {
         if (!currentContext || !isVisible || !group || !version || !resource) return;
-
-        const fetchResources = async (): Promise<void> => {
-            setLoading(true);
-            try {
+        setLoading(true);
+        try {
                 if (!isNamespaced) {
                     // Cluster-scoped: fetch all
                     const list = await ListCustomResources('', group, version, resource, '');
-                    setResourceMap(arrayToMap(list || []));
+                    if (isCurrent()) setResourceMap(arrayToMap(list || []));
                 } else {
                     // Namespaced: use optimization logic
                     const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
 
                     if (optimized === null) {
                         // No namespaces selected - return empty
-                        setResourceMap(new Map());
+                        if (isCurrent()) setResourceMap(new Map());
                     } else if (optimized === '') {
                         // Fetch from all namespaces in a single query
                         const list = await ListCustomResources('', group, version, resource, '');
-                        setResourceMap(arrayToMap(list || []));
+                        if (isCurrent()) setResourceMap(arrayToMap(list || []));
                     } else {
                         // Fetch from each namespace and merge results
                         const allResources = await Promise.all(
@@ -74,21 +73,26 @@ export const useCustomResources = (
                                 return [];
                             }))
                         );
+                        if (!isCurrent()) return;
                         // Flatten and deduplicate via Map
                         setResourceMap(arrayToMap(allResources.flat()));
                     }
                 }
-                setError(null);
+                if (isCurrent()) setError(null);
             } catch (err: any) {
                 console.error("Failed to fetch custom resources", err);
-                setError(err as Error);
-            } finally {
-                setLoading(false);
-            }
-        };
+                if (isCurrent()) setError(err as Error);
+        } finally {
+            if (isCurrent()) setLoading(false);
+        }
+    }, [currentContext, group, version, resource, selectedNamespaces, isVisible, isNamespaced, allNamespaces]);
 
-        fetchResources();
-    }, [currentContext, group, version, resource, selectedNamespaces, isVisible, isNamespaced, allNamespaces, lastRefresh]);
+    useEffect(() => {
+        let current = true;
+        fetchResources(() => current);
+        return () => { current = false; };
+    }, [fetchResources, lastRefresh]);
+    useCompletionPolling(connectionMode === 'polling' && isVisible, fetchResources, [fetchResources]);
 
     // Handle real-time watcher events with O(1) Map operations
     const handleWatcherEvent = useCallback((event: any) => {

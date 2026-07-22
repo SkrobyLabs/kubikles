@@ -417,7 +417,11 @@ function MainLayout() {
         currentNamespace,
         connectionError,
         isConnecting,
-        retryConnection
+        retryConnection,
+        connectionMode,
+        setConnectionMode,
+        streamingUnsupported,
+        dismissStreamingWarning
     } = useK8s();
 
     const { getConfig } = useConfig();
@@ -695,6 +699,23 @@ function MainLayout() {
 
     return (
         <>
+            {streamingUnsupported && connectionMode === 'streaming' && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
+                    <div className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-2xl">
+                        <h2 className="text-lg font-semibold text-text">Live streams may be unavailable</h2>
+                        <p className="mt-2 text-sm leading-6 text-gray-400">
+                            This cluster connection repeatedly rejected or closed Kubernetes watch requests. This can happen through remote access hubs such as Paralus.
+                        </p>
+                        <p className="mt-3 text-sm leading-6 text-gray-400">
+                            Switch to polling mode to use regular API requests for resource refreshes and followed logs. You can change this anytime below the context selector.
+                        </p>
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button onClick={dismissStreamingWarning} className="rounded-md px-3 py-2 text-sm text-gray-400 hover:text-text">Keep live streams</button>
+                            <button onClick={() => setConnectionMode('polling')} className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-white hover:opacity-90">Use polling mode</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="flex h-screen bg-background text-text font-sans">
                 <Sidebar
                     activeView={activeView}

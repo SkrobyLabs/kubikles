@@ -8,7 +8,8 @@ import {
     GetAllPodsLogsBefore, GetAllPodsLogsAfter, StartAllPodsLogStream
 } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
-import { parseLogLines } from './logUtils';
+import { appendUniqueLogEntries, parseLogLines } from './logUtils';
+import { useK8s } from '~/context';
 
 // Special constants for "All" modes
 export const ALL_CONTAINERS = '__ALL__';
@@ -37,6 +38,7 @@ export function useLogStream({
     currentContext,
     resolveFreshLogTarget
 }: { namespace: any; pod: any; container: any; containers: any; siblingPods: any; podContainerMap: any; showPrevious: any; sinceTime: any; viewMode: any; initialPosition: any; isStale: any; currentContext: any; resolveFreshLogTarget?: any }) {
+    const { reportStreamingFailure } = useK8s();
     const isAllContainers = container === ALL_CONTAINERS;
     const isAllPods = pod === ALL_PODS;
 
@@ -77,6 +79,7 @@ export function useLogStream({
     const streamIdRef = useRef<any>(null);
     const loadingBeforeRef = useRef(false);
     const loadingAfterRef = useRef(false);
+    const pollingAfterRef = useRef(false);
     const lastFetchedBeforeTs = useRef('');
     const lastFetchedAfterTs = useRef('');
     const initialLoadDone = useRef(false);
@@ -362,6 +365,36 @@ export function useLogStream({
         }
     }, [hasMoreAfter, getLastTimestamp, namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious]);
 
+    const pollNewerLogs = useCallback(async () => {
+        if (pollingAfterRef.current) return;
+        let cursor = getLastTimestamp();
+        if (!cursor) return;
+        pollingAfterRef.current = true;
+        try {
+            let hasMore = true;
+            while (hasMore) {
+                let result;
+                const podPairs = buildPodContainerPairs();
+                if (isAllPods && podPairs.length > 0) {
+                    result = await GetAllPodsLogsAfter(namespace, podPairs, isAllContainers, true, showPrevious, cursor, CHUNK_SIZE);
+                } else if (isAllContainers && containers?.length > 0) {
+                    result = await GetAllContainersLogsAfter(namespace, pod, containers, true, showPrevious, cursor, CHUNK_SIZE);
+                } else {
+                    result = await GetPodLogsAfter(namespace, pod, container, true, showPrevious, cursor, CHUNK_SIZE);
+                }
+                const entries = result.logs?.trim() ? parseLogLines(result.logs, 'poll') : [];
+                if (entries.length === 0) break;
+                setLogs(prev => appendUniqueLogEntries(prev, entries));
+                cursor = entries.slice().reverse().find((entry: any) => entry.timestamp)?.timestamp || cursor;
+                hasMore = Boolean(result.hasMore);
+            }
+        } catch (err: any) {
+            setFetchError(`Error polling logs: ${err}`);
+        } finally {
+            pollingAfterRef.current = false;
+        }
+    }, [getLastTimestamp, namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, showPrevious]);
+
     // Handle pod/container/showPrevious changes
     useEffect(() => {
         // For "All Pods" mode, we only need namespace and siblingPods
@@ -445,8 +478,9 @@ export function useLogStream({
             streamIdRef.current = streamId;
         } catch (err: any) {
             console.error('Failed to start log stream:', err);
+            reportStreamingFailure(err);
         }
-    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs]);
+    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, reportStreamingFailure]);
 
     const stopStreaming = useCallback(() => {
         if (streamIdRef.current) {
@@ -512,6 +546,7 @@ export function useLogStream({
 
             if (event.error) {
                 console.error('Log stream error:', event.error);
+                reportStreamingFailure(event.error);
                 streamIdRef.current = null;
                 streamDisconnectedRef.current = true;
                 setStreamDisconnected(true);
@@ -538,7 +573,7 @@ export function useLogStream({
             cancelLogStream();
             cancelLogBatch();
         };
-    }, []);
+    }, [reportStreamingFailure]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -574,6 +609,7 @@ export function useLogStream({
         loadAllLogs,
         loadOlderLogs,
         loadNewerLogs,
+        pollNewerLogs,
         startStreaming,
         stopStreaming,
         resetChunkState,

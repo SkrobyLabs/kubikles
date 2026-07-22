@@ -10,15 +10,18 @@ import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } 
 import ControllerMetricsTab from './ControllerMetricsTab';
 import ResourceEventsTab from './ResourceEventsTab';
 import ScaleModal from './ScaleModal';
-import { ScaleDeployment, RestartDeployment } from '~/lib/wailsjs-adapter/go/main/App';
+import { ScaleDeployment, RestartDeployment, GetDeploymentYaml } from '~/lib/wailsjs-adapter/go/main/App';
 import { useResourceWatcher } from '~/hooks/useResourceWatcher';
+import { useCompletionPolling } from '~/hooks/useCompletionPolling';
+// @ts-ignore - no declaration file for js-yaml
+import yaml from 'js-yaml';
 
 const TAB_BASIC = 'basic';
 const TAB_EVENTS = 'events';
 const TAB_METRICS = 'metrics';
 
 export default function DeploymentDetails({ deployment: initialDeployment, tabContext = '' }: { deployment: any; tabContext?: string }) {
-    const { currentContext } = useK8s();
+    const { currentContext, connectionMode } = useK8s();
     const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
     const { addNotification } = useNotification();
     const activeTab = getDetailTab('deployment', TAB_BASIC);
@@ -55,6 +58,10 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
         handleWatcherEvent,
         Boolean(namespace && !isStale)
     );
+    useCompletionPolling(connectionMode === 'polling' && Boolean(namespace && name && !isStale), async (isCurrent) => {
+        const latest = yaml.load(await GetDeploymentYaml(namespace, name));
+        if (latest && isCurrent()) setDeployment(latest);
+    }, [namespace, name, resourceContext]);
     const spec = deployment.spec || {};
     const status = deployment.status || {};
 

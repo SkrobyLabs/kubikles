@@ -13,6 +13,7 @@ import type { NodeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { usePodMetrics } from '~/hooks/usePodMetrics';
 import { useK8s } from '~/context';
+import { useCompletionPolling } from '~/hooks/useCompletionPolling';
 import { getPodStatus } from '~/utils/k8s-helpers';
 import TopologyNodeComponent from './TopologyNodeComponent';
 import {
@@ -321,7 +322,7 @@ export default function NodeTopology({
     metricsAvailable,
     nodeActions,
 }: NodeTopologyProps) {
-    const { currentContext, lastRefresh } = useK8s();
+    const { currentContext, lastRefresh, connectionMode } = useK8s();
     const { openTab, openModal, closeModal } = useUI();
     const { addNotification } = useNotification();
 
@@ -396,6 +397,22 @@ export default function NodeTopology({
                 });
         }
     }, [visibleNodeNames, currentContext, isVisible, fetchGeneration]);
+
+    useCompletionPolling(connectionMode === 'polling' && isVisible, async (isCurrent) => {
+        const names = Array.from(visibleNodeNames);
+        const results = await Promise.all(names.map(async (name) => ({
+            name,
+            pods: await ListPodsForNode(name),
+        })));
+        if (!isCurrent()) return;
+        setPodsByNode(prev => {
+            const next = new Map(prev);
+            for (const { name, pods } of results) {
+                next.set(name, (pods || []).filter((p: any) => p.status?.phase !== 'Succeeded'));
+            }
+            return next;
+        });
+    }, [currentContext, visibleNodeNames]);
 
     // -----------------------------------------------------------------------
     // Live pod watcher — keeps podsByNode in sync with evictions, restarts, etc.

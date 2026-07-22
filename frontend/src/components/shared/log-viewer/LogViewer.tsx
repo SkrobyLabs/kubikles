@@ -44,7 +44,7 @@ export default function LogViewer({
     resolveFreshPods,
     tabContext = ''
 }: { namespace: any; pod: any; containers?: any; siblingPods?: any; podContainerMap?: any; ownerName?: any; podCreationTime?: any; resolveFreshPods?: any; tabContext?: any }) {
-    const { currentContext } = useK8s();
+    const { currentContext, connectionMode } = useK8s();
     const { getConfig } = useConfig();
     const [logTarget, setLogTarget] = useState(() => ({
         namespace: initialNamespace,
@@ -226,13 +226,28 @@ export default function LogViewer({
     useEffect(() => {
         // Use isFetching() for synchronous check to avoid React batching race condition
         // where stream.loading might still be false when this effect runs
-        if (isFollowing && namespace && selectedPod && !stream.loading && !stream.isFetching()) {
+        if (connectionMode === 'streaming' && isFollowing && namespace && selectedPod && !stream.loading && !stream.isFetching()) {
             stream.startStreaming();
         } else {
             stream.stopStreaming();
         }
         return () => stream.stopStreaming();
-    }, [isFollowing, namespace, selectedPod, selectedContainer, stream.loading]);
+    }, [isFollowing, namespace, selectedPod, selectedContainer, stream.loading, connectionMode]);
+
+    useEffect(() => {
+        if (connectionMode !== 'polling' || !isFollowing || !namespace || !selectedPod) return;
+        let cancelled = false;
+        let timer: number | undefined;
+        const poll = async () => {
+            await stream.pollNewerLogs();
+            if (!cancelled) timer = window.setTimeout(poll, 4_500 + Math.random() * 1_000);
+        };
+        timer = window.setTimeout(poll, 4_500 + Math.random() * 1_000);
+        return () => {
+            cancelled = true;
+            if (timer !== undefined) window.clearTimeout(timer);
+        };
+    }, [connectionMode, isFollowing, namespace, selectedPod, selectedContainer, stream.pollNewerLogs]);
 
     // Keyboard shortcut for refresh
     useEffect(() => {
