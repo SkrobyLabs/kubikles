@@ -5,6 +5,7 @@ import { useK8s } from '~/context';
 import { useResourceWatcher } from '~/hooks/useResourceWatcher';
 import { formatAge } from '~/utils/formatting';
 import Logger from '~/utils/Logger';
+import { useCompletionPolling } from '~/hooks/useCompletionPolling';
 
 // Event type indicator
 const EventTypeIcon = ({ type }: any) => {
@@ -15,7 +16,7 @@ const EventTypeIcon = ({ type }: any) => {
 };
 
 export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 }: any) {
-    const { currentContext, lastRefresh } = useK8s();
+    const { currentContext, lastRefresh, connectionMode } = useK8s();
     const [events, setEvents] = useState<any[]>([]);
     const [resources, setResources] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -24,18 +25,17 @@ export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 
     const namespace = release?.namespace;
     const releaseName = release?.name;
 
-    // Fetch release resources and their events
-    useEffect(() => {
+    const fetchData = useCallback(async (isCurrent: () => boolean = () => true) => {
         if (!currentContext || !namespace || !releaseName || isStale) return;
 
-        const fetchData = async () => {
-            setLoading(true);
-            setError(null);
-            try {
+        setLoading(true);
+        setError(null);
+        try {
                 Logger.info("Fetching Helm release resources", { namespace, name: releaseName }, 'helm');
 
                 // First get the resources managed by this release
                 const releaseResources = await GetHelmReleaseResources(namespace, releaseName);
+                if (!isCurrent()) return;
                 setResources(releaseResources || []);
 
                 // Get unique namespaces from resources (some might be in different namespaces)
@@ -48,6 +48,7 @@ export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 
                 let allEvents: any[] = [];
                 for (const ns of resourceNamespaces) {
                     const nsEvents = await ListEvents('', ns as string);
+                    if (!isCurrent()) return;
                     allEvents = allEvents.concat(nsEvents || []);
                 }
 
@@ -63,17 +64,21 @@ export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 
                     );
                 });
 
-                setEvents(releaseEvents);
+                if (isCurrent()) setEvents(releaseEvents);
             } catch (err: any) {
                 Logger.error("Failed to fetch release events", err, 'helm');
-                setError(err.message || String(err));
-            } finally {
-                setLoading(false);
-            }
-        };
+                if (isCurrent()) setError(err.message || String(err));
+        } finally {
+            if (isCurrent()) setLoading(false);
+        }
+    }, [currentContext, namespace, releaseName, isStale]);
 
-        fetchData();
-    }, [currentContext, namespace, releaseName, isStale, lastRefresh, refreshKey]);
+    useEffect(() => {
+        let current = true;
+        fetchData(() => current);
+        return () => { current = false; };
+    }, [fetchData, lastRefresh, refreshKey]);
+    useCompletionPolling(connectionMode === 'polling' && !isStale, fetchData, [fetchData]);
 
     // Handle real-time event updates
     const handleEvent = useCallback((event: any) => {

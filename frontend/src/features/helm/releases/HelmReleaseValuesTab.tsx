@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import { GetHelmReleaseAllValues, GetHelmReleaseValues } from 'wailsjs/go/main/App';
 import { useK8s } from '~/context';
@@ -6,9 +6,10 @@ import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import Logger from '~/utils/Logger';
 // @ts-ignore - no declaration file for js-yaml
 import yaml from 'js-yaml';
+import { useCompletionPolling } from '~/hooks/useCompletionPolling';
 
 export default function HelmReleaseValuesTab({ release, isStale, refreshKey = 0 }: any) {
-    const { currentContext, lastRefresh } = useK8s();
+    const { currentContext, lastRefresh, connectionMode } = useK8s();
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<any>(null);
@@ -17,33 +18,35 @@ export default function HelmReleaseValuesTab({ release, isStale, refreshKey = 0 
     const [rawValues, setRawValues] = useState<any>(null);
     const editorRef = useRef<any>(null);
 
-    // Fetch values
-    useEffect(() => {
+    const fetchValues = useCallback(async (isCurrent: () => boolean = () => true) => {
         if (!currentContext || !release || isStale) {
             setError(isStale ? 'This tab was opened in a different context' : null);
             setLoading(false);
             return;
         }
 
-        const fetchValues = async () => {
-            setLoading(true);
-            setError(null);
-            try {
+        setLoading(true);
+        setError(null);
+        try {
                 Logger.info("Fetching Helm release values", { namespace: release.namespace, name: release.name, userOnly: showUserOnly }, 'helm');
                 const values = showUserOnly
                     ? await GetHelmReleaseValues(release.namespace, release.name)
                     : await GetHelmReleaseAllValues(release.namespace, release.name);
-                setRawValues(values || {});
+                if (isCurrent()) setRawValues(values || {});
             } catch (err: any) {
                 Logger.error("Failed to fetch Helm release values", err, 'helm');
-                setError(err.message || String(err));
-            } finally {
-                setLoading(false);
-            }
-        };
+                if (isCurrent()) setError(err.message || String(err));
+        } finally {
+            if (isCurrent()) setLoading(false);
+        }
+    }, [currentContext, release, isStale, showUserOnly]);
 
-        fetchValues();
-    }, [currentContext, release, isStale, showUserOnly, lastRefresh, refreshKey]);
+    useEffect(() => {
+        let current = true;
+        fetchValues(() => current);
+        return () => { current = false; };
+    }, [fetchValues, lastRefresh, refreshKey]);
+    useCompletionPolling(connectionMode === 'polling' && !isStale, fetchValues, [fetchValues]);
 
     // Format content when raw values or format changes
     useEffect(() => {

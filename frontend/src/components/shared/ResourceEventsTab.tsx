@@ -4,6 +4,7 @@ import { ListEvents, ListPods } from 'wailsjs/go/main/App';
 import { useK8s } from '~/context';
 import { useResourceWatcher } from '~/hooks/useResourceWatcher';
 import { formatAge } from '~/utils/formatting';
+import { useCompletionPolling } from '~/hooks/useCompletionPolling';
 
 // Event type indicator
 const EventTypeIcon = ({ type }: { type: string }) => {
@@ -30,56 +31,57 @@ function labelsMatch(podLabels: Record<string, string> | undefined, matchLabels:
 }
 
 export default function ResourceEventsTab({ kind, namespace, name, uid, isStale, matchLabels }: ResourceEventsTabProps) {
-    const { currentContext, lastRefresh } = useK8s();
+    const { currentContext, lastRefresh, connectionMode } = useK8s();
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     // Set of related UIDs (child pods) for matching events
     const relatedUidsRef = useRef<Set<string>>(new Set());
 
-    // Fetch events for the resource's namespace
-    useEffect(() => {
+    const fetchEvents = useCallback(async (isCurrent: () => boolean = () => true) => {
         if (!currentContext || !namespace || isStale) return;
-
-        const fetchEvents = async () => {
-            setLoading(true);
-            try {
-                // If matchLabels provided, fetch child pods to build related UID set
-                const relatedUids = new Set<string>();
-                if (matchLabels && Object.keys(matchLabels).length > 0) {
-                    try {
-                        const pods = await ListPods('', namespace);
-                        for (const pod of (pods || [])) {
-                            if (labelsMatch(pod.metadata?.labels, matchLabels)) {
-                                if (pod.metadata?.uid) relatedUids.add(pod.metadata.uid);
-                            }
+        setLoading(true);
+        try {
+            const relatedUids = new Set<string>();
+            if (matchLabels && Object.keys(matchLabels).length > 0) {
+                try {
+                    const pods = await ListPods('', namespace);
+                    if (!isCurrent()) return;
+                    for (const pod of (pods || [])) {
+                        if (labelsMatch(pod.metadata?.labels, matchLabels)) {
+                            if (pod.metadata?.uid) relatedUids.add(pod.metadata.uid);
                         }
-                    } catch {
-                        // Non-fatal: proceed without child pod events
                     }
+                } catch {
+                    // Non-fatal: proceed without child pod events
                 }
-                relatedUidsRef.current = relatedUids;
-
-                const list = await ListEvents('', namespace);
-                // Filter events related to this resource by UID or by kind+name,
-                // plus events for child pods when matchLabels is provided
-                const resourceEvents = (list || []).filter((event: any) => {
-                    const obj = event.involvedObject;
-                    if (!obj) return false;
-                    if (obj.uid === uid) return true;
-                    if (obj.kind === kind && obj.name === name) return true;
-                    if (relatedUids.size > 0 && obj.uid && relatedUids.has(obj.uid)) return true;
-                    return false;
-                });
-                setEvents(resourceEvents);
-            } catch (err: any) {
-                console.error('Failed to fetch events:', err);
-            } finally {
-                setLoading(false);
             }
-        };
+            if (!isCurrent()) return;
+            relatedUidsRef.current = relatedUids;
 
-        fetchEvents();
-    }, [currentContext, namespace, uid, name, kind, isStale, lastRefresh, matchLabels]);
+            const list = await ListEvents('', namespace);
+            if (!isCurrent()) return;
+            const resourceEvents = (list || []).filter((event: any) => {
+                const obj = event.involvedObject;
+                if (!obj) return false;
+                if (obj.uid === uid) return true;
+                if (obj.kind === kind && obj.name === name) return true;
+                if (relatedUids.size > 0 && obj.uid && relatedUids.has(obj.uid)) return true;
+                return false;
+            });
+            setEvents(resourceEvents);
+        } catch (err: any) {
+            console.error('Failed to fetch events:', err);
+        } finally {
+            if (isCurrent()) setLoading(false);
+        }
+    }, [currentContext, namespace, uid, name, kind, isStale, matchLabels]);
+
+    useEffect(() => {
+        let current = true;
+        fetchEvents(() => current);
+        return () => { current = false; };
+    }, [fetchEvents, lastRefresh]);
+    useCompletionPolling(connectionMode === 'polling' && !isStale, fetchEvents, [fetchEvents]);
 
     // Handle real-time event updates
     const handleEvent = useCallback((event: any) => {

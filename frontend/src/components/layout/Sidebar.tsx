@@ -11,6 +11,7 @@ import {
     BugAntIcon,
     SparklesIcon,
     WrenchScrewdriverIcon,
+    SignalIcon,
 } from '@heroicons/react/24/outline';
 import ContextManager from './ContextManager';
 import { useConfig, useK8s } from '~/context';
@@ -55,6 +56,7 @@ export default function Sidebar({
     const { isOpen: aiOpen, togglePanel: toggleAI, providerAvailable } = useAIChat();
     const { openPerformancePanel } = usePerformancePanel();
     const { toggleDebug } = useDebugLogs();
+    const { connectionMode, setConnectionMode } = useK8s();
     const isServerMode = isInServerMode();
     // Version info
     const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
@@ -261,6 +263,22 @@ export default function Sidebar({
                     onOpen={onContextSelectorOpen}
                     preserveOrder
                 />
+                {currentContext && (
+                    <button
+                        type="button"
+                        onClick={() => setConnectionMode(connectionMode === 'streaming' ? 'polling' : 'streaming')}
+                        className={`mt-3 w-full flex items-center justify-between rounded-md px-2.5 py-2 text-xs transition-colors ${connectionMode === 'polling' ? 'bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30' : 'bg-white/5 text-gray-400 hover:text-text'}`}
+                        title="Polling mode avoids Kubernetes watch and follow-log streams"
+                    >
+                        <span className="flex items-center gap-2">
+                            <SignalIcon className="h-4 w-4" />
+                            {connectionMode === 'polling' ? 'Polling mode' : 'Live streams'}
+                        </span>
+                        <span className={`h-4 w-7 rounded-full p-0.5 ${connectionMode === 'polling' ? 'bg-amber-500' : 'bg-gray-600'}`}>
+                            <span className={`block h-3 w-3 rounded-full bg-white transition-transform ${connectionMode === 'polling' ? 'translate-x-3' : ''}`} />
+                        </span>
+                    </button>
+                )}
             </div>
 
             {/* Debug Cluster Config (dev builds only, debug-cluster context only) */}

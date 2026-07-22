@@ -4,6 +4,7 @@ import { ListEvents } from 'wailsjs/go/main/App';
 import { useK8s } from '~/context';
 import { useResourceWatcher } from '~/hooks/useResourceWatcher';
 import { formatAge } from '~/utils/formatting';
+import { useCompletionPolling } from '~/hooks/useCompletionPolling';
 
 // Event type indicator
 const EventTypeIcon = ({ type }: { type: string }) => {
@@ -14,7 +15,7 @@ const EventTypeIcon = ({ type }: { type: string }) => {
 };
 
 export default function PodEventsTab({ pod, isStale }: { pod: any; isStale: any }) {
-    const { currentContext, lastRefresh } = useK8s();
+    const { currentContext, lastRefresh, connectionMode } = useK8s();
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -22,29 +23,30 @@ export default function PodEventsTab({ pod, isStale }: { pod: any; isStale: any 
     const podUid = pod.metadata?.uid;
     const podName = pod.metadata?.name;
 
-    // Fetch events for the pod's namespace
-    useEffect(() => {
+    const fetchEvents = useCallback(async (isCurrent: () => boolean = () => true) => {
         if (!currentContext || !namespace || isStale) return;
+        setLoading(true);
+        try {
+            const list = await ListEvents('', namespace);
+            if (!isCurrent()) return;
+            const podEvents = (list || []).filter((event: any) =>
+                event.involvedObject?.uid === podUid ||
+                (event.involvedObject?.kind === 'Pod' && event.involvedObject?.name === podName)
+            );
+            setEvents(podEvents);
+        } catch (err: any) {
+            console.error('Failed to fetch events:', err);
+        } finally {
+            if (isCurrent()) setLoading(false);
+        }
+    }, [currentContext, namespace, podUid, podName, isStale]);
 
-        const fetchEvents = async () => {
-            setLoading(true);
-            try {
-                const list = await ListEvents('', namespace);
-                // Filter events related to this pod
-                const podEvents = (list || []).filter((event: any) =>
-                    event.involvedObject?.uid === podUid ||
-                    (event.involvedObject?.kind === 'Pod' && event.involvedObject?.name === podName)
-                );
-                setEvents(podEvents);
-            } catch (err: any) {
-                console.error('Failed to fetch events:', err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchEvents();
-    }, [currentContext, namespace, podUid, podName, isStale, lastRefresh]);
+    useEffect(() => {
+        let current = true;
+        fetchEvents(() => current);
+        return () => { current = false; };
+    }, [fetchEvents, lastRefresh]);
+    useCompletionPolling(connectionMode === 'polling' && !isStale, fetchEvents, [fetchEvents]);
 
     // Handle real-time event updates
     const handleEvent = useCallback((event: any) => {

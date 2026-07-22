@@ -69,6 +69,17 @@ export const parseLogLines = (rawLogs: any, source: any) => {
         });
 };
 
+export const appendUniqueLogEntries = (existing: any[], incoming: any[]): any[] => {
+    const seen = new Set(existing.map((entry: any) => `${entry.timestamp}\u0000${entry.content}`));
+    const unique = incoming.filter((entry: any) => {
+        const key = `${entry.timestamp}\u0000${entry.content}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+    return unique.length ? [...existing, ...unique] : existing;
+};
+
 /**
  * Highlight search matches in HTML while preserving ANSI color tags.
  * This handles cases where ANSI codes split text (e.g., ERR<code>]<code>text can match ERR]text).

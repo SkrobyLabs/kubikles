@@ -1,6 +1,7 @@
 import { useEffect, useRef, useMemo } from 'react';
 import { SubscribeResourceWatcher, SubscribeCRDWatcher, UnsubscribeWatcher } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
+import { useK8s } from '../context';
 
 // Resource event structure
 interface ResourceEvent {
@@ -33,6 +34,7 @@ export const useResourceWatcher = (
     onEvent: ResourceEventHandler,
     enabled: boolean = true
 ): void => {
+    const { connectionMode } = useK8s();
     const onEventRef = useRef<ResourceEventHandler>(onEvent);
 
     // Create stable namespace key to avoid unnecessary effect re-runs on array reorder
@@ -44,7 +46,7 @@ export const useResourceWatcher = (
     }, [onEvent]);
 
     useEffect(() => {
-        if (!enabled) return;
+        if (!enabled || connectionMode === 'polling') return;
 
         const namespacesToWatch = Array.isArray(namespaces) ? namespaces : [namespaces];
 
@@ -104,7 +106,7 @@ export const useResourceWatcher = (
                 });
             });
         };
-    }, [resourceType, namespaceKey, enabled]);
+    }, [resourceType, namespaceKey, enabled, connectionMode]);
 };
 
 /**
@@ -118,6 +120,7 @@ export const useCRDWatcher = (
     onEvent: ResourceEventHandler,
     enabled: boolean = true
 ): void => {
+    const { connectionMode } = useK8s();
     const onEventRef = useRef<ResourceEventHandler>(onEvent);
 
     // Create stable namespace key to avoid unnecessary effect re-runs on array reorder
@@ -132,7 +135,7 @@ export const useCRDWatcher = (
     const crdResourceType = `crd:${group}/${version}/${resource}`;
 
     useEffect(() => {
-        if (!enabled) return;
+        if (!enabled || connectionMode === 'polling') return;
 
         const namespacesToWatch = Array.isArray(namespaces) ? namespaces : [namespaces];
 
@@ -191,5 +194,5 @@ export const useCRDWatcher = (
                 });
             });
         };
-    }, [group, version, resource, crdResourceType, namespaceKey, enabled]);
+    }, [group, version, resource, crdResourceType, namespaceKey, enabled, connectionMode]);
 };

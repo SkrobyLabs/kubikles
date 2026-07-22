@@ -33,6 +33,8 @@ type WatcherErrorEvent struct {
 	Namespace    string `json:"namespace"`    // Namespace being watched
 	Error        string `json:"error"`        // Error message
 	Recoverable  bool   `json:"recoverable"`  // Whether the watcher will retry
+	Premature    bool   `json:"premature"`    // Stream opened but closed unexpectedly
+	ReceivedAny  bool   `json:"receivedAny"`  // Stream delivered an event before closing
 	Context      string `json:"context"`      // K8s context this error belongs to
 }
 
@@ -42,6 +44,14 @@ type WatcherStatusEvent struct {
 	Namespace    string `json:"namespace"`    // Namespace being watched
 	Status       string `json:"status"`       // "connected", "reconnecting", "stopped"
 	Context      string `json:"context"`      // K8s context this status belongs to
+}
+
+func prematureWatchError(resourceType, namespace, context string, receivedAny bool) WatcherErrorEvent {
+	return WatcherErrorEvent{
+		ResourceType: resourceType, Namespace: namespace,
+		Error: "watch stream closed unexpectedly", Recoverable: true,
+		Premature: true, ReceivedAny: receivedAny, Context: context,
+	}
 }
 
 // SubscribeResourceWatcher subscribes to a resource watcher, returning the watcher key
@@ -199,8 +209,8 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 			}
 		}
 
-		// Successfully connected
-		consecutiveFailures = 0
+		// HTTP 200 only proves the stream opened. Some access proxies immediately
+		// close the body, so reset failures only after receiving an event.
 		a.emitEvent("watcher-status", WatcherStatusEvent{
 			ResourceType: resourceType,
 			Namespace:    namespace,
@@ -210,6 +220,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 
 		// Process events from this watcher
 		watcherDone := false
+		receivedAny := false
 		for !watcherDone {
 			select {
 			case <-ctx.Done():
@@ -220,14 +231,22 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 					debug.LogWatcher("Resource watcher channel closed, will reconnect", map[string]interface{}{"type": resourceType})
 					watcher.Stop()
 					watcherDone = true
-					// Add a small delay before reconnecting to avoid tight loops
+					consecutiveFailures++
+					a.emitEvent("watcher-error", prematureWatchError(resourceType, namespace, a.GetCurrentContext(), receivedAny))
+					a.emitEvent("watcher-status", WatcherStatusEvent{ResourceType: resourceType, Namespace: namespace, Status: "reconnecting", Context: a.GetCurrentContext()})
+					delay := baseDelay * time.Duration(1<<uint(min(consecutiveFailures, 7))) //nolint:gosec
+					if delay > maxDelay {
+						delay = maxDelay
+					}
 					select {
 					case <-ctx.Done():
 						return
-					case <-time.After(1 * time.Second):
+					case <-time.After(delay):
 					}
 					break
 				}
+				receivedAny = true
+				consecutiveFailures = 0
 
 				// Handle ERROR events from the watch stream
 				if event.Type == "ERROR" {
@@ -418,8 +437,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 			}
 		}
 
-		// Successfully connected
-		consecutiveFailures = 0
+		// Do not treat HTTP 200 alone as proof that CRD watches are supported.
 		a.emitEvent("watcher-status", WatcherStatusEvent{
 			ResourceType: crdResourceType,
 			Namespace:    namespace,
@@ -429,6 +447,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 
 		// Process events from this watcher
 		watcherDone := false
+		receivedAny := false
 		for !watcherDone {
 			select {
 			case <-ctx.Done():
@@ -439,14 +458,22 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 					debug.LogWatcher("CRD watcher channel closed, will reconnect", map[string]interface{}{"group": group, "version": version, "resource": resource})
 					watcher.Stop()
 					watcherDone = true
-					// Add a small delay before reconnecting to avoid tight loops
+					consecutiveFailures++
+					a.emitEvent("watcher-error", prematureWatchError(crdResourceType, namespace, a.GetCurrentContext(), receivedAny))
+					a.emitEvent("watcher-status", WatcherStatusEvent{ResourceType: crdResourceType, Namespace: namespace, Status: "reconnecting", Context: a.GetCurrentContext()})
+					delay := baseDelay * time.Duration(1<<uint(min(consecutiveFailures, 7))) //nolint:gosec
+					if delay > maxDelay {
+						delay = maxDelay
+					}
 					select {
 					case <-ctx.Done():
 						return
-					case <-time.After(1 * time.Second):
+					case <-time.After(delay):
 					}
 					break
 				}
+				receivedAny = true
+				consecutiveFailures = 0
 
 				// Handle ERROR events from the watch stream
 				if event.Type == "ERROR" {

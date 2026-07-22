@@ -6,6 +6,7 @@ import { createResourceEventHandler, createNamespacedResourceEventHandler } from
 import { CancelListRequest } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
+import { nextPollingDelay } from './useCompletionPolling';
 
 // K8s resource with metadata
 interface K8sResource {
@@ -105,7 +106,8 @@ export function createNamespacedResourceHook<T extends K8sResource>(
         const [loading, setLoading] = useState<boolean>(false);
         const [error, setError] = useState<Error | null>(null);
         const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
-        const { namespaces: allNamespaces, lastRefresh, checkConnectionError, reconcileToken } = useK8s();
+        const { namespaces: allNamespaces, lastRefresh, checkConnectionError, reconcileToken, connectionMode } = useK8s();
+        const [pollingTick, setPollingTick] = useState(0);
         const requestIdRef = useRef<string | null>(null);
         const fetchInProgressRef = useRef<string | null>(null); // Prevent duplicate fetches from StrictMode
 
@@ -144,6 +146,7 @@ export function createNamespacedResourceHook<T extends K8sResource>(
 
             // Track if this effect instance is still current
             let isCancelled = false;
+            let pollTimer: number | undefined;
 
             // Generate unique request ID for this effect instance
             // Using incrementing counter guarantees uniqueness even within same millisecond
@@ -204,6 +207,9 @@ export function createNamespacedResourceHook<T extends K8sResource>(
                     if (fetchInProgressRef.current === queryKey) {
                         fetchInProgressRef.current = null;
                     }
+                    if (!isCancelled && connectionMode === 'polling') {
+                        pollTimer = window.setTimeout(() => setPollingTick(t => t + 1), nextPollingDelay());
+                    }
                 }
             };
 
@@ -217,8 +223,9 @@ export function createNamespacedResourceHook<T extends K8sResource>(
                 if (requestIdRef.current) {
                     CancelListRequest(requestIdRef.current).catch(() => {});
                 }
+                if (pollTimer !== undefined) window.clearTimeout(pollTimer);
             };
-        }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh, checkConnectionError]);
+        }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh, pollingTick, connectionMode, checkConnectionError]);
 
         // Create selected namespaces array for event filtering
         const selectedNamespacesList = useMemo((): string[] => {
@@ -277,7 +284,8 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
         const [loading, setLoading] = useState<boolean>(false);
         const [error, setError] = useState<Error | null>(null);
         const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
-        const { lastRefresh, checkConnectionError, reconcileToken } = useK8s();
+        const { lastRefresh, checkConnectionError, reconcileToken, connectionMode } = useK8s();
+        const [pollingTick, setPollingTick] = useState(0);
         const requestIdRef = useRef<string | null>(null);
         const fetchInProgressRef = useRef<string | null>(null); // Prevent duplicate fetches from StrictMode
 
@@ -305,6 +313,7 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
             }
 
             let isCancelled = false;
+            let pollTimer: number | undefined;
 
             // Generate unique request ID for this effect instance
             const requestId = createClusterScopedRequestId(resourceType);
@@ -344,6 +353,9 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
                     if (fetchInProgressRef.current === queryKey) {
                         fetchInProgressRef.current = null;
                     }
+                    if (!isCancelled && connectionMode === 'polling') {
+                        pollTimer = window.setTimeout(() => setPollingTick(t => t + 1), nextPollingDelay());
+                    }
                 }
             };
 
@@ -356,8 +368,9 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
                 if (requestIdRef.current) {
                     CancelListRequest(requestIdRef.current).catch(() => {});
                 }
+                if (pollTimer !== undefined) window.clearTimeout(pollTimer);
             };
-        }, [currentContext, isVisible, lastRefresh, checkConnectionError]);
+        }, [currentContext, isVisible, lastRefresh, pollingTick, connectionMode, checkConnectionError]);
 
         const refetch = useCallback(async (): Promise<void> => {
             if (!currentContext || !isVisible) return;
