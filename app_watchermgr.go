@@ -220,3 +220,38 @@ func (m *ResourceWatcherManager) StopAll() {
 	// Clear all watchers
 	m.watchers = make(map[string]*ResourceWatcher)
 }
+
+// RestartAll reconnects active watchers while preserving their subscriptions.
+// This is used after the active kubeconfig context is edited and its clientset
+// is rebuilt without changing the context name.
+func (m *ResourceWatcherManager) RestartAll() {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	m.app.logDebug("ResourceWatcher: Restarting all watchers (%d active)", len(m.watchers))
+
+	for key, watcher := range m.watchers {
+		if atomic.LoadInt32(&watcher.RefCount) <= 0 {
+			continue
+		}
+
+		if watcher.Cancel != nil {
+			watcher.Cancel()
+		}
+
+		watcher.mu.Lock()
+		watcher.ResourceVersion = ""
+		watcher.mu.Unlock()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		watcher.Cancel = cancel
+
+		if watcher.IsCRD {
+			go m.app.watchCRDLoop(ctx, watcher.Group, watcher.Version, watcher.Resource, watcher.Namespace)
+		} else {
+			go m.app.watchResourceLoop(ctx, watcher.ResourceType, watcher.Namespace)
+		}
+
+		m.app.logDebug("ResourceWatcher: Restarted watcher %s", key)
+	}
+}

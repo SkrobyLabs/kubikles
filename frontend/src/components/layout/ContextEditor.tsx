@@ -11,7 +11,7 @@ import {
     GetFullContextDetail,
     UpdateContextDetail,
 } from 'wailsjs/go/main/App';
-import { useNotification } from '~/context';
+import { useK8s, useNotification } from '~/context';
 
 interface ExecEnvVar {
     name: string;
@@ -136,6 +136,7 @@ export default function ContextEditor({ contextName, onBack, onSaved }: ContextE
     const [dirty, setDirty] = useState(false);
     const [tab, setTab] = useState<Tab>('context');
     const { addNotification } = useNotification();
+    const { retryConnection, triggerRefresh } = useK8s();
 
     // --- Editable state ---
     // Context
@@ -264,6 +265,10 @@ export default function ContextEditor({ contextName, onBack, onSaved }: ContextE
             }
 
             await UpdateContextDetail(contextName, updates);
+            if (detail.isActive) {
+                retryConnection();
+                triggerRefresh();
+            }
             addNotification({ type: 'success', title: 'Context updated', message: `Saved changes to "${contextName}"` });
             setDirty(false);
             onSaved();

@@ -127,7 +127,23 @@ func (a *App) UpdateContextDetail(name string, req k8s.ContextUpdateRequest) err
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.UpdateContextDetail(name, req)
+
+	isActive := name == a.k8sClient.GetCurrentContext()
+	if err := a.k8sClient.UpdateContextDetail(name, req); err != nil {
+		return err
+	}
+
+	if isActive {
+		a.CancelConnectionTest()
+		if a.eventCoalescer != nil {
+			a.eventCoalescer.Clear()
+		}
+		if a.watcherManager != nil {
+			a.watcherManager.RestartAll()
+		}
+	}
+
+	return nil
 }
 
 func (a *App) SetExtraKubeconfigPaths(paths []string) {

@@ -281,7 +281,7 @@ func (c *Client) GetFullContextDetail(name string) (*FullContextDetail, error) {
 
 // UpdateContextDetail applies partial updates to a kubeconfig context.
 func (c *Client) UpdateContextDetail(name string, req ContextUpdateRequest) error {
-	return c.modifyKubeconfigContext(name, func(config *clientcmdapi.Config) error {
+	err := c.modifyKubeconfigContext(name, func(config *clientcmdapi.Config) error {
 		ctx, ok := config.Contexts[name]
 		if !ok {
 			return fmt.Errorf("context %q not found", name)
@@ -361,4 +361,16 @@ func (c *Client) UpdateContextDetail(name string, req ContextUpdateRequest) erro
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	// The active clientset holds a rest.Config built from the previous kubeconfig
+	// values. Rebuild it immediately so edited credentials, TLS settings, and
+	// endpoints take effect without requiring a context switch.
+	if name == c.GetCurrentContext() {
+		return c.SwitchContext(name)
+	}
+
+	return nil
 }
