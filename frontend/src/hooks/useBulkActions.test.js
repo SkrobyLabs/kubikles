@@ -62,6 +62,7 @@ describe('Wails binding signatures for delete/restart operations', () => {
             'DeleteEndpointSlice',
             'DeleteLease',
             'DeleteEvent',
+            'UninstallHelmRelease',
         ];
 
         namespacedDeleteFns.forEach((name) => {

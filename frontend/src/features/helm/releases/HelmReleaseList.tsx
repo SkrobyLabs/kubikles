@@ -82,11 +82,6 @@ export default function HelmReleaseList({ isVisible }: { isVisible: boolean }) {
         handleUninstall
     } = useHelmReleaseActions();
 
-    // Wrapper for UninstallHelmRelease to match useBulkActions API signature (context, namespace, name)
-    const uninstallApi = useCallback(async (_context: any, namespace: any, name: any) => {
-        return UninstallHelmRelease(namespace, name);
-    }, []);
-
     // Custom export for Helm releases - includes chart info in YAML header
     const handleExportYaml = useCallback(async (items: any[], { onProgress, signal }: any = {}) => {
         const { SaveYamlBackup } = await import('../../../../wailsjs/go/main/App');
@@ -118,7 +113,7 @@ export default function HelmReleaseList({ isVisible }: { isVisible: boolean }) {
         resourceLabel: 'Helm Release',
         resourceType: 'helmreleases',
         isNamespaced: true,
-        deleteApi: uninstallApi as any,
+        deleteApi: UninstallHelmRelease,
         getYamlApi: GetHelmReleaseValues,
 
     });
