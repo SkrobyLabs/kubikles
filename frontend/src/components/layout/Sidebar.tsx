@@ -11,6 +11,8 @@ import {
     BugAntIcon,
     SparklesIcon,
     WrenchScrewdriverIcon,
+    MagnifyingGlassIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
 import ContextManager from './ContextManager';
 import { useConfig, useK8s } from '~/context';
@@ -27,6 +29,7 @@ import SearchSelect from '../shared/SearchSelect';
 import Logger from '~/utils/Logger';
 import { GetVersionInfo, IsDebugClusterEnabled } from 'wailsjs/go/main/App';
 import DebugClusterPanel from './DebugClusterPanel';
+import { filterCRDGroups, filterSidebarGroups, matchesSidebarSearch } from './sidebarSearch';
 
 interface VersionInfo {
     version?: string;
@@ -61,6 +64,7 @@ export default function Sidebar({
     const [isMac, setIsMac] = useState(() => navigator.platform.includes('Mac'));
     const [debugClusterEnabled, setDebugClusterEnabled] = useState(false);
     const [showContextManager, setShowContextManager] = useState(false);
+    const [menuSearch, setMenuSearch] = useState('');
 
     useEffect(() => {
         GetVersionInfo().then(setVersionInfo).catch(() => {});
@@ -131,6 +135,14 @@ export default function Sidebar({
         return sortedGroups;
     }, [crds]);
 
+    const isMenuSearching = menuSearch.trim().length > 0;
+    const customResourcesTitleMatches = matchesSidebarSearch(menuSearch, 'Custom Resources');
+    const filteredCRDGroups = useMemo(
+        () => filterCRDGroups(crdGroups, menuSearch, customResourcesTitleMatches),
+        [crdGroups, menuSearch, customResourcesTitleMatches]
+    );
+    const showCRDDefinitions = matchesSidebarSearch(menuSearch, 'Custom Resources', 'Definitions', 'crds');
+
     const toggleCRDGroup = (groupName: string) => {
         setExpandedCRDGroups((prev: Record<string, boolean>) => ({
             ...prev,
@@ -180,6 +192,26 @@ export default function Sidebar({
             .filter((group: any) => group.id === 'custom-resources' || group.items.length > 0);
     }, [sidebarLayout, excludedItems]);
 
+    const filteredMenuGroups = useMemo(() => {
+        const standardGroups = menuGroups.filter(group => group.id !== 'custom-resources');
+        const matchingStandardGroups = filterSidebarGroups(standardGroups, menuSearch);
+        const customResourcesGroup = menuGroups.find(group => group.id === 'custom-resources');
+        const customResourcesMatches = showCRDDefinitions || Object.keys(filteredCRDGroups).length > 0;
+
+        if (customResourcesGroup && customResourcesMatches) {
+            const customIndex = menuGroups.findIndex(group => group.id === 'custom-resources');
+            const beforeCustom = matchingStandardGroups.filter(group =>
+                menuGroups.findIndex(candidate => candidate.id === group.id) < customIndex
+            );
+            const afterCustom = matchingStandardGroups.filter(group =>
+                menuGroups.findIndex(candidate => candidate.id === group.id) > customIndex
+            );
+            return [...beforeCustom, customResourcesGroup, ...afterCustom];
+        }
+
+        return matchingStandardGroups;
+    }, [menuGroups, menuSearch, showCRDDefinitions, filteredCRDGroups]);
+
     // Collapsed categories state with localStorage persistence
     // Custom Resources and Diagnostics are collapsed by default
     const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
@@ -206,6 +238,12 @@ export default function Sidebar({
     useEffect(() => {
         localStorage.setItem('kubikles_collapsed_groups', JSON.stringify(collapsedGroups));
     }, [collapsedGroups]);
+
+    useEffect(() => {
+        if (isMenuSearching && currentContext) {
+            ensureCRDsLoaded();
+        }
+    }, [isMenuSearching, currentContext, ensureCRDsLoaded]);
 
     const toggleGroup = (groupTitle: string) => {
         const isCurrentlyCollapsed = collapsedGroups[groupTitle];
@@ -269,10 +307,41 @@ export default function Sidebar({
             )}
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-4">
-                {menuGroups.map((group) => {
+            <nav className="flex-1 overflow-y-auto">
+                <div className="sticky top-0 z-10 bg-surface px-3 py-3">
+                    <div className="relative">
+                        <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                        <input
+                            type="search"
+                            value={menuSearch}
+                            onChange={(event) => setMenuSearch(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Escape') {
+                                    setMenuSearch('');
+                                    event.currentTarget.blur();
+                                }
+                            }}
+                            placeholder="Search menu..."
+                            aria-label="Search menu"
+                            className="w-full rounded-md border border-border bg-surface-light py-1.5 pl-8 pr-8 text-sm text-white placeholder-gray-500 transition-colors focus:border-primary focus:outline-none"
+                        />
+                        {menuSearch && (
+                            <button
+                                type="button"
+                                onClick={() => setMenuSearch('')}
+                                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
+                                aria-label="Clear menu search"
+                            >
+                                <XMarkIcon className="h-3.5 w-3.5" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                <div className="pb-4">
+                    {filteredMenuGroups.map((group) => {
                     if (group.id === 'custom-resources') {
-                        const isCollapsed = collapsedGroups['Custom Resources'];
+                        const isCollapsed = !isMenuSearching && collapsedGroups['Custom Resources'];
                         return (
                             <div key="custom-resources" className="mb-2">
                                 <button
@@ -290,40 +359,42 @@ export default function Sidebar({
                                 </button>
                                 {!isCollapsed && (
                                     <div className="px-2 mt-1">
-                                        <button
-                                            ref={activeView === 'crds' ? activeItemRef : undefined}
-                                            onClick={() => handleViewChange('crds')}
-                                            className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${activeView === 'crds'
-                                                ? 'bg-primary/10 text-primary font-medium'
-                                                : 'text-gray-400 hover:text-text hover:bg-white/5'
-                                                }`}
-                                        >
-                                            <PuzzlePieceIcon className="h-5 w-5" />
-                                            Definitions
-                                        </button>
+                                        {showCRDDefinitions && (
+                                            <button
+                                                ref={activeView === 'crds' ? activeItemRef : undefined}
+                                                onClick={() => handleViewChange('crds')}
+                                                className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${activeView === 'crds'
+                                                    ? 'bg-primary/10 text-primary font-medium'
+                                                    : 'text-gray-400 hover:text-text hover:bg-white/5'
+                                                    }`}
+                                            >
+                                                <PuzzlePieceIcon className="h-5 w-5" />
+                                                Definitions
+                                            </button>
+                                        )}
                                         {crdsLoading && (
                                             <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400">
                                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                                                 Loading...
                                             </div>
                                         )}
-                                        {!crdsLoading && Object.keys(crdGroups).map((groupName) => {
+                                        {!crdsLoading && Object.keys(filteredCRDGroups).map((groupName) => {
                                             const isExpanded = expandedCRDGroups[groupName];
-                                            const resources = crdGroups[groupName];
+                                            const resources = filteredCRDGroups[groupName];
                                             return (
                                                 <div key={groupName} className="mt-1">
                                                     <button
                                                         onClick={() => toggleCRDGroup(groupName)}
                                                         className="w-full flex items-center gap-2 px-3 py-1.5 text-xs rounded-md transition-colors text-gray-300 hover:text-white hover:bg-white/5"
                                                     >
-                                                        {isExpanded ? (
+                                                        {(isMenuSearching || isExpanded) ? (
                                                             <ChevronDownIcon className="h-3 w-3" />
                                                         ) : (
                                                             <ChevronRightIcon className="h-3 w-3" />
                                                         )}
                                                         <span className="truncate" title={groupName}>{groupName}</span>
                                                     </button>
-                                                    {isExpanded && (
+                                                    {(isMenuSearching || isExpanded) && (
                                                         <ul className="ml-2 space-y-0.5">
                                                             {resources.map((res: any) => {
                                                                 const viewId = `cr:${res.group}:${res.version}:${res.plural}:${res.kind}:${res.namespaced}`;
@@ -353,7 +424,7 @@ export default function Sidebar({
                         );
                     }
 
-                    const isCollapsed = collapsedGroups[group.title];
+                    const isCollapsed = !isMenuSearching && collapsedGroups[group.title];
                     return (
                         <div key={group.title} className="mb-2">
                             <button
@@ -393,7 +464,13 @@ export default function Sidebar({
                             )}
                         </div>
                     );
-                })}
+                    })}
+                    {filteredMenuGroups.length === 0 && (
+                        <div className="px-4 py-8 text-center text-sm text-gray-500">
+                            No menu items match “{menuSearch.trim()}”
+                        </div>
+                    )}
+                </div>
             </nav>
 
             {/* Footer */}
