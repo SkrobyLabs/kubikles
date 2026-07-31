@@ -11,8 +11,7 @@ import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import SecretActionsMenu from './SecretActionsMenu';
 import { useSecretActions } from './useSecretActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
-
-const HELM_RELEASE_SECRET_TYPE = 'helm.sh/release.v1';
+import { filterSecretsForView } from './secretViewBehavior';
 
 export default function SecretList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
@@ -22,8 +21,7 @@ export default function SecretList({ isVisible }: { isVisible: boolean }) {
 
     // Filter out Helm release secrets if toggle is enabled
     const filteredSecrets = useMemo(() => {
-        if (!hideHelmSecrets) return secrets;
-        return secrets.filter((secret: any) => secret.type !== HELM_RELEASE_SECRET_TYPE);
+        return filterSecretsForView(secrets, hideHelmSecrets);
     }, [secrets, hideHelmSecrets]);
     const { handleEditYaml, handleEditKeyValue, handleShowDependencies } = useSecretActions();
     const selection = useSelection();

@@ -1,9 +1,13 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate
+.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind
 
 .DEFAULT_GOAL := help
+
+test-accelerator-00-kind:
+	@./scripts/test-accelerator-00-kind_test.sh
+	@./scripts/test-accelerator-00-kind.sh
 
 help:
 	@echo ""
@@ -48,6 +52,7 @@ help:
 	@echo "  test               Run all tests"
 	@echo "  test-frontend      Run frontend tests"
 	@echo "  test-watch         Run frontend tests in watch mode"
+	@echo "  test-accelerator-00-kind  Run the disposable Accelerator Kind characterization gate"
 	@echo "  typecheck          Run TypeScript type checking (tsc --noEmit)"
 	@echo ""
 	@echo "Linting:"

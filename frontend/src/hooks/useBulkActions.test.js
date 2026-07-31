@@ -35,6 +35,12 @@ const wailsAppPath = join(__dirname, '../../wailsjs/go/main/App.js');
 const wailsContent = readFileSync(wailsAppPath, 'utf-8');
 
 describe('Wails binding signatures for delete/restart operations', () => {
+    describe('Secret Direct methods retain their generated arities', () => {
+        const directMethods = { ListSecretsMetadata: 2, GetSecretData: 2, GetSecretYaml: 2, CancelListRequest: 1, SubscribeResourceWatcher: 2, UnsubscribeWatcher: 1, UpdateSecretData: 3, UpdateSecretYaml: 3, DeleteSecret: 2 };
+        Object.entries(directMethods).forEach(([name, arity]) => {
+            it(`${name} takes ${arity} args`, () => expect(getWailsFunctionArity(wailsContent, name)).toBe(arity));
+        });
+    });
     describe('namespaced delete functions take exactly 2 args (namespace, name)', () => {
         const namespacedDeleteFns = [
             'DeletePod',
@@ -114,5 +120,23 @@ describe('Wails binding signatures for delete/restart operations', () => {
                 expect(arity).toBe(2);
             });
         });
+    });
+});
+
+describe('Secret Direct source contract', () => {
+    const editor = readFileSync(join(__dirname, '../components/shared/SecretEditor.tsx'), 'utf-8');
+    const actions = readFileSync(join(__dirname, '../features/config/secrets/useSecretActions.tsx'), 'utf-8');
+    const list = readFileSync(join(__dirname, '../features/config/secrets/SecretList.tsx'), 'utf-8');
+    it('keeps exact Direct mutation call sites and argument counts', () => {
+        expect(editor).toMatch(/UpdateSecretYaml\(namespace, resourceName, yamlContent\)/);
+        expect(editor).toMatch(/UpdateSecretData\(namespace, resourceName, dataToSave\)/);
+        expect(editor.match(/UpdateSecretYaml\(/g)).toHaveLength(1);
+        expect(editor.match(/UpdateSecretData\(/g)).toHaveLength(1);
+        expect(actions).toMatch(/DeleteSecret\(namespace, name\)/);
+        expect(actions.match(/DeleteSecret\(/g)).toHaveLength(1);
+        expect(list).toMatch(/deleteApi:\s*DeleteSecret/);
+    });
+    it('does not introduce Accelerator or router symbols to Secret behavior', () => {
+        for (const source of [editor, actions, list]) expect(source).not.toMatch(/Accelerator|accelerator|Router|router/);
     });
 });
