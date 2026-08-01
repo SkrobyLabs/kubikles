@@ -116,6 +116,26 @@ func (s *Server) acceleratorHandler(static http.Handler) http.Handler {
 				return
 			}
 			canonical.ServeHTTP(w, r)
+		case "/ws":
+			if s.options.AcceleratorWebSocketAuthenticator == nil || r.Method != http.MethodGet {
+				http.NotFound(w, r)
+				return
+			}
+			if s.quiescing.Load() {
+				s.writeError(w, http.StatusServiceUnavailable, "unavailable")
+				return
+			}
+			release, admitted := s.options.AcceleratorSessions.beginUpgrade()
+			if !admitted {
+				s.writeError(w, http.StatusServiceUnavailable, "unavailable")
+				return
+			}
+			if s.quiescing.Load() {
+				release()
+				s.writeError(w, http.StatusServiceUnavailable, "unavailable")
+				return
+			}
+			s.options.AcceleratorWebSocketAuthenticator.handleAdmitted(w, r, release)
 		default:
 			if strings.HasPrefix(r.URL.Path, "/api") || strings.HasPrefix(r.URL.Path, "/ws") {
 				http.NotFound(w, r)

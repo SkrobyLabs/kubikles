@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"embed"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -48,7 +50,11 @@ func RunServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 type serverModeDependencies struct {
 	lookupEnv                 func(string) string
 	newCreatorIdentity        func(string) (*server.CreatorAuthenticator, string, error)
-	newBrowserSessions        func(server.BrowserSessionRevoker) *server.BrowserSessionManager
+	acceleratorObserver       server.AcceleratorSessionObserver
+	browserSessionNow         func() time.Time
+	browserSessionEntropy     io.Reader
+	newAcceleratorSessions    func(string, server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry
+	newBrowserSessions        func(func() time.Time, io.Reader, server.BrowserSessionRevoker) *server.BrowserSessionManager
 	capabilityResolverFactory func(*k8s.Client) agent.CapabilityResolverFactory
 	newServer                 func(server.MethodCaller, embed.FS, server.Options) (serverModeServer, error)
 }
@@ -73,7 +79,11 @@ func productionServerModeDependencies() serverModeDependencies {
 			}
 			return creator, instanceID, nil
 		},
-		newBrowserSessions:        server.NewBrowserSessionManager,
+		acceleratorObserver:       server.NoopAcceleratorSessionObserver{},
+		browserSessionNow:         time.Now,
+		browserSessionEntropy:     rand.Reader,
+		newAcceleratorSessions:    server.NewAcceleratorSessionRegistry,
+		newBrowserSessions:        server.NewBrowserSessionManagerWithDependencies,
 		capabilityResolverFactory: k8s.NewSecretCapabilityResolverFactory,
 		newServer: func(caller server.MethodCaller, assets embed.FS, options server.Options) (serverModeServer, error) {
 			return server.NewWithOptions(caller, assets, options)
@@ -114,7 +124,7 @@ func runServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 		return err
 	}
 	if options.Mode == RuntimeModeAccelerator {
-		protection, err := newAcceleratorHTTPProtectionWithDependencies(ctx, app, identity.creator, identity.instanceID, dependencies.capabilityResolverFactory, dependencies.newBrowserSessions)
+		protection, err := newAcceleratorHTTPProtectionWithDependencies(ctx, app, identity.creator, identity.instanceID, dependencies)
 		if err != nil {
 			return err
 		}
@@ -150,23 +160,29 @@ func runServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 }
 
 type acceleratorHTTPProtection struct {
-	Guard           server.ProtectedRouteGuard
-	Info            server.AcceleratorInfoProvider
-	Authorizer      server.MethodAuthorizer
-	BrowserSessions *server.BrowserSessionManager
+	Guard                  server.ProtectedRouteGuard
+	Info                   server.AcceleratorInfoProvider
+	Authorizer             server.MethodAuthorizer
+	BrowserSessions        *server.BrowserSessionManager
+	AcceleratorSessions    *server.AcceleratorSessionRegistry
+	WebSocketAuthenticator *server.AcceleratorWebSocketAuthenticator
 }
 
 func newAcceleratorHTTPProtection(ctx context.Context, app *App, creator *server.CreatorAuthenticator, instanceID string) (acceleratorHTTPProtection, error) {
-	return newAcceleratorHTTPProtectionWithDependencies(ctx, app, creator, instanceID, k8s.NewSecretCapabilityResolverFactory, server.NewBrowserSessionManager)
+	return newAcceleratorHTTPProtectionWithDependencies(ctx, app, creator, instanceID, productionServerModeDependencies())
 }
 
-func newAcceleratorHTTPProtectionWithDependencies(ctx context.Context, app *App, creator *server.CreatorAuthenticator, instanceID string, newResolverFactory func(*k8s.Client) agent.CapabilityResolverFactory, newBrowserSessions func(server.BrowserSessionRevoker) *server.BrowserSessionManager) (acceleratorHTTPProtection, error) {
+func newAcceleratorHTTPProtectionWithDependencies(ctx context.Context, app *App, creator *server.CreatorAuthenticator, instanceID string, dependencies serverModeDependencies) (acceleratorHTTPProtection, error) {
 	if creator == nil || instanceID == "" {
 		return acceleratorHTTPProtection{}, server.ErrInvalidCreatorVerifier
 	}
 	resolutionCtx, cancel := context.WithTimeout(ctx, 7*time.Second)
 	defer cancel()
 	resolution := agent.CapabilityResolution{}
+	newResolverFactory := dependencies.capabilityResolverFactory
+	if newResolverFactory == nil {
+		newResolverFactory = k8s.NewSecretCapabilityResolverFactory
+	}
 	resolverFactory := newResolverFactory(app.k8sClient)
 	if resolverFactory != nil {
 		if resolver := resolverFactory(); resolver != nil {
@@ -174,11 +190,29 @@ func newAcceleratorHTTPProtectionWithDependencies(ctx context.Context, app *App,
 		}
 	}
 	build := agent.BuildIdentity{BuildVersion: BuildVersion, Commit: GitCommit, Dirty: GitDirty == "true"}
+	newBrowserSessions := dependencies.newBrowserSessions
 	if newBrowserSessions == nil {
-		newBrowserSessions = server.NewBrowserSessionManager
+		newBrowserSessions = server.NewBrowserSessionManagerWithDependencies
 	}
-	sessions := newBrowserSessions(server.NoopBrowserSessionRevoker{})
-	return acceleratorHTTPProtection{Guard: server.CreatorOrBrowserGuard(creator, sessions), Info: server.NewAuthenticatedAcceleratorInfo(build, instanceID, resolution), Authorizer: server.NewAcceleratorMethodAuthorizer(resolution), BrowserSessions: sessions}, nil
+	newAcceleratorSessions := dependencies.newAcceleratorSessions
+	if newAcceleratorSessions == nil {
+		newAcceleratorSessions = server.NewAcceleratorSessionRegistry
+	}
+	observer := dependencies.acceleratorObserver
+	if observer == nil {
+		observer = server.NoopAcceleratorSessionObserver{}
+	}
+	now := dependencies.browserSessionNow
+	if now == nil {
+		now = time.Now
+	}
+	entropy := dependencies.browserSessionEntropy
+	if entropy == nil {
+		entropy = rand.Reader
+	}
+	registry := newAcceleratorSessions(instanceID, observer)
+	sessions := newBrowserSessions(now, entropy, registry)
+	return acceleratorHTTPProtection{Guard: server.CreatorOrBrowserGuard(creator, sessions), Info: server.NewAuthenticatedAcceleratorInfo(build, instanceID, resolution), Authorizer: server.NewAcceleratorMethodAuthorizer(resolution), BrowserSessions: sessions, AcceleratorSessions: registry, WebSocketAuthenticator: &server.AcceleratorWebSocketAuthenticator{Creator: creator, BrowserSessions: sessions, Registry: registry}}, nil
 }
 
 func installAcceleratorHTTPProtection(options *server.Options, protection acceleratorHTTPProtection) {
@@ -186,6 +220,8 @@ func installAcceleratorHTTPProtection(options *server.Options, protection accele
 	options.AcceleratorInfoProvider = protection.Info
 	options.MethodAuthorizer = protection.Authorizer
 	options.BrowserSessions = protection.BrowserSessions
+	options.AcceleratorSessions = protection.AcceleratorSessions
+	options.AcceleratorWebSocketAuthenticator = protection.WebSocketAuthenticator
 }
 
 func serverOptionsForRuntime(mode RuntimeMode, port int, readiness server.ReadinessProvider) (server.Options, error) {

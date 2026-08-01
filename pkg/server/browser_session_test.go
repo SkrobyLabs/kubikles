@@ -617,6 +617,66 @@ func TestBrowserSessionExpiryBoundaries(t *testing.T) {
 	})
 }
 
+func TestBrowserActivationSamplesClockAfterStateLock(t *testing.T) {
+	start := time.Unix(1_700_000_000, 0)
+	clock := &testClock{now: start}
+	var revocations atomic.Int32
+	manager := newBrowserSessionManager(clock.Now, bytes.NewReader(bytes.Repeat([]byte{23}, 96)), browserRevokerFunc(func(context.Context, agent.SessionID) { revocations.Add(1) }))
+	_, _, call := mintAndExchange(t, manager)
+	clock.Set(start.Add(BrowserSessionIdleTTL - time.Nanosecond))
+	manager.state.mu.Lock()
+	started := make(chan struct{})
+	result := make(chan bool, 1)
+	go func() {
+		close(started)
+		result <- manager.withActiveBrowserSession(call.SessionID, func() bool { t.Error("expired activation ran"); return true })
+	}()
+	<-started
+	clock.Set(start.Add(BrowserSessionIdleTTL))
+	manager.state.mu.Unlock()
+	if <-result {
+		t.Fatal("session active at exact idle TTL")
+	}
+	if revocations.Load() != 1 {
+		t.Fatalf("revocations=%d, want 1", revocations.Load())
+	}
+}
+
+func TestBrowserAuthenticateAndTouchSampleClockAfterStateLock(t *testing.T) {
+	for _, operation := range []string{"authenticate", "touch"} {
+		t.Run(operation, func(t *testing.T) {
+			start := time.Unix(1_700_100_000, 0)
+			clock := &testClock{now: start}
+			var revocations atomic.Int32
+			manager := newBrowserSessionManager(clock.Now, bytes.NewReader(bytes.Repeat([]byte{24}, 96)), browserRevokerFunc(func(context.Context, agent.SessionID) { revocations.Add(1) }))
+			_, bearer, call := mintAndExchange(t, manager)
+			clock.Set(start.Add(BrowserSessionIdleTTL - time.Nanosecond))
+			manager.state.mu.Lock()
+			started := make(chan struct{})
+			done := make(chan bool, 1)
+			go func() {
+				close(started)
+				if operation == "authenticate" {
+					_, ok := manager.Authenticate(bearer)
+					done <- ok
+				} else {
+					manager.Touch(call.SessionID)
+					done <- false
+				}
+			}()
+			<-started
+			clock.Set(start.Add(BrowserSessionIdleTTL))
+			manager.state.mu.Unlock()
+			if <-done {
+				t.Fatal("exact-TTL operation accepted session")
+			}
+			if revocations.Load() != 1 {
+				t.Fatalf("revocations=%d", revocations.Load())
+			}
+		})
+	}
+}
+
 func TestBrowserSessionActivityOnlyOnSuccessfulProtectedHTTP(t *testing.T) {
 	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	tests := []struct {

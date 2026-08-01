@@ -74,13 +74,15 @@ func (f MethodAuthorizerFunc) Authorize(c agent.AuthenticatedCallContext, m stri
 
 // Options defines the server's fixed listener and HTTP boundary.
 type Options struct {
-	ListenAddress           string
-	BoundaryMode            BoundaryMode
-	ReadinessProvider       ReadinessProvider
-	ProtectedRouteGuard     ProtectedRouteGuard
-	AcceleratorInfoProvider AcceleratorInfoProvider
-	MethodAuthorizer        MethodAuthorizer
-	BrowserSessions         *BrowserSessionManager
+	ListenAddress                     string
+	BoundaryMode                      BoundaryMode
+	ReadinessProvider                 ReadinessProvider
+	ProtectedRouteGuard               ProtectedRouteGuard
+	AcceleratorInfoProvider           AcceleratorInfoProvider
+	MethodAuthorizer                  MethodAuthorizer
+	BrowserSessions                   *BrowserSessionManager
+	AcceleratorSessions               *AcceleratorSessionRegistry
+	AcceleratorWebSocketAuthenticator *AcceleratorWebSocketAuthenticator
 }
 
 // CompatibilityOptions preserves the ordinary server wildcard bind and HTTP surface.
@@ -118,12 +120,32 @@ func validateOptions(options Options) error {
 		if err := validateListenAddress(options.ListenAddress, false); err != nil {
 			return err
 		}
+		if options.BrowserSessions != nil || options.AcceleratorSessions != nil || options.AcceleratorWebSocketAuthenticator != nil {
+			return errors.New("compatibility mode cannot install Accelerator WebSocket state")
+		}
 	case BoundaryModeAccelerator:
 		if options.ProtectedRouteGuard == nil {
 			return ErrProtectedRouteGuardRequired
 		}
 		if err := validateListenAddress(options.ListenAddress, true); err != nil {
 			return err
+		}
+		authenticator := options.AcceleratorWebSocketAuthenticator
+		if authenticator == nil {
+			if options.AcceleratorSessions != nil {
+				return errors.New("accelerator WebSocket registry requires authenticator")
+			}
+		} else {
+			if options.AcceleratorSessions == nil || authenticator.Registry != options.AcceleratorSessions {
+				return errors.New("accelerator WebSocket registry mismatch")
+			}
+			if options.BrowserSessions == nil || authenticator.BrowserSessions != options.BrowserSessions {
+				return errors.New("accelerator WebSocket browser session mismatch")
+			}
+			revoker, ok := options.BrowserSessions.revoker.(*AcceleratorSessionRegistry)
+			if !ok || revoker != options.AcceleratorSessions {
+				return errors.New("accelerator WebSocket browser revoker mismatch")
+			}
 		}
 	default:
 		return fmt.Errorf("%w: %q", ErrInvalidBoundaryMode, options.BoundaryMode)

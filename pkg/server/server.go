@@ -166,13 +166,23 @@ func (s *Server) Serve(listener net.Listener) error {
 
 // Quiesce immediately makes readiness and protected Accelerator routes unavailable.
 func (s *Server) Quiesce() {
-	s.quiesceOnce.Do(func() { s.quiescing.Store(true) })
+	s.quiesceOnce.Do(func() {
+		s.quiescing.Store(true)
+		if s.options.AcceleratorSessions != nil {
+			s.options.AcceleratorSessions.Quiesce()
+		}
+	})
 }
 
 // Close gracefully shuts down the server. Concurrent calls share the first result.
 func (s *Server) Close(ctx context.Context) error {
 	s.closeOnce.Do(func() {
 		s.Quiesce()
+		if s.options.AcceleratorSessions != nil {
+			if err := s.options.AcceleratorSessions.Close(ctx); err != nil {
+				s.closeErr = err
+			}
+		}
 		s.ownedShutdown.Store(true)
 		close(s.done)
 		s.clientsMu.Lock()
@@ -227,6 +237,10 @@ func (s *Server) Run(ctx context.Context) error {
 
 // EmitEvent sends an event to all connected WebSocket clients
 func (s *Server) EmitEvent(name string, data interface{}) {
+	if s.options.BoundaryMode == BoundaryModeAccelerator && s.options.AcceleratorSessions != nil {
+		s.options.AcceleratorSessions.EmitEvent(name, data)
+		return
+	}
 	select {
 	case s.broadcast <- Event{Type: "event", Name: name, Data: data}:
 	case <-s.done:

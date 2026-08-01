@@ -119,7 +119,13 @@ func (m BrowserSessionManager) Format(s fmt.State, _ rune) {
 }
 
 func NewBrowserSessionManager(revoker BrowserSessionRevoker) *BrowserSessionManager {
-	return newBrowserSessionManager(time.Now, rand.Reader, revoker)
+	return NewBrowserSessionManagerWithDependencies(time.Now, rand.Reader, revoker)
+}
+
+// NewBrowserSessionManagerWithDependencies constructs the fixed browser
+// session policy with injectable clock and entropy dependencies.
+func NewBrowserSessionManagerWithDependencies(now func() time.Time, entropy io.Reader, revoker BrowserSessionRevoker) *BrowserSessionManager {
+	return newBrowserSessionManager(now, entropy, revoker)
 }
 func newBrowserSessionManager(now func() time.Time, entropy io.Reader, revoker BrowserSessionRevoker) *BrowserSessionManager {
 	if now == nil {
@@ -206,10 +212,10 @@ func (m *BrowserSessionManager) Exchange(ticket BrowserTicket) (BrowserBearer, t
 	return BrowserBearer{value: raw}, now.Add(BrowserSessionHardTTL), nil
 }
 func (m *BrowserSessionManager) Authenticate(bearer BrowserBearer) (agent.AuthenticatedCallContext, bool) {
-	now := m.now()
 	wanted := deriveBrowserVerifier(browserBearerDomain, bearer.value)
 	var revoked *browserSessionState
 	m.state.mu.Lock()
+	now := m.now()
 	if m.state.session != nil && (!now.Before(m.state.session.lastActivity.Add(BrowserSessionIdleTTL)) || !now.Before(m.state.session.createdAt.Add(BrowserSessionHardTTL))) {
 		revoked = m.state.session
 		m.state.session = nil
@@ -225,10 +231,33 @@ func (m *BrowserSessionManager) Authenticate(bearer BrowserBearer) (agent.Authen
 	}
 	return agent.AuthenticatedCallContext{}, false
 }
-func (m *BrowserSessionManager) Touch(id agent.SessionID) {
-	now := m.now()
+
+// withActiveBrowserSession linearizes WebSocket activation with replacement,
+// revocation, and exact idle/hard expiry without extending HTTP activity.
+func (m *BrowserSessionManager) withActiveBrowserSession(id agent.SessionID, activate func() bool) bool {
+	if m == nil {
+		return false
+	}
 	var revoked *browserSessionState
 	m.state.mu.Lock()
+	now := m.now()
+	session := m.state.session
+	if session != nil && (!now.Before(session.lastActivity.Add(BrowserSessionIdleTTL)) || !now.Before(session.createdAt.Add(BrowserSessionHardTTL))) {
+		revoked = session
+		m.state.session = nil
+		session = nil
+	}
+	ok := session != nil && session.context.SessionID == id && activate != nil && activate()
+	m.state.mu.Unlock()
+	if revoked != nil {
+		m.revoker.RevokeBrowserSession(context.Background(), revoked.context.SessionID)
+	}
+	return ok
+}
+func (m *BrowserSessionManager) Touch(id agent.SessionID) {
+	var revoked *browserSessionState
+	m.state.mu.Lock()
+	now := m.now()
 	if m.state.session != nil && (!now.Before(m.state.session.lastActivity.Add(BrowserSessionIdleTTL)) || !now.Before(m.state.session.createdAt.Add(BrowserSessionHardTTL))) {
 		revoked = m.state.session
 		m.state.session = nil

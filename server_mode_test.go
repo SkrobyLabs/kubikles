@@ -7,6 +7,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -18,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,6 +37,54 @@ type capturedServerModeServer struct {
 	options  []server.Options
 	handlers []http.Handler
 	callers  []server.MethodCaller
+}
+
+type recordingCompositionObserver struct {
+	mu     sync.Mutex
+	events []string
+}
+
+func (o *recordingCompositionObserver) record(kind string, snapshot server.AcceleratorSessionSnapshot) {
+	o.mu.Lock()
+	o.events = append(o.events, fmt.Sprintf("%s:%s:%d", kind, snapshot.CallContext.SessionID, snapshot.Generation))
+	o.mu.Unlock()
+}
+func (o *recordingCompositionObserver) SessionConnected(snapshot server.AcceleratorSessionSnapshot) {
+	o.record("connect", snapshot)
+}
+func (o *recordingCompositionObserver) SessionDisconnected(snapshot server.AcceleratorSessionSnapshot) {
+	o.record("disconnect", snapshot)
+}
+func (o *recordingCompositionObserver) SessionRevoked(snapshot server.AcceleratorSessionSnapshot) {
+	o.record("revoke", snapshot)
+}
+func (o *recordingCompositionObserver) snapshot() []string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return append([]string(nil), o.events...)
+}
+func (o *recordingCompositionObserver) wait(t *testing.T, count int) []string {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if events := o.snapshot(); len(events) >= count {
+			return events
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("observer events=%v, want at least %d", o.snapshot(), count)
+	return nil
+}
+
+type serverModeTestClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func (c *serverModeTestClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.now
 }
 
 func (s *capturedServerModeServer) newServer(caller server.MethodCaller, assets embed.FS, options server.Options) (serverModeServer, error) {
@@ -247,7 +298,9 @@ func TestAcceleratorCreatorProtectionStartup(t *testing.T) {
 	defer cancel()
 	callerDeadline, _ := callerCtx.Deadline()
 	before := time.Now()
-	protection, err := newAcceleratorHTTPProtectionWithDependencies(callerCtx, &App{}, creator, "accel-public", newResolverFactory, server.NewBrowserSessionManager)
+	protectionDependencies := productionServerModeDependencies()
+	protectionDependencies.capabilityResolverFactory = newResolverFactory
+	protection, err := newAcceleratorHTTPProtectionWithDependencies(callerCtx, &App{}, creator, "accel-public", protectionDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -284,9 +337,11 @@ func TestAcceleratorCreatorProtectionStartup(t *testing.T) {
 		Outcome:    agent.CapabilityCheckOutcomeDenied,
 		Reason:     "safe denied value",
 	}}}}
-	denied, err := newAcceleratorHTTPProtectionWithDependencies(context.Background(), &App{}, creator, "accel-denied", func(*k8s.Client) agent.CapabilityResolverFactory {
+	deniedDependencies := productionServerModeDependencies()
+	deniedDependencies.capabilityResolverFactory = func(*k8s.Client) agent.CapabilityResolverFactory {
 		return func() agent.CapabilityResolver { return deniedResolver }
-	}, server.NewBrowserSessionManager)
+	}
+	denied, err := newAcceleratorHTTPProtectionWithDependencies(context.Background(), &App{}, creator, "accel-denied", deniedDependencies)
 	if err != nil {
 		t.Fatalf("denied capability value failed startup: %v", err)
 	}
@@ -360,14 +415,36 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 		return creator, "accel-browser-composition", nil
 	}
 	dependencies.capabilityResolverFactory = func(*k8s.Client) agent.CapabilityResolverFactory { return nil }
+	compositionClock := &serverModeTestClock{now: time.Date(2026, 8, 1, 7, 8, 9, 123, time.UTC)}
+	compositionEntropy := bytes.NewReader(bytes.Repeat([]byte{0x5a}, 256))
+	compositionObserver := &recordingCompositionObserver{}
+	dependencies.acceleratorObserver = compositionObserver
+	dependencies.browserSessionNow = compositionClock.Now
+	dependencies.browserSessionEntropy = compositionEntropy
+	var registryFactoryCalls int
+	var composedRegistry *server.AcceleratorSessionRegistry
+	dependencies.newAcceleratorSessions = func(instanceID string, observer server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry {
+		registryFactoryCalls++
+		if instanceID != "accel-browser-composition" {
+			t.Fatalf("registry instance ID = %q", instanceID)
+		}
+		if observer != compositionObserver {
+			t.Fatalf("injected observer = %T/%p, want %p", observer, observer, compositionObserver)
+		}
+		composedRegistry = server.NewAcceleratorSessionRegistry(instanceID, observer)
+		return composedRegistry
+	}
 	var factoryCalls int
 	var composed *server.BrowserSessionManager
-	dependencies.newBrowserSessions = func(revoker server.BrowserSessionRevoker) *server.BrowserSessionManager {
+	dependencies.newBrowserSessions = func(now func() time.Time, entropy io.Reader, revoker server.BrowserSessionRevoker) *server.BrowserSessionManager {
 		factoryCalls++
-		if _, ok := revoker.(server.NoopBrowserSessionRevoker); !ok {
-			t.Fatalf("production revoker = %T, want NoopBrowserSessionRevoker", revoker)
+		if revoker != composedRegistry {
+			t.Fatalf("production revoker = %T/%p, want composed registry %p", revoker, revoker, composedRegistry)
 		}
-		composed = server.NewBrowserSessionManager(revoker)
+		if got := now(); !got.Equal(compositionClock.Now()) || entropy != compositionEntropy {
+			t.Fatalf("browser dependencies = %v/%T, want %v/%T", got, entropy, compositionClock.Now(), compositionEntropy)
+		}
+		composed = server.NewBrowserSessionManagerWithDependencies(now, entropy, revoker)
 		return composed
 	}
 	dependencies.newServer = captured.newServer
@@ -377,8 +454,8 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 		t.Fatal(err)
 	}
 	options := captured.option(t)
-	if factoryCalls != 1 || composed == nil || options.BrowserSessions != composed || options.ProtectedRouteGuard == nil || options.BoundaryMode != server.BoundaryModeAccelerator {
-		t.Fatalf("composition factory/manager/options = %d/%p/%p/%#v", factoryCalls, composed, options.BrowserSessions, options)
+	if registryFactoryCalls != 1 || factoryCalls != 1 || composed == nil || options.BrowserSessions != composed || options.AcceleratorSessions != composedRegistry || options.AcceleratorWebSocketAuthenticator == nil || options.ProtectedRouteGuard == nil || options.BoundaryMode != server.BoundaryModeAccelerator {
+		t.Fatalf("composition registry/manager/options = %d/%d/%p/%p/%#v", registryFactoryCalls, factoryCalls, composed, options.BrowserSessions, options)
 	}
 	handler := captured.handler(t)
 	request := func(method, target, authorization, body string) *httptest.ResponseRecorder {
@@ -397,9 +474,10 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 		t.Fatalf("mint = %d %q", mint.Code, mint.Body.String())
 	}
 	var minted struct {
-		Ticket string `json:"ticket"`
+		Ticket    string `json:"ticket"`
+		ExpiresAt string `json:"expiresAt"`
 	}
-	if err := json.Unmarshal(mint.Body.Bytes(), &minted); err != nil || len(minted.Ticket) != 43 {
+	if err := json.Unmarshal(mint.Body.Bytes(), &minted); err != nil || len(minted.Ticket) != 43 || minted.ExpiresAt != compositionClock.Now().Add(server.BrowserTicketLifetime).Format(time.RFC3339Nano) {
 		t.Fatalf("mint body = %q, err=%v", mint.Body.String(), err)
 	}
 	exchange := request(http.MethodPost, "/api/accelerator-browser-session", "", `{"ticket":"`+minted.Ticket+`"}`)
@@ -407,9 +485,10 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 		t.Fatalf("exchange = %d %q", exchange.Code, exchange.Body.String())
 	}
 	var exchanged struct {
-		Bearer string `json:"bearer"`
+		Bearer    string `json:"bearer"`
+		ExpiresAt string `json:"expiresAt"`
 	}
-	if err := json.Unmarshal(exchange.Body.Bytes(), &exchanged); err != nil || len(exchanged.Bearer) != 43 {
+	if err := json.Unmarshal(exchange.Body.Bytes(), &exchanged); err != nil || len(exchanged.Bearer) != 43 || exchanged.ExpiresAt != compositionClock.Now().Add(server.BrowserSessionHardTTL).Format(time.RFC3339Nano) {
 		t.Fatalf("exchange body = %q, err=%v", exchange.Body.String(), err)
 	}
 	browserAuthorization := "Bearer " + exchanged.Bearer
@@ -419,9 +498,45 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 	if denied := request(http.MethodPost, "/api/accelerator-browser-ticket", browserAuthorization, ""); denied.Code != http.StatusForbidden {
 		t.Fatalf("browser mint = %d %q", denied.Code, denied.Body.String())
 	}
+	webSocketServer := httptest.NewServer(handler)
+	webSocketURL := "ws" + strings.TrimPrefix(webSocketServer.URL, "http") + "/ws"
+	dialer := websocket.Dialer{Subprotocols: []string{
+		server.AcceleratorWebSocketProtocol,
+		server.AcceleratorBrowserCredentialProtocolPrefix + exchanged.Bearer,
+	}}
+	browserSocket, response, err := dialer.Dial(webSocketURL, nil)
+	if err != nil {
+		webSocketServer.Close()
+		t.Fatalf("composed browser WebSocket dial: %v", err)
+	}
+	if response != nil && response.Body != nil {
+		_ = response.Body.Close()
+	}
+	var connected server.Event
+	if err := browserSocket.ReadJSON(&connected); err != nil || connected.Name != "connected" {
+		_ = browserSocket.Close()
+		webSocketServer.Close()
+		t.Fatalf("composed browser connected = %+v err=%v", connected, err)
+	}
+	connectedEvents := compositionObserver.wait(t, 1)
+	if len(connectedEvents) != 1 || !strings.HasPrefix(connectedEvents[0], "connect:browser-http-") || !strings.HasSuffix(connectedEvents[0], ":1") {
+		t.Fatalf("composed observer connect=%v", connectedEvents)
+	}
 	if revoked := request(http.MethodPost, "/api/accelerator-browser-session/revoke", creatorAuthorization, ""); revoked.Code != http.StatusNoContent {
 		t.Fatalf("creator revoke = %d %q", revoked.Code, revoked.Body.String())
 	}
+	_ = browserSocket.SetReadDeadline(time.Now().Add(time.Second))
+	if _, _, err := browserSocket.ReadMessage(); err == nil {
+		_ = browserSocket.Close()
+		webSocketServer.Close()
+		t.Fatal("composed browser revoke did not close registry socket")
+	}
+	revokedEvents := compositionObserver.wait(t, 2)
+	if len(revokedEvents) != 2 || !strings.HasPrefix(revokedEvents[1], "revoke:browser-http-") || !strings.HasSuffix(revokedEvents[1], ":1") || strings.TrimPrefix(revokedEvents[0], "connect:") != strings.TrimPrefix(revokedEvents[1], "revoke:") {
+		t.Fatalf("composed observer revoke=%v", revokedEvents)
+	}
+	_ = browserSocket.Close()
+	webSocketServer.Close()
 	if expired := request(http.MethodGet, "/api/accelerator-info", browserAuthorization, ""); expired.Code != http.StatusUnauthorized {
 		t.Fatalf("revoked browser info = %d %q", expired.Code, expired.Body.String())
 	}
@@ -431,7 +546,12 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 			ordinaryCapture := &capturedServerModeServer{}
 			ordinaryDependencies := productionServerModeDependencies()
 			ordinaryFactoryCalls := 0
-			ordinaryDependencies.newBrowserSessions = func(server.BrowserSessionRevoker) *server.BrowserSessionManager {
+			ordinaryRegistryCalls := 0
+			ordinaryDependencies.newAcceleratorSessions = func(string, server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry {
+				ordinaryRegistryCalls++
+				return server.NewAcceleratorSessionRegistry("unexpected", nil)
+			}
+			ordinaryDependencies.newBrowserSessions = func(func() time.Time, io.Reader, server.BrowserSessionRevoker) *server.BrowserSessionManager {
 				ordinaryFactoryCalls++
 				return server.NewBrowserSessionManager(server.NoopBrowserSessionRevoker{})
 			}
@@ -442,8 +562,8 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 				t.Fatal(err)
 			}
 			ordinaryOptions := ordinaryCapture.option(t)
-			if ordinaryFactoryCalls != 0 || ordinaryOptions.BrowserSessions != nil || ordinaryOptions.ProtectedRouteGuard != nil {
-				t.Fatalf("ordinary factory/options = %d/%#v", ordinaryFactoryCalls, ordinaryOptions)
+			if ordinaryFactoryCalls != 0 || ordinaryRegistryCalls != 0 || ordinaryOptions.BrowserSessions != nil || ordinaryOptions.AcceleratorSessions != nil || ordinaryOptions.AcceleratorWebSocketAuthenticator != nil || ordinaryOptions.ProtectedRouteGuard != nil {
+				t.Fatalf("ordinary factory/options = %d/%d/%#v", ordinaryFactoryCalls, ordinaryRegistryCalls, ordinaryOptions)
 			}
 			for _, target := range []string{"/api/accelerator-browser-ticket", "/api/accelerator-browser-session", "/api/accelerator-browser-session/revoke"} {
 				r := httptest.NewRequest(http.MethodPost, target, nil)
@@ -455,6 +575,11 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestAcceleratorWebSocketComposition pins the Accelerator-only transport seam.
+func TestAcceleratorWebSocketComposition(t *testing.T) {
+	TestAcceleratorBrowserSessionComposition(t)
 }
 
 func TestOrdinaryServerIgnoresCreatorVerifier(t *testing.T) {
@@ -546,9 +671,11 @@ func TestAcceleratorInfoBuildIdentityIsReportingOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	resolver := &recordingCapabilityResolver{}
-	protection, err := newAcceleratorHTTPProtectionWithDependencies(context.Background(), &App{}, creator, "accel-reporting", func(*k8s.Client) agent.CapabilityResolverFactory {
+	dependencies := productionServerModeDependencies()
+	dependencies.capabilityResolverFactory = func(*k8s.Client) agent.CapabilityResolverFactory {
 		return func() agent.CapabilityResolver { return resolver }
-	}, server.NewBrowserSessionManager)
+	}
+	protection, err := newAcceleratorHTTPProtectionWithDependencies(context.Background(), &App{}, creator, "accel-reporting", dependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
