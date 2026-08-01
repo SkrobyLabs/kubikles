@@ -98,3 +98,52 @@ func TestStopProducersCleansEmbeddedBrowserInServerMode(t *testing.T) {
 		t.Fatal("embedded browser session was not cleaned up")
 	}
 }
+
+func TestMinimalAcceleratorShutdownIsSafeAndOnce(t *testing.T) {
+	steps := []string{}
+	lifecycle := &recordingLifecycle{steps: &steps, counts: make(map[string]int)}
+	app := newMinimalAcceleratorTestApp(t, lifecycle)
+	app.embeddedBrowser.session = &EmbeddedBrowserSession{Namespace: "default", Status: "running"}
+	app.SetEmitter(&events.NoopEmitter{})
+	app.startupServerMode(context.Background())
+
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			app.runShutdownPhases(context.Background())
+		}()
+	}
+	wg.Wait()
+
+	if got, want := steps, []string{"quiesce", "stop-producers", "close"}; len(got) != len(want) {
+		t.Fatalf("shutdown steps = %v, want %v", got, want)
+	} else {
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("shutdown steps = %v, want %v", got, want)
+			}
+		}
+	}
+	for _, step := range []string{"quiesce", "stop-producers", "close"} {
+		if lifecycle.counts[step] != 1 {
+			t.Fatalf("%s calls = %d, want 1", step, lifecycle.counts[step])
+		}
+	}
+	if app.embeddedBrowser.session == nil {
+		t.Fatal("Accelerator shutdown executed desktop embedded-browser cleanup")
+	}
+	if len(app.getDisconnectListeners()) != 0 {
+		t.Fatalf("disconnect listeners = %d, want zero", len(app.getDisconnectListeners()))
+	}
+	assertAcceleratorOrdinaryServicesAbsentExceptBrowserFixture(t, app)
+}
+
+func assertAcceleratorOrdinaryServicesAbsentExceptBrowserFixture(t *testing.T, app *App) {
+	t.Helper()
+	session := app.embeddedBrowser.session
+	app.embeddedBrowser.session = nil
+	assertAcceleratorOrdinaryServicesAbsent(t, app)
+	app.embeddedBrowser.session = session
+}

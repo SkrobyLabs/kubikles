@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -93,43 +92,7 @@ func NewApp() *App {
 
 // NewAppWithOptions creates an App using explicit runtime composition options.
 func NewAppWithOptions(options AppOptions) (*App, error) {
-	options, err := normalizeAppOptions(options)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := options.KubernetesClientFactory()
-	if options.Mode == RuntimeModeAccelerator && (err != nil || client == nil) {
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrAcceleratorClientInitialization, err)
-		}
-		return nil, ErrAcceleratorClientInitialization
-	}
-	if err != nil {
-		fmt.Printf("Error initializing K8s client: %v\n", err)
-		// Continue - UI will show the error via GetK8sInitError()
-	}
-
-	// Setup prometheus config path
-	configDir, _ := os.UserConfigDir()
-	appDir := filepath.Join(configDir, "kubikles")
-	os.MkdirAll(appDir, 0755)
-
-	return &App{
-		runtimeMode:           options.Mode,
-		agentRouter:           options.AgentRouter,
-		lifecycle:             options.Lifecycle,
-		k8sClient:             client,
-		k8sInitError:          err,
-		helmClient:            initHelm(),
-		terminalManager:       terminal.NewManager(),
-		aiManager:             newAIManager(client),
-		logStreams:            make(map[string]context.CancelFunc),
-		prometheusConfigs:     make(map[string]*k8s.PrometheusInfo),
-		prometheusConfigPath:  filepath.Join(appDir, "prometheus_config.json"),
-		metricsRequestManager: NewMetricsRequestManager(),
-		listRequestManager:    NewListRequestManager(),
-	}, nil
+	return newAppWithOptionsAndProfile(options, productionAppConstructionProfile)
 }
 
 // startup is called when the app starts. The context is saved
@@ -190,6 +153,15 @@ func (a *App) SetEmitter(emitter events.Emitter) {
 // startupServerMode initializes the app for server mode (no Wails context).
 // The emitter must be set via SetEmitter before calling this.
 func (a *App) startupServerMode(ctx context.Context) {
+	if a.runtimeMode == RuntimeModeAccelerator {
+		a.startupAcceleratorServerMode(ctx)
+		return
+	}
+	a.startupOrdinaryServerMode(ctx)
+}
+
+// startupOrdinaryServerMode preserves the desktop/server service startup path.
+func (a *App) startupOrdinaryServerMode(ctx context.Context) {
 	crashlog.Log("App startup initiated (server mode)")
 
 	a.ctx = ctx

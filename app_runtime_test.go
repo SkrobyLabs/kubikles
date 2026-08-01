@@ -87,6 +87,7 @@ func TestNewAppWithOptionsAcceleratorUsesInjectedClient(t *testing.T) {
 }
 
 func TestNewAppCompatibilityConstructorDefaults(t *testing.T) {
+	configureOrdinaryTestPaths(t)
 	app := NewApp()
 	if app == nil || app.runtimeMode != RuntimeModeDesktop || app.agentRouter == nil || app.lifecycle == nil {
 		t.Fatalf("NewApp() returned incomplete desktop app: %#v", app)
