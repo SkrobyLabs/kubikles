@@ -45,7 +45,15 @@ func RunServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 	}
 	defer app.shutdown(ctx)
 
-	srv := server.New(NewAppMethodCaller(app), assets, port)
+	readiness := newAppReadinessProvider(app)
+	serverOptions, err := serverOptionsForRuntime(options.Mode, port, readiness)
+	if err != nil {
+		return err
+	}
+	srv, err := server.NewWithOptions(NewAppMethodCaller(app), assets, serverOptions)
+	if err != nil {
+		return err
+	}
 	app.SetEmitter(events.EmitterFunc(func(name string, data ...interface{}) {
 		if len(data) > 0 {
 			srv.EmitEvent(name, data[0])
@@ -54,8 +62,20 @@ func RunServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 		}
 	}))
 	app.startupServerMode(ctx)
+	readiness.markInitialized()
 	for _, listener := range app.getDisconnectListeners() {
 		srv.AddDisconnectListener(listener)
 	}
 	return srv.Run(ctx)
+}
+
+func serverOptionsForRuntime(mode RuntimeMode, port int, readiness server.ReadinessProvider) (server.Options, error) {
+	switch mode {
+	case RuntimeModeAccelerator:
+		return server.AcceleratorOptions(port, readiness, server.DenyProtectedRoutes), nil
+	case RuntimeModeDesktop, RuntimeModeServer:
+		return server.CompatibilityOptions(port, readiness), nil
+	default:
+		return server.Options{}, fmt.Errorf("%w: %q", ErrInvalidRuntimeMode, mode)
+	}
 }

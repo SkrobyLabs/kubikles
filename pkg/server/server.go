@@ -4,19 +4,18 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"kubikles/pkg/agent"
-	"kubikles/pkg/compressedassets"
-
 	"github.com/gorilla/websocket"
+	"kubikles/pkg/agent"
 )
 
 // wsClient wraps a WebSocket connection with a write mutex for thread-safe writes
@@ -45,17 +44,28 @@ type DisconnectListener interface {
 
 // Server handles HTTP and WebSocket connections for server mode
 type Server struct {
-	caller              MethodCaller
-	assets              embed.FS
-	port                int
-	clients             map[*wsClient]bool
-	clientsMu           sync.RWMutex
-	broadcast           chan Event
-	done                chan struct{} // closed when server is shutting down
-	upgrader            websocket.Upgrader
-	disconnectListeners []DisconnectListener
-	listenersMu         sync.RWMutex
-	clientCounter       uint64 // for generating unique client IDs
+	caller                MethodCaller
+	assets                embed.FS
+	options               Options
+	handler               http.Handler
+	httpServer            *http.Server
+	constructionErr       error
+	listenFunc            func() (net.Listener, error)
+	clients               map[*wsClient]bool
+	clientsMu             sync.RWMutex
+	broadcast             chan Event
+	done                  chan struct{} // closed when server is shutting down
+	upgrader              websocket.Upgrader
+	disconnectListeners   []DisconnectListener
+	listenersMu           sync.RWMutex
+	clientCounter         uint64 // for generating unique client IDs
+	broadcastOnce         sync.Once
+	quiesceOnce           sync.Once
+	closeOnce             sync.Once
+	closeErr              error
+	quiescing             atomic.Bool
+	ownedShutdown         atomic.Bool
+	afterWebSocketUpgrade func()
 }
 
 // Event represents a WebSocket event to send to clients
@@ -68,10 +78,36 @@ type Event struct {
 // New creates a new server instance.
 // The caller parameter implements MethodCaller for dispatching API calls.
 func New(caller MethodCaller, assets embed.FS, port int) *Server {
-	return &Server{
+	options := CompatibilityOptions(port, nil)
+	server, err := NewWithOptions(caller, assets, options)
+	if err == nil {
+		return server
+	}
+	server = newServer(caller, assets, options)
+	server.constructionErr = err
+	return server
+}
+
+// NewWithOptions validates and constructs a server with a prebuilt handler.
+func NewWithOptions(caller MethodCaller, assets embed.FS, options Options) (*Server, error) {
+	if err := validateOptions(options); err != nil {
+		return nil, err
+	}
+	server := newServer(caller, assets, options)
+	handler, err := server.buildHandler()
+	if err != nil {
+		return nil, err
+	}
+	server.handler = handler
+	server.httpServer.Handler = handler
+	return server, nil
+}
+
+func newServer(caller MethodCaller, assets embed.FS, options Options) *Server {
+	server := &Server{
 		caller:    caller,
 		assets:    assets,
-		port:      port,
+		options:   options,
 		clients:   make(map[*wsClient]bool),
 		broadcast: make(chan Event, 100),
 		done:      make(chan struct{}),
@@ -81,60 +117,112 @@ func New(caller MethodCaller, assets embed.FS, port int) *Server {
 			},
 		},
 	}
-}
-
-// Run starts the HTTP server
-func (s *Server) Run(ctx context.Context) error {
-	mux := http.NewServeMux()
-
-	// Serve WebSocket endpoint
-	mux.HandleFunc("/ws", s.handleWebSocket)
-
-	// Serve API endpoints
-	mux.HandleFunc("/api/", s.handleAPI)
-
-	// Serve static files from embedded assets (pre-compressed with gzip)
-	subFS, err := fs.Sub(s.assets, "frontend/dist")
-	if err != nil {
-		return fmt.Errorf("failed to create sub filesystem: %w", err)
-	}
-	fileServer := compressedassets.GzipAwareFileServer(subFS)
-	mux.Handle("/", fileServer)
-
-	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", s.port),
-		Handler:      mux,
+	server.httpServer = &http.Server{
+		Addr:         options.ListenAddress,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
+	return server
+}
 
-	// Start broadcast handler
-	go s.handleBroadcast()
+// Handler returns the server's prebuilt HTTP handler.
+func (s *Server) Handler() http.Handler { return s.handler }
 
-	// Start server in goroutine
-	go func() {
-		log.Printf("Server mode: listening on http://localhost:%d", s.port)
-		log.Printf("Open in your browser: http://localhost:%d", s.port)
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
-			log.Printf("HTTP server error: %v", err)
+// Listen creates the configured TCP listener.
+func (s *Server) Listen() (net.Listener, error) {
+	if s.constructionErr != nil {
+		return nil, s.constructionErr
+	}
+	if s.listenFunc != nil {
+		listener, err := s.listenFunc()
+		if err != nil {
+			return nil, fmt.Errorf("listen on %s: %w", s.options.ListenAddress, err)
 		}
-	}()
+		return listener, nil
+	}
+	listener, err := net.Listen("tcp", s.options.ListenAddress)
+	if err != nil {
+		return nil, fmt.Errorf("listen on %s: %w", s.options.ListenAddress, err)
+	}
+	return listener, nil
+}
 
-	// Wait for context cancellation
-	<-ctx.Done()
+// Serve serves an already-created listener and reports unexpected failures.
+func (s *Server) Serve(listener net.Listener) error {
+	if s.constructionErr != nil {
+		return s.constructionErr
+	}
+	s.broadcastOnce.Do(func() { go s.handleBroadcast() })
+	err := s.httpServer.Serve(listener)
+	if errors.Is(err, http.ErrServerClosed) && s.ownedShutdown.Load() {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("serve HTTP: %w", err)
+	}
+	return nil
+}
 
-	// Shutdown gracefully
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+// Quiesce immediately makes readiness and protected Accelerator routes unavailable.
+func (s *Server) Quiesce() {
+	s.quiesceOnce.Do(func() { s.quiescing.Store(true) })
+}
 
-	// Signal shutdown to prevent new events being queued
-	close(s.done)
+// Close gracefully shuts down the server. Concurrent calls share the first result.
+func (s *Server) Close(ctx context.Context) error {
+	s.closeOnce.Do(func() {
+		s.Quiesce()
+		s.ownedShutdown.Store(true)
+		close(s.done)
+		s.clientsMu.Lock()
+		clients := make([]*wsClient, 0, len(s.clients))
+		for client := range s.clients {
+			clients = append(clients, client)
+			delete(s.clients, client)
+		}
+		s.clientsMu.Unlock()
+		for _, client := range clients {
+			_ = client.Close()
+		}
+		if s.httpServer != nil {
+			if err := s.httpServer.Shutdown(ctx); err != nil {
+				s.closeErr = fmt.Errorf("shutdown HTTP server: %w", err)
+			}
+		}
+	})
+	return s.closeErr
+}
 
-	// Close broadcast channel to stop the handleBroadcast goroutine
-	close(s.broadcast)
+// Run listens, serves, and gracefully shuts down on context cancellation.
+func (s *Server) Run(ctx context.Context) error {
+	listener, err := s.Listen()
+	if err != nil {
+		return err
+	}
+	log.Printf("Server mode: listening on http://%s", listener.Addr())
+	serveResult := make(chan error, 1)
+	go func() { serveResult <- s.Serve(listener) }()
 
-	return server.Shutdown(shutdownCtx)
+	select {
+	case serveErr := <-serveResult:
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		closeErr := s.Close(shutdownCtx)
+		if serveErr != nil {
+			return serveErr
+		}
+		return closeErr
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		closeErr := s.Close(shutdownCtx)
+		cancel()
+		serveErr := <-serveResult
+		if closeErr != nil {
+			return closeErr
+		}
+		return serveErr
+	}
 }
 
 // EmitEvent sends an event to all connected WebSocket clients
@@ -167,26 +255,43 @@ func (s *Server) notifyDisconnect(clientID string) {
 }
 
 func (s *Server) handleBroadcast() {
-	for event := range s.broadcast {
-		// Collect failed clients while holding read lock
-		var failed []*wsClient
+	for {
+		var event Event
+		select {
+		case <-s.done:
+			return
+		case event = <-s.broadcast:
+		}
+		// Snapshot clients before writing so a stalled WebSocket cannot block shutdown.
 		s.clientsMu.RLock()
+		clients := make([]*wsClient, 0, len(s.clients))
 		for client := range s.clients {
+			clients = append(clients, client)
+		}
+		s.clientsMu.RUnlock()
+
+		var failed []*wsClient
+		for _, client := range clients {
 			if err := client.WriteJSON(event); err != nil {
 				log.Printf("WebSocket write error: %v", err)
 				failed = append(failed, client)
 			}
 		}
-		s.clientsMu.RUnlock()
 
-		// Remove failed clients with write lock
+		// Remove failed clients under the write lock, but close their sockets afterwards.
 		if len(failed) > 0 {
 			s.clientsMu.Lock()
+			toClose := make([]*wsClient, 0, len(failed))
 			for _, client := range failed {
-				client.Close()
-				delete(s.clients, client)
+				if s.clients[client] {
+					delete(s.clients, client)
+					toClose = append(toClose, client)
+				}
 			}
 			s.clientsMu.Unlock()
+			for _, client := range toClose {
+				_ = client.Close()
+			}
 		}
 	}
 }
@@ -197,6 +302,9 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		log.Printf("WebSocket upgrade error: %v", err)
 		return
 	}
+	if s.afterWebSocketUpgrade != nil {
+		s.afterWebSocketUpgrade()
+	}
 
 	// Generate unique client ID
 	clientNum := atomic.AddUint64(&s.clientCounter, 1)
@@ -205,10 +313,18 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	client := &wsClient{id: clientID, conn: conn}
 
 	s.clientsMu.Lock()
+	select {
+	case <-s.done:
+		s.clientsMu.Unlock()
+		_ = client.Close()
+		return
+	default:
+	}
 	s.clients[client] = true
+	clientCount := len(s.clients)
 	s.clientsMu.Unlock()
 
-	log.Printf("WebSocket client %s connected (total: %d)", clientID, len(s.clients))
+	log.Printf("WebSocket client %s connected (total: %d)", clientID, clientCount)
 
 	// Send initial connection event with client ID
 	_ = client.WriteJSON(Event{Type: "event", Name: "connected", Data: map[string]interface{}{
@@ -311,7 +427,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) writeError(w http.ResponseWriter, status int, message string) {
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = writeJSON(w, map[string]interface{}{
 		"error": message,
 	})
 }
