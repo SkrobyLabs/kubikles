@@ -80,6 +80,7 @@ type Options struct {
 	ProtectedRouteGuard     ProtectedRouteGuard
 	AcceleratorInfoProvider AcceleratorInfoProvider
 	MethodAuthorizer        MethodAuthorizer
+	BrowserSessions         *BrowserSessionManager
 }
 
 // CompatibilityOptions preserves the ordinary server wildcard bind and HTTP surface.

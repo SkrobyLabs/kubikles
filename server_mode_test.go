@@ -247,7 +247,7 @@ func TestAcceleratorCreatorProtectionStartup(t *testing.T) {
 	defer cancel()
 	callerDeadline, _ := callerCtx.Deadline()
 	before := time.Now()
-	protection, err := newAcceleratorHTTPProtectionWithDependencies(callerCtx, &App{}, creator, "accel-public", newResolverFactory)
+	protection, err := newAcceleratorHTTPProtectionWithDependencies(callerCtx, &App{}, creator, "accel-public", newResolverFactory, server.NewBrowserSessionManager)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +286,7 @@ func TestAcceleratorCreatorProtectionStartup(t *testing.T) {
 	}}}}
 	denied, err := newAcceleratorHTTPProtectionWithDependencies(context.Background(), &App{}, creator, "accel-denied", func(*k8s.Client) agent.CapabilityResolverFactory {
 		return func() agent.CapabilityResolver { return deniedResolver }
-	})
+	}, server.NewBrowserSessionManager)
 	if err != nil {
 		t.Fatalf("denied capability value failed startup: %v", err)
 	}
@@ -341,6 +341,119 @@ func TestRunServerWithOptionsInstallsAcceleratorProtectionBeforeConstruction(t *
 	captured.handler(t).ServeHTTP(response, request)
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("constructed accelerator info route status = %d, want 401", response.Code)
+	}
+}
+
+func TestAcceleratorBrowserSessionComposition(t *testing.T) {
+	client, err := k8s.NewClientForRESTConfig(&rest.Config{Host: "http://127.0.0.1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	creator, err := server.NewCreatorAuthenticator(testCreatorVerifier(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	captured := &capturedServerModeServer{}
+	dependencies := productionServerModeDependencies()
+	dependencies.lookupEnv = func(string) string { return "creator identity seam" }
+	dependencies.newCreatorIdentity = func(string) (*server.CreatorAuthenticator, string, error) {
+		return creator, "accel-browser-composition", nil
+	}
+	dependencies.capabilityResolverFactory = func(*k8s.Client) agent.CapabilityResolverFactory { return nil }
+	var factoryCalls int
+	var composed *server.BrowserSessionManager
+	dependencies.newBrowserSessions = func(revoker server.BrowserSessionRevoker) *server.BrowserSessionManager {
+		factoryCalls++
+		if _, ok := revoker.(server.NoopBrowserSessionRevoker); !ok {
+			t.Fatalf("production revoker = %T, want NoopBrowserSessionRevoker", revoker)
+		}
+		composed = server.NewBrowserSessionManager(revoker)
+		return composed
+	}
+	dependencies.newServer = captured.newServer
+	if err := runServerWithOptions(context.Background(), assets, 0, "accelerator", AppOptions{
+		Mode: RuntimeModeAccelerator, KubernetesClientFactory: func() (*k8s.Client, error) { return client, nil },
+	}, dependencies); err != nil {
+		t.Fatal(err)
+	}
+	options := captured.option(t)
+	if factoryCalls != 1 || composed == nil || options.BrowserSessions != composed || options.ProtectedRouteGuard == nil || options.BoundaryMode != server.BoundaryModeAccelerator {
+		t.Fatalf("composition factory/manager/options = %d/%p/%p/%#v", factoryCalls, composed, options.BrowserSessions, options)
+	}
+	handler := captured.handler(t)
+	request := func(method, target, authorization, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, target, strings.NewReader(body))
+		r.Host = "localhost"
+		if authorization != "" {
+			r.Header.Set("Authorization", authorization)
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		return w
+	}
+	creatorAuthorization := "Bearer AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	mint := request(http.MethodPost, "/api/accelerator-browser-ticket", creatorAuthorization, "")
+	if mint.Code != http.StatusCreated {
+		t.Fatalf("mint = %d %q", mint.Code, mint.Body.String())
+	}
+	var minted struct {
+		Ticket string `json:"ticket"`
+	}
+	if err := json.Unmarshal(mint.Body.Bytes(), &minted); err != nil || len(minted.Ticket) != 43 {
+		t.Fatalf("mint body = %q, err=%v", mint.Body.String(), err)
+	}
+	exchange := request(http.MethodPost, "/api/accelerator-browser-session", "", `{"ticket":"`+minted.Ticket+`"}`)
+	if exchange.Code != http.StatusOK {
+		t.Fatalf("exchange = %d %q", exchange.Code, exchange.Body.String())
+	}
+	var exchanged struct {
+		Bearer string `json:"bearer"`
+	}
+	if err := json.Unmarshal(exchange.Body.Bytes(), &exchanged); err != nil || len(exchanged.Bearer) != 43 {
+		t.Fatalf("exchange body = %q, err=%v", exchange.Body.String(), err)
+	}
+	browserAuthorization := "Bearer " + exchanged.Bearer
+	if info := request(http.MethodGet, "/api/accelerator-info", browserAuthorization, ""); info.Code != http.StatusOK || !strings.Contains(info.Body.String(), `"instanceId":"accel-browser-composition"`) {
+		t.Fatalf("browser info = %d %q", info.Code, info.Body.String())
+	}
+	if denied := request(http.MethodPost, "/api/accelerator-browser-ticket", browserAuthorization, ""); denied.Code != http.StatusForbidden {
+		t.Fatalf("browser mint = %d %q", denied.Code, denied.Body.String())
+	}
+	if revoked := request(http.MethodPost, "/api/accelerator-browser-session/revoke", creatorAuthorization, ""); revoked.Code != http.StatusNoContent {
+		t.Fatalf("creator revoke = %d %q", revoked.Code, revoked.Body.String())
+	}
+	if expired := request(http.MethodGet, "/api/accelerator-info", browserAuthorization, ""); expired.Code != http.StatusUnauthorized {
+		t.Fatalf("revoked browser info = %d %q", expired.Code, expired.Body.String())
+	}
+
+	for _, mode := range []RuntimeMode{RuntimeModeDesktop, RuntimeModeServer} {
+		t.Run(string(mode)+" constructs zero managers", func(t *testing.T) {
+			ordinaryCapture := &capturedServerModeServer{}
+			ordinaryDependencies := productionServerModeDependencies()
+			ordinaryFactoryCalls := 0
+			ordinaryDependencies.newBrowserSessions = func(server.BrowserSessionRevoker) *server.BrowserSessionManager {
+				ordinaryFactoryCalls++
+				return server.NewBrowserSessionManager(server.NoopBrowserSessionRevoker{})
+			}
+			ordinaryDependencies.newServer = ordinaryCapture.newServer
+			if err := runServerWithOptions(context.Background(), assets, 0, "ordinary", AppOptions{
+				Mode: mode, KubernetesClientFactory: func() (*k8s.Client, error) { return nil, errors.New("ordinary client unavailable") },
+			}, ordinaryDependencies); err != nil {
+				t.Fatal(err)
+			}
+			ordinaryOptions := ordinaryCapture.option(t)
+			if ordinaryFactoryCalls != 0 || ordinaryOptions.BrowserSessions != nil || ordinaryOptions.ProtectedRouteGuard != nil {
+				t.Fatalf("ordinary factory/options = %d/%#v", ordinaryFactoryCalls, ordinaryOptions)
+			}
+			for _, target := range []string{"/api/accelerator-browser-ticket", "/api/accelerator-browser-session", "/api/accelerator-browser-session/revoke"} {
+				r := httptest.NewRequest(http.MethodPost, target, nil)
+				w := httptest.NewRecorder()
+				ordinaryCapture.handler(t).ServeHTTP(w, r)
+				if w.Code != http.StatusNotFound {
+					t.Fatalf("ordinary route %s = %d, want 404", target, w.Code)
+				}
+			}
+		})
 	}
 }
 
@@ -435,7 +548,7 @@ func TestAcceleratorInfoBuildIdentityIsReportingOnly(t *testing.T) {
 	resolver := &recordingCapabilityResolver{}
 	protection, err := newAcceleratorHTTPProtectionWithDependencies(context.Background(), &App{}, creator, "accel-reporting", func(*k8s.Client) agent.CapabilityResolverFactory {
 		return func() agent.CapabilityResolver { return resolver }
-	})
+	}, server.NewBrowserSessionManager)
 	if err != nil {
 		t.Fatal(err)
 	}

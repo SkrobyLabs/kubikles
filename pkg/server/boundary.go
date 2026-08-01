@@ -52,6 +52,10 @@ func (s *Server) acceleratorHandler(static http.Handler) http.Handler {
 	if hasAcceleratorInfoProvider(s.options.AcceleratorInfoProvider) {
 		protected.HandleFunc("GET /api/accelerator-info", s.handleAcceleratorInfo)
 	}
+	if s.options.BrowserSessions != nil {
+		protected.Handle("POST /api/accelerator-browser-ticket", requireCreator(http.HandlerFunc(s.handleMintBrowserTicket)))
+		protected.Handle("POST /api/accelerator-browser-session/revoke", requireCreator(http.HandlerFunc(s.handleRevokeBrowserSession)))
+	}
 	canonical := s.options.ProtectedRouteGuard(protected)
 	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !exactRequestPath(r, r.URL.Path) {
@@ -74,6 +78,36 @@ func (s *Server) acceleratorHandler(static http.Handler) http.Handler {
 			}
 			if r.Method != wantMethod {
 				w.Header().Set("Allow", wantMethod)
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			if s.quiescing.Load() {
+				s.writeError(w, http.StatusServiceUnavailable, "unavailable")
+				return
+			}
+			canonical.ServeHTTP(w, r)
+		case "/api/accelerator-browser-session":
+			if s.options.BrowserSessions == nil {
+				http.NotFound(w, r)
+				return
+			}
+			if r.Method != http.MethodPost {
+				w.Header().Set("Allow", http.MethodPost)
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			if s.quiescing.Load() {
+				s.writeError(w, http.StatusServiceUnavailable, "unavailable")
+				return
+			}
+			s.handleExchangeBrowserSession(w, r)
+		case "/api/accelerator-browser-ticket", "/api/accelerator-browser-session/revoke":
+			if s.options.BrowserSessions == nil {
+				http.NotFound(w, r)
+				return
+			}
+			if r.Method != http.MethodPost {
+				w.Header().Set("Allow", http.MethodPost)
 				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 				return
 			}

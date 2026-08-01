@@ -330,6 +330,32 @@ func TestCreatorAuthenticatorInjectsStableTrustedContext(t *testing.T) {
 	}
 }
 
+func TestCreatorGuardMarksCreatorCredentialKind(t *testing.T) {
+	token, err := ParseCreatorToken(creatorTestToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth, err := newCreatorAuthenticator(DeriveCreatorVerifier(token).Encoded(), bytes.NewReader(bytes.Repeat([]byte{0x91}, 32)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/call?PrincipalID=forged&SessionID=forged", strings.NewReader(`{"PrincipalID":"forged","SessionID":"forged"}`))
+	request.Header.Set("Authorization", "Bearer "+creatorTestToken)
+	request.Header.Set("X-Credential-Kind", "browser")
+	request = request.WithContext(authenticatedContext(request.Context(), agent.AuthenticatedCallContext{PrincipalID: "forged", SessionID: "forged"}, credentialKindBrowser))
+	response := httptest.NewRecorder()
+	auth.Guard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		call, ok := authenticatedCreatorContext(r.Context())
+		if !ok || call != auth.context || authenticatedCredentialKind(r.Context()) != credentialKindCreator {
+			t.Fatalf("trusted creator context/kind = %#v/%v/%v", call, authenticatedCredentialKind(r.Context()), ok)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})).ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("status = %d body=%q", response.Code, response.Body.String())
+	}
+}
+
 type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) { return 0, errors.New("entropy source detail") }

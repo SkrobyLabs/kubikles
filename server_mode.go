@@ -48,6 +48,7 @@ func RunServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 type serverModeDependencies struct {
 	lookupEnv                 func(string) string
 	newCreatorIdentity        func(string) (*server.CreatorAuthenticator, string, error)
+	newBrowserSessions        func(server.BrowserSessionRevoker) *server.BrowserSessionManager
 	capabilityResolverFactory func(*k8s.Client) agent.CapabilityResolverFactory
 	newServer                 func(server.MethodCaller, embed.FS, server.Options) (serverModeServer, error)
 }
@@ -72,6 +73,7 @@ func productionServerModeDependencies() serverModeDependencies {
 			}
 			return creator, instanceID, nil
 		},
+		newBrowserSessions:        server.NewBrowserSessionManager,
 		capabilityResolverFactory: k8s.NewSecretCapabilityResolverFactory,
 		newServer: func(caller server.MethodCaller, assets embed.FS, options server.Options) (serverModeServer, error) {
 			return server.NewWithOptions(caller, assets, options)
@@ -112,7 +114,7 @@ func runServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 		return err
 	}
 	if options.Mode == RuntimeModeAccelerator {
-		protection, err := newAcceleratorHTTPProtectionWithDependencies(ctx, app, identity.creator, identity.instanceID, dependencies.capabilityResolverFactory)
+		protection, err := newAcceleratorHTTPProtectionWithDependencies(ctx, app, identity.creator, identity.instanceID, dependencies.capabilityResolverFactory, dependencies.newBrowserSessions)
 		if err != nil {
 			return err
 		}
@@ -148,16 +150,17 @@ func runServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 }
 
 type acceleratorHTTPProtection struct {
-	Guard      server.ProtectedRouteGuard
-	Info       server.AcceleratorInfoProvider
-	Authorizer server.MethodAuthorizer
+	Guard           server.ProtectedRouteGuard
+	Info            server.AcceleratorInfoProvider
+	Authorizer      server.MethodAuthorizer
+	BrowserSessions *server.BrowserSessionManager
 }
 
 func newAcceleratorHTTPProtection(ctx context.Context, app *App, creator *server.CreatorAuthenticator, instanceID string) (acceleratorHTTPProtection, error) {
-	return newAcceleratorHTTPProtectionWithDependencies(ctx, app, creator, instanceID, k8s.NewSecretCapabilityResolverFactory)
+	return newAcceleratorHTTPProtectionWithDependencies(ctx, app, creator, instanceID, k8s.NewSecretCapabilityResolverFactory, server.NewBrowserSessionManager)
 }
 
-func newAcceleratorHTTPProtectionWithDependencies(ctx context.Context, app *App, creator *server.CreatorAuthenticator, instanceID string, newResolverFactory func(*k8s.Client) agent.CapabilityResolverFactory) (acceleratorHTTPProtection, error) {
+func newAcceleratorHTTPProtectionWithDependencies(ctx context.Context, app *App, creator *server.CreatorAuthenticator, instanceID string, newResolverFactory func(*k8s.Client) agent.CapabilityResolverFactory, newBrowserSessions func(server.BrowserSessionRevoker) *server.BrowserSessionManager) (acceleratorHTTPProtection, error) {
 	if creator == nil || instanceID == "" {
 		return acceleratorHTTPProtection{}, server.ErrInvalidCreatorVerifier
 	}
@@ -171,13 +174,18 @@ func newAcceleratorHTTPProtectionWithDependencies(ctx context.Context, app *App,
 		}
 	}
 	build := agent.BuildIdentity{BuildVersion: BuildVersion, Commit: GitCommit, Dirty: GitDirty == "true"}
-	return acceleratorHTTPProtection{Guard: creator.Guard, Info: server.NewAuthenticatedAcceleratorInfo(build, instanceID, resolution), Authorizer: server.NewAcceleratorMethodAuthorizer(resolution)}, nil
+	if newBrowserSessions == nil {
+		newBrowserSessions = server.NewBrowserSessionManager
+	}
+	sessions := newBrowserSessions(server.NoopBrowserSessionRevoker{})
+	return acceleratorHTTPProtection{Guard: server.CreatorOrBrowserGuard(creator, sessions), Info: server.NewAuthenticatedAcceleratorInfo(build, instanceID, resolution), Authorizer: server.NewAcceleratorMethodAuthorizer(resolution), BrowserSessions: sessions}, nil
 }
 
 func installAcceleratorHTTPProtection(options *server.Options, protection acceleratorHTTPProtection) {
 	options.ProtectedRouteGuard = protection.Guard
 	options.AcceleratorInfoProvider = protection.Info
 	options.MethodAuthorizer = protection.Authorizer
+	options.BrowserSessions = protection.BrowserSessions
 }
 
 func serverOptionsForRuntime(mode RuntimeMode, port int, readiness server.ReadinessProvider) (server.Options, error) {

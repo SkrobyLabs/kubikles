@@ -636,6 +636,148 @@ func TestDenyProtectedRoutesNoStore(t *testing.T) {
 	assertUnauthorizedResponse(t, response)
 }
 
+func TestBrowserProtectedSurface(t *testing.T) {
+	start := time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC)
+	clock := &testClock{now: start}
+	entropy := make([]byte, 4096)
+	for i := range entropy {
+		entropy[i] = byte(i)
+	}
+	sessions := newBrowserSessionManager(clock.Now, bytes.NewReader(entropy), NoopBrowserSessionRevoker{})
+	creatorToken, err := ParseCreatorToken(creatorTestToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	creator, err := newCreatorAuthenticator(DeriveCreatorVerifier(creatorToken).Encoded(), bytes.NewReader(bytes.Repeat([]byte{0x61}, 32)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ticket, _, err := sessions.Mint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	bearer, _, err := sessions.Exchange(ticket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	browserCall, ok := sessions.Authenticate(bearer)
+	if !ok {
+		t.Fatal("browser bearer did not authenticate")
+	}
+	caller := &recordingMethodCaller{}
+	options := AcceleratorOptions(0, nil, CreatorOrBrowserGuard(creator, sessions))
+	options.BrowserSessions = sessions
+	options.AcceleratorInfoProvider = NewAuthenticatedAcceleratorInfo(agent.BuildIdentity{BuildVersion: "test"}, "accel-browser-surface", agent.CapabilityResolution{Capabilities: []agent.Capability{agent.CapabilitySecretsList}})
+	options.MethodAuthorizer = NewAcceleratorMethodAuthorizer(agent.CapabilityResolution{Capabilities: []agent.Capability{agent.CapabilitySecretsList}})
+	srv, err := NewWithOptions(caller, embed.FS{}, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := func(method, target, authorization, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, target, strings.NewReader(body))
+		r.Host = "localhost"
+		if authorization != "" {
+			r.Header.Set("Authorization", authorization)
+		}
+		w := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(w, r)
+		return w
+	}
+	browserAuth := "Bearer " + bearer.encoded()
+	creatorAuth := "Bearer " + creatorTestToken
+
+	clock.Set(start.Add(14 * time.Minute))
+	info := request(http.MethodGet, "/api/accelerator-info", browserAuth, "")
+	if info.Code != http.StatusOK || !strings.Contains(info.Body.String(), `"runtime":"accelerator"`) || info.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("browser info = %d %q %#v", info.Code, info.Body.String(), info.Header())
+	}
+	sessions.state.mu.Lock()
+	if !sessions.state.session.lastActivity.Equal(clock.Now()) {
+		t.Fatalf("info did not touch: %v", sessions.state.session.lastActivity)
+	}
+	sessions.state.mu.Unlock()
+
+	clock.Set(start.Add(20 * time.Minute))
+	allowed := request(http.MethodPost, "/api/call", browserAuth, `{"method":"ListSecretsMetadata","args":[{"PrincipalID":"forged","SessionID":"forged"}]}`)
+	if allowed.Code != http.StatusOK || !strings.Contains(allowed.Body.String(), `"data":"ok"`) || caller.context != browserCall {
+		t.Fatalf("allowed RPC = %d %q context=%#v want=%#v", allowed.Code, allowed.Body.String(), caller.context, browserCall)
+	}
+	allowedCalls := caller.callCount()
+	for _, method := range []string{"GetSecretData", "UpdateSecretData", "DeleteSecret", "CreateSecret", "SubscribeSecretWatcher", "UnsubscribeSecretWatcher", "GetPods", "DistinctiveUnknownMethod"} {
+		w := request(http.MethodPost, "/api/call", browserAuth, `{"method":"`+method+`","args":[{"PrincipalID":"forged","SessionID":"forged"}]}`)
+		if w.Code != http.StatusForbidden || w.Body.String() != "{\"error\":\"forbidden\"}\n" {
+			t.Fatalf("denied %s = %d %q", method, w.Code, w.Body.String())
+		}
+	}
+	if caller.callCount() != allowedCalls {
+		t.Fatalf("denied RPC dispatched: before=%d after=%d", allowedCalls, caller.callCount())
+	}
+
+	sessions.state.mu.Lock()
+	lastSuccess := sessions.state.session.lastActivity
+	sessions.state.mu.Unlock()
+	clock.Set(start.Add(21 * time.Minute))
+	for _, target := range []string{"/livez", "/readyz", "/", "/missing-static"} {
+		_ = request(http.MethodGet, target, browserAuth, "")
+	}
+	sessions.state.mu.Lock()
+	if !sessions.state.session.lastActivity.Equal(lastSuccess) {
+		t.Fatalf("health/static touched activity: before=%v after=%v", lastSuccess, sessions.state.session.lastActivity)
+	}
+	sessions.state.mu.Unlock()
+
+	for _, target := range []string{"/api/accelerator-browser-ticket", "/api/accelerator-browser-session/revoke"} {
+		w := request(http.MethodPost, target, browserAuth, "")
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("browser creator route %s = %d %q", target, w.Code, w.Body.String())
+		}
+	}
+	for _, target := range []string{"/api/accelerator-browser-ticket/", "/api/accelerator-browser-session/", "/api/accelerator-browser-session/revoke/", "/api/browser-ticket", "/api/login", "/ticket"} {
+		if w := request(http.MethodPost, target, browserAuth, ""); w.Code != http.StatusNotFound {
+			t.Fatalf("alternate route %s = %d", target, w.Code)
+		}
+	}
+
+	creatorInfo := request(http.MethodGet, "/api/accelerator-info", creatorAuth, "")
+	creatorRPC := request(http.MethodPost, "/api/call", creatorAuth, `{"method":"ListSecretsMetadata"}`)
+	if creatorInfo.Code != http.StatusOK || creatorRPC.Code != http.StatusOK || caller.context != creator.context {
+		t.Fatalf("creator regression info/RPC/context = %d/%d/%#v", creatorInfo.Code, creatorRPC.Code, caller.context)
+	}
+}
+
+func TestBrowserRoutesRemainInsideAcceleratorOuterBoundary(t *testing.T) {
+	f := newBrowserHTTPFixture(t, NoopBrowserSessionRevoker{})
+	ticket := f.mintDirect(t)
+	body := `{"ticket":"` + ticket.encoded() + `"}`
+	for _, test := range []struct {
+		name   string
+		host   string
+		origin string
+		want   int
+	}{
+		{name: "foreign host", host: "example.com", want: http.StatusBadRequest},
+		{name: "foreign origin", host: "localhost", origin: "http://example.com", want: http.StatusForbidden},
+		{name: "mismatched loopback origin", host: "localhost", origin: "http://127.0.0.1", want: http.StatusForbidden},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodPost, "/api/accelerator-browser-session", strings.NewReader(body))
+			r.Host = test.host
+			if test.origin != "" {
+				r.Header.Set("Origin", test.origin)
+			}
+			w := httptest.NewRecorder()
+			f.handler.ServeHTTP(w, r)
+			if w.Code != test.want {
+				t.Fatalf("response = %d %q", w.Code, w.Body.String())
+			}
+		})
+	}
+	good := f.request(http.MethodPost, "/api/accelerator-browser-session", "", strings.NewReader(body))
+	if good.Code != http.StatusOK {
+		t.Fatalf("outer boundary failure consumed ticket: %d %q", good.Code, good.Body.String())
+	}
+}
+
 func assertAcceleratorErrorResponse(t *testing.T, response *httptest.ResponseRecorder, status int, message string) {
 	t.Helper()
 	wantBody := "{\"error\":\"" + message + "\"}\n"

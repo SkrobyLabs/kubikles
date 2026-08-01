@@ -65,10 +65,25 @@ func (v CreatorVerifier) Matches(token CreatorToken) bool {
 }
 
 type creatorContextKey struct{}
+type credentialKindContextKey struct{}
+type credentialKind uint8
+
+const (
+	credentialKindCreator credentialKind = iota + 1
+	credentialKindBrowser
+)
 
 func authenticatedCreatorContext(ctx context.Context) (agent.AuthenticatedCallContext, bool) {
 	value, ok := ctx.Value(creatorContextKey{}).(agent.AuthenticatedCallContext)
 	return value, ok && value.IsAuthenticated()
+}
+func authenticatedContext(ctx context.Context, call agent.AuthenticatedCallContext, kind credentialKind) context.Context {
+	ctx = context.WithValue(ctx, creatorContextKey{}, call)
+	return context.WithValue(ctx, credentialKindContextKey{}, kind)
+}
+func authenticatedCredentialKind(ctx context.Context) credentialKind {
+	kind, _ := ctx.Value(credentialKindContextKey{}).(credentialKind)
+	return kind
 }
 
 type CreatorAuthenticator struct {
@@ -111,18 +126,26 @@ func NewAcceleratorInstanceID() (string, error) { return newAcceleratorInstanceI
 
 func (a *CreatorAuthenticator) Guard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if a == nil || !a.authenticate(r) {
+		credential, ok := strictBearer(r)
+		if !ok || a == nil || !a.matchesBearer(credential) {
 			writeAcceleratorError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), creatorContextKey{}, a.context)))
+		next.ServeHTTP(w, r.WithContext(authenticatedContext(r.Context(), a.context, credentialKindCreator)))
 	})
 }
 func (a *CreatorAuthenticator) authenticate(r *http.Request) bool {
+	credential, ok := strictBearer(r)
+	return ok && a.matchesBearer(credential)
+}
+func strictBearer(r *http.Request) (string, bool) {
 	values := r.Header.Values("Authorization")
 	if len(values) != 1 || !strings.HasPrefix(values[0], "Bearer ") || strings.Count(values[0], " ") != 1 {
-		return false
+		return "", false
 	}
-	token, err := ParseCreatorToken(strings.TrimPrefix(values[0], "Bearer "))
+	return strings.TrimPrefix(values[0], "Bearer "), true
+}
+func (a *CreatorAuthenticator) matchesBearer(credential string) bool {
+	token, err := ParseCreatorToken(credential)
 	return err == nil && a.verifier.Matches(token)
 }
