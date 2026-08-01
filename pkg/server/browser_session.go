@@ -270,6 +270,19 @@ func (m *BrowserSessionManager) Touch(id agent.SessionID) {
 	}
 }
 func (m *BrowserSessionManager) Revoke(ctx context.Context) {
+	m.clear(ctx)
+}
+
+// RevokeAll clears the outstanding ticket and active browser session, waiting
+// for the registry revocation after the state has been made unavailable.
+func (m *BrowserSessionManager) RevokeAll(ctx context.Context) {
+	m.clear(ctx)
+}
+
+func (m *BrowserSessionManager) clear(ctx context.Context) {
+	if m == nil {
+		return
+	}
 	m.state.mu.Lock()
 	old := m.state.session
 	m.state.session = nil

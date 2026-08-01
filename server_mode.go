@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"embed"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -48,15 +49,16 @@ func RunServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 }
 
 type serverModeDependencies struct {
-	lookupEnv                 func(string) string
-	newCreatorIdentity        func(string) (*server.CreatorAuthenticator, string, error)
-	acceleratorObserver       server.AcceleratorSessionObserver
-	browserSessionNow         func() time.Time
-	browserSessionEntropy     io.Reader
-	newAcceleratorSessions    func(string, server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry
-	newBrowserSessions        func(func() time.Time, io.Reader, server.BrowserSessionRevoker) *server.BrowserSessionManager
-	capabilityResolverFactory func(*k8s.Client) agent.CapabilityResolverFactory
-	newServer                 func(server.MethodCaller, embed.FS, server.Options) (serverModeServer, error)
+	lookupEnv                     func(string) string
+	newCreatorIdentity            func(string) (*server.CreatorAuthenticator, string, error)
+	acceleratorObserver           server.AcceleratorSessionObserver
+	browserSessionNow             func() time.Time
+	browserSessionEntropy         io.Reader
+	newAcceleratorSessions        func(string, server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry
+	newBrowserSessions            func(func() time.Time, io.Reader, server.BrowserSessionRevoker) *server.BrowserSessionManager
+	capabilityResolverFactory     func(*k8s.Client) agent.CapabilityResolverFactory
+	newServer                     func(server.MethodCaller, embed.FS, server.Options) (serverModeServer, error)
+	newAcceleratorIdleCoordinator func(agent.DisposableIdleLifecycle, context.Context, func()) acceleratorIdleCoordinator
 }
 
 type serverModeServer interface {
@@ -64,6 +66,20 @@ type serverModeServer interface {
 	AddDisconnectListener(server.DisconnectListener)
 	Run(context.Context) error
 }
+
+type acceleratorServerModeServer interface {
+	serverModeServer
+	RunWithReady(context.Context, func()) error
+	Quiesce()
+}
+
+type acceleratorIdleCoordinator interface {
+	server.AcceleratorSessionObserver
+	MarkReady()
+	Shutdown()
+}
+
+var errAcceleratorIdleServerUnsupported = errors.New("accelerator server does not support disposable idle lifecycle")
 
 func productionServerModeDependencies() serverModeDependencies {
 	return serverModeDependencies{
@@ -87,6 +103,9 @@ func productionServerModeDependencies() serverModeDependencies {
 		capabilityResolverFactory: k8s.NewSecretCapabilityResolverFactory,
 		newServer: func(caller server.MethodCaller, assets embed.FS, options server.Options) (serverModeServer, error) {
 			return server.NewWithOptions(caller, assets, options)
+		},
+		newAcceleratorIdleCoordinator: func(lifecycle agent.DisposableIdleLifecycle, ctx context.Context, report func()) acceleratorIdleCoordinator {
+			return server.NewAcceleratorIdleCoordinator(lifecycle, ctx, report)
 		},
 	}
 }
@@ -123,11 +142,35 @@ func runServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 	if err != nil {
 		return err
 	}
+	var idle acceleratorIdleCoordinator
+	var idleLifecycle *acceleratorDisposableLifecycle
+	var idleProtection acceleratorHTTPProtection
+	runCtx := ctx
+	var requestExit context.CancelFunc
 	if options.Mode == RuntimeModeAccelerator {
-		protection, err := newAcceleratorHTTPProtectionWithDependencies(ctx, app, identity.creator, identity.instanceID, dependencies)
+		runCtx, requestExit = context.WithCancel(ctx)
+		defer requestExit()
+		idleLifecycle = &acceleratorDisposableLifecycle{cancel: requestExit}
+		newIdle := dependencies.newAcceleratorIdleCoordinator
+		if newIdle == nil {
+			newIdle = func(lifecycle agent.DisposableIdleLifecycle, ctx context.Context, report func()) acceleratorIdleCoordinator {
+				return server.NewAcceleratorIdleCoordinator(lifecycle, ctx, report)
+			}
+		}
+		idle = newIdle(idleLifecycle, runCtx, reportAcceleratorIdleCleanupFailure)
+		if idle == nil {
+			return errAcceleratorIdleLifecycleUnbound
+		}
+		defer idle.Shutdown()
+		idleDependencies := dependencies
+		// The lifetime coordinator is unconditionally the sole registry observer.
+		// Direct protection construction retains its observer seam for component tests.
+		idleDependencies.acceleratorObserver = idle
+		protection, err := newAcceleratorHTTPProtectionWithDependencies(runCtx, app, identity.creator, identity.instanceID, idleDependencies)
 		if err != nil {
 			return err
 		}
+		idleProtection = protection
 		installAcceleratorHTTPProtection(&serverOptions, protection)
 	}
 	newServer := dependencies.newServer
@@ -144,6 +187,17 @@ func runServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 	if err != nil {
 		return err
 	}
+	var acceleratorSrv acceleratorServerModeServer
+	if options.Mode == RuntimeModeAccelerator {
+		var ok bool
+		acceleratorSrv, ok = srv.(acceleratorServerModeServer)
+		if !ok {
+			return errAcceleratorIdleServerUnsupported
+		}
+		if err := idleLifecycle.bind(acceleratorSrv, idleProtection.BrowserSessions, idleProtection.AcceleratorSessions, acceleratorSessionStateCleanerFunc(app.clearAcceleratorSessionState)); err != nil {
+			return err
+		}
+	}
 	app.SetEmitter(events.EmitterFunc(func(name string, data ...interface{}) {
 		if len(data) > 0 {
 			srv.EmitEvent(name, data[0])
@@ -151,12 +205,15 @@ func runServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 			srv.EmitEvent(name, nil)
 		}
 	}))
-	app.startupServerMode(ctx)
+	app.startupServerMode(runCtx)
 	readiness.markInitialized()
 	for _, listener := range app.getDisconnectListeners() {
 		srv.AddDisconnectListener(listener)
 	}
-	return srv.Run(ctx)
+	if options.Mode != RuntimeModeAccelerator {
+		return srv.Run(ctx)
+	}
+	return acceleratorSrv.RunWithReady(runCtx, idle.MarkReady)
 }
 
 type acceleratorHTTPProtection struct {

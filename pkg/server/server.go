@@ -206,6 +206,12 @@ func (s *Server) Close(ctx context.Context) error {
 
 // Run listens, serves, and gracefully shuts down on context cancellation.
 func (s *Server) Run(ctx context.Context) error {
+	return s.RunWithReady(ctx, nil)
+}
+
+// RunWithReady invokes onListening only after a listener exists and Serve has
+// been launched. It is the narrow startup seam used by disposable Accelerator.
+func (s *Server) RunWithReady(ctx context.Context, onListening func()) error {
 	listener, err := s.Listen()
 	if err != nil {
 		return err
@@ -213,6 +219,9 @@ func (s *Server) Run(ctx context.Context) error {
 	log.Printf("Server mode: listening on http://%s", listener.Addr())
 	serveResult := make(chan error, 1)
 	go func() { serveResult <- s.Serve(listener) }()
+	if onListening != nil {
+		onListening()
+	}
 
 	select {
 	case serveErr := <-serveResult:

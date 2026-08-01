@@ -113,6 +113,172 @@ func (s *capturedServerModeServer) caller(t *testing.T) server.MethodCaller {
 func (*capturedServerModeServer) EmitEvent(string, interface{})                   {}
 func (*capturedServerModeServer) AddDisconnectListener(server.DisconnectListener) {}
 func (*capturedServerModeServer) Run(context.Context) error                       { return nil }
+func (*capturedServerModeServer) RunWithReady(_ context.Context, ready func()) error {
+	if ready != nil {
+		ready()
+	}
+	return nil
+}
+func (*capturedServerModeServer) Quiesce() {}
+
+type recordingIdleCoordinator struct {
+	observer server.AcceleratorSessionObserver
+}
+
+func (c *recordingIdleCoordinator) SessionConnected(s server.AcceleratorSessionSnapshot) {
+	c.observer.SessionConnected(s)
+}
+func (c *recordingIdleCoordinator) SessionDisconnected(s server.AcceleratorSessionSnapshot) {
+	c.observer.SessionDisconnected(s)
+}
+func (c *recordingIdleCoordinator) SessionRevoked(s server.AcceleratorSessionSnapshot) {
+	c.observer.SessionRevoked(s)
+}
+func (*recordingIdleCoordinator) MarkReady() {}
+func (*recordingIdleCoordinator) Shutdown()  {}
+
+type expiringCompositionIdle struct {
+	mu                sync.Mutex
+	lifecycle         agent.DisposableIdleLifecycle
+	ctx               context.Context
+	reporter          func()
+	current           map[agent.SessionID]server.AcceleratorSocketGeneration
+	readySignal       chan struct{}
+	readyOnce         sync.Once
+	marks             int
+	shutdowns         int
+	boundAtReady      bool
+	ready             bool
+	pending           bool
+	expiring          bool
+	contextBeforeFire error
+	expireErr         error
+}
+
+func (c *expiringCompositionIdle) SessionConnected(snapshot server.AcceleratorSessionSnapshot) {
+	if snapshot.CallContext.SessionID == "" || snapshot.Generation == 0 {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.expiring {
+		return
+	}
+	if old := c.current[snapshot.CallContext.SessionID]; snapshot.Generation <= old {
+		return
+	}
+	c.current[snapshot.CallContext.SessionID] = snapshot.Generation
+	c.pending = false
+}
+func (c *expiringCompositionIdle) SessionDisconnected(snapshot server.AcceleratorSessionSnapshot) {
+	c.remove(snapshot)
+}
+func (c *expiringCompositionIdle) SessionRevoked(snapshot server.AcceleratorSessionSnapshot) {
+	c.remove(snapshot)
+}
+func (c *expiringCompositionIdle) remove(snapshot server.AcceleratorSessionSnapshot) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.expiring || c.current[snapshot.CallContext.SessionID] != snapshot.Generation {
+		return
+	}
+	delete(c.current, snapshot.CallContext.SessionID)
+	if c.ready && len(c.current) == 0 {
+		c.pending = true
+	}
+}
+func (c *expiringCompositionIdle) MarkReady() {
+	c.mu.Lock()
+	c.marks++
+	if lifecycle, ok := c.lifecycle.(*acceleratorDisposableLifecycle); ok {
+		lifecycle.mu.Lock()
+		c.boundAtReady = lifecycle.bound
+		lifecycle.mu.Unlock()
+	}
+	c.ready = true
+	c.pending = len(c.current) == 0
+	c.mu.Unlock()
+	c.readyOnce.Do(func() { close(c.readySignal) })
+}
+func (c *expiringCompositionIdle) Fire() bool {
+	c.mu.Lock()
+	if !c.ready || !c.pending || c.expiring {
+		c.mu.Unlock()
+		return false
+	}
+	c.expiring = true
+	c.pending = false
+	c.contextBeforeFire = c.ctx.Err()
+	c.mu.Unlock()
+	err := agent.ExpireDisposableIdle(c.ctx, c.lifecycle)
+	c.mu.Lock()
+	c.expireErr = err
+	c.mu.Unlock()
+	if err != nil && c.reporter != nil {
+		c.reporter()
+	}
+	return true
+}
+func (c *expiringCompositionIdle) Shutdown() {
+	c.mu.Lock()
+	c.shutdowns++
+	c.mu.Unlock()
+}
+
+type idleCompositionServer struct {
+	mu                sync.Mutex
+	options           server.Options
+	runCalls          int
+	runReadyCalls     int
+	quiesceCalls      int
+	readyBeforeRun    error
+	contextDone       bool
+	runStarted        chan struct{}
+	runContext        context.Context
+	quiesceContextErr error
+}
+
+func (*idleCompositionServer) EmitEvent(string, interface{})                   {}
+func (*idleCompositionServer) AddDisconnectListener(server.DisconnectListener) {}
+func (s *idleCompositionServer) Run(ctx context.Context) error {
+	s.mu.Lock()
+	s.runCalls++
+	s.mu.Unlock()
+	if s.runStarted != nil {
+		select {
+		case s.runStarted <- struct{}{}:
+		default:
+		}
+	}
+	<-ctx.Done()
+	s.mu.Lock()
+	s.contextDone = true
+	s.mu.Unlock()
+	return nil
+}
+func (s *idleCompositionServer) RunWithReady(ctx context.Context, ready func()) error {
+	s.mu.Lock()
+	s.runReadyCalls++
+	s.runContext = ctx
+	if s.options.ReadinessProvider != nil {
+		s.readyBeforeRun = s.options.ReadinessProvider.Ready(ctx)
+	}
+	s.mu.Unlock()
+	ready()
+	<-ctx.Done()
+	s.mu.Lock()
+	s.contextDone = true
+	s.mu.Unlock()
+	return nil
+}
+func (s *idleCompositionServer) Quiesce() {
+	s.mu.Lock()
+	s.quiesceCalls++
+	if s.runContext != nil {
+		s.quiesceContextErr = s.runContext.Err()
+	}
+	s.mu.Unlock()
+}
 
 func (s *capturedServerModeServer) option(t *testing.T) server.Options {
 	t.Helper()
@@ -399,6 +565,221 @@ func TestRunServerWithOptionsInstallsAcceleratorProtectionBeforeConstruction(t *
 	}
 }
 
+func TestAcceleratorIdleComposition(t *testing.T) {
+	client, err := k8s.NewClientForRESTConfig(&rest.Config{Host: "http://127.0.0.1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	creator, err := server.NewCreatorAuthenticator(testCreatorVerifier(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependencies := productionServerModeDependencies()
+	dependencies.lookupEnv = func(string) string { return "identity seam" }
+	dependencies.newCreatorIdentity = func(string) (*server.CreatorAuthenticator, string, error) {
+		return creator, "idle-composition", nil
+	}
+	dependencies.capabilityResolverFactory = func(*k8s.Client) agent.CapabilityResolverFactory { return nil }
+	compositionServer := &idleCompositionServer{}
+	dependencies.newServer = func(_ server.MethodCaller, _ embed.FS, options server.Options) (serverModeServer, error) {
+		compositionServer.options = options
+		return compositionServer, nil
+	}
+	var coordinator *expiringCompositionIdle
+	coordinatorConstructed := make(chan *expiringCompositionIdle, 1)
+	factoryCalls := 0
+	dependencies.newAcceleratorIdleCoordinator = func(lifecycle agent.DisposableIdleLifecycle, ctx context.Context, reporter func()) acceleratorIdleCoordinator {
+		factoryCalls++
+		created := &expiringCompositionIdle{
+			lifecycle: lifecycle, ctx: ctx, reporter: reporter,
+			current: make(map[agent.SessionID]server.AcceleratorSocketGeneration), readySignal: make(chan struct{}),
+		}
+		coordinatorConstructed <- created
+		return created
+	}
+	var registryObserver server.AcceleratorSessionObserver
+	dependencies.newAcceleratorSessions = func(instanceID string, observer server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry {
+		if instanceID != "idle-composition" {
+			t.Fatalf("instance ID = %q", instanceID)
+		}
+		registryObserver = observer
+		return server.NewAcceleratorSessionRegistry(instanceID, observer)
+	}
+
+	appLifecycle := &recordingRuntimeLifecycle{}
+	parentCtx, cancelParent := context.WithCancel(context.Background())
+	defer cancelParent()
+	runResult := make(chan error, 1)
+	go func() {
+		runResult <- runServerWithOptions(parentCtx, assets, 0, "accelerator", AppOptions{
+			Mode:                    RuntimeModeAccelerator,
+			KubernetesClientFactory: func() (*k8s.Client, error) { return client, nil },
+			Lifecycle:               appLifecycle,
+		}, dependencies)
+	}()
+	select {
+	case coordinator = <-coordinatorConstructed:
+	case err := <-runResult:
+		t.Fatalf("Accelerator exited before coordinator construction: %v", err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("coordinator was not constructed")
+	}
+	select {
+	case <-coordinator.readySignal:
+	case err := <-runResult:
+		t.Fatalf("Accelerator exited before ready: %v", err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("coordinator was not marked ready")
+	}
+
+	creatorSnapshot := server.AcceleratorSessionSnapshot{
+		CallContext: agent.AuthenticatedCallContext{SessionID: "composition-creator"}, Generation: 1,
+	}
+	coordinator.mu.Lock()
+	initialPending := coordinator.pending
+	coordinator.mu.Unlock()
+	if !initialPending {
+		t.Fatal("MarkReady did not record the initial pending grace")
+	}
+	coordinator.SessionConnected(creatorSnapshot)
+	if coordinator.Fire() {
+		t.Fatal("connected session did not cancel pending expiry")
+	}
+	if coordinator.ctx.Err() != nil || parentCtx.Err() != nil {
+		t.Fatal("ignored fire canceled child or parent context")
+	}
+	coordinator.SessionDisconnected(creatorSnapshot)
+	coordinator.SessionConnected(server.AcceleratorSessionSnapshot{
+		CallContext: agent.AuthenticatedCallContext{SessionID: "composition-browser"}, Generation: 2,
+	})
+	if coordinator.Fire() {
+		t.Fatal("browser reconnect did not cancel rearmed expiry")
+	}
+	coordinator.SessionRevoked(server.AcceleratorSessionSnapshot{
+		CallContext: agent.AuthenticatedCallContext{SessionID: "composition-browser"}, Generation: 2,
+	})
+	if !coordinator.Fire() {
+		t.Fatal("last revoke did not rearm and fire expiry")
+	}
+	select {
+	case err := <-runResult:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("owned child cancellation did not stop RunWithReady")
+	}
+	if parentCtx.Err() != nil {
+		t.Fatal("idle expiry canceled the parent context")
+	}
+	if factoryCalls != 1 || coordinator == nil || registryObserver != coordinator {
+		t.Fatalf("coordinator factory/observer = %d/%p/%T", factoryCalls, coordinator, registryObserver)
+	}
+	coordinator.mu.Lock()
+	marks, shutdowns, boundAtReady, contextBeforeFire, expireErr := coordinator.marks, coordinator.shutdowns, coordinator.boundAtReady, coordinator.contextBeforeFire, coordinator.expireErr
+	coordinator.mu.Unlock()
+	if marks != 1 || shutdowns != 1 || !boundAtReady || contextBeforeFire != nil || expireErr != nil {
+		t.Fatalf("coordinator ready/shutdown/bind/context/error = %d/%d/%v/%v/%v", marks, shutdowns, boundAtReady, contextBeforeFire, expireErr)
+	}
+	compositionServer.mu.Lock()
+	runCalls, runReadyCalls := compositionServer.runCalls, compositionServer.runReadyCalls
+	quiesceCalls, readyErr, contextDone := compositionServer.quiesceCalls, compositionServer.readyBeforeRun, compositionServer.contextDone
+	runContext, quiesceContextErr := compositionServer.runContext, compositionServer.quiesceContextErr
+	compositionServer.mu.Unlock()
+	if runCalls != 0 || runReadyCalls != 1 || quiesceCalls != 1 || errors.Is(readyErr, errAppNotInitialized) || !contextDone || runContext != coordinator.ctx || quiesceContextErr != nil {
+		t.Fatalf("server run/ready/quiesce/readiness/context/same-child/cleanup-context = %d/%d/%d/%v/%v/%v/%v", runCalls, runReadyCalls, quiesceCalls, readyErr, contextDone, runContext == coordinator.ctx, quiesceContextErr)
+	}
+	if !appLifecycle.quiesced || !appLifecycle.stopped || !appLifecycle.closed {
+		t.Fatalf("deferred App shutdown phases = %#v", appLifecycle)
+	}
+}
+
+func TestOrdinaryServerHasNoAcceleratorIdleCoordinator(t *testing.T) {
+	for _, mode := range []RuntimeMode{RuntimeModeDesktop, RuntimeModeServer} {
+		t.Run(string(mode), func(t *testing.T) {
+			dependencies := productionServerModeDependencies()
+			idleFactories, registries, browsers := 0, 0, 0
+			dependencies.newAcceleratorIdleCoordinator = func(agent.DisposableIdleLifecycle, context.Context, func()) acceleratorIdleCoordinator {
+				idleFactories++
+				return nil
+			}
+			dependencies.newAcceleratorSessions = func(string, server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry {
+				registries++
+				return nil
+			}
+			dependencies.newBrowserSessions = func(func() time.Time, io.Reader, server.BrowserSessionRevoker) *server.BrowserSessionManager {
+				browsers++
+				return nil
+			}
+			ordinary := &idleCompositionServer{runStarted: make(chan struct{}, 1)}
+			dependencies.newServer = func(_ server.MethodCaller, _ embed.FS, options server.Options) (serverModeServer, error) {
+				ordinary.options = options
+				return ordinary, nil
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			result := make(chan error, 1)
+			go func() {
+				result <- runServerWithOptions(ctx, assets, 0, "ordinary", AppOptions{Mode: mode}, dependencies)
+			}()
+			select {
+			case <-ordinary.runStarted:
+			case <-time.After(5 * time.Second):
+				t.Fatal("ordinary Run was not called")
+			}
+			select {
+			case err := <-result:
+				t.Fatalf("ordinary server exited before external cancellation: %v", err)
+			default:
+			}
+			cancel()
+			select {
+			case err := <-result:
+				if err != nil {
+					t.Fatal(err)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("ordinary server did not honor external cancellation")
+			}
+			ordinary.mu.Lock()
+			runCalls, runReadyCalls, quiesceCalls := ordinary.runCalls, ordinary.runReadyCalls, ordinary.quiesceCalls
+			ordinary.mu.Unlock()
+			if idleFactories != 0 || registries != 0 || browsers != 0 || runCalls != 1 || runReadyCalls != 0 || quiesceCalls != 0 {
+				t.Fatalf("ordinary idle/registry/browser/run/ready/quiesce = %d/%d/%d/%d/%d/%d", idleFactories, registries, browsers, runCalls, runReadyCalls, quiesceCalls)
+			}
+		})
+	}
+}
+
+func TestAcceleratorRejectsServerWithoutIdleLifecycle(t *testing.T) {
+	client, err := k8s.NewClientForRESTConfig(&rest.Config{Host: "http://127.0.0.1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	creator, err := server.NewCreatorAuthenticator(testCreatorVerifier(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependencies := productionServerModeDependencies()
+	dependencies.lookupEnv = func(string) string { return "identity seam" }
+	dependencies.newCreatorIdentity = func(string) (*server.CreatorAuthenticator, string, error) {
+		return creator, "unsupported-server", nil
+	}
+	dependencies.capabilityResolverFactory = func(*k8s.Client) agent.CapabilityResolverFactory { return nil }
+	type legacyOnlyServer struct{ capturedServerModeServer }
+	legacy := &legacyOnlyServer{}
+	dependencies.newServer = func(server.MethodCaller, embed.FS, server.Options) (serverModeServer, error) {
+		// Use a distinct wrapper exposing only the serverModeServer method set.
+		return struct{ serverModeServer }{serverModeServer: &legacy.capturedServerModeServer}, nil
+	}
+	err = runServerWithOptions(context.Background(), assets, 0, "accelerator", AppOptions{
+		Mode:                    RuntimeModeAccelerator,
+		KubernetesClientFactory: func() (*k8s.Client, error) { return client, nil },
+	}, dependencies)
+	if !errors.Is(err, errAcceleratorIdleServerUnsupported) {
+		t.Fatalf("unsupported server error = %v", err)
+	}
+}
+
 func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 	client, err := k8s.NewClientForRESTConfig(&rest.Config{Host: "http://127.0.0.1"})
 	if err != nil {
@@ -418,7 +799,10 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 	compositionClock := &serverModeTestClock{now: time.Date(2026, 8, 1, 7, 8, 9, 123, time.UTC)}
 	compositionEntropy := bytes.NewReader(bytes.Repeat([]byte{0x5a}, 256))
 	compositionObserver := &recordingCompositionObserver{}
-	dependencies.acceleratorObserver = compositionObserver
+	compositionIdle := &recordingIdleCoordinator{observer: compositionObserver}
+	dependencies.newAcceleratorIdleCoordinator = func(agent.DisposableIdleLifecycle, context.Context, func()) acceleratorIdleCoordinator {
+		return compositionIdle
+	}
 	dependencies.browserSessionNow = compositionClock.Now
 	dependencies.browserSessionEntropy = compositionEntropy
 	var registryFactoryCalls int
@@ -428,8 +812,8 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 		if instanceID != "accel-browser-composition" {
 			t.Fatalf("registry instance ID = %q", instanceID)
 		}
-		if observer != compositionObserver {
-			t.Fatalf("injected observer = %T/%p, want %p", observer, observer, compositionObserver)
+		if observer != compositionIdle {
+			t.Fatalf("injected observer = %T/%p, want %p", observer, observer, compositionIdle)
 		}
 		composedRegistry = server.NewAcceleratorSessionRegistry(instanceID, observer)
 		return composedRegistry

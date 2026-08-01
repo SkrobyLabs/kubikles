@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -247,6 +248,94 @@ func TestRunCancellationReturnsNil(t *testing.T) {
 	if err := server.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
+}
+
+func TestRunWithReadyListenerOrdering(t *testing.T) {
+	t.Run("listen failure never calls ready", func(t *testing.T) {
+		want := errors.New("bind failed")
+		s, err := NewWithOptions(&recordingMethodCaller{}, embed.FS{}, AcceleratorOptions(0, nil, DenyProtectedRoutes))
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.listenFunc = func() (net.Listener, error) { return nil, want }
+		calls := 0
+		if err := s.RunWithReady(context.Background(), func() { calls++ }); !errors.Is(err, want) {
+			t.Fatalf("RunWithReady error = %v", err)
+		}
+		if calls != 0 {
+			t.Fatalf("ready calls after listen failure = %d", calls)
+		}
+	})
+
+	t.Run("active listener calls ready once", func(t *testing.T) {
+		s, err := NewWithOptions(&recordingMethodCaller{}, embed.FS{}, AcceleratorOptions(0, nil, DenyProtectedRoutes))
+		if err != nil {
+			t.Fatal(err)
+		}
+		address := make(chan string, 1)
+		s.listenFunc = func() (net.Listener, error) {
+			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			if err == nil {
+				address <- listener.Addr().String()
+			}
+			return listener, err
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		ready := make(chan struct{})
+		var calls atomic.Int32
+		result := make(chan error, 1)
+		go func() {
+			result <- s.RunWithReady(ctx, func() {
+				calls.Add(1)
+				close(ready)
+			})
+		}()
+		var addr string
+		select {
+		case addr = <-address:
+		case <-time.After(5 * time.Second):
+			t.Fatal("listener was not created")
+		}
+		select {
+		case <-ready:
+		case <-time.After(5 * time.Second):
+			t.Fatal("ready was not called")
+		}
+		conn, err := net.DialTimeout("tcp", addr, time.Second)
+		if err != nil {
+			t.Fatalf("listener did not accept after ready: %v", err)
+		}
+		_ = conn.Close()
+		cancel()
+		select {
+		case err := <-result:
+			if err != nil {
+				t.Fatalf("RunWithReady cancellation = %v", err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("RunWithReady did not shut down")
+		}
+		if calls.Load() != 1 {
+			t.Fatalf("ready calls = %d", calls.Load())
+		}
+	})
+
+	t.Run("immediate serve failure is returned after successful listen", func(t *testing.T) {
+		want := errors.New("immediate accept failure")
+		s, err := NewWithOptions(&recordingMethodCaller{}, embed.FS{}, AcceleratorOptions(0, nil, DenyProtectedRoutes))
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.listenFunc = func() (net.Listener, error) { return failingListener{err: want}, nil }
+		var calls atomic.Int32
+		if err := s.RunWithReady(context.Background(), func() { calls.Add(1) }); !errors.Is(err, want) {
+			t.Fatalf("RunWithReady immediate Serve error = %v", err)
+		}
+		if calls.Load() != 1 {
+			t.Fatalf("successful-listen ready calls = %d", calls.Load())
+		}
+	})
 }
 
 func TestRunReturnsConcurrentCloseError(t *testing.T) {

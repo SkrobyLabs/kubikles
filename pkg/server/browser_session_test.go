@@ -910,6 +910,67 @@ func TestBrowserSessionRevocationCallback(t *testing.T) {
 	})
 }
 
+func TestBrowserSessionManagerRevokeAll(t *testing.T) {
+	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	clock := &testClock{now: start}
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+	var manager *BrowserSessionManager
+	revoker := browserRevokerFunc(func(context.Context, agent.SessionID) {
+		calls.Add(1)
+		manager.state.mu.Lock()
+		cleared := manager.state.ticket == nil && manager.state.session == nil
+		manager.state.mu.Unlock()
+		if !cleared {
+			t.Error("browser state was visible to revoker")
+		}
+		manager.Touch("callback-reentry")
+		close(entered)
+		<-release
+	})
+	manager = newBrowserSessionManager(clock.Now, repeatedEntropy(struct {
+		b byte
+		n int
+	}{0x51, 96}, struct {
+		b byte
+		n int
+	}{0x52, 32}), revoker)
+	_, bearer, _ := mintAndExchange(t, manager)
+	if _, _, err := manager.Mint(); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	go func() { manager.RevokeAll(context.Background()); close(done) }()
+	<-entered
+	if _, ok := manager.Authenticate(bearer); ok {
+		t.Fatal("active bearer remained valid while revoker blocked")
+	}
+	manager.state.mu.Lock()
+	cleared := manager.state.ticket == nil && manager.state.session == nil
+	manager.state.mu.Unlock()
+	if !cleared {
+		t.Fatal("ticket and session were not atomically cleared")
+	}
+	select {
+	case <-done:
+		t.Fatal("RevokeAll returned before synchronous revoker")
+	default:
+	}
+	close(release)
+	<-done
+
+	var wg sync.WaitGroup
+	for i := 0; i < 32; i++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); manager.RevokeAll(context.Background()) }()
+	}
+	wg.Wait()
+	if calls.Load() != 1 {
+		t.Fatalf("revoker calls = %d", calls.Load())
+	}
+}
+
 func TestBrowserManagerAndDTOFormattingAlwaysRedacts(t *testing.T) {
 	m := newBrowserSessionManager(time.Now, bytes.NewReader(bytes.Repeat([]byte{20}, 96)), NoopBrowserSessionRevoker{})
 	ticket, bearer, _ := mintAndExchange(t, m)
