@@ -6,9 +6,24 @@ import (
 	"time"
 )
 
+func newTestLogCoalescer(t *testing.T, app *App, frameInterval time.Duration) *LogCoalescer {
+	t.Helper()
+	c := NewLogCoalescer(app, frameInterval)
+	t.Cleanup(func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		for _, buf := range c.streams {
+			if buf.timer != nil {
+				buf.timer.Stop()
+			}
+		}
+	})
+	return c
+}
+
 func TestNewLogCoalescer_DefaultInterval(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 0)
+	c := newTestLogCoalescer(t, app, 0)
 
 	if c.frameInterval != 16*time.Millisecond {
 		t.Errorf("expected default frame interval 16ms, got %v", c.frameInterval)
@@ -23,7 +38,7 @@ func TestNewLogCoalescer_DefaultInterval(t *testing.T) {
 
 func TestNewLogCoalescer_CustomInterval(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 50*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 50*time.Millisecond)
 
 	if c.frameInterval != 50*time.Millisecond {
 		t.Errorf("expected custom frame interval 50ms, got %v", c.frameInterval)
@@ -32,31 +47,37 @@ func TestNewLogCoalescer_CustomInterval(t *testing.T) {
 
 func TestLogCoalescer_EmitLine_CreatesBuffer(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 100*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 100*time.Millisecond)
 
 	c.EmitLine("stream-1", "test line")
 
 	c.mu.Lock()
 	buf, exists := c.streams["stream-1"]
+	lineCount := len(buf.lines)
+	firstLine := ""
+	if lineCount > 0 {
+		firstLine = buf.lines[0]
+	}
+	pending := buf.pending
 	c.mu.Unlock()
 
 	if !exists {
 		t.Fatal("expected buffer to be created for stream-1")
 	}
-	if len(buf.lines) != 1 {
-		t.Errorf("expected 1 line, got %d", len(buf.lines))
+	if lineCount != 1 {
+		t.Errorf("expected 1 line, got %d", lineCount)
 	}
-	if buf.lines[0] != "test line" {
-		t.Errorf("expected 'test line', got %q", buf.lines[0])
+	if firstLine != "test line" {
+		t.Errorf("expected 'test line', got %q", firstLine)
 	}
-	if !buf.pending {
+	if !pending {
 		t.Error("expected pending to be true")
 	}
 }
 
 func TestLogCoalescer_EmitLine_BatchesLines(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 100*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 100*time.Millisecond)
 
 	// Emit multiple lines to same stream
 	c.EmitLine("stream-1", "line 1")
@@ -75,7 +96,7 @@ func TestLogCoalescer_EmitLine_BatchesLines(t *testing.T) {
 
 func TestLogCoalescer_MultipleStreams(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 100*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 100*time.Millisecond)
 
 	// Emit to multiple streams
 	c.EmitLine("stream-1", "line 1a")
@@ -85,25 +106,25 @@ func TestLogCoalescer_MultipleStreams(t *testing.T) {
 	c.EmitLine("stream-2", "line 2b")
 
 	c.mu.Lock()
-	stream1 := c.streams["stream-1"]
-	stream2 := c.streams["stream-2"]
-	stream3 := c.streams["stream-3"]
+	stream1LineCount := len(c.streams["stream-1"].lines)
+	stream2LineCount := len(c.streams["stream-2"].lines)
+	stream3LineCount := len(c.streams["stream-3"].lines)
 	c.mu.Unlock()
 
-	if len(stream1.lines) != 2 {
-		t.Errorf("stream-1: expected 2 lines, got %d", len(stream1.lines))
+	if stream1LineCount != 2 {
+		t.Errorf("stream-1: expected 2 lines, got %d", stream1LineCount)
 	}
-	if len(stream2.lines) != 2 {
-		t.Errorf("stream-2: expected 2 lines, got %d", len(stream2.lines))
+	if stream2LineCount != 2 {
+		t.Errorf("stream-2: expected 2 lines, got %d", stream2LineCount)
 	}
-	if len(stream3.lines) != 1 {
-		t.Errorf("stream-3: expected 1 line, got %d", len(stream3.lines))
+	if stream3LineCount != 1 {
+		t.Errorf("stream-3: expected 1 line, got %d", stream3LineCount)
 	}
 }
 
 func TestLogCoalescer_FlushStream(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 1*time.Hour) // Long interval
+	c := newTestLogCoalescer(t, app, 1*time.Hour) // Long interval
 
 	c.EmitLine("stream-1", "line 1")
 	c.EmitLine("stream-1", "line 2")
@@ -113,27 +134,28 @@ func TestLogCoalescer_FlushStream(t *testing.T) {
 	c.FlushStream("stream-1")
 
 	c.mu.Lock()
-	buf1 := c.streams["stream-1"]
-	buf2 := c.streams["stream-2"]
+	stream1LineCount := len(c.streams["stream-1"].lines)
+	stream1Pending := c.streams["stream-1"].pending
+	stream2LineCount := len(c.streams["stream-2"].lines)
 	c.mu.Unlock()
 
 	// stream-1 should be flushed (empty lines, pending false)
-	if len(buf1.lines) != 0 {
-		t.Errorf("stream-1 should be empty after flush, got %d lines", len(buf1.lines))
+	if stream1LineCount != 0 {
+		t.Errorf("stream-1 should be empty after flush, got %d lines", stream1LineCount)
 	}
-	if buf1.pending {
+	if stream1Pending {
 		t.Error("stream-1 pending should be false after flush")
 	}
 
 	// stream-2 should be unaffected
-	if len(buf2.lines) != 1 {
-		t.Errorf("stream-2 should still have 1 line, got %d", len(buf2.lines))
+	if stream2LineCount != 1 {
+		t.Errorf("stream-2 should still have 1 line, got %d", stream2LineCount)
 	}
 }
 
 func TestLogCoalescer_EmitDone(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 1*time.Hour)
+	c := newTestLogCoalescer(t, app, 1*time.Hour)
 
 	c.EmitLine("stream-1", "line 1")
 	c.EmitLine("stream-1", "line 2")
@@ -152,7 +174,7 @@ func TestLogCoalescer_EmitDone(t *testing.T) {
 
 func TestLogCoalescer_EmitDone_NonexistentStream(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 100*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 100*time.Millisecond)
 
 	// Should not panic
 	c.EmitDone("nonexistent-stream")
@@ -160,7 +182,7 @@ func TestLogCoalescer_EmitDone_NonexistentStream(t *testing.T) {
 
 func TestLogCoalescer_EmitError(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 1*time.Hour)
+	c := newTestLogCoalescer(t, app, 1*time.Hour)
 
 	c.EmitLine("stream-1", "line 1")
 
@@ -168,18 +190,18 @@ func TestLogCoalescer_EmitError(t *testing.T) {
 	c.EmitError("stream-1", "connection lost")
 
 	c.mu.Lock()
-	buf := c.streams["stream-1"]
+	lineCount := len(c.streams["stream-1"].lines)
 	c.mu.Unlock()
 
 	// Buffer should be empty (flushed)
-	if len(buf.lines) != 0 {
-		t.Errorf("expected empty buffer after error, got %d lines", len(buf.lines))
+	if lineCount != 0 {
+		t.Errorf("expected empty buffer after error, got %d lines", lineCount)
 	}
 }
 
 func TestLogCoalescer_Cleanup(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 1*time.Hour)
+	c := newTestLogCoalescer(t, app, 1*time.Hour)
 
 	c.EmitLine("stream-1", "line 1")
 	c.EmitLine("stream-2", "line 2")
@@ -202,7 +224,7 @@ func TestLogCoalescer_Cleanup(t *testing.T) {
 
 func TestLogCoalescer_Cleanup_NonexistentStream(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 100*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 100*time.Millisecond)
 
 	// Should not panic
 	c.Cleanup("nonexistent-stream")
@@ -210,7 +232,7 @@ func TestLogCoalescer_Cleanup_NonexistentStream(t *testing.T) {
 
 func TestLogCoalescer_TimerFlushes(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 20*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 20*time.Millisecond)
 
 	c.EmitLine("stream-1", "line 1")
 	c.EmitLine("stream-1", "line 2")
@@ -234,7 +256,7 @@ func TestLogCoalescer_TimerFlushes(t *testing.T) {
 
 func TestLogCoalescer_ConcurrentEmit(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 100*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 100*time.Millisecond)
 
 	var wg sync.WaitGroup
 	numGoroutines := 10
@@ -271,7 +293,7 @@ func TestLogCoalescer_ConcurrentEmit(t *testing.T) {
 
 func TestLogCoalescer_ConcurrentSameStream(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 100*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 100*time.Millisecond)
 
 	var wg sync.WaitGroup
 	numGoroutines := 10
@@ -303,7 +325,7 @@ func TestLogCoalescer_ConcurrentSameStream(t *testing.T) {
 
 func TestLogCoalescer_LineOrder(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 100*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 100*time.Millisecond)
 
 	// Emit lines in order
 	c.EmitLine("stream-1", "line-1")
@@ -326,7 +348,7 @@ func TestLogCoalescer_LineOrder(t *testing.T) {
 
 func TestLogCoalescer_BufferPreallocation(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 100*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 100*time.Millisecond)
 
 	c.EmitLine("stream-1", "line")
 
@@ -343,7 +365,7 @@ func TestLogCoalescer_BufferPreallocation(t *testing.T) {
 
 func TestLogCoalescer_FlushNonexistentStream(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 100*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 100*time.Millisecond)
 
 	// Should not panic
 	c.FlushStream("nonexistent")
@@ -351,7 +373,7 @@ func TestLogCoalescer_FlushNonexistentStream(t *testing.T) {
 
 func TestLogCoalescer_EmitAfterFlush(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 100*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 100*time.Millisecond)
 
 	c.EmitLine("stream-1", "line-1")
 	c.FlushStream("stream-1")
@@ -370,7 +392,7 @@ func TestLogCoalescer_EmitAfterFlush(t *testing.T) {
 
 func TestLogCoalescer_RapidEmitDone(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 100*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 100*time.Millisecond)
 
 	// Rapid emit and done
 	for i := 0; i < 100; i++ {
@@ -405,7 +427,7 @@ func TestLogStreamBatchEvent_Fields(t *testing.T) {
 
 func TestLogCoalescer_HighThroughput(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 16*time.Millisecond) // Realistic 60fps
+	c := newTestLogCoalescer(t, app, 16*time.Millisecond) // Realistic 60fps
 
 	// Simulate high-throughput logging (10k lines in 100ms)
 	done := make(chan struct{})
@@ -426,7 +448,7 @@ func TestLogCoalescer_HighThroughput(t *testing.T) {
 
 func TestLogCoalescer_MultipleTimerCycles(t *testing.T) {
 	app := &App{}
-	c := NewLogCoalescer(app, 10*time.Millisecond)
+	c := newTestLogCoalescer(t, app, 10*time.Millisecond)
 
 	// Emit, wait for flush, emit again
 	c.EmitLine("stream-1", "cycle-1")

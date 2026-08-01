@@ -31,6 +31,10 @@ import (
 
 // App struct
 type App struct {
+	runtimeMode           RuntimeMode
+	agentRouter           AgentRouter
+	lifecycle             RuntimeLifecycle
+	shutdownOnce          sync.Once
 	ctx                   context.Context
 	k8sClient             *k8s.Client
 	k8sInitError          error // Stores K8s client initialization error for frontend display
@@ -83,7 +87,24 @@ type App struct {
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	client, err := k8s.NewClient()
+	app, _ := NewAppWithOptions(AppOptions{Mode: RuntimeModeDesktop})
+	return app
+}
+
+// NewAppWithOptions creates an App using explicit runtime composition options.
+func NewAppWithOptions(options AppOptions) (*App, error) {
+	options, err := normalizeAppOptions(options)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := options.KubernetesClientFactory()
+	if options.Mode == RuntimeModeAccelerator && (err != nil || client == nil) {
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrAcceleratorClientInitialization, err)
+		}
+		return nil, ErrAcceleratorClientInitialization
+	}
 	if err != nil {
 		fmt.Printf("Error initializing K8s client: %v\n", err)
 		// Continue - UI will show the error via GetK8sInitError()
@@ -95,6 +116,9 @@ func NewApp() *App {
 	os.MkdirAll(appDir, 0755)
 
 	return &App{
+		runtimeMode:           options.Mode,
+		agentRouter:           options.AgentRouter,
+		lifecycle:             options.Lifecycle,
 		k8sClient:             client,
 		k8sInitError:          err,
 		helmClient:            initHelm(),
@@ -105,7 +129,7 @@ func NewApp() *App {
 		prometheusConfigPath:  filepath.Join(appDir, "prometheus_config.json"),
 		metricsRequestManager: NewMetricsRequestManager(),
 		listRequestManager:    NewListRequestManager(),
-	}
+	}, nil
 }
 
 // startup is called when the app starts. The context is saved
@@ -261,46 +285,6 @@ func (a *App) openBrowserURL(url string) {
 	if wailsEmitter, ok := a.emitter.(*events.WailsEmitter); ok && wailsEmitter != nil {
 		runtime.BrowserOpenURL(a.ctx, url)
 	}
-}
-
-// shutdown is called when the app is closing
-func (a *App) shutdown(ctx context.Context) {
-	debug.LogWails("App shutdown initiated", nil)
-
-	// Flush any pending coalesced events
-	if a.eventCoalescer != nil {
-		a.eventCoalescer.FlushNow()
-	}
-
-	// Clean up ingress forwarding (removes hosts file entries)
-	if a.ingressForwardManager != nil {
-		a.ingressForwardManager.Cleanup()
-	}
-
-	// Stop all port forwards
-	if a.portForwardManager != nil {
-		a.portForwardManager.StopAll()
-	}
-
-	// Stop all watchers
-	if a.watcherManager != nil {
-		a.watcherManager.StopAll()
-	}
-
-	// Close all terminal sessions
-	if a.terminalManager != nil {
-		a.terminalManager.CloseAllSessions()
-	}
-
-	// Close all AI sessions
-	if a.aiManager != nil {
-		a.aiManager.CloseAllSessions()
-	}
-
-	// Stop embedded browser session (best-effort)
-	_ = a.StopEmbeddedBrowser()
-
-	debug.LogWails("App shutdown complete", nil)
 }
 
 // AI: see app_ai.go

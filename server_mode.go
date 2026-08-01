@@ -19,21 +19,6 @@ func RunServer(assets embed.FS, port int, label string) {
 	fmt.Printf("Kubikles - %s\n", label)
 	fmt.Printf("Starting server on port %d...\n", port)
 
-	// Create app instance
-	app := NewApp()
-
-	// Create server with generated switch-based dispatcher (enables DCE)
-	srv := server.New(NewAppMethodCaller(app), assets, port)
-
-	// Set up the app's event emitter to use the server's WebSocket broadcast
-	app.SetEmitter(events.EmitterFunc(func(name string, data ...interface{}) {
-		if len(data) > 0 {
-			srv.EmitEvent(name, data[0])
-		} else {
-			srv.EmitEvent(name, nil)
-		}
-	}))
-
 	// Create context that cancels on interrupt
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -47,19 +32,30 @@ func RunServer(assets embed.FS, port int, label string) {
 		cancel()
 	}()
 
-	// Initialize app
-	app.startupServerMode(ctx)
+	if err := RunServerWithOptions(ctx, assets, port, label, AppOptions{Mode: RuntimeModeServer}); err != nil {
+		crashlog.LogFatal("Server error: %v", err)
+	}
+}
 
-	// Register disconnect listeners for session cleanup
+// RunServerWithOptions starts server mode with explicit App composition options.
+func RunServerWithOptions(ctx context.Context, assets embed.FS, port int, label string, options AppOptions) error {
+	app, err := NewAppWithOptions(options)
+	if err != nil {
+		return err
+	}
+	defer app.shutdown(ctx)
+
+	srv := server.New(NewAppMethodCaller(app), assets, port)
+	app.SetEmitter(events.EmitterFunc(func(name string, data ...interface{}) {
+		if len(data) > 0 {
+			srv.EmitEvent(name, data[0])
+		} else {
+			srv.EmitEvent(name, nil)
+		}
+	}))
+	app.startupServerMode(ctx)
 	for _, listener := range app.getDisconnectListeners() {
 		srv.AddDisconnectListener(listener)
 	}
-
-	// Run server (blocks until context is canceled)
-	if err := srv.Run(ctx); err != nil {
-		crashlog.LogFatal("Server error: %v", err)
-	}
-
-	// Clean up resources (port forwards, terminal sessions, hosts file, etc.)
-	app.shutdown(ctx)
+	return srv.Run(ctx)
 }
