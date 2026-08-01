@@ -647,7 +647,10 @@ func (c *AppMethodCaller) CallMethod(callContext agent.AuthenticatedCallContext,
 		}
 		for i := paramOffset; i < len(m.Params); i++ {
 			p := m.Params[i]
-			buf.WriteString(fmt.Sprintf("\t\tp%d, err := unmarshalArg[%s](args, %d)\n", i, p.TypeStr, i-paramOffset))
+			// Trusted contexts are injected, not JSON parameters; locals are named
+			// by JSON position so generated calls remain literally callContext,p0,... .
+			local := i - paramOffset
+			buf.WriteString(fmt.Sprintf("\t\tp%d, err := unmarshalArg[%s](args, %d)\n", local, p.TypeStr, local))
 			buf.WriteString("\t\tif err != nil {\n")
 			buf.WriteString("\t\t\treturn nil, err\n")
 			buf.WriteString("\t\t}\n")
@@ -659,7 +662,7 @@ func (c *AppMethodCaller) CallMethod(callContext agent.AuthenticatedCallContext,
 			callArgs = append(callArgs, "callContext")
 		}
 		for i := paramOffset; i < len(m.Params); i++ {
-			callArgs = append(callArgs, fmt.Sprintf("p%d", i))
+			callArgs = append(callArgs, fmt.Sprintf("p%d", i-paramOffset))
 		}
 		callStr := fmt.Sprintf("c.app.%s(%s)", m.Name, strings.Join(callArgs, ", "))
 

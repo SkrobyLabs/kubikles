@@ -24,11 +24,15 @@ func (f acceleratorSessionStateCleanerFunc) ClearAcceleratorSessionState(ctx con
 	return f(ctx)
 }
 
-func (a *App) clearAcceleratorSessionState(context.Context) error {
+func (a *App) clearAcceleratorSessionState(ctx context.Context) error {
+	var err error
+	if a != nil && a.acceleratorSecretWatches != nil {
+		err = a.acceleratorSecretWatches.ClearAll(ctx)
+	}
 	if a != nil && a.watcherManager != nil {
 		a.watcherManager.StopAll()
 	}
-	return nil
+	return err
 }
 
 type acceleratorDisposableLifecycle struct {

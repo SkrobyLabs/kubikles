@@ -3770,6 +3770,20 @@ func (c *AppMethodCaller) CallMethod(callContext agent.AuthenticatedCallContext,
 			return nil, err
 		}
 		return c.app.SubscribeResourceWatcher(p0, p1), nil
+	case "SubscribeSecretWatcher":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[bool](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		r0, err := c.app.SubscribeSecretWatcher(callContext, p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "SuspendCronJob":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -3840,6 +3854,12 @@ func (c *AppMethodCaller) CallMethod(callContext agent.AuthenticatedCallContext,
 			return nil, err
 		}
 		return nil, c.app.UninstallHelmRelease(p0, p1)
+	case "UnsubscribeSecretWatcher":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		return nil, c.app.UnsubscribeSecretWatcher(callContext, p0)
 	case "UnsubscribeWatcher":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {

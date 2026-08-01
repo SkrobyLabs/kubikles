@@ -122,6 +122,20 @@ func (c *Client) WatchResource(ctx context.Context, resourceType, namespace, res
 	}
 }
 
+// WatchSecrets is intentionally separate from WatchResource: it is the typed,
+// value-free source used by the Accelerator session watch manager.
+func (c *Client) WatchSecrets(ctx context.Context, namespace, resourceVersion string, options SecretListOptions) (watch.Interface, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	opts := metav1.ListOptions{TimeoutSeconds: ptr(WatchTimeout), AllowWatchBookmarks: true, ResourceVersion: resourceVersion}
+	if options.ExcludeHelmReleases {
+		opts.FieldSelector = "type!=" + HelmReleaseSecretType
+	}
+	return cs.CoreV1().Secrets(namespace).Watch(ctx, opts)
+}
+
 // WatchCRD creates a watch for a custom resource using the dynamic client.
 // resourceVersion: if non-empty, resumes watch from this version (avoids duplicate ADDED events)
 func (c *Client) WatchCRD(ctx context.Context, group, version, resource, namespace, resourceVersion string) (watch.Interface, error) {

@@ -129,6 +129,20 @@ type acceleratorSecretListItem struct {
 	DataKeys int    `json:"dataKeys"`
 }
 
+// projectAcceleratorSecretListItem is the single closed 20A projection used by
+// both list responses and 20B watch events. The ordinary desktop DTO remains
+// untouched and may retain its richer metadata fields.
+func projectAcceleratorSecretListItem(item k8s.SecretListItem) acceleratorSecretListItem {
+	var projected acceleratorSecretListItem
+	projected.Metadata.Name = item.Metadata.Name
+	projected.Metadata.Namespace = item.Metadata.Namespace
+	projected.Metadata.UID = item.Metadata.UID
+	projected.Metadata.CreationTimestamp = item.Metadata.CreationTimestamp
+	projected.Type = item.Type
+	projected.DataKeys = item.DataKeys
+	return projected
+}
+
 func (a *App) acceleratorSecretYAML(namespace, name string) (string, error) {
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
@@ -143,12 +157,7 @@ func (a *App) acceleratorSecretsMetadata(requestID, namespace string, options k8
 	}
 	projected := make([]acceleratorSecretListItem, len(items))
 	for i, item := range items {
-		projected[i].Metadata.Name = item.Metadata.Name
-		projected[i].Metadata.Namespace = item.Metadata.Namespace
-		projected[i].Metadata.UID = item.Metadata.UID
-		projected[i].Metadata.CreationTimestamp = item.Metadata.CreationTimestamp
-		projected[i].Type = item.Type
-		projected[i].DataKeys = item.DataKeys
+		projected[i] = projectAcceleratorSecretListItem(item)
 	}
 	return projected, nil
 }

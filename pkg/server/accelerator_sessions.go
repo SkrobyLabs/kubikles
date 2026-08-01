@@ -24,6 +24,19 @@ const (
 
 type AcceleratorSocketGeneration uint64
 
+// AcceleratorSessionLease exposes only the generation fence needed by
+// Accelerator-owned producers. It is not an RPC-facing identity API.
+type AcceleratorSessionLease struct {
+	Generation AcceleratorSocketGeneration
+	Connected  bool
+}
+
+// AcceleratorSessionTarget is an internal exact-generation enqueue target.
+type AcceleratorSessionTarget struct {
+	SessionID  agent.SessionID
+	Generation AcceleratorSocketGeneration
+}
+
 // AcceleratorSessionSnapshot is an immutable observation of one socket generation.
 // It deliberately contains only server-issued identity and continuity information.
 type AcceleratorSessionSnapshot struct {
@@ -109,6 +122,7 @@ type acceleratorSocket struct {
 	activationStarted  atomic.Bool
 	activationComplete atomic.Bool
 	ready              atomic.Bool
+	observed           atomic.Bool
 	cancelled          atomic.Bool
 
 	registry *AcceleratorSessionRegistry
@@ -545,7 +559,7 @@ func (r *AcceleratorSessionRegistry) prepareRegistration(call agent.Authenticate
 		socket := newAcceleratorSocket(r, conn, snapshot)
 		record.socket = socket
 		registration := &acceleratorRegistration{socket: socket, old: old}
-		if old != nil && old.ready.Load() {
+		if old != nil && old.observed.Load() {
 			registration.replacementBatch = r.reserveCallbackBatchLocked(record, acceleratorObservation{kind: acceleratorObservedDisconnect, snapshot: old.snapshot})
 		}
 		r.mu.Unlock()
@@ -565,9 +579,12 @@ func (r *AcceleratorSessionRegistry) observeReplacement(registration *accelerato
 	}
 }
 
-func (r *AcceleratorSessionRegistry) activateRegistration(registration *acceleratorRegistration) (*acceleratorSocket, bool) {
+// beginRegistrationActivation commits the exact generation and callback batch
+// without invoking external observers. Browser activation calls this while its
+// own session-state mutex supplies the final expiry/revocation linearization.
+func (r *AcceleratorSessionRegistry) beginRegistrationActivation(registration *acceleratorRegistration) bool {
 	if registration == nil || registration.socket == nil {
-		return nil, false
+		return false
 	}
 	socket := registration.socket
 	r.mu.Lock()
@@ -578,30 +595,58 @@ func (r *AcceleratorSessionRegistry) activateRegistration(registration *accelera
 		socket.activationMu.Unlock()
 		r.mu.Unlock()
 		socket.requestClose(acceleratorSocketClose{code: websocket.CloseGoingAway, reason: "connection closed"})
-		return nil, false
+		return false
 	}
 	if !socket.activationStarted.CompareAndSwap(false, true) {
 		socket.activationMu.Unlock()
 		r.mu.Unlock()
-		return nil, false
+		return false
 	}
-	// Eligibility is published before the writer can expose connected. Since
-	// connected already occupies queue slot zero, concurrent events remain FIFO
-	// without making a pending or failed-validation socket visible.
-	socket.eligible.Store(true)
+	// Commit the observation while the exact socket is current, but invoke it
+	// outside registry locks. The writer remains behind startCh until the
+	// observer (including generation-owned producers) has fully caught up.
+	record.everObserved = true
+	record.lastObserved = socket.snapshot
+	registration.connectedBatch = r.reserveCallbackBatchLocked(record, acceleratorObservation{kind: acceleratorObservedConnect, snapshot: socket.snapshot})
 	socket.activationMu.Unlock()
 	r.mu.Unlock()
+	return true
+}
+
+// finishRegistrationActivation invokes the committed observer outside every
+// registry/browser/admission lock, then publishes ready+eligible before the
+// writer is allowed to expose the mandatory connected frame.
+func (r *AcceleratorSessionRegistry) finishRegistrationActivation(registration *acceleratorRegistration) (*acceleratorSocket, bool) {
+	socket := registration.socket
+	r.observeConnected(registration)
+	socket.observed.Store(true)
+
+	r.mu.Lock()
+	record := r.records[socket.snapshot.CallContext.SessionID]
+	current := !r.closed && record != nil && record.socket == socket && record.generation == socket.snapshot.Generation && !socket.cancelled.Load()
+	if current {
+		// Readiness and eligibility become visible only after the observer is
+		// current. connected already occupies queue slot zero, so an event queued
+		// in this interval remains strictly behind the handshake frame.
+		socket.ready.Store(true)
+		socket.eligible.Store(true)
+	}
+	r.mu.Unlock()
+	if !current {
+		socket.activationMu.Lock()
+		socket.finishActivation()
+		socket.activationMu.Unlock()
+		socket.requestClose(acceleratorSocketClose{code: websocket.CloseGoingAway, reason: "connection closed"})
+		return nil, false
+	}
+
 	socket.activate()
 	bootstrapped := <-socket.bootstrapDone
 	r.mu.Lock()
 	record = r.records[socket.snapshot.CallContext.SessionID]
 	current = bootstrapped && !r.closed && record != nil && record.socket == socket && record.generation == socket.snapshot.Generation
-	if current {
-		socket.ready.Store(true)
-		record.everObserved = true
-		record.lastObserved = socket.snapshot
-		registration.connectedBatch = r.reserveCallbackBatchLocked(record, acceleratorObservation{kind: acceleratorObservedConnect, snapshot: socket.snapshot})
-	} else {
+	if !current {
+		socket.ready.Store(false)
 		socket.eligible.Store(false)
 	}
 	socket.activationMu.Lock()
@@ -614,6 +659,13 @@ func (r *AcceleratorSessionRegistry) activateRegistration(registration *accelera
 		return nil, false
 	}
 	return socket, true
+}
+
+func (r *AcceleratorSessionRegistry) activateRegistration(registration *acceleratorRegistration) (*acceleratorSocket, bool) {
+	if !r.beginRegistrationActivation(registration) {
+		return nil, false
+	}
+	return r.finishRegistrationActivation(registration)
 }
 
 func (r *AcceleratorSessionRegistry) observeConnected(registration *acceleratorRegistration) {
@@ -652,7 +704,7 @@ func (r *AcceleratorSessionRegistry) socketFinished(socket *acceleratorSocket) {
 		}
 	}
 	var callbackBatch *acceleratorCallbackBatch
-	if current && socket.ready.Load() {
+	if current && socket.observed.Load() {
 		callbackBatch = r.reserveCallbackBatchLocked(record, acceleratorObservation{kind: acceleratorObservedDisconnect, snapshot: socket.snapshot})
 	}
 	r.mu.Unlock()
@@ -687,6 +739,43 @@ func (r *AcceleratorSessionRegistry) EmitEvent(name string, data interface{}) {
 	for _, socket := range sockets {
 		_ = socket.enqueueOutbound(event)
 	}
+}
+
+func (r *AcceleratorSessionRegistry) LookupSessionLease(id agent.SessionID) (AcceleratorSessionLease, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	record := r.records[id]
+	if record == nil || r.closed {
+		return AcceleratorSessionLease{}, false
+	}
+	return AcceleratorSessionLease{Generation: record.generation, Connected: record.socket != nil && record.socket.ready.Load() && record.socket.eligible.Load()}, true
+}
+
+// EmitEventToTargets performs the generation fence and queue publication under
+// the registry mutex. Duplicate or stale targets are harmless drops.
+func (r *AcceleratorSessionRegistry) EmitEventToTargets(targets []AcceleratorSessionTarget, event Event) {
+	r.mu.Lock()
+	if r.closed {
+		r.mu.Unlock()
+		return
+	}
+	seen := make(map[agent.SessionID]struct{}, len(targets))
+	sockets := make([]*acceleratorSocket, 0, len(targets))
+	for _, target := range targets {
+		if _, ok := seen[target.SessionID]; ok {
+			continue
+		}
+		record := r.records[target.SessionID]
+		if record != nil && record.generation == target.Generation && record.socket != nil && record.socket.ready.Load() && record.socket.eligible.Load() {
+			seen[target.SessionID] = struct{}{}
+			sockets = append(sockets, record.socket)
+		}
+	}
+	outbound := &acceleratorOutboundEvent{event: event}
+	for _, socket := range sockets {
+		_ = socket.enqueueOutbound(outbound)
+	}
+	r.mu.Unlock()
 }
 
 func (r *AcceleratorSessionRegistry) RevokeBrowserSession(_ context.Context, id agent.SessionID) {

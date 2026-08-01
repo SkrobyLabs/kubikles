@@ -115,19 +115,19 @@ func (a AcceleratorWebSocketAuthenticator) handleAdmitted(w http.ResponseWriter,
 		if a.afterPrepare != nil {
 			a.afterPrepare()
 		}
-		activated := a.BrowserSessions.withActiveBrowserSession(identity.call.SessionID, func() bool {
+		activationBegan := a.BrowserSessions.withActiveBrowserSession(identity.call.SessionID, func() bool {
 			if a.beforeActivate != nil {
 				a.beforeActivate(registration)
 			}
-			var activated bool
-			_, activated = a.Registry.activateRegistration(registration)
-			return activated
+			return a.Registry.beginRegistrationActivation(registration)
 		})
-		if !activated {
+		if !activationBegan {
 			_ = conn.Close()
 			return
 		}
-		a.Registry.observeConnected(registration)
+		if _, activated := a.Registry.finishRegistrationActivation(registration); !activated {
+			_ = conn.Close()
+		}
 		return
 	}
 	prepared := prepare()

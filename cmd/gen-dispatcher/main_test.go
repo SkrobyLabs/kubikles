@@ -418,7 +418,7 @@ func (*App) SubscribeSecretWatcher(callContext agent.AuthenticatedCallContext, s
 	for _, want := range []string{
 		"CallMethod(callContext agent.AuthenticatedCallContext, methodName string, args []json.RawMessage)",
 		"unmarshalArg[string](args, 0)", "unmarshalArg[string](args, 1)",
-		"c.app.SubscribeSecretWatcher(callContext, p1, p2)",
+		"c.app.SubscribeSecretWatcher(callContext, p0, p1)",
 	} {
 		if !strings.Contains(generated, want) {
 			t.Errorf("generated dispatcher missing %q", want)
@@ -433,6 +433,33 @@ func (*App) SubscribeSecretWatcher(callContext agent.AuthenticatedCallContext, s
 		if _, err := parseAppMethods(token.NewFileSet(), dir); err == nil {
 			t.Error("expected invalid context position error")
 		}
+	}
+}
+
+func TestGenerateDispatcherTrustedContextHasExactArgumentShapes(t *testing.T) {
+	methods, _ := fixtureMethods(t, map[string]string{"app.go": `package main
+import "kubikles/pkg/agent"
+type App struct{}
+func (*App) Two(callContext agent.AuthenticatedCallContext, first, second string) {}
+func (*App) One(callContext agent.AuthenticatedCallContext, only string) {}
+`})
+	generated, err := format.Source(generateDispatcher(methods))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(generated)
+	for _, want := range []string{
+		"c.app.Two(callContext, p0, p1)",
+		"c.app.One(callContext, p0)",
+		"p0, err := unmarshalArg[string](args, 0)",
+		"p1, err := unmarshalArg[string](args, 1)",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("generated dispatcher missing exact %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "unmarshalArg[agent.AuthenticatedCallContext]") || strings.Contains(text, "unmarshalArg[AuthenticatedCallContext]") {
+		t.Fatalf("trusted context was decoded from caller-controlled args:\n%s", text)
 	}
 }
 

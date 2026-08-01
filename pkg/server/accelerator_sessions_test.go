@@ -24,6 +24,13 @@ func (failingAcceleratorJSON) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("credential-sentinel payload-sentinel")
 }
 
+type countedAcceleratorJSON struct{ marshals atomic.Int32 }
+
+func (v *countedAcceleratorJSON) MarshalJSON() ([]byte, error) {
+	v.marshals.Add(1)
+	return []byte(`{"scope":"owners-only"}`), nil
+}
+
 type fakeAcceleratorRead struct {
 	messageType int
 	payload     []byte
@@ -33,6 +40,7 @@ type fakeAcceleratorRead struct {
 type fakeAcceleratorConn struct {
 	mu                   sync.Mutex
 	writes               []Event
+	payloads             [][]byte
 	controls             []int
 	closeCodes           []int
 	writeDeadlines       []time.Time
@@ -116,6 +124,7 @@ func (c *fakeAcceleratorConn) WriteMessage(messageType int, payload []byte) erro
 		return err
 	}
 	c.writes = append(c.writes, event)
+	c.payloads = append(c.payloads, append([]byte(nil), payload...))
 	afterWrite := c.afterWrite
 	c.mu.Unlock()
 	if afterWrite != nil {
@@ -211,6 +220,21 @@ func (c *fakeAcceleratorConn) writeCount() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return len(c.writes)
+}
+
+func (c *fakeAcceleratorConn) events() []Event {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]Event(nil), c.writes...)
+}
+
+func (c *fakeAcceleratorConn) lastPayload() []byte {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.payloads) == 0 {
+		return nil
+	}
+	return append([]byte(nil), c.payloads[len(c.payloads)-1]...)
 }
 
 func (c *fakeAcceleratorConn) controlCount(messageType int) int {
@@ -324,6 +348,168 @@ func closeAcceleratorSocket(t *testing.T, socket *acceleratorSocket) {
 func TestAcceleratorSocketConstants(t *testing.T) {
 	if AcceleratorSocketQueueSize != 64 || AcceleratorSocketWriteTimeout != 10*time.Second || AcceleratorSocketReadLimit != 64<<10 || AcceleratorSocketPongTimeout != 60*time.Second || AcceleratorSocketPingInterval != 30*time.Second || AcceleratorSocketDrainTimeout != 2*time.Second {
 		t.Fatal("bounded socket contract changed")
+	}
+}
+
+func TestAcceleratorTargetedEventDelivery(t *testing.T) {
+	registry := newAcceleratorSessionRegistry("instance", nil, acceleratorTestConfig())
+	owner, ownerConn := acceleratorTestCall("owner"), newFakeAcceleratorConn()
+	other, otherConn := acceleratorTestCall("other"), newFakeAcceleratorConn()
+	ownerSocket, ok := registry.register(owner, ownerConn)
+	if !ok {
+		t.Fatal("owner register rejected")
+	}
+	otherSocket, ok := registry.register(other, otherConn)
+	if !ok {
+		t.Fatal("other register rejected")
+	}
+	waitAccelerator(t, "connected frames", func() bool { return ownerConn.writeCount() == 1 && otherConn.writeCount() == 1 })
+	registry.EmitEventToTargets([]AcceleratorSessionTarget{{SessionID: owner.SessionID, Generation: ownerSocket.snapshot.Generation}, {SessionID: owner.SessionID, Generation: ownerSocket.snapshot.Generation}, {SessionID: other.SessionID, Generation: ownerSocket.snapshot.Generation + 1}}, Event{Type: "event", Name: "resource-event", Data: map[string]string{"safe": "summary"}})
+	waitAccelerator(t, "owner targeted event", func() bool { return ownerConn.writeCount() == 2 })
+	if otherConn.writeCount() != 1 {
+		t.Fatalf("non-owner writes=%d", otherConn.writeCount())
+	}
+	_ = otherSocket
+}
+
+// T9: generation-qualified targeting is owner-only, survives a disconnected
+// lease as an inactive record, and shares one serialized outbound frame.
+func TestAcceleratorTargetedDeliveryGenerationFenceAndSharedFrame(t *testing.T) {
+	registry := newAcceleratorSessionRegistry("instance", nil, acceleratorTestConfig())
+	firstCall, firstConn := acceleratorTestCall("target-first"), newFakeAcceleratorConn()
+	secondCall, secondConn := acceleratorTestCall("target-second"), newFakeAcceleratorConn()
+	first, ok := registry.register(firstCall, firstConn)
+	if !ok {
+		t.Fatal("first owner register rejected")
+	}
+	second, ok := registry.register(secondCall, secondConn)
+	if !ok {
+		t.Fatal("second owner register rejected")
+	}
+	waitAccelerator(t, "connected frames before targeted delivery", func() bool {
+		return firstConn.writeCount() == 1 && secondConn.writeCount() == 1
+	})
+
+	data := &countedAcceleratorJSON{}
+	event := Event{Type: "event", Name: "generation-fenced", Data: data}
+	registry.EmitEventToTargets([]AcceleratorSessionTarget{
+		{SessionID: "missing", Generation: 1},
+		{SessionID: firstCall.SessionID, Generation: first.snapshot.Generation},
+		{SessionID: secondCall.SessionID, Generation: second.snapshot.Generation},
+		{SessionID: firstCall.SessionID, Generation: first.snapshot.Generation},
+	}, event)
+	waitAccelerator(t, "both exact-generation owners", func() bool {
+		return firstConn.writeCount() == 2 && secondConn.writeCount() == 2
+	})
+	if got := data.marshals.Load(); got != 1 {
+		t.Fatalf("shared outbound marshal count = %d, want 1", got)
+	}
+	if !bytes.Equal(firstConn.lastPayload(), secondConn.lastPayload()) {
+		t.Fatalf("owners received different payload bytes: %q != %q", firstConn.lastPayload(), secondConn.lastPayload())
+	}
+	for name, conn := range map[string]*fakeAcceleratorConn{"first": firstConn, "second": secondConn} {
+		frames := conn.events()
+		if len(frames) < 2 || frames[0].Name != "connected" || frames[1].Name != "generation-fenced" {
+			t.Fatalf("%s frame ordering = %#v", name, frames)
+		}
+	}
+
+	// Replacing an owner makes the old generation stale. A current target must
+	// still be accepted regardless of whether its stale sibling comes first.
+	currentConn := newFakeAcceleratorConn()
+	current, ok := registry.register(firstCall, currentConn)
+	if !ok {
+		t.Fatal("replacement owner register rejected")
+	}
+	waitAccelerator(t, "replacement connected frame", func() bool { return currentConn.writeCount() == 1 })
+	stale := AcceleratorSessionTarget{SessionID: firstCall.SessionID, Generation: first.snapshot.Generation}
+	active := AcceleratorSessionTarget{SessionID: firstCall.SessionID, Generation: current.snapshot.Generation}
+	registry.EmitEventToTargets([]AcceleratorSessionTarget{stale, active}, Event{Type: "event", Name: "stale-first"})
+	waitAccelerator(t, "stale-first current delivery", func() bool { return currentConn.writeCount() == 2 })
+	registry.EmitEventToTargets([]AcceleratorSessionTarget{active, stale}, Event{Type: "event", Name: "current-first"})
+	waitAccelerator(t, "current-first current delivery", func() bool { return currentConn.writeCount() == 3 })
+	if got := currentConn.events(); got[1].Name != "stale-first" || got[2].Name != "current-first" {
+		t.Fatalf("replacement delivery frames = %#v", got)
+	}
+	if got := firstConn.writeCount(); got != 2 { // connected plus the pre-replacement targeted frame only
+		t.Fatalf("stale owner received %d frames", got)
+	}
+
+	current.requestClose(acceleratorSocketClose{code: websocket.CloseNormalClosure, reason: "disconnect lease"})
+	select {
+	case <-current.pumpsDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("replacement pumps did not stop")
+	}
+	lease, found := registry.LookupSessionLease(firstCall.SessionID)
+	if !found || lease.Generation != current.snapshot.Generation || lease.Connected {
+		t.Fatalf("disconnected retained lease = %+v found=%v", lease, found)
+	}
+	before := currentConn.writeCount()
+	registry.EmitEventToTargets([]AcceleratorSessionTarget{active}, Event{Type: "event", Name: "disconnected-drop"})
+	if got := currentConn.writeCount(); got != before {
+		t.Fatalf("disconnected generation received %d additional frames", got-before)
+	}
+	registry.RevokeBrowserSession(context.Background(), firstCall.SessionID)
+	if _, found := registry.LookupSessionLease(firstCall.SessionID); found {
+		t.Fatal("revoked lease remained visible")
+	}
+	registry.EmitEventToTargets([]AcceleratorSessionTarget{active}, Event{Type: "event", Name: "revoked-drop"})
+	closeAcceleratorSocket(t, second)
+}
+
+// T9: a slow targeted owner cannot make a target producer block or prevent a
+// healthy owner from receiving its exact-generation event; concurrent shutdown
+// leaves target publication safe.
+func TestAcceleratorTargetedDeliverySlowOwnerAndShutdownRace(t *testing.T) {
+	registry := newAcceleratorSessionRegistry("instance", nil, acceleratorTestConfig())
+	slowConn := newFakeAcceleratorConn()
+	slowConn.blockWrite = make(chan struct{}, 1)
+	slowConn.blockWrite <- struct{}{} // allow bootstrap, then block its writer
+	slowCall := acceleratorTestCall("target-slow")
+	slow, ok := registry.register(slowCall, slowConn)
+	if !ok {
+		t.Fatal("slow owner register rejected")
+	}
+	fastCall, fastConn := acceleratorTestCall("target-fast"), newFakeAcceleratorConn()
+	fast, ok := registry.register(fastCall, fastConn)
+	if !ok {
+		t.Fatal("fast owner register rejected")
+	}
+	registry.EmitEventToTargets([]AcceleratorSessionTarget{{SessionID: slowCall.SessionID, Generation: slow.snapshot.Generation}}, Event{Type: "event", Name: "block"})
+	waitAccelerator(t, "slow targeted writer blocked", func() bool { return slowConn.writers.Load() == 1 })
+	start := time.Now()
+	for i := 0; i < AcceleratorSocketQueueSize+1; i++ {
+		registry.EmitEventToTargets([]AcceleratorSessionTarget{{SessionID: slowCall.SessionID, Generation: slow.snapshot.Generation}}, Event{Type: "event", Name: "fill", Data: i})
+	}
+	if elapsed := time.Since(start); elapsed > 100*time.Millisecond {
+		t.Fatalf("slow targeted overflow blocked producer for %s", elapsed)
+	}
+	registry.EmitEventToTargets([]AcceleratorSessionTarget{{SessionID: fastCall.SessionID, Generation: fast.snapshot.Generation}}, Event{Type: "event", Name: "healthy"})
+	waitAccelerator(t, "healthy targeted delivery", func() bool { return fastConn.writeCount() == 2 })
+	waitAccelerator(t, "slow overflow close", func() bool {
+		select {
+		case <-slowConn.closed:
+			return true
+		default:
+			return false
+		}
+	})
+
+	var operations sync.WaitGroup
+	operations.Add(3)
+	go func() {
+		defer operations.Done()
+		registry.EmitEventToTargets([]AcceleratorSessionTarget{{SessionID: fastCall.SessionID, Generation: fast.snapshot.Generation}}, Event{Type: "event", Name: "race"})
+	}()
+	go func() { defer operations.Done(); registry.Quiesce() }()
+	go func() { defer operations.Done(); _ = registry.Close(context.Background()) }()
+	completed := make(chan struct{})
+	go func() { operations.Wait(); close(completed) }()
+	select {
+	case <-completed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("target delivery/quiesce/close race did not complete")
 	}
 }
 
@@ -1015,6 +1201,107 @@ func TestAcceleratorConnectedEligibilityDoesNotLoseBarrierEvent(t *testing.T) {
 	closeAcceleratorSocket(t, socket)
 }
 
+func TestAcceleratorConnectedPublicationWaitsForObserverAndReadiness(t *testing.T) {
+	connectEntered := make(chan struct{})
+	releaseConnect := make(chan struct{})
+	callbackComplete := atomic.Bool{}
+	currentGeneration := atomic.Uint64{}
+	observer := &recordingAcceleratorObserver{}
+	observer.onEvent = func(kind string, snapshot AcceleratorSessionSnapshot) {
+		if kind != "connect" {
+			return
+		}
+		currentGeneration.Store(uint64(snapshot.Generation))
+		if snapshot.Generation == 2 {
+			close(connectEntered)
+			<-releaseConnect
+			callbackComplete.Store(true)
+		}
+	}
+	registry := newAcceleratorSessionRegistry("instance", observer, acceleratorTestConfig())
+	call := acceleratorTestCall("callback-gated")
+	old, ok := registry.register(call, newFakeAcceleratorConn())
+	if !ok {
+		t.Fatal("initial registration rejected")
+	}
+	closeAcceleratorSocket(t, old)
+
+	conn := newFakeAcceleratorConn()
+	conn.blockWrite = make(chan struct{})
+	var afterWriteFailure atomic.Value
+	conn.afterWrite = func(event Event) {
+		if event.Name != "connected" {
+			return
+		}
+		if !callbackComplete.Load() || currentGeneration.Load() != 2 {
+			afterWriteFailure.Store("connected write preceded generation observer")
+		}
+		lease, found := registry.LookupSessionLease(call.SessionID)
+		if !found || !lease.Connected || lease.Generation != 2 {
+			afterWriteFailure.Store(fmt.Sprintf("connected write lease=%+v found=%v", lease, found))
+		}
+		registry.EmitEventToTargets([]AcceleratorSessionTarget{
+			{SessionID: call.SessionID, Generation: 1},
+			{SessionID: call.SessionID, Generation: 2},
+		}, Event{Type: "event", Name: "immediate-after-connected"})
+	}
+	registered := make(chan *acceleratorSocket, 1)
+	go func() {
+		socket, accepted := registry.register(call, conn)
+		if !accepted {
+			registered <- nil
+			return
+		}
+		registered <- socket
+	}()
+	waitSecret := func(signal <-chan struct{}, name string) {
+		t.Helper()
+		select {
+		case <-signal:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out waiting for %s", name)
+		}
+	}
+	waitSecret(connectEntered, "generation-two observer")
+	if conn.writeCount() != 0 {
+		t.Fatal("connected frame published before SessionConnected returned")
+	}
+	if lease, found := registry.LookupSessionLease(call.SessionID); !found || lease.Connected || lease.Generation != 2 {
+		t.Fatalf("pre-observer lease=%+v found=%v", lease, found)
+	}
+	close(releaseConnect)
+	waitAccelerator(t, "ready writer gate", func() bool {
+		lease, found := registry.LookupSessionLease(call.SessionID)
+		return found && lease.Connected && lease.Generation == 2 && conn.writers.Load() == 1
+	})
+	registry.EmitEventToTargets([]AcceleratorSessionTarget{{SessionID: call.SessionID, Generation: 2}}, Event{Type: "event", Name: "queued-behind-connected"})
+	close(conn.blockWrite)
+	var socket *acceleratorSocket
+	select {
+	case socket = <-registered:
+		if socket == nil {
+			t.Fatal("generation-two registration rejected")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("generation-two registration did not complete")
+	}
+	waitAccelerator(t, "callback-gated frames", func() bool { return conn.writeCount() == 3 })
+	if failure := afterWriteFailure.Load(); failure != nil {
+		t.Fatal(failure)
+	}
+	conn.mu.Lock()
+	names := []string{conn.writes[0].Name, conn.writes[1].Name, conn.writes[2].Name}
+	conn.mu.Unlock()
+	if got := fmt.Sprint(names); got != "[connected queued-behind-connected immediate-after-connected]" {
+		t.Fatalf("callback-gated frames=%s", got)
+	}
+	registry.EmitEventToTargets([]AcceleratorSessionTarget{{SessionID: call.SessionID, Generation: 1}}, Event{Type: "event", Name: "stale-only"})
+	if len(socket.queue) != 0 || conn.writeCount() != 3 {
+		t.Fatalf("stale generation reached replacement: queue=%d writes=%d", len(socket.queue), conn.writeCount())
+	}
+	closeAcceleratorSocket(t, socket)
+}
+
 func TestAcceleratorFailedReplacementWaitsForConnectCompletion(t *testing.T) {
 	connectEntered := make(chan struct{})
 	releaseConnect := make(chan struct{})
@@ -1077,8 +1364,8 @@ func TestAcceleratorFailedReplacementWaitsForConnectCompletion(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("generation three did not finish")
 	}
-	waitAccelerator(t, "causal disconnect", func() bool { return len(observer.eventCopy()) == 2 })
-	if got := fmt.Sprint(observer.eventCopy()); got != "[connect:2 disconnect:2]" {
+	waitAccelerator(t, "causal disconnect", func() bool { return len(observer.eventCopy()) == 4 })
+	if got := fmt.Sprint(observer.eventCopy()); got != "[connect:2 disconnect:2 connect:3 disconnect:3]" {
 		t.Fatalf("callbacks=%s", got)
 	}
 }

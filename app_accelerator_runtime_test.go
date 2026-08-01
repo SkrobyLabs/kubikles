@@ -137,6 +137,9 @@ func TestOrdinaryConstructionRunsRequiredGroupsOnce(t *testing.T) {
 			if factoryCalls != 1 || listCalls != 1 || ordinaryCalls != 1 {
 				t.Fatalf("construction calls = factory:%d list:%d ordinary:%d, want 1/1/1", factoryCalls, listCalls, ordinaryCalls)
 			}
+			if app.acceleratorSecretWatches != nil {
+				t.Fatalf("ordinary %s constructed Accelerator Secret watch manager: %#v", mode, app.acceleratorSecretWatches)
+			}
 		})
 	}
 }

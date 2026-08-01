@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"k8s.io/apimachinery/pkg/watch"
 	"os"
 	"os/signal"
 	"syscall"
@@ -163,14 +164,37 @@ func runServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 		}
 		defer idle.Shutdown()
 		idleDependencies := dependencies
-		// The lifetime coordinator is unconditionally the sole registry observer.
-		// Direct protection construction retains its observer seam for component tests.
-		idleDependencies.acceleratorObserver = idle
+		// The registry has one observer; chain Secret membership maintenance before
+		// the idle coordinator so synchronous revocation is fully cleaned first.
+		var registry *server.AcceleratorSessionRegistry
+		var secretManager *AcceleratorSecretWatchManager
+		if app.k8sClient != nil {
+			secretManager = newAcceleratorSecretWatchManager(
+				func(wctx context.Context, namespace, rv string, listOptions k8s.SecretListOptions) (watch.Interface, error) {
+					return app.k8sClient.WatchSecrets(wctx, namespace, rv, listOptions)
+				},
+				func(id agent.SessionID) (server.AcceleratorSessionLease, bool) {
+					if registry == nil {
+						return server.AcceleratorSessionLease{}, false
+					}
+					return registry.LookupSessionLease(id)
+				},
+				func(targets []server.AcceleratorSessionTarget, event server.Event) {
+					if registry != nil {
+						registry.EmitEventToTargets(targets, event)
+					}
+				},
+			)
+		}
+		chain := &acceleratorSessionObserverChain{secret: secretManager, idle: idle}
+		idleDependencies.acceleratorObserver = chain
 		protection, err := newAcceleratorHTTPProtectionWithDependencies(runCtx, app, identity.creator, identity.instanceID, idleDependencies)
 		if err != nil {
 			return err
 		}
 		idleProtection = protection
+		registry = protection.AcceleratorSessions
+		app.acceleratorSecretWatches = secretManager
 		installAcceleratorHTTPProtection(&serverOptions, protection)
 	}
 	newServer := dependencies.newServer
@@ -223,6 +247,38 @@ type acceleratorHTTPProtection struct {
 	BrowserSessions        *server.BrowserSessionManager
 	AcceleratorSessions    *server.AcceleratorSessionRegistry
 	WebSocketAuthenticator *server.AcceleratorWebSocketAuthenticator
+}
+
+// acceleratorSessionObserverChain keeps Secret cleanup ahead of idle accounting.
+// It is private composition only; the registry still invokes it out of locks.
+type acceleratorSessionObserverChain struct {
+	secret *AcceleratorSecretWatchManager
+	idle   server.AcceleratorSessionObserver
+}
+
+func (c *acceleratorSessionObserverChain) SessionConnected(s server.AcceleratorSessionSnapshot) {
+	if c.secret != nil {
+		c.secret.SessionConnected(s)
+	}
+	if c.idle != nil {
+		c.idle.SessionConnected(s)
+	}
+}
+func (c *acceleratorSessionObserverChain) SessionDisconnected(s server.AcceleratorSessionSnapshot) {
+	if c.secret != nil {
+		c.secret.SessionDisconnected(s)
+	}
+	if c.idle != nil {
+		c.idle.SessionDisconnected(s)
+	}
+}
+func (c *acceleratorSessionObserverChain) SessionRevoked(s server.AcceleratorSessionSnapshot) {
+	if c.secret != nil {
+		c.secret.SessionRevoked(s)
+	}
+	if c.idle != nil {
+		c.idle.SessionRevoked(s)
+	}
 }
 
 func newAcceleratorHTTPProtection(ctx context.Context, app *App, creator *server.CreatorAuthenticator, instanceID string) (acceleratorHTTPProtection, error) {

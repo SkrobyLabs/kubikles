@@ -196,6 +196,15 @@ type SecretListOptions struct {
 	ExcludeHelmReleases bool
 }
 
+// ProjectSecretListItem is the closed typed projection used by Accelerator
+// watches.  In particular it deliberately does not retain any Secret maps.
+func ProjectSecretListItem(secret *v1.Secret) SecretListItem {
+	if secret == nil {
+		return SecretListItem{}
+	}
+	return SecretListItem{Metadata: SecretMetadata{Name: secret.Name, Namespace: secret.Namespace, UID: string(secret.UID), CreationTimestamp: secret.CreationTimestamp}, Type: string(secret.Type), DataKeys: len(secret.Data)}
+}
+
 // ListSecretsMetadataWithContext lists secrets using metadata-only fetch for list views.
 // This avoids transferring the actual secret data, significantly reducing response size.
 func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]SecretListItem, error) {

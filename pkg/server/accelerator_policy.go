@@ -16,7 +16,7 @@ func NewAcceleratorMethodAuthorizer(resolution agent.CapabilityResolution) *Acce
 	return a
 }
 func (a *AcceleratorMethodAuthorizer) Authorize(call agent.AuthenticatedCallContext, method string) bool {
-	if a == nil || !call.IsAuthenticated() || method == "SubscribeSecretWatcher" || method == "UnsubscribeSecretWatcher" {
+	if a == nil || !call.IsAuthenticated() {
 		return false
 	}
 	policy, ok := agent.LookupMethodPolicy(method)

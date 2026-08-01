@@ -589,7 +589,7 @@ func TestBrowserWebSocketFinalValidationFailureEmitsNothing(t *testing.T) {
 	}
 }
 
-func TestBrowserWebSocketBootstrapFailureEmitsNothing(t *testing.T) {
+func TestBrowserWebSocketBootstrapFailureEmitsNoFrameAndDisconnectsObserver(t *testing.T) {
 	fixture := newAcceleratorWebSocketFixture(t)
 	fixture.browser.state.mu.Lock()
 	browserID := fixture.browser.state.session.context.SessionID
@@ -616,7 +616,7 @@ func TestBrowserWebSocketBootstrapFailureEmitsNothing(t *testing.T) {
 	if failing.writeCount() != 0 {
 		t.Fatalf("bootstrap failure wrote %d frames", failing.writeCount())
 	}
-	if got := fixture.observer.eventCopy(); len(got) != 0 {
+	if got := fixture.observer.eventCopy(); len(got) != 2 || got[0] != "connect:1" || got[1] != "disconnect:1" {
 		t.Fatalf("bootstrap-failure callbacks=%v", got)
 	}
 }

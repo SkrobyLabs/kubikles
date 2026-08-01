@@ -13,6 +13,9 @@ func (a *App) quiesce(ctx context.Context) {
 }
 
 func (a *App) stopProducers(ctx context.Context) {
+	if a.acceleratorSecretWatches != nil {
+		_ = a.acceleratorSecretWatches.ClearAll(context.WithoutCancel(ctx))
+	}
 	if a.ingressForwardManager != nil {
 		a.ingressForwardManager.Cleanup()
 	}

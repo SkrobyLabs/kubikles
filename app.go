@@ -74,6 +74,8 @@ type App struct {
 	emitter events.Emitter
 	// Embedded browser session
 	embeddedBrowser embeddedBrowserState
+	// Accelerator-only, session-owned projected Secret watches.
+	acceleratorSecretWatches *AcceleratorSecretWatchManager
 }
 
 // Watcher event types: see app_watchers.go (ResourceEvent, WatcherErrorEvent, WatcherStatusEvent)
