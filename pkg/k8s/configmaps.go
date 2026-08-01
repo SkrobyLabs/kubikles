@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"time"
+	"strconv"
 	"unicode/utf8"
 
 	v1 "k8s.io/api/core/v1"
@@ -19,6 +19,8 @@ const (
 	DataEntrySourceBinaryData = "binaryData"
 	DataEntryEncodingText     = "text"
 	DataEntryEncodingBase64   = "base64"
+	// HelmReleaseSecretType is the Kubernetes Secret type Helm uses for release storage.
+	HelmReleaseSecretType = "helm.sh/release.v1"
 )
 
 // DataEntry is a byte-safe key-value representation for Secret data and ConfigMap data/binaryData.
@@ -188,10 +190,20 @@ type SecretMetadata struct {
 	Annotations       map[string]string `json:"annotations,omitempty"`
 }
 
+// SecretListOptions controls metadata-only Secret list projection.
+// ExcludeHelmReleases excludes Helm's release-storage Secrets when true.
+type SecretListOptions struct {
+	ExcludeHelmReleases bool
+}
+
 // ListSecretsMetadataWithContext lists secrets using metadata-only fetch for list views.
 // This avoids transferring the actual secret data, significantly reducing response size.
 func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace string, onProgress ...func(loaded, total int)) ([]SecretListItem, error) {
-	start := time.Now()
+	return c.ListSecretsMetadataWithOptions(ctx, namespace, SecretListOptions{}, onProgress...)
+}
+
+// ListSecretsMetadataWithOptions lists projected metadata without transferring Secret data.
+func (c *Client) ListSecretsMetadataWithOptions(ctx context.Context, namespace string, options SecretListOptions, onProgress ...func(loaded, total int)) ([]SecretListItem, error) {
 	cs, err := c.getClientset()
 	if err != nil {
 		return nil, err
@@ -233,7 +245,7 @@ func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace s
 
 		// Use Table format with metadata-only objects
 		req := cs.CoreV1().RESTClient().Get().
-			AbsPath(path).
+			AbsPath(path).Param("includeObject", "Metadata").
 			SetHeader("Accept", "application/json;as=Table;g=meta.k8s.io;v=v1")
 		// Only set limit when progress tracking is requested (avoids bypassing watch cache)
 		if progressFn != nil {
@@ -242,11 +254,13 @@ func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace s
 		if continueToken != "" {
 			req = req.Param("continue", continueToken)
 		}
+		if options.ExcludeHelmReleases {
+			req = req.Param("fieldSelector", "type!="+HelmReleaseSecretType)
+		}
 
 		result := req.Do(ctx)
 
 		if err := result.Error(); err != nil {
-			log.Printf("[ListSecretsMetadata] API call failed after %v, ns=%q, err=%v", time.Since(start), namespace, err)
 			if isCancelledError(err) {
 				return nil, ErrRequestCancelled
 			}
@@ -301,6 +315,14 @@ func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace s
 					item.DataKeys = int(v)
 				case int:
 					item.DataKeys = v
+				case json.Number:
+					if count, err := strconv.Atoi(string(v)); err == nil {
+						item.DataKeys = count
+					}
+				case string:
+					if count, err := strconv.Atoi(v); err == nil {
+						item.DataKeys = count
+					}
 				}
 			}
 
@@ -317,13 +339,26 @@ func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace s
 					} `json:"metadata"`
 				}
 				if err := json.Unmarshal(row.Object.Raw, &partialMeta); err == nil {
-					item.Metadata.Name = partialMeta.Metadata.Name
-					item.Metadata.Namespace = partialMeta.Metadata.Namespace
-					item.Metadata.UID = partialMeta.Metadata.UID
-					item.Metadata.CreationTimestamp = partialMeta.Metadata.CreationTimestamp
+					if partialMeta.Metadata.Name != "" {
+						item.Metadata.Name = partialMeta.Metadata.Name
+					}
+					if partialMeta.Metadata.Namespace != "" {
+						item.Metadata.Namespace = partialMeta.Metadata.Namespace
+					}
+					if partialMeta.Metadata.UID != "" {
+						item.Metadata.UID = partialMeta.Metadata.UID
+					}
+					if !partialMeta.Metadata.CreationTimestamp.IsZero() {
+						item.Metadata.CreationTimestamp = partialMeta.Metadata.CreationTimestamp
+					}
 					item.Metadata.Labels = partialMeta.Metadata.Labels
 					item.Metadata.Annotations = partialMeta.Metadata.Annotations
 				}
+			}
+			// Field selectors are advisory on some API servers. Keep the defensive
+			// client-side projection boundary even when the server ignores ours.
+			if options.ExcludeHelmReleases && item.Type == HelmReleaseSecretType {
+				continue
 			}
 
 			allItems = append(allItems, item)
@@ -345,7 +380,6 @@ func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace s
 		continueToken = table.Metadata.Continue
 	}
 
-	log.Printf("[ListSecretsMetadata] API call took %v, ns=%q, items=%d", time.Since(start), namespace, len(allItems))
 	return allItems, nil
 }
 
@@ -484,6 +518,54 @@ func (c *Client) GetSecretYaml(namespace, name string) (string, error) {
 		return "", err
 	}
 	return string(yamlBytes), nil
+}
+
+// GetSecretProjectedYaml returns the closed Secret representation used by the
+// Accelerator boundary. It intentionally has no mutable or server-managed
+// metadata beyond the identity required to address the Secret.
+func (c *Client) GetSecretProjectedYaml(namespace, name string) (string, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return "", err
+	}
+	ctx, cancel := c.contextWithTimeout()
+	defer cancel()
+	secret, err := cs.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	projected := secretYAMLProjection{
+		APIVersion: "v1",
+		Kind:       "Secret",
+		Metadata: secretYAMLProjectionMetadata{
+			Name:      secret.Name,
+			Namespace: secret.Namespace,
+		},
+		Type: string(secret.Type),
+		Data: map[string][]byte{},
+	}
+	for key, value := range secret.Data {
+		projected.Data[key] = append([]byte(nil), value...)
+	}
+	yamlBytes, err := yaml.Marshal(projected)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlBytes), nil
+}
+
+type secretYAMLProjectionMetadata struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+}
+
+type secretYAMLProjection struct {
+	APIVersion string                       `json:"apiVersion"`
+	Kind       string                       `json:"kind"`
+	Metadata   secretYAMLProjectionMetadata `json:"metadata"`
+	Type       string                       `json:"type"`
+	Data       map[string][]byte            `json:"data"`
 }
 
 func (c *Client) UpdateSecretYaml(namespace, name, yamlContent string) error {

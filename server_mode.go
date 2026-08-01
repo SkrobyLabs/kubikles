@@ -124,7 +124,11 @@ func runServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 			return server.NewWithOptions(caller, assets, options)
 		}
 	}
-	srv, err := newServer(NewAppMethodCaller(app), assets, serverOptions)
+	caller := server.MethodCaller(NewAppMethodCaller(app))
+	if options.Mode == RuntimeModeAccelerator {
+		caller = newAcceleratorSecretCaller(caller, app)
+	}
+	srv, err := newServer(caller, assets, serverOptions)
 	if err != nil {
 		return err
 	}

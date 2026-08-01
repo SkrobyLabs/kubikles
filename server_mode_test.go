@@ -1,19 +1,30 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"embed"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"kubikles/pkg/agent"
+	"kubikles/pkg/debug"
+	"kubikles/pkg/events"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/server"
 )
@@ -22,6 +33,7 @@ type capturedServerModeServer struct {
 	mu       sync.Mutex
 	options  []server.Options
 	handlers []http.Handler
+	callers  []server.MethodCaller
 }
 
 func (s *capturedServerModeServer) newServer(caller server.MethodCaller, assets embed.FS, options server.Options) (serverModeServer, error) {
@@ -32,8 +44,19 @@ func (s *capturedServerModeServer) newServer(caller server.MethodCaller, assets 
 	s.mu.Lock()
 	s.options = append(s.options, options)
 	s.handlers = append(s.handlers, constructed.Handler())
+	s.callers = append(s.callers, caller)
 	s.mu.Unlock()
 	return s, nil
+}
+
+func (s *capturedServerModeServer) caller(t *testing.T) server.MethodCaller {
+	t.Helper()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.callers) != 1 {
+		t.Fatalf("captured callers = %d", len(s.callers))
+	}
+	return s.callers[0]
 }
 
 func (*capturedServerModeServer) EmitEvent(string, interface{})                   {}
@@ -302,6 +325,9 @@ func TestRunServerWithOptionsInstallsAcceleratorProtectionBeforeConstruction(t *
 	if resolver.calls != 1 || !options.MethodAuthorizer.Authorize(agent.AuthenticatedCallContext{PrincipalID: "creator", SessionID: "http"}, "ListSecretsMetadata") || len(options.AcceleratorInfoProvider.AcceleratorInfo().Capabilities) != 1 {
 		t.Fatalf("protection did not retain one startup snapshot: calls=%d options=%#v", resolver.calls, options)
 	}
+	if _, ok := captured.caller(t).(*acceleratorSecretCaller); !ok {
+		t.Fatalf("Accelerator caller = %T, want *acceleratorSecretCaller", captured.caller(t))
+	}
 	for i := 0; i < 3; i++ {
 		_ = options.MethodAuthorizer.Authorize(agent.AuthenticatedCallContext{PrincipalID: "creator", SessionID: "http"}, "GetSecretData")
 		_ = options.AcceleratorInfoProvider.AcceleratorInfo()
@@ -379,6 +405,9 @@ func TestRunServerWithOptionsOrdinaryModesIgnoreMalformedCreatorEnvironment(t *t
 			if lookupCalls != 0 || identityCalls != 0 || resolverCalls != 0 {
 				t.Fatalf("ordinary mode consulted malformed auth environment: env=%d identity=%d resolver=%d", lookupCalls, identityCalls, resolverCalls)
 			}
+			if _, ok := captured.caller(t).(*AppMethodCaller); !ok {
+				t.Fatalf("ordinary caller = %T, want *AppMethodCaller", captured.caller(t))
+			}
 			response := httptest.NewRecorder()
 			captured.handler(t).ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/livez", nil))
 			if response.Code == http.StatusUnauthorized {
@@ -418,5 +447,443 @@ func TestAcceleratorInfoBuildIdentityIsReportingOnly(t *testing.T) {
 	compatibility := agent.CheckBuildCompatibility("v-adjacent-desktop", BuildVersion)
 	if compatibility.Compatible || protection.Info.AcceleratorInfo().Build != want {
 		t.Fatalf("desktop compatibility result altered server report: %#v %#v", compatibility, protection.Info.AcceleratorInfo())
+	}
+}
+
+const acceleratorEvidenceCreatorToken = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
+type recordingProjectionAuthorizer struct {
+	mu       sync.Mutex
+	delegate server.MethodAuthorizer
+	contexts []agent.AuthenticatedCallContext
+}
+
+func (a *recordingProjectionAuthorizer) Authorize(call agent.AuthenticatedCallContext, method string) bool {
+	a.mu.Lock()
+	a.contexts = append(a.contexts, call)
+	a.mu.Unlock()
+	return a.delegate.Authorize(call, method)
+}
+
+func (a *recordingProjectionAuthorizer) firstContext(t *testing.T) agent.AuthenticatedCallContext {
+	t.Helper()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if len(a.contexts) == 0 {
+		t.Fatal("authorizer did not receive an authenticated context")
+	}
+	return a.contexts[0]
+}
+
+func newProjectionCanonicalHandler(t *testing.T, client *k8s.Client, capabilities []agent.Capability) (http.Handler, *recordingProjectionAuthorizer) {
+	t.Helper()
+	authenticator, err := server.NewCreatorAuthenticator(testCreatorVerifier(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := server.NewAcceleratorMethodAuthorizer(agent.CapabilityResolution{Capabilities: capabilities})
+	recording := &recordingProjectionAuthorizer{delegate: policy}
+	app := &App{k8sClient: client, listRequestManager: NewListRequestManager()}
+	caller := newAcceleratorSecretCaller(NewAppMethodCaller(app), app)
+	options := server.AcceleratorOptions(0, nil, authenticator.Guard)
+	options.MethodAuthorizer = recording
+	srv, err := server.NewWithOptions(caller, assets, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return srv.Handler(), recording
+}
+
+func projectionCanonicalCall(handler http.Handler, authorization, method string, args ...interface{}) *httptest.ResponseRecorder {
+	body, _ := json.Marshal(map[string]interface{}{"method": method, "args": args})
+	request := httptest.NewRequest(http.MethodPost, "/api/call", strings.NewReader(string(body)))
+	request.Host = "localhost"
+	if authorization != "" {
+		request.Header.Set("Authorization", authorization)
+	}
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	return response
+}
+
+func TestAcceleratorSecretProjectionRequiresPolicy(t *testing.T) {
+	var hitMu sync.Mutex
+	var paths []string
+	client := acceleratorProjectionTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hitMu.Lock()
+		paths = append(paths, r.URL.Path)
+		hitMu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/v1/namespaces/evidence/secrets":
+			table := metav1.Table{ColumnDefinitions: []metav1.TableColumnDefinition{{Name: "Name"}, {Name: "Type"}, {Name: "Data"}}, Rows: []metav1.TableRow{{Cells: []interface{}{"detail", "Opaque", float64(1)}}}}
+			_ = json.NewEncoder(w).Encode(table)
+		case "/api/v1/namespaces/evidence/secrets/detail":
+			_ = json.NewEncoder(w).Encode(v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "detail", Namespace: "evidence"}, Type: v1.SecretTypeOpaque, Data: map[string][]byte{"marker": []byte("POLICY_DETAIL_MARKER")}})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	allCapabilities := agent.V1Capabilities()
+	firstHandler, firstAuthorizer := newProjectionCanonicalHandler(t, client, allCapabilities)
+	secondHandler, secondAuthorizer := newProjectionCanonicalHandler(t, client, allCapabilities)
+	authorization := "Bearer " + acceleratorEvidenceCreatorToken
+	allowed := []struct {
+		method string
+		args   []interface{}
+	}{
+		{method: "ListSecretsMetadata", args: []interface{}{"", "evidence"}},
+		{method: "GetSecretData", args: []interface{}{"evidence", "detail"}},
+		{method: "GetSecretYaml", args: []interface{}{"evidence", "detail"}},
+	}
+	for _, test := range allowed {
+		first := projectionCanonicalCall(firstHandler, authorization, test.method, test.args...)
+		second := projectionCanonicalCall(secondHandler, authorization, test.method, test.args...)
+		if first.Code != http.StatusOK || second.Code != http.StatusOK || first.Body.String() != second.Body.String() {
+			t.Fatalf("%s identity-neutral responses = %d %q / %d %q", test.method, first.Code, first.Body.String(), second.Code, second.Body.String())
+		}
+	}
+	firstContext := firstAuthorizer.firstContext(t)
+	secondContext := secondAuthorizer.firstContext(t)
+	if firstContext == secondContext || !firstContext.IsAuthenticated() || !secondContext.IsAuthenticated() {
+		t.Fatalf("trusted contexts = %#v / %#v, want two distinct authenticated contexts", firstContext, secondContext)
+	}
+
+	hitMu.Lock()
+	allowedHits := len(paths)
+	hitMu.Unlock()
+	if allowedHits != 6 {
+		t.Fatalf("allowed facade Kubernetes hits = %d, want 6 (%#v)", allowedHits, paths)
+	}
+	unauthenticated := projectionCanonicalCall(firstHandler, "", "GetSecretData", "evidence", "detail")
+	if unauthenticated.Code != http.StatusUnauthorized || unauthenticated.Body.String() != "{\"error\":\"unauthorized\"}\n" || unauthenticated.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("missing auth response = %d %q %#v", unauthenticated.Code, unauthenticated.Body.String(), unauthenticated.Header())
+	}
+	withoutCapabilities, _ := newProjectionCanonicalHandler(t, client, nil)
+	for _, method := range []string{"ListSecretsMetadata", "GetSecretData", "GetSecretYaml"} {
+		response := projectionCanonicalCall(withoutCapabilities, authorization, method, "evidence", "detail")
+		if response.Code != http.StatusForbidden || response.Body.String() != "{\"error\":\"forbidden\"}\n" {
+			t.Fatalf("missing capability %s response = %d %q", method, response.Code, response.Body.String())
+		}
+	}
+	for _, method := range []string{"ListSecrets", "GetConfigMapData", "UpdateSecretData", "UpdateSecretYaml", "DeleteSecret", "CreateSecret"} {
+		response := projectionCanonicalCall(firstHandler, authorization, method, map[string]string{"PrincipalID": "forged", "SessionID": "forged"})
+		if response.Code != http.StatusForbidden || response.Body.String() != "{\"error\":\"forbidden\"}\n" || response.Header().Get("Cache-Control") != "no-store" {
+			t.Fatalf("forbidden %s response = %d %q %#v", method, response.Code, response.Body.String(), response.Header())
+		}
+	}
+	hitMu.Lock()
+	defer hitMu.Unlock()
+	if len(paths) != allowedHits {
+		t.Fatalf("denied calls reached facade/client: before=%d after=%d paths=%#v", allowedHits, len(paths), paths)
+	}
+}
+
+func TestSecretProjectionModeIsolation(t *testing.T) {
+	client, err := k8s.NewClientForRESTConfig(&rest.Config{Host: "http://127.0.0.1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ordinaryCapture := &capturedServerModeServer{}
+	ordinaryDependencies := productionServerModeDependencies()
+	ordinaryDependencies.newServer = ordinaryCapture.newServer
+	if err := runServerWithOptions(context.Background(), assets, 0, "ordinary", AppOptions{Mode: RuntimeModeServer, KubernetesClientFactory: func() (*k8s.Client, error) { return client, nil }}, ordinaryDependencies); err != nil {
+		t.Fatal(err)
+	}
+	ordinary := ordinaryCapture.caller(t)
+	if _, ok := ordinary.(*AppMethodCaller); !ok {
+		t.Fatalf("ordinary caller = %T, want raw *AppMethodCaller", ordinary)
+	}
+	if _, decorated := ordinary.(*acceleratorSecretCaller); decorated {
+		t.Fatalf("ordinary caller unexpectedly decorated: %T", ordinary)
+	}
+
+	acceleratorCapture := &capturedServerModeServer{}
+	acceleratorDependencies := productionServerModeDependencies()
+	acceleratorDependencies.lookupEnv = func(string) string { return testCreatorVerifier(t) }
+	acceleratorDependencies.newCreatorIdentity = func(verifier string) (*server.CreatorAuthenticator, string, error) {
+		creator, creatorErr := server.NewCreatorAuthenticator(verifier)
+		return creator, "accel-mode-isolation", creatorErr
+	}
+	acceleratorDependencies.capabilityResolverFactory = func(*k8s.Client) agent.CapabilityResolverFactory { return nil }
+	acceleratorDependencies.newServer = acceleratorCapture.newServer
+	if err := runServerWithOptions(context.Background(), assets, 0, "accelerator", AppOptions{Mode: RuntimeModeAccelerator, KubernetesClientFactory: func() (*k8s.Client, error) { return client, nil }}, acceleratorDependencies); err != nil {
+		t.Fatal(err)
+	}
+	decorated, ok := acceleratorCapture.caller(t).(*acceleratorSecretCaller)
+	if !ok {
+		t.Fatalf("Accelerator caller = %T, want *acceleratorSecretCaller", acceleratorCapture.caller(t))
+	}
+	if _, ok := decorated.delegate.(*AppMethodCaller); !ok {
+		t.Fatalf("Accelerator delegate = %T, want raw *AppMethodCaller", decorated.delegate)
+	}
+	if _, nested := decorated.delegate.(*acceleratorSecretCaller); nested {
+		t.Fatalf("Accelerator projection decorated more than once: %T", decorated.delegate)
+	}
+}
+
+func TestAcceleratorSecretPayloadByteBoundaries(t *testing.T) {
+	const (
+		listPlainMarkerA      = "LIST_PLAINTEXT_VALUE_MARKER_A"
+		listPlainMarkerB      = "LIST_PLAINTEXT_VALUE_MARKER_B"
+		listBinaryMarkerA     = "/wBMSVNUX0JJTkFSWV9NQVJLRVJfQQ=="
+		listBinaryMarkerB     = "/gFMSVNUX0JJTkFSWV9NQVJLRVJfQg=="
+		listBase64MarkerA     = "QkFTRTY0X1ZBTFVFX01BUktFUl9B"
+		listBase64MarkerB     = "QkFTRTY0X1ZBTFVFX01BUktFUl9C"
+		listStringDataMarkerA = "LIST_STRING_DATA_MARKER_A"
+		listStringDataMarkerB = "LIST_STRING_DATA_MARKER_B"
+		listLabelMarkerA      = "LIST_LABEL_MARKER_A"
+		listLabelMarkerB      = "LIST_LABEL_MARKER_B"
+		listAnnotationMarkerA = "LIST_ANNOTATION_MARKER_A"
+		listAnnotationMarkerB = "LIST_ANNOTATION_MARKER_B"
+		listLastAppliedA      = "LIST_LAST_APPLIED_MARKER_A"
+		listLastAppliedB      = "LIST_LAST_APPLIED_MARKER_B"
+		listManagedMarkerA    = "LIST_MANAGED_FIELDS_MARKER_A"
+		listManagedMarkerB    = "LIST_MANAGED_FIELDS_MARKER_B"
+		listFinalizerMarkerA  = "LIST_FINALIZER_MARKER_A"
+		listFinalizerMarkerB  = "LIST_FINALIZER_MARKER_B"
+		listOwnerMarkerA      = "LIST_OWNER_REFERENCE_MARKER_A"
+		listOwnerMarkerB      = "LIST_OWNER_REFERENCE_MARKER_B"
+		listResourceMarkerA   = "LIST_RESOURCE_VERSION_MARKER_A"
+		listResourceMarkerB   = "LIST_RESOURCE_VERSION_MARKER_B"
+		progressMarker        = "LIST_PROGRESS_MARKER"
+		logMarker             = "LIST_LOG_MARKER"
+		errorMarker           = "DISTINCTIVE_LIST_ERROR_MARKER"
+		detailMarker          = "DETAIL_ALLOWED_MARKER"
+	)
+	creation := metav1.Date(2026, time.August, 1, 0, 0, 0, 0, time.UTC)
+	makeHostileObject := func(suffix, payload, plain, binary, encoded, stringData, label, annotation, lastApplied, managed, finalizer, owner, resourceVersion string) []byte {
+		t.Helper()
+		raw, err := json.Marshal(map[string]interface{}{
+			"apiVersion": "v1", "kind": "Secret", "type": "Opaque",
+			"metadata": map[string]interface{}{
+				"name": "canonical-secret", "namespace": "evidence", "uid": "canonical-uid", "creationTimestamp": creation,
+				"labels": map[string]string{"forbidden-label-key-" + suffix: label},
+				"annotations": map[string]string{
+					"forbidden-annotation-key-" + suffix:               annotation,
+					"kubectl.kubernetes.io/last-applied-configuration": lastApplied + payload,
+				},
+				"managedFields": []map[string]interface{}{{"manager": managed, "fieldsV1": map[string]string{"raw": payload}}},
+				"finalizers":    []string{finalizer}, "ownerReferences": []map[string]string{{"name": owner}},
+				"resourceVersion": resourceVersion,
+			},
+			"data": map[string]string{
+				"forbidden-plain-key-" + suffix:  plain + payload,
+				"forbidden-binary-key-" + suffix: binary,
+				"forbidden-base64-key-" + suffix: encoded,
+			},
+			"binaryData": map[string]string{"forbidden-binary-data-key-" + suffix: binary + encoded},
+			"stringData": map[string]string{"forbidden-string-key-" + suffix: stringData + payload},
+			"progress":   progressMarker, "log": logMarker,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	smallPayload := strings.Repeat("SMALL_FORBIDDEN_PAYLOAD_A_", 256)
+	largePayload := strings.Repeat("RADICALLY_LARGE_FORBIDDEN_PAYLOAD_B_", 32768)
+	hostileObjectA := makeHostileObject("A", smallPayload, listPlainMarkerA, listBinaryMarkerA, listBase64MarkerA, listStringDataMarkerA, listLabelMarkerA, listAnnotationMarkerA, listLastAppliedA, listManagedMarkerA, listFinalizerMarkerA, listOwnerMarkerA, listResourceMarkerA)
+	hostileObjectB := makeHostileObject("B", largePayload, listPlainMarkerB, listBinaryMarkerB, listBase64MarkerB, listStringDataMarkerB, listLabelMarkerB, listAnnotationMarkerB, listLastAppliedB, listManagedMarkerB, listFinalizerMarkerB, listOwnerMarkerB, listResourceMarkerB)
+	makeTable := func(raw []byte) metav1.Table {
+		return metav1.Table{ColumnDefinitions: []metav1.TableColumnDefinition{{Name: "Name"}, {Name: "Type"}, {Name: "Data"}}, Rows: []metav1.TableRow{
+			{Cells: []interface{}{"ignored-cell-name", "Opaque", float64(3)}, Object: runtime.RawExtension{Raw: raw}},
+			{Cells: []interface{}{"sh.helm.release.v1.forbidden.v1", k8s.HelmReleaseSecretType, float64(3)}, Object: runtime.RawExtension{Raw: raw}},
+		}}
+	}
+	tableA, tableB := makeTable(hostileObjectA), makeTable(hostileObjectB)
+	tableBytesA, err := json.Marshal(tableA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tableBytesB, err := json.Marshal(tableB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tableBytesB) < len(tableBytesA)*50 {
+		t.Fatalf("hostile fixtures are not radically different in size: A=%d B=%d", len(tableBytesA), len(tableBytesB))
+	}
+	for _, encoded := range []string{listBinaryMarkerA, listBinaryMarkerB, listBase64MarkerA, listBase64MarkerB} {
+		if _, err := base64.StdEncoding.DecodeString(encoded); err != nil {
+			t.Fatalf("fixture value %q is not base64: %v", encoded, err)
+		}
+	}
+	fixtureEvidence := []struct {
+		name    string
+		raw     []byte
+		markers []string
+	}{
+		{name: "A", raw: tableBytesA, markers: []string{"forbidden-plain-key-A", "forbidden-binary-key-A", "forbidden-base64-key-A", listPlainMarkerA, listBinaryMarkerA, listBase64MarkerA, listStringDataMarkerA, listLabelMarkerA, listAnnotationMarkerA, listLastAppliedA, listManagedMarkerA, listFinalizerMarkerA, listOwnerMarkerA, listResourceMarkerA, "SMALL_FORBIDDEN_PAYLOAD_A_"}},
+		{name: "B", raw: tableBytesB, markers: []string{"forbidden-plain-key-B", "forbidden-binary-key-B", "forbidden-base64-key-B", listPlainMarkerB, listBinaryMarkerB, listBase64MarkerB, listStringDataMarkerB, listLabelMarkerB, listAnnotationMarkerB, listLastAppliedB, listManagedMarkerB, listFinalizerMarkerB, listOwnerMarkerB, listResourceMarkerB, "RADICALLY_LARGE_FORBIDDEN_PAYLOAD_B_"}},
+	}
+	for _, fixture := range fixtureEvidence {
+		for _, marker := range append(fixture.markers, "stringData", "binaryData", "managedFields", "finalizers", "ownerReferences", "resourceVersion", "kubectl.kubernetes.io/last-applied-configuration") {
+			if !bytes.Contains(fixture.raw, []byte(marker)) {
+				t.Fatalf("hostile fixture %s does not contain required evidence %q", fixture.name, marker)
+			}
+		}
+	}
+	detailSecret := v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "detail", Namespace: "evidence", Labels: map[string]string{"private": "DETAIL_LABEL_FORBIDDEN"},
+			Annotations:   map[string]string{"kubectl.kubernetes.io/last-applied-configuration": "DETAIL_LAST_APPLIED_FORBIDDEN"},
+			ManagedFields: []metav1.ManagedFieldsEntry{{Manager: "DETAIL_MANAGED_FORBIDDEN"}}, Finalizers: []string{"DETAIL_FINALIZER_FORBIDDEN"},
+			OwnerReferences: []metav1.OwnerReference{{Name: "DETAIL_OWNER_FORBIDDEN"}}, ResourceVersion: "DETAIL_RESOURCE_VERSION_FORBIDDEN",
+		},
+		Type:       v1.SecretTypeOpaque,
+		Data:       map[string][]byte{"a-plain": []byte(detailMarker), "z-binary": {0xff, 0x00, 0x7f}},
+		StringData: map[string]string{"never": "DETAIL_STRING_DATA_FORBIDDEN"},
+	}
+	listCalls := 0
+	client := acceleratorProjectionTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/v1/namespaces/evidence/secrets":
+			listCalls++
+			switch listCalls {
+			case 1:
+				_ = json.NewEncoder(w).Encode(tableA)
+			case 2:
+				_ = json.NewEncoder(w).Encode(tableB)
+			default:
+				w.WriteHeader(http.StatusInternalServerError)
+				_ = json.NewEncoder(w).Encode(metav1.Status{TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Status"}, Status: metav1.StatusFailure, Message: errorMarker, Reason: metav1.StatusReasonInternalError, Code: http.StatusInternalServerError})
+			}
+		case "/api/v1/namespaces/evidence/secrets/detail":
+			_ = json.NewEncoder(w).Encode(detailSecret)
+		case "/api/v1/namespaces/evidence/secrets/empty":
+			_ = json.NewEncoder(w).Encode(v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "empty", Namespace: "evidence"}, Data: map[string][]byte{}})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	var standardLogs bytes.Buffer
+	previousLogWriter, previousLogFlags, previousLogPrefix := log.Writer(), log.Flags(), log.Prefix()
+	log.SetOutput(&standardLogs)
+	log.SetFlags(0)
+	log.SetPrefix("")
+	t.Cleanup(func() {
+		log.SetOutput(previousLogWriter)
+		log.SetFlags(previousLogFlags)
+		log.SetPrefix(previousLogPrefix)
+	})
+	var debugLogs bytes.Buffer
+	debug.Init(events.EmitterFunc(func(name string, data ...interface{}) {
+		debugLogs.WriteString(name)
+		encoded, _ := json.Marshal(data)
+		debugLogs.Write(encoded)
+	}))
+	debug.SetEnabled(true)
+	t.Cleanup(func() {
+		debug.SetEnabled(false)
+		debug.Init(&events.NoopEmitter{})
+	})
+	handler, _ := newProjectionCanonicalHandler(t, client, agent.V1Capabilities())
+	authorization := "Bearer " + acceleratorEvidenceCreatorToken
+
+	listResponseA := projectionCanonicalCall(handler, authorization, "ListSecretsMetadata", "request-fixture-a", "evidence")
+	listResponseB := projectionCanonicalCall(handler, authorization, "ListSecretsMetadata", "request-fixture-b", "evidence")
+	for i, response := range []*httptest.ResponseRecorder{listResponseA, listResponseB} {
+		if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" {
+			t.Fatalf("list response %d = %d %q %#v", i, response.Code, response.Body.String(), response.Header())
+		}
+	}
+	wantListBytes := []byte("{\"data\":[{\"metadata\":{\"name\":\"canonical-secret\",\"namespace\":\"evidence\",\"uid\":\"canonical-uid\",\"creationTimestamp\":\"2026-08-01T00:00:00Z\"},\"type\":\"Opaque\",\"dataKeys\":3}]}\n")
+	if !bytes.Equal(listResponseA.Body.Bytes(), listResponseB.Body.Bytes()) || !bytes.Equal(listResponseA.Body.Bytes(), wantListBytes) {
+		t.Fatalf("content-dependent list responses:\nA=%q\nB=%q\nwant=%q", listResponseA.Body.Bytes(), listResponseB.Body.Bytes(), wantListBytes)
+	}
+	for fixture, rawSize := range map[string]int{"A": len(tableBytesA), "B": len(tableBytesB)} {
+		if rawSize < len(wantListBytes)*25 {
+			t.Fatalf("list response is not dramatically bounded for fixture %s: raw=%d response=%d", fixture, rawSize, len(wantListBytes))
+		}
+	}
+	forbiddenMarkers := []string{
+		"forbidden-plain-key-A", "forbidden-plain-key-B", "forbidden-binary-key-A", "forbidden-binary-key-B", "forbidden-base64-key-A", "forbidden-base64-key-B",
+		listPlainMarkerA, listPlainMarkerB, listBinaryMarkerA, listBinaryMarkerB, listBase64MarkerA, listBase64MarkerB, listStringDataMarkerA, listStringDataMarkerB,
+		listLabelMarkerA, listLabelMarkerB, listAnnotationMarkerA, listAnnotationMarkerB, listLastAppliedA, listLastAppliedB, listManagedMarkerA, listManagedMarkerB,
+		listFinalizerMarkerA, listFinalizerMarkerB, listOwnerMarkerA, listOwnerMarkerB, listResourceMarkerA, listResourceMarkerB,
+		k8s.HelmReleaseSecretType, "sh.helm.release", progressMarker, logMarker, errorMarker, "SMALL_FORBIDDEN_PAYLOAD_A_", "RADICALLY_LARGE_FORBIDDEN_PAYLOAD_B_",
+	}
+	for _, forbidden := range forbiddenMarkers {
+		if bytes.Contains(listResponseA.Body.Bytes(), []byte(forbidden)) || bytes.Contains(listResponseB.Body.Bytes(), []byte(forbidden)) {
+			t.Fatalf("list envelope leaked %q", forbidden)
+		}
+	}
+
+	listErrorResponse := projectionCanonicalCall(handler, authorization, "ListSecretsMetadata", "request-error", "evidence")
+	if listErrorResponse.Code != http.StatusInternalServerError || listErrorResponse.Body.String() != "{\"error\":\"internal error\"}\n" || listErrorResponse.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("list error response = %d %q %#v", listErrorResponse.Code, listErrorResponse.Body.String(), listErrorResponse.Header())
+	}
+	if listCalls != 3 {
+		t.Fatalf("canonical list error used a substitute detail path: list calls=%d", listCalls)
+	}
+	allFailureOutput := listErrorResponse.Body.String() + standardLogs.String() + debugLogs.String()
+	if strings.Contains(allFailureOutput, "GetSecretData") || strings.Contains(allFailureOutput, detailMarker) {
+		t.Fatalf("canonical list error was substituted with a detail path: %q", allFailureOutput)
+	}
+	for _, forbidden := range append(forbiddenMarkers, errorMarker) {
+		if strings.Contains(allFailureOutput, forbidden) {
+			t.Fatalf("response or standard/debug logs leaked %q: %q", forbidden, allFailureOutput)
+		}
+	}
+
+	secretEditorSource, err := os.ReadFile("frontend/src/components/shared/SecretEditor.tsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fetchStart := bytes.Index(secretEditorSource, []byte("    const fetchData = async () => {"))
+	if fetchStart < 0 {
+		t.Fatal("SecretEditor fetchData source boundary not found")
+	}
+	fetchEndRelative := bytes.Index(secretEditorSource[fetchStart:], []byte("\n    const handleSaveYaml = async () => {"))
+	if fetchEndRelative < 0 {
+		t.Fatal("SecretEditor fetchData source boundary not found")
+	}
+	fetchDataSource := string(secretEditorSource[fetchStart : fetchStart+fetchEndRelative])
+	exactFetchPair := "const [yaml, data] = await Promise.all([\n                GetSecretYaml(namespace, resourceName),\n                GetSecretData(namespace, resourceName)\n            ]);"
+	if !strings.Contains(fetchDataSource, exactFetchPair) || strings.Count(fetchDataSource, "GetSecretYaml(namespace, resourceName)") != 1 || strings.Count(fetchDataSource, "GetSecretData(namespace, resourceName)") != 1 {
+		t.Fatalf("SecretEditor fetchData must invoke the exact projected detail methods: %s", fetchDataSource)
+	}
+
+	dataResponse := projectionCanonicalCall(handler, authorization, "GetSecretData", "evidence", "detail")
+	if dataResponse.Code != http.StatusOK || !strings.Contains(dataResponse.Body.String(), detailMarker) {
+		t.Fatalf("data response = %d %q", dataResponse.Code, dataResponse.Body.String())
+	}
+	var gotData interface{}
+	if err := json.Unmarshal(dataResponse.Body.Bytes(), &gotData); err != nil {
+		t.Fatal(err)
+	}
+	wantDataJSON := `{"data":[{"key":"a-plain","value":"DETAIL_ALLOWED_MARKER","base64Value":"REVUQUlMX0FMTE9XRURfTUFSS0VS","isBinary":false,"source":"data","encoding":"text"},{"key":"z-binary","value":"","base64Value":"/wB/","isBinary":true,"source":"data","encoding":"base64"}]}`
+	var wantData interface{}
+	if err := json.Unmarshal([]byte(wantDataJSON), &wantData); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(gotData, wantData) {
+		t.Fatalf("data envelope = %s, want %s", dataResponse.Body.String(), wantDataJSON)
+	}
+
+	emptyDataResponse := projectionCanonicalCall(handler, authorization, "GetSecretData", "evidence", "empty")
+	if emptyDataResponse.Code != http.StatusOK || emptyDataResponse.Body.String() != "{\"data\":[]}\n" {
+		t.Fatalf("empty data response = %d %q", emptyDataResponse.Code, emptyDataResponse.Body.String())
+	}
+
+	yamlResponse := projectionCanonicalCall(handler, authorization, "GetSecretYaml", "evidence", "detail")
+	if yamlResponse.Code != http.StatusOK {
+		t.Fatalf("YAML response = %d %q", yamlResponse.Code, yamlResponse.Body.String())
+	}
+	var yamlEnvelope struct {
+		Data string `json:"data"`
+	}
+	if err := json.Unmarshal(yamlResponse.Body.Bytes(), &yamlEnvelope); err != nil {
+		t.Fatal(err)
+	}
+	wantYAML := "apiVersion: v1\ndata:\n  a-plain: REVUQUlMX0FMTE9XRURfTUFSS0VS\n  z-binary: /wB/\nkind: Secret\nmetadata:\n  name: detail\n  namespace: evidence\ntype: Opaque\n"
+	if yamlEnvelope.Data != wantYAML || !strings.Contains(yamlEnvelope.Data, "a-plain") {
+		t.Fatalf("YAML envelope = %q, want %q", yamlEnvelope.Data, wantYAML)
+	}
+	for _, forbidden := range []string{"DETAIL_LABEL_FORBIDDEN", "DETAIL_LAST_APPLIED_FORBIDDEN", "DETAIL_MANAGED_FORBIDDEN", "DETAIL_FINALIZER_FORBIDDEN", "DETAIL_OWNER_FORBIDDEN", "DETAIL_RESOURCE_VERSION_FORBIDDEN", "DETAIL_STRING_DATA_FORBIDDEN"} {
+		if strings.Contains(yamlEnvelope.Data, forbidden) || strings.Contains(dataResponse.Body.String(), forbidden) {
+			t.Fatalf("detail envelope leaked %q", forbidden)
+		}
 	}
 }

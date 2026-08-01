@@ -52,6 +52,12 @@ func (a *App) ListSecrets(requestId, namespace string) ([]v1.Secret, error) {
 // ListSecretsMetadata returns a lightweight list of secrets for display purposes.
 // It uses the Table API to avoid transferring actual secret data.
 func (a *App) ListSecretsMetadata(requestId, namespace string) ([]k8s.SecretListItem, error) {
+	return a.listSecretsMetadataWithOptions(requestId, namespace, k8s.SecretListOptions{})
+}
+
+// listSecretsMetadataWithOptions keeps the public App method compatible while
+// allowing the Accelerator caller to select its restricted list projection.
+func (a *App) listSecretsMetadataWithOptions(requestId, namespace string, options k8s.SecretListOptions) ([]k8s.SecretListItem, error) {
 	if a.k8sClient == nil {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
@@ -59,7 +65,7 @@ func (a *App) ListSecretsMetadata(requestId, namespace string) ([]k8s.SecretList
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListSecretsMetadataWithContext(ctx, namespace, a.listProgressCallback("secrets"))
+		result, err := a.k8sClient.ListSecretsMetadataWithOptions(ctx, namespace, options, a.listProgressCallback("secrets"))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}
@@ -68,7 +74,7 @@ func (a *App) ListSecretsMetadata(requestId, namespace string) ([]k8s.SecretList
 	// For non-cancellable requests, use a default context
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	return a.k8sClient.ListSecretsMetadataWithContext(ctx, namespace)
+	return a.k8sClient.ListSecretsMetadataWithOptions(ctx, namespace, options)
 }
 
 // ConfigMap YAML operations
