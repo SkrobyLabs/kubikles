@@ -1,9 +1,13 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"embed"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,7 +20,14 @@ import (
 
 func newAcceleratorTestServer(t *testing.T, caller *recordingMethodCaller, readiness ReadinessProvider, guard ProtectedRouteGuard) *Server {
 	t.Helper()
-	server, err := NewWithOptions(caller, embed.FS{}, AcceleratorOptions(0, readiness, guard))
+	options := AcceleratorOptions(0, readiness, func(next http.Handler) http.Handler {
+		guarded := guard(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			guarded.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), creatorContextKey{}, agent.AuthenticatedCallContext{PrincipalID: "creator-test", SessionID: "http-test"})))
+		})
+	})
+	options.MethodAuthorizer = MethodAuthorizerFunc(func(agent.AuthenticatedCallContext, string) bool { return true })
+	server, err := NewWithOptions(caller, embed.FS{}, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +155,7 @@ func TestAcceleratorCanonicalRPCBoundary(t *testing.T) {
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"data":"ok"`) {
 		t.Fatalf("canonical response = %d %s", response.Code, response.Body.String())
 	}
-	if caller.context != agent.LocalCallContext() || caller.method != "Example" || len(caller.args) != 1 || guardCalls.Load() != 1 {
+	if !caller.context.IsAuthenticated() || caller.method != "Example" || len(caller.args) != 1 || guardCalls.Load() != 1 {
 		t.Fatalf("call = %#v %q %#v guard=%d", caller.context, caller.method, caller.args, guardCalls.Load())
 	}
 
@@ -329,5 +340,306 @@ func TestCompatibilityBoundaryRegression(t *testing.T) {
 		if response := requestBoundary(accelerator.Handler(), http.MethodPost, path, "localhost", ""); response.Code != http.StatusNotFound {
 			t.Errorf("Accelerator %s status = %d", path, response.Code)
 		}
+	}
+}
+
+type eventBody struct {
+	events *[]string
+	body   *strings.Reader
+	seen   bool
+}
+
+func (b *eventBody) Read(p []byte) (int, error) {
+	if !b.seen {
+		*b.events = append(*b.events, "decode")
+		b.seen = true
+	}
+	return b.body.Read(p)
+}
+
+func (*eventBody) Close() error { return nil }
+
+type eventMethodCaller struct {
+	events  *[]string
+	context agent.AuthenticatedCallContext
+	method  string
+	args    []json.RawMessage
+	err     error
+	calls   int
+}
+
+func (c *eventMethodCaller) CallMethod(call agent.AuthenticatedCallContext, method string, args []json.RawMessage) (interface{}, error) {
+	*c.events = append(*c.events, "caller")
+	c.context, c.method, c.args = call, method, args
+	c.calls++
+	return "ok", c.err
+}
+
+func TestAuthenticatedCanonicalRPCOrderingAndErrors(t *testing.T) {
+	trusted := agent.AuthenticatedCallContext{PrincipalID: "creator-server-owned", SessionID: "http-server-owned"}
+	events := []string{}
+	caller := &eventMethodCaller{events: &events}
+	options := AcceleratorOptions(0, nil, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			events = append(events, "auth")
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), creatorContextKey{}, trusted)))
+		})
+	})
+	options.MethodAuthorizer = MethodAuthorizerFunc(func(call agent.AuthenticatedCallContext, method string) bool {
+		events = append(events, "authorizer")
+		return call == trusted && method == "GetSecretData"
+	})
+	srv, err := NewWithOptions(caller, embed.FS{}, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := &eventBody{events: &events, body: strings.NewReader(`{"method":"GetSecretData","args":[{"PrincipalID":"forged","SessionID":"forged"}]}`)}
+	request := httptest.NewRequest(http.MethodPost, "/api/call", nil)
+	request.Host = "localhost"
+	request.Body = body
+	response := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusOK || strings.Join(events, ",") != "auth,decode,authorizer,caller" {
+		t.Fatalf("response/events = %d %q / %#v", response.Code, response.Body.String(), events)
+	}
+	if caller.context != trusted || caller.method != "GetSecretData" || len(caller.args) != 1 || strings.Contains(string(caller.args[0]), string(trusted.PrincipalID)) {
+		t.Fatalf("caller identity/args = %#v %q %#v", caller.context, caller.method, caller.args)
+	}
+
+	token, err := ParseCreatorToken(creatorTestToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth, err := NewCreatorAuthenticator(DeriveCreatorVerifier(token).Encoded())
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalidCaller := &recordingMethodCaller{}
+	invalidOptions := AcceleratorOptions(0, nil, auth.Guard)
+	invalidOptions.MethodAuthorizer = MethodAuthorizerFunc(func(agent.AuthenticatedCallContext, string) bool {
+		t.Fatal("invalid auth reached authorizer")
+		return false
+	})
+	invalidServer, err := NewWithOptions(invalidCaller, embed.FS{}, invalidOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recording := &recordingBody{data: strings.NewReader(`{"method":"GetSecretData"}`)}
+	request = httptest.NewRequest(http.MethodPost, "/api/call", nil)
+	request.Host = "localhost"
+	request.Body = recording
+	response = httptest.NewRecorder()
+	invalidServer.Handler().ServeHTTP(response, request)
+	assertUnauthorizedResponse(t, response)
+	if recording.reads != 0 || invalidCaller.callCount() != 0 {
+		t.Fatalf("invalid auth read body or dispatched: reads=%d calls=%d", recording.reads, invalidCaller.callCount())
+	}
+
+	for _, partial := range []agent.AuthenticatedCallContext{{PrincipalID: "creator-only"}, {SessionID: "session-only"}, {}} {
+		partialOptions := AcceleratorOptions(0, nil, func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), creatorContextKey{}, partial)))
+			})
+		})
+		partialOptions.MethodAuthorizer = MethodAuthorizerFunc(func(agent.AuthenticatedCallContext, string) bool {
+			t.Fatal("partial auth reached authorizer")
+			return true
+		})
+		partialServer, err := NewWithOptions(&recordingMethodCaller{}, embed.FS{}, partialOptions)
+		if err != nil {
+			t.Fatal(err)
+		}
+		partialBody := &recordingBody{data: strings.NewReader(`{"method":"GetSecretData"}`)}
+		request = httptest.NewRequest(http.MethodPost, "/api/call", nil)
+		request.Host = "localhost"
+		request.Body = partialBody
+		response = httptest.NewRecorder()
+		partialServer.Handler().ServeHTTP(response, request)
+		assertUnauthorizedResponse(t, response)
+		if partialBody.reads != 0 {
+			t.Fatalf("partial context %#v caused %d body reads", partial, partialBody.reads)
+		}
+	}
+
+	nilCaller := &recordingMethodCaller{}
+	nilOptions := AcceleratorOptions(0, nil, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), creatorContextKey{}, trusted)))
+		})
+	})
+	nilServer, err := NewWithOptions(nilCaller, embed.FS{}, nilOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nilBody := &recordingBody{data: strings.NewReader(`{"method":"GetSecretData"}`)}
+	request = httptest.NewRequest(http.MethodPost, "/api/call", nil)
+	request.Host = "localhost"
+	request.Body = nilBody
+	response = httptest.NewRecorder()
+	nilServer.Handler().ServeHTTP(response, request)
+	assertAcceleratorErrorResponse(t, response, http.StatusForbidden, "forbidden")
+	if nilBody.reads == 0 || nilCaller.callCount() != 0 {
+		t.Fatalf("nil authorizer ordering/dispatch = reads=%d calls=%d", nilBody.reads, nilCaller.callCount())
+	}
+
+	deniedEvents := []string{}
+	deniedCaller := &eventMethodCaller{events: &deniedEvents}
+	deniedOptions := AcceleratorOptions(0, nil, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), creatorContextKey{}, trusted)))
+		})
+	})
+	deniedOptions.MethodAuthorizer = MethodAuthorizerFunc(func(agent.AuthenticatedCallContext, string) bool {
+		deniedEvents = append(deniedEvents, "authorizer")
+		return false
+	})
+	deniedServer, err := NewWithOptions(deniedCaller, embed.FS{}, deniedOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response = requestBoundary(deniedServer.Handler(), http.MethodPost, "/api/call", "localhost", `{"method":"GetSecretData"}`)
+	assertAcceleratorErrorResponse(t, response, http.StatusForbidden, "forbidden")
+	if deniedCaller.calls != 0 || strings.Join(deniedEvents, ",") != "authorizer" {
+		t.Fatalf("denied method events/calls = %#v / %d", deniedEvents, deniedCaller.calls)
+	}
+
+	caller.err = errors.New("underlying token verifier GetSecretData secrets.detail creator-server-owned")
+	events = events[:0]
+	body = &eventBody{events: &events, body: strings.NewReader(`{"method":"GetSecretData"}`)}
+	request = httptest.NewRequest(http.MethodPost, "/api/call", nil)
+	request.Host = "localhost"
+	request.Body = body
+	response = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(response, request)
+	assertAcceleratorErrorResponse(t, response, http.StatusInternalServerError, "internal error")
+	if strings.Join(events, ",") != "auth,decode,authorizer,caller" {
+		t.Fatalf("error ordering = %#v", events)
+	}
+}
+
+func TestAcceleratorHTTPRedactionCorpus(t *testing.T) {
+	token, err := ParseCreatorToken(creatorTestToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifier := DeriveCreatorVerifier(token)
+	auth, err := NewCreatorAuthenticator(verifier.Encoded())
+	if err != nil {
+		t.Fatal(err)
+	}
+	const (
+		instanceID       = "accel-DISTINCTIVE-INSTANCE"
+		deniedMethod     = "DistinctiveDeniedMethod"
+		underlyingDetail = "DISTINCTIVE_CALLER_ERROR"
+		resolverRawError = "DISTINCTIVE_RESOLVER_RAW_ERROR"
+	)
+	resolution := agent.CapabilityResolution{
+		Capabilities: []agent.Capability{agent.CapabilitySecretsDetail},
+		Diagnostics: []agent.CapabilityDiagnostic{
+			{Capability: "unknown/filtered", Action: "unknown/filtered", Outcome: agent.CapabilityCheckOutcomeDenied, Reason: resolverRawError},
+			{Capability: agent.CapabilitySecretsWatch, Action: agent.ResourceActionCoreV1SecretsWatch, Outcome: agent.CapabilityCheckOutcomeDenied, Reason: "safe bounded denial reason"},
+		},
+	}
+	caller := &recordingMethodCaller{err: errors.New(underlyingDetail + " " + creatorTestToken)}
+	options := AcceleratorOptions(0, nil, auth.Guard)
+	options.AcceleratorInfoProvider = NewAuthenticatedAcceleratorInfo(agent.BuildIdentity{BuildVersion: "v-sensitive-build", Commit: "sensitive-looking-commit", Dirty: true}, instanceID, resolution)
+	options.MethodAuthorizer = MethodAuthorizerFunc(func(_ agent.AuthenticatedCallContext, method string) bool { return method != deniedMethod })
+	srv, err := NewWithOptions(caller, embed.FS{}, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var capturedLog bytes.Buffer
+	previousWriter := log.Writer()
+	previousFlags := log.Flags()
+	previousPrefix := log.Prefix()
+	log.SetOutput(&capturedLog)
+	log.SetFlags(0)
+	log.SetPrefix("")
+	t.Cleanup(func() {
+		log.SetOutput(previousWriter)
+		log.SetFlags(previousFlags)
+		log.SetPrefix(previousPrefix)
+	})
+
+	request := func(method, path, body, authorization string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, path, strings.NewReader(body))
+		r.Host = "localhost"
+		if authorization != "" {
+			r.Header.Set("Authorization", authorization)
+		}
+		w := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(w, r)
+		return w
+	}
+	authorization := "Bearer " + creatorTestToken
+	badRequest := request(http.MethodPost, "/api/call", "{DISTINCTIVE_BAD_JSON", authorization)
+	unauthorized := request(http.MethodPost, "/api/call", `{"method":"GetSecretData"}`, "Bearer DISTINCTIVE_INVALID_AUTHORIZATION")
+	forbidden := request(http.MethodPost, "/api/call", `{"method":"`+deniedMethod+`"}`, authorization)
+	internal := request(http.MethodPost, "/api/call", `{"method":"GetSecretData"}`, authorization)
+	info := request(http.MethodGet, "/api/accelerator-info", "", authorization)
+	assertAcceleratorErrorResponse(t, badRequest, http.StatusBadRequest, "invalid request")
+	assertUnauthorizedResponse(t, unauthorized)
+	assertAcceleratorErrorResponse(t, forbidden, http.StatusForbidden, "forbidden")
+	assertAcceleratorErrorResponse(t, internal, http.StatusInternalServerError, "internal error")
+	if info.Code != http.StatusOK || !strings.Contains(info.Body.String(), "safe bounded denial reason") {
+		t.Fatalf("info response = %d %q", info.Code, info.Body.String())
+	}
+
+	invalidTokenInput := "DISTINCTIVE_INVALID_TOKEN_INPUT_1234567890AB"
+	_, tokenErr := ParseCreatorToken(invalidTokenInput)
+	invalidVerifierInput := "DISTINCTIVE_INVALID_VERIFIER_INPUT_123456"
+	_, verifierErr := ParseCreatorVerifier(invalidVerifierInput)
+	constructionText := fmt.Sprintf("%v|%v", tokenErr, verifierErr)
+	allOutput := badRequest.Body.String() + unauthorized.Body.String() + forbidden.Body.String() + internal.Body.String() + info.Body.String() + capturedLog.String() + constructionText + fmt.Sprintf("%v|%+v|%#v|%s|%q|%x", token, verifier, token, verifier, token, verifier)
+	for _, secret := range []string{creatorTestToken, verifier.Encoded(), string(auth.context.PrincipalID), string(auth.context.SessionID), invalidTokenInput, invalidVerifierInput, underlyingDetail, resolverRawError, "DISTINCTIVE_INVALID_AUTHORIZATION"} {
+		if strings.Contains(allOutput, secret) {
+			t.Fatalf("redaction corpus exposed %q in %q", secret, allOutput)
+		}
+	}
+	failureOutput := badRequest.Body.String() + unauthorized.Body.String() + forbidden.Body.String() + internal.Body.String()
+	for _, detail := range []string{deniedMethod, "GetSecretData", string(agent.CapabilitySecretsDetail), "v-sensitive-build", "sensitive-looking-commit", underlyingDetail} {
+		if strings.Contains(failureOutput, detail) {
+			t.Fatalf("failure corpus exposed %q in %q", detail, failureOutput)
+		}
+	}
+}
+
+func TestAcceleratorTypedNilAdaptersFailClosed(t *testing.T) {
+	guardCalls := 0
+	options := AcceleratorOptions(0, nil, countingProtectedRouteGuard(&guardCalls, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			trusted := agent.AuthenticatedCallContext{PrincipalID: "creator", SessionID: "http"}
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), creatorContextKey{}, trusted)))
+		})
+	}))
+	options.AcceleratorInfoProvider = AcceleratorInfoProviderFunc(nil)
+	options.MethodAuthorizer = MethodAuthorizerFunc(nil)
+	srv, err := NewWithOptions(&recordingMethodCaller{}, embed.FS{}, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	info := requestBoundary(srv.Handler(), http.MethodGet, "/api/accelerator-info", "localhost", "")
+	if info.Code != http.StatusNotFound || guardCalls != 0 {
+		t.Fatalf("typed-nil info provider status = %d guard calls = %d, want 404 and zero", info.Code, guardCalls)
+	}
+	call := requestBoundary(srv.Handler(), http.MethodPost, "/api/call", "localhost", `{"method":"ListSecretsMetadata"}`)
+	assertAcceleratorErrorResponse(t, call, http.StatusForbidden, "forbidden")
+}
+
+func TestDenyProtectedRoutesNoStore(t *testing.T) {
+	response := httptest.NewRecorder()
+	DenyProtectedRoutes(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("deny guard called next handler")
+	})).ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/api/call", nil))
+	assertUnauthorizedResponse(t, response)
+}
+
+func assertAcceleratorErrorResponse(t *testing.T, response *httptest.ResponseRecorder, status int, message string) {
+	t.Helper()
+	wantBody := "{\"error\":\"" + message + "\"}\n"
+	if response.Code != status || response.Body.String() != wantBody || response.Header().Get("Content-Type") != "application/json" || response.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("error response = %d %q %#v, want %d %q", response.Code, response.Body.String(), response.Header(), status, wantBody)
 	}
 }

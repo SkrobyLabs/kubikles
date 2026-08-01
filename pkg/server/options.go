@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"kubikles/pkg/agent"
 )
 
 // BoundaryMode selects the HTTP compatibility or hardened Accelerator boundary.
@@ -39,12 +41,45 @@ func (f ReadinessFunc) Ready(ctx context.Context) error { return f(ctx) }
 // ProtectedRouteGuard wraps an Accelerator protected route.
 type ProtectedRouteGuard func(http.Handler) http.Handler
 
+// AcceleratorInfoProvider supplies the immutable authenticated Accelerator report.
+type AcceleratorInfoProvider interface {
+	AcceleratorInfo() AuthenticatedAcceleratorInfo
+}
+type AcceleratorInfoProviderFunc func() AuthenticatedAcceleratorInfo
+
+func (f AcceleratorInfoProviderFunc) AcceleratorInfo() AuthenticatedAcceleratorInfo { return f() }
+
+func hasAcceleratorInfoProvider(provider AcceleratorInfoProvider) bool {
+	if provider == nil {
+		return false
+	}
+	if f, ok := provider.(AcceleratorInfoProviderFunc); ok {
+		return f != nil
+	}
+	return true
+}
+
+// MethodAuthorizer admits only authenticated Accelerator RPC methods.
+type MethodAuthorizer interface {
+	Authorize(agent.AuthenticatedCallContext, string) bool
+}
+type MethodAuthorizerFunc func(agent.AuthenticatedCallContext, string) bool
+
+func (f MethodAuthorizerFunc) Authorize(c agent.AuthenticatedCallContext, m string) bool {
+	if f == nil {
+		return false
+	}
+	return f(c, m)
+}
+
 // Options defines the server's fixed listener and HTTP boundary.
 type Options struct {
-	ListenAddress       string
-	BoundaryMode        BoundaryMode
-	ReadinessProvider   ReadinessProvider
-	ProtectedRouteGuard ProtectedRouteGuard
+	ListenAddress           string
+	BoundaryMode            BoundaryMode
+	ReadinessProvider       ReadinessProvider
+	ProtectedRouteGuard     ProtectedRouteGuard
+	AcceleratorInfoProvider AcceleratorInfoProvider
+	MethodAuthorizer        MethodAuthorizer
 }
 
 // CompatibilityOptions preserves the ordinary server wildcard bind and HTTP surface.
@@ -70,6 +105,7 @@ func AcceleratorOptions(port int, readiness ReadinessProvider, guard ProtectedRo
 func DenyProtectedRoutes(_ http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = writeJSON(w, map[string]interface{}{"error": "unauthorized"})
 	})

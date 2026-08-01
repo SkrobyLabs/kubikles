@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"kubikles/pkg/agent"
 	"kubikles/pkg/compressedassets"
 )
 
@@ -48,9 +47,18 @@ func (s *Server) compatibilityHandler(static http.Handler) http.Handler {
 }
 
 func (s *Server) acceleratorHandler(static http.Handler) http.Handler {
-	canonical := s.options.ProtectedRouteGuard(http.HandlerFunc(s.handleCanonicalAPI))
+	protected := http.NewServeMux()
+	protected.HandleFunc("POST /api/call", s.handleCanonicalAPI)
+	if hasAcceleratorInfoProvider(s.options.AcceleratorInfoProvider) {
+		protected.HandleFunc("GET /api/accelerator-info", s.handleAcceleratorInfo)
+	}
+	canonical := s.options.ProtectedRouteGuard(protected)
 	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !exactRequestPath(r, r.URL.Path) {
+			http.NotFound(w, r)
+			return
+		}
+		if r.URL.Path == "/api/accelerator-info" && !hasAcceleratorInfoProvider(s.options.AcceleratorInfoProvider) {
 			http.NotFound(w, r)
 			return
 		}
@@ -59,9 +67,13 @@ func (s *Server) acceleratorHandler(static http.Handler) http.Handler {
 			s.handleLive(w, r)
 		case "/readyz":
 			s.handleReady(w, r)
-		case "/api/call":
-			if r.Method != http.MethodPost {
-				w.Header().Set("Allow", http.MethodPost)
+		case "/api/call", "/api/accelerator-info":
+			wantMethod := http.MethodPost
+			if r.URL.Path == "/api/accelerator-info" {
+				wantMethod = http.MethodGet
+			}
+			if r.Method != wantMethod {
+				w.Header().Set("Allow", wantMethod)
 				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 				return
 			}
@@ -178,6 +190,12 @@ func validateAcceleratorRequest(r *http.Request) int {
 
 func (s *Server) handleCanonicalAPI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	callContext, authenticated := authenticatedCreatorContext(r.Context())
+	if !authenticated {
+		writeAcceleratorError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, AcceleratorMaxRequestBodyBytes)
 	decoder := json.NewDecoder(r.Body)
 	var request APIRequest
@@ -198,16 +216,23 @@ func (s *Server) handleCanonicalAPI(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, "method name required")
 		return
 	}
-	result, err := s.caller.CallMethod(agent.LocalCallContext(), request.Method, request.Args)
+	if s.options.MethodAuthorizer == nil || !s.options.MethodAuthorizer.Authorize(callContext, request.Method) {
+		writeAcceleratorError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+	result, err := s.caller.CallMethod(callContext, request.Method, request.Args)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			s.writeError(w, http.StatusNotFound, err.Error())
-		} else {
-			s.writeError(w, http.StatusInternalServerError, err.Error())
-		}
+		writeAcceleratorError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 	_ = writeJSON(w, map[string]interface{}{"data": result})
+}
+
+func writeAcceleratorError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = writeJSON(w, map[string]string{"error": message})
 }
 
 func (s *Server) writeCanonicalDecodeError(w http.ResponseWriter, err error) {
