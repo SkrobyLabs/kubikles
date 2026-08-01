@@ -115,7 +115,8 @@ endif
 # Version info from git
 GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "")
 GIT_DIRTY := $(shell git diff --quiet 2>/dev/null && echo "false" || echo "true")
-VERSION_LDFLAGS := -X main.GitCommit=$(GIT_COMMIT) -X main.GitDirty=$(GIT_DIRTY)
+BUILD_VERSION ?= dev
+VERSION_LDFLAGS := -X main.BuildVersion=$(BUILD_VERSION) -X main.GitCommit=$(GIT_COMMIT) -X main.GitDirty=$(GIT_DIRTY)
 BUILD_FLAGS := -trimpath -ldflags "-s -w $(VERSION_LDFLAGS)"
 
 # Generate app icon PNG from SVG source (Wails generates icon.ico from this)

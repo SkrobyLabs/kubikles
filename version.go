@@ -1,8 +1,13 @@
 package main
 
+import "kubikles/pkg/agent"
+
 // Build-time variables, set via ldflags
-// Example: go build -ldflags "-X main.GitCommit=abc123 -X main.GitDirty=true"
+// Example: go build -ldflags "-X main.BuildVersion=v1.3.0 -X main.GitCommit=abc123 -X main.GitDirty=true"
 var (
+	// BuildVersion is the exact build identity (set at build time).
+	BuildVersion = agent.DefaultBuildVersion
+
 	// GitCommit is the full git commit hash (set at build time)
 	GitCommit = ""
 
@@ -12,34 +17,18 @@ var (
 
 // VersionInfo contains version information for the application
 type VersionInfo struct {
-	Version string `json:"version"` // Short version: "dev", or 8-char commit hash
+	Version string `json:"version"` // Exact build version
 	Commit  string `json:"commit"`  // Full commit hash (empty for dev)
 	IsDirty bool   `json:"isDirty"` // Has uncommitted changes
-	IsDev   bool   `json:"isDev"`   // Is dev build (no commit info)
+	IsDev   bool   `json:"isDev"`   // Is dev build
 }
 
 // GetVersionInfo returns the current version information
 func (a *App) GetVersionInfo() VersionInfo {
-	// If no commit info, this is a dev build
-	if GitCommit == "" {
-		return VersionInfo{
-			Version: "dev",
-			Commit:  "",
-			IsDirty: false,
-			IsDev:   true,
-		}
-	}
-
-	// Shorten commit to 8 chars for display
-	shortCommit := GitCommit
-	if len(shortCommit) > 8 {
-		shortCommit = shortCommit[:8]
-	}
-
 	return VersionInfo{
-		Version: shortCommit,
+		Version: BuildVersion,
 		Commit:  GitCommit,
 		IsDirty: GitDirty == "true",
-		IsDev:   false,
+		IsDev:   BuildVersion == agent.DefaultBuildVersion,
 	}
 }
