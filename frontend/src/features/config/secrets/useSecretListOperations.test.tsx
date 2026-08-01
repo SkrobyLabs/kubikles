@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SecretReadSource } from './secretReadSource';
 import { SecretReadSourceProvider } from './secretReadSource';
 import { useSecretListOperations } from './useSecretListOperations';
+import Logger from '~/utils/Logger';
 
 const k8s = vi.hoisted(() => ({
   lastRefresh: 1,
@@ -24,6 +25,7 @@ class HookSource implements SecretReadSource {
   subscribeCount = 0;
   listCount = 0;
   unsubscribeCount = 0;
+  subscribeError: unknown = null;
   cancelCount = 0;
   listeners = { progress: new Set<any>(), resource: new Set<any>(), status: new Set<any>(), error: new Set<any>(), connected: new Set<any>() };
   constructor(key: string) { this.sourceKey = key; }
@@ -36,6 +38,7 @@ class HookSource implements SecretReadSource {
   subscribe = async (namespace: string, exclude: boolean) => {
     this.subscribeCount += 1;
     this.log.push(`subscribe:${namespace}:${exclude}`);
+    if (this.subscribeError) throw this.subscribeError;
     return `spec:${this.sourceKey}:${namespace}:${exclude}`;
   };
   unsubscribe = async (id: string) => { this.unsubscribeCount += 1; this.log.push(`unsubscribe:${id}`); };
@@ -107,5 +110,26 @@ describe('useSecretListOperations', () => {
     unmount();
     await waitFor(() => expect(sourceB.unsubscribeCount).toBe(1));
     expect(sourceB.listeners.resource.size).toBe(0);
+  });
+
+  it('keeps the real desktop safe Logger diagnostic wired on subscription rejection', async () => {
+    const source = new HookSource('source-error');
+    source.subscribeError = { raw: 'HOSTILE_SECRET_VALUE' };
+    const logger = vi.spyOn(Logger, 'error').mockImplementation(() => {});
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <SecretReadSourceProvider value={source}>{children}</SecretReadSourceProvider>
+    );
+    const mounted = renderHook(
+      () => useSecretListOperations('ctx', ['team'], ['team', 'other'], true, true),
+      { wrapper },
+    );
+    await waitFor(() => expect(logger).toHaveBeenCalledWith(
+      'Secret list operation failure',
+      expect.objectContaining({ event: 'subscription_failure', namespace: 'team' }),
+      'config',
+    ));
+    expect(JSON.stringify(logger.mock.calls)).not.toContain('HOSTILE_SECRET_VALUE');
+    mounted.unmount();
+    logger.mockRestore();
   });
 });

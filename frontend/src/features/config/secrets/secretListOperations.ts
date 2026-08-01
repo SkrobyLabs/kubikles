@@ -1,12 +1,11 @@
-import Logger from '~/utils/Logger';
-import type { SecretEvent, SecretReadSource } from './secretReadSource';
+import type { SecretEvent, SecretListState, SecretReadSource } from './secretReadSourceContract';
+export type { SecretListState } from './secretReadSourceContract';
 
-export type SecretListState = {
-  secrets: any[];
-  loading: boolean;
-  error: any;
-  loadingProgress: { loaded: number; total: number } | null;
-};
+export type SecretOperationDiagnostic = (
+  event: 'subscription_failure' | 'list_failure',
+  requestId: string,
+  namespace: string,
+) => void;
 
 export const normalizeSecretNamespaces = (selected: string | string[], all: string[]) => {
   const values = Array.isArray(selected) ? selected : [selected];
@@ -82,15 +81,6 @@ const assertSource = (source: SecretReadSource) => {
 const operationError = (operation: string, namespace: string) =>
   new Error(`Secret ${operation} failed for namespace ${namespace || 'all namespaces'}`);
 
-const logOperationFailure = (event: 'subscription_failure' | 'list_failure', requestId: string, namespace: string) => {
-  if (typeof window === 'undefined') return;
-  Logger.error('Secret list operation failure', {
-    event,
-    requestId,
-    namespace: namespace || 'all-namespaces',
-  }, 'config');
-};
-
 const projectPendingSecretEvent = (event: SecretEvent): SecretEvent => ({
   type: event.type,
   resourceType: event.resourceType,
@@ -112,6 +102,7 @@ const projectPendingSecretEvent = (event: SecretEvent): SecretEvent => ({
 export class SecretListOperationController {
   private emit: (state: SecretListState) => void;
   private checkConnectionError: (error: unknown) => boolean;
+  private reportDiagnostic: SecretOperationDiagnostic;
   private generation = 0;
   private transitionIntent = 0;
   private transition: Promise<void> = Promise.resolve();
@@ -123,10 +114,12 @@ export class SecretListOperationController {
     source: SecretReadSource,
     emit: (state: SecretListState) => void,
     checkConnectionError: (error: unknown) => boolean = () => false,
+    reportDiagnostic: SecretOperationDiagnostic = () => {},
   ) {
     assertSource(source);
     this.emit = emit;
     this.checkConnectionError = checkConnectionError;
+    this.reportDiagnostic = reportDiagnostic;
   }
 
   private publish(patch: Partial<SecretListState>) {
@@ -285,7 +278,7 @@ export class SecretListOperationController {
     }).catch(error => {
       config.pendingSubscriptions.delete(index);
       if (this.isCurrent(config) && !cancellationError(error)) {
-        logOperationFailure('subscription_failure', requestId, namespace);
+        this.reportDiagnostic('subscription_failure', requestId, namespace);
         this.checkConnectionError(error);
       }
     }).finally(() => {
@@ -315,7 +308,7 @@ export class SecretListOperationController {
     }).catch(error => {
       if (!this.isCurrent(config) || config.run !== run || !run.active || !child.pending || cancellationError(error)) return;
       const diagnostic = operationError('list', child.namespace);
-      if (child.namespace !== '') logOperationFailure('list_failure', child.id, child.namespace);
+      if (child.namespace !== '') this.reportDiagnostic('list_failure', child.id, child.namespace);
       this.checkConnectionError(error);
       if (child.namespace === '') run.error = diagnostic;
     }).finally(() => this.settleChild(config, run, child));

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SecretReadSource } from './secretReadSource';
 import { applySecretEvent, normalizeSecretNamespaces, SecretListOperationController, type SecretListState } from './secretListOperations';
+import Logger from '~/utils/Logger';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -65,6 +66,10 @@ class FakeSource implements SecretReadSource {
 }
 
 const row = (uid: string, namespace = 'a', type = 'Opaque') => ({ type, metadata: { uid, namespace, name: uid } });
+const productionDiagnostic = (event: 'subscription_failure' | 'list_failure', requestId: string, namespace: string) => {
+  if (typeof window === 'undefined') return;
+  Logger.error('Secret list operation failure', { event, requestId, namespace: namespace || 'all-namespaces' }, 'config');
+};
 
 let loggedEvents: any[];
 let consoleError: ReturnType<typeof vi.spyOn>;
@@ -260,7 +265,7 @@ describe('SecretListOperationController', () => {
     const source = new FakeSource();
     source.autoSubscribe = false;
     const classified: unknown[] = [];
-    const controller = new SecretListOperationController(source, () => {}, error => { classified.push(error); return true; });
+    const controller = new SecretListOperationController(source, () => {}, error => { classified.push(error); return true; }, productionDiagnostic);
 
     await controller.replace(source, [''], false, true);
     const hostile = Object.assign(new Error('Unauthorized HOSTILE_SUBSCRIPTION_BODY'), {
@@ -315,7 +320,7 @@ describe('SecretListOperationController', () => {
     const source = new FakeSource();
     const states: SecretListState[] = [];
     const classified: unknown[] = [];
-    const controller = new SecretListOperationController(source, state => states.push(state), error => { classified.push(error); return true; });
+    const controller = new SecretListOperationController(source, state => states.push(state), error => { classified.push(error); return true; }, productionDiagnostic);
 
     await controller.replace(source, ['named'], false, true);
     await flush();
