@@ -160,7 +160,7 @@ export default function ResourceList({
     columns,
     data,
     isLoading,
-    loadingProgress: externalProgress = null,
+    loadingProgress: externalProgress,
     namespaces = [],
     currentNamespace,
     onNamespaceChange,
@@ -187,10 +187,11 @@ export default function ResourceList({
     const { getConfig } = useConfig();
     const { refreshNamespaces } = useK8s();
 
-    // Loading progress: prefer external prop, fall back to internal listener
+    // An explicitly supplied null is controlled and must not fall back to global progress.
+    const hasExternalProgress = Object.prototype.hasOwnProperty.call(arguments[0] || {}, 'loadingProgress');
     const [internalProgress, setInternalProgress] = useState<LoadingProgress | null>(null);
     useEffect(() => {
-        if (!isLoading || !resourceType) {
+        if (hasExternalProgress || !isLoading || !resourceType) {
             setInternalProgress(null);
             return;
         }
@@ -200,8 +201,8 @@ export default function ResourceList({
             }
         });
         return () => { cancel(); setInternalProgress(null); };
-    }, [isLoading, resourceType]);
-    const loadingProgress = externalProgress ?? internalProgress;
+    }, [hasExternalProgress, isLoading, resourceType]);
+    const loadingProgress = hasExternalProgress ? externalProgress ?? null : internalProgress;
     const largeDatasetThreshold = getConfig('ui.largeDatasetThreshold') ?? 5000;
     const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: string }>(initialSort || { key: null, direction: 'asc' });
     const [searchInput, setSearchInput] = useState(''); // Immediate input value

@@ -16,6 +16,7 @@ import (
 
 	"kubikles/pkg/agent"
 	"kubikles/pkg/k8s"
+	"kubikles/pkg/server"
 )
 
 func acceleratorProjectionTestClient(t *testing.T, handler http.Handler) *k8s.Client {
@@ -66,6 +67,29 @@ func TestAcceleratorSecretCallerDelegatesOtherMethodsExactly(t *testing.T) {
 	got, err := caller.CallMethod(call, "GetPods", args)
 	if err != nil || got != "delegated" || delegate.call != call || delegate.method != "GetPods" || string(delegate.args[0]) != string(args[0]) {
 		t.Fatalf("delegate = %#v %v %#v", got, err, delegate)
+	}
+}
+
+func TestAppMethodCallerDispatchesExactAcceleratorSecretUnsubscribe(t *testing.T) {
+	trusted := agent.AuthenticatedCallContext{PrincipalID: "trusted-unsubscribe", SessionID: "session-unsubscribe"}
+	watcherSpecID := SecretWatchSpecID("owned-watcher-spec")
+	leases := &secretWatchLeaseStore{leases: map[agent.SessionID]server.AcceleratorSessionLease{
+		trusted.SessionID: {Generation: 7, Connected: true},
+	}}
+	manager := &AcceleratorSecretWatchManager{
+		streams:            map[SecretWatchSpecID]*secretWatchStream{},
+		sessionSpecs:       map[agent.SessionID]map[SecretWatchSpecID]server.AcceleratorSocketGeneration{trusted.SessionID: {watcherSpecID: 7}},
+		sessionGenerations: map[agent.SessionID]server.AcceleratorSocketGeneration{trusted.SessionID: 7},
+		lease:              leases.lookup,
+	}
+	caller := NewAppMethodCaller(&App{acceleratorSecretWatches: manager})
+	if result, err := caller.CallMethod(trusted, "UnsubscribeSecretWatcher", []json.RawMessage{json.RawMessage(`"owned-watcher-spec"`)}); err != nil || result != nil {
+		t.Fatalf("unsubscribe dispatch = %#v, %v", result, err)
+	}
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+	if _, found := manager.sessionSpecs[trusted.SessionID]; found {
+		t.Fatalf("exact trusted unsubscribe retained membership: %#v", manager.sessionSpecs)
 	}
 }
 

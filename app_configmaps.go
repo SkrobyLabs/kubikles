@@ -65,7 +65,7 @@ func (a *App) listSecretsMetadataWithOptions(requestId, namespace string, option
 		ctx, seq := a.listRequestManager.StartRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
-		result, err := a.k8sClient.ListSecretsMetadataWithOptions(ctx, namespace, options, a.listProgressCallback("secrets"))
+		result, err := a.k8sClient.ListSecretsMetadataWithOptions(ctx, namespace, options, a.listProgressCallbackForRequest("secrets", requestId))
 		if err == k8s.ErrRequestCancelled {
 			return nil, nil
 		}

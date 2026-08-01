@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
 import BulkActionModal from '~/components/shared/BulkActionModal';
-import { useSecrets } from '~/hooks/resources';
 import { useK8s } from '~/context';
 import { useSelection } from '~/hooks/useSelection';
 import { useBulkActions } from '~/hooks/useBulkActions';
@@ -11,18 +10,15 @@ import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import SecretActionsMenu from './SecretActionsMenu';
 import { useSecretActions } from './useSecretActions';
 import { useMenuPosition } from '~/hooks/useMenuPosition';
-import { filterSecretsForView } from './secretViewBehavior';
+import { useSecretReadSource } from './secretReadSource';
+import { useSecretListOperations } from './useSecretListOperations';
 
 export default function SecretList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { secrets, loading } = useSecrets(currentContext, selectedNamespaces, isVisible) as any;
     const [hideHelmSecrets, setHideHelmSecrets] = useState(true);
-
-    // Filter out Helm release secrets if toggle is enabled
-    const filteredSecrets = useMemo(() => {
-        return filterSecretsForView(secrets, hideHelmSecrets);
-    }, [secrets, hideHelmSecrets]);
+    const { secrets, loading, loadingProgress } = useSecretListOperations(currentContext, selectedNamespaces, namespaces, isVisible, hideHelmSecrets);
+    const secretSource = useSecretReadSource();
     const { handleEditYaml, handleEditKeyValue, handleShowDependencies } = useSecretActions();
     const selection = useSelection();
 
@@ -50,24 +46,11 @@ export default function SecretList({ isVisible }: { isVisible: boolean }) {
             label: 'Keys',
             defaultHidden: true,
             render: (item: any) => {
-                const keys = Object.keys(item.data || {});
-                if (keys.length === 0) return <span className="text-gray-500">-</span>;
-                return <span title={keys.join('\n')}>{keys.length} key{keys.length > 1 ? 's' : ''}</span>;
+                const keys = Number(item.dataKeys || 0);
+                if (keys === 0) return <span className="text-gray-500">-</span>;
+                return <span>{keys} key{keys > 1 ? 's' : ''}</span>;
             },
-            getValue: (item: any) => Object.keys(item.data || {}).join(','),
-        },
-        {
-            key: 'size',
-            label: 'Size',
-            defaultHidden: true,
-            render: (item: any) => {
-                // Secrets data is base64 encoded, so actual size is ~75% of stored size
-                const total = Object.values(item.data || {}).reduce((sum: any, v: any) => sum + (v?.length || 0), 0) as number;
-                const decoded = Math.floor(total * 0.75);
-                if (decoded < 1024) return `~${decoded} B`;
-                return `~${(decoded / 1024).toFixed(1)} KB`;
-            },
-            getValue: (item: any) => Object.values(item.data || {}).reduce((sum: any, v: any) => sum + (v?.length || 0), 0),
+            getValue: (item: any) => Number(item.dataKeys || 0),
         },
         {
             key: 'actions',
@@ -109,8 +92,9 @@ export default function SecretList({ isVisible }: { isVisible: boolean }) {
             <ResourceList
                 title="Secrets"
                 columns={columns}
-                data={filteredSecrets}
+                data={secrets}
                 isLoading={loading}
+                loadingProgress={loadingProgress}
                 namespaces={namespaces}
                 currentNamespace={selectedNamespaces}
                 onNamespaceChange={setSelectedNamespaces}

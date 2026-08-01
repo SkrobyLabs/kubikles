@@ -316,6 +316,8 @@ export function ListRoleBindings(...args) { return AppProxy.ListRoleBindings(...
 export function ListRoles(...args) { return AppProxy.ListRoles(...args); }
 export function ListSecrets(...args) { return AppProxy.ListSecrets(...args); }
 export function ListSecretsMetadata(...args) { return AppProxy.ListSecretsMetadata(...args); }
+// Accelerator requests use the existing server method with its restricted third option.
+export function ListAcceleratorSecretsMetadata(...args) { return AppProxy.ListSecretsMetadata(...args); }
 export function ListServiceAccounts(...args) { return AppProxy.ListServiceAccounts(...args); }
 export function ListServices(...args) { return AppProxy.ListServices(...args); }
 export function ListStatefulSets(...args) { return AppProxy.ListStatefulSets(...args); }
@@ -391,6 +393,9 @@ export function StopLogStream(...args) { return AppProxy.StopLogStream(...args);
 export function StopPortForward(...args) { return AppProxy.StopPortForward(...args); }
 export function SubscribeCRDWatcher(...args) { return AppProxy.SubscribeCRDWatcher(...args); }
 export function SubscribeResourceWatcher(...args) { return AppProxy.SubscribeResourceWatcher(...args); }
+// Accelerator-only methods: trusted call context is injected by server dispatch,
+// so these intentionally do not exist in the Wails-generated bindings.
+export function SubscribeSecretWatcher(...args) { return AppProxy.SubscribeSecretWatcher(...args); }
 export function SuspendCronJob(...args) { return AppProxy.SuspendCronJob(...args); }
 export function SwitchContext(...args) { return AppProxy.SwitchContext(...args); }
 export function TestConnection(...args) { return AppProxy.TestConnection(...args); }
@@ -400,6 +405,7 @@ export function TestPrometheusEndpoint(...args) { return AppProxy.TestPrometheus
 export function TriggerCronJob(...args) { return AppProxy.TriggerCronJob(...args); }
 export function UninstallHelmRelease(...args) { return AppProxy.UninstallHelmRelease(...args); }
 export function UnsubscribeWatcher(...args) { return AppProxy.UnsubscribeWatcher(...args); }
+export function UnsubscribeSecretWatcher(...args) { return AppProxy.UnsubscribeSecretWatcher(...args); }
 export function UpdateAllHelmRepositories(...args) { return AppProxy.UpdateAllHelmRepositories(...args); }
 export function UpdateCRDYaml(...args) { return AppProxy.UpdateCRDYaml(...args); }
 export function UpdateCSIDriverYaml(...args) { return AppProxy.UpdateCSIDriverYaml(...args); }

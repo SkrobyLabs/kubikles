@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { GetSecretYaml, UpdateSecretYaml, GetSecretData, UpdateSecretData, GetAllCertificateInfo, SaveDataEntryValue } from 'wailsjs/go/main/App';
+import { UpdateSecretYaml, UpdateSecretData, GetAllCertificateInfo, SaveDataEntryValue } from 'wailsjs/go/main/App';
 import { useK8s } from '~/context';
 import { useNotification } from '~/context';
 import Logger from '~/utils/Logger';
 import { EyeIcon, EyeSlashIcon, TrashIcon, PlusIcon, LockClosedIcon, MagnifyingGlassIcon, ShieldCheckIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import CertificateModal from './CertificateModal';
 import { CertificateBadge, makeCertificateCacheEntry } from './certificateBadge';
+import { useSecretReadSource } from '~/features/config/secrets/secretReadSource';
 
 const MODE_YAML = 'yaml';
 const MODE_KEYVALUE = 'keyvalue';
@@ -36,6 +37,10 @@ const entriesToData = (entries: any[]) => entries
 export default function SecretEditor({ namespace, resourceName, onClose, tabContext = '', initialMode = MODE_YAML }: { namespace: string; resourceName: string; onClose: () => void; tabContext?: string; initialMode?: string }) {
     const { currentContext } = useK8s();
     const { addNotification } = useNotification();
+    const secretSource = useSecretReadSource();
+    // Keep the existing read call shape while binding it to the selected source.
+    const GetSecretYaml = secretSource.getSecretYaml;
+    const GetSecretData = secretSource.getSecretData;
     const [mode, setMode] = useState(initialMode);
     const [yamlContent, setYamlContent] = useState('');
     const [secretEntries, setSecretEntries] = useState<any[]>([]);
@@ -46,6 +51,9 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
     const [keySearchTerm, setKeySearchTerm] = useState('');
     const editorRef = useRef<any>(null);
     const nextIdRef = useRef(0);
+    const readGenerationRef = useRef(0);
+    const readIdentityRef = useRef({ source: secretSource, namespace, resourceName });
+    readIdentityRef.current = { source: secretSource, namespace, resourceName };
     const [certInfoCache, setCertInfoCache] = useState<Record<string, any>>({});
     const [selectedCert, setSelectedCert] = useState<any>(null); // { certificates: [], pemData } for modal
 
@@ -100,12 +108,15 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
         return `entry-${nextIdRef.current}`;
     };
 
-    useEffect(() => {
-        fetchData();
-    }, [namespace, resourceName]);
-
     const fetchData = async () => {
+        const generation = readGenerationRef.current;
+        const source = secretSource;
+        const isCurrent = () => readGenerationRef.current === generation &&
+            readIdentityRef.current.source === source &&
+            readIdentityRef.current.namespace === namespace &&
+            readIdentityRef.current.resourceName === resourceName;
         setLoading(true);
+        setSaving(false);
         setError(null);
         Logger.debug("Fetching secret data...", { namespace, name: resourceName }, 'config');
         try {
@@ -113,54 +124,83 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                 GetSecretYaml(namespace, resourceName),
                 GetSecretData(namespace, resourceName)
             ]);
+            if (!isCurrent()) return;
             setYamlContent(yaml);
             setSecretEntries(dataToEntries(data));
             Logger.info("Secret data fetched successfully", { namespace, name: resourceName }, 'config');
         } catch (err: any) {
+            if (!isCurrent()) return;
             Logger.error("Failed to load secret", err, 'config');
             setError(`Failed to load secret: ${err}`);
         } finally {
-            setLoading(false);
+            if (isCurrent()) setLoading(false);
         }
     };
+    useEffect(() => {
+        readGenerationRef.current += 1;
+        fetchData();
+        return () => { readGenerationRef.current += 1; };
+    }, [namespace, resourceName, secretSource]);
 
     const handleSaveYaml = async () => {
+        const generation = readGenerationRef.current;
+        const source = secretSource;
+        const saveNamespace = namespace;
+        const saveName = resourceName;
+        const isCurrent = () => readGenerationRef.current === generation &&
+            readIdentityRef.current.source === source &&
+            readIdentityRef.current.namespace === saveNamespace &&
+            readIdentityRef.current.resourceName === saveName;
         setSaving(true);
         Logger.info("Saving YAML...", { namespace, name: resourceName }, 'config');
         try {
             await UpdateSecretYaml(namespace, resourceName, yamlContent);
+            if (!isCurrent()) return;
             Logger.info("YAML saved successfully", { namespace, name: resourceName }, 'config');
             addNotification({ type: 'success', title: 'Secret saved successfully', message: '' });
             // Refresh key-value data after YAML save
-            const data = await GetSecretData(namespace, resourceName);
+            const data = await source.getSecretData(saveNamespace, saveName);
+            if (!isCurrent()) return;
             setSecretEntries(dataToEntries(data));
         } catch (err: any) {
+            if (!isCurrent()) return;
             Logger.error("Failed to save secret", err, 'config');
             addNotification({ type: 'error', title: 'Failed to save secret', message: String(err) });
         } finally {
-            setSaving(false);
+            if (isCurrent()) setSaving(false);
         }
     };
 
     const handleSaveKeyValue = async () => {
+        const generation = readGenerationRef.current;
+        const source = secretSource;
+        const saveNamespace = namespace;
+        const saveName = resourceName;
+        const isCurrent = () => readGenerationRef.current === generation &&
+            readIdentityRef.current.source === source &&
+            readIdentityRef.current.namespace === saveNamespace &&
+            readIdentityRef.current.resourceName === saveName;
         setSaving(true);
         Logger.info("Saving secret data...", { namespace, name: resourceName }, 'config');
         try {
             const dataToSave = entriesToData(secretEntries);
             await UpdateSecretData(namespace, resourceName, dataToSave);
+            if (!isCurrent()) return;
             Logger.info("Secret data saved successfully", { namespace, name: resourceName }, 'config');
             addNotification({ type: 'success', title: 'Secret saved successfully', message: '' });
             const [yaml, data] = await Promise.all([
-                GetSecretYaml(namespace, resourceName),
-                GetSecretData(namespace, resourceName)
+                source.getSecretYaml(saveNamespace, saveName),
+                source.getSecretData(saveNamespace, saveName)
             ]);
+            if (!isCurrent()) return;
             setYamlContent(yaml);
             setSecretEntries(dataToEntries(data));
         } catch (err: any) {
+            if (!isCurrent()) return;
             Logger.error("Failed to save secret", err, 'config');
             addNotification({ type: 'error', title: 'Failed to save secret', message: String(err) });
         } finally {
-            setSaving(false);
+            if (isCurrent()) setSaving(false);
         }
     };
 

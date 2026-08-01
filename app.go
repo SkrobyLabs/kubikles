@@ -238,6 +238,19 @@ type ListProgress struct {
 	ResourceType string `json:"resourceType"`
 	Loaded       int    `json:"loaded"`
 	Total        int    `json:"total"`
+	RequestID    string `json:"requestId,omitempty"`
+}
+
+// listProgressCallbackForRequest correlates the Secret list progress envelope
+// with the caller-owned request without changing legacy progress consumers.
+func (a *App) listProgressCallbackForRequest(resourceType, requestID string) func(loaded, total int) {
+	if requestID == "" {
+		return a.listProgressCallback(resourceType)
+	}
+	return func(loaded, total int) {
+		debug.LogK8s("list-progress", map[string]interface{}{"resource": resourceType, "loaded": loaded, "total": total})
+		a.emitEvent("list-progress", ListProgress{ResourceType: resourceType, Loaded: loaded, Total: total, RequestID: requestID})
+	}
 }
 
 // listProgressCallback creates a progress callback that emits "list-progress" events.

@@ -26,8 +26,9 @@ function extractExportedFunctions(content) {
  * Format: { methodName: "reason for the difference" }
  */
 const ALLOWED_EXTRA_METHODS = {
-    // Example:
-    // 'ServerOnlyMethod': 'Only available in server mode, no Wails equivalent',
+	'SubscribeSecretWatcher': 'Accelerator dispatch injects trusted call context; no Wails binding is generated',
+	'UnsubscribeSecretWatcher': 'Accelerator dispatch injects trusted call context; no Wails binding is generated',
+	'ListAcceleratorSecretsMetadata': 'Frontend alias for ListSecretsMetadata with the third restricted-list option',
 };
 
 describe('App.js Adapter Sync', () => {
