@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+FROM node:20.19.5-bookworm-slim@sha256:9e70124bd00f47dd023e349cd587132ae61892acc0e47ed641416c3e18f401c3 AS frontend
+ARG BUILD_VERSION
+WORKDIR /src/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend ./
+COPY build/appicon.svg /src/build/appicon.svg
+COPY scripts/compress-dist.sh /src/scripts/compress-dist.sh
+RUN test -s /src/build/appicon.svg && rm -f src/assets/images/appicon.svg && cp /src/build/appicon.svg src/assets/images/appicon.svg && test -s src/assets/images/appicon.svg && BUILD_VERSION="$BUILD_VERSION" npm run build:accelerator && BUILD_VERSION="$BUILD_VERSION" npm run test:accelerator-browser-artifact
+
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35 AS accelerator-assets
+COPY --from=frontend /src/frontend/dist /frontend/dist
+
+FROM golang:1.24.2-bookworm@sha256:79390b5e5af9ee6e7b1173ee3eac7fadf6751a545297672916b59bfa0ecf6f71 AS build
+ARG BUILD_VERSION
+ARG GIT_COMMIT
+ARG GIT_DIRTY
+ARG SOURCE_DATE_EPOCH
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY . .
+COPY --from=frontend /src/frontend/dist ./frontend/dist
+RUN SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -tags 'headless accelerator' -ldflags "-s -w -buildid= -X main.BuildVersion=${BUILD_VERSION} -X main.GitCommit=${GIT_COMMIT} -X main.GitDirty=${GIT_DIRTY} -X main.acceleratorBuildIdentity=kubikles-accelerator-build-identity:${BUILD_VERSION}|${GIT_COMMIT}|${GIT_DIRTY}" -o /out/kubikles-accelerator . && touch -d "@${SOURCE_DATE_EPOCH}" /out/kubikles-accelerator
+
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35
+ARG BUILD_VERSION
+ARG GIT_COMMIT
+LABEL org.opencontainers.image.title="kubikles-accelerator" org.opencontainers.image.version="$BUILD_VERSION" org.opencontainers.image.revision="$GIT_COMMIT"
+COPY --chown=65532:65532 --from=build /out/kubikles-accelerator /kubikles-accelerator
+USER 65532:65532
+ENTRYPOINT ["/kubikles-accelerator"]

@@ -1,4 +1,4 @@
-//go:build !helm
+//go:build !helm && !accelerator
 
 package main
 

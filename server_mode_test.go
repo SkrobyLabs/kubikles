@@ -1042,7 +1042,7 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 				r := httptest.NewRequest(http.MethodPost, target, nil)
 				w := httptest.NewRecorder()
 				ordinaryCapture.handler(t).ServeHTTP(w, r)
-				if w.Code != http.StatusNotFound {
+				if ordinaryDispatcherBuild && w.Code != http.StatusNotFound {
 					t.Fatalf("ordinary route %s = %d, want 404", target, w.Code)
 				}
 			}

@@ -18,6 +18,9 @@ import (
 	"kubikles/pkg/agent"
 )
 
+//go:embed all:frontend/dist
+var acceleratorBoundaryTestAssets embed.FS
+
 func newAcceleratorTestServer(t *testing.T, caller *recordingMethodCaller, readiness ReadinessProvider, guard ProtectedRouteGuard) *Server {
 	t.Helper()
 	options := AcceleratorOptions(0, readiness, func(next http.Handler) http.Handler {
@@ -40,6 +43,20 @@ func requestBoundary(handler http.Handler, method, target, host string, body str
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 	return response
+}
+
+func TestAcceleratorBoundaryRejectsEmbeddedStaticRoutes(t *testing.T) {
+	options := AcceleratorOptions(0, nil, func(next http.Handler) http.Handler { return next })
+	options.MethodAuthorizer = MethodAuthorizerFunc(func(agent.AuthenticatedCallContext, string) bool { return true })
+	server, err := NewWithOptions(&recordingMethodCaller{}, acceleratorBoundaryTestAssets, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range []string{"/", "/index.html", "/assets/app.js", "/extensionless", "/missing"} {
+		if got := requestBoundary(server.Handler(), http.MethodGet, target, "localhost", "").Code; got != http.StatusNotFound {
+			t.Errorf("GET %s = %d, want 404", target, got)
+		}
+	}
 }
 
 func TestAcceleratorBoundaryValidatesHost(t *testing.T) {

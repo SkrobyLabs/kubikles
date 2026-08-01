@@ -46,7 +46,7 @@ func (s *Server) compatibilityHandler(static http.Handler) http.Handler {
 	return mux
 }
 
-func (s *Server) acceleratorHandler(static http.Handler) http.Handler {
+func (s *Server) acceleratorHandler(_ http.Handler) http.Handler {
 	protected := http.NewServeMux()
 	protected.HandleFunc("POST /api/call", s.handleCanonicalAPI)
 	if hasAcceleratorInfoProvider(s.options.AcceleratorInfoProvider) {
@@ -137,11 +137,7 @@ func (s *Server) acceleratorHandler(static http.Handler) http.Handler {
 			}
 			s.options.AcceleratorWebSocketAuthenticator.handleAdmitted(w, r, release)
 		default:
-			if strings.HasPrefix(r.URL.Path, "/api") || strings.HasPrefix(r.URL.Path, "/ws") {
-				http.NotFound(w, r)
-				return
-			}
-			static.ServeHTTP(w, r)
+			http.NotFound(w, r)
 		}
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

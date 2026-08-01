@@ -1,4 +1,4 @@
-//go:build headless
+//go:build headless && !accelerator
 
 package main
 

@@ -29,9 +29,6 @@ func (a *App) clearAcceleratorSessionState(ctx context.Context) error {
 	if a != nil && a.acceleratorSecretWatches != nil {
 		err = a.acceleratorSecretWatches.ClearAll(ctx)
 	}
-	if a != nil && a.watcherManager != nil {
-		a.watcherManager.StopAll()
-	}
 	return err
 }
 

@@ -32,7 +32,7 @@ rm -f "$DIST_DIR/stats.html"
 # Keep index.html uncompressed — Wails requires it in the embed.FS for startup
 # validation. The middleware serves the .gz variant for all other files.
 find "$DIST_DIR" -type f \( -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.svg" \) | while read -r file; do
-  gzip -9 -k "$file"            # -k keeps the original
+  gzip -9 -n -k "$file"         # -n omits source filename and mtime; -k keeps original
   if [ "$(basename "$file")" != "index.html" ]; then
     rm "$file"                   # remove original for everything except index.html
   fi

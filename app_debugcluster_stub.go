@@ -1,4 +1,4 @@
-//go:build !debugcluster
+//go:build !debugcluster && !accelerator
 
 package main
 

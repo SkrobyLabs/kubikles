@@ -1,7 +1,7 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind
+.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image
 
 .DEFAULT_GOAL := help
 
@@ -234,6 +234,33 @@ build-headless-linux-arm64:
 
 # Build headless for all Linux platforms
 build-headless-all: build-headless-linux-amd64 build-headless-linux-arm64
+
+# Dedicated in-cluster Accelerator. Unlike ordinary headless builds this is
+# intentionally independent of BUILD_TAGS (and therefore never links Helm).
+ACCELERATOR_GOARCH ?= $(shell go env GOARCH)
+stage-accelerator-appicon:
+	@mkdir -p frontend/src/assets/images
+	cp build/appicon.svg frontend/src/assets/images/appicon.svg
+
+build-accelerator: stage-accelerator-appicon
+	@test -n "$(BUILD_VERSION)" || (echo "BUILD_VERSION is required" >&2; exit 1)
+	@mkdir -p build/bin
+	@cd frontend && BUILD_VERSION='$(BUILD_VERSION)' npm run build:accelerator
+	@cd frontend && BUILD_VERSION='$(BUILD_VERSION)' npm run test:accelerator-browser-artifact
+	CGO_ENABLED=0 GOOS=linux GOARCH='$(ACCELERATOR_GOARCH)' go build -trimpath -buildvcs=false -tags 'headless accelerator' -ldflags '-s -w -buildid= $(VERSION_LDFLAGS) -X main.acceleratorBuildIdentity=kubikles-accelerator-build-identity:$(BUILD_VERSION)|$(GIT_COMMIT)|$(GIT_DIRTY)' -o build/bin/kubikles-accelerator .
+	go run ./scripts/cmd/inspect-accelerator-binary build/bin/kubikles-accelerator '$(ACCELERATOR_GOARCH)' '$(BUILD_VERSION)' '$(GIT_COMMIT)' '$(GIT_DIRTY)'
+
+ACCELERATOR_IMAGE ?= kubikles-accelerator:local
+SOURCE_DATE_EPOCH ?= $(shell git show -s --format=%ct $(GIT_COMMIT) 2>/dev/null || echo 0)
+accelerator-docker-preflight:
+	@./scripts/preflight-accelerator-docker.sh
+
+build-accelerator-image: accelerator-docker-preflight
+	@test -n "$(GIT_COMMIT)" || (echo "GIT_COMMIT is required" >&2; exit 1)
+	SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' docker buildx build --output type=docker,rewrite-timestamp=true -f Dockerfile.accelerator -t '$(ACCELERATOR_IMAGE)' --build-arg BUILD_VERSION='$(BUILD_VERSION)' --build-arg GIT_COMMIT='$(GIT_COMMIT)' --build-arg GIT_DIRTY='$(GIT_DIRTY)' --build-arg SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' .
+
+test-accelerator-image: build-accelerator-image
+	ACCELERATOR_IMAGE='$(ACCELERATOR_IMAGE)' BUILD_VERSION='$(BUILD_VERSION)' GIT_COMMIT='$(GIT_COMMIT)' GIT_DIRTY='$(GIT_DIRTY)' SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' ./scripts/test-accelerator-image.sh
 
 install-wails:
 	go install github.com/wailsapp/wails/v2/cmd/wails@latest
