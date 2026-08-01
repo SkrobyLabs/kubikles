@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+
+	"kubikles/pkg/agent"
 )
 
 // MethodCaller is the interface that the App must implement to handle API calls.
@@ -11,7 +13,7 @@ import (
 type MethodCaller interface {
 	// CallMethod invokes a method by name with JSON-encoded arguments.
 	// Returns the result (JSON-serializable) and any error.
-	CallMethod(methodName string, args []json.RawMessage) (interface{}, error)
+	CallMethod(callContext agent.AuthenticatedCallContext, methodName string, args []json.RawMessage) (interface{}, error)
 }
 
 // ReflectMethodCaller provides a reflection-based implementation of MethodCaller.
@@ -28,7 +30,7 @@ func NewReflectMethodCaller(target interface{}) *ReflectMethodCaller {
 }
 
 // CallMethod invokes a method on the target using reflection.
-func (r *ReflectMethodCaller) CallMethod(methodName string, args []json.RawMessage) (interface{}, error) {
+func (r *ReflectMethodCaller) CallMethod(callContext agent.AuthenticatedCallContext, methodName string, args []json.RawMessage) (interface{}, error) {
 	method := r.targetValue.MethodByName(methodName)
 	if !method.IsValid() {
 		return nil, fmt.Errorf("method %q not found", methodName)
@@ -37,14 +39,22 @@ func (r *ReflectMethodCaller) CallMethod(methodName string, args []json.RawMessa
 	methodType := method.Type()
 	numIn := methodType.NumIn()
 
-	// Build argument values
+	contextType := reflect.TypeOf(agent.AuthenticatedCallContext{})
+	contextOffset := 0
+	// Build argument values.
 	in := make([]reflect.Value, numIn)
 	for i := 0; i < numIn; i++ {
 		argType := methodType.In(i)
-		if i < len(args) && args[i] != nil {
-			argValue, err := convertJSONArg(args[i], argType)
+		if i == 0 && argType == contextType {
+			in[i] = reflect.ValueOf(callContext)
+			contextOffset = 1
+			continue
+		}
+		argIndex := i - contextOffset
+		if argIndex < len(args) && args[argIndex] != nil {
+			argValue, err := convertJSONArg(args[argIndex], argType)
 			if err != nil {
-				return nil, fmt.Errorf("argument %d (%s): %w", i, argType.String(), err)
+				return nil, fmt.Errorf("argument %d (%s): %w", argIndex, argType.String(), err)
 			}
 			in[i] = argValue
 		} else {

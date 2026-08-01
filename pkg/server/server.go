@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"kubikles/pkg/agent"
 	"kubikles/pkg/compressedassets"
 
 	"github.com/gorilla/websocket"
@@ -291,7 +292,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Call method via the MethodCaller interface
-	result, err := s.caller.CallMethod(methodName, args)
+	result, err := s.caller.CallMethod(agent.LocalCallContext(), methodName, args)
 	if err != nil {
 		// Check if it's a "not found" error for proper HTTP status
 		if strings.Contains(err.Error(), "not found") {

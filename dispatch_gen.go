@@ -3,14 +3,14 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-
-	"kubikles/pkg/events"
-	"kubikles/pkg/helm"
-	"kubikles/pkg/k8s"
-	"kubikles/pkg/server"
-	"kubikles/pkg/terminal"
+	json "encoding/json"
+	fmt "fmt"
+	agent "kubikles/pkg/agent"
+	events "kubikles/pkg/events"
+	helm "kubikles/pkg/helm"
+	k8s "kubikles/pkg/k8s"
+	server "kubikles/pkg/server"
+	terminal "kubikles/pkg/terminal"
 )
 
 // AppMethodCaller implements server.MethodCaller using a direct switch dispatch,
@@ -41,7 +41,7 @@ func unmarshalArg[T any](args []json.RawMessage, index int) (T, error) {
 }
 
 // CallMethod dispatches a method call by name with JSON-encoded arguments.
-func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) (interface{}, error) {
+func (c *AppMethodCaller) CallMethod(callContext agent.AuthenticatedCallContext, methodName string, args []json.RawMessage) (interface{}, error) {
 	switch methodName {
 	case "AddHelmRepository":
 		p0, err := unmarshalArg[string](args, 0)
@@ -62,8 +62,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.AddPortForwardConfig(p0)
-		return result, err
+		r0, err := c.app.AddPortForwardConfig(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ApplyYAML":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -127,8 +130,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.CheckRBACAccess(p0, p1, p2, p3, p4, p5, p6, p7)
-		return result, err
+		r0, err := c.app.CheckRBACAccess(p0, p1, p2, p3, p4, p5, p6, p7)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ClearAISession":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -157,8 +163,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.CollectIngressHostnames(p0)
-		return result, err
+		r0, err := c.app.CollectIngressHostnames(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ConfirmDialog":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -178,8 +187,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.CreateNodeDebugPod(p0, p1)
-		return result, err
+		r0, err := c.app.CreateNodeDebugPod(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "CreatePodDirectory":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -569,11 +581,17 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		}
 		return nil, c.app.DeleteValidatingWebhookConfiguration(p0)
 	case "DetectIngressController":
-		result, err := c.app.DetectIngressController()
-		return result, err
+		r0, err := c.app.DetectIngressController()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "DetectPrometheus":
-		result, err := c.app.DetectPrometheus()
-		return result, err
+		r0, err := c.app.DetectPrometheus()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "DiffResources":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -611,8 +629,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.DiffResources(p0, p1, p2, p3, p4, p5, p6, p7, p8)
-		return result, err
+		r0, err := c.app.DiffResources(p0, p1, p2, p3, p4, p5, p6, p7, p8)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "DownloadPodFile":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -702,8 +723,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ExpandDependencyNode(p0, p1, p2, p3, p4)
-		return result, err
+		r0, err := c.app.ExpandDependencyNode(p0, p1, p2, p3, p4)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ForceDeletePod":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -739,8 +763,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetAllCertificateInfo(p0)
-		return result, err
+		r0, err := c.app.GetAllCertificateInfo(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetAllContainersLogs":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -766,8 +793,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetAllContainersLogs(p0, p1, p2, p3, p4, p5)
-		return result, err
+		r0, err := c.app.GetAllContainersLogs(p0, p1, p2, p3, p4, p5)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetAllContainersLogsAfter":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -797,8 +827,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetAllContainersLogsAfter(p0, p1, p2, p3, p4, p5, p6)
-		return result, err
+		r0, err := c.app.GetAllContainersLogsAfter(p0, p1, p2, p3, p4, p5, p6)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetAllContainersLogsAll":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -820,8 +853,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetAllContainersLogsAll(p0, p1, p2, p3, p4)
-		return result, err
+		r0, err := c.app.GetAllContainersLogsAll(p0, p1, p2, p3, p4)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetAllContainersLogsBefore":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -851,8 +887,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetAllContainersLogsBefore(p0, p1, p2, p3, p4, p5, p6)
-		return result, err
+		r0, err := c.app.GetAllContainersLogsBefore(p0, p1, p2, p3, p4, p5, p6)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetAllContainersLogsFromStart":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -874,8 +913,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetAllContainersLogsFromStart(p0, p1, p2, p3, p4)
-		return result, err
+		r0, err := c.app.GetAllContainersLogsFromStart(p0, p1, p2, p3, p4)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetAllPodLogs":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -897,8 +939,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetAllPodLogs(p0, p1, p2, p3, p4)
-		return result, err
+		r0, err := c.app.GetAllPodLogs(p0, p1, p2, p3, p4)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetAllPodsLogs":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -924,8 +969,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetAllPodsLogs(p0, p1, p2, p3, p4, p5)
-		return result, err
+		r0, err := c.app.GetAllPodsLogs(p0, p1, p2, p3, p4, p5)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetAllPodsLogsAfter":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -955,8 +1003,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetAllPodsLogsAfter(p0, p1, p2, p3, p4, p5, p6)
-		return result, err
+		r0, err := c.app.GetAllPodsLogsAfter(p0, p1, p2, p3, p4, p5, p6)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetAllPodsLogsAll":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -978,8 +1029,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetAllPodsLogsAll(p0, p1, p2, p3, p4)
-		return result, err
+		r0, err := c.app.GetAllPodsLogsAll(p0, p1, p2, p3, p4)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetAllPodsLogsBefore":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1009,8 +1063,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetAllPodsLogsBefore(p0, p1, p2, p3, p4, p5, p6)
-		return result, err
+		r0, err := c.app.GetAllPodsLogsBefore(p0, p1, p2, p3, p4, p5, p6)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetAllPodsLogsFromStart":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1032,8 +1089,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetAllPodsLogsFromStart(p0, p1, p2, p3, p4)
-		return result, err
+		r0, err := c.app.GetAllPodsLogsFromStart(p0, p1, p2, p3, p4)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetAnthropicAPIKeyStatus":
 		return c.app.GetAnthropicAPIKeyStatus(), nil
 	case "GetAvailablePort":
@@ -1047,29 +1107,41 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetCRDPrinterColumns(p0)
-		return result, err
+		r0, err := c.app.GetCRDPrinterColumns(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetCRDYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetCRDYaml(p0)
-		return result, err
+		r0, err := c.app.GetCRDYaml(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetCSIDriverYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetCSIDriverYaml(p0)
-		return result, err
+		r0, err := c.app.GetCSIDriverYaml(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetCSINodeYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetCSINodeYaml(p0)
-		return result, err
+		r0, err := c.app.GetCSINodeYaml(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetCachedPrometheusConfig":
 		return c.app.GetCachedPrometheusConfig(), nil
 	case "GetCertificateInfo":
@@ -1077,22 +1149,31 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetCertificateInfo(p0)
-		return result, err
+		r0, err := c.app.GetCertificateInfo(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetClusterRoleBindingYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetClusterRoleBindingYaml(p0)
-		return result, err
+		r0, err := c.app.GetClusterRoleBindingYaml(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetClusterRoleYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetClusterRoleYaml(p0)
-		return result, err
+		r0, err := c.app.GetClusterRoleYaml(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetConfigMapData":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1102,8 +1183,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetConfigMapData(p0, p1)
-		return result, err
+		r0, err := c.app.GetConfigMapData(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetConfigMapYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1113,11 +1197,17 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetConfigMapYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetConfigMapYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetContextDetails":
-		result, err := c.app.GetContextDetails()
-		return result, err
+		r0, err := c.app.GetContextDetails()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetControllerMetricsHistory":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1151,8 +1241,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetControllerMetricsHistory(p0, p1, p2, p3, p4, p5, p6, p7)
-		return result, err
+		r0, err := c.app.GetControllerMetricsHistory(p0, p1, p2, p3, p4, p5, p6, p7)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetControllerMetricsHistoryRange":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1190,8 +1283,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetControllerMetricsHistoryRange(p0, p1, p2, p3, p4, p5, p6, p7, p8)
-		return result, err
+		r0, err := c.app.GetControllerMetricsHistoryRange(p0, p1, p2, p3, p4, p5, p6, p7, p8)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetCrashLogPath":
 		return c.app.GetCrashLogPath(), nil
 	case "GetCronJobYaml":
@@ -1203,8 +1299,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetCronJobYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetCronJobYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetCurrentContext":
 		return c.app.GetCurrentContext(), nil
 	case "GetCurrentTheme":
@@ -1234,8 +1333,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetCustomResourceEvents(p0, p1, p2, p3, p4, p5)
-		return result, err
+		r0, err := c.app.GetCustomResourceEvents(p0, p1, p2, p3, p4, p5)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetCustomResourceYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1257,8 +1359,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetCustomResourceYaml(p0, p1, p2, p3, p4)
-		return result, err
+		r0, err := c.app.GetCustomResourceYaml(p0, p1, p2, p3, p4)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetDaemonSetYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1268,8 +1373,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetDaemonSetYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetDaemonSetYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetDebugClusterConfig":
 		return c.app.GetDebugClusterConfig(), nil
 	case "GetDeploymentYaml":
@@ -1281,8 +1389,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetDeploymentYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetDeploymentYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetEmbeddedBrowserStatus":
 		return c.app.GetEmbeddedBrowserStatus(), nil
 	case "GetEndpointSliceYaml":
@@ -1294,8 +1405,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetEndpointSliceYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetEndpointSliceYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetEndpointsYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1305,8 +1419,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetEndpointsYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetEndpointsYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetEventYAML":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1316,8 +1433,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetEventYAML(p0, p1)
-		return result, err
+		r0, err := c.app.GetEventYAML(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetFlowTimeline":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1339,15 +1459,21 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetFlowTimeline(p0, p1, p2, p3, p4)
-		return result, err
+		r0, err := c.app.GetFlowTimeline(p0, p1, p2, p3, p4)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetFullContextDetail":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetFullContextDetail(p0)
-		return result, err
+		r0, err := c.app.GetFullContextDetail(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetHPAYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1357,8 +1483,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetHPAYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetHPAYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetHelmChartVersions":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1368,8 +1497,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetHelmChartVersions(p0, p1)
-		return result, err
+		r0, err := c.app.GetHelmChartVersions(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetHelmRelease":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1379,8 +1511,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetHelmRelease(p0, p1)
-		return result, err
+		r0, err := c.app.GetHelmRelease(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetHelmReleaseAllValues":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1390,8 +1525,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetHelmReleaseAllValues(p0, p1)
-		return result, err
+		r0, err := c.app.GetHelmReleaseAllValues(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetHelmReleaseHistory":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1401,8 +1539,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetHelmReleaseHistory(p0, p1)
-		return result, err
+		r0, err := c.app.GetHelmReleaseHistory(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetHelmReleaseResources":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1412,8 +1553,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetHelmReleaseResources(p0, p1)
-		return result, err
+		r0, err := c.app.GetHelmReleaseResources(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetHelmReleaseValues":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1423,15 +1567,21 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetHelmReleaseValues(p0, p1)
-		return result, err
+		r0, err := c.app.GetHelmReleaseValues(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetIngressClassYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetIngressClassYaml(p0)
-		return result, err
+		r0, err := c.app.GetIngressClassYaml(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetIngressForwardState":
 		return c.app.GetIngressForwardState(), nil
 	case "GetIngressYaml":
@@ -1443,8 +1593,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetIngressYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetIngressYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetIssueRulesDir":
 		return c.app.GetIssueRulesDir(), nil
 	case "GetJobYaml":
@@ -1456,8 +1609,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetJobYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetJobYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetK8sInitError":
 		return c.app.GetK8sInitError(), nil
 	case "GetLeaseYaml":
@@ -1469,8 +1625,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetLeaseYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetLeaseYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetLimitRangeYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1480,13 +1639,19 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetLimitRangeYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetLimitRangeYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetListRequestStats":
 		return c.app.GetListRequestStats(), nil
 	case "GetManagedHosts":
-		result, err := c.app.GetManagedHosts()
-		return result, err
+		r0, err := c.app.GetManagedHosts()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetMetricsEventMarkers":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1504,8 +1669,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetMetricsEventMarkers(p0, p1, p2, p3)
-		return result, err
+		r0, err := c.app.GetMetricsEventMarkers(p0, p1, p2, p3)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetMetricsRequestStats":
 		return c.app.GetMetricsRequestStats(), nil
 	case "GetMultiPodLogs":
@@ -1533,15 +1701,21 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetMultiPodLogs(p0, p1, p2, p3, p4, p5)
-		return result, err
+		r0, err := c.app.GetMultiPodLogs(p0, p1, p2, p3, p4, p5)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetMutatingWebhookConfigurationYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetMutatingWebhookConfigurationYaml(p0)
-		return result, err
+		r0, err := c.app.GetMutatingWebhookConfigurationYaml(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetNamespaceMetricsHistory":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1567,8 +1741,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetNamespaceMetricsHistory(p0, p1, p2, p3, p4, p5)
-		return result, err
+		r0, err := c.app.GetNamespaceMetricsHistory(p0, p1, p2, p3, p4, p5)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetNamespaceMetricsHistoryRange":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1598,22 +1775,31 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetNamespaceMetricsHistoryRange(p0, p1, p2, p3, p4, p5, p6)
-		return result, err
+		r0, err := c.app.GetNamespaceMetricsHistoryRange(p0, p1, p2, p3, p4, p5, p6)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetNamespaceResourceCounts":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetNamespaceResourceCounts(p0)
-		return result, err
+		r0, err := c.app.GetNamespaceResourceCounts(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetNamespaceYAML":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetNamespaceYAML(p0)
-		return result, err
+		r0, err := c.app.GetNamespaceYAML(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetNetworkPolicyYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1623,11 +1809,17 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetNetworkPolicyYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetNetworkPolicyYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetNodeMetrics":
-		result, err := c.app.GetNodeMetrics()
-		return result, err
+		r0, err := c.app.GetNodeMetrics()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetNodeMetricsFromPrometheus":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1641,8 +1833,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetNodeMetricsFromPrometheus(p0, p1, p2)
-		return result, err
+		r0, err := c.app.GetNodeMetricsFromPrometheus(p0, p1, p2)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetNodeMetricsHistory":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1668,8 +1863,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetNodeMetricsHistory(p0, p1, p2, p3, p4, p5)
-		return result, err
+		r0, err := c.app.GetNodeMetricsHistory(p0, p1, p2, p3, p4, p5)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetNodeMetricsHistoryRange":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1699,15 +1897,21 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetNodeMetricsHistoryRange(p0, p1, p2, p3, p4, p5, p6)
-		return result, err
+		r0, err := c.app.GetNodeMetricsHistoryRange(p0, p1, p2, p3, p4, p5, p6)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetNodeYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetNodeYaml(p0)
-		return result, err
+		r0, err := c.app.GetNodeYaml(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPDBYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1717,8 +1921,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPDBYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetPDBYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPVCYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1728,15 +1935,21 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPVCYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetPVCYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPVYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPVYaml(p0)
-		return result, err
+		r0, err := c.app.GetPVYaml(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPerformanceMetrics":
 		return c.app.GetPerformanceMetrics(), nil
 	case "GetPodEvictionInfo":
@@ -1748,8 +1961,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPodEvictionInfo(p0, p1)
-		return result, err
+		r0, err := c.app.GetPodEvictionInfo(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPodLogs":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1775,8 +1991,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPodLogs(p0, p1, p2, p3, p4, p5)
-		return result, err
+		r0, err := c.app.GetPodLogs(p0, p1, p2, p3, p4, p5)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPodLogsAfter":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1806,8 +2025,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPodLogsAfter(p0, p1, p2, p3, p4, p5, p6)
-		return result, err
+		r0, err := c.app.GetPodLogsAfter(p0, p1, p2, p3, p4, p5, p6)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPodLogsBefore":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1837,8 +2059,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPodLogsBefore(p0, p1, p2, p3, p4, p5, p6)
-		return result, err
+		r0, err := c.app.GetPodLogsBefore(p0, p1, p2, p3, p4, p5, p6)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPodLogsFromStart":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1860,11 +2085,17 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPodLogsFromStart(p0, p1, p2, p3, p4)
-		return result, err
+		r0, err := c.app.GetPodLogsFromStart(p0, p1, p2, p3, p4)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPodMetrics":
-		result, err := c.app.GetPodMetrics()
-		return result, err
+		r0, err := c.app.GetPodMetrics()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPodMetricsFromPrometheus":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1878,8 +2109,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPodMetricsFromPrometheus(p0, p1, p2)
-		return result, err
+		r0, err := c.app.GetPodMetricsFromPrometheus(p0, p1, p2)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPodMetricsHistory":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1913,8 +2147,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPodMetricsHistory(p0, p1, p2, p3, p4, p5, p6, p7)
-		return result, err
+		r0, err := c.app.GetPodMetricsHistory(p0, p1, p2, p3, p4, p5, p6, p7)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPodMetricsHistoryRange":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1952,8 +2189,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPodMetricsHistoryRange(p0, p1, p2, p3, p4, p5, p6, p7, p8)
-		return result, err
+		r0, err := c.app.GetPodMetricsHistoryRange(p0, p1, p2, p3, p4, p5, p6, p7, p8)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPodPorts":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1963,8 +2203,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPodPorts(p0, p1)
-		return result, err
+		r0, err := c.app.GetPodPorts(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPodYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1974,8 +2217,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPodYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetPodYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetPortForwardConfigs":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -1987,8 +2233,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetPriorityClassYaml(p0)
-		return result, err
+		r0, err := c.app.GetPriorityClassYaml(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetRandomAvailablePort":
 		return c.app.GetRandomAvailablePort(), nil
 	case "GetReplicaSetYaml":
@@ -2000,8 +2249,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetReplicaSetYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetReplicaSetYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetResourceDependencies":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2015,8 +2267,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetResourceDependencies(p0, p1, p2)
-		return result, err
+		r0, err := c.app.GetResourceDependencies(p0, p1, p2)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetResourceQuotaYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2026,8 +2281,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetResourceQuotaYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetResourceQuotaYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetRoleBindingYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2037,8 +2295,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetRoleBindingYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetRoleBindingYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetRoleYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2048,8 +2309,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetRoleYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetRoleYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetSecretData":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2059,8 +2323,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetSecretData(p0, p1)
-		return result, err
+		r0, err := c.app.GetSecretData(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetSecretYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2070,8 +2337,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetSecretYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetSecretYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetServiceAccountYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2081,8 +2351,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetServiceAccountYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetServiceAccountYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetServicePorts":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2092,8 +2365,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetServicePorts(p0, p1)
-		return result, err
+		r0, err := c.app.GetServicePorts(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetServiceYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2103,8 +2379,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetServiceYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetServiceYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetStatefulSetYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2114,22 +2393,31 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetStatefulSetYaml(p0, p1)
-		return result, err
+		r0, err := c.app.GetStatefulSetYaml(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetStorageClass":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetStorageClass(p0)
-		return result, err
+		r0, err := c.app.GetStorageClass(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetStorageClassYaml":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetStorageClassYaml(p0)
-		return result, err
+		r0, err := c.app.GetStorageClassYaml(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetThemes":
 		return c.app.GetThemes(), nil
 	case "GetThemesDir":
@@ -2141,8 +2429,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.GetValidatingWebhookConfigurationYaml(p0)
-		return result, err
+		r0, err := c.app.GetValidatingWebhookConfigurationYaml(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "GetVersionInfo":
 		return c.app.GetVersionInfo(), nil
 	case "HelmDryRunUpgrade":
@@ -2158,8 +2449,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.HelmDryRunUpgrade(p0, p1, p2)
-		return result, err
+		r0, err := c.app.HelmDryRunUpgrade(p0, p1, p2)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "HelmTemplateRelease":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2173,15 +2467,21 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.HelmTemplateRelease(p0, p1, p2)
-		return result, err
+		r0, err := c.app.HelmTemplateRelease(p0, p1, p2)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "HelmValidateValues":
 		p0, err := unmarshalArg[helm.UpgradeOptions](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.HelmValidateValues(p0)
-		return result, err
+		r0, err := c.app.HelmValidateValues(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "IsDebugClusterEnabled":
 		return c.app.IsDebugClusterEnabled(), nil
 	case "IsHelmAvailable":
@@ -2189,39 +2489,57 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 	case "IsRequestCancellationEnabled":
 		return c.app.IsRequestCancellationEnabled(), nil
 	case "ListCRDs":
-		result, err := c.app.ListCRDs()
-		return result, err
+		r0, err := c.app.ListCRDs()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListCSIDrivers":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListCSIDrivers(p0)
-		return result, err
+		r0, err := c.app.ListCSIDrivers(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListCSINodes":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListCSINodes(p0)
-		return result, err
+		r0, err := c.app.ListCSINodes(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListChartSources":
-		result, err := c.app.ListChartSources()
-		return result, err
+		r0, err := c.app.ListChartSources()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListClusterRoleBindings":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListClusterRoleBindings(p0)
-		return result, err
+		r0, err := c.app.ListClusterRoleBindings(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListClusterRoles":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListClusterRoles(p0)
-		return result, err
+		r0, err := c.app.ListClusterRoles(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListConfigMaps":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2231,11 +2549,17 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListConfigMaps(p0, p1)
-		return result, err
+		r0, err := c.app.ListConfigMaps(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListContexts":
-		result, err := c.app.ListContexts()
-		return result, err
+		r0, err := c.app.ListContexts()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListCronJobs":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2245,8 +2569,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListCronJobs(p0, p1)
-		return result, err
+		r0, err := c.app.ListCronJobs(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListCustomResources":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2268,8 +2595,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListCustomResources(p0, p1, p2, p3, p4)
-		return result, err
+		r0, err := c.app.ListCustomResources(p0, p1, p2, p3, p4)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListDaemonSets":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2279,8 +2609,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListDaemonSets(p0, p1)
-		return result, err
+		r0, err := c.app.ListDaemonSets(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListDeployments":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2290,8 +2623,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListDeployments(p0, p1)
-		return result, err
+		r0, err := c.app.ListDeployments(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListDeploymentsForContext":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2301,8 +2637,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListDeploymentsForContext(p0, p1)
-		return result, err
+		r0, err := c.app.ListDeploymentsForContext(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListEndpointSlices":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2312,8 +2651,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListEndpointSlices(p0, p1)
-		return result, err
+		r0, err := c.app.ListEndpointSlices(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListEndpoints":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2323,8 +2665,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListEndpoints(p0, p1)
-		return result, err
+		r0, err := c.app.ListEndpoints(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListEvents":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2334,8 +2679,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListEvents(p0, p1)
-		return result, err
+		r0, err := c.app.ListEvents(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListHPAs":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2345,25 +2693,37 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListHPAs(p0, p1)
-		return result, err
+		r0, err := c.app.ListHPAs(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListHelmReleases":
 		p0, err := unmarshalArg[[]string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListHelmReleases(p0)
-		return result, err
+		r0, err := c.app.ListHelmReleases(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListHelmRepositories":
-		result, err := c.app.ListHelmRepositories()
-		return result, err
+		r0, err := c.app.ListHelmRepositories()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListIngressClasses":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListIngressClasses(p0)
-		return result, err
+		r0, err := c.app.ListIngressClasses(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListIngresses":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2373,8 +2733,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListIngresses(p0, p1)
-		return result, err
+		r0, err := c.app.ListIngresses(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListIssueRules":
 		return c.app.ListIssueRules(), nil
 	case "ListJobs":
@@ -2386,8 +2749,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListJobs(p0, p1)
-		return result, err
+		r0, err := c.app.ListJobs(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListLeases":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2397,8 +2763,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListLeases(p0, p1)
-		return result, err
+		r0, err := c.app.ListLeases(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListLimitRanges":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2408,29 +2777,41 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListLimitRanges(p0, p1)
-		return result, err
+		r0, err := c.app.ListLimitRanges(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListMutatingWebhookConfigurations":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListMutatingWebhookConfigurations(p0)
-		return result, err
+		r0, err := c.app.ListMutatingWebhookConfigurations(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListNamespaces":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListNamespaces(p0)
-		return result, err
+		r0, err := c.app.ListNamespaces(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListNamespacesForContext":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListNamespacesForContext(p0)
-		return result, err
+		r0, err := c.app.ListNamespacesForContext(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListNetworkPolicies":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2440,18 +2821,27 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListNetworkPolicies(p0, p1)
-		return result, err
+		r0, err := c.app.ListNetworkPolicies(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListNodes":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListNodes(p0)
-		return result, err
+		r0, err := c.app.ListNodes(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListOCIRegistries":
-		result, err := c.app.ListOCIRegistries()
-		return result, err
+		r0, err := c.app.ListOCIRegistries()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListPDBs":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2461,8 +2851,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListPDBs(p0, p1)
-		return result, err
+		r0, err := c.app.ListPDBs(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListPVCs":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2472,15 +2865,21 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListPVCs(p0, p1)
-		return result, err
+		r0, err := c.app.ListPVCs(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListPVs":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListPVs(p0)
-		return result, err
+		r0, err := c.app.ListPVs(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListPodFiles":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2498,8 +2897,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListPodFiles(p0, p1, p2, p3)
-		return result, err
+		r0, err := c.app.ListPodFiles(p0, p1, p2, p3)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListPods":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2509,8 +2911,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListPods(p0, p1)
-		return result, err
+		r0, err := c.app.ListPods(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListPodsForContext":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2520,25 +2925,37 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListPodsForContext(p0, p1)
-		return result, err
+		r0, err := c.app.ListPodsForContext(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListPodsForNode":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListPodsForNode(p0)
-		return result, err
+		r0, err := c.app.ListPodsForNode(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListPriorityClasses":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListPriorityClasses(p0)
-		return result, err
+		r0, err := c.app.ListPriorityClasses(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListPrometheusInstalls":
-		result, err := c.app.ListPrometheusInstalls()
-		return result, err
+		r0, err := c.app.ListPrometheusInstalls()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListReplicaSets":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2548,8 +2965,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListReplicaSets(p0, p1)
-		return result, err
+		r0, err := c.app.ListReplicaSets(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListResourceNamesForContext":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2563,8 +2983,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListResourceNamesForContext(p0, p1, p2)
-		return result, err
+		r0, err := c.app.ListResourceNamesForContext(p0, p1, p2)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListResourceQuotas":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2574,8 +2997,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListResourceQuotas(p0, p1)
-		return result, err
+		r0, err := c.app.ListResourceQuotas(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListRoleBindings":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2585,8 +3011,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListRoleBindings(p0, p1)
-		return result, err
+		r0, err := c.app.ListRoleBindings(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListRoles":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2596,8 +3025,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListRoles(p0, p1)
-		return result, err
+		r0, err := c.app.ListRoles(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListSecrets":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2607,8 +3039,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListSecrets(p0, p1)
-		return result, err
+		r0, err := c.app.ListSecrets(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListSecretsMetadata":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2618,8 +3053,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListSecretsMetadata(p0, p1)
-		return result, err
+		r0, err := c.app.ListSecretsMetadata(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListServiceAccounts":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2629,8 +3067,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListServiceAccounts(p0, p1)
-		return result, err
+		r0, err := c.app.ListServiceAccounts(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListServices":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2640,8 +3081,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListServices(p0, p1)
-		return result, err
+		r0, err := c.app.ListServices(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListStatefulSets":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2651,22 +3095,31 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListStatefulSets(p0, p1)
-		return result, err
+		r0, err := c.app.ListStatefulSets(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListStorageClasses":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListStorageClasses(p0)
-		return result, err
+		r0, err := c.app.ListStorageClasses(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "ListValidatingWebhookConfigurations":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ListValidatingWebhookConfigurations(p0)
-		return result, err
+		r0, err := c.app.ListValidatingWebhookConfigurations(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "LogDebug":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2788,8 +3241,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.ResolveTopLevelOwner(p0, p1, p2)
-		return result, err
+		r0, err := c.app.ResolveTopLevelOwner(p0, p1, p2)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "RestartDaemonSet":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2851,18 +3307,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.RunIssueScan(p0, p1, p2, p3)
-		return result, err
-	case "SaveDebugLogs":
-		p0, err := unmarshalArg[string](args, 0)
+		r0, err := c.app.RunIssueScan(p0, p1, p2, p3)
 		if err != nil {
 			return nil, err
 		}
-		p1, err := unmarshalArg[string](args, 1)
-		if err != nil {
-			return nil, err
-		}
-		return nil, c.app.SaveDebugLogs(p0, p1)
+		return r0, nil
 	case "SaveDataEntryValue":
 		p0, err := unmarshalArg[k8s.DataEntry](args, 0)
 		if err != nil {
@@ -2873,6 +3322,16 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return nil, c.app.SaveDataEntryValue(p0, p1)
+	case "SaveDebugLogs":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[string](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		return nil, c.app.SaveDebugLogs(p0, p1)
 	case "SaveLogFile":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2974,18 +3433,27 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.SearchChartInSource(p0, p1)
-		return result, err
+		r0, err := c.app.SearchChartInSource(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "SearchHelmChart":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.SearchHelmChart(p0)
-		return result, err
+		r0, err := c.app.SearchHelmChart(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "SelectKubeconfigFile":
-		result, err := c.app.SelectKubeconfigFile()
-		return result, err
+		r0, err := c.app.SelectKubeconfigFile()
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "SendAIMessage":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -3159,8 +3627,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.StartAllContainersLogStream(p0, p1, p2, p3)
-		return result, err
+		r0, err := c.app.StartAllContainersLogStream(p0, p1, p2, p3)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "StartAllPodsLogStream":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -3178,8 +3649,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.StartAllPodsLogStream(p0, p1, p2, p3)
-		return result, err
+		r0, err := c.app.StartAllPodsLogStream(p0, p1, p2, p3)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "StartAutoStartPortForwards":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -3192,8 +3666,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.StartEmbeddedBrowser(p0)
-		return result, err
+		r0, err := c.app.StartEmbeddedBrowser(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "StartIngressForward":
 		p0, err := unmarshalArg[IngressController](args, 0)
 		if err != nil {
@@ -3221,8 +3698,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.StartLogStream(p0, p1, p2, p3)
-		return result, err
+		r0, err := c.app.StartLogStream(p0, p1, p2, p3)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "StartPortForward":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -3234,8 +3714,11 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.app.StartTerminalSession(p0)
-		return result, err
+		r0, err := c.app.StartTerminalSession(p0)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
 	case "StopAllPortForwards":
 		c.app.StopAllPortForwards()
 		return nil, nil

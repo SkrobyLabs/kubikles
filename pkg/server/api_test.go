@@ -3,6 +3,8 @@ package server
 import (
 	"encoding/json"
 	"testing"
+
+	"kubikles/pkg/agent"
 )
 
 // TestStruct is a test struct for method calling tests
@@ -10,6 +12,10 @@ type TestStruct struct{}
 
 func (t *TestStruct) NoArgs() string {
 	return "no args"
+}
+
+func (t *TestStruct) WithCallContext(ctx agent.AuthenticatedCallContext, value string) string {
+	return string(ctx.PrincipalID) + ":" + string(ctx.SessionID) + ":" + value
 }
 
 func (t *TestStruct) SingleArg(s string) string {
@@ -55,7 +61,7 @@ type testInput struct {
 func TestReflectMethodCaller_NoArgs(t *testing.T) {
 	caller := NewReflectMethodCaller(&TestStruct{})
 
-	result, err := caller.CallMethod("NoArgs", nil)
+	result, err := caller.CallMethod(agent.LocalCallContext(), "NoArgs", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -68,7 +74,7 @@ func TestReflectMethodCaller_SingleArg(t *testing.T) {
 	caller := NewReflectMethodCaller(&TestStruct{})
 
 	args := []json.RawMessage{json.RawMessage(`"hello"`)}
-	result, err := caller.CallMethod("SingleArg", args)
+	result, err := caller.CallMethod(agent.LocalCallContext(), "SingleArg", args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -84,7 +90,7 @@ func TestReflectMethodCaller_MultipleArgs(t *testing.T) {
 		json.RawMessage(`"foo"`),
 		json.RawMessage(`"bar"`),
 	}
-	result, err := caller.CallMethod("MultipleArgs", args)
+	result, err := caller.CallMethod(agent.LocalCallContext(), "MultipleArgs", args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -97,7 +103,7 @@ func TestReflectMethodCaller_WithError_Success(t *testing.T) {
 	caller := NewReflectMethodCaller(&TestStruct{})
 
 	args := []json.RawMessage{json.RawMessage(`false`)}
-	result, err := caller.CallMethod("WithError", args)
+	result, err := caller.CallMethod(agent.LocalCallContext(), "WithError", args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -110,7 +116,7 @@ func TestReflectMethodCaller_WithError_Failure(t *testing.T) {
 	caller := NewReflectMethodCaller(&TestStruct{})
 
 	args := []json.RawMessage{json.RawMessage(`true`)}
-	_, err := caller.CallMethod("WithError", args)
+	_, err := caller.CallMethod(agent.LocalCallContext(), "WithError", args)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -123,7 +129,7 @@ func TestReflectMethodCaller_IntArg(t *testing.T) {
 	caller := NewReflectMethodCaller(&TestStruct{})
 
 	args := []json.RawMessage{json.RawMessage(`21`)}
-	result, err := caller.CallMethod("IntArg", args)
+	result, err := caller.CallMethod(agent.LocalCallContext(), "IntArg", args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -136,7 +142,7 @@ func TestReflectMethodCaller_StructArg(t *testing.T) {
 	caller := NewReflectMethodCaller(&TestStruct{})
 
 	args := []json.RawMessage{json.RawMessage(`{"name":"test","value":"123"}`)}
-	result, err := caller.CallMethod("StructArg", args)
+	result, err := caller.CallMethod(agent.LocalCallContext(), "StructArg", args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -149,7 +155,7 @@ func TestReflectMethodCaller_SliceArg(t *testing.T) {
 	caller := NewReflectMethodCaller(&TestStruct{})
 
 	args := []json.RawMessage{json.RawMessage(`["a","b","c"]`)}
-	result, err := caller.CallMethod("SliceArg", args)
+	result, err := caller.CallMethod(agent.LocalCallContext(), "SliceArg", args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -161,9 +167,38 @@ func TestReflectMethodCaller_SliceArg(t *testing.T) {
 func TestReflectMethodCaller_MethodNotFound(t *testing.T) {
 	caller := NewReflectMethodCaller(&TestStruct{})
 
-	_, err := caller.CallMethod("NonExistent", nil)
+	_, err := caller.CallMethod(agent.LocalCallContext(), "NonExistent", nil)
 	if err == nil {
 		t.Fatal("expected error for non-existent method")
+	}
+}
+
+func TestReflectMethodCallerInjectsAuthenticatedCallContext(t *testing.T) {
+	caller := NewReflectMethodCaller(&TestStruct{})
+	context := agent.AuthenticatedCallContext{PrincipalID: "principal", SessionID: "session"}
+	result, err := caller.CallMethod(context, "WithCallContext", []json.RawMessage{json.RawMessage(`"value"`)})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != "principal:session:value" {
+		t.Errorf("result = %v, want trusted context and user value", result)
+	}
+}
+
+func TestReflectMethodCallerDoesNotDecodeCallContextFromArgs(t *testing.T) {
+	caller := NewReflectMethodCaller(&TestStruct{})
+	context := agent.AuthenticatedCallContext{PrincipalID: "trusted", SessionID: "session"}
+	_, err := caller.CallMethod(context, "WithCallContext", []json.RawMessage{json.RawMessage(`{"PrincipalID":"forged","SessionID":"forged"}`)})
+	if err == nil {
+		t.Fatal("expected user argument conversion error")
+	}
+
+	result, err := caller.CallMethod(context, "WithCallContext", nil)
+	if err != nil {
+		t.Fatalf("unexpected missing-argument error: %v", err)
+	}
+	if result != "trusted:session:" {
+		t.Errorf("result = %v, want trusted context with zero user argument", result)
 	}
 }
 
@@ -183,13 +218,14 @@ func TestReflectMethodCaller_ListMethods(t *testing.T) {
 
 	methods := caller.ListMethods()
 	expected := map[string]bool{
-		"NoArgs":       true,
-		"SingleArg":    true,
-		"MultipleArgs": true,
-		"WithError":    true,
-		"IntArg":       true,
-		"StructArg":    true,
-		"SliceArg":     true,
+		"NoArgs":          true,
+		"SingleArg":       true,
+		"MultipleArgs":    true,
+		"WithError":       true,
+		"IntArg":          true,
+		"StructArg":       true,
+		"SliceArg":        true,
+		"WithCallContext": true,
 	}
 
 	for _, m := range methods {

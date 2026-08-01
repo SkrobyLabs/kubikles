@@ -30,12 +30,16 @@ type methodInfo struct {
 	Results    []resultInfo
 	HasError   bool // last return is error
 	ResultOnly bool // returns only error (no data return)
+	Excluded   bool
+	Sources    []string
+	Imports    map[string]string // qualifier to import path used by the signature
 }
 
 // paramInfo holds information about a method parameter.
 type paramInfo struct {
-	Name    string
-	TypeStr string
+	Name           string
+	TypeStr        string
+	TrustedContext bool
 }
 
 // resultInfo holds information about a method return value.
@@ -52,7 +56,10 @@ func main() {
 
 	// Parse all Go files in the root directory
 	fset := token.NewFileSet()
-	methods := parseAppMethods(fset, rootDir)
+	methods, err := parseAppMethods(fset, rootDir)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if len(methods) == 0 {
 		log.Fatal("No exported App methods found")
@@ -81,15 +88,13 @@ func main() {
 }
 
 // parseAppMethods scans Go files for exported methods on *App.
-func parseAppMethods(fset *token.FileSet, dir string) []methodInfo {
+func parseAppMethods(fset *token.FileSet, dir string) ([]methodInfo, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		log.Fatalf("Failed to read directory %s: %v", dir, err)
+		return nil, fmt.Errorf("read directory %s: %w", dir, err)
 	}
 
-	// Track seen method names to deduplicate (helm vs !helm stubs have same methods)
-	seen := make(map[string]bool)
-	var methods []methodInfo
+	groups := make(map[string][]methodInfo)
 
 	for _, entry := range entries {
 		name := entry.Name()
@@ -104,10 +109,10 @@ func parseAppMethods(fset *token.FileSet, dir string) []methodInfo {
 		filePath := filepath.Join(dir, name)
 		file, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
 		if err != nil {
-			log.Printf("Warning: failed to parse %s: %v", filePath, err)
-			continue
+			return nil, fmt.Errorf("parse %s: %w", filePath, err)
 		}
 
+		fileImports := importsByQualifier(file)
 		for _, decl := range file.Decls {
 			funcDecl, ok := decl.(*ast.FuncDecl)
 			if !ok || funcDecl.Recv == nil {
@@ -121,27 +126,159 @@ func parseAppMethods(fset *token.FileSet, dir string) []methodInfo {
 
 			methodName := funcDecl.Name.Name
 			// Only exported methods
-			if !unicode.IsUpper(rune(methodName[0])) {
+			if !ast.IsExported(methodName) {
 				continue
 			}
-
-			// Skip duplicates (e.g., from helm and !helm builds)
-			if seen[methodName] {
-				continue
-			}
-			seen[methodName] = true
 
 			mi := extractMethodInfo(fset, funcDecl)
-			methods = append(methods, mi)
+			mi.Imports = signatureImports(mi, fileImports)
+			classifyTrustedContexts(&mi)
+			excluded, err := parseDispatchDirective(funcDecl.Doc)
+			if err != nil {
+				return nil, fmt.Errorf("%s in %s: %w", methodName, name, err)
+			}
+			mi.Excluded = excluded
+			mi.Sources = []string{name}
+			groups[methodName] = append(groups[methodName], mi)
 		}
 	}
 
-	// Sort by method name for deterministic output
-	sort.Slice(methods, func(i, j int) bool {
-		return methods[i].Name < methods[j].Name
-	})
+	groupNames := make([]string, 0, len(groups))
+	for name := range groups {
+		groupNames = append(groupNames, name)
+	}
+	sort.Strings(groupNames)
 
-	return methods
+	methods := make([]methodInfo, 0, len(groups))
+	for _, name := range groupNames {
+		variants := groups[name]
+		base := variants[0]
+		for _, variant := range variants[1:] {
+			if !sameMethodSignature(base, variant) || base.Excluded != variant.Excluded {
+				return nil, fmt.Errorf("method %s differs across %s and %s", name, base.Sources[0], variant.Sources[0])
+			}
+			if qualifier, ok := conflictingImportQualifier(base, variant); ok {
+				return nil, fmt.Errorf("method %s has conflicting import path for qualifier %q across %s and %s", name, qualifier, base.Sources[0], variant.Sources[0])
+			}
+			base.Sources = append(base.Sources, variant.Sources[0])
+		}
+		sort.Strings(base.Sources)
+		if err := validateMethod(base); err != nil {
+			return nil, fmt.Errorf("method %s in %s: %w", name, strings.Join(base.Sources, ", "), err)
+		}
+		methods = append(methods, base)
+	}
+
+	if err := validateGeneratedImports(methods); err != nil {
+		return nil, err
+	}
+
+	return methods, nil
+}
+
+func parseDispatchDirective(doc *ast.CommentGroup) (bool, error) {
+	if doc == nil {
+		return false, nil
+	}
+	var directive string
+	for _, comment := range doc.List {
+		const namespace = "kubikles:dispatch"
+		if !strings.HasPrefix(comment.Text, "//"+namespace) {
+			continue
+		}
+		text := strings.TrimPrefix(comment.Text, "//")
+		suffix := strings.TrimPrefix(text, namespace)
+		if suffix != "" && !unicode.IsSpace([]rune(suffix)[0]) {
+			continue
+		}
+
+		value := strings.TrimPrefix(text, namespace+" ")
+		if value == text || value == "" || strings.ContainsFunc(value, unicode.IsSpace) {
+			return false, fmt.Errorf("invalid dispatch directive %q", text)
+		}
+		if directive != "" && directive != value {
+			return false, fmt.Errorf("conflicting dispatch directives")
+		}
+		directive = value
+	}
+	if directive == "" {
+		return false, nil
+	}
+	if directive != "exclude" {
+		return false, fmt.Errorf("unknown dispatch directive %q", directive)
+	}
+	return true, nil
+}
+
+func sameMethodSignature(a, b methodInfo) bool {
+	if len(a.Params) != len(b.Params) || len(a.Results) != len(b.Results) {
+		return false
+	}
+	for i := range a.Params {
+		if a.Params[i].TrustedContext && b.Params[i].TrustedContext {
+			continue
+		}
+		if a.Params[i].TypeStr != b.Params[i].TypeStr || a.Params[i].TrustedContext != b.Params[i].TrustedContext {
+			return false
+		}
+	}
+	for i := range a.Results {
+		if a.Results[i].TypeStr != b.Results[i].TypeStr {
+			return false
+		}
+	}
+	return true
+}
+
+func validateMethod(m methodInfo) error {
+	contextCount := 0
+	for i, param := range m.Params {
+		if param.TrustedContext {
+			contextCount++
+			if i != 0 {
+				return fmt.Errorf("AuthenticatedCallContext must be the first parameter")
+			}
+		}
+		if strings.HasPrefix(param.TypeStr, "...") && !m.Excluded {
+			return fmt.Errorf("variadic method must use //kubikles:dispatch exclude")
+		}
+	}
+	if contextCount > 1 {
+		return fmt.Errorf("AuthenticatedCallContext may appear at most once")
+	}
+	if !m.Excluded {
+		for _, typeStr := range methodTypeStrings(m) {
+			for qualifier := range packageRefs(typeStr) {
+				if _, ok := m.Imports[qualifier]; !ok {
+					return fmt.Errorf("unresolved package qualifier %q", qualifier)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func classifyTrustedContexts(m *methodInfo) {
+	for i := range m.Params {
+		qualifier, ok := exactSelectorQualifier(m.Params[i].TypeStr, "AuthenticatedCallContext")
+		m.Params[i].TrustedContext = ok && m.Imports[qualifier] == "kubikles/pkg/agent"
+	}
+}
+
+func exactSelectorQualifier(typeStr, selectorName string) (string, bool) {
+	expr, err := parser.ParseExpr(typeStr)
+	if err != nil {
+		return "", false
+	}
+	selector, ok := expr.(*ast.SelectorExpr)
+	if !ok || selector.Sel.Name != selectorName {
+		return "", false
+	}
+	qualifier, ok := selector.X.(*ast.Ident)
+	if !ok {
+		return "", false
+	}
+	return qualifier.Name, true
 }
 
 // isAppReceiver checks if the receiver is *App.
@@ -219,125 +356,247 @@ func extractMethodInfo(fset *token.FileSet, funcDecl *ast.FuncDecl) methodInfo {
 }
 
 // exprToString converts an AST expression to its string representation.
-func exprToString(_ *token.FileSet, expr ast.Expr) string {
+func exprToString(fset *token.FileSet, expr ast.Expr) string {
 	var buf bytes.Buffer
-	writeExpr(&buf, expr)
+	if err := format.Node(&buf, fset, expr); err != nil {
+		return "<invalid type>"
+	}
 	return buf.String()
 }
 
-// writeExpr writes the string representation of an AST expression.
-func writeExpr(buf *bytes.Buffer, expr ast.Expr) {
-	switch e := expr.(type) {
-	case *ast.Ident:
-		buf.WriteString(e.Name)
-	case *ast.SelectorExpr:
-		writeExpr(buf, e.X)
-		buf.WriteByte('.')
-		buf.WriteString(e.Sel.Name)
-	case *ast.StarExpr:
-		buf.WriteByte('*')
-		writeExpr(buf, e.X)
-	case *ast.ArrayType:
-		buf.WriteString("[]")
-		writeExpr(buf, e.Elt)
-	case *ast.MapType:
-		buf.WriteString("map[")
-		writeExpr(buf, e.Key)
-		buf.WriteByte(']')
-		writeExpr(buf, e.Value)
-	case *ast.InterfaceType:
-		buf.WriteString("interface{}")
-	case *ast.Ellipsis:
-		buf.WriteString("...")
-		writeExpr(buf, e.Elt)
-	default:
-		buf.WriteString("interface{}")
-	}
+var requiredGeneratedImports = map[string]string{
+	"agent":  "kubikles/pkg/agent",
+	"fmt":    "fmt",
+	"json":   "encoding/json",
+	"server": "kubikles/pkg/server",
 }
 
-// collectPackageRefs scans all type strings in methods and returns the set of
-// package prefixes used (e.g., "helm", "k8s", "terminal").
-func collectPackageRefs(methods []methodInfo) map[string]bool {
-	refs := make(map[string]bool)
+// collectGeneratedImports returns one qualifier-to-path table containing the
+// dispatcher's required imports and eligible parameter type references. Result
+// types are inferred from App calls, so importing their packages would be unused.
+func collectGeneratedImports(methods []methodInfo) map[string]string {
+	refs := make(map[string]string, len(requiredGeneratedImports))
+	for qualifier, path := range requiredGeneratedImports {
+		refs[qualifier] = path
+	}
 	for _, m := range methods {
-		for _, p := range m.Params {
-			extractPkgRefs(p.TypeStr, refs)
+		if m.Excluded {
+			continue
+		}
+		for _, param := range m.Params {
+			if param.TrustedContext {
+				continue
+			}
+			for qualifier := range packageRefs(param.TypeStr) {
+				refs[qualifier] = m.Imports[qualifier]
+			}
 		}
 	}
 	return refs
 }
 
-// extractPkgRefs extracts package references from a type string.
-func extractPkgRefs(typeStr string, refs map[string]bool) {
-	// Strip pointer, slice, map prefixes
-	s := typeStr
-	for {
-		if strings.HasPrefix(s, "*") {
-			s = s[1:]
-		} else if strings.HasPrefix(s, "[]") {
-			s = s[2:]
-		} else if strings.HasPrefix(s, "map[") {
-			// Extract both key and value types
-			depth := 1
-			i := 4
-			for i < len(s) && depth > 0 {
-				if s[i] == '[' {
-					depth++
-				} else if s[i] == ']' {
-					depth--
+type importBinding struct {
+	qualifier string
+	path      string
+	owner     string
+}
+
+func validateGeneratedImports(methods []methodInfo) error {
+	byQualifier := make(map[string]importBinding, len(requiredGeneratedImports))
+	byPath := make(map[string]importBinding, len(requiredGeneratedImports))
+	for _, qualifier := range sortedImportQualifiers(requiredGeneratedImports) {
+		binding := importBinding{qualifier: qualifier, path: requiredGeneratedImports[qualifier], owner: "reserved generated binding"}
+		byQualifier[binding.qualifier] = binding
+		byPath[binding.path] = binding
+	}
+
+	for _, method := range methods {
+		if method.Excluded {
+			continue
+		}
+		qualifierSet := make(map[string]bool)
+		for _, param := range method.Params {
+			if param.TrustedContext {
+				continue
+			}
+			for qualifier := range packageRefs(param.TypeStr) {
+				qualifierSet[qualifier] = true
+			}
+		}
+		qualifiers := make([]string, 0, len(qualifierSet))
+		for qualifier := range qualifierSet {
+			qualifiers = append(qualifiers, qualifier)
+		}
+		sort.Strings(qualifiers)
+		for _, qualifier := range qualifiers {
+			binding := importBinding{
+				qualifier: qualifier,
+				path:      method.Imports[qualifier],
+				owner:     fmt.Sprintf("method %s in %s", method.Name, strings.Join(method.Sources, ", ")),
+			}
+			if previous, ok := byQualifier[qualifier]; ok {
+				if previous.path != binding.path {
+					return fmt.Errorf("generated import qualifier %q maps to both %q (%s) and %q (%s)", qualifier, previous.path, previous.owner, binding.path, binding.owner)
 				}
-				i++
+				continue
 			}
-			if i < len(s) {
-				extractPkgRefs(s[4:i-1], refs) // key
-				extractPkgRefs(s[i:], refs)    // value
+			if previous, ok := byPath[binding.path]; ok && previous.qualifier != qualifier {
+				return fmt.Errorf("generated import path %q uses both qualifier %q (%s) and qualifier %q (%s)", binding.path, previous.qualifier, previous.owner, qualifier, binding.owner)
 			}
-			return
-		} else {
-			break
+			byQualifier[qualifier] = binding
+			byPath[binding.path] = binding
 		}
 	}
-	// Check for pkg.Type pattern
-	if idx := strings.Index(s, "."); idx > 0 {
-		refs[s[:idx]] = true
+	return nil
+}
+
+func sortedImportQualifiers(imports map[string]string) []string {
+	qualifiers := make([]string, 0, len(imports))
+	for qualifier := range imports {
+		qualifiers = append(qualifiers, qualifier)
 	}
+	sort.Strings(qualifiers)
+	return qualifiers
+}
+
+// importsByQualifier records the import path selected by each qualifier in a
+// source file. Explicit aliases are authoritative; known package paths cover
+// ordinary imports whose declared package name is not their path base.
+func importsByQualifier(file *ast.File) map[string]string {
+	imports := make(map[string]string)
+	for _, spec := range file.Imports {
+		path := strings.Trim(spec.Path.Value, `"`)
+		if spec.Name != nil {
+			if name := spec.Name.Name; name != "_" && name != "." {
+				imports[name] = path
+			}
+			continue
+		}
+		imports[filepath.Base(path)] = path
+		for qualifier, knownPath := range knownPackages {
+			if knownPath == path {
+				imports[qualifier] = path
+			}
+		}
+	}
+	return imports
+}
+
+func signatureImports(m methodInfo, fileImports map[string]string) map[string]string {
+	imports := make(map[string]string)
+	for _, typeStr := range methodTypeStrings(m) {
+		for qualifier := range packageRefs(typeStr) {
+			if path, ok := fileImports[qualifier]; ok {
+				imports[qualifier] = path
+			}
+		}
+	}
+	return imports
+}
+
+func conflictingImportQualifier(a, b methodInfo) (string, bool) {
+	qualifierSet := make(map[string]bool)
+	for _, param := range a.Params {
+		if param.TrustedContext {
+			continue
+		}
+		for qualifier := range packageRefs(param.TypeStr) {
+			qualifierSet[qualifier] = true
+		}
+	}
+	for _, result := range a.Results {
+		for qualifier := range packageRefs(result.TypeStr) {
+			qualifierSet[qualifier] = true
+		}
+	}
+	qualifiers := make([]string, 0, len(qualifierSet))
+	for qualifier := range qualifierSet {
+		qualifiers = append(qualifiers, qualifier)
+	}
+	sort.Strings(qualifiers)
+	for _, qualifier := range qualifiers {
+		if a.Imports[qualifier] != b.Imports[qualifier] {
+			return qualifier, true
+		}
+	}
+	return "", false
+}
+
+func methodTypeStrings(m methodInfo) []string {
+	types := make([]string, 0, len(m.Params)+len(m.Results))
+	for _, param := range m.Params {
+		types = append(types, param.TypeStr)
+	}
+	for _, result := range m.Results {
+		types = append(types, result.TypeStr)
+	}
+	return types
+}
+
+// packageRefs extracts package qualifiers from any valid Go type expression.
+func packageRefs(typeStr string) map[string]bool {
+	refs := make(map[string]bool)
+	expr, err := parser.ParseExpr(typeStr)
+	if err != nil {
+		return refs
+	}
+	ast.Inspect(expr, func(node ast.Node) bool {
+		selector, ok := node.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		if ident, ok := selector.X.(*ast.Ident); ok {
+			refs[ident.Name] = true
+		}
+		return true
+	})
+	return refs
 }
 
 // knownPackages maps short package names to their import paths.
 var knownPackages = map[string]string{
-	"helm":          "kubikles/pkg/helm",
-	"k8s":           "kubikles/pkg/k8s",
-	"terminal":      "kubikles/pkg/terminal",
-	"events":        "kubikles/pkg/events",
-	"tools":         "kubikles/pkg/tools",
-	"issuedetector": "kubikles/pkg/issuedetector",
+	"agent":                   "kubikles/pkg/agent",
+	"helm":                    "kubikles/pkg/helm",
+	"k8s":                     "kubikles/pkg/k8s",
+	"terminal":                "kubikles/pkg/terminal",
+	"events":                  "kubikles/pkg/events",
+	"tools":                   "kubikles/pkg/tools",
+	"issuedetector":           "kubikles/pkg/issuedetector",
+	"admissionregistrationv1": "k8s.io/api/admissionregistration/v1",
+	"apiextensionsv1":         "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1",
+	"appsv1":                  "k8s.io/api/apps/v1",
+	"autoscalingv2":           "k8s.io/api/autoscaling/v2",
+	"batchv1":                 "k8s.io/api/batch/v1",
+	"coordinationv1":          "k8s.io/api/coordination/v1",
+	"corev1":                  "k8s.io/api/core/v1",
+	"discoveryv1":             "k8s.io/api/discovery/v1",
+	"networkingv1":            "k8s.io/api/networking/v1",
+	"policyv1":                "k8s.io/api/policy/v1",
+	"rbacv1":                  "k8s.io/api/rbac/v1",
+	"schedulingv1":            "k8s.io/api/scheduling/v1",
+	"storagev1":               "k8s.io/api/storage/v1",
+	"v1":                      "k8s.io/api/core/v1",
 }
 
 // generateDispatcher produces the Go source code for the dispatch file.
 func generateDispatcher(methods []methodInfo) []byte {
 	var buf bytes.Buffer
 
-	// Collect package references
-	pkgRefs := collectPackageRefs(methods)
+	imports := collectGeneratedImports(methods)
 
 	buf.WriteString("// Code generated by cmd/gen-dispatcher. DO NOT EDIT.\n\n")
-	buf.WriteString("package main\n\n")
-	buf.WriteString("import (\n")
-	buf.WriteString("\t\"encoding/json\"\n")
-	buf.WriteString("\t\"fmt\"\n")
-	buf.WriteString("\n")
-	buf.WriteString("\t\"kubikles/pkg/server\"\n")
-
-	// Add imports for referenced packages
-	importedPkgs := make([]string, 0, len(pkgRefs))
-	for pkg := range pkgRefs {
-		if importPath, ok := knownPackages[pkg]; ok {
-			importedPkgs = append(importedPkgs, importPath)
+	for _, method := range methods {
+		if method.Excluded {
+			buf.WriteString(fmt.Sprintf("// kubikles:dispatch exclude %s (%s)\n", method.Name, strings.Join(method.Sources, ", ")))
 		}
 	}
-	sort.Strings(importedPkgs)
-	for _, imp := range importedPkgs {
-		buf.WriteString(fmt.Sprintf("\t%q\n", imp))
+	if len(methods) > 0 {
+		buf.WriteByte('\n')
+	}
+	buf.WriteString("package main\n\n")
+	buf.WriteString("import (\n")
+	for _, qualifier := range sortedImportQualifiers(imports) {
+		buf.WriteString(fmt.Sprintf("\t%s %q\n", qualifier, imports[qualifier]))
 	}
 
 	buf.WriteString(")\n\n")
@@ -370,37 +629,37 @@ func unmarshalArg[T any](args []json.RawMessage, index int) (T, error) {
 }
 
 // CallMethod dispatches a method call by name with JSON-encoded arguments.
-func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) (interface{}, error) {
+func (c *AppMethodCaller) CallMethod(callContext agent.AuthenticatedCallContext, methodName string, args []json.RawMessage) (interface{}, error) {
 	switch methodName {
 `)
 
 	for _, m := range methods {
-		// Skip methods with variadic params - they can't be dispatched via JSON args
-		hasVariadic := false
-		for _, p := range m.Params {
-			if strings.HasPrefix(p.TypeStr, "...") {
-				hasVariadic = true
-				break
-			}
-		}
-		if hasVariadic {
+		if m.Excluded {
 			continue
 		}
 
 		buf.WriteString(fmt.Sprintf("\tcase %q:\n", m.Name))
 
 		// Unmarshal arguments
-		for i, p := range m.Params {
-			buf.WriteString(fmt.Sprintf("\t\tp%d, err := unmarshalArg[%s](args, %d)\n", i, p.TypeStr, i))
+		paramOffset := 0
+		if len(m.Params) > 0 && m.Params[0].TrustedContext {
+			paramOffset = 1
+		}
+		for i := paramOffset; i < len(m.Params); i++ {
+			p := m.Params[i]
+			buf.WriteString(fmt.Sprintf("\t\tp%d, err := unmarshalArg[%s](args, %d)\n", i, p.TypeStr, i-paramOffset))
 			buf.WriteString("\t\tif err != nil {\n")
 			buf.WriteString("\t\t\treturn nil, err\n")
 			buf.WriteString("\t\t}\n")
 		}
 
 		// Build the call
-		callArgs := make([]string, len(m.Params))
-		for i := range m.Params {
-			callArgs[i] = fmt.Sprintf("p%d", i)
+		callArgs := make([]string, 0, len(m.Params))
+		if paramOffset == 1 {
+			callArgs = append(callArgs, "callContext")
+		}
+		for i := paramOffset; i < len(m.Params); i++ {
+			callArgs = append(callArgs, fmt.Sprintf("p%d", i))
 		}
 		callStr := fmt.Sprintf("c.app.%s(%s)", m.Name, strings.Join(callArgs, ", "))
 
@@ -416,9 +675,22 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			buf.WriteString(fmt.Sprintf("\t\treturn nil, %s\n", callStr))
 
 		case m.HasError:
-			// Returns (value, error)
-			buf.WriteString(fmt.Sprintf("\t\tresult, err := %s\n", callStr))
-			buf.WriteString("\t\treturn result, err\n")
+			// Returns one or more values followed by error.
+			valueCount := len(m.Results) - 1
+			retVars := make([]string, 0, len(m.Results))
+			for i := 0; i < valueCount; i++ {
+				retVars = append(retVars, fmt.Sprintf("r%d", i))
+			}
+			retVars = append(retVars, "err")
+			buf.WriteString(fmt.Sprintf("\t\t%s := %s\n", strings.Join(retVars, ", "), callStr))
+			buf.WriteString("\t\tif err != nil {\n")
+			buf.WriteString("\t\t\treturn nil, err\n")
+			buf.WriteString("\t\t}\n")
+			if valueCount == 1 {
+				buf.WriteString("\t\treturn r0, nil\n")
+			} else {
+				buf.WriteString(fmt.Sprintf("\t\treturn []interface{}{%s}, nil\n", strings.Join(retVars[:valueCount], ", ")))
+			}
 
 		case len(m.Results) == 1:
 			// Returns single value, no error
