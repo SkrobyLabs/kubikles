@@ -115,6 +115,8 @@ type Client struct {
 	metricsClient  metricsclientset.Interface
 	configLoading  clientcmd.ClientConfig
 	currentContext string
+	fixedContext   bool
+	baseConfig     *rest.Config
 	mu             sync.RWMutex
 	apiTimeout     time.Duration
 	warmupDone     chan struct{} // Closed when connection warmup completes
@@ -168,6 +170,9 @@ func (c *Client) SetClientPoolSize(size int) {
 func (c *Client) SetExtraKubeconfigPaths(paths []string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.fixedContext {
+		return
+	}
 	c.extraKubeconfigPaths = paths
 }
 
@@ -344,6 +349,12 @@ func (c *Client) loadConfig(contextName string) error {
 }
 
 func (c *Client) SwitchContext(contextName string) error {
+	if c.isFixedContext() {
+		if contextName != InClusterContextName {
+			return fmt.Errorf("%w: %q", ErrFixedContextUnavailable, contextName)
+		}
+		return nil
+	}
 	if IsDebugClusterContext(contextName) {
 		if err := c.switchToDebugCluster(); err != nil {
 			return err
@@ -512,6 +523,9 @@ func (c *Client) enrichExecError(origErr error) error {
 }
 
 func (c *Client) ListContexts() ([]string, error) {
+	if c.isFixedContext() {
+		return []string{InClusterContextName}, nil
+	}
 	// Use a fresh loader each call to pick up externally added/removed contexts.
 	// The shared c.configLoading may cache internal state after ClientConfig() is called.
 	loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
@@ -580,6 +594,12 @@ func RuntimeObjectToMap(obj interface{}) (map[string]interface{}, error) {
 }
 
 func (c *Client) getClientForContext(contextName string) (kubernetes.Interface, error) {
+	if c.isFixedContext() {
+		if !c.acceptsFixedContext(contextName, true) {
+			return nil, fmt.Errorf("%w: %q", ErrFixedContextUnavailable, contextName)
+		}
+		return c.getClientset()
+	}
 	if IsDebugClusterContext(contextName) {
 		return GetDebugClusterClientset()
 	}
@@ -616,6 +636,12 @@ func (c *Client) getClientForContext(contextName string) (kubernetes.Interface, 
 }
 
 func (c *Client) GetRestConfigForContext(contextName string) (*rest.Config, error) {
+	if c.isFixedContext() {
+		if !c.acceptsFixedContext(contextName, true) {
+			return nil, fmt.Errorf("%w: %q", ErrFixedContextUnavailable, contextName)
+		}
+		return c.copyBaseConfig(), nil
+	}
 	if IsDebugClusterContext(contextName) {
 		return nil, fmt.Errorf("no REST config for debug cluster (exec/port-forward/logs are not supported)")
 	}
@@ -634,6 +660,12 @@ func (c *Client) GetRestConfigForContext(contextName string) (*rest.Config, erro
 }
 
 func (c *Client) getClientsetForContext(contextName string) (kubernetes.Interface, error) {
+	if c.isFixedContext() {
+		if !c.acceptsFixedContext(contextName, true) {
+			return nil, fmt.Errorf("%w: %q", ErrFixedContextUnavailable, contextName)
+		}
+		return c.getClientset()
+	}
 	if IsDebugClusterContext(contextName) {
 		return GetDebugClusterClientset()
 	}

@@ -100,6 +100,16 @@ type ContextUpdateRequest struct {
 
 // GetContextDetails returns detailed info for all kubeconfig contexts.
 func (c *Client) GetContextDetails() ([]ContextDetail, error) {
+	if c.isFixedContext() {
+		config := c.copyBaseConfig()
+		return []ContextDetail{{
+			Name:     InClusterContextName,
+			Cluster:  InClusterContextName,
+			Server:   config.Host,
+			AuthInfo: "service-account",
+			IsActive: true,
+		}}, nil
+	}
 	loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		c.getLoadingRules(), &clientcmd.ConfigOverrides{},
 	)
@@ -128,6 +138,9 @@ func (c *Client) GetContextDetails() ([]ContextDetail, error) {
 
 // DeleteContext removes a context from the kubeconfig file.
 func (c *Client) DeleteContext(name string) error {
+	if c.isFixedContext() {
+		return ErrFixedContextImmutable
+	}
 	if name == c.GetCurrentContext() {
 		return fmt.Errorf("cannot delete the active context %q; switch to another context first", name)
 	}
@@ -147,6 +160,9 @@ func (c *Client) DeleteContext(name string) error {
 
 // RenameContext renames a context in the kubeconfig file.
 func (c *Client) RenameContext(oldName, newName string) error {
+	if c.isFixedContext() {
+		return ErrFixedContextImmutable
+	}
 	if newName == "" {
 		return fmt.Errorf("new context name cannot be empty")
 	}
@@ -215,6 +231,9 @@ func (c *Client) modifyKubeconfigContext(contextName string, mutate func(*client
 
 // GetFullContextDetail returns all editable fields for a kubeconfig context.
 func (c *Client) GetFullContextDetail(name string) (*FullContextDetail, error) {
+	if c.isFixedContext() {
+		return nil, ErrFixedContextImmutable
+	}
 	loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		c.getLoadingRules(), &clientcmd.ConfigOverrides{},
 	)
@@ -281,6 +300,9 @@ func (c *Client) GetFullContextDetail(name string) (*FullContextDetail, error) {
 
 // UpdateContextDetail applies partial updates to a kubeconfig context.
 func (c *Client) UpdateContextDetail(name string, req ContextUpdateRequest) error {
+	if c.isFixedContext() {
+		return ErrFixedContextImmutable
+	}
 	err := c.modifyKubeconfigContext(name, func(config *clientcmdapi.Config) error {
 		ctx, ok := config.Contexts[name]
 		if !ok {
