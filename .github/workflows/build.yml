@@ -7,6 +7,10 @@ on:
         description: Upload build artifacts
         type: boolean
         default: false
+      build_version:
+        description: Exact Kubikles build identity
+        type: string
+        default: dev
 
 permissions:
   contents: read
@@ -19,15 +23,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -53,19 +57,36 @@ jobs:
       - name: Go vet
         run: go vet -tags "helm webkit2_41" ./...
 
+      - name: Install checksum-pinned Helm for release contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm_tools="$RUNNER_TEMP/accelerator-contract-tools"
+          helm_archive="$RUNNER_TEMP/helm-v3.21.3-linux-amd64.tar.gz"
+          mkdir -m 700 "$helm_tools"
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://get.helm.sh/helm-v3.21.3-linux-amd64.tar.gz -o "$helm_archive"
+          printf '%s  %s\n' '15e041a93a590dce8100f39385cd98c84a765c9e36aeeb9e2dc6ff9e4769e2e0' "$helm_archive" | sha256sum --check --status
+          tar -xzf "$helm_archive" -C "$RUNNER_TEMP" linux-amd64/helm
+          install -m 0755 "$RUNNER_TEMP/linux-amd64/helm" "$helm_tools/helm"
+          [ "$("$helm_tools/helm" version --short)" = 'v3.21.3+g1ad6e68' ]
+          printf '%s\n' "$helm_tools" >> "$GITHUB_PATH"
+
+      - name: Accelerator release contracts
+        run: make test-accelerator-release-contract
+
   build-linux:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -83,7 +104,7 @@ jobs:
         run: cd frontend && npm ci
 
       - name: Build
-        run: make build-linux-amd64
+        run: make build-linux-amd64 BUILD_VERSION='${{ inputs.build_version }}'
 
       - name: Zip binary
         if: inputs.publish
@@ -91,7 +112,7 @@ jobs:
 
       - name: Upload artifact
         if: inputs.publish
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: kubikles-linux-amd64
           path: build/bin/Kubikles-linux-amd64.zip
@@ -100,15 +121,15 @@ jobs:
     needs: test
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -123,8 +144,8 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          make build-windows-amd64
-          make build-windows-arm64
+          make build-windows-amd64 BUILD_VERSION='${{ inputs.build_version }}'
+          make build-windows-arm64 BUILD_VERSION='${{ inputs.build_version }}'
 
       - name: Zip binaries
         if: inputs.publish
@@ -135,14 +156,14 @@ jobs:
 
       - name: Upload amd64 artifact
         if: inputs.publish
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: kubikles-windows-amd64
           path: build/bin/Kubikles-windows-amd64.zip
 
       - name: Upload arm64 artifact
         if: inputs.publish
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: kubikles-windows-arm64
           path: build/bin/Kubikles-windows-arm64.zip
@@ -151,15 +172,15 @@ jobs:
     needs: test
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -173,12 +194,12 @@ jobs:
 
       - name: Build arm64
         run: |
-          make build-mac-arm
+          make build-mac-arm BUILD_VERSION='${{ inputs.build_version }}'
           mv build/bin/kubikles.app build/bin/Kubikles-arm64.app
 
       - name: Build amd64
         run: |
-          make build-mac
+          make build-mac BUILD_VERSION='${{ inputs.build_version }}'
           mv build/bin/kubikles.app build/bin/Kubikles-amd64.app
 
       - name: Zip apps
@@ -206,14 +227,14 @@ jobs:
 
       - name: Upload arm64 artifact
         if: inputs.publish
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: kubikles-macos-arm64
           path: build/bin/Kubikles-macos-arm64.zip
 
       - name: Upload amd64 artifact
         if: inputs.publish
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: kubikles-macos-amd64
           path: build/bin/Kubikles-macos-amd64.zip

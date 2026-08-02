@@ -1,7 +1,7 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind
+.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind test-accelerator-release-contract test-accelerator-publication-local verify-accelerator-release-ghcr
 
 .DEFAULT_GOAL := help
 
@@ -17,6 +17,16 @@ test-accelerator-chart-kind:
 test-accelerator-00-kind:
 	@./scripts/test-accelerator-00-kind_test.sh
 	@./scripts/test-accelerator-00-kind.sh
+
+test-accelerator-release-contract:
+	@go test ./scripts/accelerator-release
+
+test-accelerator-publication-local:
+	@./scripts/publish-accelerator-release.sh local-test
+
+verify-accelerator-release-ghcr:
+	@test -n "$(BUILD_VERSION)" && test "$(BUILD_VERSION)" != dev || (echo "Error: BUILD_VERSION=vX.Y.Z is required for authenticated GHCR verification" >&2; exit 1)
+	@BUILD_VERSION='$(BUILD_VERSION)' ./scripts/publish-accelerator-release.sh verify-ghcr
 
 help:
 	@echo ""
@@ -64,6 +74,9 @@ help:
 	@echo "  test-accelerator-00-kind  Run the disposable Accelerator Kind characterization gate"
 	@echo "  test-accelerator-chart  Render and validate the disposable Accelerator Helm chart"
 	@echo "  test-accelerator-chart-kind  Run the disposable Accelerator Helm chart Kind lifecycle smoke"
+	@echo "  test-accelerator-release-contract  Validate exact immutable release contracts offline"
+	@echo "  test-accelerator-publication-local  Exercise publication against a disposable registry"
+	@echo "  verify-accelerator-release-ghcr  Verify one exact authenticated published release"
 	@echo "  typecheck          Run TypeScript type checking (tsc --noEmit)"
 	@echo ""
 	@echo "Linting:"
