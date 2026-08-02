@@ -45,6 +45,7 @@ type ConnectedSession struct {
 	frames         chan []byte
 	candidateNonce string
 	candidatePong  <-chan struct{}
+	ownerState     *workloadConnectorState
 }
 
 type disconnectRecord struct {
@@ -78,6 +79,9 @@ func newConnectedSessionWithCandidateFence(receipt *workloadReceipt, info server
 		candidateNonce: candidateNonce, candidatePong: candidatePong,
 	}
 	session.self = session
+	if receipt != nil && receipt.owner != nil {
+		session.ownerState = receipt.owner.connectorState
+	}
 	go session.pump()
 	go func() {
 		select {
@@ -171,6 +175,14 @@ func (s *ConnectedSession) cleanup(normal bool) {
 	if s.tunnel != nil {
 		s.tunnel.Stop()
 		_ = s.tunnel.Wait(cleanupCtx)
+	}
+	if s.ownerState != nil {
+		s.ownerState.mu.Lock()
+		if s.ownerState.currentSession == s {
+			s.ownerState.currentSession = nil
+		}
+		s.ownerState.signalChangedLocked()
+		s.ownerState.mu.Unlock()
 	}
 	close(s.done)
 }

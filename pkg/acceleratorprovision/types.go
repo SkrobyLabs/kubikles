@@ -3,6 +3,7 @@
 package acceleratorprovision
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -77,6 +78,8 @@ type workloadReceipt struct {
 	job, pod                                                      ObjectIdentity
 	buildVersion, imageDigest, chartDigest                        string
 	snapshot                                                      ContextSnapshot
+	prepared                                                      *preparedChart
+	owned                                                         *ownedRelease
 	owner                                                         *ProvisionedWorkload
 }
 
@@ -94,9 +97,81 @@ func (r *workloadReceipt) workload() *ProvisionedWorkload {
 type workloadConnectorState struct {
 	mu                  sync.Mutex
 	closed              bool
+	disposing           bool
 	active              int
 	freshConnectClaimed bool
 	receipt             *workloadReceipt
+	nextOperation       uint64
+	operations          map[uint64]context.CancelFunc
+	currentSession      *ConnectedSession
+	changed             chan struct{}
+	disposal            *disposalOperation
+}
+
+func (s *workloadConnectorState) signalChangedLocked() {
+	if s.changed == nil {
+		s.changed = make(chan struct{})
+		return
+	}
+	close(s.changed)
+	s.changed = make(chan struct{})
+}
+
+func (w *ProvisionedWorkload) beginLifecycleOperation(parent context.Context) (context.Context, func(), ConnectUnavailableReason) {
+	if w == nil || w.connectorState == nil || parent == nil {
+		return nil, nil, InvalidWorkload
+	}
+	state := w.connectorState
+	state.mu.Lock()
+	if state.disposing {
+		state.mu.Unlock()
+		return nil, nil, WorkloadDisposing
+	}
+	if state.closed {
+		state.mu.Unlock()
+		return nil, nil, InvalidWorkload
+	}
+	if state.operations == nil {
+		state.operations = make(map[uint64]context.CancelFunc)
+	}
+	state.nextOperation++
+	id := state.nextOperation
+	op, cancel := context.WithCancel(parent)
+	state.operations[id] = cancel
+	state.mu.Unlock()
+	var once sync.Once
+	return op, func() {
+		once.Do(func() {
+			cancel()
+			state.mu.Lock()
+			delete(state.operations, id)
+			state.signalChangedLocked()
+			state.mu.Unlock()
+		})
+	}, ""
+}
+
+func (w *ProvisionedWorkload) publishCurrentSession(session *ConnectedSession) bool {
+	if w == nil || w.connectorState == nil || session == nil {
+		return false
+	}
+	state := w.connectorState
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if state.disposing || state.closed || state.receipt == nil || session.receipt != state.receipt {
+		return false
+	}
+	state.currentSession = session
+	return true
+}
+
+func (w *ProvisionedWorkload) isDisposing() bool {
+	if w == nil || w.connectorState == nil {
+		return false
+	}
+	w.connectorState.mu.Lock()
+	defer w.connectorState.mu.Unlock()
+	return w.connectorState.disposing
 }
 
 // connectorLease deliberately keeps the provisioning-only inputs private.  A
@@ -118,7 +193,7 @@ func (w *ProvisionedWorkload) connectorLease() (connectorLease, bool) {
 	}
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	if state.closed || state.freshConnectClaimed || state.receipt == nil || state.receipt.owner != w || w.credential == nil || w.snapshot == nil || !matchesReceipt(w, state.receipt) {
+	if state.closed || state.disposing || state.freshConnectClaimed || state.receipt == nil || state.receipt.owner != w || w.credential == nil || w.snapshot == nil || !matchesReceipt(w, state.receipt) {
 		return connectorLease{}, false
 	}
 	state.freshConnectClaimed = true
@@ -128,6 +203,7 @@ func (w *ProvisionedWorkload) connectorLease() (connectorLease, bool) {
 		once.Do(func() {
 			state.mu.Lock()
 			state.active--
+			state.signalChangedLocked()
 			state.mu.Unlock()
 		})
 	}}, true
@@ -146,7 +222,7 @@ func (w *ProvisionedWorkload) resumeConnectorLease(receipt *workloadReceipt) (co
 	}
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	if state.closed || state.receipt != receipt || receipt.owner != w || w.credential == nil || w.snapshot == nil || receipt.snapshot != w.snapshot || !matchesReceipt(w, receipt) {
+	if state.closed || state.disposing || state.receipt != receipt || receipt.owner != w || w.credential == nil || w.snapshot == nil || receipt.snapshot != w.snapshot || !matchesReceipt(w, receipt) {
 		return connectorLease{}, false
 	}
 	state.active++
@@ -155,6 +231,7 @@ func (w *ProvisionedWorkload) resumeConnectorLease(receipt *workloadReceipt) (co
 		once.Do(func() {
 			state.mu.Lock()
 			state.active--
+			state.signalChangedLocked()
 			state.mu.Unlock()
 		})
 	}}, true
@@ -167,7 +244,7 @@ func (w *ProvisionedWorkload) matchesResumeHandle(receipt *workloadReceipt) bool
 	state := w.connectorState
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	return !state.closed && state.receipt == receipt && receipt.owner == w && w.credential != nil && w.snapshot != nil && receipt.snapshot == w.snapshot && matchesReceipt(w, receipt)
+	return !state.closed && !state.disposing && state.receipt == receipt && receipt.owner == w && w.credential != nil && w.snapshot != nil && receipt.snapshot == w.snapshot && matchesReceipt(w, receipt)
 }
 
 func matchesReceipt(w *ProvisionedWorkload, r *workloadReceipt) bool {

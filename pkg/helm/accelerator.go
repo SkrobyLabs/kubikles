@@ -1052,15 +1052,31 @@ func (c *Client) InspectAcceleratorOwnership(ctx context.Context, config *rest.C
 }
 
 func inspectAcceleratorOwnershipWith(ctx context.Context, actionConfig *action.Configuration, clientset kubernetes.Interface, prepared *AcceleratorPreparedRelease, receipt *AcceleratorOwnershipReceipt) bool {
+	return inspectAcceleratorOwnershipStatusWith(ctx, actionConfig, clientset, prepared, receipt) == AcceleratorOwnedCleanupSucceeded
+}
+
+func inspectAcceleratorOwnershipStatusWith(ctx context.Context, actionConfig *action.Configuration, clientset kubernetes.Interface, prepared *AcceleratorPreparedRelease, receipt *AcceleratorOwnershipReceipt) AcceleratorOwnedCleanupStatus {
 	if actionConfig == nil || actionConfig.Releases == nil || clientset == nil || prepared == nil || receipt == nil || receipt.renderHash != prepared.renderHash || receipt.request.ReleaseName != prepared.request.ReleaseName || receipt.request.ReleaseNamespace != prepared.request.ReleaseNamespace || receipt.storageName != acceleratorStorageName(prepared.request.ReleaseName) || receipt.storageUID == "" || receipt.storageResourceVersion == "" || !validReceiptCreatedResources(prepared, receipt) {
-		return false
+		return AcceleratorOwnedCleanupOwnershipChanged
 	}
 	history, err := actionConfig.Releases.History(prepared.request.ReleaseName)
-	if err != nil || len(history) != 1 || proveAcceleratorOwnership(history[0], prepared) == nil {
-		return false
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		return AcceleratorOwnedCleanupAlreadyGone
+	}
+	if err != nil || len(history) != 1 {
+		return AcceleratorOwnedCleanupOwnershipChanged
+	}
+	if _, stage := proveClosedAcceleratorRelease(history[0], prepared.request.ReleaseNamespace, prepared.request.ReleaseName, prepared); stage != "" {
+		return AcceleratorOwnedCleanupOwnershipChanged
 	}
 	stored, err := clientset.CoreV1().Secrets(prepared.request.ReleaseNamespace).Get(ctx, receipt.storageName, metav1.GetOptions{})
-	return err == nil && stored.UID == receipt.storageUID && stored.ResourceVersion == receipt.storageResourceVersion
+	if apierrors.IsNotFound(err) {
+		return AcceleratorOwnedCleanupAlreadyGone
+	}
+	if err != nil || stored.UID != receipt.storageUID || stored.ResourceVersion != receipt.storageResourceVersion {
+		return AcceleratorOwnedCleanupOwnershipChanged
+	}
+	return AcceleratorOwnedCleanupSucceeded
 }
 
 func acceleratorStorageName(releaseName string) string {

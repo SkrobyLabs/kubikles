@@ -59,7 +59,7 @@ func TestResumeDeterministicScheduleAndSingleOwner(t *testing.T) {
 }
 
 func TestResumeGraceDeadlineAndCancellation(t *testing.T) {
-	clock := &fakeResumeClock{now: time.Now()}
+	clock := &fakeResumeClock{now: time.Date(2026, 8, 2, 18, 0, 0, 0, time.UTC)}
 	session, workload := resumableSessionFixture(t, clock)
 	clock.advance(agent.AcceleratorIdleReconnectGrace)
 	reconnector := NewReconnector("v1.2.3")
@@ -299,6 +299,103 @@ func TestExplicitCloseRevokesResumeInProgress(t *testing.T) {
 	}
 	if workload.connectorState.active != 0 {
 		t.Fatal("resume lease remained active after explicit close")
+	}
+}
+
+func TestDisposalNormalizesBlockedResumeExit(t *testing.T) {
+	clock := &fakeResumeClock{now: time.Date(2026, 8, 2, 18, 0, 0, 0, time.UTC)}
+	prior, workload := resumableSessionFixture(t, clock)
+	reconnector := NewReconnector("v1.2.3")
+	entered := make(chan struct{})
+	reconnector.attempt = func(ctx context.Context, _ connectorLease, _ connectionExpectation) (*ConnectedSession, *connectAttemptFailure) {
+		close(entered)
+		<-ctx.Done()
+		return nil, &connectAttemptFailure{phase: attemptInfo, cause: ctx.Err()}
+	}
+	resumeResult := make(chan ResumeResult, 1)
+	go func() {
+		resumeResult <- reconnector.Resume(context.Background(), ResumeRequest{Prior: prior, Workload: workload})
+	}()
+	<-entered
+	service := NewDisposalService(nil)
+	service.cleanupOwned = func(context.Context, *workloadReceipt) (OwnershipStatus, UninstallStatus, DisappearanceStatus) {
+		return OwnershipAlreadyGone, UninstallNotNeeded, DisappearanceSucceeded
+	}
+	disposed := make(chan DisposalResult, 1)
+	go func() { disposed <- service.DisposeNow(context.Background(), workload) }()
+	if got := <-resumeResult; got.Reason != ResumeWorkloadDisposing || got.Session != nil {
+		t.Fatalf("resume=%#v", got)
+	}
+	if got := <-disposed; got.Ownership != OwnershipAlreadyGone || got.Uninstall != UninstallNotNeeded {
+		t.Fatalf("dispose=%#v", got)
+	}
+}
+
+func waitForWorkloadDisposing(workload *ProvisionedWorkload) {
+	for {
+		state := workload.connectorState
+		state.mu.Lock()
+		if state.disposing {
+			state.mu.Unlock()
+			return
+		}
+		if state.changed == nil {
+			state.changed = make(chan struct{})
+		}
+		changed := state.changed
+		state.mu.Unlock()
+		<-changed
+	}
+}
+
+func TestResumeSuccessfulCandidatePublicationLinearizesWithDisposalFence(t *testing.T) {
+	for _, fenceFirst := range []bool{true, false} {
+		name := "publication first"
+		if fenceFirst {
+			name = "fence first"
+		}
+		t.Run(name, func(t *testing.T) {
+			clock := &fakeResumeClock{now: time.Date(2026, 8, 2, 18, 0, 0, 0, time.UTC)}
+			prior, workload := resumableSessionFixture(t, clock)
+			service := NewDisposalService(nil)
+			service.cleanupOwned = func(context.Context, *workloadReceipt) (OwnershipStatus, UninstallStatus, DisappearanceStatus) {
+				return OwnershipAlreadyGone, UninstallNotNeeded, DisappearanceSucceeded
+			}
+			disposed := make(chan DisposalResult, 1)
+			startDisposal := func() {
+				go func() { disposed <- service.DisposeNow(context.Background(), workload) }()
+				waitForWorkloadDisposing(workload)
+			}
+			order := []string{}
+			candidate := newConnectedSession(workload.connectorState.receipt, server.AuthenticatedAcceleratorInfo{Capabilities: agent.V1Capabilities()}, connectedIdentity{sessionID: "session-a", instanceID: "instance-a", generation: 2}, newRecordedSessionSocket(&order), newRecordedTunnel(&order), clock)
+			reconnector := NewReconnector("v1.2.3")
+			reconnector.attempt = func(context.Context, connectorLease, connectionExpectation) (*ConnectedSession, *connectAttemptFailure) {
+				if fenceFirst {
+					startDisposal()
+				}
+				return candidate, nil
+			}
+			published := false
+			if !fenceFirst {
+				reconnector.afterPublish = func(session *ConnectedSession) {
+					workload.connectorState.mu.Lock()
+					published = workload.connectorState.currentSession == session
+					workload.connectorState.mu.Unlock()
+					startDisposal()
+				}
+			}
+			result := reconnector.Resume(context.Background(), ResumeRequest{Prior: prior, Workload: workload})
+			if result.Reason != ResumeWorkloadDisposing || result.Session != nil {
+				t.Fatalf("resume=%#v", result)
+			}
+			if !fenceFirst && !published {
+				t.Fatal("successful Resume candidate never crossed the real publication boundary")
+			}
+			if got := <-disposed; got.Effective != DisposalImmediate || got.Ownership != OwnershipAlreadyGone {
+				t.Fatalf("effective=%s ownership=%s uninstall=%s disappearance=%s", got.Effective, got.Ownership, got.Uninstall, got.Disappearance)
+			}
+			<-candidate.Done()
+		})
 	}
 }
 

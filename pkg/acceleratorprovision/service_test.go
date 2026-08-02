@@ -36,17 +36,24 @@ func (s fakeSnapshot) RESTConfig() *rest.Config        { return &rest.Config{} }
 func (s fakeSnapshot) Clientset() kubernetes.Interface { return s.client }
 
 type fakeContexts struct {
-	mu       sync.Mutex
-	current  string
-	snapshot ContextSnapshot
-	err      error
-	calls    int
+	mu            sync.Mutex
+	current       string
+	snapshot      ContextSnapshot
+	err           error
+	calls         int
+	snapshotCalls chan int
 }
 
 func (p *fakeContexts) SnapshotCurrentContext(name string) (ContextSnapshot, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.calls++
+	if p.snapshotCalls != nil {
+		select {
+		case p.snapshotCalls <- p.calls:
+		default:
+		}
+	}
 	if p.err != nil || name != p.current {
 		return nil, p.err
 	}
@@ -60,6 +67,11 @@ func (p *fakeContexts) CurrentContext() string {
 func (p *fakeContexts) setCurrent(name string) {
 	p.mu.Lock()
 	p.current = name
+	p.mu.Unlock()
+}
+func (p *fakeContexts) setSnapshot(snapshot ContextSnapshot) {
+	p.mu.Lock()
+	p.snapshot = snapshot
 	p.mu.Unlock()
 }
 
@@ -345,6 +357,71 @@ func TestProvisionSerializesExactContextIdentity(t *testing.T) {
 		}
 		releaseA()
 	})
+}
+
+func TestProvisionWaiterRefreshRequiresSameCompleteMutationGateKey(t *testing.T) {
+	for _, test := range []struct {
+		name          string
+		refresh       fakeSnapshot
+		wantAvailable bool
+	}{
+		{name: "namespace changed", refresh: fakeSnapshot{identity: "identity-a", namespace: "ns-b"}},
+		{name: "same key", refresh: fakeSnapshot{identity: "identity-a", namespace: "ns-a"}, wantAvailable: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			calls := make(chan int, 8)
+			contexts := &fakeContexts{current: "ctx", snapshot: fakeSnapshot{identity: "identity-a", namespace: "ns-a"}, snapshotCalls: calls}
+			charts := &fakeCharts{installOwned: true, prepareEntered: make(chan struct{}, 2), prepareRelease: make(chan struct{})}
+			observer := &fakeObserver{}
+			service := New(contexts, charts, observer)
+			service.entropy = &repeatReader{}
+
+			first := make(chan Result, 1)
+			go func() { first <- service.Provision(context.Background(), validRequest()) }()
+			for want := 1; want <= 2; want++ {
+				if got := <-calls; got != want {
+					t.Fatalf("snapshot call=%d want=%d", got, want)
+				}
+			}
+			<-charts.prepareEntered
+
+			waiter := make(chan Result, 1)
+			go func() { waiter <- service.Provision(context.Background(), validRequest()) }()
+			if got := <-calls; got != 3 {
+				t.Fatalf("waiter initial snapshot call=%d", got)
+			}
+			select {
+			case <-charts.prepareEntered:
+				t.Fatal("waiter crossed the acquired mutation gate")
+			default:
+			}
+
+			contexts.setSnapshot(test.refresh)
+			close(charts.prepareRelease)
+			if result := <-first; result.Availability != Available {
+				t.Fatalf("first result=%#v", result)
+			}
+			result := <-waiter
+			if test.wantAvailable {
+				if result.Availability != Available || result.Workload == nil || result.Workload.ReleaseNamespace != "ns-a" {
+					t.Fatalf("same-key result=%#v", result)
+				}
+				if observer.calls.Load() != 2 {
+					t.Fatalf("same-key observations=%d", observer.calls.Load())
+				}
+			} else {
+				if result.Availability != Unavailable || result.Reason != ContextChanged || result.Cleanup != CleanupNotNeeded {
+					t.Fatalf("changed-key result=%#v", result)
+				}
+				charts.mu.Lock()
+				gotCalls := strings.Join(charts.calls, ",")
+				charts.mu.Unlock()
+				if gotCalls != "prepare,install" || observer.calls.Load() != 1 {
+					t.Fatalf("changed-key crossed provision mutation: chart calls=%s observations=%d", gotCalls, observer.calls.Load())
+				}
+			}
+		})
+	}
 }
 
 func TestProvisionOutcomeMatrix(t *testing.T) {

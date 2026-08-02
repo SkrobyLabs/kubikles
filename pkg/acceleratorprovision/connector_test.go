@@ -870,6 +870,46 @@ func TestConnectorCancellationWinsPublicationWindow(t *testing.T) {
 	}
 }
 
+func TestDisposalFenceWinsBlockedFreshConnectPublication(t *testing.T) {
+	protocol, _ := connectorProtocolServer(t, knownCreatorToken)
+	defer protocol.Close()
+	order := []string{}
+	workload := connectorWorkload(t)
+	service := NewDisposalService(nil)
+	service.cleanupOwned = func(context.Context, *workloadReceipt) (OwnershipStatus, UninstallStatus, DisappearanceStatus) {
+		return OwnershipAlreadyGone, UninstallNotNeeded, DisappearanceSucceeded
+	}
+	disposed := make(chan DisposalResult, 1)
+	connector := connectorForEndpoint(t, protocol.URL, func(context.Context, *ProvisionedWorkload, ContextSnapshot) UnavailableReason { return "" }, &order)
+	connector.beforePublish = func() {
+		go func() { disposed <- service.DisposeNow(context.Background(), workload) }()
+		for {
+			workload.connectorState.mu.Lock()
+			if workload.connectorState.disposing {
+				workload.connectorState.mu.Unlock()
+				return
+			}
+			if workload.connectorState.changed == nil {
+				workload.connectorState.changed = make(chan struct{})
+			}
+			changed := workload.connectorState.changed
+			workload.connectorState.mu.Unlock()
+			<-changed
+		}
+	}
+	result := connector.Connect(context.Background(), workload)
+	if result.Reason != WorkloadDisposing || result.Session != nil {
+		t.Fatalf("connect=%#v", result)
+	}
+	if got := <-disposed; got.Ownership != OwnershipAlreadyGone {
+		t.Fatalf("dispose=%#v", got)
+	}
+	joined := strings.Join(order, ",")
+	if !strings.Contains(joined, "port-forward-stop") || !strings.Contains(joined, "port-forward-wait") || workload.connectorState.currentSession != nil {
+		t.Fatalf("candidate close order/current=%v current=%p", order, workload.connectorState.currentSession)
+	}
+}
+
 func TestConnectorRejectsMutatedCopiedAndReconstructedHandles(t *testing.T) {
 	mutations := map[string]func(*ProvisionedWorkload){
 		"context":          func(w *ProvisionedWorkload) { w.ContextName = "other" },

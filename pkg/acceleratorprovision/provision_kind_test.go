@@ -29,6 +29,7 @@ import (
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -71,6 +72,7 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 	chartDigest := requiredKindEnv(t, "ACCELERATOR_PROVISION_KIND_CHART_DIGEST")
 	imageDigest := requiredKindEnv(t, "ACCELERATOR_PROVISION_KIND_IMAGE_DIGEST")
 	sentinel := requiredKindEnv(t, "ACCELERATOR_PROVISION_KIND_SENTINEL")
+	malformed := requiredKindEnv(t, "ACCELERATOR_PROVISION_KIND_MALFORMED")
 	registryURL, err := url.Parse(requiredKindEnv(t, "ACCELERATOR_PROVISION_KIND_REGISTRY_TLS_URL"))
 	if err != nil || registryURL.Scheme != "https" || registryURL.Host == "" {
 		t.Fatal("invalid TLS registry fixture URL")
@@ -116,6 +118,10 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 		t.Fatalf("handle mismatch: %#v", workload)
 	}
 	assertKindReleaseObjects(t, ctx, k8sClient, workload)
+	if os.Getenv("ACCELERATOR_DISPOSAL_KIND") == "1" {
+		exerciseDisposalKind(t, service, helmClient, k8sClient, request, workload, sentinel, malformed)
+		return
+	}
 	if os.Getenv("ACCELERATOR_CONNECT_KIND") == "1" || os.Getenv("ACCELERATOR_RESUME_KIND") == "1" {
 		var wrongWorkload, replacementWorkload *ProvisionedWorkload
 		if os.Getenv("ACCELERATOR_RESUME_KIND") != "1" {
@@ -211,6 +217,158 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 			}
 		}
 	}
+}
+
+func exerciseDisposalKind(t *testing.T, service *Service, helmClient *helm.Client, client *k8s.Client, request Request, workload *ProvisionedWorkload, sentinel, malformed string) {
+	t.Helper()
+	preflightSnapshot, preflightErr := client.SnapshotCurrentContext(request.ContextName)
+	if preflightErr != nil {
+		t.Fatal("sweep proof preflight snapshot")
+	}
+	if stage := helmClient.AcceleratorSweepProofStageForTest(context.Background(), preflightSnapshot.RESTConfig(), preflightSnapshot.Namespace(), workload.ReleaseName); stage != "stored_ok" {
+		t.Fatalf("sweep proof preflight stage=%s", stage)
+	}
+	connect := func(candidate *ProvisionedWorkload) *ConnectedSession {
+		connectCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		result := NewConnector("v1.2.3").Connect(connectCtx, candidate)
+		if result.Availability != Available || result.Session == nil {
+			t.Fatalf("disposal fixture connect reason=%s", result.Reason)
+		}
+		return result.Session
+	}
+	assertGone := func(candidate *ProvisionedWorkload) {
+		if _, err := helmClient.GetRelease(request.ContextName, candidate.ReleaseNamespace, candidate.ReleaseName); err == nil {
+			t.Fatalf("disposed release remained: %s", candidate.ReleaseName)
+		}
+		assertFailedKindObjectsGone(t, context.Background(), client, candidate.ReleaseNamespace, candidate.ReleaseName, candidate.WorkloadSessionID)
+		if _, err := helmClient.GetRelease(request.ContextName, "default", sentinel); err != nil {
+			t.Fatal("disposal removed sentinel release")
+		}
+		if _, err := helmClient.GetRelease(request.ContextName, "default", malformed); err != nil {
+			t.Fatal("disposal removed malformed Accelerator-shaped release")
+		}
+	}
+
+	_ = connect(workload)
+	credential := workload.credential
+	drainCtx, drainCancel := context.WithTimeout(context.Background(), 4*time.Minute)
+	drained := NewDisposalService(service).DrainAndDispose(drainCtx, workload)
+	drainCancel()
+	if drained.Quiescence != QuiescenceSucceeded || drained.Credential != CredentialDestroyed || drained.Observation != DrainComplete || drained.Ownership != OwnershipProven || drained.Uninstall != UninstallSucceeded || drained.Disappearance != DisappearanceSucceeded {
+		t.Fatalf("drain requested=%s effective=%s observation=%s quiescence=%s credential=%s ownership=%s uninstall=%s disappearance=%s", drained.Requested, drained.Effective, drained.Observation, drained.Quiescence, drained.Credential, drained.Ownership, drained.Uninstall, drained.Disappearance)
+	}
+	if credential.withCreatorAuthorization(context.Background(), func(context.Context, creatorAuthorizationLease) error { return nil }) == nil {
+		t.Fatal("drain retained creator credential")
+	}
+	assertGone(workload)
+
+	immediateCtx, immediateCancel := context.WithTimeout(context.Background(), 150*time.Second)
+	immediateProvision := service.Provision(immediateCtx, request)
+	immediateCancel()
+	if immediateProvision.Workload == nil {
+		t.Fatalf("immediate provision reason=%s", immediateProvision.Reason)
+	}
+	immediate := immediateProvision.Workload
+	_ = connect(immediate)
+	started := time.Now()
+	now := NewDisposalService(service).DisposeNow(context.Background(), immediate)
+	if time.Since(started) >= agent.AcceleratorIdleReconnectGrace || now.Observation != DrainSkipped || now.Uninstall != UninstallSucceeded {
+		t.Fatalf("immediate result=%#v elapsed=%s", now, time.Since(started))
+	}
+	assertGone(immediate)
+
+	orphanCtx, orphanCancel := context.WithTimeout(context.Background(), 150*time.Second)
+	orphanProvision := service.Provision(orphanCtx, request)
+	orphanCancel()
+	if orphanProvision.Workload == nil {
+		t.Fatalf("orphan provision reason=%s", orphanProvision.Reason)
+	}
+	orphan := orphanProvision.Workload
+	session := connect(orphan)
+	if err := session.Close(context.Background()); err != nil {
+		t.Fatal("orphan session close")
+	}
+	snapshot, err := client.SnapshotCurrentContext(request.ContextName)
+	if err != nil {
+		t.Fatal("orphan snapshot")
+	}
+	deadline := time.Now().Add(3 * time.Minute)
+	for {
+		job, getErr := snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Get(context.Background(), orphan.Job.Name, metav1.GetOptions{})
+		if getErr != nil {
+			t.Fatal("orphan job disappeared before TTL patch")
+		}
+		complete := false
+		for _, condition := range job.Status.Conditions {
+			complete = complete || condition.Type == batchv1.JobComplete && condition.Status == corev1.ConditionTrue
+		}
+		if complete {
+			if job.Spec.TTLSecondsAfterFinished == nil || *job.Spec.TTLSecondsAfterFinished != 3600 {
+				t.Fatal("chart TTL contract changed")
+			}
+			one := int32(1)
+			job.Spec.TTLSecondsAfterFinished = &one
+			if _, err = snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Update(context.Background(), job, metav1.UpdateOptions{}); err != nil {
+				t.Fatal("test-only TTL patch")
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("orphan job did not complete")
+		}
+		time.Sleep(time.Second)
+	}
+	deadline = time.Now().Add(45 * time.Second)
+	for {
+		_, jobErr := snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Get(context.Background(), orphan.Job.Name, metav1.GetOptions{})
+		_, podErr := snapshot.Clientset().CoreV1().Pods(orphan.ReleaseNamespace).Get(context.Background(), orphan.Pod.Name, metav1.GetOptions{})
+		if apierrors.IsNotFound(jobErr) && apierrors.IsNotFound(podErr) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("test TTL did not remove Job and Pod")
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	orphanName := orphan.ReleaseName
+	orphanProvision.Workload = nil
+	orphan = nil
+	activeCtx, activeCancel := context.WithTimeout(context.Background(), 150*time.Second)
+	activeProvision := service.Provision(activeCtx, request)
+	activeCancel()
+	if activeProvision.Workload == nil {
+		t.Fatalf("active sweep sentinel provision reason=%s", activeProvision.Reason)
+	}
+	active := activeProvision.Workload
+	_ = connect(active)
+	sweepCtx, sweepCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	sweep := NewDisposalService(service).SweepInert(sweepCtx, snapshot)
+	sweepCancel()
+	cleaned, retained, malformedRetained := false, false, false
+	for _, candidate := range sweep.Candidates {
+		cleaned = cleaned || candidate.ReleaseName == orphanName && candidate.Status == SweepCleaned
+		retained = retained || candidate.ReleaseName == active.ReleaseName && candidate.Status == SweepActiveOrAmbiguous
+		malformedRetained = malformedRetained || candidate.ReleaseName == malformed && candidate.Status == SweepUnsupportedMalformed
+	}
+	if sweep.Status != SweepCompleted || !cleaned || !retained || !malformedRetained {
+		orphanStage := helmClient.AcceleratorSweepProofStageForTest(context.Background(), snapshot.RESTConfig(), snapshot.Namespace(), orphanName)
+		activeStage := helmClient.AcceleratorSweepProofStageForTest(context.Background(), snapshot.RESTConfig(), snapshot.Namespace(), active.ReleaseName)
+		t.Fatalf("sweep status=%s candidates=%v orphan-stage=%s active-stage=%s", sweep.Status, sweep.Candidates, orphanStage, activeStage)
+	}
+	if _, err = helmClient.GetRelease(request.ContextName, "default", orphanName); err == nil {
+		t.Fatal("orphan release remained")
+	}
+	if _, err = helmClient.GetRelease(request.ContextName, "default", active.ReleaseName); err != nil {
+		t.Fatal("sweep removed active Accelerator")
+	}
+	if _, err = helmClient.GetRelease(request.ContextName, "default", sentinel); err != nil {
+		t.Fatal("sweep removed sentinel")
+	}
+	if _, err = helmClient.GetRelease(request.ContextName, "default", malformed); err != nil {
+		t.Fatal("sweep removed malformed Accelerator-shaped release")
+	}
+	_ = NewDisposalService(service).DisposeNow(context.Background(), active)
 }
 
 func exerciseConnectorKind(t *testing.T, ctx context.Context, client *k8s.Client, workload, wrong, replacementWorkload *ProvisionedWorkload) {

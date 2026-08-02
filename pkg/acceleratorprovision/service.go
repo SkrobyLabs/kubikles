@@ -104,7 +104,7 @@ func New(contexts ContextProvider, charts ChartInstaller, observer WorkloadObser
 // NewDesktopService composes the dormant production adapters. Construction is
 // side-effect free; provisioning occurs only after an explicit Provision call.
 func NewDesktopService(k8sClient *k8s.Client, helmClient *helm.Client) *Service {
-	return New(desktopContexts{client: k8sClient}, &helmChartInstaller{client: helmClient}, KubernetesObserver{})
+	return New(desktopContexts{client: k8sClient}, &helmChartInstaller{client: helmClient, pollWait: realDisposalPollWait}, KubernetesObserver{})
 }
 
 func (s *Service) Provision(ctx context.Context, request Request) Result {
@@ -120,11 +120,11 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	opCtx, cancel := context.WithTimeout(ctx, ProvisionTimeout)
 	defer cancel()
 	snapshot, err := s.contexts.SnapshotCurrentContext(request.ContextName)
-	if err != nil || snapshot == nil || snapshot.Identity() == "" {
+	initialGateKey := releaseMutationGateKey(snapshot)
+	if err != nil || initialGateKey == "" {
 		return unavailable(ContextUnavailable, CleanupNotNeeded)
 	}
-	releaseIdentity := snapshot.Identity()
-	releaseGate := s.gates.acquire(opCtx, snapshot.Identity())
+	releaseGate := s.gates.acquire(opCtx, initialGateKey)
 	if releaseGate == nil {
 		return unavailable(contextReason(opCtx), CleanupNotNeeded)
 	}
@@ -133,7 +133,7 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	// Refresh after gate entry so a waiter never reuses the preceding attempt's
 	// snapshot or current-context decision.
 	snapshot, err = s.contexts.SnapshotCurrentContext(request.ContextName)
-	if err != nil || snapshot == nil || snapshot.Identity() != releaseIdentity {
+	if err != nil || releaseMutationGateKey(snapshot) != initialGateKey {
 		return unavailable(ContextChanged, CleanupNotNeeded)
 	}
 	boundary := func() UnavailableReason { return checkBoundary(opCtx, s.contexts, request.ContextName) }
@@ -213,13 +213,20 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 		ImageDigest: attempt.ImageDigest, ChartDigest: attempt.ChartDigest, credential: credential, snapshot: snapshot,
 		connectorState: &workloadConnectorState{},
 	}
-	workload.connectorState.receipt = &workloadReceipt{contextName: workload.ContextName, releaseNamespace: workload.ReleaseNamespace, releaseName: workload.ReleaseName, workloadSessionID: workload.WorkloadSessionID, job: workload.Job, pod: workload.Pod, buildVersion: workload.BuildVersion, imageDigest: workload.ImageDigest, chartDigest: workload.ChartDigest, snapshot: snapshot, owner: workload}
+	workload.connectorState.receipt = &workloadReceipt{contextName: workload.ContextName, releaseNamespace: workload.ReleaseNamespace, releaseName: workload.ReleaseName, workloadSessionID: workload.WorkloadSessionID, job: workload.Job, pod: workload.Pod, buildVersion: workload.BuildVersion, imageDigest: workload.ImageDigest, chartDigest: workload.ChartDigest, snapshot: snapshot, prepared: prepared, owned: owned, owner: workload}
 	// This is the publication boundary. No cleanup path exists after this return.
 	if reason = boundary(); reason != "" {
 		return s.rollback(ctx, reason, snapshot, prepared, owned)
 	}
 	credential = nil
 	return available(workload)
+}
+
+func releaseMutationGateKey(snapshot ContextSnapshot) string {
+	if snapshot == nil || snapshot.Identity() == "" || snapshot.Namespace() == "" {
+		return ""
+	}
+	return snapshot.Identity() + "\x00" + snapshot.Namespace()
 }
 
 func (s *Service) rollback(parent context.Context, reason UnavailableReason, snapshot ContextSnapshot, prepared *preparedChart, owned *ownedRelease) Result {

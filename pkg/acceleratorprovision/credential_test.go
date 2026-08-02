@@ -97,6 +97,56 @@ func TestCreatorAuthorizationLeaseIsOpaqueAndSerialized(t *testing.T) {
 	}
 }
 
+func TestCredentialClosingWaitsLeasesAndClearsOwnedBytes(t *testing.T) {
+	credential, err := generateCreatorCredential(bytes.NewReader(vectorEntropy()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		done <- credential.withCreatorAuthorization(context.Background(), func(context.Context, creatorAuthorizationLease) error {
+			close(entered)
+			<-release
+			return nil
+		})
+	}()
+	<-entered
+	credential.mu.Lock()
+	closingTransition := credential.changed
+	credential.mu.Unlock()
+	destroyed := make(chan bool, 1)
+	go func() { destroyed <- credential.closeAndDestroy(context.Background()) }()
+	<-closingTransition
+	select {
+	case <-destroyed:
+		t.Fatal("destroy returned while an authorization lease remained")
+	default:
+	}
+	if err = credential.withCreatorAuthorization(context.Background(), func(context.Context, creatorAuthorizationLease) error { return nil }); err == nil {
+		t.Fatal("closing credential granted a new authorization lease")
+	}
+	close(release)
+	if err = <-done; err != nil {
+		t.Fatal(err)
+	}
+	if ok := <-destroyed; !ok {
+		t.Fatal("credential was not destroyed")
+	}
+	for index, value := range credential.encoded {
+		if value != 0 {
+			t.Fatalf("owned token byte %d was not cleared", index)
+		}
+	}
+	if credential.verifier != "" || credential.session != "" {
+		t.Fatal("derived credential material was retained")
+	}
+	if !credential.closeAndDestroy(context.Background()) {
+		t.Fatal("destroy was not idempotent")
+	}
+}
+
 func TestCredentialEntropyFailures(t *testing.T) {
 	tests := []struct {
 		name string

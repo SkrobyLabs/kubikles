@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"sync/atomic"
 
 	"github.com/gorilla/websocket"
@@ -17,10 +18,15 @@ import (
 var errEntropy = errors.New("accelerator credential entropy unavailable")
 
 type creatorCredential struct {
-	encoded  [43]byte
-	verifier string
-	session  string
-	gate     chan struct{}
+	encoded   [43]byte
+	verifier  string
+	session   string
+	gate      chan struct{}
+	mu        sync.Mutex
+	closing   bool
+	destroyed bool
+	active    int
+	changed   chan struct{}
 }
 
 func (c creatorCredential) String() string             { return "<redacted>" }
@@ -41,7 +47,7 @@ func generateCreatorCredential(entropy io.Reader) (*creatorCredential, error) {
 	encoded := base64.RawURLEncoding.EncodeToString(tokenBytes[:])
 	var fixed [43]byte
 	copy(fixed[:], encoded)
-	credential := &creatorCredential{encoded: fixed, verifier: server.DeriveCreatorVerifier(token).Encoded(), session: hex.EncodeToString(sessionBytes[:]), gate: make(chan struct{}, 1)}
+	credential := &creatorCredential{encoded: fixed, verifier: server.DeriveCreatorVerifier(token).Encoded(), session: hex.EncodeToString(sessionBytes[:]), gate: make(chan struct{}, 1), changed: make(chan struct{})}
 	credential.gate <- struct{}{}
 	return credential, nil
 }
@@ -61,12 +67,31 @@ func (c *creatorCredential) withCreatorAuthorization(ctx context.Context, fn fun
 	if c.gate == nil {
 		return errors.New("credential unavailable")
 	}
+	c.mu.Lock()
+	unavailable := c.closing || c.destroyed
+	c.mu.Unlock()
+	if unavailable {
+		return errors.New("credential unavailable")
+	}
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-c.gate:
 	}
 	defer func() { c.gate <- struct{}{} }()
+	c.mu.Lock()
+	if c.closing || c.destroyed {
+		c.mu.Unlock()
+		return errors.New("credential unavailable")
+	}
+	c.active++
+	c.mu.Unlock()
+	defer func() {
+		c.mu.Lock()
+		c.active--
+		c.signalChangedLocked()
+		c.mu.Unlock()
+	}()
 	var raw [43]byte
 	copy(raw[:], c.encoded[:])
 	state := &creatorAuthorizationState{raw: raw}
@@ -80,6 +105,57 @@ func (c *creatorCredential) withCreatorAuthorization(ctx context.Context, fn fun
 		raw[i] = 0
 	}
 	return err
+}
+
+func (c *creatorCredential) signalChangedLocked() {
+	if c.changed == nil {
+		c.changed = make(chan struct{})
+		return
+	}
+	close(c.changed)
+	c.changed = make(chan struct{})
+}
+
+// closeAndDestroy irreversibly refuses new leases, waits for already-issued
+// authorization scratch to be released, and best-effort clears owned material.
+func (c *creatorCredential) closeAndDestroy(ctx context.Context) bool {
+	if c == nil {
+		return true
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	c.mu.Lock()
+	if c.destroyed {
+		c.mu.Unlock()
+		return true
+	}
+	c.closing = true
+	c.signalChangedLocked()
+	for c.active != 0 {
+		changed := c.changed
+		c.mu.Unlock()
+		select {
+		case <-changed:
+		case <-ctx.Done():
+			c.mu.Lock()
+			clear(c.encoded[:])
+			c.verifier = ""
+			c.session = ""
+			c.destroyed = true
+			c.signalChangedLocked()
+			c.mu.Unlock()
+			return false
+		}
+		c.mu.Lock()
+	}
+	clear(c.encoded[:])
+	c.verifier = ""
+	c.session = ""
+	c.destroyed = true
+	c.signalChangedLocked()
+	c.mu.Unlock()
+	return true
 }
 
 type creatorAuthorizationState struct {

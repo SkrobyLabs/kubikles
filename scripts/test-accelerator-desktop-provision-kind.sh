@@ -27,6 +27,7 @@ chart_registry_container="${cluster}-chart-registry"
 kubeconfig="$tmp/kubeconfig"
 test_home="$tmp/home"
 sentinel="kubikles-provision-sentinel"
+malformed="kubikles-accelerator-ffffffffffffffffffffffffffffffff"
 cluster_created=false
 registry_created=false
 chart_registry_created=false
@@ -179,12 +180,17 @@ cat >"$tmp/sentinel/templates/configmap.yaml" <<'EOF'
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: kubikles-provision-sentinel
+  name: {{ .Release.Name }}
 data:
   retained: "true"
 EOF
 KUBECONFIG="$kubeconfig" helm install "$sentinel" "$tmp/sentinel" --namespace default >"$tmp/sentinel-install" 2>&1 || fail "sentinel-install"
+KUBECONFIG="$kubeconfig" helm install "$malformed" "$tmp/sentinel" --namespace default >"$tmp/malformed-install" 2>&1 || fail "malformed-install"
 
+go_test_timeout=5m
+if [[ "${ACCELERATOR_DISPOSAL_KIND:-0}" == "1" ]]; then
+  go_test_timeout=9m
+fi
 (cd "$root" && HOME="$test_home" KUBECONFIG="$kubeconfig" \
   ACCELERATOR_PROVISION_KIND_CHART="$chart_archive" \
   ACCELERATOR_PROVISION_KIND_CHART_DIGEST="$chart_digest" \
@@ -192,7 +198,8 @@ KUBECONFIG="$kubeconfig" helm install "$sentinel" "$tmp/sentinel" --namespace de
   ACCELERATOR_PROVISION_KIND_REGISTRY_CA="$tmp/chart-registry-certs/cert.pem" \
   ACCELERATOR_PROVISION_KIND_IMAGE_DIGEST="$image_digest" \
   ACCELERATOR_PROVISION_KIND_SENTINEL="$sentinel" \
-  go test -v -tags=helm,accelerator_provision_kind -count=1 -timeout=5m ./pkg/acceleratorprovision -run '^TestAcceleratorDesktopProvisionKind$') >"$tmp/go-test" 2>&1 || {
+  ACCELERATOR_PROVISION_KIND_MALFORMED="$malformed" \
+  go test -v -tags=helm,accelerator_provision_kind -count=1 -timeout="$go_test_timeout" ./pkg/acceleratorprovision -run '^TestAcceleratorDesktopProvisionKind$') >"$tmp/go-test" 2>&1 || {
   sed -E \
     -e 's/[A-Za-z0-9_-]{43}/[REDACTED_43]/g' \
     -e 's#Bearer registry-secret-T11#[REDACTED_TEST_CORPUS]#g' \

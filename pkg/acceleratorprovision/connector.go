@@ -43,6 +43,7 @@ const (
 	TunnelUnavailable      ConnectUnavailableReason = "tunnel_unavailable"
 	AcceleratorUnavailable ConnectUnavailableReason = "accelerator_unavailable"
 	ConnectCancelled       ConnectUnavailableReason = "cancelled"
+	WorkloadDisposing      ConnectUnavailableReason = "workload_disposing"
 )
 
 type ConnectResult struct {
@@ -173,16 +174,36 @@ func (c *Connector) Connect(ctx context.Context, workload *ProvisionedWorkload) 
 	if c == nil || ctx == nil || c.buildVersion == "" || c.startTunnel == nil || (c.validate == nil && c.validateDetailed == nil) || !validWorkloadHandle(workload, c.buildVersion) {
 		return unavailableConnect(InvalidWorkload)
 	}
+	op, finish, lifecycleReason := workload.beginLifecycleOperation(ctx)
+	if lifecycleReason != "" {
+		return unavailableConnect(lifecycleReason)
+	}
+	defer finish()
 	lease, ok := workload.connectorLease()
 	if !ok {
+		if workload.isDisposing() {
+			return unavailableConnect(WorkloadDisposing)
+		}
 		return unavailableConnect(InvalidWorkload)
 	}
 	defer lease.release()
-	op, cancel := context.WithTimeout(ctx, connectorTimeout)
+	op, cancel := context.WithTimeout(op, connectorTimeout)
 	defer cancel()
 	session, failure := c.connectExactAttempt(op, lease, connectionExpectation{kind: connectionFresh})
 	if failure != nil {
+		if workload.connectorState != nil {
+			workload.connectorState.mu.Lock()
+			disposing := workload.connectorState.disposing
+			workload.connectorState.mu.Unlock()
+			if disposing {
+				return unavailableConnect(WorkloadDisposing)
+			}
+		}
 		return unavailableConnect(failure.connectReason)
+	}
+	if !workload.publishCurrentSession(session) {
+		_ = session.Close(context.Background())
+		return unavailableConnect(WorkloadDisposing)
 	}
 	return ConnectResult{Availability: Available, Session: session}
 }

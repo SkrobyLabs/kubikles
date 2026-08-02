@@ -152,6 +152,65 @@ func TestCleanupCapturesExactUIDsAndIgnoresReplacements(t *testing.T) {
 	})
 }
 
+func TestOwnedDisappearanceWaitGetsExactPodAndNeverFollowsReplacement(t *testing.T) {
+	const namespace = "default"
+	podIdentity := ObjectIdentity{Name: "owned-pod", UID: "owned-pod-uid"}
+	for _, test := range []struct {
+		name       string
+		object     runtime.Object
+		apiError   error
+		want       DisappearanceStatus
+		deadline   bool
+		wantPolls  int
+		wantPodGET int
+	}{
+		{name: "pod absent", want: DisappearanceSucceeded, wantPodGET: 1},
+		{name: "same UID through injected deadline", object: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: podIdentity.Name, Namespace: namespace, UID: types.UID(podIdentity.UID)}}, want: DisappearanceResourcesRemaining, deadline: true, wantPolls: 1, wantPodGET: 1},
+		{name: "replacement UID", object: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: podIdentity.Name, Namespace: namespace, UID: "replacement"}}, want: DisappearanceUIDReplaced, wantPodGET: 1},
+		{name: "Pod API error", apiError: errors.New("hostile Pod GET Bearer secret-token"), want: DisappearanceResourcesRemaining, deadline: true, wantPolls: 1, wantPodGET: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var objects []runtime.Object
+			if test.object != nil {
+				objects = append(objects, test.object)
+			}
+			client := fake.NewSimpleClientset(objects...)
+			podGETs := 0
+			client.PrependReactor("get", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+				get := action.(k8stesting.GetAction)
+				if get.GetName() != podIdentity.Name {
+					t.Fatalf("followed Pod name %q", get.GetName())
+				}
+				podGETs++
+				if test.apiError != nil {
+					return true, nil, test.apiError
+				}
+				return false, nil, nil
+			})
+			ctx, cancel := context.WithCancel(context.Background())
+			if test.deadline {
+				ctx, cancel = context.WithDeadline(context.Background(), time.Unix(0, 0))
+			}
+			defer cancel()
+			polls := 0
+			pollWait := func(waitCtx context.Context, interval time.Duration) bool {
+				polls++
+				if interval != CleanupPollInterval {
+					t.Fatalf("poll interval=%s", interval)
+				}
+				if test.deadline && waitCtx.Err() != context.DeadlineExceeded {
+					t.Fatalf("wait context error=%v", waitCtx.Err())
+				}
+				return realDisposalPollWait(waitCtx, interval)
+			}
+			got := waitDisposedAcceleratorResources(ctx, fakeSnapshot{identity: "identity", namespace: namespace, client: client}, &helm.AcceleratorOwnershipReceipt{}, podIdentity, pollWait)
+			if got != test.want || polls != test.wantPolls || podGETs != test.wantPodGET {
+				t.Fatalf("status=%s polls=%d Pod GETs=%d", got, polls, podGETs)
+			}
+		})
+	}
+}
+
 func TestMapHelmSuccessHasNoUnavailableReason(t *testing.T) {
 	if reason := mapHelmFailure(helm.AcceleratorOK); reason != "" {
 		t.Fatalf("successful install mapped to %q", reason)

@@ -42,3 +42,27 @@ func (c *Client) DeleteOwnedAcceleratorResources(context.Context, *rest.Config, 
 func (c *Client) PurgeOwnedAcceleratorRelease(context.Context, *rest.Config, *AcceleratorPreparedRelease, *AcceleratorOwnershipReceipt) AcceleratorFailure {
 	return AcceleratorCleanup
 }
+
+func (c *Client) UninstallOwnedAcceleratorRelease(context.Context, *rest.Config, *AcceleratorPreparedRelease, *AcceleratorOwnershipReceipt, AcceleratorDeletionIdentity) AcceleratorOwnedCleanupStatus {
+	return AcceleratorOwnedCleanupFailed
+}
+
+func (c *Client) ListAcceleratorSweepReleaseNames(context.Context, *rest.Config, string) ([]string, bool) {
+	return nil, false
+}
+
+func (c *Client) InspectAcceleratorSweepCandidate(context.Context, *rest.Config, string, string) (*AcceleratorSweepCandidate, AcceleratorSweepProofStatus) {
+	return nil, AcceleratorSweepUnsupportedMalformed
+}
+
+func (c *Client) UninstallAcceleratorSweepCandidate(context.Context, *rest.Config, *AcceleratorSweepCandidate) AcceleratorSweepProofStatus {
+	return AcceleratorSweepCleanupFailed
+}
+
+func (c *Client) CleanupAcceleratorSweepCandidate(context.Context, *rest.Config, *AcceleratorSweepCandidate) AcceleratorSweepProofStatus {
+	return AcceleratorSweepCleanupFailed
+}
+
+func (c *Client) WaitAcceleratorSweepCandidateGone(context.Context, *rest.Config, *AcceleratorSweepCandidate) bool {
+	return false
+}

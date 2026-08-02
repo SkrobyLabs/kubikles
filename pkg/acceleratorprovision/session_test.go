@@ -231,3 +231,48 @@ func TestConnectedSessionFrameOverflowFailsClosed(t *testing.T) {
 		t.Fatalf("overflow reason=%s", session.EndReason())
 	}
 }
+
+func TestDisposalClosesRegisteredOriginalAndResumedSessionsInOrder(t *testing.T) {
+	for _, generation := range []int{1, 2} {
+		t.Run(fmt.Sprintf("generation-%d", generation), func(t *testing.T) {
+			workload := connectorWorkload(t)
+			order := []string{}
+			session := newConnectedSession(workload.connectorState.receipt, server.AuthenticatedAcceleratorInfo{Capabilities: agent.V1Capabilities()}, connectedIdentity{sessionID: "session", instanceID: "instance", generation: generation}, newRecordedSessionSocket(&order), newRecordedTunnel(&order), &fakeResumeClock{now: time.Date(2026, 8, 2, 20, 0, 0, 0, time.UTC)})
+			if !workload.publishCurrentSession(session) {
+				t.Fatal("publication")
+			}
+			service := NewDisposalService(nil)
+			service.cleanupOwned = func(context.Context, *workloadReceipt) (OwnershipStatus, UninstallStatus, DisappearanceStatus) {
+				return OwnershipAlreadyGone, UninstallNotNeeded, DisappearanceSucceeded
+			}
+			if result := service.DisposeNow(context.Background(), workload); result.Quiescence != QuiescenceSucceeded {
+				t.Fatalf("result=%#v", result)
+			}
+			websocketClose, tunnelStop := eventIndex(order, "websocket-close"), eventIndex(order, "port-forward-stop")
+			if websocketClose < 0 || tunnelStop <= websocketClose || workload.connectorState.currentSession != nil {
+				t.Fatalf("order=%v current=%p", order, workload.connectorState.currentSession)
+			}
+		})
+	}
+}
+
+func TestStaleSessionTerminalCallbackCannotClearNewerCurrent(t *testing.T) {
+	workload := connectorWorkload(t)
+	oldOrder, newOrder := []string{}, []string{}
+	clock := &fakeResumeClock{now: time.Date(2026, 8, 2, 20, 0, 0, 0, time.UTC)}
+	old := newConnectedSession(workload.connectorState.receipt, server.AuthenticatedAcceleratorInfo{Capabilities: agent.V1Capabilities()}, connectedIdentity{sessionID: "old", instanceID: "instance", generation: 1}, newRecordedSessionSocket(&oldOrder), newRecordedTunnel(&oldOrder), clock)
+	newer := newConnectedSession(workload.connectorState.receipt, server.AuthenticatedAcceleratorInfo{Capabilities: agent.V1Capabilities()}, connectedIdentity{sessionID: "new", instanceID: "instance", generation: 2}, newRecordedSessionSocket(&newOrder), newRecordedTunnel(&newOrder), clock)
+	if !workload.publishCurrentSession(old) || !workload.publishCurrentSession(newer) {
+		t.Fatal("publication")
+	}
+	if err := old.Close(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	workload.connectorState.mu.Lock()
+	current := workload.connectorState.currentSession
+	workload.connectorState.mu.Unlock()
+	if current != newer {
+		t.Fatalf("stale callback cleared newer current: %p != %p", current, newer)
+	}
+	_ = newer.Close(context.Background())
+}

@@ -38,6 +38,11 @@ type acceleratorHelmClient interface {
 type helmChartInstaller struct {
 	client    acceleratorHelmClient
 	pullChart func(context.Context, helm.AcceleratorChartRequest) (*helmchart.Chart, error)
+	pollWait  func(context.Context, time.Duration) bool
+}
+
+type acceleratorOwnedUninstaller interface {
+	UninstallOwnedAcceleratorRelease(context.Context, *rest.Config, *helm.AcceleratorPreparedRelease, *helm.AcceleratorOwnershipReceipt, helm.AcceleratorDeletionIdentity) helm.AcceleratorOwnedCleanupStatus
 }
 
 func (h *helmChartInstaller) Prepare(ctx context.Context, attempt chartAttempt, boundary func() UnavailableReason) (*preparedChart, UnavailableReason) {
@@ -74,7 +79,7 @@ func (h *helmChartInstaller) Install(ctx context.Context, snapshot ContextSnapsh
 	receipt, failure, ownershipUnproven := h.client.InstallAcceleratorRelease(ctx, snapshot.RESTConfig(), implementation.prepared)
 	if receipt != nil {
 		_, jobUID, valid := createdAcceleratorResources(receipt)
-		if !valid {
+		if !valid || len(receipt.UnresolvedResources()) != 0 || !createdResourcesMatchPrepared(receipt, implementation.prepared) {
 			return &ownedRelease{implementation: &helmOwnedRelease{receipt: receipt, unresolved: len(receipt.UnresolvedResources()) != 0}}, InstallFailed, false
 		}
 		owned := &ownedRelease{implementation: &helmOwnedRelease{receipt: receipt, jobUID: jobUID, unresolved: len(receipt.UnresolvedResources()) != 0}, jobUID: string(jobUID)}
@@ -88,6 +93,123 @@ func (h *helmChartInstaller) Install(ctx context.Context, snapshot ContextSnapsh
 	}
 	// An install error with no exact record is deliberately not ownership.
 	return nil, mapHelmFailure(failure), ownershipUnproven
+}
+
+func createdResourcesMatchPrepared(receipt *helm.AcceleratorOwnershipReceipt, prepared *helm.AcceleratorPreparedRelease) bool {
+	if receipt == nil || prepared == nil {
+		return false
+	}
+	want := prepared.ResourceIdentities()
+	created := receipt.CreatedResources()
+	if len(want) != 5 || len(created) != len(want) {
+		return false
+	}
+	seen := make(map[string]types.UID, len(created))
+	for _, item := range created {
+		key := item.Resource.APIVersion + "/" + item.Resource.Kind + "/" + item.Resource.Namespace + "/" + item.Resource.Name
+		if item.UID == "" || seen[key] != "" {
+			return false
+		}
+		seen[key] = item.UID
+	}
+	for _, identity := range want {
+		key := identity.APIVersion + "/" + identity.Kind + "/" + identity.Namespace + "/" + identity.Name
+		if seen[key] == "" {
+			return false
+		}
+	}
+	return true
+}
+
+func (h *helmChartInstaller) disposeOwned(ctx context.Context, snapshot ContextSnapshot, prepared *preparedChart, owned *ownedRelease, pod ObjectIdentity) (OwnershipStatus, UninstallStatus, DisappearanceStatus) {
+	if h == nil || prepared == nil || owned == nil {
+		return OwnershipUnproven, UninstallNotNeeded, DisappearanceNotChecked
+	}
+	preparedImpl, preparedOK := prepared.implementation.(*helmPreparedChart)
+	ownedImpl, ownedOK := owned.implementation.(*helmOwnedRelease)
+	uninstaller, clientOK := h.client.(acceleratorOwnedUninstaller)
+	if !preparedOK || !ownedOK || !clientOK || preparedImpl == nil || ownedImpl == nil || preparedImpl.prepared == nil || ownedImpl.receipt == nil || snapshot == nil || !createdResourcesMatchPrepared(ownedImpl.receipt, preparedImpl.prepared) || len(ownedImpl.receipt.UnresolvedResources()) != 0 {
+		return OwnershipUnproven, UninstallNotNeeded, DisappearanceNotChecked
+	}
+	podReceipt := helm.AcceleratorDeletionIdentity{Resource: helm.AcceleratorResourceIdentity{APIVersion: "v1", Kind: "Pod", Namespace: snapshot.Namespace(), Name: pod.Name}, UID: types.UID(pod.UID)}
+	switch uninstaller.UninstallOwnedAcceleratorRelease(ctx, snapshot.RESTConfig(), preparedImpl.prepared, ownedImpl.receipt, podReceipt) {
+	case helm.AcceleratorOwnedCleanupAlreadyGone:
+		return OwnershipAlreadyGone, UninstallNotNeeded, waitDisposedAcceleratorResources(ctx, snapshot, ownedImpl.receipt, pod, h.pollWait)
+	case helm.AcceleratorOwnedCleanupOwnershipChanged:
+		return OwnershipChanged, UninstallNotNeeded, DisappearanceNotChecked
+	case helm.AcceleratorOwnedCleanupFailed:
+		return OwnershipProven, UninstallFailed, waitDisposedAcceleratorResources(ctx, snapshot, ownedImpl.receipt, pod, h.pollWait)
+	case helm.AcceleratorOwnedCleanupSucceeded:
+		return OwnershipProven, UninstallSucceeded, waitDisposedAcceleratorResources(ctx, snapshot, ownedImpl.receipt, pod, h.pollWait)
+	default:
+		return OwnershipUnproven, UninstallFailed, DisappearanceNotChecked
+	}
+}
+
+func waitDisposedAcceleratorResources(ctx context.Context, snapshot ContextSnapshot, receipt *helm.AcceleratorOwnershipReceipt, pod ObjectIdentity, pollWait func(context.Context, time.Duration) bool) DisappearanceStatus {
+	if snapshot == nil || snapshot.Clientset() == nil || receipt == nil {
+		return DisappearanceNotChecked
+	}
+	replaced := false
+	type capturedItem struct {
+		resource helm.AcceleratorResourceIdentity
+		uid      types.UID
+	}
+	pending := make(map[string]capturedItem)
+	for _, item := range receipt.CreatedResources() {
+		key := item.Resource.APIVersion + "/" + item.Resource.Kind + "/" + item.Resource.Namespace + "/" + item.Resource.Name
+		pending[key] = capturedItem{resource: item.Resource, uid: item.UID}
+	}
+	if pod.Name != "" && pod.UID != "" {
+		resource := helm.AcceleratorResourceIdentity{APIVersion: "v1", Kind: "Pod", Namespace: snapshot.Namespace(), Name: pod.Name}
+		pending["v1/Pod/"+resource.Namespace+"/"+resource.Name] = capturedItem{resource: resource, uid: types.UID(pod.UID)}
+	}
+	storage := receipt.StorageIdentity()
+	storageKey := "v1/Secret/" + storage.Namespace + "/" + storage.Name
+	pending[storageKey] = capturedItem{resource: helm.AcceleratorResourceIdentity{APIVersion: "v1", Kind: "Secret", Namespace: storage.Namespace, Name: storage.Name}, uid: storage.UID}
+	if pollWait == nil {
+		pollWait = realDisposalPollWait
+	}
+	for {
+		remaining := false
+		for key, item := range pending {
+			object, err := getAcceleratorObject(ctx, snapshot, item.resource)
+			if apierrors.IsNotFound(err) {
+				delete(pending, key)
+				continue
+			}
+			if err != nil {
+				remaining = true
+				continue
+			}
+			if object.GetUID() != item.uid {
+				replaced = true
+				delete(pending, key)
+				continue
+			}
+			remaining = true
+		}
+		if !remaining {
+			if replaced {
+				return DisappearanceUIDReplaced
+			}
+			return DisappearanceSucceeded
+		}
+		if !pollWait(ctx, CleanupPollInterval) {
+			return DisappearanceResourcesRemaining
+		}
+	}
+}
+
+func realDisposalPollWait(ctx context.Context, interval time.Duration) bool {
+	timer := time.NewTimer(interval)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
 }
 
 func (h *helmChartInstaller) Cleanup(ctx context.Context, snapshot ContextSnapshot, prepared *preparedChart, owned *ownedRelease) CleanupStatus {
@@ -356,6 +478,8 @@ func getAcceleratorObject(ctx context.Context, snapshot ContextSnapshot, identit
 	switch identity.Kind {
 	case "Job":
 		return client.BatchV1().Jobs(identity.Namespace).Get(ctx, identity.Name, metav1.GetOptions{})
+	case "Pod":
+		return client.CoreV1().Pods(identity.Namespace).Get(ctx, identity.Name, metav1.GetOptions{})
 	case "ServiceAccount":
 		return client.CoreV1().ServiceAccounts(identity.Namespace).Get(ctx, identity.Name, metav1.GetOptions{})
 	case "Secret":

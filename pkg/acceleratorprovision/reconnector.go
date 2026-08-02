@@ -25,6 +25,7 @@ const (
 	ResumeCancelled                 ResumeReason = "cancelled"
 	ResumeGraceExpired              ResumeReason = "grace_expired"
 	ResumeExplicitlyClosed          ResumeReason = "explicitly_closed"
+	ResumeWorkloadDisposing         ResumeReason = "workload_disposing"
 )
 
 type ResumeRequest struct {
@@ -62,8 +63,9 @@ func (r ResumeResult) MarshalJSON() ([]byte, error) {
 type resumeAttempt func(context.Context, connectorLease, connectionExpectation) (*ConnectedSession, *connectAttemptFailure)
 
 type Reconnector struct {
-	connector *Connector
-	attempt   resumeAttempt
+	connector    *Connector
+	attempt      resumeAttempt
+	afterPublish func(*ConnectedSession)
 }
 
 func NewReconnector(buildVersion string) *Reconnector {
@@ -74,10 +76,26 @@ func unavailableResume(reason ResumeReason) ResumeResult {
 	return ResumeResult{Availability: Unavailable, Reason: reason}
 }
 
-func (r *Reconnector) Resume(ctx context.Context, request ResumeRequest) ResumeResult {
+func (r *Reconnector) Resume(ctx context.Context, request ResumeRequest) (result ResumeResult) {
 	if r == nil || r.connector == nil || ctx == nil || r.connector.buildVersion == "" || r.connector.startTunnel == nil || (r.connector.validate == nil && r.connector.validateDetailed == nil) || request.Prior == nil || !validWorkloadHandle(request.Workload, r.connector.buildVersion) {
 		return unavailableResume(ResumeInvalid)
 	}
+	opLifecycle, finishLifecycle, lifecycleReason := request.Workload.beginLifecycleOperation(ctx)
+	if lifecycleReason != "" {
+		if lifecycleReason == InvalidWorkload {
+			return unavailableResume(ResumeInvalid)
+		}
+		return unavailableResume(ResumeWorkloadDisposing)
+	}
+	defer finishLifecycle()
+	defer func() {
+		if request.Workload.isDisposing() {
+			if result.Session != nil {
+				_ = result.Session.Close(context.Background())
+			}
+			result = unavailableResume(ResumeWorkloadDisposing)
+		}
+	}()
 	record, resumeStop, reason := request.Prior.claimResume(request.Workload)
 	if reason != "" {
 		return unavailableResume(reason)
@@ -87,7 +105,7 @@ func (r *Reconnector) Resume(ctx context.Context, request ResumeRequest) ResumeR
 		return unavailableResume(ResumeInvalid)
 	}
 	deadline := record.at.Add(agent.AcceleratorIdleReconnectGrace)
-	op, cancel := context.WithCancel(ctx)
+	op, cancel := context.WithCancel(opLifecycle)
 	watchDone := make(chan struct{})
 	go func() {
 		select {
@@ -165,6 +183,13 @@ func (r *Reconnector) Resume(ctx context.Context, request ResumeRequest) ResumeR
 			return unavailableResume(stopReason)
 		}
 		if session != nil && failure == nil {
+			if !request.Workload.publishCurrentSession(session) {
+				_ = session.Close(context.Background())
+				return unavailableResume(ResumeWorkloadDisposing)
+			}
+			if r.afterPublish != nil {
+				r.afterPublish(session)
+			}
 			return ResumeResult{Availability: Available, Session: session}
 		}
 		if !retryable {

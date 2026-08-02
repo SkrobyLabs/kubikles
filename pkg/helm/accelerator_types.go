@@ -63,6 +63,51 @@ type AcceleratorDeletionIdentity struct {
 	UID      types.UID
 }
 
+type AcceleratorStorageIdentity struct {
+	Namespace string
+	Name      string
+	UID       types.UID
+}
+
+type AcceleratorOwnedCleanupStatus string
+
+const (
+	AcceleratorOwnedCleanupSucceeded        AcceleratorOwnedCleanupStatus = "succeeded"
+	AcceleratorOwnedCleanupAlreadyGone      AcceleratorOwnedCleanupStatus = "already_gone"
+	AcceleratorOwnedCleanupOwnershipChanged AcceleratorOwnedCleanupStatus = "ownership_changed"
+	AcceleratorOwnedCleanupFailed           AcceleratorOwnedCleanupStatus = "failed"
+)
+
+type AcceleratorSweepProofStatus string
+
+const (
+	AcceleratorSweepEligible             AcceleratorSweepProofStatus = "eligible"
+	AcceleratorSweepActiveOrAmbiguous    AcceleratorSweepProofStatus = "active_or_ambiguous"
+	AcceleratorSweepUnsupportedMalformed AcceleratorSweepProofStatus = "unsupported_or_malformed"
+	AcceleratorSweepAlreadyGone          AcceleratorSweepProofStatus = "already_gone"
+	AcceleratorSweepOwnershipChanged     AcceleratorSweepProofStatus = "ownership_changed"
+	AcceleratorSweepCleanupFailed        AcceleratorSweepProofStatus = "cleanup_failed"
+)
+
+type AcceleratorSweepCandidate struct {
+	name, namespace, session, renderHash string
+	storage                              AcceleratorStorageIdentity
+	resources                            []AcceleratorDeletionIdentity
+	pods                                 []AcceleratorDeletionIdentity
+	authority                            *acceleratorSweepAuthority
+}
+
+// acceleratorSweepAuthority is an unforgeable package-private capability.
+// Candidate values constructed outside the closed inspector never reach I/O.
+type acceleratorSweepAuthority struct{}
+
+var trustedAcceleratorSweepAuthority = &acceleratorSweepAuthority{}
+
+func (c AcceleratorSweepCandidate) String() string { return "<accelerator sweep candidate>" }
+func (c AcceleratorSweepCandidate) Format(state fmt.State, _ rune) {
+	_, _ = io.WriteString(state, "<accelerator sweep candidate>")
+}
+
 // AcceleratorPreparedRelease is an opaque validated chart/render receipt.
 // It deliberately exposes no manifest, values, verifier, or Helm release.
 type AcceleratorPreparedRelease struct {
@@ -121,6 +166,13 @@ func (r *AcceleratorOwnershipReceipt) CreatedResources() []AcceleratorDeletionId
 		return nil
 	}
 	return append([]AcceleratorDeletionIdentity(nil), r.created...)
+}
+
+func (r *AcceleratorOwnershipReceipt) StorageIdentity() AcceleratorStorageIdentity {
+	if r == nil {
+		return AcceleratorStorageIdentity{}
+	}
+	return AcceleratorStorageIdentity{Namespace: r.request.ReleaseNamespace, Name: r.storageName, UID: r.storageUID}
 }
 
 func (r AcceleratorOwnershipReceipt) String() string { return "<accelerator ownership receipt>" }
