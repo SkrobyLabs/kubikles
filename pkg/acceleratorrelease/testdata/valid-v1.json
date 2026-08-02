@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "$schema": "https://raw.githubusercontent.com/SkrobyLabs/kubikles/0123456789abcdef0123456789abcdef01234567/release/accelerator-release.schema.json",
+  "buildVersion": "v1.4.2",
+  "source": {
+    "repository": "https://github.com/SkrobyLabs/kubikles",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "gitTag": "v1.4.2"
+  },
+  "compatibility": {
+    "mode": "exact-build-version",
+    "desktopBuildVersion": "v1.4.2",
+    "acceleratorBuildVersion": "v1.4.2"
+  },
+  "image": {
+    "repository": "ghcr.io/skrobylabs/kubikles-accelerator",
+    "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "reference": "ghcr.io/skrobylabs/kubikles-accelerator@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "platforms": [
+      {
+        "os": "linux",
+        "architecture": "amd64",
+        "manifestDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "os": "linux",
+        "architecture": "arm64",
+        "manifestDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    ]
+  },
+  "chart": {
+    "repository": "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator",
+    "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "reference": "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "version": "1.4.2",
+    "appVersion": "v1.4.2"
+  }
+}
