@@ -1,7 +1,7 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind test-accelerator-release-contract test-accelerator-publication-local verify-accelerator-release-ghcr
+.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind test-accelerator-desktop-provision-kind test-accelerator-release-contract test-accelerator-publication-local verify-accelerator-release-ghcr
 
 .DEFAULT_GOAL := help
 
@@ -13,6 +13,10 @@ test-accelerator-chart:
 test-accelerator-chart-kind:
 	@./scripts/test-accelerator-chart-kind-fixtures.sh
 	@./scripts/test-accelerator-chart-kind.sh
+
+test-accelerator-desktop-provision-kind:
+	@./scripts/check-accelerator-desktop-provision-scope.sh
+	@./scripts/test-accelerator-desktop-provision-kind.sh
 
 test-accelerator-00-kind:
 	@./scripts/test-accelerator-00-kind_test.sh
@@ -74,6 +78,7 @@ help:
 	@echo "  test-accelerator-00-kind  Run the disposable Accelerator Kind characterization gate"
 	@echo "  test-accelerator-chart  Render and validate the disposable Accelerator Helm chart"
 	@echo "  test-accelerator-chart-kind  Run the disposable Accelerator Helm chart Kind lifecycle smoke"
+	@echo "  test-accelerator-desktop-provision-kind  Exercise exact desktop provisioning and rollback in Kind"
 	@echo "  test-accelerator-release-contract  Validate exact immutable release contracts offline"
 	@echo "  test-accelerator-publication-local  Exercise publication against a disposable registry"
 	@echo "  verify-accelerator-release-ghcr  Verify one exact authenticated published release"
