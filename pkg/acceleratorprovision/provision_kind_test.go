@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -115,17 +116,24 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 		t.Fatalf("handle mismatch: %#v", workload)
 	}
 	assertKindReleaseObjects(t, ctx, k8sClient, workload)
-	if os.Getenv("ACCELERATOR_CONNECT_KIND") == "1" {
-		wrongAttempt := service.Provision(ctx, request)
-		replacementAttempt := service.Provision(ctx, request)
-		if wrongAttempt.Availability != Available || wrongAttempt.Workload == nil || replacementAttempt.Availability != Available || replacementAttempt.Workload == nil {
-			t.Fatal("separate connector workloads were not provisioned")
+	if os.Getenv("ACCELERATOR_CONNECT_KIND") == "1" || os.Getenv("ACCELERATOR_RESUME_KIND") == "1" {
+		var wrongWorkload, replacementWorkload *ProvisionedWorkload
+		if os.Getenv("ACCELERATOR_RESUME_KIND") != "1" {
+			wrongAttempt := service.Provision(ctx, request)
+			replacementAttempt := service.Provision(ctx, request)
+			if wrongAttempt.Availability != Available || wrongAttempt.Workload == nil || replacementAttempt.Availability != Available || replacementAttempt.Workload == nil {
+				t.Fatal("separate connector workloads were not provisioned")
+			}
+			wrongWorkload, replacementWorkload = wrongAttempt.Workload, replacementAttempt.Workload
+			assertKindReleaseObjects(t, ctx, k8sClient, wrongWorkload)
+			assertKindReleaseObjects(t, ctx, k8sClient, replacementWorkload)
 		}
-		assertKindReleaseObjects(t, ctx, k8sClient, wrongAttempt.Workload)
-		assertKindReleaseObjects(t, ctx, k8sClient, replacementAttempt.Workload)
-		exerciseConnectorKind(t, ctx, k8sClient, workload, wrongAttempt.Workload, replacementAttempt.Workload)
+		exerciseConnectorKind(t, ctx, k8sClient, workload, wrongWorkload, replacementWorkload)
 		assertKindReleaseObjects(t, ctx, k8sClient, workload)
-		for _, retained := range []*ProvisionedWorkload{wrongAttempt.Workload, replacementAttempt.Workload} {
+		for _, retained := range []*ProvisionedWorkload{wrongWorkload, replacementWorkload} {
+			if retained == nil {
+				continue
+			}
 			if _, err := helmClient.GetRelease(request.ContextName, retained.ReleaseNamespace, retained.ReleaseName); err != nil {
 				t.Fatalf("connector failure removed retained release %s", retained.ReleaseName)
 			}
@@ -152,7 +160,7 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 	recorded := append([]byte(nil), entropy.data...)
 	entropy.mu.Unlock()
 	expectedEntropyBytes := 96
-	if os.Getenv("ACCELERATOR_CONNECT_KIND") == "1" {
+	if os.Getenv("ACCELERATOR_CONNECT_KIND") == "1" && os.Getenv("ACCELERATOR_RESUME_KIND") != "1" {
 		expectedEntropyBytes = 192
 	}
 	if len(recorded) != expectedEntropyBytes {
@@ -216,12 +224,6 @@ func exerciseConnectorKind(t *testing.T, ctx context.Context, client *k8s.Client
 	go pollKindKubectlPortForward(pollDone, pollFailure)
 	result := connector.Connect(connectCtx, workload)
 	cancel()
-	close(pollDone)
-	select {
-	case process := <-pollFailure:
-		t.Fatalf("connector invoked kubectl port-forward: %s", process)
-	default:
-	}
 	if result.Availability != Available || result.Session == nil || result.Reason != "" {
 		t.Fatalf("connector unavailable: availability=%s reason=%s", result.Availability, result.Reason)
 	}
@@ -236,14 +238,76 @@ func exerciseConnectorKind(t *testing.T, ctx context.Context, client *k8s.Client
 	if capabilities := result.Session.Capabilities(); !reflect.DeepEqual(capabilities, agent.V1Capabilities()) {
 		t.Fatal("connected capability snapshot mismatch")
 	}
-	closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	if err = result.Session.Close(closeCtx); err != nil {
+	if os.Getenv("ACCELERATOR_RESUME_KIND") == "1" {
+		priorTunnel := result.Session.tunnel
+		if err = result.Session.socket.Close(); err != nil {
+			t.Fatal("force creator transport drop")
+		}
+		select {
+		case <-result.Session.Done():
+		case <-time.After(10 * time.Second):
+			t.Fatal("creator transport drop was not observed")
+		}
+		if result.Session.EndReason() != SessionPeerClosed {
+			t.Fatalf("forced drop reason=%s", result.Session.EndReason())
+		}
+		resumeCtx, resumeCancel := context.WithTimeout(ctx, 30*time.Second)
+		reconnector := NewReconnector("v1.2.3")
+		var resumeEndpoint string
+		reconnector.connector.observeEndpoint = func(endpoint string) { resumeEndpoint = endpoint }
+		resumed := reconnector.Resume(resumeCtx, ResumeRequest{Prior: result.Session, Workload: workload})
+		resumeCancel()
+		if resumed.Availability != Available || resumed.Session == nil || resumed.Reason != "" {
+			t.Fatalf("resume unavailable: availability=%s reason=%s", resumed.Availability, resumed.Reason)
+		}
+		resumedIdentity := resumed.Session.Identity()
+		if resumedIdentity.Pod != identity.Pod || resumedIdentity.Job != identity.Job || resumedIdentity.WorkloadSessionID != identity.WorkloadSessionID || resumedIdentity.BuildVersion != identity.BuildVersion || resumedIdentity.ImageDigest != identity.ImageDigest || resumedIdentity.ChartDigest != identity.ChartDigest || resumedIdentity.InstanceID != identity.InstanceID || resumedIdentity.SessionID != identity.SessionID || resumedIdentity.Generation <= identity.Generation {
+			t.Fatal("resumed session did not retain exact identity with a higher generation")
+		}
+		resumeHost, resumePort, splitErr := net.SplitHostPort(resumeEndpoint)
+		if resumed.Session.tunnel == priorTunnel || splitErr != nil || resumeHost != "127.0.0.1" || resumePort == "" || resumePort == "0" {
+			t.Fatal("resume did not establish a new private exact-Pod tunnel")
+		}
+		resumeSafeOutputs := []interface{}{resumed, resumed.Session, resumed.Session.Identity(), ResumeRequest{Prior: result.Session, Workload: workload}}
+		resumeUnsafe := []string{string(workload.credential.encoded[:]), workload.credential.verifier, resumeEndpoint, "Authorization"}
+		for _, value := range resumeSafeOutputs {
+			for _, verb := range []string{"%v", "%+v", "%#v", "%s", "%q"} {
+				assertNoCredentialCorpus(t, fmt.Sprintf(verb, value), resumeUnsafe)
+			}
+			encoded, marshalErr := json.Marshal(value)
+			if marshalErr != nil {
+				t.Fatal("resume safe output encode")
+			}
+			assertNoCredentialCorpus(t, string(encoded), resumeUnsafe)
+		}
+		closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if err = resumed.Session.Close(closeCtx); err != nil {
+			closeCancel()
+			t.Fatal("resumed session close failed")
+		}
 		closeCancel()
-		t.Fatal("connector close failed")
+		if resumed.Session.EndReason() != SessionClosed {
+			t.Fatal("resumed session did not explicitly close")
+		}
+	} else {
+		closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if err = result.Session.Close(closeCtx); err != nil {
+			closeCancel()
+			t.Fatal("connector close failed")
+		}
+		closeCancel()
+		if result.Session.EndReason() != SessionClosed {
+			t.Fatal("connector did not publish closed end reason")
+		}
 	}
-	closeCancel()
-	if result.Session.EndReason() != SessionClosed {
-		t.Fatal("connector did not publish closed end reason")
+	close(pollDone)
+	select {
+	case process := <-pollFailure:
+		t.Fatalf("connector/reconnector invoked kubectl port-forward: %s", process)
+	default:
+	}
+	if os.Getenv("ACCELERATOR_RESUME_KIND") == "1" {
+		return
 	}
 
 	wrongCredential, err := generateCreatorCredential(bytes.NewReader(bytes.Repeat([]byte{0xff}, 48)))

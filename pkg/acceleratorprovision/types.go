@@ -133,6 +133,43 @@ func (w *ProvisionedWorkload) connectorLease() (connectorLease, bool) {
 	}}, true
 }
 
+// resumeConnectorLease reuses only the exact private receipt retained by a
+// connected session. It deliberately does not reopen the one-shot fresh
+// connection gate.
+func (w *ProvisionedWorkload) resumeConnectorLease(receipt *workloadReceipt) (connectorLease, bool) {
+	if w == nil || receipt == nil {
+		return connectorLease{}, false
+	}
+	state := w.connectorState
+	if state == nil {
+		return connectorLease{}, false
+	}
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if state.closed || state.receipt != receipt || receipt.owner != w || w.credential == nil || w.snapshot == nil || receipt.snapshot != w.snapshot || !matchesReceipt(w, receipt) {
+		return connectorLease{}, false
+	}
+	state.active++
+	var once sync.Once
+	return connectorLease{credential: w.credential, snapshot: receipt.snapshot, receipt: receipt, release: func() {
+		once.Do(func() {
+			state.mu.Lock()
+			state.active--
+			state.mu.Unlock()
+		})
+	}}, true
+}
+
+func (w *ProvisionedWorkload) matchesResumeHandle(receipt *workloadReceipt) bool {
+	if w == nil || receipt == nil || w.connectorState == nil {
+		return false
+	}
+	state := w.connectorState
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	return !state.closed && state.receipt == receipt && receipt.owner == w && w.credential != nil && w.snapshot != nil && receipt.snapshot == w.snapshot && matchesReceipt(w, receipt)
+}
+
 func matchesReceipt(w *ProvisionedWorkload, r *workloadReceipt) bool {
 	return w != nil && r != nil && w.ContextName == r.contextName && w.ReleaseNamespace == r.releaseNamespace &&
 		w.ReleaseName == r.releaseName && w.WorkloadSessionID == r.workloadSessionID && w.Job == r.job && w.Pod == r.pod &&

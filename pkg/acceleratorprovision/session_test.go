@@ -42,6 +42,7 @@ func (s *recordedSessionSocket) SetWriteDeadline(time.Time) error {
 	s.record("websocket-deadline")
 	return nil
 }
+func (s *recordedSessionSocket) SetPongHandler(func(string) error) {}
 func (s *recordedSessionSocket) WriteControl(kind int, _ []byte, _ time.Time) error {
 	if kind == websocket.CloseMessage {
 		s.record("websocket-close-control")
@@ -107,7 +108,7 @@ func sessionFixture(t *testing.T, socket sessionSocket, active tunnel) *Connecte
 	workload, _, _ := exactWorkloadFixture()
 	info := server.AuthenticatedAcceleratorInfo{Capabilities: agent.V1Capabilities()}
 	receipt := &workloadReceipt{contextName: workload.ContextName, releaseNamespace: workload.ReleaseNamespace, releaseName: workload.ReleaseName, workloadSessionID: workload.WorkloadSessionID, job: workload.Job, pod: workload.Pod, buildVersion: workload.BuildVersion, imageDigest: workload.ImageDigest, chartDigest: workload.ChartDigest}
-	return newConnectedSession(receipt, info, connectedIdentity{sessionID: "session-a", instanceID: "instance-a", generation: 1}, socket, active)
+	return newConnectedSession(receipt, info, connectedIdentity{sessionID: "session-a", instanceID: "instance-a", generation: 1}, socket, active, processResumeClock{})
 }
 
 func TestConnectedSessionSafeSurface(t *testing.T) {

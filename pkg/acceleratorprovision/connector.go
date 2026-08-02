@@ -2,6 +2,8 @@ package acceleratorprovision
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -89,15 +92,51 @@ type tunnel interface {
 	Wait(context.Context) error
 }
 
+type acceleratorPodTunnel struct{ *localk8s.AcceleratorPodTunnel }
+
+func (t *acceleratorPodTunnel) terminalCause() error {
+	return connectorTunnelFailure(localk8s.AcceleratorPodTunnelFailure(t.AcceleratorPodTunnel))
+}
+
+var (
+	errTunnelUpgradeAttempt          = errors.New("accelerator tunnel upgrade unavailable")
+	errTunnelHTTPSProxyAttempt       = errors.New("accelerator tunnel proxy unavailable")
+	errTunnelTransientAttempt        = errors.New("accelerator tunnel temporarily unavailable")
+	errTunnelGenericAttempt          = errors.New("accelerator tunnel unavailable")
+	errTunnelCleanupUnsettledAttempt = errors.New("accelerator tunnel cleanup unsettled")
+	errCandidateUnavailable          = errors.New("accelerator candidate unavailable")
+)
+
+func connectorTunnelFailure(err error) error {
+	if err == nil {
+		return nil
+	}
+	switch localk8s.ClassifyAcceleratorTunnelFailure(err) {
+	case localk8s.AcceleratorTunnelFailureUpgrade:
+		return errTunnelUpgradeAttempt
+	case localk8s.AcceleratorTunnelFailureHTTPSProxy:
+		return errTunnelHTTPSProxyAttempt
+	case localk8s.AcceleratorTunnelFailureTransient:
+		return errTunnelTransientAttempt
+	case localk8s.AcceleratorTunnelFailureCleanupUnsettled:
+		return errTunnelCleanupUnsettledAttempt
+	default:
+		return errTunnelGenericAttempt
+	}
+}
+
 type connectorTunnelStarter func(context.Context, ContextSnapshot, string, string) (tunnel, error)
 type connectorValidator func(context.Context, *ProvisionedWorkload, ContextSnapshot) UnavailableReason
+type connectorDetailedValidator func(context.Context, *ProvisionedWorkload, ContextSnapshot) workloadValidationResult
 
 type Connector struct {
-	buildVersion    string
-	startTunnel     connectorTunnelStarter
-	validate        connectorValidator
-	observeEndpoint func(string)
-	beforePublish   func()
+	buildVersion     string
+	clock            resumeClock
+	startTunnel      connectorTunnelStarter
+	validate         connectorValidator
+	validateDetailed connectorDetailedValidator
+	observeEndpoint  func(string)
+	beforePublish    func()
 }
 
 // sealedContext preserves cancellation and deadlines while ensuring caller
@@ -108,14 +147,20 @@ func (sealedContext) Value(any) any { return nil }
 
 func NewConnector(buildVersion string) *Connector {
 	return &Connector{
-		buildVersion: buildVersion,
-		validate:     revalidateWorkload,
+		buildVersion:     buildVersion,
+		clock:            processResumeClock{},
+		validate:         revalidateWorkload,
+		validateDetailed: revalidateWorkloadDetailed,
 		startTunnel: func(ctx context.Context, source ContextSnapshot, namespace, pod string) (tunnel, error) {
 			snapshot, ok := source.(*localk8s.AcceleratorContextSnapshot)
 			if !ok {
 				return nil, localk8s.ErrAcceleratorContextUnavailable
 			}
-			return localk8s.StartAcceleratorPodTunnel(ctx, snapshot, namespace, pod)
+			started, err := localk8s.StartAcceleratorPodTunnel(ctx, snapshot, namespace, pod)
+			if started == nil {
+				return nil, connectorTunnelFailure(err)
+			}
+			return &acceleratorPodTunnel{AcceleratorPodTunnel: started}, connectorTunnelFailure(err)
 		},
 	}
 }
@@ -125,7 +170,7 @@ func unavailableConnect(reason ConnectUnavailableReason) ConnectResult {
 }
 
 func (c *Connector) Connect(ctx context.Context, workload *ProvisionedWorkload) ConnectResult {
-	if c == nil || ctx == nil || c.buildVersion == "" || c.startTunnel == nil || c.validate == nil || !validWorkloadHandle(workload, c.buildVersion) {
+	if c == nil || ctx == nil || c.buildVersion == "" || c.startTunnel == nil || (c.validate == nil && c.validateDetailed == nil) || !validWorkloadHandle(workload, c.buildVersion) {
 		return unavailableConnect(InvalidWorkload)
 	}
 	lease, ok := workload.connectorLease()
@@ -133,10 +178,61 @@ func (c *Connector) Connect(ctx context.Context, workload *ProvisionedWorkload) 
 		return unavailableConnect(InvalidWorkload)
 	}
 	defer lease.release()
+	op, cancel := context.WithTimeout(ctx, connectorTimeout)
+	defer cancel()
+	session, failure := c.connectExactAttempt(op, lease, connectionExpectation{kind: connectionFresh})
+	if failure != nil {
+		return unavailableConnect(failure.connectReason)
+	}
+	return ConnectResult{Availability: Available, Session: session}
+}
+
+type connectionExpectationKind uint8
+
+const (
+	connectionFresh connectionExpectationKind = iota + 1
+	connectionResume
+)
+
+type connectionExpectation struct {
+	kind            connectionExpectationKind
+	instanceID      string
+	sessionID       string
+	generationFloor int
+	accepted        func(int)
+}
+
+type attemptPhase uint8
+
+const (
+	attemptPreValidate attemptPhase = iota + 1
+	attemptTunnel
+	attemptPostValidate
+	attemptInfo
+	attemptPolicy
+	attemptWebSocket
+	attemptConnectedFrame
+	attemptFinalValidate
+	attemptPublication
+)
+
+type connectAttemptFailure struct {
+	phase         attemptPhase
+	connectReason ConnectUnavailableReason
+	cause         error
+	status        int
+	earlyClose    bool
+	peerClose     bool
+}
+
+func (c *Connector) connectExactAttempt(ctx context.Context, lease connectorLease, expectation connectionExpectation) (*ConnectedSession, *connectAttemptFailure) {
+	if c == nil || ctx == nil || c.buildVersion == "" || c.startTunnel == nil || (c.validate == nil && c.validateDetailed == nil) || lease.receipt == nil || lease.credential == nil || lease.snapshot == nil || !validExpectation(expectation) {
+		return nil, &connectAttemptFailure{phase: attemptPreValidate, connectReason: InvalidWorkload}
+	}
 	exactWorkload := lease.receipt.workload()
 	// Keep cancellation directly parented to the caller so a standard cancel
 	// function propagates synchronously. Only the derived I/O view seals values.
-	op, cancel := context.WithTimeout(ctx, connectorTimeout)
+	op, cancel := context.WithCancel(ctx)
 	defer cancel()
 	sealedOp := sealedContext{op}
 	cancelledBeforePublication := make(chan struct{})
@@ -148,50 +244,56 @@ func (c *Connector) Connect(ctx context.Context, workload *ProvisionedWorkload) 
 		}
 	}()
 	if op.Err() != nil {
-		return unavailableConnect(ConnectCancelled)
+		return nil, &connectAttemptFailure{phase: attemptPreValidate, connectReason: ConnectCancelled, cause: op.Err()}
 	}
-	if reason := c.validate(sealedOp, exactWorkload, lease.snapshot); op.Err() != nil {
-		return unavailableConnect(ConnectCancelled)
-	} else if reason != "" {
-		return unavailableConnect(mapWorkload(reason))
+	if validation := c.validateExact(sealedOp, exactWorkload, lease.snapshot); op.Err() != nil {
+		return nil, &connectAttemptFailure{phase: attemptPreValidate, connectReason: ConnectCancelled, cause: op.Err()}
+	} else if validation.reason != "" {
+		return nil, workloadAttemptFailure(attemptPreValidate, validation)
 	}
 	ready, readyCancel := context.WithTimeout(sealedOp, tunnelReadyTimeout)
 	activeTunnel, err := c.startTunnel(ready, lease.snapshot, lease.receipt.releaseNamespace, lease.receipt.pod.Name)
 	readyCancel()
 	var socket *websocket.Conn
+	var candidate *ConnectedSession
 	published := false
 	if activeTunnel != nil {
 		defer func() {
 			if !published {
-				closeConnectTransports(socket, activeTunnel)
+				if candidate != nil {
+					closeCandidateSession(candidate)
+				} else {
+					closeConnectTransports(socket, activeTunnel)
+				}
 			}
 		}()
 	}
 	if op.Err() != nil {
-		return unavailableConnect(ConnectCancelled)
+		return nil, &connectAttemptFailure{phase: attemptTunnel, connectReason: ConnectCancelled, cause: op.Err()}
 	}
 	if err != nil || activeTunnel == nil || activeTunnel.Port() < 1 || activeTunnel.Port() > 65535 {
-		return unavailableConnect(TunnelUnavailable)
+		return nil, &connectAttemptFailure{phase: attemptTunnel, connectReason: TunnelUnavailable, cause: err}
 	}
 	if op.Err() != nil {
-		return unavailableConnect(ConnectCancelled)
+		return nil, &connectAttemptFailure{phase: attemptTunnel, connectReason: ConnectCancelled, cause: op.Err()}
 	}
 	if tunnelEnded(activeTunnel) {
-		return unavailableConnect(TunnelUnavailable)
+		return nil, &connectAttemptFailure{phase: attemptTunnel, connectReason: TunnelUnavailable, cause: tunnelTerminalCause(activeTunnel), earlyClose: true}
 	}
-	if reason := c.validate(sealedOp, exactWorkload, lease.snapshot); op.Err() != nil {
-		return unavailableConnect(ConnectCancelled)
-	} else if reason != "" {
-		return unavailableConnect(mapWorkload(reason))
+	if validation := c.validateExact(sealedOp, exactWorkload, lease.snapshot); op.Err() != nil {
+		return nil, &connectAttemptFailure{phase: attemptPostValidate, connectReason: ConnectCancelled, cause: op.Err()}
+	} else if validation.reason != "" {
+		return nil, workloadAttemptFailure(attemptPostValidate, validation)
 	}
 	endpoint := net.JoinHostPort("127.0.0.1", fmt.Sprintf("%d", activeTunnel.Port()))
 	if c.observeEndpoint != nil {
 		c.observeEndpoint(endpoint)
 	}
 	if op.Err() != nil {
-		return unavailableConnect(ConnectCancelled)
+		return nil, &connectAttemptFailure{phase: attemptInfo, connectReason: ConnectCancelled, cause: op.Err()}
 	}
 	var info server.AuthenticatedAcceleratorInfo
+	phase := attemptInfo
 	err = lease.credential.withCreatorAuthorization(sealedOp, func(authCtx context.Context, authorization creatorAuthorizationLease) error {
 		var fetchErr error
 		info, fetchErr = fetchInfo(authCtx, endpoint, authorization)
@@ -199,46 +301,71 @@ func (c *Connector) Connect(ctx context.Context, workload *ProvisionedWorkload) 
 			return fetchErr
 		}
 		if !validInfo(info, c.buildVersion, exactWorkload.BuildVersion) {
-			return errors.New("accelerator info unavailable")
+			return protocolAttemptError{}
 		}
+		if expectation.kind == connectionResume && info.InstanceID != expectation.instanceID {
+			return identityAttemptError{}
+		}
+		phase = attemptPolicy
 		policyErr := policyCanary(authCtx, endpoint, authorization)
 		return policyErr
 	})
 	if op.Err() != nil {
-		return unavailableConnect(ConnectCancelled)
+		return nil, &connectAttemptFailure{phase: phase, connectReason: ConnectCancelled, cause: op.Err()}
 	}
 	if err != nil {
-		return unavailableConnect(AcceleratorUnavailable)
+		return nil, failureFromError(phase, AcceleratorUnavailable, err)
 	}
 	var connected connectedIdentity
+	phase = attemptWebSocket
 	err = lease.credential.withCreatorAuthorization(sealedOp, func(authCtx context.Context, authorization creatorAuthorizationLease) error {
 		var dialErr error
 		socket, dialErr = dialCreator(authCtx, endpoint, authorization)
 		if dialErr != nil {
 			return dialErr
 		}
-		connected, dialErr = validateConnected(authCtx, socket, info.InstanceID)
+		phase = attemptConnectedFrame
+		connected, dialErr = validateConnectedExpectation(authCtx, socket, info.InstanceID, expectation)
 		return dialErr
 	})
 	if op.Err() != nil {
-		return unavailableConnect(ConnectCancelled)
+		return nil, &connectAttemptFailure{phase: phase, connectReason: ConnectCancelled, cause: op.Err()}
 	}
 	if err != nil {
-		return unavailableConnect(AcceleratorUnavailable)
+		return nil, failureFromError(phase, AcceleratorUnavailable, err)
 	}
-	if reason := c.validate(sealedOp, exactWorkload, lease.snapshot); op.Err() != nil {
-		return unavailableConnect(ConnectCancelled)
-	} else if reason != "" {
-		return unavailableConnect(mapWorkload(reason))
+	if validation := c.validateExact(sealedOp, exactWorkload, lease.snapshot); op.Err() != nil {
+		return nil, &connectAttemptFailure{phase: attemptFinalValidate, connectReason: ConnectCancelled, cause: op.Err()}
+	} else if validation.reason != "" {
+		return nil, workloadAttemptFailure(attemptFinalValidate, validation)
 	}
 	if op.Err() != nil {
-		return unavailableConnect(ConnectCancelled)
+		return nil, &connectAttemptFailure{phase: attemptPublication, connectReason: ConnectCancelled, cause: op.Err()}
 	}
 	if tunnelEnded(activeTunnel) {
-		return unavailableConnect(TunnelUnavailable)
+		return nil, &connectAttemptFailure{phase: attemptPublication, connectReason: TunnelUnavailable, cause: tunnelTerminalCause(activeTunnel), earlyClose: true}
 	}
 	if c.beforePublish != nil {
 		c.beforePublish()
+	}
+	if op.Err() != nil {
+		return nil, &connectAttemptFailure{phase: attemptPublication, connectReason: ConnectCancelled, cause: op.Err()}
+	}
+	if expectation.kind == connectionResume {
+		candidate, err = newConnectedCandidate(lease.receipt, info, connected, socket, activeTunnel, c.clock)
+		if err != nil {
+			return nil, &connectAttemptFailure{phase: attemptPublication, connectReason: AcceleratorUnavailable, cause: err}
+		}
+		socket = nil
+		if err = probeConnectedCandidate(sealedOp, candidate); err != nil {
+			if op.Err() != nil {
+				return nil, &connectAttemptFailure{phase: attemptPublication, connectReason: ConnectCancelled, cause: op.Err()}
+			}
+			return nil, &connectAttemptFailure{phase: attemptPublication, connectReason: AcceleratorUnavailable, cause: err, earlyClose: true, peerClose: true}
+		}
+	}
+	if tunnelEnded(activeTunnel) {
+		return nil, &connectAttemptFailure{phase: attemptPublication, connectReason: TunnelUnavailable, cause: tunnelTerminalCause(activeTunnel), earlyClose: true}
 	}
 	// Stopping the cancellation callback is the publication linearization
 	// point. If cancellation won before this point, wait for its fixed signal
@@ -246,13 +373,66 @@ func (c *Connector) Connect(ctx context.Context, workload *ProvisionedWorkload) 
 	if !stopPublicationCancellation() {
 		publicationPending = false
 		<-cancelledBeforePublication
-		return unavailableConnect(ConnectCancelled)
+		return nil, &connectAttemptFailure{phase: attemptPublication, connectReason: ConnectCancelled, cause: op.Err()}
 	}
 	publicationPending = false
-	session := newConnectedSession(lease.receipt, info, connected, socket, activeTunnel)
-	socket = nil
+	if candidate == nil {
+		candidate = newConnectedSession(lease.receipt, info, connected, socket, activeTunnel, c.clock)
+		socket = nil
+	}
 	published = true
-	return ConnectResult{Availability: Available, Session: session}
+	return candidate, nil
+}
+
+func validExpectation(expectation connectionExpectation) bool {
+	if expectation.kind == connectionFresh {
+		return expectation.instanceID == "" && expectation.sessionID == "" && expectation.generationFloor == 0
+	}
+	return expectation.kind == connectionResume && expectation.instanceID != "" && expectation.sessionID != "" && expectation.generationFloor > 0
+}
+
+type workloadValidationError struct {
+	reason UnavailableReason
+	cause  error
+}
+
+func (e workloadValidationError) Error() string { return "accelerator workload unavailable" }
+func (e workloadValidationError) Unwrap() error { return e.cause }
+
+func workloadAttemptFailure(phase attemptPhase, validation workloadValidationResult) *connectAttemptFailure {
+	return &connectAttemptFailure{phase: phase, connectReason: mapWorkload(validation.reason), cause: workloadValidationError{reason: validation.reason, cause: validation.cause}}
+}
+
+func (c *Connector) validateExact(ctx context.Context, workload *ProvisionedWorkload, snapshot ContextSnapshot) workloadValidationResult {
+	if c.validateDetailed != nil {
+		return c.validateDetailed(ctx, workload, snapshot)
+	}
+	return workloadValidationResult{reason: c.validate(ctx, workload, snapshot)}
+}
+
+type protocolAttemptError struct{}
+
+func (protocolAttemptError) Error() string { return "accelerator protocol unavailable" }
+
+type identityAttemptError struct{}
+
+func (identityAttemptError) Error() string { return "accelerator identity unavailable" }
+
+type httpStatusAttemptError struct {
+	status int
+	cause  error
+}
+
+func (httpStatusAttemptError) Error() string { return "accelerator HTTP unavailable" }
+
+func failureFromError(phase attemptPhase, reason ConnectUnavailableReason, err error) *connectAttemptFailure {
+	failure := &connectAttemptFailure{phase: phase, connectReason: reason, cause: err}
+	var statusErr httpStatusAttemptError
+	if errors.As(err, &statusErr) {
+		failure.status = statusErr.status
+		failure.cause = statusErr.cause
+	}
+	return failure
 }
 
 func validWorkloadHandle(w *ProvisionedWorkload, buildVersion string) bool {
@@ -279,6 +459,73 @@ func tunnelEnded(active tunnel) bool {
 	default:
 		return false
 	}
+}
+
+type tunnelCauseProvider interface{ terminalCause() error }
+
+func tunnelTerminalCause(active tunnel) error {
+	if provider, ok := active.(tunnelCauseProvider); ok {
+		return provider.terminalCause()
+	}
+	return nil
+}
+
+func newConnectedCandidate(receipt *workloadReceipt, info server.AuthenticatedAcceleratorInfo, connected connectedIdentity, socket *websocket.Conn, active tunnel, clock resumeClock) (*ConnectedSession, error) {
+	if socket == nil {
+		return nil, protocolAttemptError{}
+	}
+	nonceBytes := make([]byte, 16)
+	if _, err := rand.Read(nonceBytes); err != nil {
+		return nil, protocolAttemptError{}
+	}
+	nonce := hex.EncodeToString(nonceBytes)
+	pong := make(chan struct{})
+	var once sync.Once
+	socket.SetPongHandler(func(payload string) error {
+		if payload == nonce {
+			once.Do(func() { close(pong) })
+		}
+		return nil
+	})
+	candidate := newConnectedSessionWithCandidateFence(receipt, info, connected, socket, active, clock, nonce, pong)
+	return candidate, nil
+}
+
+func probeConnectedCandidate(ctx context.Context, candidate *ConnectedSession) error {
+	if ctx == nil || candidate == nil || candidate.socket == nil || candidate.candidateNonce == "" || candidate.candidatePong == nil {
+		return protocolAttemptError{}
+	}
+	deadline := time.Now().Add(websocketTimeout)
+	if callerDeadline, ok := ctx.Deadline(); ok && callerDeadline.Before(deadline) {
+		deadline = callerDeadline
+	}
+	if err := candidate.socket.SetWriteDeadline(deadline); err != nil {
+		return err
+	}
+	if err := candidate.socket.WriteControl(websocket.PingMessage, []byte(candidate.candidateNonce), deadline); err != nil {
+		return err
+	}
+	if err := candidate.socket.SetWriteDeadline(time.Time{}); err != nil {
+		return protocolAttemptError{}
+	}
+	timer := time.NewTimer(time.Until(deadline))
+	defer timer.Stop()
+	select {
+	case <-candidate.candidatePong:
+		return nil
+	case <-candidate.Done():
+		return errCandidateUnavailable
+	case <-ctx.Done():
+		return errCandidateUnavailable
+	case <-timer.C:
+		return errCandidateUnavailable
+	}
+}
+
+func closeCandidateSession(candidate *ConnectedSession) {
+	ctx, cancel := context.WithTimeout(context.Background(), closeTimeout)
+	_ = candidate.Close(ctx)
+	cancel()
 }
 
 func closeConnectTransports(socket *websocket.Conn, active tunnel) {
@@ -335,15 +582,18 @@ func fetchInfo(ctx context.Context, endpoint string, authorization creatorAuthor
 	}
 	response, err := authorization.DoHTTP(localClient(endpoint), request)
 	if err != nil {
-		return server.AuthenticatedAcceleratorInfo{}, errors.New("accelerator info unavailable")
+		return server.AuthenticatedAcceleratorInfo{}, err
 	}
 	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK || !strictJSONResponse(response) {
-		return server.AuthenticatedAcceleratorInfo{}, errors.New("accelerator info unavailable")
+	if response.StatusCode != http.StatusOK {
+		return server.AuthenticatedAcceleratorInfo{}, httpStatusAttemptError{status: response.StatusCode}
+	}
+	if !strictJSONResponse(response) {
+		return server.AuthenticatedAcceleratorInfo{}, protocolAttemptError{}
 	}
 	info, err := decodeExactInfo(response.Body)
 	if err != nil {
-		return server.AuthenticatedAcceleratorInfo{}, errors.New("accelerator info unavailable")
+		return server.AuthenticatedAcceleratorInfo{}, protocolAttemptError{}
 	}
 	return info, nil
 }
@@ -358,15 +608,18 @@ func policyCanary(ctx context.Context, endpoint string, authorization creatorAut
 	request.Header["Content-Type"] = []string{"application/json"}
 	response, err := authorization.DoHTTP(localClient(endpoint), request)
 	if err != nil {
-		return errors.New("accelerator policy unavailable")
+		return err
 	}
 	defer response.Body.Close()
-	if response.StatusCode != http.StatusForbidden || !strictJSONResponse(response) {
-		return errors.New("accelerator policy unavailable")
+	if response.StatusCode != http.StatusForbidden {
+		return httpStatusAttemptError{status: response.StatusCode}
+	}
+	if !strictJSONResponse(response) {
+		return protocolAttemptError{}
 	}
 	payload, readErr := io.ReadAll(&io.LimitedReader{R: response.Body, N: policyBodyLimit + 1})
 	if readErr != nil || len(payload) > policyBodyLimit || string(payload) != "{\"error\":\"forbidden\"}\n" {
-		return errors.New("accelerator policy unavailable")
+		return protocolAttemptError{}
 	}
 	return nil
 }
@@ -448,21 +701,38 @@ func dialCreator(ctx context.Context, endpoint string, authorization creatorAuth
 	}
 	socket, response, err := authorization.DialCreatorWebSocket(ctx, dialer, target.String())
 	if err != nil {
+		status := 0
 		if response != nil && response.Body != nil {
+			status = response.StatusCode
 			_ = response.Body.Close()
 		}
-		return nil, errors.New("accelerator websocket unavailable")
+		if status != 0 {
+			return nil, httpStatusAttemptError{status: status, cause: err}
+		}
+		return nil, err
 	}
-	if response == nil || response.StatusCode != http.StatusSwitchingProtocols || socket.Subprotocol() != "" || len(response.Header.Values("Sec-WebSocket-Protocol")) != 0 || len(response.Header.Values("Set-Cookie")) != 0 {
+	if response == nil {
 		_ = socket.Close()
-		return nil, errors.New("accelerator websocket unavailable")
+		return nil, protocolAttemptError{}
+	}
+	if response.StatusCode != http.StatusSwitchingProtocols {
+		_ = socket.Close()
+		return nil, httpStatusAttemptError{status: response.StatusCode}
+	}
+	if socket.Subprotocol() != "" || len(response.Header.Values("Sec-WebSocket-Protocol")) != 0 || len(response.Header.Values("Set-Cookie")) != 0 {
+		_ = socket.Close()
+		return nil, protocolAttemptError{}
 	}
 	return socket, nil
 }
 
 func validateConnected(ctx context.Context, socket connectedFrameSocket, instanceID string) (connectedIdentity, error) {
+	return validateConnectedExpectation(ctx, socket, instanceID, connectionExpectation{kind: connectionFresh})
+}
+
+func validateConnectedExpectation(ctx context.Context, socket connectedFrameSocket, instanceID string, expectation connectionExpectation) (connectedIdentity, error) {
 	if socket == nil || ctx == nil {
-		return connectedIdentity{}, errors.New("accelerator connected event unavailable")
+		return connectedIdentity{}, protocolAttemptError{}
 	}
 	deadline := time.Now().Add(connectedFrameTimeout)
 	if callerDeadline, ok := ctx.Deadline(); ok && callerDeadline.Before(deadline) {
@@ -470,7 +740,7 @@ func validateConnected(ctx context.Context, socket connectedFrameSocket, instanc
 	}
 	socket.SetReadLimit(connectedFrameLimit)
 	if socket.SetReadDeadline(deadline) != nil {
-		return connectedIdentity{}, errors.New("accelerator connected event unavailable")
+		return connectedIdentity{}, protocolAttemptError{}
 	}
 	wakeDone := make(chan struct{})
 	stopWake := context.AfterFunc(ctx, func() {
@@ -483,14 +753,17 @@ func validateConnected(ctx context.Context, socket connectedFrameSocket, instanc
 		if !stopWake() {
 			<-wakeDone
 		}
-		return connectedIdentity{}, errors.New("accelerator connected event unavailable")
+		return connectedIdentity{}, protocolAttemptError{}
 	}
 	messageType, payload, err := socket.ReadMessage()
 	if !stopWake() {
 		<-wakeDone
 	}
 	if ctx.Err() != nil || err != nil || messageType != websocket.TextMessage || len(payload) > connectedFrameLimit {
-		return connectedIdentity{}, errors.New("accelerator connected event unavailable")
+		if err != nil {
+			return connectedIdentity{}, err
+		}
+		return connectedIdentity{}, protocolAttemptError{}
 	}
 	var event struct {
 		Type *string `json:"type"`
@@ -502,13 +775,35 @@ func validateConnected(ctx context.Context, socket connectedFrameSocket, instanc
 			Resumed    *bool   `json:"resumed"`
 		} `json:"data"`
 	}
-	if err = decodeStrictJSON(strings.NewReader(string(payload)), connectedFrameLimit, &event); err != nil || event.Type == nil || *event.Type != "event" || event.Name == nil || *event.Name != "connected" || event.Data == nil || event.Data.SessionID == nil || *event.Data.SessionID == "" || event.Data.InstanceID == nil || *event.Data.InstanceID != instanceID || event.Data.Generation == nil || *event.Data.Generation != 1 || event.Data.Resumed == nil || *event.Data.Resumed {
-		return connectedIdentity{}, errors.New("accelerator connected event unavailable")
+	if err = decodeStrictJSON(strings.NewReader(string(payload)), connectedFrameLimit, &event); err != nil || event.Type == nil || *event.Type != "event" || event.Name == nil || *event.Name != "connected" || event.Data == nil || event.Data.SessionID == nil || *event.Data.SessionID == "" || event.Data.InstanceID == nil || event.Data.Generation == nil || event.Data.Resumed == nil {
+		return connectedIdentity{}, protocolAttemptError{}
+	}
+	identity := connectedIdentity{sessionID: *event.Data.SessionID, instanceID: *event.Data.InstanceID, generation: *event.Data.Generation}
+	if identity.instanceID != instanceID {
+		return connectedIdentity{}, identityAttemptError{}
+	}
+	switch expectation.kind {
+	case connectionFresh:
+		if identity.generation != 1 || *event.Data.Resumed {
+			return connectedIdentity{}, protocolAttemptError{}
+		}
+	case connectionResume:
+		if identity.instanceID != expectation.instanceID || identity.sessionID != expectation.sessionID {
+			return connectedIdentity{}, identityAttemptError{}
+		}
+		if !*event.Data.Resumed || identity.generation <= expectation.generationFloor {
+			return connectedIdentity{}, protocolAttemptError{}
+		}
+		if expectation.accepted != nil {
+			expectation.accepted(identity.generation)
+		}
+	default:
+		return connectedIdentity{}, protocolAttemptError{}
 	}
 	if socket.SetReadDeadline(time.Time{}) != nil {
-		return connectedIdentity{}, errors.New("accelerator connected event unavailable")
+		return connectedIdentity{}, protocolAttemptError{}
 	}
-	return connectedIdentity{sessionID: *event.Data.SessionID, instanceID: *event.Data.InstanceID, generation: *event.Data.Generation}, nil
+	return identity, nil
 }
 
 func decodeStrictJSON(reader io.Reader, limit int64, destination interface{}) error {

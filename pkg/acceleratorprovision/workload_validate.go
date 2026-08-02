@@ -2,33 +2,51 @@ package acceleratorprovision
 
 import (
 	"context"
+	"errors"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type workloadValidationResult struct {
+	reason UnavailableReason
+	cause  error
+}
+
+func (r workloadValidationResult) Error() string {
+	return "accelerator workload validation unavailable"
+}
+func (r workloadValidationResult) Unwrap() error { return r.cause }
+
 // revalidateWorkload performs direct GETs only; it never lists or discovers a
 // replacement Pod.
 func revalidateWorkload(ctx context.Context, w *ProvisionedWorkload, s ContextSnapshot) UnavailableReason {
+	return revalidateWorkloadDetailed(ctx, w, s).reason
+}
+
+func revalidateWorkloadDetailed(ctx context.Context, w *ProvisionedWorkload, s ContextSnapshot) workloadValidationResult {
 	if ctx == nil || w == nil || s == nil || s.Clientset() == nil {
-		return ContextUnavailable
+		return workloadValidationResult{reason: ContextUnavailable}
 	}
 	if s.Identity() == "" || s.Namespace() != w.ReleaseNamespace || w.ContextName == "" || w.ReleaseNamespace == "" || w.ReleaseName == "" || w.Job.Name == "" || w.Job.UID == "" || w.Pod.Name == "" || w.Pod.UID == "" || w.WorkloadSessionID == "" || w.BuildVersion == "" || w.ImageDigest == "" || w.ChartDigest == "" {
-		return ContextUnavailable
+		return workloadValidationResult{reason: ContextUnavailable}
 	}
 	job, err := s.Clientset().BatchV1().Jobs(w.ReleaseNamespace).Get(ctx, w.Job.Name, metav1.GetOptions{})
 	if err != nil {
-		return JobFailed
+		return workloadValidationResult{reason: JobFailed, cause: err}
 	}
 	pod, err := s.Clientset().CoreV1().Pods(w.ReleaseNamespace).Get(ctx, w.Pod.Name, metav1.GetOptions{})
 	if err != nil {
-		return PodFailed
+		return workloadValidationResult{reason: PodFailed, cause: err}
 	}
 	if !validExactJob(job, w) || !validExactPod(pod, w) {
-		return ContextChanged
+		return workloadValidationResult{reason: ContextChanged}
 	}
-	return ""
+	return workloadValidationResult{}
 }
+
+func (r workloadValidationResult) Is(target error) bool { return errors.Is(r.cause, target) }
 func validExactJob(j *batchv1.Job, w *ProvisionedWorkload) bool {
 	if j == nil || j.Name != w.Job.Name || j.Namespace != w.ReleaseNamespace || string(j.UID) != w.Job.UID || j.DeletionTimestamp != nil ||
 		j.Annotations["kubikles.io/build-version"] != w.BuildVersion || j.Labels["kubikles.io/workload-session-id"] != w.WorkloadSessionID ||

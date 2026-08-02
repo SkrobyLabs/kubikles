@@ -2,16 +2,23 @@ package acceleratorprovision
 
 import (
 	"context"
+	"errors"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
+	"kubikles/pkg/agent"
+	"kubikles/pkg/server"
 )
 
 func exactWorkloadFixture() (*ProvisionedWorkload, *batchv1.Job, *corev1.Pod) {
@@ -33,6 +40,87 @@ func exactWorkloadFixture() (*ProvisionedWorkload, *batchv1.Job, *corev1.Pod) {
 		Status:     corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{{Name: "accelerator", Ready: true, State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}}}}},
 	}
 	return workload, job, pod
+}
+
+func TestResumeUsesRealKubernetesValidationCauses(t *testing.T) {
+	tests := []struct {
+		name      string
+		failure   error
+		wantSleep bool
+	}{
+		{name: "timeout", failure: apierrors.NewTimeoutError("raw-timeout", 1), wantSleep: true},
+		{name: "too many requests", failure: apierrors.NewTooManyRequests("raw-throttle", 1), wantSleep: true},
+		{name: "internal", failure: apierrors.NewInternalError(errors.New("raw-internal")), wantSleep: true},
+		{name: "service unavailable", failure: apierrors.NewServiceUnavailable("raw-unavailable"), wantSleep: true},
+		{name: "gateway timeout", failure: &apierrors.StatusError{ErrStatus: metav1.Status{Code: 504}}, wantSleep: true},
+		{name: "unauthorized", failure: apierrors.NewUnauthorized("raw-unauthorized")},
+		{name: "forbidden", failure: apierrors.NewForbidden(schema.GroupResource{Resource: "jobs"}, "job-a", errors.New("raw-forbidden"))},
+		{name: "not found", failure: apierrors.NewNotFound(schema.GroupResource{Resource: "jobs"}, "job-a")},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			clock := &fakeResumeClock{now: time.Now()}
+			prior, workload := resumableSessionFixture(t, clock)
+			client := workload.snapshot.Clientset().(*fake.Clientset)
+			var failed bool
+			client.PrependReactor("get", "jobs", func(k8stesting.Action) (bool, runtime.Object, error) {
+				if !failed {
+					failed = true
+					return true, nil, test.failure
+				}
+				return false, nil, nil
+			})
+			reconnector := NewReconnector("v1.2.3")
+			var tunnelStarts int
+			reconnector.connector.startTunnel = func(context.Context, ContextSnapshot, string, string) (tunnel, error) {
+				tunnelStarts++
+				return nil, errors.New("raw terminal tunnel failure")
+			}
+			result := reconnector.Resume(context.Background(), ResumeRequest{Prior: prior, Workload: workload})
+			if test.wantSleep {
+				if len(clock.sleeps) != 1 || tunnelStarts != 1 || result.Reason != ResumeTransportUnavailable {
+					t.Fatalf("result=%#v sleeps=%v starts=%d", result, clock.sleeps, tunnelStarts)
+				}
+			} else if len(clock.sleeps) != 0 || tunnelStarts != 0 || result.Reason != ResumeWorkloadTerminalOrChanged {
+				t.Fatalf("result=%#v sleeps=%v starts=%d", result, clock.sleeps, tunnelStarts)
+			}
+		})
+	}
+}
+
+func TestResumeEarlyCloseDetailed429RevalidationRetriesEndToEnd(t *testing.T) {
+	clock := &fakeResumeClock{now: time.Now()}
+	prior, workload := resumableSessionFixture(t, clock)
+	client := workload.snapshot.Clientset().(*fake.Clientset)
+	var gets int
+	client.PrependReactor("get", "jobs", func(k8stesting.Action) (bool, runtime.Object, error) {
+		gets++
+		if gets == 1 {
+			return true, nil, apierrors.NewTooManyRequests("raw-throttle", 1)
+		}
+		return false, nil, nil
+	})
+	reconnector := NewReconnector("v1.2.3")
+	attempts := 0
+	reconnector.attempt = func(_ context.Context, _ connectorLease, expectation connectionExpectation) (*ConnectedSession, *connectAttemptFailure) {
+		attempts++
+		if attempts == 1 {
+			expectation.accepted(2)
+			return nil, &connectAttemptFailure{phase: attemptPublication, earlyClose: true}
+		}
+		if expectation.generationFloor != 2 {
+			t.Fatalf("generation floor=%d want=2", expectation.generationFloor)
+		}
+		order := []string{}
+		return newConnectedSession(workload.connectorState.receipt, server.AuthenticatedAcceleratorInfo{Capabilities: agent.V1Capabilities()}, connectedIdentity{sessionID: "session-a", instanceID: "instance-a", generation: 3}, newRecordedSessionSocket(&order), newRecordedTunnel(&order), clock), nil
+	}
+	result := reconnector.Resume(context.Background(), ResumeRequest{Prior: prior, Workload: workload})
+	if result.Session == nil || attempts != 2 || gets != 1 || !reflect.DeepEqual(clock.sleeps, []time.Duration{time.Second}) {
+		t.Fatalf("result=%#v attempts=%d gets=%d sleeps=%v", result, attempts, gets, clock.sleeps)
+	}
+	if err := result.Session.Close(context.Background()); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func validateFixture(workload *ProvisionedWorkload, objects ...runtime.Object) UnavailableReason {

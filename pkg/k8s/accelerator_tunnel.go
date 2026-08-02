@@ -5,6 +5,7 @@ package k8s
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -12,18 +13,100 @@ import (
 	"sync"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 )
 
 const acceleratorTunnelCleanupTimeout = 5 * time.Second
+const acceleratorTunnelCancellationSettlementTimeout = 100 * time.Millisecond
 
 type AcceleratorPodTunnel struct {
-	port int
-	stop chan struct{}
-	done chan struct{}
-	once sync.Once
+	port     int
+	stop     chan struct{}
+	done     chan struct{}
+	once     sync.Once
+	mu       sync.RWMutex
+	kind     AcceleratorTunnelFailureKind
+	dialKind AcceleratorTunnelFailureKind
+}
+
+type AcceleratorTunnelFailureKind uint8
+
+const (
+	AcceleratorTunnelFailureGeneric AcceleratorTunnelFailureKind = iota + 1
+	AcceleratorTunnelFailureUpgrade
+	AcceleratorTunnelFailureHTTPSProxy
+	AcceleratorTunnelFailureTransient
+	AcceleratorTunnelFailureCleanupUnsettled
+)
+
+type acceleratorTunnelFailure struct{ kind AcceleratorTunnelFailureKind }
+
+func (acceleratorTunnelFailure) Error() string { return "accelerator tunnel unavailable" }
+func (e acceleratorTunnelFailure) Is(target error) bool {
+	return target == ErrAcceleratorContextUnavailable
+}
+
+func newAcceleratorTunnelFailure(cause error) error {
+	return acceleratorTunnelFailure{kind: classifyAcceleratorTunnelCause(cause)}
+}
+
+func newAcceleratorTunnelFailureKind(kind AcceleratorTunnelFailureKind) error {
+	if kind == 0 {
+		kind = AcceleratorTunnelFailureGeneric
+	}
+	return acceleratorTunnelFailure{kind: kind}
+}
+
+func classifyAcceleratorTunnelCause(cause error) AcceleratorTunnelFailureKind {
+	if cause == nil {
+		return 0
+	}
+	if httpstream.IsUpgradeFailure(cause) {
+		return AcceleratorTunnelFailureUpgrade
+	}
+	if httpstream.IsHTTPSProxyError(cause) {
+		return AcceleratorTunnelFailureHTTPSProxy
+	}
+	if errors.Is(cause, context.DeadlineExceeded) {
+		return AcceleratorTunnelFailureTransient
+	}
+	if apierrors.IsTimeout(cause) || apierrors.IsServerTimeout(cause) || apierrors.IsTooManyRequests(cause) || apierrors.IsInternalError(cause) || apierrors.IsServiceUnavailable(cause) {
+		return AcceleratorTunnelFailureTransient
+	}
+	var status apierrors.APIStatus
+	if errors.As(cause, &status) {
+		code := status.Status().Code
+		if code == 500 || code == 503 || code == 504 {
+			return AcceleratorTunnelFailureTransient
+		}
+	}
+	return AcceleratorTunnelFailureGeneric
+}
+
+type acceleratorTunnelCategoryDialer struct {
+	next   httpstream.Dialer
+	tunnel *AcceleratorPodTunnel
+}
+
+func (d *acceleratorTunnelCategoryDialer) Dial(protocols ...string) (httpstream.Connection, string, error) {
+	connection, protocol, err := d.next.Dial(protocols...)
+	d.tunnel.mu.Lock()
+	d.tunnel.dialKind = classifyAcceleratorTunnelCause(err)
+	d.tunnel.mu.Unlock()
+	return connection, protocol, err
+}
+
+// ClassifyAcceleratorTunnelFailure returns only the closed retry category. The
+// returned error itself never unwraps or retains its raw construction cause.
+func ClassifyAcceleratorTunnelFailure(err error) AcceleratorTunnelFailureKind {
+	failure, ok := err.(acceleratorTunnelFailure)
+	if !ok {
+		return 0
+	}
+	return failure.kind
 }
 
 type acceleratorSealedContext struct{ context.Context }
@@ -43,6 +126,10 @@ var newAcceleratorPortForwarder = func(dialer httpstream.Dialer, addresses, port
 	return portforward.NewOnAddresses(dialer, addresses, ports, stop, ready, io.Discard, io.Discard)
 }
 
+var newAcceleratorFinalDialer = func(primary, secondary httpstream.Dialer) httpstream.Dialer {
+	return portforward.NewFallbackDialer(primary, secondary, acceleratorTunnelFallback)
+}
+
 func (t *AcceleratorPodTunnel) Port() int {
 	if t == nil {
 		return 0
@@ -54,6 +141,31 @@ func (t *AcceleratorPodTunnel) Done() <-chan struct{} {
 		return nil
 	}
 	return t.done
+}
+
+// AcceleratorPodTunnelFailure returns an opaque fixed error after Done closes.
+func AcceleratorPodTunnelFailure(t *AcceleratorPodTunnel) error {
+	if t == nil {
+		return nil
+	}
+	select {
+	case <-t.done:
+	default:
+		return nil
+	}
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	if t.kind == 0 {
+		return nil
+	}
+	return newAcceleratorTunnelFailureKind(t.kind)
+}
+
+func acceleratorPodTunnelStartFailure(t *AcceleratorPodTunnel) error {
+	if failure := AcceleratorPodTunnelFailure(t); failure != nil {
+		return failure
+	}
+	return ErrAcceleratorContextUnavailable
 }
 func (t *AcceleratorPodTunnel) Close() {
 	if t != nil {
@@ -107,34 +219,60 @@ func StartAcceleratorPodTunnel(ctx context.Context, snapshot *AcceleratorContext
 	}
 	u, err := acceleratorPortForwardURL(cfg.Host, namespace, pod)
 	if err != nil {
-		return nil, ErrAcceleratorContextUnavailable
+		return nil, newAcceleratorTunnelFailure(err)
 	}
 	primary, err := portforward.NewSPDYOverWebsocketDialer(u, cfg)
 	if err != nil {
-		return nil, ErrAcceleratorContextUnavailable
+		return nil, newAcceleratorTunnelFailure(err)
 	}
 	rt, upgrader, err := spdy.RoundTripperFor(cfg)
 	if err != nil {
-		return nil, ErrAcceleratorContextUnavailable
+		return nil, newAcceleratorTunnelFailure(err)
 	}
 	secondary := spdy.NewDialer(upgrader, &http.Client{Transport: rt}, "POST", u)
-	dialer := portforward.NewFallbackDialer(primary, secondary, acceleratorTunnelFallback)
 	stop, ready, done := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	tunnel := &AcceleratorPodTunnel{stop: stop, done: done}
+	dialer := &acceleratorTunnelCategoryDialer{next: newAcceleratorFinalDialer(primary, secondary), tunnel: tunnel}
 	pf, err := newAcceleratorPortForwarder(dialer, []string{"127.0.0.1"}, []string{"0:8080"}, stop, ready)
 	if err != nil {
-		return nil, ErrAcceleratorContextUnavailable
+		return nil, newAcceleratorTunnelFailure(err)
 	}
 	var publicationMu sync.Mutex
 	forwardFinished := false
 	go func() {
-		_ = pf.ForwardPorts()
+		forwardErr := pf.ForwardPorts()
 		publicationMu.Lock()
 		forwardFinished = true
+		tunnel.mu.Lock()
+		kind := classifyAcceleratorTunnelCause(forwardErr)
+		if errors.Is(forwardErr, portforward.ErrLostConnectionToPod) {
+			kind = AcceleratorTunnelFailureTransient
+		} else if tunnel.dialKind != 0 {
+			kind = tunnel.dialKind
+		}
+		tunnel.kind = kind
+		tunnel.mu.Unlock()
 		close(done)
 		publicationMu.Unlock()
 	}()
 	var stopOnce sync.Once
 	stopForwarding := func() { stopOnce.Do(func() { close(stop) }) }
+	settleAfterContextDone := func() error {
+		stopForwarding()
+		settle := time.NewTimer(acceleratorTunnelCancellationSettlementTimeout)
+		defer settle.Stop()
+		select {
+		case <-done:
+			tunnel.mu.Lock()
+			if (tunnel.kind == 0 || tunnel.kind == AcceleratorTunnelFailureGeneric) && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+				tunnel.kind = AcceleratorTunnelFailureTransient
+			}
+			tunnel.mu.Unlock()
+			return acceleratorPodTunnelStartFailure(tunnel)
+		case <-settle.C:
+			return newAcceleratorTunnelFailureKind(AcceleratorTunnelFailureCleanupUnsettled)
+		}
+	}
 	waitForForwarding := func() {
 		wait, waitCancel := context.WithTimeout(context.Background(), acceleratorTunnelCleanupTimeout)
 		defer waitCancel()
@@ -148,22 +286,24 @@ func StartAcceleratorPodTunnel(ctx context.Context, snapshot *AcceleratorContext
 		// Closing stop and the sealed request context interrupts both transport
 		// variants.  Do not wait here: a blocked transport must not turn caller
 		// cancellation into an arbitrary multi-second delay.
-		stopForwarding()
-		return nil, ErrAcceleratorContextUnavailable
+		return nil, settleAfterContextDone()
 	case <-ready:
+		if ctx.Err() != nil {
+			return nil, settleAfterContextDone()
+		}
 	case <-done:
-		return nil, ErrAcceleratorContextUnavailable
+		return nil, acceleratorPodTunnelStartFailure(tunnel)
 	}
 	select {
 	case <-done:
-		return nil, ErrAcceleratorContextUnavailable
+		return nil, acceleratorPodTunnelStartFailure(tunnel)
 	default:
 	}
 	ports, err := pf.GetPorts()
 	if err != nil || len(ports) != 1 || ports[0].Local == 0 || ports[0].Remote != 8080 {
 		stopForwarding()
 		waitForForwarding()
-		return nil, ErrAcceleratorContextUnavailable
+		return nil, newAcceleratorTunnelFailure(err)
 	}
 	// Completion and publication share this lock: a forwarder that has already
 	// terminated can never be returned as a live tunnel, while a returned
@@ -171,9 +311,9 @@ func StartAcceleratorPodTunnel(ctx context.Context, snapshot *AcceleratorContext
 	publicationMu.Lock()
 	if forwardFinished {
 		publicationMu.Unlock()
-		return nil, ErrAcceleratorContextUnavailable
+		return nil, acceleratorPodTunnelStartFailure(tunnel)
 	}
-	tunnel := &AcceleratorPodTunnel{port: int(ports[0].Local), stop: stop, done: done}
+	tunnel.port = int(ports[0].Local)
 	publicationMu.Unlock()
 	return tunnel, nil
 }
