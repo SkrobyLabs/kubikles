@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -105,6 +106,10 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 	entropy := &recordingSequenceEntropy{}
 	service.entropy = entropy
 	request := kindRequest(k8sClient.GetCurrentContext(), chartDigest, imageDigest)
+	if os.Getenv("ACCELERATOR_LIFECYCLE_KIND") == "1" {
+		exerciseLifecycleKind(t, service, helmClient, k8sClient, request, sentinel, malformed)
+		return
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
 	defer cancel()
 	result := service.Provision(ctx, request)
@@ -216,6 +221,161 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 				t.Fatal("raw creator token escaped into Kubernetes or handle metadata")
 			}
 		}
+	}
+}
+
+type kindStaticResolver struct{ resolution acceleratorrelease.Resolution }
+
+func (r kindStaticResolver) Resolve(context.Context) acceleratorrelease.Resolution {
+	return r.resolution
+}
+
+type kindRecordingDisposer struct {
+	service *DisposalService
+	sweeps  atomic.Int32
+}
+
+func (d *kindRecordingDisposer) SweepInert(ctx context.Context, snapshot ContextSnapshot) SweepResult {
+	d.sweeps.Add(1)
+	return d.service.SweepInert(ctx, snapshot)
+}
+func (d *kindRecordingDisposer) DisposeNow(ctx context.Context, workload *ProvisionedWorkload) DisposalResult {
+	return d.service.DisposeNow(ctx, workload)
+}
+func (d *kindRecordingDisposer) DrainAndDispose(ctx context.Context, workload *ProvisionedWorkload) DisposalResult {
+	return d.service.DrainAndDispose(ctx, workload)
+}
+
+func exerciseLifecycleKind(t *testing.T, service *Service, helmClient *helm.Client, client *k8s.Client, request Request, sentinel, malformed string) {
+	t.Helper()
+	contextName := request.ContextName
+	disposer := &kindRecordingDisposer{service: NewDisposalService(service)}
+	coordinator := newCoordinator(desktopContexts{client: client}, kindStaticResolver{resolution: request.Resolution}, service, NewConnector("v1.2.3"), NewReconnector("v1.2.3"), disposer, processResumeClock{})
+	pollDone := make(chan struct{})
+	pollFailure := make(chan string, 1)
+	go pollKindKubectlPortForward(pollDone, pollFailure)
+	defer close(pollDone)
+
+	directSnapshot, err := client.SnapshotCurrentContext(contextName)
+	if err != nil {
+		t.Fatal("lifecycle direct snapshot")
+	}
+	directTripwire := func() {
+		if _, listErr := directSnapshot.Clientset().CoreV1().Secrets("default").List(context.Background(), metav1.ListOptions{Limit: 1}); listErr != nil {
+			t.Fatal("direct Secret tripwire unavailable")
+		}
+	}
+	directTripwire()
+	first := coordinator.AcquireSecretDemand(context.Background(), contextName)
+	if !first.Accepted || first.Lease == nil {
+		t.Fatalf("first demand=%#v", first)
+	}
+	active := waitKindCoordinatorSession(t, coordinator, first.Lease, contextName, 180*time.Second)
+	firstIdentity := active.Identity()
+	workload := kindCoordinatorWorkload(coordinator)
+	if workload == nil || disposer.sweeps.Load() != 1 {
+		t.Fatal("first demand omitted sweep/workload/credential")
+	}
+	credential := workload.credential
+	if credential == nil {
+		t.Fatal("first demand omitted creator credential")
+	}
+	directTripwire()
+
+	lost := first.Lease.Changes()
+	if err = active.socket.Close(); err != nil {
+		t.Fatal("force lifecycle transport drop")
+	}
+	select {
+	case <-lost:
+	case <-time.After(10 * time.Second):
+		t.Fatal("transport loss did not revoke availability")
+	}
+	resumed := waitKindCoordinatorSession(t, coordinator, first.Lease, contextName, 45*time.Second)
+	resumedIdentity := resumed.Identity()
+	assertKindSameWorkloadHigherGeneration(t, firstIdentity, resumedIdentity)
+
+	first.Lease.Close()
+	waitKindCoordinatorState(t, coordinator, contextName, CoordinatorDraining, 10*time.Second)
+	time.Sleep(time.Second)
+	returned := coordinator.AcquireSecretDemand(context.Background(), contextName)
+	if !returned.Accepted || returned.Lease == nil {
+		t.Fatal("within-grace demand rejected")
+	}
+	idleResumed := waitKindCoordinatorSession(t, coordinator, returned.Lease, contextName, 45*time.Second)
+	assertKindSameWorkloadHigherGeneration(t, resumedIdentity, idleResumed.Identity())
+	if disposer.sweeps.Load() != 1 || kindCoordinatorWorkload(coordinator) != workload {
+		t.Fatal("within-grace return created a new workload or sweep")
+	}
+
+	returned.Lease.Close()
+	waitKindCoordinatorState(t, coordinator, contextName, CoordinatorDirectOnly, 5*time.Minute)
+	if credential.withCreatorAuthorization(context.Background(), func(context.Context, creatorAuthorizationLease) error { return nil }) == nil {
+		t.Fatal("final lifecycle drain retained creator credential")
+	}
+	if _, err = helmClient.GetRelease(contextName, workload.ReleaseNamespace, workload.ReleaseName); err == nil {
+		t.Fatal("final lifecycle drain retained Helm release")
+	}
+	assertFailedKindObjectsGone(t, context.Background(), client, workload.ReleaseNamespace, workload.ReleaseName, workload.WorkloadSessionID)
+	for _, retained := range []string{sentinel, malformed} {
+		if _, err = helmClient.GetRelease(contextName, "default", retained); err != nil {
+			t.Fatalf("lifecycle cleanup removed sentinel %s", retained)
+		}
+	}
+	directTripwire()
+	select {
+	case process := <-pollFailure:
+		t.Fatalf("coordinator invoked kubectl port-forward: %s", process)
+	default:
+	}
+}
+
+func kindCoordinatorWorkload(coordinator *Coordinator) *ProvisionedWorkload {
+	coordinator.mu.Lock()
+	slot := coordinator.slots[coordinator.currentEpoch]
+	coordinator.mu.Unlock()
+	if slot == nil {
+		return nil
+	}
+	slot.mu.Lock()
+	defer slot.mu.Unlock()
+	return slot.workload
+}
+
+func waitKindCoordinatorSession(t *testing.T, coordinator *Coordinator, demand *SecretDemandLease, contextName string, timeout time.Duration) *ConnectedSession {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if lease, ok := demand.TrySession(); ok {
+			session := lease.Session()
+			lease.Close()
+			return session
+		}
+		if snapshot := coordinator.Snapshot(contextName); snapshot.State == CoordinatorUnavailable || snapshot.State == CoordinatorClosed {
+			t.Fatalf("coordinator session state=%s", snapshot.State)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("coordinator session timeout state=%s", coordinator.Snapshot(contextName).State)
+	return nil
+}
+
+func waitKindCoordinatorState(t *testing.T, coordinator *Coordinator, contextName string, state CoordinatorState, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if coordinator.Snapshot(contextName).State == state {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("coordinator state=%s want=%s", coordinator.Snapshot(contextName).State, state)
+}
+
+func assertKindSameWorkloadHigherGeneration(t *testing.T, before, after SessionIdentity) {
+	t.Helper()
+	if after.Pod != before.Pod || after.Job != before.Job || after.WorkloadSessionID != before.WorkloadSessionID || after.BuildVersion != before.BuildVersion || after.ImageDigest != before.ImageDigest || after.ChartDigest != before.ChartDigest || after.InstanceID != before.InstanceID || after.SessionID != before.SessionID || after.Generation <= before.Generation {
+		t.Fatal("lifecycle Resume changed workload identity or did not increase generation")
 	}
 }
 

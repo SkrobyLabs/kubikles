@@ -35,6 +35,7 @@ type App struct {
 	runtimeMode           RuntimeMode
 	agentRouter           AgentRouter
 	lifecycle             RuntimeLifecycle
+	acceleratorLifecycle  desktopAcceleratorCoordinator
 	shutdownOnce          sync.Once
 	ctx                   context.Context
 	k8sClient             *k8s.Client
@@ -70,8 +71,9 @@ type App struct {
 	// List request cancellation
 	listRequestManager *ListRequestManager
 	// Connection test cancellation
-	connTestMutex  sync.Mutex
-	connTestCancel context.CancelFunc
+	connTestMutex     sync.Mutex
+	connTestCancel    context.CancelFunc
+	contextMutationMu sync.Mutex
 	// Event emission (unified for desktop and server modes)
 	emitter events.Emitter
 	// Embedded browser session

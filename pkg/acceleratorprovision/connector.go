@@ -42,6 +42,7 @@ const (
 	WorkloadUnavailable    ConnectUnavailableReason = "workload_unavailable"
 	TunnelUnavailable      ConnectUnavailableReason = "tunnel_unavailable"
 	AcceleratorUnavailable ConnectUnavailableReason = "accelerator_unavailable"
+	ConnectVersionMismatch ConnectUnavailableReason = "version_mismatch"
 	ConnectCancelled       ConnectUnavailableReason = "cancelled"
 	WorkloadDisposing      ConnectUnavailableReason = "workload_disposing"
 )
@@ -76,6 +77,9 @@ func (i SessionIdentity) String() string { return "<accelerator session identity
 func (i SessionIdentity) Format(s fmt.State, _ rune) {
 	_, _ = io.WriteString(s, "<accelerator session identity>")
 }
+func (SessionIdentity) MarshalJSON() ([]byte, error) {
+	return json.Marshal("<accelerator session identity>")
+}
 
 type SessionEndReason string
 
@@ -84,6 +88,7 @@ const (
 	SessionPeerClosed     SessionEndReason = "peer_closed"
 	SessionTunnelClosed   SessionEndReason = "tunnel_closed"
 	SessionProtocolFailed SessionEndReason = "protocol_failed"
+	SessionIdleReleased   SessionEndReason = "idle_released"
 )
 
 type tunnel interface {
@@ -321,8 +326,8 @@ func (c *Connector) connectExactAttempt(ctx context.Context, lease connectorLeas
 		if fetchErr != nil {
 			return fetchErr
 		}
-		if !validInfo(info, c.buildVersion, exactWorkload.BuildVersion) {
-			return protocolAttemptError{}
+		if infoFailure := authenticatedInfoFailure(info, c.buildVersion, exactWorkload.BuildVersion); infoFailure != nil {
+			return infoFailure
 		}
 		if expectation.kind == connectionResume && info.InstanceID != expectation.instanceID {
 			return identityAttemptError{}
@@ -435,6 +440,13 @@ type protocolAttemptError struct{}
 
 func (protocolAttemptError) Error() string { return "accelerator protocol unavailable" }
 
+// buildVersionMismatchAttemptError deliberately carries no version labels.
+// The authenticated info payload is the only source for this classification,
+// and public results expose only the fixed lifecycle reason.
+type buildVersionMismatchAttemptError struct{}
+
+func (buildVersionMismatchAttemptError) Error() string { return "accelerator build version mismatch" }
+
 type identityAttemptError struct{}
 
 func (identityAttemptError) Error() string { return "accelerator identity unavailable" }
@@ -447,6 +459,10 @@ type httpStatusAttemptError struct {
 func (httpStatusAttemptError) Error() string { return "accelerator HTTP unavailable" }
 
 func failureFromError(phase attemptPhase, reason ConnectUnavailableReason, err error) *connectAttemptFailure {
+	var mismatch buildVersionMismatchAttemptError
+	if errors.As(err, &mismatch) {
+		reason = ConnectVersionMismatch
+	}
 	failure := &connectAttemptFailure{phase: phase, connectReason: reason, cause: err}
 	var statusErr httpStatusAttemptError
 	if errors.As(err, &statusErr) {
@@ -690,6 +706,17 @@ func validInfo(info server.AuthenticatedAcceleratorInfo, localVersion, handleVer
 		}
 	}
 	return true
+}
+
+func authenticatedInfoFailure(info server.AuthenticatedAcceleratorInfo, localVersion, handleVersion string) error {
+	if info.Runtime == "accelerator" && info.Build.BuildVersion != "" &&
+		(info.Build.BuildVersion != localVersion || info.Build.BuildVersion != handleVersion) {
+		return buildVersionMismatchAttemptError{}
+	}
+	if !validInfo(info, localVersion, handleVersion) {
+		return protocolAttemptError{}
+	}
+	return nil
 }
 
 type connectedIdentity struct {

@@ -44,13 +44,19 @@ func (a *App) SwitchContext(name string) error {
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
+	a.contextMutationMu.Lock()
+	defer a.contextMutationMu.Unlock()
+
+	oldContext := a.k8sClient.GetCurrentContext()
+	if a.acceleratorLifecycle != nil {
+		a.acceleratorLifecycle.FenceContextSwitch(oldContext)
+	}
 
 	// Cancel any pending connection test
 	a.CancelConnectionTest()
 
 	// Stop non-KeepAlive port forwards from the departing context
 	if a.portForwardManager != nil {
-		oldContext := a.k8sClient.GetCurrentContext()
 		debug.LogK8s("SwitchContext: Stopping port forwards for context", map[string]any{"context": oldContext})
 		a.portForwardManager.StopAllForContext(oldContext)
 	}
@@ -66,7 +72,11 @@ func (a *App) SwitchContext(name string) error {
 		a.watcherManager.StopAll()
 	}
 
-	return a.k8sClient.SwitchContext(name)
+	err := a.k8sClient.SwitchContext(name)
+	if a.acceleratorLifecycle != nil {
+		a.acceleratorLifecycle.ContextSwitched(name, err == nil)
+	}
+	return err
 }
 
 // TestConnection performs a quick connectivity check to the current cluster.
@@ -115,7 +125,18 @@ func (a *App) RenameContext(oldName, newName string) error {
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.RenameContext(oldName, newName)
+	a.contextMutationMu.Lock()
+	defer a.contextMutationMu.Unlock()
+	active := a.k8sClient.GetCurrentContext()
+	isActive := oldName == active
+	if isActive && a.acceleratorLifecycle != nil {
+		a.acceleratorLifecycle.FenceContextSwitch(active)
+	}
+	err := a.k8sClient.RenameContext(oldName, newName)
+	if isActive && a.acceleratorLifecycle != nil {
+		a.acceleratorLifecycle.ContextSwitched(newName, err == nil)
+	}
+	return err
 }
 
 func (a *App) GetFullContextDetail(name string) (*k8s.FullContextDetail, error) {
@@ -129,9 +150,18 @@ func (a *App) UpdateContextDetail(name string, req k8s.ContextUpdateRequest) err
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
+	a.contextMutationMu.Lock()
 
 	isActive := name == a.k8sClient.GetCurrentContext()
-	if err := a.k8sClient.UpdateContextDetail(name, req); err != nil {
+	if isActive && a.acceleratorLifecycle != nil {
+		a.acceleratorLifecycle.FenceContextSwitch(name)
+	}
+	err := a.k8sClient.UpdateContextDetail(name, req)
+	if isActive && a.acceleratorLifecycle != nil {
+		a.acceleratorLifecycle.ContextSwitched(name, err == nil)
+	}
+	a.contextMutationMu.Unlock()
+	if err != nil {
 		return err
 	}
 
@@ -150,7 +180,16 @@ func (a *App) UpdateContextDetail(name string, req k8s.ContextUpdateRequest) err
 
 func (a *App) SetExtraKubeconfigPaths(paths []string) {
 	if a.k8sClient != nil {
+		a.contextMutationMu.Lock()
+		defer a.contextMutationMu.Unlock()
+		active := a.k8sClient.GetCurrentContext()
+		if active != "" && a.acceleratorLifecycle != nil {
+			a.acceleratorLifecycle.FenceContextSwitch(active)
+		}
 		a.k8sClient.SetExtraKubeconfigPaths(paths)
+		if active != "" && a.acceleratorLifecycle != nil {
+			a.acceleratorLifecycle.ContextSwitched(active, true)
+		}
 		debug.LogConfig("Extra kubeconfig paths", map[string]interface{}{"paths": paths})
 	}
 }

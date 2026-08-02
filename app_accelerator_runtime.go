@@ -60,6 +60,7 @@ func newAppWithOptionsAndProfile(options AppOptions, profile appConstructionProf
 	initializeAcceleratorApp(app, profile)
 	if options.Mode != RuntimeModeAccelerator {
 		profile.initializeOrdinaryServices(app)
+		initializeDesktopAcceleratorLifecycle(app)
 	}
 	return app, nil
 }

@@ -84,7 +84,11 @@ func terminalResumeReason(failure *connectAttemptFailure) ResumeReason {
 	}
 	var identity identityAttemptError
 	var protocol protocolAttemptError
+	var mismatch buildVersionMismatchAttemptError
 	var workload workloadValidationError
+	if errors.As(failure.cause, &mismatch) {
+		return ResumeVersionMismatch
+	}
 	if errors.As(failure.cause, &identity) {
 		return ResumeIdentityMismatch
 	}

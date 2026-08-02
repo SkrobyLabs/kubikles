@@ -21,6 +21,7 @@ const (
 	ResumeAuthenticationFailed      ResumeReason = "authentication_failed"
 	ResumeIdentityMismatch          ResumeReason = "identity_mismatch"
 	ResumeProtocolFailed            ResumeReason = "protocol_failed"
+	ResumeVersionMismatch           ResumeReason = "version_mismatch"
 	ResumeTransportUnavailable      ResumeReason = "transport_unavailable"
 	ResumeCancelled                 ResumeReason = "cancelled"
 	ResumeGraceExpired              ResumeReason = "grace_expired"
@@ -77,6 +78,17 @@ func unavailableResume(reason ResumeReason) ResumeResult {
 }
 
 func (r *Reconnector) Resume(ctx context.Context, request ResumeRequest) (result ResumeResult) {
+	return r.resume(ctx, request, nil)
+}
+
+func (r *Reconnector) resumeIdle(ctx context.Context, request ResumeRequest, idle *coordinatorIdleToken) ResumeResult {
+	if idle == nil {
+		return unavailableResume(ResumeSessionIneligible)
+	}
+	return r.resume(ctx, request, idle)
+}
+
+func (r *Reconnector) resume(ctx context.Context, request ResumeRequest, idle *coordinatorIdleToken) (result ResumeResult) {
 	if r == nil || r.connector == nil || ctx == nil || r.connector.buildVersion == "" || r.connector.startTunnel == nil || (r.connector.validate == nil && r.connector.validateDetailed == nil) || request.Prior == nil || !validWorkloadHandle(request.Workload, r.connector.buildVersion) {
 		return unavailableResume(ResumeInvalid)
 	}
@@ -96,7 +108,7 @@ func (r *Reconnector) Resume(ctx context.Context, request ResumeRequest) (result
 			result = unavailableResume(ResumeWorkloadDisposing)
 		}
 	}()
-	record, resumeStop, reason := request.Prior.claimResume(request.Workload)
+	record, resumeStop, reason := request.Prior.claimResumeWithIdle(request.Workload, idle)
 	if reason != "" {
 		return unavailableResume(reason)
 	}

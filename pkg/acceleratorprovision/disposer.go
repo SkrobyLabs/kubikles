@@ -111,6 +111,34 @@ type disposalOperation struct {
 	observationSettled bool
 }
 
+type disposalCompletion struct {
+	operation *disposalOperation
+}
+
+func (c *disposalCompletion) Done() <-chan struct{} {
+	if c == nil || c.operation == nil {
+		return nil
+	}
+	return c.operation.done
+}
+
+func (c *disposalCompletion) wait() DisposalResult {
+	if c == nil || c.operation == nil {
+		return invalidDisposal(DisposalImmediate)
+	}
+	<-c.operation.done
+	return c.operation.result
+}
+
+type disposalStart struct {
+	completion *disposalCompletion
+	owner      bool
+	state      *workloadConnectorState
+	current    *ConnectedSession
+	receipt    *workloadReceipt
+	cancels    []context.CancelFunc
+}
+
 type DisposalService struct {
 	gates               *gateSet
 	observeDrain        func(context.Context, *workloadReceipt, <-chan struct{}, func(DrainObservationStatus) DrainObservationStatus) DrainObservationStatus
@@ -152,13 +180,38 @@ func (s *DisposalService) DisposeNow(ctx context.Context, workload *ProvisionedW
 	return s.dispose(ctx, workload, DisposalImmediate)
 }
 
+// startDisposeNow is the coordinator-only asynchronous entry point. The
+// workload disposal fence is established synchronously; only bounded cleanup
+// continues in the returned operation.
+func (s *DisposalService) startDisposeNow(ctx context.Context, workload *ProvisionedWorkload) *disposalCompletion {
+	start := s.beginDisposal(workload, DisposalImmediate)
+	if start.owner {
+		go s.executeDisposal(ctx, workload, start)
+	}
+	return start.completion
+}
+
 func invalidDisposal(requested DisposalOperation) DisposalResult {
 	return DisposalResult{Requested: requested, Effective: requested, Observation: DrainSkipped, Quiescence: QuiescenceTimedOut, Credential: CredentialDestroyTimedOut, Ownership: OwnershipUnproven, Uninstall: UninstallNotNeeded, Disappearance: DisappearanceNotChecked}
 }
 
 func (s *DisposalService) dispose(ctx context.Context, workload *ProvisionedWorkload, requested DisposalOperation) DisposalResult {
+	start := s.beginDisposal(workload, requested)
+	if start.owner {
+		s.executeDisposal(ctx, workload, start)
+	}
+	return start.completion.wait()
+}
+
+func completedInvalidDisposal(requested DisposalOperation) disposalStart {
+	op := &disposalOperation{done: make(chan struct{}), requested: requested, effective: requested, result: invalidDisposal(requested)}
+	close(op.done)
+	return disposalStart{completion: &disposalCompletion{operation: op}}
+}
+
+func (s *DisposalService) beginDisposal(workload *ProvisionedWorkload, requested DisposalOperation) disposalStart {
 	if s == nil || workload == nil || workload.connectorState == nil {
-		return invalidDisposal(requested)
+		return completedInvalidDisposal(requested)
 	}
 	state := workload.connectorState
 	state.mu.Lock()
@@ -173,14 +226,12 @@ func (s *DisposalService) dispose(ctx context.Context, workload *ProvisionedWork
 			existing.effective = DisposalImmediateEscalation
 			existing.forceOnce.Do(func() { close(existing.force) })
 		}
-		done := existing.done
 		state.mu.Unlock()
-		<-done
-		return existing.result
+		return disposalStart{completion: &disposalCompletion{operation: existing}}
 	}
 	if workload.credential == nil {
 		state.mu.Unlock()
-		return invalidDisposal(requested)
+		return completedInvalidDisposal(requested)
 	}
 	op := &disposalOperation{done: make(chan struct{}), force: make(chan struct{}), requested: requested, effective: requested}
 	state.disposal = op
@@ -194,8 +245,12 @@ func (s *DisposalService) dispose(ctx context.Context, workload *ProvisionedWork
 	receipt := state.receipt
 	state.signalChangedLocked()
 	state.mu.Unlock()
+	return disposalStart{completion: &disposalCompletion{operation: op}, owner: true, state: state, current: current, receipt: receipt, cancels: cancels}
+}
 
-	for _, cancel := range cancels {
+func (s *DisposalService) executeDisposal(ctx context.Context, workload *ProvisionedWorkload, start disposalStart) {
+	op, state, current, receipt := start.completion.operation, start.state, start.current, start.receipt
+	for _, cancel := range start.cancels {
 		cancel()
 	}
 	base := context.Background()
@@ -274,7 +329,6 @@ func (s *DisposalService) dispose(ctx context.Context, workload *ProvisionedWork
 	close(op.done)
 	state.signalChangedLocked()
 	state.mu.Unlock()
-	return result
 }
 
 func (s *DisposalService) withPhaseTimeout(parent context.Context, duration time.Duration) (context.Context, context.CancelFunc) {

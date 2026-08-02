@@ -570,3 +570,29 @@ func TestResumeSingleOwnerPerGeneration(t *testing.T) {
 		t.Fatalf("owner=%#v", result)
 	}
 }
+
+func TestResumeVersionMismatchIsTerminalAndRedacted(t *testing.T) {
+	clock := &fakeResumeClock{now: time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)}
+	session, workload := resumableSessionFixture(t, clock)
+	reconnector := NewReconnector("build-N")
+	workload.BuildVersion = "build-N"
+	workload.connectorState.receipt.buildVersion = "build-N"
+	var attempts atomic.Int32
+	reconnector.attempt = func(context.Context, connectorLease, connectionExpectation) (*ConnectedSession, *connectAttemptFailure) {
+		attempts.Add(1)
+		return nil, &connectAttemptFailure{phase: attemptInfo, connectReason: ConnectVersionMismatch, cause: buildVersionMismatchAttemptError{}}
+	}
+	result := reconnector.Resume(context.Background(), ResumeRequest{Prior: session, Workload: workload})
+	if result.Reason != ResumeVersionMismatch || result.Session != nil || attempts.Load() != 1 || len(clock.sleeps) != 0 {
+		t.Fatalf("result=%#v attempts=%d sleeps=%v", result, attempts.Load(), clock.sleeps)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, rendered := range []string{fmt.Sprint(result), string(encoded)} {
+		if strings.Contains(rendered, "build-N") {
+			t.Fatalf("version leaked: %q", rendered)
+		}
+	}
+}

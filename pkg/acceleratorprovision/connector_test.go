@@ -671,6 +671,10 @@ func fakeClientset(job *batchv1.Job, pod *corev1.Pod) *fake.Clientset {
 }
 
 func connectorProtocolServer(t *testing.T, expectedToken string) (*httptest.Server, *atomic.Int32) {
+	return connectorProtocolServerWithInfo(t, expectedToken, server.AuthenticatedAcceleratorInfo{Runtime: "accelerator", Build: agent.BuildIdentity{BuildVersion: "v1.2.3"}, InstanceID: "instance-a", Capabilities: agent.V1Capabilities(), CapabilityDiagnostics: []agent.CapabilityDiagnostic{}})
+}
+
+func connectorProtocolServerWithInfo(t *testing.T, expectedToken string, info server.AuthenticatedAcceleratorInfo) (*httptest.Server, *atomic.Int32) {
 	t.Helper()
 	var authenticatedCalls atomic.Int32
 	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
@@ -687,7 +691,7 @@ func connectorProtocolServer(t *testing.T, expectedToken string) (*httptest.Serv
 		case "/api/accelerator-info":
 			writer.Header().Set("Content-Type", "application/json")
 			writer.Header().Set("Cache-Control", "no-store")
-			_ = json.NewEncoder(writer).Encode(server.AuthenticatedAcceleratorInfo{Runtime: "accelerator", Build: agent.BuildIdentity{BuildVersion: "v1.2.3"}, InstanceID: "instance-a", Capabilities: agent.V1Capabilities(), CapabilityDiagnostics: []agent.CapabilityDiagnostic{}})
+			_ = json.NewEncoder(writer).Encode(info)
 		case "/api/call":
 			writer.Header().Set("Content-Type", "application/json")
 			writer.Header().Set("Cache-Control", "no-store")
@@ -710,6 +714,96 @@ func connectorProtocolServer(t *testing.T, expectedToken string) (*httptest.Serv
 		}
 	})
 	return httptest.NewServer(handler), &authenticatedCalls
+}
+
+func TestConnectReportsOnlyLiteralBuildVersionMismatch(t *testing.T) {
+	baseInfo := server.AuthenticatedAcceleratorInfo{Runtime: "accelerator", Build: agent.BuildIdentity{BuildVersion: "build-N"}, InstanceID: "instance-a", Capabilities: agent.V1Capabilities(), CapabilityDiagnostics: []agent.CapabilityDiagnostic{}}
+	for _, runtimeVersion := range []string{"build-N-1", "build-N+1"} {
+		t.Run(runtimeVersion, func(t *testing.T) {
+			info := baseInfo
+			info.Build.BuildVersion = runtimeVersion
+			protocol, _ := connectorProtocolServerWithInfo(t, knownCreatorToken, info)
+			defer protocol.Close()
+			order := []string{}
+			connector := connectorForEndpoint(t, protocol.URL, func(context.Context, *ProvisionedWorkload, ContextSnapshot) UnavailableReason { return "" }, &order)
+			connector.buildVersion = "build-N"
+			workload := connectorWorkload(t)
+			workload.BuildVersion = "build-N"
+			workload.connectorState.receipt.buildVersion = "build-N"
+			result := connector.Connect(context.Background(), workload)
+			if result.Reason != ConnectVersionMismatch || result.Session != nil {
+				t.Fatalf("reason=%q session=%v", result.Reason, result.Session)
+			}
+		})
+	}
+
+	protocol, _ := connectorProtocolServerWithInfo(t, knownCreatorToken, baseInfo)
+	defer protocol.Close()
+	order := []string{}
+	connector := connectorForEndpoint(t, protocol.URL, func(context.Context, *ProvisionedWorkload, ContextSnapshot) UnavailableReason { return "" }, &order)
+	connector.buildVersion = "build-N"
+	workload := connectorWorkload(t)
+	workload.BuildVersion = "build-N"
+	workload.connectorState.receipt.buildVersion = "build-N"
+	result := connector.Connect(context.Background(), workload)
+	if result.Reason != "" || result.Session == nil {
+		t.Fatalf("exact result=%#v", result)
+	}
+	_ = result.Session.Close(context.Background())
+}
+
+func TestAuthenticatedInfoMismatchClassificationIsNarrowAndRedacted(t *testing.T) {
+	base := server.AuthenticatedAcceleratorInfo{Runtime: "accelerator", Build: agent.BuildIdentity{BuildVersion: "build-N"}, InstanceID: "instance-a", Capabilities: agent.V1Capabilities(), CapabilityDiagnostics: []agent.CapabilityDiagnostic{}}
+	tests := []struct {
+		name     string
+		mutate   func(*server.AuthenticatedAcceleratorInfo)
+		mismatch bool
+	}{
+		{name: "adjacent", mutate: func(info *server.AuthenticatedAcceleratorInfo) { info.Build.BuildVersion = "build-N+1" }, mismatch: true},
+		{name: "wrong runtime", mutate: func(info *server.AuthenticatedAcceleratorInfo) { info.Runtime = "ordinary" }},
+		{name: "empty version", mutate: func(info *server.AuthenticatedAcceleratorInfo) { info.Build.BuildVersion = "" }},
+		{name: "capability", mutate: func(info *server.AuthenticatedAcceleratorInfo) { info.Capabilities = nil }},
+		{name: "instance", mutate: func(info *server.AuthenticatedAcceleratorInfo) { info.InstanceID = "" }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			info := base
+			test.mutate(&info)
+			err := authenticatedInfoFailure(info, "build-N", "build-N")
+			var mismatch buildVersionMismatchAttemptError
+			if got := errors.As(err, &mismatch); got != test.mismatch {
+				t.Fatalf("mismatch=%t error=%v", got, err)
+			}
+			for _, rendered := range []string{fmt.Sprint(err), fmt.Sprintf("%v", ConnectResult{Availability: Unavailable, Reason: ConnectVersionMismatch})} {
+				if strings.Contains(rendered, "build-N") || strings.Contains(rendered, "build-N+1") {
+					t.Fatalf("version leaked: %q", rendered)
+				}
+			}
+		})
+	}
+}
+
+func TestUnrelatedHandshakeFailuresDoNotReportVersionMismatch(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+	}{
+		{name: "malformed protocol", err: protocolAttemptError{}},
+		{name: "identity", err: identityAttemptError{}},
+		{name: "authentication", err: httpStatusAttemptError{status: http.StatusUnauthorized}},
+		{name: "policy", err: httpStatusAttemptError{status: http.StatusOK}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			failure := failureFromError(attemptInfo, AcceleratorUnavailable, test.err)
+			if failure.connectReason == ConnectVersionMismatch {
+				t.Fatalf("connect misclassified %s", test.name)
+			}
+			if terminalResumeReason(failure) == ResumeVersionMismatch {
+				t.Fatalf("resume misclassified %s", test.name)
+			}
+		})
+	}
 }
 
 func connectorForEndpoint(t *testing.T, rawURL string, validation connectorValidator, order *[]string) *Connector {

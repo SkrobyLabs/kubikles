@@ -188,7 +188,7 @@ KUBECONFIG="$kubeconfig" helm install "$sentinel" "$tmp/sentinel" --namespace de
 KUBECONFIG="$kubeconfig" helm install "$malformed" "$tmp/sentinel" --namespace default >"$tmp/malformed-install" 2>&1 || fail "malformed-install"
 
 go_test_timeout=5m
-if [[ "${ACCELERATOR_DISPOSAL_KIND:-0}" == "1" ]]; then
+if [[ "${ACCELERATOR_DISPOSAL_KIND:-0}" == "1" || "${ACCELERATOR_LIFECYCLE_KIND:-0}" == "1" ]]; then
   go_test_timeout=9m
 fi
 (cd "$root" && HOME="$test_home" KUBECONFIG="$kubeconfig" \

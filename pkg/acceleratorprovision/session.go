@@ -34,6 +34,7 @@ type ConnectedSession struct {
 	socket         sessionSocket
 	tunnel         tunnel
 	done           chan struct{}
+	terminalStart  chan struct{}
 	readerDone     chan struct{}
 	terminalOnce   sync.Once
 	mu             sync.RWMutex
@@ -46,6 +47,7 @@ type ConnectedSession struct {
 	candidateNonce string
 	candidatePong  <-chan struct{}
 	ownerState     *workloadConnectorState
+	idleToken      *coordinatorIdleToken
 }
 
 type disconnectRecord struct {
@@ -55,6 +57,19 @@ type disconnectRecord struct {
 	instanceID    string
 	sessionID     string
 	generation    int
+	idleToken     *coordinatorIdleToken
+}
+
+// coordinatorIdleToken is deliberately unexported and identity-based. It
+// authorizes only the coordinator-owned return from an idle release.
+type coordinatorIdleToken struct {
+	deadline time.Time
+}
+
+type coordinatorIdleRelease struct {
+	prior    *ConnectedSession
+	token    *coordinatorIdleToken
+	deadline time.Time
 }
 
 func newConnectedSession(receipt *workloadReceipt, info server.AuthenticatedAcceleratorInfo, connected connectedIdentity, socket sessionSocket, activeTunnel tunnel, clock resumeClock) *ConnectedSession {
@@ -75,7 +90,7 @@ func newConnectedSessionWithCandidateFence(receipt *workloadReceipt, info server
 		capabilities: append([]agent.Capability(nil), info.Capabilities...),
 		receipt:      receipt,
 		clock:        clock,
-		socket:       socket, tunnel: activeTunnel, done: make(chan struct{}), readerDone: make(chan struct{}), frames: make(chan []byte, 64),
+		socket:       socket, tunnel: activeTunnel, done: make(chan struct{}), terminalStart: make(chan struct{}), readerDone: make(chan struct{}), frames: make(chan []byte, 64),
 		candidateNonce: candidateNonce, candidatePong: candidatePong,
 	}
 	session.self = session
@@ -131,6 +146,25 @@ func (s *ConnectedSession) Done() <-chan struct{} {
 	return s.done
 }
 
+func (s *ConnectedSession) terminalStarted() <-chan struct{} {
+	if s == nil {
+		return nil
+	}
+	return s.terminalStart
+}
+
+func (s *ConnectedSession) transportReconnectDeadline() (time.Time, bool) {
+	if s == nil {
+		return time.Time{}, false
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.disconnect == nil || (s.disconnect.reason != SessionPeerClosed && s.disconnect.reason != SessionTunnelClosed) {
+		return time.Time{}, false
+	}
+	return s.disconnect.at.Add(agent.AcceleratorIdleReconnectGrace), true
+}
+
 func (s *ConnectedSession) EndReason() SessionEndReason {
 	if s == nil {
 		return ""
@@ -141,6 +175,10 @@ func (s *ConnectedSession) EndReason() SessionEndReason {
 }
 
 func (s *ConnectedSession) beginTermination(reason SessionEndReason, normal bool) {
+	s.beginTerminationWithIdle(reason, normal, nil)
+}
+
+func (s *ConnectedSession) beginTerminationWithIdle(reason SessionEndReason, normal bool, idle *coordinatorIdleToken) {
 	if s == nil {
 		return
 	}
@@ -148,10 +186,37 @@ func (s *ConnectedSession) beginTermination(reason SessionEndReason, normal bool
 		disconnectedAt := s.clock.Now()
 		s.mu.Lock()
 		s.reason = reason
-		s.disconnect = &disconnectRecord{at: disconnectedAt, reason: reason, workloadNonce: s.receipt, instanceID: s.identity.InstanceID, sessionID: s.identity.SessionID, generation: s.identity.Generation}
+		if idle != nil {
+			idle.deadline = disconnectedAt.Add(agent.AcceleratorIdleReconnectGrace)
+			s.idleToken = idle
+		}
+		s.disconnect = &disconnectRecord{at: disconnectedAt, reason: reason, workloadNonce: s.receipt, instanceID: s.identity.InstanceID, sessionID: s.identity.SessionID, generation: s.identity.Generation, idleToken: idle}
 		s.mu.Unlock()
+		close(s.terminalStart)
 		go s.cleanup(normal)
 	})
+}
+
+func (s *ConnectedSession) releaseForIdle(ctx context.Context) *coordinatorIdleRelease {
+	if s == nil || s.self != s {
+		return nil
+	}
+	token := &coordinatorIdleToken{}
+	s.beginTerminationWithIdle(SessionIdleReleased, true, token)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	select {
+	case <-s.done:
+	case <-ctx.Done():
+		return nil
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.disconnect == nil || s.disconnect.reason != SessionIdleReleased || s.disconnect.idleToken != token || s.idleToken != token || token.deadline.IsZero() {
+		return nil
+	}
+	return &coordinatorIdleRelease{prior: s, token: token, deadline: token.deadline}
 }
 
 func (s *ConnectedSession) cleanup(normal bool) {
@@ -218,6 +283,10 @@ func (s *ConnectedSession) Close(ctx context.Context) error {
 }
 
 func (s *ConnectedSession) claimResume(workload *ProvisionedWorkload) (disconnectRecord, <-chan struct{}, ResumeReason) {
+	return s.claimResumeWithIdle(workload, nil)
+}
+
+func (s *ConnectedSession) claimResumeWithIdle(workload *ProvisionedWorkload, idle *coordinatorIdleToken) (disconnectRecord, <-chan struct{}, ResumeReason) {
 	if s == nil || s.self != s || workload == nil || s.receipt == nil || !workload.matchesResumeHandle(s.receipt) {
 		return disconnectRecord{}, nil, ResumeInvalid
 	}
@@ -231,7 +300,12 @@ func (s *ConnectedSession) claimResume(workload *ProvisionedWorkload) (disconnec
 	if s.resumeClaimed {
 		return disconnectRecord{}, nil, ResumeSuperseded
 	}
-	if s.disconnect == nil || s.disconnect.workloadNonce != s.receipt || s.disconnect.instanceID != s.identity.InstanceID || s.disconnect.sessionID != s.identity.SessionID || s.disconnect.generation != s.identity.Generation || s.closeRequested || (s.disconnect.reason != SessionPeerClosed && s.disconnect.reason != SessionTunnelClosed) {
+	if s.disconnect == nil || s.disconnect.workloadNonce != s.receipt || s.disconnect.instanceID != s.identity.InstanceID || s.disconnect.sessionID != s.identity.SessionID || s.disconnect.generation != s.identity.Generation || s.closeRequested {
+		return disconnectRecord{}, nil, ResumeSessionIneligible
+	}
+	eligibleTransport := idle == nil && (s.disconnect.reason == SessionPeerClosed || s.disconnect.reason == SessionTunnelClosed)
+	eligibleIdle := idle != nil && s.disconnect.reason == SessionIdleReleased && s.disconnect.idleToken == idle && s.idleToken == idle
+	if !eligibleTransport && !eligibleIdle {
 		return disconnectRecord{}, nil, ResumeSessionIneligible
 	}
 	s.resumeClaimed = true
