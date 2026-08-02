@@ -1,0 +1,8 @@
+image:
+  repository: ""
+  digest: ""
+  version: ""
+accelerator:
+  workloadSessionId: ""
+auth:
+  creatorVerifier: ""

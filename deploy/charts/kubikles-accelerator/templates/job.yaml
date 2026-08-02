@@ -1,0 +1,76 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "kubikles-accelerator.fullname" . }}
+  labels:
+    {{- include "kubikles-accelerator.labels" . | nindent 4 }}
+    kubikles.io/workload-session-id: {{ .Values.accelerator.workloadSessionId | quote }}
+  annotations:
+    kubikles.io/build-version: {{ .Values.image.version | quote }}
+spec:
+  completions: 1
+  parallelism: 1
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "kubikles-accelerator.labels" . | nindent 8 }}
+        kubikles.io/workload-session-id: {{ .Values.accelerator.workloadSessionId | quote }}
+      annotations:
+        kubikles.io/build-version: {{ .Values.image.version | quote }}
+    spec:
+      serviceAccountName: {{ include "kubikles-accelerator.fullname" . }}
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: accelerator
+          image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KUBIKLES_ACCELERATOR_CREATOR_VERIFIER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kubikles-accelerator.fullname" . }}-verifier
+                  key: creatorVerifier
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          volumeMounts:
+            - name: serviceaccount
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              readOnly: true
+      volumes:
+        - name: serviceaccount
+          projected:
+            defaultMode: 292
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  expirationSeconds: 3600
+              - configMap:
+                  name: kube-root-ca.crt
+                  items:
+                    - key: ca.crt
+                      path: ca.crt
+              - downwardAPI:
+                  items:
+                    - path: namespace
+                      fieldRef:
+                        fieldPath: metadata.namespace

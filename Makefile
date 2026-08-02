@@ -1,9 +1,18 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image
+.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind
 
 .DEFAULT_GOAL := help
+
+test-accelerator-chart:
+	@command -v helm >/dev/null 2>&1 || (echo "Error: Helm 3 is required; install Helm 3 and rerun make test-accelerator-chart" >&2; exit 1)
+	@helm version --short 2>/dev/null | grep -Eq '^v3\.' || (echo "Error: Helm 3 is required and must be usable" >&2; exit 1)
+	@go test ./deploy/charts/kubikles-accelerator/tests
+
+test-accelerator-chart-kind:
+	@./scripts/test-accelerator-chart-kind-fixtures.sh
+	@./scripts/test-accelerator-chart-kind.sh
 
 test-accelerator-00-kind:
 	@./scripts/test-accelerator-00-kind_test.sh
@@ -53,6 +62,8 @@ help:
 	@echo "  test-frontend      Run frontend tests"
 	@echo "  test-watch         Run frontend tests in watch mode"
 	@echo "  test-accelerator-00-kind  Run the disposable Accelerator Kind characterization gate"
+	@echo "  test-accelerator-chart  Render and validate the disposable Accelerator Helm chart"
+	@echo "  test-accelerator-chart-kind  Run the disposable Accelerator Helm chart Kind lifecycle smoke"
 	@echo "  typecheck          Run TypeScript type checking (tsc --noEmit)"
 	@echo ""
 	@echo "Linting:"
