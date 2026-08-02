@@ -83,6 +83,29 @@ func (browserStateRedactor) Format(s fmt.State, _ rune) {
 type BrowserSessionRevoker interface {
 	RevokeBrowserSession(context.Context, agent.SessionID)
 }
+
+// BrowserSessionTimer is deliberately minimal so the hard-expiry boundary is
+// deterministic in tests without adding another lifecycle policy.
+type BrowserSessionTimer interface {
+	C() <-chan time.Time
+	Stop() bool
+}
+type BrowserSessionClock interface {
+	NewTimer(time.Duration) BrowserSessionTimer
+}
+type browserSessionRealClock struct{}
+type browserSessionRealTimer struct{ *time.Timer }
+
+func (t browserSessionRealTimer) C() <-chan time.Time { return t.Timer.C }
+func (browserSessionRealClock) NewTimer(d time.Duration) BrowserSessionTimer {
+	return browserSessionRealTimer{time.NewTimer(d)}
+}
+
+type browserSessionTimerRecord struct {
+	timer   BrowserSessionTimer
+	session *browserSessionState
+	cancel  chan struct{}
+}
 type NoopBrowserSessionRevoker struct{}
 
 func (NoopBrowserSessionRevoker) RevokeBrowserSession(context.Context, agent.SessionID) {}
@@ -104,6 +127,7 @@ type browserSessionStore struct {
 	mu      sync.Mutex
 	ticket  *browserTicketState
 	session *browserSessionState
+	timer   *browserSessionTimerRecord
 }
 
 type BrowserSessionManager struct {
@@ -111,6 +135,7 @@ type BrowserSessionManager struct {
 	now     func() time.Time
 	entropy io.Reader
 	revoker BrowserSessionRevoker
+	clock   BrowserSessionClock
 }
 
 func (m BrowserSessionManager) String() string { return "<redacted>" }
@@ -125,9 +150,12 @@ func NewBrowserSessionManager(revoker BrowserSessionRevoker) *BrowserSessionMana
 // NewBrowserSessionManagerWithDependencies constructs the fixed browser
 // session policy with injectable clock and entropy dependencies.
 func NewBrowserSessionManagerWithDependencies(now func() time.Time, entropy io.Reader, revoker BrowserSessionRevoker) *BrowserSessionManager {
-	return newBrowserSessionManager(now, entropy, revoker)
+	return newBrowserSessionManagerWithClock(now, entropy, revoker, browserSessionRealClock{})
 }
 func newBrowserSessionManager(now func() time.Time, entropy io.Reader, revoker BrowserSessionRevoker) *BrowserSessionManager {
+	return newBrowserSessionManagerWithClock(now, entropy, revoker, browserSessionRealClock{})
+}
+func newBrowserSessionManagerWithClock(now func() time.Time, entropy io.Reader, revoker BrowserSessionRevoker, clock BrowserSessionClock) *BrowserSessionManager {
 	if now == nil {
 		now = time.Now
 	}
@@ -137,7 +165,10 @@ func newBrowserSessionManager(now func() time.Time, entropy io.Reader, revoker B
 	if revoker == nil {
 		revoker = NoopBrowserSessionRevoker{}
 	}
-	return &BrowserSessionManager{state: &browserSessionStore{}, now: now, entropy: entropy, revoker: revoker}
+	if clock == nil {
+		clock = browserSessionRealClock{}
+	}
+	return &BrowserSessionManager{state: &browserSessionStore{}, now: now, entropy: entropy, revoker: revoker, clock: clock}
 }
 func browserRandom(entropy io.Reader) ([32]byte, error) {
 	var raw [32]byte
@@ -203,13 +234,43 @@ func (m *BrowserSessionManager) Exchange(ticket BrowserTicket) (BrowserBearer, t
 	}
 	m.state.ticket = nil
 	old := m.state.session
+	oldTimer := m.state.timer
 	ctx := agent.AuthenticatedCallContext{PrincipalID: agent.PrincipalID(principal), SessionID: agent.SessionID(sessionID)}
-	m.state.session = &browserSessionState{verifier: deriveBrowserVerifier(browserBearerDomain, raw), context: ctx, createdAt: now, lastActivity: now}
+	session := &browserSessionState{verifier: deriveBrowserVerifier(browserBearerDomain, raw), context: ctx, createdAt: now, lastActivity: now}
+	m.state.session = session
+	record := &browserSessionTimerRecord{session: session, cancel: make(chan struct{})}
+	record.timer = m.clock.NewTimer(BrowserSessionHardTTL)
+	m.state.timer = record
 	m.state.mu.Unlock()
+	if oldTimer != nil {
+		oldTimer.timer.Stop()
+		close(oldTimer.cancel)
+	}
 	if old != nil {
 		m.revoker.RevokeBrowserSession(context.Background(), old.context.SessionID)
 	}
+	go func() {
+		select {
+		case <-record.timer.C():
+			m.expire(record)
+		case <-record.cancel:
+		}
+	}()
 	return BrowserBearer{value: raw}, now.Add(BrowserSessionHardTTL), nil
+}
+func (m *BrowserSessionManager) expire(record *browserSessionTimerRecord) {
+	if m == nil || record == nil {
+		return
+	}
+	m.state.mu.Lock()
+	if m.state.timer != record || m.state.session != record.session {
+		m.state.mu.Unlock()
+		return
+	}
+	old := m.state.session
+	m.state.session, m.state.timer = nil, nil
+	m.state.mu.Unlock()
+	m.revoker.RevokeBrowserSession(context.Background(), old.context.SessionID)
 }
 func (m *BrowserSessionManager) Authenticate(bearer BrowserBearer) (agent.AuthenticatedCallContext, bool) {
 	wanted := deriveBrowserVerifier(browserBearerDomain, bearer.value)
@@ -219,6 +280,12 @@ func (m *BrowserSessionManager) Authenticate(bearer BrowserBearer) (agent.Authen
 	if m.state.session != nil && (!now.Before(m.state.session.lastActivity.Add(BrowserSessionIdleTTL)) || !now.Before(m.state.session.createdAt.Add(BrowserSessionHardTTL))) {
 		revoked = m.state.session
 		m.state.session = nil
+		timer := m.state.timer
+		m.state.timer = nil
+		if timer != nil {
+			timer.timer.Stop()
+			close(timer.cancel)
+		}
 	}
 	if revoked == nil && m.state.session != nil && subtle.ConstantTimeCompare(m.state.session.verifier.value[:], wanted.value[:]) == 1 {
 		c := m.state.session.context
@@ -245,6 +312,12 @@ func (m *BrowserSessionManager) withActiveBrowserSession(id agent.SessionID, act
 	if session != nil && (!now.Before(session.lastActivity.Add(BrowserSessionIdleTTL)) || !now.Before(session.createdAt.Add(BrowserSessionHardTTL))) {
 		revoked = session
 		m.state.session = nil
+		timer := m.state.timer
+		m.state.timer = nil
+		if timer != nil {
+			timer.timer.Stop()
+			close(timer.cancel)
+		}
 		session = nil
 	}
 	ok := session != nil && session.context.SessionID == id && activate != nil && activate()
@@ -261,6 +334,12 @@ func (m *BrowserSessionManager) Touch(id agent.SessionID) {
 	if m.state.session != nil && (!now.Before(m.state.session.lastActivity.Add(BrowserSessionIdleTTL)) || !now.Before(m.state.session.createdAt.Add(BrowserSessionHardTTL))) {
 		revoked = m.state.session
 		m.state.session = nil
+		timer := m.state.timer
+		m.state.timer = nil
+		if timer != nil {
+			timer.timer.Stop()
+			close(timer.cancel)
+		}
 	} else if m.state.session != nil && m.state.session.context.SessionID == id {
 		m.state.session.lastActivity = now
 	}
@@ -285,9 +364,15 @@ func (m *BrowserSessionManager) clear(ctx context.Context) {
 	}
 	m.state.mu.Lock()
 	old := m.state.session
+	timer := m.state.timer
 	m.state.session = nil
 	m.state.ticket = nil
+	m.state.timer = nil
 	m.state.mu.Unlock()
+	if timer != nil {
+		timer.timer.Stop()
+		close(timer.cancel)
+	}
 	if old != nil {
 		m.revoker.RevokeBrowserSession(ctx, old.context.SessionID)
 	}

@@ -67,6 +67,34 @@ type testClock struct {
 	now time.Time
 }
 
+type browserHardExpiryTimer struct {
+	ch      chan time.Time
+	stopped atomic.Bool
+}
+
+func (t *browserHardExpiryTimer) C() <-chan time.Time { return t.ch }
+func (t *browserHardExpiryTimer) Stop() bool          { return !t.stopped.Swap(true) }
+
+type browserHardExpiryClock struct {
+	mu        sync.Mutex
+	timers    []*browserHardExpiryTimer
+	durations []time.Duration
+}
+
+func (c *browserHardExpiryClock) NewTimer(d time.Duration) BrowserSessionTimer {
+	t := &browserHardExpiryTimer{ch: make(chan time.Time, 1)}
+	c.mu.Lock()
+	c.timers = append(c.timers, t)
+	c.durations = append(c.durations, d)
+	c.mu.Unlock()
+	return t
+}
+func (c *browserHardExpiryClock) timer(n int) *browserHardExpiryTimer {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.timers[n]
+}
+
 func (c *testClock) Now() time.Time {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -615,6 +643,102 @@ func TestBrowserSessionExpiryBoundaries(t *testing.T) {
 			t.Fatal("valid at hard boundary")
 		}
 	})
+}
+
+func TestBrowserSessionHardExpiryTimerRevokesOnlyCurrentSession(t *testing.T) {
+	clock := &testClock{now: time.Unix(1_700_000_000, 0)}
+	timers := &browserHardExpiryClock{}
+	revoked := make(chan agent.SessionID, 2)
+	manager := newBrowserSessionManagerWithClock(clock.Now, bytes.NewReader(bytes.Repeat([]byte{27}, 192)), browserRevokerFunc(func(_ context.Context, id agent.SessionID) { revoked <- id }), timers)
+	_, firstBearer, first := mintAndExchange(t, manager)
+	_, secondBearer, second := mintAndExchange(t, manager)
+	if len(timers.durations) != 2 || timers.durations[0] != BrowserSessionHardTTL || timers.durations[1] != BrowserSessionHardTTL {
+		t.Fatalf("hard-expiry timer durations = %v, want exact %v", timers.durations, BrowserSessionHardTTL)
+	}
+	if !timers.timer(0).stopped.Load() {
+		t.Fatal("replacement did not cancel first hard-expiry timer")
+	}
+	timers.timer(0).ch <- clock.Now()
+	time.Sleep(time.Millisecond)
+	if _, ok := manager.Authenticate(secondBearer); !ok {
+		t.Fatal("stale timer changed current session")
+	}
+	select {
+	case id := <-revoked:
+		if id != first.SessionID {
+			t.Fatalf("replacement revoke=%q", id)
+		}
+	default:
+		t.Fatal("replacement did not revoke prior session")
+	}
+	timers.timer(1).ch <- clock.Now()
+	deadline := time.After(time.Second)
+	for {
+		if _, ok := manager.Authenticate(secondBearer); !ok {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatal("hard-expiry timer did not revoke current session")
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+	select {
+	case id := <-revoked:
+		if id != second.SessionID {
+			t.Fatalf("hard-expiry revoke=%q", id)
+		}
+	default:
+		t.Fatal("hard-expiry did not revoke")
+	}
+	if _, ok := manager.Authenticate(firstBearer); ok {
+		t.Fatal("replaced bearer became valid")
+	}
+}
+
+func TestBrowserHardExpiryRevokesCurrentWebSocketAndStartsExistingGrace(t *testing.T) {
+	clock := &testClock{now: time.Unix(1_700_000_000, 0)}
+	hardClock := &browserHardExpiryClock{}
+	idleClock := &idleTestClock{}
+	lifecycle := newIdleTestLifecycle()
+	idle := newAcceleratorIdleCoordinator(idleClock, lifecycle, context.Background(), nil)
+	idle.MarkReady()
+	registry := newAcceleratorSessionRegistry("instance", idle, acceleratorTestConfig())
+	manager := newBrowserSessionManagerWithClock(clock.Now, bytes.NewReader(bytes.Repeat([]byte{29}, 96)), registry, hardClock)
+	_, _, call := mintAndExchange(t, manager)
+	socket, ok := registry.register(call, newFakeAcceleratorConn())
+	if !ok {
+		t.Fatal("browser socket registration rejected")
+	}
+	defer func() { registry.Close(context.Background()); idle.Shutdown() }()
+	waitAccelerator(t, "browser connection", func() bool {
+		lease, found := registry.LookupSessionLease(call.SessionID)
+		return found && lease.Connected
+	})
+	if len(hardClock.durations) != 1 || hardClock.durations[0] != BrowserSessionHardTTL {
+		t.Fatalf("hard timer = %v, want exact %v", hardClock.durations, BrowserSessionHardTTL)
+	}
+	hardClock.timer(0).ch <- clock.Now().Add(BrowserSessionHardTTL)
+	waitAccelerator(t, "hard expiry WebSocket revocation", func() bool {
+		_, found := registry.LookupSessionLease(call.SessionID)
+		return !found
+	})
+	select {
+	case <-socket.pumpsDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("revoked browser socket did not close")
+	}
+	idle.mu.Lock()
+	hasGrace := idle.timer != nil
+	idle.mu.Unlock()
+	if !hasGrace {
+		t.Fatal("revocation did not begin existing idle grace")
+	}
+	_, durations := idleClock.snapshot()
+	if len(durations) < 2 || durations[len(durations)-1] != agent.AcceleratorIdleReconnectGrace || agent.AcceleratorIdleReconnectGrace != 2*time.Minute {
+		t.Fatalf("idle grace durations = %v", durations)
+	}
 }
 
 func TestBrowserActivationSamplesClockAfterStateLock(t *testing.T) {

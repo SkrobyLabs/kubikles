@@ -57,6 +57,7 @@ type serverModeDependencies struct {
 	browserSessionEntropy         io.Reader
 	newAcceleratorSessions        func(string, server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry
 	newBrowserSessions            func(func() time.Time, io.Reader, server.BrowserSessionRevoker) *server.BrowserSessionManager
+	newBrowserEntryGate           func(embed.FS, string) server.BrowserEntryAvailability
 	capabilityResolverFactory     func(*k8s.Client) agent.CapabilityResolverFactory
 	newServer                     func(server.MethodCaller, embed.FS, server.Options) (serverModeServer, error)
 	newAcceleratorIdleCoordinator func(agent.DisposableIdleLifecycle, context.Context, func()) acceleratorIdleCoordinator
@@ -96,11 +97,14 @@ func productionServerModeDependencies() serverModeDependencies {
 			}
 			return creator, instanceID, nil
 		},
-		acceleratorObserver:       server.NoopAcceleratorSessionObserver{},
-		browserSessionNow:         time.Now,
-		browserSessionEntropy:     rand.Reader,
-		newAcceleratorSessions:    server.NewAcceleratorSessionRegistry,
-		newBrowserSessions:        server.NewBrowserSessionManagerWithDependencies,
+		acceleratorObserver:    server.NoopAcceleratorSessionObserver{},
+		browserSessionNow:      time.Now,
+		browserSessionEntropy:  rand.Reader,
+		newAcceleratorSessions: server.NewAcceleratorSessionRegistry,
+		newBrowserSessions:     server.NewBrowserSessionManagerWithDependencies,
+		newBrowserEntryGate: func(assets embed.FS, version string) server.BrowserEntryAvailability {
+			return server.NewBrowserEntryGate(assets, version)
+		},
 		capabilityResolverFactory: k8s.NewSecretCapabilityResolverFactory,
 		newServer: func(caller server.MethodCaller, assets embed.FS, options server.Options) (serverModeServer, error) {
 			return server.NewWithOptions(caller, assets, options)
@@ -188,7 +192,7 @@ func runServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 		}
 		chain := &acceleratorSessionObserverChain{secret: secretManager, idle: idle}
 		idleDependencies.acceleratorObserver = chain
-		protection, err := newAcceleratorHTTPProtectionWithDependencies(runCtx, app, identity.creator, identity.instanceID, idleDependencies)
+		protection, err := newAcceleratorHTTPProtectionWithDependencies(runCtx, assets, app, identity.creator, identity.instanceID, idleDependencies)
 		if err != nil {
 			return err
 		}
@@ -247,6 +251,7 @@ type acceleratorHTTPProtection struct {
 	BrowserSessions        *server.BrowserSessionManager
 	AcceleratorSessions    *server.AcceleratorSessionRegistry
 	WebSocketAuthenticator *server.AcceleratorWebSocketAuthenticator
+	BrowserEntry           server.BrowserEntryAvailability
 }
 
 // acceleratorSessionObserverChain keeps Secret cleanup ahead of idle accounting.
@@ -281,11 +286,11 @@ func (c *acceleratorSessionObserverChain) SessionRevoked(s server.AcceleratorSes
 	}
 }
 
-func newAcceleratorHTTPProtection(ctx context.Context, app *App, creator *server.CreatorAuthenticator, instanceID string) (acceleratorHTTPProtection, error) {
-	return newAcceleratorHTTPProtectionWithDependencies(ctx, app, creator, instanceID, productionServerModeDependencies())
+func newAcceleratorHTTPProtection(ctx context.Context, assets embed.FS, app *App, creator *server.CreatorAuthenticator, instanceID string) (acceleratorHTTPProtection, error) {
+	return newAcceleratorHTTPProtectionWithDependencies(ctx, assets, app, creator, instanceID, productionServerModeDependencies())
 }
 
-func newAcceleratorHTTPProtectionWithDependencies(ctx context.Context, app *App, creator *server.CreatorAuthenticator, instanceID string, dependencies serverModeDependencies) (acceleratorHTTPProtection, error) {
+func newAcceleratorHTTPProtectionWithDependencies(ctx context.Context, assets embed.FS, app *App, creator *server.CreatorAuthenticator, instanceID string, dependencies serverModeDependencies) (acceleratorHTTPProtection, error) {
 	if creator == nil || instanceID == "" {
 		return acceleratorHTTPProtection{}, server.ErrInvalidCreatorVerifier
 	}
@@ -325,7 +330,14 @@ func newAcceleratorHTTPProtectionWithDependencies(ctx context.Context, app *App,
 	}
 	registry := newAcceleratorSessions(instanceID, observer)
 	sessions := newBrowserSessions(now, entropy, registry)
-	return acceleratorHTTPProtection{Guard: server.CreatorOrBrowserGuard(creator, sessions), Info: server.NewAuthenticatedAcceleratorInfo(build, instanceID, resolution), Authorizer: server.NewAcceleratorMethodAuthorizer(resolution), BrowserSessions: sessions, AcceleratorSessions: registry, WebSocketAuthenticator: &server.AcceleratorWebSocketAuthenticator{Creator: creator, BrowserSessions: sessions, Registry: registry}}, nil
+	newGate := dependencies.newBrowserEntryGate
+	if newGate == nil {
+		newGate = func(assets embed.FS, version string) server.BrowserEntryAvailability {
+			return server.NewBrowserEntryGate(assets, version)
+		}
+	}
+	gate := newGate(assets, BuildVersion)
+	return acceleratorHTTPProtection{Guard: server.CreatorOrBrowserGuard(creator, sessions), Info: server.NewAuthenticatedAcceleratorInfo(build, instanceID, resolution), Authorizer: server.NewAcceleratorMethodAuthorizer(resolution), BrowserSessions: sessions, AcceleratorSessions: registry, WebSocketAuthenticator: &server.AcceleratorWebSocketAuthenticator{Creator: creator, BrowserSessions: sessions, Registry: registry}, BrowserEntry: gate}, nil
 }
 
 func installAcceleratorHTTPProtection(options *server.Options, protection acceleratorHTTPProtection) {
@@ -335,6 +347,7 @@ func installAcceleratorHTTPProtection(options *server.Options, protection accele
 	options.BrowserSessions = protection.BrowserSessions
 	options.AcceleratorSessions = protection.AcceleratorSessions
 	options.AcceleratorWebSocketAuthenticator = protection.WebSocketAuthenticator
+	options.BrowserEntryAvailability = protection.BrowserEntry
 }
 
 func serverOptionsForRuntime(mode RuntimeMode, port int, readiness server.ReadinessProvider) (server.Options, error) {

@@ -83,6 +83,7 @@ type Options struct {
 	BrowserSessions                   *BrowserSessionManager
 	AcceleratorSessions               *AcceleratorSessionRegistry
 	AcceleratorWebSocketAuthenticator *AcceleratorWebSocketAuthenticator
+	BrowserEntryAvailability          BrowserEntryAvailability
 }
 
 // CompatibilityOptions preserves the ordinary server wildcard bind and HTTP surface.
@@ -120,7 +121,7 @@ func validateOptions(options Options) error {
 		if err := validateListenAddress(options.ListenAddress, false); err != nil {
 			return err
 		}
-		if options.BrowserSessions != nil || options.AcceleratorSessions != nil || options.AcceleratorWebSocketAuthenticator != nil {
+		if options.BrowserSessions != nil || options.AcceleratorSessions != nil || options.AcceleratorWebSocketAuthenticator != nil || options.BrowserEntryAvailability != nil {
 			return errors.New("compatibility mode cannot install Accelerator WebSocket state")
 		}
 	case BoundaryModeAccelerator:

@@ -42,6 +42,10 @@ type capturedServerModeServer struct {
 	waitForRunContext bool
 }
 
+type alwaysAvailableBrowserEntry struct{}
+
+func (alwaysAvailableBrowserEntry) BrowserEntryEnabled() bool { return true }
+
 type recordingCompositionObserver struct {
 	mu     sync.Mutex
 	events []string
@@ -487,7 +491,7 @@ func TestAcceleratorCreatorProtectionStartup(t *testing.T) {
 	before := time.Now()
 	protectionDependencies := productionServerModeDependencies()
 	protectionDependencies.capabilityResolverFactory = newResolverFactory
-	protection, err := newAcceleratorHTTPProtectionWithDependencies(callerCtx, &App{}, creator, "accel-public", protectionDependencies)
+	protection, err := newAcceleratorHTTPProtectionWithDependencies(callerCtx, embed.FS{}, &App{}, creator, "accel-public", protectionDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -528,7 +532,7 @@ func TestAcceleratorCreatorProtectionStartup(t *testing.T) {
 	deniedDependencies.capabilityResolverFactory = func(*k8s.Client) agent.CapabilityResolverFactory {
 		return func() agent.CapabilityResolver { return deniedResolver }
 	}
-	denied, err := newAcceleratorHTTPProtectionWithDependencies(context.Background(), &App{}, creator, "accel-denied", deniedDependencies)
+	denied, err := newAcceleratorHTTPProtectionWithDependencies(context.Background(), embed.FS{}, &App{}, creator, "accel-denied", deniedDependencies)
 	if err != nil {
 		t.Fatalf("denied capability value failed startup: %v", err)
 	}
@@ -835,7 +839,7 @@ func TestAcceleratorRejectsServerWithoutIdleLifecycle(t *testing.T) {
 	}
 }
 
-func TestAcceleratorBrowserSessionComposition(t *testing.T) {
+func TestBrowserEntryOneTimeEndToEnd(t *testing.T) {
 	client, err := k8s.NewClientForRESTConfig(&rest.Config{Host: "http://127.0.0.1"})
 	if err != nil {
 		t.Fatal(err)
@@ -863,6 +867,7 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 	}
 	dependencies.browserSessionNow = compositionClock.Now
 	dependencies.browserSessionEntropy = compositionEntropy
+	dependencies.newBrowserEntryGate = func(embed.FS, string) server.BrowserEntryAvailability { return alwaysAvailableBrowserEntry{} }
 	var registryFactoryCalls int
 	var composedRegistry *server.AcceleratorSessionRegistry
 	dependencies.newAcceleratorSessions = func(instanceID string, observer server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry {
@@ -1052,7 +1057,13 @@ func TestAcceleratorBrowserSessionComposition(t *testing.T) {
 
 // TestAcceleratorWebSocketComposition pins the Accelerator-only transport seam.
 func TestAcceleratorWebSocketComposition(t *testing.T) {
-	TestAcceleratorBrowserSessionComposition(t)
+	TestBrowserEntryOneTimeEndToEnd(t)
+}
+
+// TestAcceleratorBrowserEntryComposition keeps the exact Accelerator-only
+// composition evidence adjacent to the real ticket/exchange/WebSocket flow.
+func TestAcceleratorBrowserEntryComposition(t *testing.T) {
+	TestBrowserEntryOneTimeEndToEnd(t)
 }
 
 func TestOrdinaryServerIgnoresCreatorVerifier(t *testing.T) {
@@ -1148,7 +1159,7 @@ func TestAcceleratorInfoBuildIdentityIsReportingOnly(t *testing.T) {
 	dependencies.capabilityResolverFactory = func(*k8s.Client) agent.CapabilityResolverFactory {
 		return func() agent.CapabilityResolver { return resolver }
 	}
-	protection, err := newAcceleratorHTTPProtectionWithDependencies(context.Background(), &App{}, creator, "accel-reporting", dependencies)
+	protection, err := newAcceleratorHTTPProtectionWithDependencies(context.Background(), embed.FS{}, &App{}, creator, "accel-reporting", dependencies)
 	if err != nil {
 		t.Fatal(err)
 	}

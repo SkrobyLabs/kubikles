@@ -48,6 +48,10 @@ func (s *Server) handleMintBrowserTicket(w http.ResponseWriter, r *http.Request)
 		s.writeError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
+	if s.options.BrowserEntryAvailability == nil || !s.options.BrowserEntryAvailability.BrowserEntryEnabled() {
+		writeAcceleratorError(w, http.StatusServiceUnavailable, "unavailable")
+		return
+	}
 	ticket, expiry, err := s.options.BrowserSessions.Mint()
 	if err != nil {
 		writeAcceleratorError(w, http.StatusInternalServerError, "internal error")

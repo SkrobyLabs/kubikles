@@ -10,6 +10,8 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"reflect"
 	"strings"
@@ -104,6 +106,152 @@ func assertAcceleratorEmbeddedComposition(t *testing.T, injected embed.FS) {
 	})
 	if err != nil || !foundOrdinaryGzip {
 		t.Fatalf("ordinary embedded gzip evidence = %v, found=%t", err, foundOrdinaryGzip)
+	}
+}
+
+func TestProductionAcceleratorBrowserEntryComposition(t *testing.T) {
+	creator, err := server.NewCreatorAuthenticator(testCreatorVerifier(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	protection, err := newAcceleratorHTTPProtectionWithDependencies(context.Background(), assets, &App{}, creator, "production-browser-entry", productionServerModeDependencies())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if protection.BrowserEntry == nil || !protection.BrowserEntry.BrowserEntryEnabled() {
+		t.Fatalf("production embedded Browser artifact is disabled for BuildVersion %q", BuildVersion)
+	}
+	options, err := serverOptionsForRuntime(RuntimeModeAccelerator, 0, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	installAcceleratorHTTPProtection(&options, protection)
+	newHandler := func(t *testing.T, configured server.Options) http.Handler {
+		t.Helper()
+		srv, err := server.NewWithOptions(nil, assets, configured)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return srv.Handler()
+	}
+	handler := newHandler(t, options)
+	request := func(handler http.Handler, method, target string, mutate func(*http.Request)) *httptest.ResponseRecorder {
+		t.Helper()
+		r := httptest.NewRequest(method, target, nil)
+		r.Host = "localhost"
+		if mutate != nil {
+			mutate(r)
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		return w
+	}
+	assertBoundary := func(t *testing.T, response *httptest.ResponseRecorder) {
+		t.Helper()
+		for name, want := range map[string]string{
+			"Cache-Control":                "no-store, no-cache",
+			"Pragma":                       "no-cache",
+			"Referrer-Policy":              "no-referrer",
+			"X-Content-Type-Options":       "nosniff",
+			"X-Frame-Options":              "DENY",
+			"Cross-Origin-Opener-Policy":   "same-origin",
+			"Cross-Origin-Resource-Policy": "same-origin",
+			"Permissions-Policy":           "accelerometer=(), camera=(), geolocation=(), microphone=(), payment=(), usb=()",
+			"Content-Security-Policy":      "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'none'; worker-src 'none'",
+		} {
+			if got := response.Header().Get(name); got != want {
+				t.Fatalf("%s = %q, want %q", name, got, want)
+			}
+		}
+		for _, name := range []string{"Access-Control-Allow-Origin", "Location", "Set-Cookie", "ETag", "Last-Modified"} {
+			if got := response.Header().Get(name); got != "" {
+				t.Fatalf("unexpected %s = %q", name, got)
+			}
+		}
+	}
+	for _, tc := range []struct {
+		target, mime string
+	}{
+		{"/accelerator/browser/", "text/html; charset=utf-8"},
+		{"/accelerator/browser/bootstrap.js", "application/javascript; charset=utf-8"},
+		{"/accelerator/browser/assets/browser.js", "application/javascript; charset=utf-8"},
+		{"/accelerator/browser/assets/browser.css", "text/css; charset=utf-8"},
+	} {
+		t.Run(tc.target, func(t *testing.T) {
+			response := request(handler, http.MethodGet, tc.target, nil)
+			if response.Code != http.StatusOK || response.Header().Get("Content-Type") != tc.mime || response.Body.Len() == 0 {
+				t.Fatalf("production asset = %d MIME %q bytes %d", response.Code, response.Header().Get("Content-Type"), response.Body.Len())
+			}
+			assertBoundary(t, response)
+		})
+	}
+	gzipResponse := request(handler, http.MethodGet, "/accelerator/browser/assets/browser.js", func(r *http.Request) { r.Header.Set("Accept-Encoding", "gzip") })
+	if gzipResponse.Code != http.StatusOK || gzipResponse.Header().Get("Content-Encoding") != "gzip" || gzipResponse.Header().Get("Vary") != "Accept-Encoding" {
+		t.Fatalf("production gzip = %d %#v", gzipResponse.Code, gzipResponse.Header())
+	}
+	for _, tc := range []struct {
+		method, target string
+		want           int
+	}{
+		{http.MethodHead, "/accelerator/browser/assets/browser.js", http.StatusOK},
+		{http.MethodPost, "/accelerator/browser/", http.StatusMethodNotAllowed},
+		{http.MethodPost, "/accelerator/browser/assets/browser.js", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/accelerator/browser", http.StatusNotFound},
+		{http.MethodGet, "/accelerator/browser/?query=forbidden", http.StatusNotFound},
+		{http.MethodGet, "/accelerator/browser/assets/%2e%2e/browser.js", http.StatusNotFound},
+		{http.MethodGet, "/accelerator/browser/assets/browser.js%2fextra", http.StatusNotFound},
+		{http.MethodGet, "/accelerator/browser/assets/missing.js", http.StatusNotFound},
+		{http.MethodGet, "/", http.StatusNotFound},
+		{http.MethodGet, "/index.html", http.StatusNotFound},
+		{http.MethodGet, "/assets/index.js", http.StatusNotFound},
+	} {
+		response := request(handler, tc.method, tc.target, nil)
+		if response.Code != tc.want {
+			t.Fatalf("%s %s = %d, want %d", tc.method, tc.target, response.Code, tc.want)
+		}
+		if strings.HasPrefix(tc.target, "/accelerator/browser") {
+			assertBoundary(t, response)
+		}
+		if tc.method == http.MethodHead && response.Body.Len() != 0 {
+			t.Fatalf("HEAD body = %d bytes", response.Body.Len())
+		}
+	}
+	for _, tc := range []struct {
+		name string
+		want int
+		set  func(*http.Request)
+	}{
+		{"foreign Host", http.StatusBadRequest, func(r *http.Request) { r.Host = "example.com" }},
+		{"foreign Origin", http.StatusForbidden, func(r *http.Request) { r.Header.Set("Origin", "http://example.com") }},
+	} {
+		response := request(handler, http.MethodGet, "/accelerator/browser/", tc.set)
+		if response.Code != tc.want {
+			t.Fatalf("%s = %d, want %d", tc.name, response.Code, tc.want)
+		}
+		assertBoundary(t, response)
+	}
+	mint := request(handler, http.MethodPost, "/api/accelerator-browser-ticket", func(r *http.Request) {
+		r.Header.Set("Authorization", "Bearer AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+	})
+	if mint.Code != http.StatusCreated {
+		t.Fatalf("enabled production mint = %d %q", mint.Code, mint.Body.String())
+	}
+
+	disabledOptions := options
+	disabledOptions.BrowserEntryAvailability = server.NewBrowserEntryGate(assets, BuildVersion+"-mismatch")
+	disabled := newHandler(t, disabledOptions)
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		response := request(disabled, method, "/accelerator/browser/", nil)
+		if response.Code != http.StatusNotFound || response.Header().Get("Allow") != "" {
+			t.Fatalf("disabled %s page = %d Allow %q", method, response.Code, response.Header().Get("Allow"))
+		}
+		assertBoundary(t, response)
+	}
+	disabledMint := request(disabled, http.MethodPost, "/api/accelerator-browser-ticket", func(r *http.Request) {
+		r.Header.Set("Authorization", "Bearer AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+	})
+	if disabledMint.Code != http.StatusServiceUnavailable || disabledMint.Body.String() != "{\"error\":\"unavailable\"}\n" {
+		t.Fatalf("disabled production mint = %d %q", disabledMint.Code, disabledMint.Body.String())
 	}
 }
 

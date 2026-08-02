@@ -272,6 +272,13 @@ func TestAcceleratorIdleCoordinatorGenerationFence(t *testing.T) {
 	}
 }
 
+// TestBrowserEntryUsesAcceleratorSessionLifecycle documents that Browser
+// connectivity uses the existing generation-fenced observer and sole grace
+// coordinator; it introduces no entry-specific count or timer.
+func TestBrowserEntryUsesAcceleratorSessionLifecycle(t *testing.T) {
+	TestAcceleratorIdleCoordinatorGenerationFence(t)
+}
+
 func TestAcceleratorIdleCoordinatorExactGraceAndTimerEpoch(t *testing.T) {
 	clock := &idleTestClock{}
 	life := newIdleTestLifecycle()

@@ -26,6 +26,9 @@ type browserHTTPFixture struct {
 	clock        *testClock
 	creatorToken string
 }
+type alwaysEnabledBrowserEntry struct{}
+
+func (alwaysEnabledBrowserEntry) BrowserEntryEnabled() bool { return true }
 
 func newBrowserHTTPFixture(t *testing.T, revoker BrowserSessionRevoker) *browserHTTPFixture {
 	t.Helper()
@@ -47,6 +50,7 @@ func newBrowserHTTPFixture(t *testing.T, revoker BrowserSessionRevoker) *browser
 	}
 	options := AcceleratorOptions(0, nil, CreatorOrBrowserGuard(creator, manager))
 	options.BrowserSessions = manager
+	options.BrowserEntryAvailability = alwaysEnabledBrowserEntry{}
 	options.MethodAuthorizer = MethodAuthorizerFunc(func(_ agent.AuthenticatedCallContext, _ string) bool { return true })
 	server, err := NewWithOptions(nil, embed.FS{}, options)
 	if err != nil {
@@ -387,7 +391,7 @@ func TestRevokeBrowserSessionCreatorOnlyAndIdempotent(t *testing.T) {
 	}
 }
 
-func TestBrowserCredentialRedactionCorpus(t *testing.T) {
+func TestBrowserEntryCredentialRedaction(t *testing.T) {
 	// ASCII raw values make both the raw bytes and their base64url encodings
 	// distinctive, printable leak needles.
 	ticketRaw := []byte("TICKET-RAW-0123456789-ABCDEFGHIJ")
@@ -421,6 +425,7 @@ func TestBrowserCredentialRedactionCorpus(t *testing.T) {
 	caller := &recordingMethodCaller{}
 	options := AcceleratorOptions(0, nil, CreatorOrBrowserGuard(creator, manager))
 	options.BrowserSessions = manager
+	options.BrowserEntryAvailability = alwaysEnabledBrowserEntry{}
 	options.AcceleratorInfoProvider = NewAuthenticatedAcceleratorInfo(agent.BuildIdentity{BuildVersion: "redaction-test"}, "redaction-instance", agent.CapabilityResolution{Capabilities: []agent.Capability{agent.CapabilitySecretsList, agent.CapabilitySecretsDetail}})
 	options.MethodAuthorizer = NewAcceleratorMethodAuthorizer(agent.CapabilityResolution{Capabilities: []agent.Capability{agent.CapabilitySecretsList, agent.CapabilitySecretsDetail}})
 	srv, err := NewWithOptions(caller, embed.FS{}, options)

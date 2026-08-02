@@ -684,6 +684,7 @@ func TestBrowserProtectedSurface(t *testing.T) {
 	caller := &recordingMethodCaller{}
 	options := AcceleratorOptions(0, nil, CreatorOrBrowserGuard(creator, sessions))
 	options.BrowserSessions = sessions
+	options.BrowserEntryAvailability = alwaysEnabledBrowserEntry{}
 	options.AcceleratorInfoProvider = NewAuthenticatedAcceleratorInfo(agent.BuildIdentity{BuildVersion: "test"}, "accel-browser-surface", agent.CapabilityResolution{Capabilities: []agent.Capability{agent.CapabilitySecretsList}})
 	options.MethodAuthorizer = NewAcceleratorMethodAuthorizer(agent.CapabilityResolution{Capabilities: []agent.Capability{agent.CapabilitySecretsList}})
 	srv, err := NewWithOptions(caller, embed.FS{}, options)
