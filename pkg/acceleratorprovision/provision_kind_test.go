@@ -3,6 +3,7 @@
 package acceleratorprovision
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
@@ -11,18 +12,23 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"kubikles/pkg/acceleratorrelease"
+	"kubikles/pkg/agent"
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -109,6 +115,22 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 		t.Fatalf("handle mismatch: %#v", workload)
 	}
 	assertKindReleaseObjects(t, ctx, k8sClient, workload)
+	if os.Getenv("ACCELERATOR_CONNECT_KIND") == "1" {
+		wrongAttempt := service.Provision(ctx, request)
+		replacementAttempt := service.Provision(ctx, request)
+		if wrongAttempt.Availability != Available || wrongAttempt.Workload == nil || replacementAttempt.Availability != Available || replacementAttempt.Workload == nil {
+			t.Fatal("separate connector workloads were not provisioned")
+		}
+		assertKindReleaseObjects(t, ctx, k8sClient, wrongAttempt.Workload)
+		assertKindReleaseObjects(t, ctx, k8sClient, replacementAttempt.Workload)
+		exerciseConnectorKind(t, ctx, k8sClient, workload, wrongAttempt.Workload, replacementAttempt.Workload)
+		assertKindReleaseObjects(t, ctx, k8sClient, workload)
+		for _, retained := range []*ProvisionedWorkload{wrongAttempt.Workload, replacementAttempt.Workload} {
+			if _, err := helmClient.GetRelease(request.ContextName, retained.ReleaseNamespace, retained.ReleaseName); err != nil {
+				t.Fatalf("connector failure removed retained release %s", retained.ReleaseName)
+			}
+		}
+	}
 	successRelease, err := helmClient.GetRelease(request.ContextName, "default", workload.ReleaseName)
 	if err != nil {
 		t.Fatal("successful release was not retained")
@@ -126,7 +148,18 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 	if failed.Availability != Unavailable || failed.Reason != ImagePullFailed || failed.Cleanup != CleanupSucceeded || failed.Workload != nil {
 		t.Fatalf("failed attempt outcome availability=%s reason=%s cleanup=%s", failed.Availability, failed.Reason, failed.Cleanup)
 	}
-	if _, err := helmClient.GetRelease(request.ContextName, "default", "kubikles-accelerator-505152535455565758595a5b5c5d5e5f"); err == nil {
+	entropy.mu.Lock()
+	recorded := append([]byte(nil), entropy.data...)
+	entropy.mu.Unlock()
+	expectedEntropyBytes := 96
+	if os.Getenv("ACCELERATOR_CONNECT_KIND") == "1" {
+		expectedEntropyBytes = 192
+	}
+	if len(recorded) != expectedEntropyBytes {
+		t.Fatalf("entropy bytes=%d", len(recorded))
+	}
+	failedSession := hex.EncodeToString(recorded[len(recorded)-16:])
+	if _, err := helmClient.GetRelease(request.ContextName, "default", "kubikles-accelerator-"+failedSession); err == nil {
 		t.Fatal("failed release remained installed")
 	}
 	if _, err := helmClient.GetRelease(request.ContextName, "default", workload.ReleaseName); err != nil {
@@ -136,14 +169,10 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 		t.Fatal("rollback removed sentinel release")
 	}
 
-	entropy.mu.Lock()
-	recorded := append([]byte(nil), entropy.data...)
-	entropy.mu.Unlock()
-	if len(recorded) != 96 {
-		t.Fatalf("entropy bytes=%d", len(recorded))
+	rawTokens := make([]string, 0, len(recorded)/48)
+	for offset := 0; offset < len(recorded); offset += 48 {
+		rawTokens = append(rawTokens, base64.RawURLEncoding.EncodeToString(recorded[offset:offset+32]))
 	}
-	rawTokens := []string{base64.RawURLEncoding.EncodeToString(recorded[:32]), base64.RawURLEncoding.EncodeToString(recorded[48:80])}
-	failedSession := hex.EncodeToString(recorded[80:96])
 	assertFailedKindObjectsGone(t, ctx, k8sClient, "default", "kubikles-accelerator-"+failedSession, failedSession)
 	secrets, err := k8sClient.SnapshotCurrentContext(request.ContextName)
 	if err != nil {
@@ -171,6 +200,146 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 		for _, token := range rawTokens {
 			if strings.Contains(output, token) {
 				t.Fatal("raw creator token escaped into Kubernetes or handle metadata")
+			}
+		}
+	}
+}
+
+func exerciseConnectorKind(t *testing.T, ctx context.Context, client *k8s.Client, workload, wrong, replacementWorkload *ProvisionedWorkload) {
+	t.Helper()
+	connector := NewConnector("v1.2.3")
+	var privateEndpoint string
+	connector.observeEndpoint = func(endpoint string) { privateEndpoint = endpoint }
+	connectCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	pollDone := make(chan struct{})
+	pollFailure := make(chan string, 1)
+	go pollKindKubectlPortForward(pollDone, pollFailure)
+	result := connector.Connect(connectCtx, workload)
+	cancel()
+	close(pollDone)
+	select {
+	case process := <-pollFailure:
+		t.Fatalf("connector invoked kubectl port-forward: %s", process)
+	default:
+	}
+	if result.Availability != Available || result.Session == nil || result.Reason != "" {
+		t.Fatalf("connector unavailable: availability=%s reason=%s", result.Availability, result.Reason)
+	}
+	host, port, err := net.SplitHostPort(privateEndpoint)
+	if err != nil || host != "127.0.0.1" || port == "" || port == "0" {
+		t.Fatal("connector did not use one OS-assigned IPv4-loopback endpoint")
+	}
+	identity := result.Session.Identity()
+	if identity.Job != workload.Job || identity.Pod != workload.Pod || identity.BuildVersion != workload.BuildVersion || identity.InstanceID == "" || identity.SessionID == "" || identity.Generation != 1 {
+		t.Fatal("connected session identity mismatch")
+	}
+	if capabilities := result.Session.Capabilities(); !reflect.DeepEqual(capabilities, agent.V1Capabilities()) {
+		t.Fatal("connected capability snapshot mismatch")
+	}
+	closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if err = result.Session.Close(closeCtx); err != nil {
+		closeCancel()
+		t.Fatal("connector close failed")
+	}
+	closeCancel()
+	if result.Session.EndReason() != SessionClosed {
+		t.Fatal("connector did not publish closed end reason")
+	}
+
+	wrongCredential, err := generateCreatorCredential(bytes.NewReader(bytes.Repeat([]byte{0xff}, 48)))
+	if err != nil {
+		t.Fatal("wrong-token fixture")
+	}
+	wrong.credential = wrongCredential
+	wrongResult := NewConnector("v1.2.3").Connect(ctx, wrong)
+	if wrongResult.Availability != Unavailable || wrongResult.Reason != AcceleratorUnavailable || wrongResult.Session != nil {
+		t.Fatal("wrong creator token did not fail closed")
+	}
+
+	snapshot, err := client.SnapshotCurrentContext(replacementWorkload.ContextName)
+	if err != nil {
+		t.Fatal("snapshot before Pod replacement")
+	}
+	originalPod, err := snapshot.Clientset().CoreV1().Pods(replacementWorkload.ReleaseNamespace).Get(ctx, replacementWorkload.Pod.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal("read exact Pod for replacement fence")
+	}
+	zero := int64(0)
+	if err = snapshot.Clientset().CoreV1().Pods(replacementWorkload.ReleaseNamespace).Delete(ctx, replacementWorkload.Pod.Name, metav1.DeleteOptions{GracePeriodSeconds: &zero}); err != nil {
+		t.Fatal("delete exact Pod for replacement fence")
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		_, getErr := snapshot.Clientset().CoreV1().Pods(replacementWorkload.ReleaseNamespace).Get(ctx, replacementWorkload.Pod.Name, metav1.GetOptions{})
+		if apierrors.IsNotFound(getErr) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	replacement := originalPod.DeepCopy()
+	replacement.ResourceVersion = ""
+	replacement.UID = ""
+	replacement.CreationTimestamp = metav1.Time{}
+	replacement.DeletionTimestamp = nil
+	replacement.DeletionGracePeriodSeconds = nil
+	replacement.ManagedFields = nil
+	replacement.Finalizers = nil
+	replacement.GenerateName = ""
+	replacement.Status = corev1.PodStatus{}
+	replacement.Spec.NodeName = ""
+	replacement, err = snapshot.Clientset().CoreV1().Pods(replacementWorkload.ReleaseNamespace).Create(ctx, replacement, metav1.CreateOptions{})
+	if err != nil || replacement.Name != replacementWorkload.Pod.Name || string(replacement.UID) == replacementWorkload.Pod.UID {
+		t.Fatal("same-name replacement Pod fixture failed")
+	}
+	readyReplacement := false
+	for time.Now().Before(deadline) {
+		current, getErr := snapshot.Clientset().CoreV1().Pods(replacementWorkload.ReleaseNamespace).Get(ctx, replacementWorkload.Pod.Name, metav1.GetOptions{})
+		if getErr == nil && current.Status.Phase == corev1.PodRunning && len(current.Status.ContainerStatuses) == 1 && current.Status.ContainerStatuses[0].Ready {
+			readyReplacement = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if !readyReplacement {
+		t.Fatal("replacement Pod did not become Running and Ready")
+	}
+	replacementConnector := NewConnector("v1.2.3")
+	replacementConnector.observeEndpoint = func(string) { t.Fatal("replacement reached tunnel/authentication") }
+	replacementResult := replacementConnector.Connect(ctx, replacementWorkload)
+	if replacementResult.Availability != Unavailable || replacementResult.Session != nil || (replacementResult.Reason != WorkloadUnavailable && replacementResult.Reason != WorkloadChanged) {
+		t.Fatal("connector followed a replacement Pod")
+	}
+}
+
+func pollKindKubectlPortForward(done <-chan struct{}, failure chan<- string) {
+	check := func() bool {
+		output, err := exec.Command("ps", "-axo", "command").Output()
+		if err != nil {
+			return false
+		}
+		for _, line := range strings.Split(string(output), "\n") {
+			if strings.Contains(line, "kubectl") && strings.Contains(line, "port-forward") {
+				select {
+				case failure <- line:
+				default:
+				}
+				return true
+			}
+		}
+		return false
+	}
+	if check() {
+		return
+	}
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+			if check() {
+				return
 			}
 		}
 	}

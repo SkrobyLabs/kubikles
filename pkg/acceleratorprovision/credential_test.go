@@ -2,12 +2,16 @@ package acceleratorprovision
 
 import (
 	"bytes"
+	"context"
 	"encoding"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"kubikles/pkg/server"
 )
@@ -28,8 +32,68 @@ func TestGenerateCreatorCredentialKnownVector(t *testing.T) {
 		t.Fatalf("known vector mismatch: verifier=%q session=%q release=%q", credential.verifier, credential.session, credential.releaseName())
 	}
 	parsed, err := server.ParseCreatorToken(token)
-	if err != nil || credential.token != parsed || !server.DeriveCreatorVerifier(credential.token).Matches(credential.token) {
+	if err != nil || server.DeriveCreatorVerifier(parsed).Encoded() != credential.verifier {
 		t.Fatal("credential did not use exact creator-token primitives")
+	}
+}
+
+func TestCreatorAuthorizationLeaseIsOpaqueAndSerialized(t *testing.T) {
+	entropy := make([]byte, 48)
+	for index := range entropy {
+		entropy[index] = byte(index)
+	}
+	credential, err := generateCreatorCredential(bytes.NewReader(entropy))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const token = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if values := request.Header.Values("Authorization"); len(values) != 1 || values[0] != "Bearer "+token {
+			t.Errorf("unexpected authorization cardinality")
+		}
+		writer.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var escaped creatorAuthorizationLease
+	firstDone := make(chan error, 1)
+	go func() {
+		firstDone <- credential.withCreatorAuthorization(context.Background(), func(ctx context.Context, lease creatorAuthorizationLease) error {
+			escaped = lease
+			close(entered)
+			<-release
+			request, requestErr := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+			if requestErr != nil {
+				return requestErr
+			}
+			response, requestErr := lease.DoHTTP(server.Client(), request)
+			if requestErr == nil {
+				response.Body.Close()
+			}
+			if request.Header.Get("Authorization") != "" {
+				return errors.New("authorization survived request")
+			}
+			return requestErr
+		})
+	}()
+	<-entered
+	waitCtx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	defer cancel()
+	if err = credential.withCreatorAuthorization(waitCtx, func(context.Context, creatorAuthorizationLease) error { return nil }); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("concurrent lease did not honor cancellation: %v", err)
+	}
+	close(release)
+	if err = <-firstDone; err != nil {
+		t.Fatal(err)
+	}
+	request, _ := http.NewRequest(http.MethodGet, server.URL, nil)
+	if _, err = escaped.DoHTTP(server.Client(), request); err == nil {
+		t.Fatal("escaped lease remained usable")
+	}
+	for _, output := range []string{fmt.Sprintf("%v", escaped), fmt.Sprintf("%#v", escaped), fmt.Sprintf("%+v", escaped)} {
+		assertNoCredentialCorpus(t, output, []string{token, "Authorization", "Bearer"})
 	}
 }
 

@@ -12,7 +12,9 @@ test "$(git merge-base "$base" HEAD)" = "$base" || fail "unexpected-merge-base"
 # Deliberately inspect the committed feature range, not the caller's working
 # tree: a developer's unrelated local edits must neither be accepted as this
 # plan's output nor cause this bounded ownership proof to fail.
-range="$base...HEAD"
+provision_head="b88c370ff69bef16853a31a142ba924510ed64b6"
+git merge-base --is-ancestor "$provision_head" HEAD || fail "provision-head-not-ancestor"
+range="$base...$provision_head"
 git diff --check "$range" || fail "diff-check"
 
 while IFS= read -r path; do

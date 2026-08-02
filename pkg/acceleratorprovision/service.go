@@ -210,8 +210,10 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	workload := &ProvisionedWorkload{
 		ContextName: request.ContextName, ReleaseNamespace: attempt.Namespace, ReleaseName: attempt.ReleaseName,
 		WorkloadSessionID: attempt.Session, Job: job, Pod: pod, BuildVersion: attempt.BuildVersion,
-		ImageDigest: attempt.ImageDigest, ChartDigest: attempt.ChartDigest, credential: credential,
+		ImageDigest: attempt.ImageDigest, ChartDigest: attempt.ChartDigest, credential: credential, snapshot: snapshot,
+		connectorState: &workloadConnectorState{},
 	}
+	workload.connectorState.receipt = &workloadReceipt{contextName: workload.ContextName, releaseNamespace: workload.ReleaseNamespace, releaseName: workload.ReleaseName, workloadSessionID: workload.WorkloadSessionID, job: workload.Job, pod: workload.Pod, buildVersion: workload.BuildVersion, imageDigest: workload.ImageDigest, chartDigest: workload.ChartDigest, snapshot: snapshot, owner: workload}
 	// This is the publication boundary. No cleanup path exists after this return.
 	if reason = boundary(); reason != "" {
 		return s.rollback(ctx, reason, snapshot, prepared, owned)
