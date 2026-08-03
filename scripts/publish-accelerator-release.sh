@@ -174,6 +174,18 @@ require_common_tools() {
   [ "$oras_version" = 1.3.3 ] && [ "$oras_commit" = "$ORAS_COMMIT" ] || fail "ORAS must be the canonical 1.3.3 build"
 }
 
+require_offline_cached_images() {
+  local cached
+  for cached in \
+    'docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e' \
+    'node:20.19.5-bookworm-slim@sha256:9e70124bd00f47dd023e349cd587132ae61892acc0e47ed641416c3e18f401c3' \
+    'golang:1.24.2-bookworm@sha256:79390b5e5af9ee6e7b1173ee3eac7fadf6751a545297672916b59bfa0ecf6f71' \
+    'gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35' \
+    'registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373'; do
+    docker image inspect "$cached" >/dev/null 2>&1 || fail "offline cached image is missing"
+  done
+}
+
 require_gh_tool() {
   require_command gh
   [ "$(gh --version | sed -n '1p')" = "$GH_VERSION" ] || fail "GitHub CLI must be exactly 2.97.0 canonical build"
@@ -524,8 +536,14 @@ assert_no_hostile_leaks() {
 local_test() {
   require_common_tools; require_command curl
   local version=v0.0.0 chart_version=0.0.0 commit epoch run registry layout package chart_layout port bind_host client_host endpoint
-  local -a cache_args=()
+  local -a cache_args=() offline_build_flags=() builder_args=()
   local canonical_image canonical_chart collision_state after_image after_chart finalized
+  if [ "${ACCELERATOR_E2E_OFFLINE:-0}" = 1 ]; then
+    [ "${KUBIKLES_ACCELERATOR_E2E_REUSE:-0}" = 1 ] && [ "${BUILD_VERSION:-}" = v0.0.0 ] || fail "offline reuse boundary is incomplete"
+    [ -n "${KUBIKLES_ACCELERATOR_E2E_KIND_NAME:-}" ] && [ -n "${KUBIKLES_ACCELERATOR_E2E_KUBECONFIG:-}" ] && [ -n "${KUBIKLES_ACCELERATOR_E2E_NAMESPACE:-}" ] && [ -n "${KUBIKLES_ACCELERATOR_E2E_REGISTRY:-}" ] || fail "offline reuse boundary is incomplete"
+    require_offline_cached_images
+    offline_build_flags=(--network=none --pull=false)
+  fi
   commit=$(git rev-parse HEAD); [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || fail "source commit must be a full lowercase hash"
   HOSTILE_REGISTRY_TOKEN=$(hostile_secret oras "$commit:$RANDOM")
   HOSTILE_HELM_TOKEN=$(hostile_secret helm "$commit:$RANDOM")
@@ -537,40 +555,51 @@ local_test() {
   trap 'cleanup_on_signal 130' INT
   trap 'cleanup_on_signal 143' TERM
   init_client_configs
-  run="kubikles-accelerator-release-$RANDOM-$$"; RUN_CONTAINER="$run-registry"; RUN_NETWORK="$run-network"; RUN_BUILDER="$run-builder"
+  run="kubikles-accelerator-release-$RANDOM-$$"
   RUN_TMP=$(mktemp -d "${TMPDIR:-/tmp}/kubikles-accelerator-release.XXXXXX"); chmod 700 "$RUN_TMP"
   OWNED_CACHE_ROOT="$RUN_TMP/owned-cache"; mkdir -m 0700 "$OWNED_CACHE_ROOT"
-  docker buildx create --name "$RUN_BUILDER" --driver docker-container >/dev/null
-  docker buildx inspect "$RUN_BUILDER" --bootstrap >/dev/null
-  docker network create "$RUN_NETWORK" >/dev/null
-  bind_host=${ACCELERATOR_LOCAL_REGISTRY_BIND_HOST:-127.0.0.1}
-  client_host=${ACCELERATOR_LOCAL_REGISTRY_CLIENT_HOST:-$bind_host}
-  [[ "$bind_host" =~ ^(127\.0\.0\.1|::1)$ ]] || fail "disposable registry bind host must be loopback"
-  endpoint=$(docker context inspect "$(docker context show)" --format '{{.Endpoints.docker.Host}}')
-  if [[ "$endpoint" != unix://* ]] && [ -z "${ACCELERATOR_LOCAL_REGISTRY_CLIENT_HOST:-}" ]; then
-    fail "remote Docker requires explicit ACCELERATOR_LOCAL_REGISTRY_CLIENT_HOST"
-  fi
-  docker run --detach --rm --name "$RUN_CONTAINER" --network "$RUN_NETWORK" --tmpfs /var/lib/registry:rw,noexec,nosuid,nodev --publish "$bind_host::5000" registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373 >/dev/null
-  [ "$(docker inspect -f '{{(index (index .HostConfig.PortBindings "5000/tcp") 0).HostIp}}' "$RUN_CONTAINER")" = "$bind_host" ] || fail "registry was not bound to the configured loopback host"
-  port=$(docker inspect -f '{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostPort}}' "$RUN_CONTAINER")
-  [[ "$port" =~ ^[1-9][0-9]*$ ]] || fail "registry published port is invalid"
-  registry="$client_host:$port"
-  for _ in $(seq 1 30); do curl --fail --silent --show-error "http://$registry/v2/" >/dev/null 2>&1 && break; sleep 0.2; done
-  curl --fail --silent --show-error "http://$registry/v2/" >/dev/null || fail "configured registry client endpoint is unreachable; VM-backed Unix-socket Docker may require ACCELERATOR_LOCAL_REGISTRY_CLIENT_HOST=host.docker.internal"
-
   local tmp=$RUN_TMP
-  layout="$tmp/image-layout"; package="$tmp/kubikles-accelerator-$chart_version.tgz"; chart_layout="$tmp/chart-layout"; mkdir -p "$layout"
-  if [ -n "${ACCELERATOR_LOCAL_BUILD_CACHE:-}" ]; then
-    if [ -f "$ACCELERATOR_LOCAL_BUILD_CACHE/index.json" ]; then
-      cache_args=(--cache-from "type=local,src=$ACCELERATOR_LOCAL_BUILD_CACHE")
-    else
-      mkdir -p "$ACCELERATOR_LOCAL_BUILD_CACHE"; chmod 700 "$ACCELERATOR_LOCAL_BUILD_CACHE"
-      cache_args=(--cache-to "type=local,dest=$ACCELERATOR_LOCAL_BUILD_CACHE,mode=max")
+  if [ "${ACCELERATOR_E2E_OFFLINE:-0}" = 1 ]; then
+    RUN_CONTAINER=''; RUN_NETWORK=''; RUN_BUILDER=''
+    registry="$KUBIKLES_ACCELERATOR_E2E_REGISTRY/publication-$RANDOM-$$"
+    curl --noproxy '*' --fail --silent --show-error "http://$KUBIKLES_ACCELERATOR_E2E_REGISTRY/v2/" >/dev/null || fail "reused registry is unreachable"
+    layout="$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/image-layout"
+    package="$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/kubikles-accelerator-0.0.0.tgz"
+    chart_layout="$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/chart-layout"
+    go run ./internal/acceleratoracceptance/cmd/accelerator-e2e-artifact "$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT" || fail "offline artifact evidence is invalid"
+  else
+    RUN_CONTAINER="$run-registry"; RUN_NETWORK="$run-network"; RUN_BUILDER="$run-builder"
+    docker buildx create --name "$RUN_BUILDER" --driver docker-container >/dev/null
+    docker buildx inspect "$RUN_BUILDER" --bootstrap >/dev/null
+    docker network create "$RUN_NETWORK" >/dev/null
+    bind_host=${ACCELERATOR_LOCAL_REGISTRY_BIND_HOST:-127.0.0.1}
+    client_host=${ACCELERATOR_LOCAL_REGISTRY_CLIENT_HOST:-$bind_host}
+    [[ "$bind_host" =~ ^(127\.0\.0\.1|::1)$ ]] || fail "disposable registry bind host must be loopback"
+    endpoint=$(docker context inspect "$(docker context show)" --format '{{.Endpoints.docker.Host}}')
+    if [[ "$endpoint" != unix://* ]] && [ -z "${ACCELERATOR_LOCAL_REGISTRY_CLIENT_HOST:-}" ]; then
+      fail "remote Docker requires explicit ACCELERATOR_LOCAL_REGISTRY_CLIENT_HOST"
     fi
+    docker run --detach --rm --name "$RUN_CONTAINER" --network "$RUN_NETWORK" --tmpfs /var/lib/registry:rw,noexec,nosuid,nodev --publish "$bind_host::5000" registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373 >/dev/null
+    [ "$(docker inspect -f '{{(index (index .HostConfig.PortBindings "5000/tcp") 0).HostIp}}' "$RUN_CONTAINER")" = "$bind_host" ] || fail "registry was not bound to the configured loopback host"
+    port=$(docker inspect -f '{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostPort}}' "$RUN_CONTAINER")
+    [[ "$port" =~ ^[1-9][0-9]*$ ]] || fail "registry published port is invalid"
+    registry="$client_host:$port"
+    for _ in $(seq 1 30); do curl --fail --silent --show-error "http://$registry/v2/" >/dev/null 2>&1 && break; sleep 0.2; done
+    curl --fail --silent --show-error "http://$registry/v2/" >/dev/null || fail "configured registry client endpoint is unreachable; VM-backed Unix-socket Docker may require ACCELERATOR_LOCAL_REGISTRY_CLIENT_HOST=host.docker.internal"
+    layout="$tmp/image-layout"; package="$tmp/kubikles-accelerator-$chart_version.tgz"; chart_layout="$tmp/chart-layout"; mkdir -p "$layout"
+    if [ -n "${ACCELERATOR_LOCAL_BUILD_CACHE:-}" ]; then
+      if [ -f "$ACCELERATOR_LOCAL_BUILD_CACHE/index.json" ]; then
+        cache_args=(--cache-from "type=local,src=$ACCELERATOR_LOCAL_BUILD_CACHE")
+      else
+        mkdir -p "$ACCELERATOR_LOCAL_BUILD_CACHE"; chmod 700 "$ACCELERATOR_LOCAL_BUILD_CACHE"
+        cache_args=(--cache-to "type=local,dest=$ACCELERATOR_LOCAL_BUILD_CACHE,mode=max")
+      fi
+    fi
+    builder_args=(--builder "$RUN_BUILDER")
+    SOURCE_DATE_EPOCH="$epoch" docker buildx build "${builder_args[@]}" "${offline_build_flags[@]}" --file Dockerfile.accelerator --platform linux/amd64,linux/arm64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$version" --build-arg "GIT_COMMIT=$commit" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$epoch" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=$registry/kubikles-accelerator:$version" "${cache_args[@]}" .
+    go run ./scripts/accelerator-release package-chart "$CHART_SOURCE" "$package" "$chart_version" "$version" "$epoch"
+    go run ./scripts/accelerator-release package-chart-oci "$package" "$CHART_SOURCE" "$chart_layout" "$chart_version" "$version" "$epoch" >/dev/null
   fi
-  SOURCE_DATE_EPOCH="$epoch" docker buildx build --builder "$RUN_BUILDER" --file Dockerfile.accelerator --platform linux/amd64,linux/arm64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$version" --build-arg "GIT_COMMIT=$commit" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$epoch" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=$registry/kubikles-accelerator:$version" "${cache_args[@]}" .
-  go run ./scripts/accelerator-release package-chart "$CHART_SOURCE" "$package" "$chart_version" "$version" "$epoch"
-  go run ./scripts/accelerator-release package-chart-oci "$package" "$CHART_SOURCE" "$chart_layout" "$chart_version" "$version" "$epoch" >/dev/null
   go run ./scripts/accelerator-release inspect-chart "$package" "$CHART_SOURCE" "$chart_version" "$version" "$epoch"
   go run ./scripts/accelerator-release inspect-oci "$layout" "$version" "$commit" "$tmp/pre-image-evidence.json"
   publish_registry "$registry" true "$layout" "$package" "$chart_layout" "$version" "$chart_version" "$commit" "$tmp/first" "$epoch" absent "$tmp/release-absent"

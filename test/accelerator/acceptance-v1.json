@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "suite": "Kubikles Accelerator 60A",
+  "buildVersion": "v0.0.0",
+  "cases": [
+    {
+      "id": "A60A-001-BASELINE",
+      "prerequisites": ["dd19f7b6"],
+      "owner": {"kind": "make", "target": "test-accelerator-00-kind"},
+      "evidence": ["baseline.direct", "baseline.loopback", "baseline.pod"]
+    },
+    {
+      "id": "A60A-002-BINARY",
+      "prerequisites": ["e6c23dbd"],
+      "owner": {"kind": "make", "target": "build-accelerator"},
+      "evidence": ["artifact.binary", "artifact.version"]
+    },
+    {
+      "id": "A60A-003-IMAGE",
+      "prerequisites": ["e6c23dbd"],
+      "owner": {"kind": "make", "target": "test-accelerator-image"},
+      "evidence": ["artifact.image", "artifact.platforms"]
+    },
+    {
+      "id": "A60A-004-CHART",
+      "prerequisites": ["a02bce49"],
+      "owner": {"kind": "make", "target": "test-accelerator-chart"},
+      "evidence": ["chart.objects", "chart.rbac", "chart.version"]
+    },
+    {
+      "id": "A60A-005-CHART-KIND",
+      "prerequisites": ["a02bce49"],
+      "owner": {"kind": "make", "target": "test-accelerator-chart-kind"},
+      "evidence": ["chart.job", "chart.ttl"]
+    },
+    {
+      "id": "A60A-006-RELEASE-CONTRACT",
+      "prerequisites": ["1ff2446c"],
+      "owner": {"kind": "make", "target": "test-accelerator-release-contract"},
+      "evidence": ["release.checksum", "release.descriptor", "release.immutable"]
+    },
+    {
+      "id": "A60A-007-LOCAL-PUBLICATION",
+      "prerequisites": ["1ff2446c"],
+      "owner": {"kind": "make", "target": "test-accelerator-publication-local"},
+      "evidence": ["release.loopback", "release.readback"]
+    },
+    {
+      "id": "A60A-008-PROVISION",
+      "prerequisites": ["1cec4c3a", "71facaab"],
+      "owner": {"kind": "make", "target": "test-accelerator-desktop-provision-kind"},
+      "evidence": ["desktop.provision", "desktop.resolve"]
+    },
+    {
+      "id": "A60A-009-CONNECT",
+      "prerequisites": ["020e8648", "033fde0a", "2d45b95b", "44ea1f82", "8ebf3759", "f604c5fb"],
+      "owner": {"kind": "make", "target": "test-accelerator-desktop-connector-kind"},
+      "evidence": ["desktop.auth", "desktop.connect", "desktop.tunnel"]
+    },
+    {
+      "id": "A60A-010-RESUME",
+      "prerequisites": ["ac978c3f"],
+      "owner": {"kind": "make", "target": "test-accelerator-desktop-resume-kind"},
+      "evidence": ["desktop.generation", "desktop.resume"]
+    },
+    {
+      "id": "A60A-011-DISPOSAL",
+      "prerequisites": ["70e5466d"],
+      "owner": {"kind": "make", "target": "test-accelerator-desktop-disposal-kind"},
+      "evidence": ["desktop.dispose", "desktop.sweep"]
+    },
+    {
+      "id": "A60A-012-LIFECYCLE",
+      "prerequisites": ["2289380c", "2e710408", "63140918", "66f24342", "b1854aa3", "b3ffc033", "e590da1e"],
+      "owner": {"kind": "make", "target": "test-accelerator-desktop-lifecycle-kind"},
+      "evidence": ["desktop.coordinator", "desktop.direct", "desktop.replacement"]
+    },
+    {
+      "id": "A60A-013-BROWSER-ARTIFACT",
+      "prerequisites": ["a5d2c80a"],
+      "owner": {"kind": "npm", "script": "test:accelerator-browser-artifact"},
+      "evidence": ["browser.artifact", "browser.secret-only"]
+    },
+    {
+      "id": "A60A-014-BROWSER-LIFECYCLE",
+      "prerequisites": ["949c4709", "e34515b0", "f256001c", "f2769f29"],
+      "owner": {"kind": "make", "target": "test-accelerator-browser-lifecycle-kind"},
+      "evidence": ["browser.auth", "browser.handoff", "browser.ownership"]
+    },
+    {
+      "id": "A60A-015-INTEGRATED-ROUTING",
+      "prerequisites": ["53dfebec", "d0eb9876", "d4f712fd"],
+      "owner": {"kind": "make", "target": "test-accelerator-integrated-routing-kind"},
+      "evidence": ["routing.direct", "routing.operations", "routing.source"]
+    },
+    {
+      "id": "A60A-016-INTEGRATED-HAPPY",
+      "prerequisites": ["1cec4c3a", "53dfebec", "71facaab", "b1854aa3", "d0eb9876"],
+      "owner": {"kind": "go", "test": "TestAcceleratorAcceptanceKind/IntegratedHappyPath"},
+      "evidence": ["composed.integrated", "composed.operations", "composed.value-free"]
+    },
+    {
+      "id": "A60A-017-MISMATCH",
+      "prerequisites": ["020e8648", "1cec4c3a", "66f24342", "70e5466d", "71facaab", "b1854aa3"],
+      "owner": {"kind": "go", "test": "TestAcceleratorAcceptanceKind/VersionAndArtifactMismatch"},
+      "evidence": ["mismatch.direct", "mismatch.literal", "mismatch.one-replacement"]
+    },
+    {
+      "id": "A60A-018-TRANSPORT-RESUME",
+      "prerequisites": ["020e8648", "ac978c3f", "b1854aa3", "d0eb9876"],
+      "owner": {"kind": "go", "test": "TestAcceleratorAcceptanceKind/TransportResumeAndRecreate"},
+      "evidence": ["recovery.direct", "recovery.resume", "recovery.stale-fence"]
+    },
+    {
+      "id": "A60A-019-BROWSER-HANDOFF",
+      "prerequisites": ["949c4709", "a5d2c80a", "e34515b0"],
+      "owner": {"kind": "go", "test": "TestAcceleratorAcceptanceKind/BrowserHandoff"},
+      "evidence": ["handoff.browser", "handoff.creator", "handoff.replay"]
+    },
+    {
+      "id": "A60A-020-REAL-GRACE",
+      "prerequisites": ["8ebf3759", "949c4709"],
+      "owner": {"kind": "go", "test": "TestAcceleratorAcceptanceKind/RealTwoMinuteAuthenticatedClientGrace"},
+      "evidence": ["grace.cancelled", "grace.elapsed", "grace.single-expiry"]
+    },
+    {
+      "id": "A60A-021-SECURITY-PRIVACY",
+      "prerequisites": ["2d45b95b", "44ea1f82", "a02bce49", "d0eb9876"],
+      "owner": {"kind": "go", "test": "TestAcceleratorAcceptanceKind/SecurityPrivacyBackpressure"},
+      "evidence": ["security.loopback", "security.privacy", "security.rbac"]
+    },
+    {
+      "id": "A60A-022-CLEANUP-ISOLATION",
+      "prerequisites": ["70e5466d", "949c4709", "b1854aa3"],
+      "owner": {"kind": "go", "test": "TestAcceleratorAcceptanceKind/CleanupSweepIsolation"},
+      "evidence": ["cleanup.owned", "cleanup.sentinel", "cleanup.sweep"]
+    }
+  ]
+}

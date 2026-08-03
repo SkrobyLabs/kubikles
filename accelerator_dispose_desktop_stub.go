@@ -1,4 +1,4 @@
-//go:build headless || !helm || accelerator
+//go:build !accelerator && (headless || !helm)
 
 package main
 

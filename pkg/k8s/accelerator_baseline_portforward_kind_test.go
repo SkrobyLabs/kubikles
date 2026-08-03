@@ -44,7 +44,10 @@ func TestAccelerator00ExactPodLoopbackKind(t *testing.T) {
 	defer cancel()
 	accelerator00WaitAPIReady(t, ctx, client)
 	accelerator00WaitNodesReady(t, ctx, client)
-	namespace := fmt.Sprintf("accelerator00-%d", time.Now().UnixNano())
+	namespace := os.Getenv("ACCELERATOR00_KIND_NAMESPACE")
+	if namespace == "" {
+		namespace = fmt.Sprintf("accelerator00-%d", time.Now().UnixNano())
+	}
 	accelerator00Create(t, ctx, "namespace create", func() error {
 		_, createErr := client.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
 		return createErr

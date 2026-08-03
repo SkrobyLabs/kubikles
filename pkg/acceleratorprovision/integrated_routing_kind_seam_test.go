@@ -207,3 +207,13 @@ func TestIntegratedRoutingKindProbeRetainsMixedHistoricalBuckets(t *testing.T) {
 		t.Fatalf("mixed stage snapshot = %#v, want %#v", got, want)
 	}
 }
+
+func TestAcceptanceLiteralVersionMatrixUsesExactAuthenticatedConnectorAndBoundedCoordinator(t *testing.T) {
+	proof, err := ProveAcceptanceLiteralVersionMatrix()
+	if err != nil {
+		t.Fatal("literal acceptance matrix failed")
+	}
+	if !proof.ExactAccepted || proof.AdjacentRejected != 2 || !proof.DirectBeforeCleanup || proof.OneReplacement != 2 || proof.RepeatedMismatch != 2 || !proof.NoThirdWorkload {
+		t.Fatalf("literal acceptance proof = %#v", proof)
+	}
+}

@@ -1,0 +1,196 @@
+package acceleratoracceptance
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
+)
+
+const ReportSchemaVersion = 1
+
+var errInvalidReport = errors.New("acceptance report invalid")
+
+type Status string
+
+const StatusPass Status = "pass"
+
+type FailureCode string
+
+const (
+	FailureNone      FailureCode = "none"
+	FailureContract  FailureCode = "contract"
+	FailurePreflight FailureCode = "preflight"
+	FailureCommand   FailureCode = "command"
+	FailureAudit     FailureCode = "audit"
+	FailureTimeout   FailureCode = "timeout"
+	FailureSignal    FailureCode = "signal"
+	FailureResidue   FailureCode = "residue"
+	FailureReport    FailureCode = "report"
+)
+
+type Report struct {
+	SchemaVersion int          `json:"schemaVersion"`
+	Cases         []CaseResult `json:"cases"`
+}
+
+type CaseResult struct {
+	ID          string           `json:"id"`
+	Status      Status           `json:"status"`
+	Evidence    []EvidenceResult `json:"evidence"`
+	DurationMS  int64            `json:"durationMs"`
+	FailureCode FailureCode      `json:"failureCode"`
+}
+
+type EvidenceResult struct {
+	Key    string `json:"key"`
+	Passed bool   `json:"passed"`
+	Count  uint64 `json:"count"`
+}
+
+func NewReport() Report {
+	return Report{SchemaVersion: ReportSchemaVersion}
+}
+
+func (r *Report) RecordPass(testCase Case, durationMS int64) error {
+	if r == nil || durationMS <= 0 || testCase.ID == "" || len(testCase.Evidence) == 0 {
+		return errInvalidReport
+	}
+	for _, result := range r.Cases {
+		if result.ID == testCase.ID {
+			return errInvalidReport
+		}
+	}
+	evidence := make([]EvidenceResult, 0, len(testCase.Evidence))
+	for _, key := range testCase.Evidence {
+		evidence = append(evidence, EvidenceResult{Key: key, Passed: true, Count: 1})
+	}
+	r.Cases = append(r.Cases, CaseResult{
+		ID: testCase.ID, Status: StatusPass, Evidence: evidence,
+		DurationMS: durationMS, FailureCode: FailureNone,
+	})
+	return nil
+}
+
+func ValidateReport(contract Contract, report Report) error {
+	if ValidateContract(contract) != nil || report.SchemaVersion != ReportSchemaVersion || len(report.Cases) != len(contract.Cases) {
+		return errInvalidReport
+	}
+	seen := make(map[string]struct{}, len(report.Cases))
+	for index, result := range report.Cases {
+		testCase := contract.Cases[index]
+		if result.ID != testCase.ID || result.Status != StatusPass || result.DurationMS <= 0 || result.FailureCode != FailureNone || len(result.Evidence) != len(testCase.Evidence) {
+			return errInvalidReport
+		}
+		if _, duplicate := seen[result.ID]; duplicate {
+			return errInvalidReport
+		}
+		seen[result.ID] = struct{}{}
+		for evidenceIndex, evidence := range result.Evidence {
+			if evidence.Key != testCase.Evidence[evidenceIndex] || !evidence.Passed || evidence.Count == 0 {
+				return errInvalidReport
+			}
+		}
+	}
+	return nil
+}
+
+func MarshalReport(report Report) ([]byte, error) {
+	if report.SchemaVersion != ReportSchemaVersion {
+		return nil, errInvalidReport
+	}
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		return nil, errInvalidReport
+	}
+	return append(encoded, '\n'), nil
+}
+
+func ParseReport(reader io.Reader) (Report, error) {
+	data, strictErr := readStrictJSON(reader)
+	if strictErr != nil {
+		return Report{}, errInvalidReport
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var report Report
+	if err := decoder.Decode(&report); err != nil {
+		return Report{}, errInvalidReport
+	}
+	var trailing struct{}
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		return Report{}, errInvalidReport
+	}
+	if report.SchemaVersion != ReportSchemaVersion {
+		return Report{}, errInvalidReport
+	}
+	return report, nil
+}
+
+func WriteReportAtomic(path string, contract Contract, report Report) error {
+	if path == "" || ValidateReport(contract, report) != nil {
+		return errInvalidReport
+	}
+	encoded, err := MarshalReport(report)
+	if err != nil {
+		return errInvalidReport
+	}
+	return writePrivateAtomic(path, encoded)
+}
+
+func WriteReportProgressAtomic(path string, contract Contract, report Report) error {
+	if path == "" || ValidateContract(contract) != nil || report.SchemaVersion != ReportSchemaVersion || len(report.Cases) == 0 || len(report.Cases) >= len(contract.Cases) {
+		return errInvalidReport
+	}
+	for index, result := range report.Cases {
+		expected := contract.Cases[index]
+		if result.ID != expected.ID || result.Status != StatusPass || result.DurationMS <= 0 || result.FailureCode != FailureNone || len(result.Evidence) != len(expected.Evidence) {
+			return errInvalidReport
+		}
+		for evidenceIndex, evidence := range result.Evidence {
+			if evidence.Key != expected.Evidence[evidenceIndex] || !evidence.Passed || evidence.Count == 0 {
+				return errInvalidReport
+			}
+		}
+	}
+	encoded, err := MarshalReport(report)
+	if err != nil {
+		return errInvalidReport
+	}
+	return writePrivateAtomic(path, encoded)
+}
+
+func writePrivateAtomic(path string, encoded []byte) error {
+	directory := filepath.Dir(path)
+	temporary, err := os.CreateTemp(directory, ".accelerator-acceptance-report-*")
+	if err != nil {
+		return errInvalidReport
+	}
+	temporaryPath := temporary.Name()
+	committed := false
+	defer func() {
+		_ = temporary.Close()
+		if !committed {
+			_ = os.Remove(temporaryPath)
+		}
+	}()
+	if err = temporary.Chmod(0o600); err != nil {
+		return errInvalidReport
+	}
+	if _, err = temporary.Write(encoded); err != nil {
+		return errInvalidReport
+	}
+	if err = temporary.Sync(); err != nil {
+		return errInvalidReport
+	}
+	if err = temporary.Close(); err != nil {
+		return errInvalidReport
+	}
+	if err = os.Rename(temporaryPath, path); err != nil {
+		return errInvalidReport
+	}
+	committed = true
+	return nil
+}

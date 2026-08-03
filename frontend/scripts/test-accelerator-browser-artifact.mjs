@@ -1,14 +1,25 @@
-import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
-import { verifyArtifact } from './accelerator-browser-artifact.mjs';
+import { ARTIFACT_FILES, verifyArtifact } from './accelerator-browser-artifact.mjs';
 
 const frontendRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const version = process.env.BUILD_VERSION;
 const configFile = path.join(frontendRoot, 'vite.accelerator-browser.config.ts');
 const temporary = await mkdtemp(path.join(os.tmpdir(), 'kubikles-accelerator-browser-'));
+const acceptanceRoot = process.env.ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT;
+if (acceptanceRoot && !path.isAbsolute(acceptanceRoot)) throw new Error('Accelerator acceptance artifact root must be absolute');
+
+async function currentArtifactRoot() {
+  if (!acceptanceRoot) return path.join(frontendRoot, 'dist/accelerator-browser');
+  const source = path.join(acceptanceRoot, 'browser-artifact');
+  const output = path.join(temporary, 'staged-browser-artifact');
+  await mkdir(path.join(output, 'assets'), { recursive: true });
+  for (const file of ARTIFACT_FILES) await cp(path.join(source, file), path.join(output, file));
+  return output;
+}
 
 async function buildInto(name, buildVersion) {
   const output = path.join(temporary, name);
@@ -18,7 +29,7 @@ async function buildInto(name, buildVersion) {
 }
 
 try {
-  const current = await verifyArtifact(path.join(frontendRoot, 'dist/accelerator-browser'), version);
+  const current = await verifyArtifact(await currentArtifactRoot(), version);
   const firstRoot = await buildInto('first', version);
   const secondRoot = await buildInto('second', version);
   const first = await verifyArtifact(firstRoot, version);

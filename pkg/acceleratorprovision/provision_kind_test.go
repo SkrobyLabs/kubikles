@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -37,6 +38,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/watch"
 )
 
 type kindRegistryTransport struct {
@@ -78,16 +81,18 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 	sentinel := requiredKindEnv(t, "ACCELERATOR_PROVISION_KIND_SENTINEL")
 	malformed := requiredKindEnv(t, "ACCELERATOR_PROVISION_KIND_MALFORMED")
 	registryURL, err := url.Parse(requiredKindEnv(t, "ACCELERATOR_PROVISION_KIND_REGISTRY_TLS_URL"))
-	if err != nil || registryURL.Scheme != "https" || registryURL.Host == "" {
+	if err != nil || (registryURL.Scheme != "https" && registryURL.Scheme != "http") || registryURL.Host == "" {
 		t.Fatal("invalid TLS registry fixture URL")
 	}
-	certificate, err := os.ReadFile(requiredKindEnv(t, "ACCELERATOR_PROVISION_KIND_REGISTRY_CA"))
-	if err != nil {
-		t.Fatal("read TLS registry fixture CA")
-	}
 	pool := x509.NewCertPool()
-	if !pool.AppendCertsFromPEM(certificate) {
-		t.Fatal("parse TLS registry fixture CA")
+	if registryURL.Scheme == "https" {
+		certificate, readErr := os.ReadFile(requiredKindEnv(t, "ACCELERATOR_PROVISION_KIND_REGISTRY_CA"))
+		if readErr != nil {
+			t.Fatal("read TLS registry fixture CA")
+		}
+		if !pool.AppendCertsFromPEM(certificate) {
+			t.Fatal("parse TLS registry fixture CA")
+		}
 	}
 	restoreTransport := helm.SetAcceleratorRegistryTransportForTest(func(base http.RoundTripper) http.RoundTripper {
 		transport := base.(*http.Transport).Clone()
@@ -109,6 +114,10 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 	entropy := &recordingSequenceEntropy{}
 	service.entropy = entropy
 	request := kindRequest(k8sClient.GetCurrentContext(), chartDigest, imageDigest)
+	if os.Getenv("ACCELERATOR_ACCEPTANCE_BROWSER_KIND") == "1" {
+		exerciseAcceptanceBrowserKind(t, service, helmClient, k8sClient, request, sentinel, malformed)
+		return
+	}
 	if os.Getenv("ACCELERATOR_BROWSER_LIFECYCLE_KIND") == "1" {
 		exerciseBrowserLifecycleKind(t, service, helmClient, k8sClient, request, sentinel, malformed)
 		return
@@ -124,9 +133,9 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 		t.Fatalf("success provisioning outcome availability=%s reason=%s cleanup=%s", result.Availability, result.Reason, result.Cleanup)
 	}
 	workload := result.Workload
-	if workload.ContextName != request.ContextName || workload.ReleaseNamespace != "default" || workload.ReleaseName != "kubikles-accelerator-"+workload.WorkloadSessionID ||
+	if workload.ContextName != request.ContextName || workload.ReleaseNamespace != kindNamespace() || workload.ReleaseName != "kubikles-accelerator-"+workload.WorkloadSessionID ||
 		workload.Job.Name == "" || workload.Job.UID == "" || workload.Pod.Name == "" || workload.Pod.UID == "" ||
-		workload.BuildVersion != "v1.2.3" || workload.ImageDigest != imageDigest || workload.ChartDigest != chartDigest {
+		workload.BuildVersion != kindBuildVersion() || workload.ImageDigest != imageDigest || workload.ChartDigest != chartDigest {
 		t.Fatalf("handle mismatch: %#v", workload)
 	}
 	assertKindReleaseObjects(t, ctx, k8sClient, workload)
@@ -140,7 +149,7 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 			wrongAttempt := service.Provision(ctx, request)
 			replacementAttempt := service.Provision(ctx, request)
 			if wrongAttempt.Availability != Available || wrongAttempt.Workload == nil || replacementAttempt.Availability != Available || replacementAttempt.Workload == nil {
-				t.Fatal("separate connector workloads were not provisioned")
+				t.Fatalf("separate connector workloads unavailable wrong=%s/%s/%s replacement=%s/%s/%s", wrongAttempt.Availability, wrongAttempt.Reason, wrongAttempt.Cleanup, replacementAttempt.Availability, replacementAttempt.Reason, replacementAttempt.Cleanup)
 			}
 			wrongWorkload, replacementWorkload = wrongAttempt.Workload, replacementAttempt.Workload
 			assertKindReleaseObjects(t, ctx, k8sClient, wrongWorkload)
@@ -157,11 +166,11 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 			}
 		}
 	}
-	successRelease, err := helmClient.GetRelease(request.ContextName, "default", workload.ReleaseName)
+	successRelease, err := helmClient.GetRelease(request.ContextName, kindNamespace(), workload.ReleaseName)
 	if err != nil {
 		t.Fatal("successful release was not retained")
 	}
-	sentinelRelease, err := helmClient.GetRelease(request.ContextName, "default", sentinel)
+	sentinelRelease, err := helmClient.GetRelease(request.ContextName, kindNamespace(), sentinel)
 	if err != nil {
 		t.Fatal("sentinel release missing after success")
 	}
@@ -185,13 +194,13 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 		t.Fatalf("entropy bytes=%d", len(recorded))
 	}
 	failedSession := hex.EncodeToString(recorded[len(recorded)-16:])
-	if _, err := helmClient.GetRelease(request.ContextName, "default", "kubikles-accelerator-"+failedSession); err == nil {
+	if _, err := helmClient.GetRelease(request.ContextName, kindNamespace(), "kubikles-accelerator-"+failedSession); err == nil {
 		t.Fatal("failed release remained installed")
 	}
-	if _, err := helmClient.GetRelease(request.ContextName, "default", workload.ReleaseName); err != nil {
+	if _, err := helmClient.GetRelease(request.ContextName, kindNamespace(), workload.ReleaseName); err != nil {
 		t.Fatal("rollback removed successful release")
 	}
-	if _, err := helmClient.GetRelease(request.ContextName, "default", sentinel); err != nil {
+	if _, err := helmClient.GetRelease(request.ContextName, kindNamespace(), sentinel); err != nil {
 		t.Fatal("rollback removed sentinel release")
 	}
 
@@ -199,7 +208,7 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 	for offset := 0; offset < len(recorded); offset += 48 {
 		rawTokens = append(rawTokens, base64.RawURLEncoding.EncodeToString(recorded[offset:offset+32]))
 	}
-	assertFailedKindObjectsGone(t, ctx, k8sClient, "default", "kubikles-accelerator-"+failedSession, failedSession)
+	assertFailedKindObjectsGone(t, ctx, k8sClient, kindNamespace(), "kubikles-accelerator-"+failedSession, failedSession)
 	secrets, err := k8sClient.SnapshotCurrentContext(request.ContextName)
 	if err != nil {
 		t.Fatal("resnapshot")
@@ -257,24 +266,52 @@ func (d *kindRecordingDisposer) DisposeAfterBrowser(ctx context.Context, workloa
 }
 
 type kindBrowserSubstitute struct {
-	mu         sync.Mutex
-	baseURL    string
-	bearer     string
-	sessionID  agent.SessionID
-	generation server.AcceleratorSocketGeneration
-	socket     *websocket.Conn
-	opens      atomic.Int32
+	mu                 sync.Mutex
+	baseURL            string
+	bearer             string
+	sessionID          agent.SessionID
+	generation         server.AcceleratorSocketGeneration
+	socket             *websocket.Conn
+	artifactVerified   bool
+	replayRejected     bool
+	originRejected     bool
+	credentialRejected bool
+	failure            kindBrowserFailure
+	opens              atomic.Int32
+}
+
+type kindBrowserFailure string
+
+const (
+	kindBrowserFailureTarget     kindBrowserFailure = "target"
+	kindBrowserFailureFragment   kindBrowserFailure = "fragment"
+	kindBrowserFailureEntry      kindBrowserFailure = "entry"
+	kindBrowserFailureArtifact   kindBrowserFailure = "artifact"
+	kindBrowserFailureExchange   kindBrowserFailure = "exchange"
+	kindBrowserFailureReplay     kindBrowserFailure = "replay"
+	kindBrowserFailureExpiry     kindBrowserFailure = "expiry"
+	kindBrowserFailureInfo       kindBrowserFailure = "info"
+	kindBrowserFailureSocket     kindBrowserFailure = "socket"
+	kindBrowserFailureOrigin     kindBrowserFailure = "origin"
+	kindBrowserFailureCredential kindBrowserFailure = "credential"
+)
+
+func (b *kindBrowserSubstitute) fail(stage kindBrowserFailure) bool {
+	b.mu.Lock()
+	b.failure = stage
+	b.mu.Unlock()
+	return false
 }
 
 func (b *kindBrowserSubstitute) Open(target string) bool {
 	b.opens.Add(1)
 	parsed, err := url.Parse(target)
 	if err != nil || parsed.Scheme != "http" || parsed.Hostname() != "127.0.0.1" || parsed.Port() == "" || parsed.Path != "/accelerator/browser/" || parsed.RawQuery != "" {
-		return false
+		return b.fail(kindBrowserFailureTarget)
 	}
 	fragment, err := url.ParseQuery(parsed.Fragment)
 	if err != nil || len(fragment) != 1 || len(fragment["ticket"]) != 1 || len(fragment.Get("ticket")) != 43 {
-		return false
+		return b.fail(kindBrowserFailureFragment)
 	}
 	ticket := fragment.Get("ticket")
 	parsed.Fragment = ""
@@ -288,26 +325,30 @@ func (b *kindBrowserSubstitute) Open(target string) bool {
 		if entry != nil {
 			_ = entry.Body.Close()
 		}
-		return false
+		return b.fail(kindBrowserFailureEntry)
 	}
-	_, entryReadErr := io.Copy(io.Discard, io.LimitReader(entry.Body, 1<<20))
+	entryBytes, entryReadErr := io.ReadAll(io.LimitReader(entry.Body, (4<<20)+1))
 	_ = entry.Body.Close()
-	if entryReadErr != nil {
-		return false
+	if entryReadErr != nil || len(entryBytes) > 4<<20 {
+		return b.fail(kindBrowserFailureEntry)
 	}
 	base := "http://" + parsed.Host
+	artifactRoot := os.Getenv("ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT")
+	artifactVerified := artifactRoot != "" && kindVerifyBrowserArtifact(client, base, artifactRoot, entryBytes)
+	if artifactRoot != "" && !artifactVerified {
+		return b.fail(kindBrowserFailureArtifact)
+	}
 	exchange, err := http.NewRequest(http.MethodPost, base+"/api/accelerator-browser-session", strings.NewReader(`{"ticket":"`+ticket+`"}`))
 	if err != nil {
-		return false
+		return b.fail(kindBrowserFailureExchange)
 	}
 	exchange.Header.Set("Content-Type", "application/json")
 	response, err := client.Do(exchange)
-	ticket = ""
 	if err != nil || response == nil || response.StatusCode != http.StatusOK || response.Header.Get("Set-Cookie") != "" {
 		if response != nil {
 			_ = response.Body.Close()
 		}
-		return false
+		return b.fail(kindBrowserFailureExchange)
 	}
 	var wire struct {
 		Bearer    string `json:"bearer"`
@@ -319,15 +360,29 @@ func (b *kindBrowserSubstitute) Open(target string) bool {
 	trailingErr := decoder.Decode(&struct{}{})
 	_ = response.Body.Close()
 	if decodeErr != nil || trailingErr != io.EOF || len(wire.Bearer) != 43 {
-		return false
+		return b.fail(kindBrowserFailureExchange)
 	}
+	replay, replayErr := http.NewRequest(http.MethodPost, base+"/api/accelerator-browser-session", strings.NewReader(`{"ticket":"`+ticket+`"}`))
+	if replayErr != nil {
+		return b.fail(kindBrowserFailureReplay)
+	}
+	replay.Header.Set("Content-Type", "application/json")
+	replayResponse, replayErr := client.Do(replay)
+	ticket = ""
+	if replayErr != nil || replayResponse == nil || replayResponse.StatusCode != http.StatusUnauthorized {
+		if replayResponse != nil {
+			_ = replayResponse.Body.Close()
+		}
+		return b.fail(kindBrowserFailureReplay)
+	}
+	_ = replayResponse.Body.Close()
 	expiresAt, err := time.Parse(time.RFC3339Nano, wire.ExpiresAt)
 	if err != nil || !time.Now().Before(expiresAt) {
-		return false
+		return b.fail(kindBrowserFailureExpiry)
 	}
 	infoRequest, err := http.NewRequest(http.MethodGet, base+"/api/accelerator-info", nil)
 	if err != nil {
-		return false
+		return b.fail(kindBrowserFailureInfo)
 	}
 	infoRequest.Header.Set("Authorization", "Bearer "+wire.Bearer)
 	infoResponse, err := client.Do(infoRequest)
@@ -335,7 +390,7 @@ func (b *kindBrowserSubstitute) Open(target string) bool {
 		if infoResponse != nil {
 			_ = infoResponse.Body.Close()
 		}
-		return false
+		return b.fail(kindBrowserFailureInfo)
 	}
 	var info server.AuthenticatedAcceleratorInfo
 	infoDecoder := json.NewDecoder(io.LimitReader(infoResponse.Body, 16<<10))
@@ -343,12 +398,22 @@ func (b *kindBrowserSubstitute) Open(target string) bool {
 	infoErr := infoDecoder.Decode(&info)
 	infoTrailing := infoDecoder.Decode(&struct{}{})
 	_ = infoResponse.Body.Close()
-	if infoErr != nil || infoTrailing != io.EOF || info.Runtime != "accelerator" || info.Build.BuildVersion != "v1.2.3" || info.InstanceID == "" {
-		return false
+	if infoErr != nil || infoTrailing != io.EOF || info.Runtime != "accelerator" || info.Build.BuildVersion != kindBuildVersion() || info.InstanceID == "" {
+		return b.fail(kindBrowserFailureInfo)
 	}
 	connection, connected, ok := kindDialBrowser(base, wire.Bearer)
 	if !ok {
-		return false
+		return b.fail(kindBrowserFailureSocket)
+	}
+	originRejected := kindRejectBrowserOrigin(base, wire.Bearer)
+	credentialRejected := kindRejectBrowserCredentialOnCreatorPath(client, base, wire.Bearer)
+	if !originRejected {
+		_ = connection.Close()
+		return b.fail(kindBrowserFailureOrigin)
+	}
+	if !credentialRejected {
+		_ = connection.Close()
+		return b.fail(kindBrowserFailureCredential)
 	}
 	b.mu.Lock()
 	b.baseURL = base
@@ -356,9 +421,87 @@ func (b *kindBrowserSubstitute) Open(target string) bool {
 	b.sessionID = connected.SessionID
 	b.generation = connected.Generation
 	b.socket = connection
+	b.artifactVerified = artifactVerified
+	b.replayRejected = true
+	b.originRejected = originRejected
+	b.credentialRejected = credentialRejected
 	b.mu.Unlock()
 	wire.Bearer = ""
 	return true
+}
+
+func kindVerifyBrowserArtifact(client *http.Client, base, artifactRoot string, entry []byte) bool {
+	if client == nil || base == "" || artifactRoot == "" {
+		return false
+	}
+	checks := []struct {
+		requestPath string
+		fixturePath string
+		actual      []byte
+	}{
+		{fixturePath: "bootstrap/index.html", actual: entry},
+		{requestPath: "/accelerator/browser/bootstrap.js", fixturePath: "bootstrap/bootstrap.js"},
+		{requestPath: "/accelerator/browser/assets/browser.js", fixturePath: "assets/browser.js"},
+		{requestPath: "/accelerator/browser/assets/browser.css", fixturePath: "assets/browser.css"},
+	}
+	for _, check := range checks {
+		expected, err := os.ReadFile(filepath.Join(artifactRoot, "browser-artifact", check.fixturePath))
+		if err != nil || len(expected) == 0 || len(expected) > 4<<20 {
+			return false
+		}
+		actual := check.actual
+		if check.requestPath != "" {
+			response, requestErr := client.Get(base + check.requestPath)
+			if requestErr != nil || response == nil || response.StatusCode != http.StatusOK || response.Header.Get("Cache-Control") == "" {
+				if response != nil {
+					_ = response.Body.Close()
+				}
+				return false
+			}
+			actual, requestErr = io.ReadAll(io.LimitReader(response.Body, (4<<20)+1))
+			_ = response.Body.Close()
+			if requestErr != nil || len(actual) > 4<<20 {
+				return false
+			}
+		}
+		if !bytes.Equal(actual, expected) {
+			return false
+		}
+	}
+	return true
+}
+
+func kindRejectBrowserOrigin(base, bearer string) bool {
+	parsed, err := url.Parse(base)
+	if err != nil || parsed.Host == "" {
+		return false
+	}
+	dialer := websocket.Dialer{Proxy: nil, HandshakeTimeout: 5 * time.Second, Subprotocols: []string{
+		server.AcceleratorWebSocketProtocol,
+		server.AcceleratorBrowserCredentialProtocolPrefix + bearer,
+	}}
+	connection, response, err := dialer.Dial("ws://"+parsed.Host+"/ws", http.Header{"Origin": []string{"https://rejected.invalid"}})
+	if response != nil && response.Body != nil {
+		_ = response.Body.Close()
+	}
+	if connection != nil {
+		_ = connection.Close()
+	}
+	return err != nil && (response == nil || response.StatusCode == http.StatusForbidden)
+}
+
+func kindRejectBrowserCredentialOnCreatorPath(client *http.Client, base, bearer string) bool {
+	request, err := http.NewRequest(http.MethodPost, base+"/api/accelerator-browser-ticket", nil)
+	if err != nil {
+		return false
+	}
+	request.Header.Set("Authorization", "Bearer "+bearer)
+	response, err := client.Do(request)
+	if err != nil || response == nil {
+		return false
+	}
+	defer response.Body.Close()
+	return response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden
 }
 
 func kindDialBrowser(baseURL, bearer string) (*websocket.Conn, server.AcceleratorConnectedEvent, bool) {
@@ -444,7 +587,7 @@ func exerciseBrowserLifecycleKind(t *testing.T, service *Service, helmClient *he
 	t.Helper()
 	contextName := request.ContextName
 	disposer := &kindRecordingDisposer{service: NewDisposalService(service)}
-	coordinator := newCoordinator(desktopContexts{client: client}, kindStaticResolver{resolution: request.Resolution}, service, NewConnector("v1.2.3"), NewReconnector("v1.2.3"), disposer, processResumeClock{})
+	coordinator := newCoordinator(desktopContexts{client: client}, kindStaticResolver{resolution: request.Resolution}, service, NewConnector(kindBuildVersion()), NewReconnector(kindBuildVersion()), disposer, processResumeClock{})
 	pollDone := make(chan struct{})
 	pollFailure := make(chan string, 1)
 	go pollKindKubectlPortForward(pollDone, pollFailure)
@@ -454,7 +597,7 @@ func exerciseBrowserLifecycleKind(t *testing.T, service *Service, helmClient *he
 	if err != nil {
 		t.Fatal("browser lifecycle context snapshot")
 	}
-	if _, err = directSnapshot.Clientset().CoreV1().Secrets("default").List(context.Background(), metav1.ListOptions{Limit: 1}); err != nil {
+	if _, err = directSnapshot.Clientset().CoreV1().Secrets(kindNamespace()).List(context.Background(), metav1.ListOptions{Limit: 1}); err != nil {
 		t.Fatal("browser lifecycle direct Secret tripwire")
 	}
 
@@ -482,9 +625,12 @@ func exerciseBrowserLifecycleKind(t *testing.T, service *Service, helmClient *he
 	}
 	time.Sleep(time.Second)
 	assertKindJobNonterminal(t, client, natural.workload)
+	terminalWatch := startAcceptanceJobTerminalWatch(t, directSnapshot, natural.workload)
+	defer terminalWatch.Stop()
 	natural.browser.Close()
+	closedAt := time.Now()
 	direct.Lease.Close()
-	waitKindBrowserTerminalCleanup(t, coordinator, helmClient, client, natural.workload, natural.tunnel, 4*time.Minute)
+	_ = waitKindJobTerminalCleanupWatched(t, coordinator, helmClient, client, natural.workload, natural.tunnel, terminalWatch, closedAt)
 
 	escalated := openKindBrowserOwned(t, coordinator, contextName, true)
 	coordinator.FenceContextSwitch(contextName)
@@ -504,7 +650,7 @@ func exerciseBrowserLifecycleKind(t *testing.T, service *Service, helmClient *he
 
 	exerciseKindCrashTTLSweep(t, service, helmClient, client, request)
 	for _, retained := range []string{sentinel, malformed} {
-		if _, err = helmClient.GetRelease(contextName, "default", retained); err != nil {
+		if _, err = helmClient.GetRelease(contextName, kindNamespace(), retained); err != nil {
 			t.Fatalf("browser lifecycle removed sentinel %s", retained)
 		}
 	}
@@ -512,6 +658,198 @@ func exerciseBrowserLifecycleKind(t *testing.T, service *Service, helmClient *he
 	case process := <-pollFailure:
 		t.Fatalf("browser lifecycle invoked kubectl port-forward: %s", process)
 	default:
+	}
+}
+
+func exerciseAcceptanceBrowserKind(t *testing.T, service *Service, helmClient *helm.Client, client *k8s.Client, request Request, sentinel, malformed string) {
+	t.Helper()
+	contextName := request.ContextName
+	disposer := &kindRecordingDisposer{service: NewDisposalService(service)}
+	coordinator := newCoordinator(desktopContexts{client: client}, kindStaticResolver{resolution: request.Resolution}, service, NewConnector(kindBuildVersion()), NewReconnector(kindBuildVersion()), disposer, processResumeClock{})
+	pollDone := make(chan struct{})
+	pollFailure := make(chan string, 1)
+	go pollKindKubectlPortForward(pollDone, pollFailure)
+	defer close(pollDone)
+
+	directSnapshot, err := client.SnapshotCurrentContext(contextName)
+	if err != nil {
+		t.Fatal("acceptance Browser context snapshot")
+	}
+	natural := openKindBrowserOwned(t, coordinator, contextName, false)
+	assertKindReleaseObjects(t, context.Background(), client, natural.workload)
+	assertAcceptanceBrowserSecurityObjects(t, directSnapshot, natural.workload)
+	natural.browser.mu.Lock()
+	artifactVerified := natural.browser.artifactVerified
+	replayRejected := natural.browser.replayRejected
+	originRejected := natural.browser.originRejected
+	credentialRejected := natural.browser.credentialRejected
+	natural.browser.mu.Unlock()
+	if !artifactVerified || !replayRejected || !originRejected || !credentialRejected {
+		t.Fatal("acceptance Browser authentication or artifact proof")
+	}
+
+	direct := coordinator.AcquireSecretDemand(context.Background(), contextName)
+	if !direct.Accepted || direct.Lease == nil {
+		t.Fatal("acceptance Browser Direct demand")
+	}
+	if sessionLease, ok := direct.Lease.TrySession(); ok {
+		sessionLease.Close()
+		t.Fatal("acceptance Browser-owned demand published creator")
+	}
+	assertKindOneAcceleratorJob(t, client, natural.workload)
+
+	natural.browser.Close()
+	time.Sleep(time.Second)
+	assertKindJobNonterminal(t, client, natural.workload)
+	if !natural.browser.Reconnect() {
+		t.Fatal("acceptance Browser grace reconnect")
+	}
+	time.Sleep(time.Second)
+	assertKindJobNonterminal(t, client, natural.workload)
+	terminalWatch := startAcceptanceJobTerminalWatch(t, directSnapshot, natural.workload)
+	defer terminalWatch.Stop()
+	natural.browser.Close()
+	closedAt := time.Now()
+	direct.Lease.Close()
+	elapsed := waitAcceptanceJobTerminalCleanup(t, coordinator, helmClient, client, natural.workload, natural.tunnel, terminalWatch, closedAt)
+	if elapsed < 119*time.Second || elapsed > 126*time.Second {
+		t.Fatal("acceptance Browser real grace window")
+	}
+
+	sweepCtx, sweepCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	sweep := disposer.SweepInert(sweepCtx, directSnapshot)
+	sweepCancel()
+	if sweep.Status != SweepCompleted || disposer.sweeps.Load() != 2 {
+		t.Fatal("acceptance Browser exact sweep")
+	}
+	for _, retained := range []string{sentinel, malformed} {
+		if _, err = helmClient.GetRelease(contextName, kindNamespace(), retained); err != nil {
+			t.Fatal("acceptance Browser sentinel isolation")
+		}
+	}
+	coordinator.Quiesce(context.Background())
+	coordinator.StopProducers(context.Background())
+	coordinator.Close(context.Background())
+	select {
+	case <-pollFailure:
+		t.Fatal("acceptance Browser invoked kubectl port-forward")
+	default:
+	}
+	writeAcceptanceBrowserProof(t, elapsed)
+}
+
+func startAcceptanceJobTerminalWatch(t *testing.T, snapshot ContextSnapshot, workload *ProvisionedWorkload) watch.Interface {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	job, err := snapshot.Clientset().BatchV1().Jobs(workload.ReleaseNamespace).Get(ctx, workload.Job.Name, metav1.GetOptions{})
+	if err != nil || string(job.UID) != workload.Job.UID || job.ResourceVersion == "" {
+		t.Fatal("acceptance Browser terminal watch start")
+	}
+	terminalWatch, err := snapshot.Clientset().BatchV1().Jobs(workload.ReleaseNamespace).Watch(context.Background(), metav1.ListOptions{
+		FieldSelector:   fields.OneTermEqualSelector("metadata.name", workload.Job.Name).String(),
+		ResourceVersion: job.ResourceVersion,
+	})
+	if err != nil || terminalWatch == nil {
+		t.Fatal("acceptance Browser terminal watch start")
+	}
+	return terminalWatch
+}
+
+func waitAcceptanceJobTerminalCleanup(t *testing.T, coordinator *Coordinator, helmClient *helm.Client, client *k8s.Client, workload *ProvisionedWorkload, activeTunnel tunnel, terminalWatch watch.Interface, closedAt time.Time) time.Duration {
+	t.Helper()
+	return waitKindJobTerminalCleanupWatched(t, coordinator, helmClient, client, workload, activeTunnel, terminalWatch, closedAt)
+}
+
+func waitKindJobTerminalCleanupWatched(t *testing.T, coordinator *Coordinator, helmClient *helm.Client, client *k8s.Client, workload *ProvisionedWorkload, activeTunnel tunnel, terminalWatch watch.Interface, closedAt time.Time) time.Duration {
+	t.Helper()
+	if terminalWatch == nil || closedAt.IsZero() {
+		t.Fatal("acceptance Browser terminal watch")
+	}
+	timer := time.NewTimer(130 * time.Second)
+	defer timer.Stop()
+	elapsed := time.Duration(0)
+	for elapsed == 0 {
+		select {
+		case event, open := <-terminalWatch.ResultChan():
+			if !open {
+				t.Fatal("acceptance Browser terminal watch closed")
+			}
+			job, ok := event.Object.(*batchv1.Job)
+			if !ok || job.Name != workload.Job.Name || string(job.UID) != workload.Job.UID || event.Type == watch.Deleted {
+				t.Fatal("acceptance Browser terminal watch identity")
+			}
+			for _, condition := range job.Status.Conditions {
+				if condition.Status == corev1.ConditionTrue && (condition.Type == batchv1.JobComplete || condition.Type == batchv1.JobFailed) {
+					elapsed = time.Since(closedAt)
+					break
+				}
+			}
+		case <-timer.C:
+			t.Fatal("acceptance Browser terminal watch timeout")
+		}
+	}
+	waitKindReleaseGone(t, helmClient, workload, 90*time.Second)
+	waitKindCoordinatorState(t, coordinator, workload.ContextName, CoordinatorDirectOnly, 30*time.Second)
+	waitKindTunnelDone(t, activeTunnel, 10*time.Second)
+	assertFailedKindObjectsGone(t, context.Background(), client, workload.ReleaseNamespace, workload.ReleaseName, workload.WorkloadSessionID)
+	return elapsed
+}
+
+func writeAcceptanceBrowserProof(t *testing.T, elapsed time.Duration) {
+	t.Helper()
+	path := os.Getenv("ACCELERATOR_ACCEPTANCE_BROWSER_PROOF")
+	artifactRoot := os.Getenv("ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT")
+	if !filepath.IsAbs(path) || !filepath.IsAbs(artifactRoot) || filepath.Dir(path) != artifactRoot || elapsed < 119*time.Second || elapsed > 126*time.Second {
+		t.Fatal("acceptance Browser proof boundary")
+	}
+	encoded, err := json.Marshal(struct {
+		SchemaVersion int   `json:"schemaVersion"`
+		ElapsedMS     int64 `json:"elapsedMs"`
+	}{SchemaVersion: 1, ElapsedMS: elapsed.Milliseconds()})
+	if err != nil {
+		t.Fatal("acceptance Browser proof encode")
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".acceptance-browser-proof-*")
+	if err != nil {
+		t.Fatal("acceptance Browser proof create")
+	}
+	temporaryPath := temporary.Name()
+	committed := false
+	defer func() {
+		_ = temporary.Close()
+		if !committed {
+			_ = os.Remove(temporaryPath)
+		}
+	}()
+	if temporary.Chmod(0o600) != nil {
+		t.Fatal("acceptance Browser proof mode")
+	}
+	encoded = append(encoded, '\n')
+	if _, err = temporary.Write(encoded); err != nil || temporary.Sync() != nil || temporary.Close() != nil || os.Rename(temporaryPath, path) != nil {
+		t.Fatal("acceptance Browser proof write")
+	}
+	committed = true
+}
+
+func assertAcceptanceBrowserSecurityObjects(t *testing.T, snapshot ContextSnapshot, workload *ProvisionedWorkload) {
+	t.Helper()
+	if snapshot == nil || workload == nil {
+		t.Fatal("acceptance Browser security fixture")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	namespace := workload.ReleaseNamespace
+	client := snapshot.Clientset()
+	services, serviceErr := client.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	ingresses, ingressErr := client.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
+	policies, policyErr := client.NetworkingV1().NetworkPolicies(namespace).List(ctx, metav1.ListOptions{})
+	if serviceErr != nil || ingressErr != nil || policyErr != nil || len(services.Items) != 0 || len(ingresses.Items) != 0 || len(policies.Items) != 1 || policies.Items[0].Name != "accelerator-e2e-api-egress" {
+		t.Fatal("acceptance Browser public or egress boundary")
+	}
+	policy := policies.Items[0]
+	if len(policy.Spec.PolicyTypes) != 1 || string(policy.Spec.PolicyTypes[0]) != "Egress" || len(policy.Spec.Egress) != 1 || len(policy.Spec.Egress[0].To) != 1 || len(policy.Spec.Egress[0].Ports) != 1 {
+		t.Fatal("acceptance Browser egress policy")
 	}
 }
 
@@ -548,7 +886,10 @@ func openKindBrowserOwned(t *testing.T, coordinator *Coordinator, contextName st
 	opened := coordinator.OpenAcceleratorBrowser(ctx, browser.Open)
 	cancel()
 	if opened != BrowserOpened || browser.opens.Load() != 1 {
-		t.Fatalf("Browser Open result=%s opens=%d", opened, browser.opens.Load())
+		browser.mu.Lock()
+		failure := browser.failure
+		browser.mu.Unlock()
+		t.Fatalf("Browser Open result=%s opens=%d stage=%s", opened, browser.opens.Load(), failure)
 	}
 	if repeated := coordinator.OpenAcceleratorBrowser(context.Background(), browser.Open); repeated != BrowserAlreadyOpen || browser.opens.Load() != 1 {
 		t.Fatalf("repeated Browser Open result=%s opens=%d", repeated, browser.opens.Load())
@@ -599,7 +940,7 @@ func openKindBrowserOwned(t *testing.T, coordinator *Coordinator, contextName st
 	if credential.withCreatorAuthorization(context.Background(), func(context.Context, creatorAuthorizationLease) error { return nil }) == nil {
 		t.Fatal("Browser handoff retained creator credential")
 	}
-	if resumed := NewReconnector("v1.2.3").Resume(context.Background(), ResumeRequest{Prior: session, Workload: workload}); resumed.Availability != Unavailable || resumed.Session != nil {
+	if resumed := NewReconnector(kindBuildVersion()).Resume(context.Background(), ResumeRequest{Prior: session, Workload: workload}); resumed.Availability != Unavailable || resumed.Session != nil {
 		t.Fatal("Browser handoff permitted Resume")
 	}
 	return kindBrowserOwnership{workload: workload, session: session, tunnel: activeTunnel, credential: credential, browser: browser}
@@ -632,44 +973,6 @@ func assertKindJobNonterminal(t *testing.T, client *k8s.Client, workload *Provis
 			t.Fatal("Browser reconnect did not cancel zero-client grace")
 		}
 	}
-}
-
-func waitKindBrowserTerminalCleanup(t *testing.T, coordinator *Coordinator, helmClient *helm.Client, client *k8s.Client, workload *ProvisionedWorkload, activeTunnel tunnel, timeout time.Duration) {
-	t.Helper()
-	snapshot, err := client.SnapshotCurrentContext(workload.ContextName)
-	if err != nil {
-		t.Fatal("Browser terminal Job snapshot")
-	}
-	deadline := time.Now().Add(timeout)
-	terminal := false
-	for time.Now().Before(deadline) {
-		job, getErr := snapshot.Clientset().BatchV1().Jobs(workload.ReleaseNamespace).Get(context.Background(), workload.Job.Name, metav1.GetOptions{})
-		if getErr == nil {
-			if string(job.UID) != workload.Job.UID {
-				t.Fatal("Browser terminal observer followed a replacement Job")
-			}
-			for _, condition := range job.Status.Conditions {
-				terminal = terminal || ((condition.Type == batchv1.JobComplete || condition.Type == batchv1.JobFailed) && condition.Status == corev1.ConditionTrue)
-			}
-		} else if !apierrors.IsNotFound(getErr) {
-			t.Fatal("Browser terminal Job read")
-		}
-		_, releaseErr := helmClient.GetRelease(workload.ContextName, workload.ReleaseNamespace, workload.ReleaseName)
-		if releaseErr != nil && !terminal {
-			t.Fatal("Browser release cleanup preceded exact Job terminal proof")
-		}
-		if terminal {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	if !terminal {
-		t.Fatal("Browser Job did not become terminal after exact two-minute grace")
-	}
-	waitKindReleaseGone(t, helmClient, workload, 90*time.Second)
-	waitKindCoordinatorState(t, coordinator, workload.ContextName, CoordinatorDirectOnly, 30*time.Second)
-	waitKindTunnelDone(t, activeTunnel, 10*time.Second)
-	assertFailedKindObjectsGone(t, context.Background(), client, workload.ReleaseNamespace, workload.ReleaseName, workload.WorkloadSessionID)
 }
 
 func waitKindReleaseGone(t *testing.T, helmClient *helm.Client, workload *ProvisionedWorkload, timeout time.Duration) {
@@ -706,7 +1009,7 @@ func exerciseKindCrashTTLSweep(t *testing.T, service *Service, helmClient *helm.
 	}
 	orphan := provisioned.Workload
 	connectCtx, connectCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	connected := NewConnector("v1.2.3").Connect(connectCtx, orphan)
+	connected := NewConnector(kindBuildVersion()).Connect(connectCtx, orphan)
 	connectCancel()
 	if connected.Session == nil || connected.Availability != Available {
 		t.Fatal("crash fixture creator connect")
@@ -757,7 +1060,7 @@ func exerciseKindCrashTTLSweep(t *testing.T, service *Service, helmClient *helm.
 	}
 
 	disposer := &kindRecordingDisposer{service: NewDisposalService(service)}
-	coordinator := newCoordinator(desktopContexts{client: client}, kindStaticResolver{resolution: request.Resolution}, service, NewConnector("v1.2.3"), NewReconnector("v1.2.3"), disposer, processResumeClock{})
+	coordinator := newCoordinator(desktopContexts{client: client}, kindStaticResolver{resolution: request.Resolution}, service, NewConnector(kindBuildVersion()), NewReconnector(kindBuildVersion()), disposer, processResumeClock{})
 	demand := coordinator.AcquireSecretDemand(context.Background(), request.ContextName)
 	if !demand.Accepted || demand.Lease == nil {
 		t.Fatal("post-crash demand rejected")
@@ -785,7 +1088,7 @@ func exerciseLifecycleKind(t *testing.T, service *Service, helmClient *helm.Clie
 	t.Helper()
 	contextName := request.ContextName
 	disposer := &kindRecordingDisposer{service: NewDisposalService(service)}
-	coordinator := newCoordinator(desktopContexts{client: client}, kindStaticResolver{resolution: request.Resolution}, service, NewConnector("v1.2.3"), NewReconnector("v1.2.3"), disposer, processResumeClock{})
+	coordinator := newCoordinator(desktopContexts{client: client}, kindStaticResolver{resolution: request.Resolution}, service, NewConnector(kindBuildVersion()), NewReconnector(kindBuildVersion()), disposer, processResumeClock{})
 	pollDone := make(chan struct{})
 	pollFailure := make(chan string, 1)
 	go pollKindKubectlPortForward(pollDone, pollFailure)
@@ -796,7 +1099,7 @@ func exerciseLifecycleKind(t *testing.T, service *Service, helmClient *helm.Clie
 		t.Fatal("lifecycle direct snapshot")
 	}
 	directTripwire := func() {
-		if _, listErr := directSnapshot.Clientset().CoreV1().Secrets("default").List(context.Background(), metav1.ListOptions{Limit: 1}); listErr != nil {
+		if _, listErr := directSnapshot.Clientset().CoreV1().Secrets(kindNamespace()).List(context.Background(), metav1.ListOptions{Limit: 1}); listErr != nil {
 			t.Fatal("direct Secret tripwire unavailable")
 		}
 	}
@@ -853,7 +1156,7 @@ func exerciseLifecycleKind(t *testing.T, service *Service, helmClient *helm.Clie
 	}
 	assertFailedKindObjectsGone(t, context.Background(), client, workload.ReleaseNamespace, workload.ReleaseName, workload.WorkloadSessionID)
 	for _, retained := range []string{sentinel, malformed} {
-		if _, err = helmClient.GetRelease(contextName, "default", retained); err != nil {
+		if _, err = helmClient.GetRelease(contextName, kindNamespace(), retained); err != nil {
 			t.Fatalf("lifecycle cleanup removed sentinel %s", retained)
 		}
 	}
@@ -926,7 +1229,7 @@ func exerciseDisposalKind(t *testing.T, service *Service, helmClient *helm.Clien
 	connect := func(candidate *ProvisionedWorkload) *ConnectedSession {
 		connectCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		result := NewConnector("v1.2.3").Connect(connectCtx, candidate)
+		result := NewConnector(kindBuildVersion()).Connect(connectCtx, candidate)
 		if result.Availability != Available || result.Session == nil {
 			t.Fatalf("disposal fixture connect reason=%s", result.Reason)
 		}
@@ -937,10 +1240,10 @@ func exerciseDisposalKind(t *testing.T, service *Service, helmClient *helm.Clien
 			t.Fatalf("disposed release remained: %s", candidate.ReleaseName)
 		}
 		assertFailedKindObjectsGone(t, context.Background(), client, candidate.ReleaseNamespace, candidate.ReleaseName, candidate.WorkloadSessionID)
-		if _, err := helmClient.GetRelease(request.ContextName, "default", sentinel); err != nil {
+		if _, err := helmClient.GetRelease(request.ContextName, kindNamespace(), sentinel); err != nil {
 			t.Fatal("disposal removed sentinel release")
 		}
-		if _, err := helmClient.GetRelease(request.ContextName, "default", malformed); err != nil {
+		if _, err := helmClient.GetRelease(request.ContextName, kindNamespace(), malformed); err != nil {
 			t.Fatal("disposal removed malformed Accelerator-shaped release")
 		}
 	}
@@ -1051,16 +1354,16 @@ func exerciseDisposalKind(t *testing.T, service *Service, helmClient *helm.Clien
 		activeStage := helmClient.AcceleratorSweepProofStageForTest(context.Background(), snapshot.RESTConfig(), snapshot.Namespace(), active.ReleaseName)
 		t.Fatalf("sweep status=%s candidates=%v orphan-stage=%s active-stage=%s", sweep.Status, sweep.Candidates, orphanStage, activeStage)
 	}
-	if _, err = helmClient.GetRelease(request.ContextName, "default", orphanName); err == nil {
+	if _, err = helmClient.GetRelease(request.ContextName, kindNamespace(), orphanName); err == nil {
 		t.Fatal("orphan release remained")
 	}
-	if _, err = helmClient.GetRelease(request.ContextName, "default", active.ReleaseName); err != nil {
+	if _, err = helmClient.GetRelease(request.ContextName, kindNamespace(), active.ReleaseName); err != nil {
 		t.Fatal("sweep removed active Accelerator")
 	}
-	if _, err = helmClient.GetRelease(request.ContextName, "default", sentinel); err != nil {
+	if _, err = helmClient.GetRelease(request.ContextName, kindNamespace(), sentinel); err != nil {
 		t.Fatal("sweep removed sentinel")
 	}
-	if _, err = helmClient.GetRelease(request.ContextName, "default", malformed); err != nil {
+	if _, err = helmClient.GetRelease(request.ContextName, kindNamespace(), malformed); err != nil {
 		t.Fatal("sweep removed malformed Accelerator-shaped release")
 	}
 	_ = NewDisposalService(service).DisposeNow(context.Background(), active)
@@ -1068,7 +1371,7 @@ func exerciseDisposalKind(t *testing.T, service *Service, helmClient *helm.Clien
 
 func exerciseConnectorKind(t *testing.T, ctx context.Context, client *k8s.Client, workload, wrong, replacementWorkload *ProvisionedWorkload) {
 	t.Helper()
-	connector := NewConnector("v1.2.3")
+	connector := NewConnector(kindBuildVersion())
 	var privateEndpoint string
 	connector.observeEndpoint = func(endpoint string) { privateEndpoint = endpoint }
 	connectCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -1105,7 +1408,7 @@ func exerciseConnectorKind(t *testing.T, ctx context.Context, client *k8s.Client
 			t.Fatalf("forced drop reason=%s", result.Session.EndReason())
 		}
 		resumeCtx, resumeCancel := context.WithTimeout(ctx, 30*time.Second)
-		reconnector := NewReconnector("v1.2.3")
+		reconnector := NewReconnector(kindBuildVersion())
 		var resumeEndpoint string
 		reconnector.connector.observeEndpoint = func(endpoint string) { resumeEndpoint = endpoint }
 		resumed := reconnector.Resume(resumeCtx, ResumeRequest{Prior: result.Session, Workload: workload})
@@ -1168,7 +1471,7 @@ func exerciseConnectorKind(t *testing.T, ctx context.Context, client *k8s.Client
 		t.Fatal("wrong-token fixture")
 	}
 	wrong.credential = wrongCredential
-	wrongResult := NewConnector("v1.2.3").Connect(ctx, wrong)
+	wrongResult := NewConnector(kindBuildVersion()).Connect(ctx, wrong)
 	if wrongResult.Availability != Unavailable || wrongResult.Reason != AcceleratorUnavailable || wrongResult.Session != nil {
 		t.Fatal("wrong creator token did not fail closed")
 	}
@@ -1220,7 +1523,7 @@ func exerciseConnectorKind(t *testing.T, ctx context.Context, client *k8s.Client
 	if !readyReplacement {
 		t.Fatal("replacement Pod did not become Running and Ready")
 	}
-	replacementConnector := NewConnector("v1.2.3")
+	replacementConnector := NewConnector(kindBuildVersion())
 	replacementConnector.observeEndpoint = func(string) { t.Fatal("replacement reached tunnel/authentication") }
 	replacementResult := replacementConnector.Connect(ctx, replacementWorkload)
 	if replacementResult.Availability != Unavailable || replacementResult.Session != nil || (replacementResult.Reason != WorkloadUnavailable && replacementResult.Reason != WorkloadChanged) {
@@ -1330,10 +1633,24 @@ func kindRequest(contextName, chartDigest, imageDigest string) Request {
 	return Request{ContextName: contextName, Resolution: acceleratorrelease.Resolution{
 		Availability: acceleratorrelease.Available, Source: acceleratorrelease.SourceNetwork,
 		Release: acceleratorrelease.VerifiedRelease{
-			BuildVersion: "v1.2.3", SourceCommit: strings.Repeat("c", 40), DescriptorSHA256: strings.Repeat("d", 64),
+			BuildVersion: kindBuildVersion(), SourceCommit: strings.Repeat("c", 40), DescriptorSHA256: strings.Repeat("d", 64),
 			ImageReference: imageRepository + "@" + imageDigest, ChartReference: chartRepository + "@" + chartDigest,
 		},
 	}}
+}
+
+func kindBuildVersion() string {
+	if value := os.Getenv("BUILD_VERSION"); value != "" {
+		return value
+	}
+	return "v1.2.3"
+}
+
+func kindNamespace() string {
+	if value := os.Getenv("KUBIKLES_ACCELERATOR_E2E_NAMESPACE"); value != "" {
+		return value
+	}
+	return "default"
 }
 
 func assertKindReleaseObjects(t *testing.T, ctx context.Context, client *k8s.Client, workload *ProvisionedWorkload) {

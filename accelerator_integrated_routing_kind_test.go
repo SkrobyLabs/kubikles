@@ -481,10 +481,26 @@ func (t integratedRoutingKindRegistryTransport) RoundTrip(request *http.Request)
 	return t.base.RoundTrip(clone)
 }
 
+type integratedRoutingKindAcceptanceProof struct {
+	integratedHappy     bool
+	sixOperations       bool
+	valueFreeBoundaries bool
+	immediateDirect     bool
+	resumedHigherSource bool
+	staleSourceRejected bool
+	mismatchDirect      bool
+	mismatchAttempts    int
+	mismatchNoThird     bool
+}
+
 func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
+	runAcceleratorIntegratedRoutingKind(t)
+}
+
+func runAcceleratorIntegratedRoutingKind(t *testing.T) integratedRoutingKindAcceptanceProof {
 	var (
 		snapshot                        *k8s.AcceleratorContextSnapshot
-		fixtureName                     string
+		fixtureName, fixtureNamespace   string
 		secretCreated, configMapCreated bool
 		app, mismatchApp                *App
 		healthyClosed, mismatchClosed   bool
@@ -507,14 +523,14 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), integratedRoutingKindFixtureCleanupTimeout)
 		defer cancel()
 		if secretCreated {
-			_ = snapshot.Clientset().CoreV1().Secrets("default").Delete(ctx, fixtureName, metav1.DeleteOptions{})
-			if _, getErr := snapshot.Clientset().CoreV1().Secrets("default").Get(ctx, fixtureName, metav1.GetOptions{}); !apierrors.IsNotFound(getErr) {
+			_ = snapshot.Clientset().CoreV1().Secrets(fixtureNamespace).Delete(ctx, fixtureName, metav1.DeleteOptions{})
+			if _, getErr := snapshot.Clientset().CoreV1().Secrets(fixtureNamespace).Get(ctx, fixtureName, metav1.GetOptions{}); !apierrors.IsNotFound(getErr) {
 				t.Error("integrated routing Secret fixture cleanup failed")
 			}
 		}
 		if configMapCreated {
-			_ = snapshot.Clientset().CoreV1().ConfigMaps("default").Delete(ctx, fixtureName, metav1.DeleteOptions{})
-			if _, getErr := snapshot.Clientset().CoreV1().ConfigMaps("default").Get(ctx, fixtureName, metav1.GetOptions{}); !apierrors.IsNotFound(getErr) {
+			_ = snapshot.Clientset().CoreV1().ConfigMaps(fixtureNamespace).Delete(ctx, fixtureName, metav1.DeleteOptions{})
+			if _, getErr := snapshot.Clientset().CoreV1().ConfigMaps(fixtureNamespace).Get(ctx, fixtureName, metav1.GetOptions{}); !apierrors.IsNotFound(getErr) {
 				t.Error("integrated routing ConfigMap fixture cleanup failed")
 			}
 		}
@@ -534,17 +550,20 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 	malformed := requiredIntegratedRoutingKindEnv(t, "ACCELERATOR_PROVISION_KIND_MALFORMED")
 	diagnostic.set(integratedRoutingKindStageSetup)
 	registryURL, err := url.Parse(requiredIntegratedRoutingKindEnv(t, "ACCELERATOR_PROVISION_KIND_REGISTRY_TLS_URL"))
-	if err != nil || registryURL.Scheme != "https" || registryURL.Host == "" {
+	if err != nil || (registryURL.Scheme != "https" && registryURL.Scheme != "http") || registryURL.Host == "" ||
+		(registryURL.Scheme == "http" && os.Getenv("KUBIKLES_ACCELERATOR_E2E_REUSE") != "1") {
 		t.Fatal("integrated routing registry fixture invalid")
 	}
-	diagnostic.set(integratedRoutingKindStageSetup)
-	certificate, err := os.ReadFile(requiredIntegratedRoutingKindEnv(t, "ACCELERATOR_PROVISION_KIND_REGISTRY_CA"))
-	if err != nil {
-		t.Fatal("integrated routing registry CA unavailable")
-	}
 	pool := x509.NewCertPool()
-	if !pool.AppendCertsFromPEM(certificate) {
-		t.Fatal("integrated routing registry CA invalid")
+	if registryURL.Scheme == "https" {
+		diagnostic.set(integratedRoutingKindStageSetup)
+		certificate, readErr := os.ReadFile(requiredIntegratedRoutingKindEnv(t, "ACCELERATOR_PROVISION_KIND_REGISTRY_CA"))
+		if readErr != nil {
+			t.Fatal("integrated routing registry CA unavailable")
+		}
+		if !pool.AppendCertsFromPEM(certificate) {
+			t.Fatal("integrated routing registry CA invalid")
+		}
 	}
 	restoreTransport := helm.SetAcceleratorRegistryTransportForTest(func(base http.RoundTripper) http.RoundTripper {
 		transport := base.(*http.Transport).Clone()
@@ -564,16 +583,17 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 	contextName := client.GetCurrentContext()
 	diagnostic.set(integratedRoutingKindStageSetup)
 	snapshot, err = client.SnapshotCurrentContext(contextName)
-	if err != nil {
+	if err != nil || snapshot.Namespace() == "" {
 		t.Fatal("integrated routing context snapshot unavailable")
 	}
+	fixtureNamespace = snapshot.Namespace()
 	diagnostic.set(integratedRoutingKindStageSetup)
 	fixtureName = "integrated-routing-" + integratedRoutingKindSuffix(t)
 	fixtureSetupCtx, fixtureSetupCancel := context.WithTimeout(context.Background(), integratedRoutingKindFixtureSetupTimeout)
 	defer fixtureSetupCancel()
 	diagnostic.set(integratedRoutingKindStageSetup)
-	if _, err = snapshot.Clientset().CoreV1().Secrets("default").Create(fixtureSetupCtx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: fixtureName, Namespace: "default", Labels: map[string]string{"routing.test/origin": "fixture"}, Annotations: map[string]string{"routing.test/note": "preserved"}},
+	if _, err = snapshot.Clientset().CoreV1().Secrets(fixtureNamespace).Create(fixtureSetupCtx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: fixtureName, Namespace: fixtureNamespace, Labels: map[string]string{"routing.test/origin": "fixture"}, Annotations: map[string]string{"routing.test/note": "preserved"}},
 		Type:       corev1.SecretTypeOpaque,
 		Data:       map[string][]byte{"token": []byte("explicit-detail-value")},
 	}, metav1.CreateOptions{}); err != nil {
@@ -581,8 +601,8 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 	}
 	secretCreated = true
 	diagnostic.set(integratedRoutingKindStageSetup)
-	if _, err = snapshot.Clientset().CoreV1().ConfigMaps("default").Create(fixtureSetupCtx, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: fixtureName, Namespace: "default"}, Data: map[string]string{"tripwire": "direct"},
+	if _, err = snapshot.Clientset().CoreV1().ConfigMaps(fixtureNamespace).Create(fixtureSetupCtx, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: fixtureName, Namespace: fixtureNamespace}, Data: map[string]string{"tripwire": "direct"},
 	}, metav1.CreateOptions{}); err != nil {
 		t.Fatal("integrated routing ConfigMap fixture create failed")
 	}
@@ -601,7 +621,14 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 	}()
 	desktopUserConfigDir = func() (string, error) { return t.TempDir(), nil }
 
-	resolution := integratedRoutingKindResolution("v1.2.3", chartDigest, imageDigest)
+	stableBuildVersion := os.Getenv("BUILD_VERSION")
+	if stableBuildVersion == "" {
+		stableBuildVersion = "v1.2.3"
+	}
+	if os.Getenv("KUBIKLES_ACCELERATOR_E2E_REUSE") == "1" && stableBuildVersion != "v0.0.0" {
+		t.Fatal("integrated routing acceptance build version invalid")
+	}
+	resolution := integratedRoutingKindResolution(stableBuildVersion, chartDigest, imageDigest)
 	var coordinator *acceleratorprovision.Coordinator
 	var coordinatorProbe *acceleratorprovision.IntegratedRoutingKindCoordinatorProbe
 	desktopAcceleratorCoordinatorFactory = func(k8sClient *k8s.Client, _ *acceleratorrelease.Resolver, provisioner *acceleratorprovision.Service, connector *acceleratorprovision.Connector, reconnector *acceleratorprovision.Reconnector, disposer *acceleratorprovision.DisposalService) desktopAcceleratorCoordinator {
@@ -648,7 +675,7 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 		return integratedRoutingKindSecretClient{client: created, probe: originProbe}, nil
 	}
 	diagnostic.set(integratedRoutingKindStageSetup)
-	BuildVersion = "v1.2.3"
+	BuildVersion = stableBuildVersion
 	helmClient := helm.NewClient()
 	app = &App{runtimeMode: RuntimeModeDesktop, ctx: context.Background(), k8sClient: client, helmClient: helmClient, agentRouter: NoopAgentRouter{}, lifecycle: NoopRuntimeLifecycle{}, emitter: emitter}
 	initializeDesktopAcceleratorLifecycle(app)
@@ -658,7 +685,7 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 	diagnostic.set(integratedRoutingKindStagePreReady)
 	app.RetainIntegratedSecretReads()
 	diagnostic.set(integratedRoutingKindStageDirect)
-	if _, directErr := app.GetSecretYaml("default", fixtureName); directErr != nil {
+	if _, directErr := app.GetSecretYaml(fixtureNamespace, fixtureName); directErr != nil {
 		t.Fatal("integrated routing initial Direct tripwire failed")
 	}
 	diagnostic.set(integratedRoutingKindStageDirect)
@@ -669,7 +696,7 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 	diagnostic.set(integratedRoutingKindStageList)
 	listDone := make(chan error, 1)
 	go func() {
-		_, listErr := app.ListIntegratedSecretsMetadata(string(firstToken), "cancel-owner", "default", false)
+		_, listErr := app.ListIntegratedSecretsMetadata(string(firstToken), "cancel-owner", fixtureNamespace, false)
 		listDone <- listErr
 	}()
 	diagnostic.set(integratedRoutingKindStageList)
@@ -697,16 +724,16 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 	diagnostic.set(integratedRoutingKindStageCancel)
 	assertIntegratedRoutingKindOriginProof(t, originProbe, expectedOrigin, "integrated routing canceled List success proof failed")
 	diagnostic.set(integratedRoutingKindStageList)
-	items, err := app.ListIntegratedSecretsMetadata(string(firstToken), "list-owner", "default", false)
+	items, err := app.ListIntegratedSecretsMetadata(string(firstToken), "list-owner", fixtureNamespace, false)
 	expectedOrigin.attempts[integratedRoutingKindList]++
 	expectedOrigin.successes[integratedRoutingKindList]++
 	diagnostic.set(integratedRoutingKindStageList)
 	assertIntegratedRoutingKindOriginProof(t, originProbe, expectedOrigin, "integrated routing remote List success proof failed")
-	if err != nil || !integratedRoutingKindContainsSecret(items, fixtureName) {
+	if err != nil || !integratedRoutingKindContainsSecret(items, fixtureNamespace, fixtureName) {
 		t.Fatal("integrated routing remote list failed")
 	}
 	diagnostic.set(integratedRoutingKindStageDetail)
-	data, err := app.GetIntegratedSecretData(string(firstToken), "default", fixtureName)
+	data, err := app.GetIntegratedSecretData(string(firstToken), fixtureNamespace, fixtureName)
 	expectedOrigin.attempts[integratedRoutingKindData]++
 	expectedOrigin.successes[integratedRoutingKindData]++
 	diagnostic.set(integratedRoutingKindStageDetail)
@@ -715,7 +742,7 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 		t.Fatal("integrated routing remote data failed")
 	}
 	diagnostic.set(integratedRoutingKindStageDetail)
-	yamlValue, err := app.GetIntegratedSecretYaml(string(firstToken), "default", fixtureName)
+	yamlValue, err := app.GetIntegratedSecretYaml(string(firstToken), fixtureNamespace, fixtureName)
 	expectedOrigin.attempts[integratedRoutingKindYAML]++
 	expectedOrigin.successes[integratedRoutingKindYAML]++
 	diagnostic.set(integratedRoutingKindStageDetail)
@@ -724,7 +751,7 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 		t.Fatal("integrated routing remote YAML failed")
 	}
 	diagnostic.set(integratedRoutingKindStageWatch)
-	watcherSpecID, err := app.SubscribeIntegratedSecretWatcher(string(firstToken), "default", false)
+	watcherSpecID, err := app.SubscribeIntegratedSecretWatcher(string(firstToken), fixtureNamespace, false)
 	expectedOrigin.attempts[integratedRoutingKindSubscribe]++
 	expectedOrigin.successes[integratedRoutingKindSubscribe]++
 	diagnostic.set(integratedRoutingKindStageWatch)
@@ -735,14 +762,14 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 	watchMutationCtx, watchMutationCancel := context.WithTimeout(context.Background(), integratedRoutingKindWatchMutationTimeout)
 	defer watchMutationCancel()
 	diagnostic.set(integratedRoutingKindStageWatch)
-	currentSecret, err := snapshot.Clientset().CoreV1().Secrets("default").Get(watchMutationCtx, fixtureName, metav1.GetOptions{})
+	currentSecret, err := snapshot.Clientset().CoreV1().Secrets(fixtureNamespace).Get(watchMutationCtx, fixtureName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatal("integrated routing watch mutation read failed")
 	}
 	currentSecret = currentSecret.DeepCopy()
 	currentSecret.Labels["routing.test/watch"] = "changed"
 	diagnostic.set(integratedRoutingKindStageWatch)
-	if _, err = snapshot.Clientset().CoreV1().Secrets("default").Update(watchMutationCtx, currentSecret, metav1.UpdateOptions{}); err != nil {
+	if _, err = snapshot.Clientset().CoreV1().Secrets(fixtureNamespace).Update(watchMutationCtx, currentSecret, metav1.UpdateOptions{}); err != nil {
 		t.Fatal("integrated routing watch mutation failed")
 	}
 	watchMutationCancel()
@@ -761,11 +788,11 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 	assertIntegratedRoutingKindOriginProof(t, originProbe, expectedOrigin, "integrated routing remote Unsubscribe success proof failed")
 	proofAfterSix := expectedOrigin
 	diagnostic.set(integratedRoutingKindStageIsolation)
-	if _, err = app.GetConfigMapYaml("default", fixtureName); err != nil {
+	if _, err = app.GetConfigMapYaml(fixtureNamespace, fixtureName); err != nil {
 		t.Fatal("integrated routing non-Secret Direct read failed")
 	}
 	diagnostic.set(integratedRoutingKindStageIsolation)
-	if err = app.UpdateSecretData("default", fixtureName, []k8s.DataEntry{{Key: "token", Value: "mutated-direct", Source: k8s.DataEntrySourceData, Encoding: k8s.DataEntryEncodingText}}); err != nil {
+	if err = app.UpdateSecretData(fixtureNamespace, fixtureName, []k8s.DataEntry{{Key: "token", Value: "mutated-direct", Source: k8s.DataEntrySourceData, Encoding: k8s.DataEntryEncodingText}}); err != nil {
 		t.Fatal("integrated routing Direct mutation failed")
 	}
 	diagnostic.set(integratedRoutingKindStageIsolation)
@@ -783,11 +810,11 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 		t.Fatal("integrated routing unavailable generation mismatch")
 	}
 	diagnostic.set(integratedRoutingKindStageLoss)
-	if _, err = app.GetSecretYaml("default", fixtureName); err != nil || !integratedRoutingKindOriginProofMatches(originProbe.snapshot(), proofAfterSix) {
+	if _, err = app.GetSecretYaml(fixtureNamespace, fixtureName); err != nil || !integratedRoutingKindOriginProofMatches(originProbe.snapshot(), proofAfterSix) {
 		t.Fatal("integrated routing loss Direct tripwire failed")
 	}
 	diagnostic.set(integratedRoutingKindStageLoss)
-	if _, err = app.GetIntegratedSecretYaml(string(firstToken), "default", fixtureName); err == nil {
+	if _, err = app.GetIntegratedSecretYaml(string(firstToken), fixtureNamespace, fixtureName); err == nil {
 		t.Fatal("integrated routing stale generation served")
 	}
 	diagnostic.set(integratedRoutingKindStageLoss)
@@ -798,7 +825,7 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 		t.Fatal("integrated routing resumed token was reused")
 	}
 	diagnostic.set(integratedRoutingKindStageResume)
-	data, err = app.GetIntegratedSecretData(string(secondToken), "default", fixtureName)
+	data, err = app.GetIntegratedSecretData(string(secondToken), fixtureNamespace, fixtureName)
 	expectedOrigin.attempts[integratedRoutingKindData]++
 	expectedOrigin.successes[integratedRoutingKindData]++
 	diagnostic.set(integratedRoutingKindStageResume)
@@ -816,12 +843,16 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 
 	mismatchReady := make(chan SecretReadSourceToken, 1)
 	var mismatchClientConstructions atomic.Int32
-	resolution = integratedRoutingKindResolution("v1.2.4", chartDigest, imageDigest)
+	mismatchBuildVersion := "v1.2.4"
+	if stableBuildVersion == "v0.0.0" {
+		mismatchBuildVersion = "v0.0.1"
+	}
+	resolution = integratedRoutingKindResolution(mismatchBuildVersion, chartDigest, imageDigest)
 	desktopAcceleratorSecretClientFactory = func(lease *acceleratorprovision.SessionLease) (acceleratorprovision.SecretRPCClient, error) {
 		mismatchClientConstructions.Add(1)
 		return acceleratorprovision.NewSecretRPCClient(lease)
 	}
-	BuildVersion = "v1.2.4"
+	BuildVersion = mismatchBuildVersion
 	diagnostic.set(integratedRoutingKindStageMismatch)
 	mismatchApp = &App{runtimeMode: RuntimeModeDesktop, ctx: context.Background(), k8sClient: client, helmClient: helmClient, agentRouter: NoopAgentRouter{}, lifecycle: NoopRuntimeLifecycle{}, emitter: events.EmitterFunc(func(name string, data ...interface{}) {
 		if name == integratedSecretReadyEvent && len(data) == 1 {
@@ -836,7 +867,7 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 	mismatchProbe := coordinatorProbe
 	diagnostic.set(integratedRoutingKindStageMismatch)
 	mismatchApp.RetainIntegratedSecretReads()
-	if _, err = mismatchApp.GetSecretYaml("default", fixtureName); err != nil {
+	if _, err = mismatchApp.GetSecretYaml(fixtureNamespace, fixtureName); err != nil {
 		t.Fatal("integrated routing mismatch Direct tripwire failed")
 	}
 	diagnostic.set(integratedRoutingKindStageMismatch)
@@ -856,7 +887,7 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 	if mismatchProbe.ProvisionAttempts() != 2 || mismatchCoordinator.Snapshot(contextName).State != acceleratorprovision.CoordinatorUnavailable {
 		t.Fatal("integrated routing mismatch created a third workload")
 	}
-	if _, err = mismatchApp.GetSecretYaml("default", fixtureName); err != nil {
+	if _, err = mismatchApp.GetSecretYaml(fixtureNamespace, fixtureName); err != nil {
 		t.Fatal("integrated routing mismatch did not remain Direct")
 	}
 	diagnostic.set(integratedRoutingKindStageMismatch)
@@ -868,6 +899,11 @@ func TestAcceleratorIntegratedRoutingKind(t *testing.T) {
 
 	diagnostic.set(integratedRoutingKindStageFinalVerification)
 	assertIntegratedRoutingKindFinalCleanup(t, helmClient, snapshot, sentinel, malformed)
+	return integratedRoutingKindAcceptanceProof{
+		integratedHappy: true, sixOperations: true, valueFreeBoundaries: true,
+		immediateDirect: true, resumedHigherSource: true, staleSourceRejected: true,
+		mismatchDirect: true, mismatchAttempts: mismatchProbe.ProvisionAttempts(), mismatchNoThird: true,
+	}
 }
 
 func requiredIntegratedRoutingKindEnv(t *testing.T, name string) string {
@@ -1102,9 +1138,9 @@ func waitIntegratedRoutingKindResource(t *testing.T, channel <-chan integratedSe
 	}
 }
 
-func integratedRoutingKindContainsSecret(items []k8s.SecretListItem, name string) bool {
+func integratedRoutingKindContainsSecret(items []k8s.SecretListItem, namespace, name string) bool {
 	for _, item := range items {
-		if item.Metadata.Name == name && item.Metadata.Namespace == "default" && item.DataKeys == 1 {
+		if item.Metadata.Name == name && item.Metadata.Namespace == namespace && item.DataKeys == 1 {
 			return true
 		}
 	}
@@ -1133,8 +1169,12 @@ func waitIntegratedRoutingKindMismatch(t *testing.T, coordinator *acceleratorpro
 
 func assertIntegratedRoutingKindFinalCleanup(t *testing.T, helmClient *helm.Client, snapshot *k8s.AcceleratorContextSnapshot, sentinel, malformed string) {
 	t.Helper()
+	namespace := snapshot.Namespace()
+	if namespace == "" {
+		t.Fatal("integrated routing final namespace unavailable")
+	}
 	helmCtx, helmCancel := context.WithTimeout(context.Background(), integratedRoutingKindHelmAssertionTimeout)
-	releases, err := helmClient.ListReleasesForAcceleratorProvisionKind(helmCtx, snapshot.RESTConfig(), "default")
+	releases, err := helmClient.ListReleasesForAcceleratorProvisionKind(helmCtx, snapshot.RESTConfig(), namespace)
 	helmCancel()
 	if err != nil || len(releases) != 2 {
 		t.Fatal("integrated routing final Helm cleanup failed")
@@ -1152,10 +1192,10 @@ func assertIntegratedRoutingKindFinalCleanup(t *testing.T, helmClient *helm.Clie
 	selector := "app.kubernetes.io/name=kubikles-accelerator"
 	k8sCtx, k8sCancel := context.WithTimeout(context.Background(), integratedRoutingKindK8sAssertionTimeout)
 	defer k8sCancel()
-	jobs, jobsErr := snapshot.Clientset().BatchV1().Jobs("default").List(k8sCtx, metav1.ListOptions{LabelSelector: selector})
-	pods, podsErr := snapshot.Clientset().CoreV1().Pods("default").List(k8sCtx, metav1.ListOptions{LabelSelector: selector})
-	secrets, secretsErr := snapshot.Clientset().CoreV1().Secrets("default").List(k8sCtx, metav1.ListOptions{LabelSelector: selector})
-	accounts, accountsErr := snapshot.Clientset().CoreV1().ServiceAccounts("default").List(k8sCtx, metav1.ListOptions{LabelSelector: selector})
+	jobs, jobsErr := snapshot.Clientset().BatchV1().Jobs(namespace).List(k8sCtx, metav1.ListOptions{LabelSelector: selector})
+	pods, podsErr := snapshot.Clientset().CoreV1().Pods(namespace).List(k8sCtx, metav1.ListOptions{LabelSelector: selector})
+	secrets, secretsErr := snapshot.Clientset().CoreV1().Secrets(namespace).List(k8sCtx, metav1.ListOptions{LabelSelector: selector})
+	accounts, accountsErr := snapshot.Clientset().CoreV1().ServiceAccounts(namespace).List(k8sCtx, metav1.ListOptions{LabelSelector: selector})
 	roles, rolesErr := snapshot.Clientset().RbacV1().ClusterRoles().List(k8sCtx, metav1.ListOptions{LabelSelector: selector})
 	bindings, bindingsErr := snapshot.Clientset().RbacV1().ClusterRoleBindings().List(k8sCtx, metav1.ListOptions{LabelSelector: selector})
 	if jobsErr != nil || podsErr != nil || secretsErr != nil || accountsErr != nil || rolesErr != nil || bindingsErr != nil || len(jobs.Items) != 0 || len(pods.Items) != 0 || len(secrets.Items) != 0 || len(accounts.Items) != 0 || len(roles.Items) != 0 || len(bindings.Items) != 0 {

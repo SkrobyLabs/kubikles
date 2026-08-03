@@ -41,8 +41,11 @@ helm version --short 2>/dev/null | grep -F 'v3.21.3+' >/dev/null || fail "helm-v
 oras version 2>/dev/null | grep -F 'Version:        1.3.3' >/dev/null || fail "oras-v1.3.3-required"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$root/scripts/lib/accelerator-e2e-kind.sh"
+reuse_mode="$(accelerator_e2e_reuse_mode)" || fail "invalid-reuse-boundary"
 "$root/scripts/check-accelerator-desktop-provision-scope.sh"
 source_image="${ACCELERATOR_PROVISION_KIND_IMAGE:-kubikles-accelerator:provision-kind}"
+validate_standalone_source_image() {
 docker image inspect "$source_image" >/dev/null 2>&1 || fail "missing-image-$source_image"
 revision_json="$(docker image inspect "$source_image" --format '{{json (index .Config.Labels "org.opencontainers.image.revision")}}' 2>/dev/null)" || fail "source-image-revision-unavailable"
 revision_json_pattern='^"([0-9a-f]{40})"$'
@@ -51,6 +54,12 @@ source_revision="${BASH_REMATCH[1]}"
 expected_revision="$(git -C "$root" rev-parse HEAD 2>/dev/null)" || fail "checkout-revision-unavailable"
 [[ "$expected_revision" =~ ^[0-9a-f]{40}$ ]] || fail "checkout-revision-invalid"
 test "$source_revision" = "$expected_revision" || fail "source-image-revision-mismatch"
+}
+if [ "$reuse_mode" = standalone ]; then
+  validate_standalone_source_image
+else
+  accelerator_e2e_validate_reused_fixture || fail "reuse-fixture"
+fi
 docker image inspect kindest/node:v1.32.2 >/dev/null 2>&1 || fail "missing-kindest-node-v1.32.2"
 docker image inspect registry:2.8.3 >/dev/null 2>&1 || fail "missing-registry-v2.8.3"
 test -f "$root/deploy/charts/kubikles-accelerator/Chart.yaml" || fail "missing-chart-source"
@@ -63,15 +72,37 @@ kubeconfig="$tmp/kubeconfig"
 test_home="$tmp/home"
 sentinel="kubikles-provision-sentinel"
 malformed="kubikles-accelerator-ffffffffffffffffffffffffffffffff"
+namespace=default
+build_version=v1.2.3
+registry_tls_url=""
+registry_ca=""
+if [ "$reuse_mode" = reuse ]; then
+  cluster="$KUBIKLES_ACCELERATOR_E2E_KIND_NAME"
+  kubeconfig="$tmp/kubeconfig"
+  namespace="$KUBIKLES_ACCELERATOR_E2E_NAMESPACE"
+  build_version="${BUILD_VERSION-}"
+  [ "$build_version" = v0.0.0 ] || fail "reuse-build-version"
+  sentinel="a60a-sentinel-${namespace##*-}"
+  accelerator_e2e_prepare_child_kubeconfig "$kubeconfig" "$namespace" || fail "reuse-kubeconfig"
+fi
 cluster_created=false
 registry_created=false
 chart_registry_created=false
+namespace_created=false
 cleanup_failed=false
 
 cleanup() {
 	status=$?
 	trap - EXIT INT TERM
   set +e
+  if [ "$reuse_mode" = reuse ] && [ "$namespace_created" = true ]; then
+    while IFS= read -r owned_release; do
+      [ -z "$owned_release" ] || KUBECONFIG="$kubeconfig" helm uninstall "$owned_release" -n "$namespace" >/dev/null 2>&1 || cleanup_failed=true
+    done < <(KUBECONFIG="$kubeconfig" helm list -n "$namespace" --short 2>/dev/null)
+    accelerator_e2e_delete_case_cluster_scope "$namespace" || cleanup_failed=true
+    KUBECONFIG="$kubeconfig" kubectl delete namespace "$namespace" --wait=true --timeout=60s >/dev/null 2>&1 || cleanup_failed=true
+    if KUBECONFIG="$kubeconfig" kubectl get namespace "$namespace" >/dev/null 2>&1; then cleanup_failed=true; fi
+  fi
   if "$registry_created"; then
     docker rm -f "$registry_container" >/dev/null 2>&1
     docker container inspect "$registry_container" >/dev/null 2>&1 && cleanup_failed=true
@@ -84,8 +115,10 @@ cleanup() {
     kind delete cluster --name "$cluster" >/dev/null 2>&1
     kind get clusters 2>/dev/null | grep -Fx "$cluster" >/dev/null && cleanup_failed=true
   fi
-  docker image rm "127.0.0.1:${registry_port:-1}/skrobylabs/kubikles-accelerator:v1.2.3" >/dev/null 2>&1 || true
-  docker image rm "ghcr.io/skrobylabs/kubikles-accelerator:provision-kind" >/dev/null 2>&1 || true
+  if [ "$reuse_mode" = standalone ]; then
+    docker image rm "127.0.0.1:${registry_port:-1}/skrobylabs/kubikles-accelerator:v1.2.3" >/dev/null 2>&1 || true
+    docker image rm "ghcr.io/skrobylabs/kubikles-accelerator:provision-kind" >/dev/null 2>&1 || true
+  fi
   rm -rf "$tmp"
   if "$cleanup_failed"; then
     echo "accelerator-desktop-provision-kind: cleanup-failed" >&2
@@ -97,10 +130,13 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-docker container inspect "$registry_container" >/dev/null 2>&1 && fail "ownership-collision"
-docker container inspect "$chart_registry_container" >/dev/null 2>&1 && fail "ownership-collision"
-kind get clusters 2>/dev/null | grep -Fx "$cluster" >/dev/null && fail "ownership-collision"
+if [ "$reuse_mode" = standalone ]; then
+  docker container inspect "$registry_container" >/dev/null 2>&1 && fail "ownership-collision"
+  docker container inspect "$chart_registry_container" >/dev/null 2>&1 && fail "ownership-collision"
+  kind get clusters 2>/dev/null | grep -Fx "$cluster" >/dev/null && fail "ownership-collision"
+fi
 
+if [ "$reuse_mode" = standalone ]; then
 registry_created=true
 docker run --detach --rm --name "$registry_container" --publish 127.0.0.1:0:5000 registry:2.8.3 >"$tmp/registry-id" 2>"$tmp/registry-start" || fail "registry-start"
 registry_port="$(docker inspect "$registry_container" --format '{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostPort}}')"
@@ -158,7 +194,25 @@ helm push "$chart_archive" "oci://$chart_registry/skrobylabs/helm" --insecure-sk
 chart_ref="$chart_registry/skrobylabs/helm/kubikles-accelerator:1.2.3"
 chart_digest="$(oras resolve --insecure "$chart_ref" 2>"$tmp/chart-resolve-error")" || fail "chart-resolve"
 [[ "$chart_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "chart-digest"
+registry_tls_url="https://$chart_registry"
+registry_ca="$tmp/chart-registry-certs/cert.pem"
+else
+  registry="$KUBIKLES_ACCELERATOR_E2E_REGISTRY"
+  image_client_ref="$registry/skrobylabs/kubikles-accelerator:$build_version"
+  image_digest="$(oras resolve --plain-http "$image_client_ref" 2>"$tmp/image-resolve-error")" || fail "reuse-image-resolve"
+  [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "reuse-image-digest"
+  chart_registry="$registry"
+  chart_ref="$chart_registry/skrobylabs/helm/kubikles-accelerator:0.0.0"
+  chart_digest="$(oras resolve --plain-http "$chart_ref" 2>"$tmp/chart-resolve-error")" || fail "reuse-chart-resolve"
+  [[ "$chart_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "reuse-chart-digest"
+  helm pull "oci://$chart_registry/skrobylabs/helm/kubikles-accelerator" --version 0.0.0 --plain-http --destination "$tmp" >"$tmp/chart-pull" 2>&1 || fail "reuse-chart-pull"
+  chart_archive="$tmp/kubikles-accelerator-0.0.0.tgz"
+  test -s "$chart_archive" || fail "reuse-chart-archive"
+  registry_tls_url="http://$chart_registry"
+  registry_ca=""
+fi
 
+if [ "$reuse_mode" = standalone ]; then
 cat >"$tmp/kind.yaml" <<'EOF'
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -190,6 +244,7 @@ docker tag "$source_image" "$kind_image_ref" || fail "kind-image-tag"
 kind load docker-image --name "$cluster" "$kind_image_ref" >"$tmp/kind-image-load" 2>&1 || fail "kind-image-load"
 docker exec "$node" ctr --namespace k8s.io images tag "$kind_image_ref" "ghcr.io/skrobylabs/kubikles-accelerator@$image_digest" >"$tmp/kind-image-digest-tag" 2>&1 || fail "kind-image-digest-tag"
 docker exec "$node" crictl inspecti "ghcr.io/skrobylabs/kubikles-accelerator@$image_digest" >"$tmp/kind-image-inspect" 2>&1 || fail "kind-image-digest-missing"
+fi
 
 api_ready=false
 for _ in $(seq 1 60); do
@@ -206,7 +261,35 @@ cp "$kubeconfig" "$test_home/.kube/config"
 current_context="$(KUBECONFIG="$kubeconfig" kubectl config current-context)"
 test -n "$current_context" || fail "current-context"
 configured_namespace="$(KUBECONFIG="$kubeconfig" kubectl config view -o "jsonpath={.contexts[?(@.name=='$current_context')].context.namespace}")"
-test -z "$configured_namespace" || fail "kind-context-namespace-must-be-empty"
+if [ "$reuse_mode" = reuse ]; then
+  test "$configured_namespace" = "$namespace" || fail "reuse-context-namespace"
+  KUBECONFIG="$kubeconfig" kubectl create namespace "$namespace" >"$tmp/namespace-create" 2>&1 || fail "reuse-namespace-create"
+  namespace_created=true
+	api_service_ip="$(KUBECONFIG="$kubeconfig" kubectl -n default get service kubernetes -o jsonpath='{.spec.clusterIP}')" || fail "reuse-api-service-ip"
+	[[ "$api_service_ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || fail "reuse-api-service-ip"
+	KUBECONFIG="$kubeconfig" kubectl apply -f - >"$tmp/egress-policy" 2>&1 <<EOF || fail "reuse-egress-policy"
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: accelerator-e2e-api-egress
+  namespace: $namespace
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kubikles-accelerator
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: $api_service_ip/32
+      ports:
+        - protocol: TCP
+          port: 443
+EOF
+else
+  test -z "$configured_namespace" || fail "kind-context-namespace-must-be-empty"
+fi
 
 mkdir -p "$tmp/sentinel/templates"
 cat >"$tmp/sentinel/Chart.yaml" <<'EOF'
@@ -223,13 +306,14 @@ metadata:
 data:
   retained: "true"
 EOF
-KUBECONFIG="$kubeconfig" helm install "$sentinel" "$tmp/sentinel" --namespace default >"$tmp/sentinel-install" 2>&1 || fail "sentinel-install"
-KUBECONFIG="$kubeconfig" helm install "$malformed" "$tmp/sentinel" --namespace default >"$tmp/malformed-install" 2>&1 || fail "malformed-install"
+KUBECONFIG="$kubeconfig" helm install "$sentinel" "$tmp/sentinel" --namespace "$namespace" >"$tmp/sentinel-install" 2>&1 || fail "sentinel-install"
+KUBECONFIG="$kubeconfig" helm install "$malformed" "$tmp/sentinel" --namespace "$namespace" >"$tmp/malformed-install" 2>&1 || fail "malformed-install"
 
 go_test_timeout=5m
 go_test_package=./pkg/acceleratorprovision
 go_test_run='^TestAcceleratorDesktopProvisionKind$'
 go_test_output=-v
+go_test_tags=helm,accelerator_provision_kind
 if [[ "${ACCELERATOR_DISPOSAL_KIND:-0}" == "1" || "${ACCELERATOR_LIFECYCLE_KIND:-0}" == "1" ]]; then
   go_test_timeout=9m
 fi
@@ -244,17 +328,26 @@ if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" ]]; then
   go_test_run='^TestAcceleratorIntegratedRoutingKind$'
   go_test_output=-json
 fi
+if [[ "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" == "1" ]]; then
+  go_test_timeout=38m
+  go_test_package=.
+  go_test_run='^TestAcceleratorAcceptanceKind$'
+  go_test_output=-json
+  go_test_tags=helm,accelerator_provision_kind,accelerator_e2e
+fi
 (cd "$root" && HOME="$test_home" KUBECONFIG="$kubeconfig" \
   ACCELERATOR_PROVISION_KIND_CHART="$chart_archive" \
   ACCELERATOR_PROVISION_KIND_CHART_DIGEST="$chart_digest" \
-  ACCELERATOR_PROVISION_KIND_REGISTRY_TLS_URL="https://$chart_registry" \
-  ACCELERATOR_PROVISION_KIND_REGISTRY_CA="$tmp/chart-registry-certs/cert.pem" \
+  ACCELERATOR_PROVISION_KIND_REGISTRY_TLS_URL="$registry_tls_url" \
+  ACCELERATOR_PROVISION_KIND_REGISTRY_CA="$registry_ca" \
   ACCELERATOR_PROVISION_KIND_IMAGE_DIGEST="$image_digest" \
   ACCELERATOR_PROVISION_KIND_SENTINEL="$sentinel" \
   ACCELERATOR_PROVISION_KIND_MALFORMED="$malformed" \
-  go test "$go_test_output" -tags=helm,accelerator_provision_kind -count=1 -timeout="$go_test_timeout" "$go_test_package" -run "$go_test_run") >"$tmp/go-test" 2>&1 || {
-  if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" ]]; then
+  go test "$go_test_output" -tags="$go_test_tags" -count=1 -timeout="$go_test_timeout" "$go_test_package" -run "$go_test_run") >"$tmp/go-test" 2>&1 || {
+  if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" || "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" == "1" ]]; then
     captured_output_sensitive "$tmp/go-test" 1 && fail "go-service-output-sensitive"
+  fi
+  if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" ]]; then
     diagnostic="$("$root/scripts/extract-accelerator-kind-diagnostic.sh" "$tmp/go-test" TestAcceleratorIntegratedRoutingKind)" || fail "go-service-test"
     case "$diagnostic" in
       go-service-test|go-service-test-initial-missing|go-service-test-initial-sweeping|go-service-test-initial-resolving-zero|go-service-test-initial-resolving-after-provision|go-service-test-initial-provisioning|go-service-test-initial-connecting|go-service-test-initial-active-client-bind|go-service-test-initial-active-ready-path|go-service-test-initial-unavailable|go-service-test-initial-terminal|go-service-test-initial-unknown|go-service-test-initial-count-invalid|go-service-test-initial-client-repeat|go-service-test-initial-provision-retry|go-service-test-initial-provision-context-input|go-service-test-initial-provision-chart-pull|go-service-test-initial-provision-chart-integrity-render|go-service-test-initial-provision-install-conflict-permission|go-service-test-initial-provision-image-pull|go-service-test-initial-provision-job-pod|go-service-test-initial-provision-timeout-cancel|go-service-test-initial-provision-mixed|go-service-test-initial-provision-unknown|go-service-test-initial-connect-not-entered|go-service-test-initial-connect-tunnel|go-service-test-initial-connect-accelerator|go-service-test-initial-connect-version|go-service-test-initial-connect-authoritative|go-service-test-initial-connect-cancelled|go-service-test-initial-session-client-bind|go-service-test-initial-session-ready-path|go-service-test-initial-stage-mixed|go-service-test-stage-setup|go-service-test-stage-direct|go-service-test-stage-pre-ready|go-service-test-stage-ready|go-service-test-stage-list|go-service-test-stage-cancel|go-service-test-stage-detail|go-service-test-stage-watch|go-service-test-stage-loss|go-service-test-stage-resume|go-service-test-stage-mismatch|go-service-test-stage-isolation|go-service-test-stage-release|go-service-test-stage-final-verification)
@@ -274,11 +367,15 @@ fi
 }
 
 integrated_output=0
-[[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" ]] && integrated_output=1
+[[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" || "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" == "1" ]] && integrated_output=1
 captured_output_sensitive "$tmp/go-test" "$integrated_output" && fail "go-service-output-sensitive"
 
 if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" ]] && \
   ! "$root/scripts/check-accelerator-kind-test-discovery.sh" "$tmp/go-test" TestAcceleratorIntegratedRoutingKind; then
+  fail "mandatory-test-discovery"
+fi
+if [[ "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" == "1" ]] && \
+  ! "$root/scripts/check-accelerator-kind-test-discovery.sh" "$tmp/go-test" TestAcceleratorAcceptanceKind; then
   fail "mandatory-test-discovery"
 fi
 

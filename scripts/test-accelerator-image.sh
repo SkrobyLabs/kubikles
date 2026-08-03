@@ -23,6 +23,17 @@ first_repro_cid=
 second_repro_cid=
 version_cid=
 commit_cid=
+offline=false
+build_cache_flags=--no-cache
+offline_build_flags=
+
+if [ "${ACCELERATOR_E2E_OFFLINE:-0}" = 1 ]; then
+    [ "${KUBIKLES_ACCELERATOR_E2E_REUSE:-0}" = 1 ] || { echo "accelerator image validation failed: offline reuse boundary is incomplete" >&2; exit 1; }
+    [ "$BUILD_VERSION" = v0.0.0 ] || { echo "accelerator image validation failed: offline BuildVersion must be v0.0.0" >&2; exit 1; }
+    offline=true
+    build_cache_flags=
+    offline_build_flags='--network=none --pull=false'
+fi
 
 fail() { echo "accelerator image validation failed: $*" >&2; exit 1; }
 cleanup() {
@@ -36,6 +47,7 @@ cleanup() {
     [ -z "$second_repro_cid" ] || docker rm -f "$second_repro_cid" >/dev/null 2>&1 || true
     [ -z "$version_cid" ] || docker rm -f "$version_cid" >/dev/null 2>&1 || true
     [ -z "$commit_cid" ] || docker rm -f "$commit_cid" >/dev/null 2>&1 || true
+    [ "$offline" = false ] || docker image rm -f "$image" >/dev/null 2>&1 || true
     rm -rf "$tmp"
 }
 trap cleanup EXIT INT TERM
@@ -61,8 +73,18 @@ labels=$(docker image inspect "$image" --format '{{json .Config.Labels}}')
 case "$labels" in *"org.opencontainers.image.version\":\"$BUILD_VERSION"*) ;; *) fail "version label mismatch";; esac
 case "$labels" in *"org.opencontainers.image.revision\":\"$GIT_COMMIT"*) ;; *) fail "revision label mismatch";; esac
 
-docker pull "$base" >/dev/null
-docker pull "$curl_image" >/dev/null
+if [ "$offline" = true ]; then
+    for cached in \
+        'docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e' \
+        'node:20.19.5-bookworm-slim@sha256:9e70124bd00f47dd023e349cd587132ae61892acc0e47ed641416c3e18f401c3' \
+        'golang:1.24.2-bookworm@sha256:79390b5e5af9ee6e7b1173ee3eac7fadf6751a545297672916b59bfa0ecf6f71' \
+        "$base" "$curl_image"; do
+        docker image inspect "$cached" >/dev/null 2>&1 || fail "offline cached image is missing"
+    done
+else
+    docker pull "$base" >/dev/null
+    docker pull "$curl_image" >/dev/null
+fi
 base_layers=$(docker image inspect "$base" --format '{{join .RootFS.Layers " "}}')
 image_layers=$(docker image inspect "$image" --format '{{join .RootFS.Layers " "}}')
 case "$image_layers" in "$base_layers "*) ;; *) fail "final image rootfs does not retain exact pinned-base layer prefix";; esac
@@ -84,6 +106,7 @@ for forbidden in bin/sh bin/bash usr/bin/apt usr/bin/dpkg usr/bin/kubectl usr/bi
 done
 go run ./scripts/cmd/inspect-accelerator-binary "$tmp/kubikles-accelerator" "$(go env GOARCH)" "$BUILD_VERSION" "$GIT_COMMIT" "$GIT_DIRTY"
 
+if [ "$offline" = false ]; then
 repro_nonce=$(basename "$tmp" | tr -cd 'a-zA-Z0-9')
 first_image="${image}-repro-${repro_nonce}-one"
 second_image="${image}-repro-${repro_nonce}-two"
@@ -92,7 +115,7 @@ build_product() {
 	archive=$2
 	product_version=$3
 	product_commit=$4
-	SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build --no-cache --output type=docker,rewrite-timestamp=true -f "$clean_context/Dockerfile.accelerator" -t "$repro" --build-arg BUILD_VERSION="$product_version" --build-arg GIT_COMMIT="$product_commit" --build-arg GIT_DIRTY="$GIT_DIRTY" --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" "$clean_context" >/dev/null
+	SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build $build_cache_flags $offline_build_flags --output type=docker,rewrite-timestamp=true -f "$clean_context/Dockerfile.accelerator" -t "$repro" --build-arg BUILD_VERSION="$product_version" --build-arg GIT_COMMIT="$product_commit" --build-arg GIT_DIRTY="$GIT_DIRTY" --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" "$clean_context" >/dev/null
 	if [ -n "$archive" ]; then
 		docker image save "$repro" -o "$archive"
 	fi
@@ -165,7 +188,7 @@ build_asset_evidence() {
 	asset_version=$2
 	asset_commit=$3
 	mkdir "$asset_dir"
-	SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build --target accelerator-assets --output "type=local,dest=$asset_dir" -f "$clean_context/Dockerfile.accelerator" --build-arg BUILD_VERSION="$asset_version" --build-arg GIT_COMMIT="$asset_commit" --build-arg GIT_DIRTY="$GIT_DIRTY" --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" "$clean_context" >/dev/null
+	SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build $offline_build_flags --target accelerator-assets --output "type=local,dest=$asset_dir" -f "$clean_context/Dockerfile.accelerator" --build-arg BUILD_VERSION="$asset_version" --build-arg GIT_COMMIT="$asset_commit" --build-arg GIT_DIRTY="$GIT_DIRTY" --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" "$clean_context" >/dev/null
 }
 baseline_assets="$tmp/assets-baseline"
 version_assets="$tmp/assets-version"
@@ -203,6 +226,10 @@ test "$baseline_marker_hash" != "$version_marker_hash" || fail "Browser marker d
 test "$baseline_marker_hash" = "$commit_marker_hash" || fail "Browser marker changed with commit-only mutation"
 grep -F "\"buildVersion\":\"$BUILD_VERSION\"" "$baseline_browser/.kubikles-browser-v1.json" >/dev/null || fail "baseline Browser marker version mismatch"
 grep -F "\"buildVersion\":\"$version_mutated\"" "$version_browser/.kubikles-browser-v1.json" >/dev/null || fail "mutated Browser marker version mismatch"
+else
+    [ -n "${ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT:-}" ] || fail "offline artifact root is missing"
+    go run ./internal/acceleratoracceptance/cmd/accelerator-e2e-artifact "$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT" || fail "offline artifact evidence is invalid"
+fi
 
 mkdir -p "$tmp/serviceaccount"
 chmod 0755 "$tmp" "$tmp/serviceaccount"

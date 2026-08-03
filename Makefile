@@ -1,7 +1,10 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind test-accelerator-desktop-provision-kind test-accelerator-desktop-connector-kind test-accelerator-desktop-resume-kind test-accelerator-desktop-disposal-kind test-accelerator-desktop-lifecycle-kind test-accelerator-browser-lifecycle-kind test-accelerator-integrated-routing-kind test-accelerator-release-contract test-accelerator-publication-local verify-accelerator-release-ghcr
+.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind test-accelerator-desktop-provision-kind test-accelerator-desktop-connector-kind test-accelerator-desktop-resume-kind test-accelerator-desktop-disposal-kind test-accelerator-desktop-lifecycle-kind test-accelerator-browser-lifecycle-kind test-accelerator-integrated-routing-kind test-accelerator-release-contract test-accelerator-publication-local verify-accelerator-release-ghcr test-accelerator-e2e
+
+test-accelerator-e2e:
+	@bash scripts/test-accelerator-e2e.sh
 
 .DEFAULT_GOAL := help
 
@@ -105,6 +108,7 @@ help:
 	@echo "  test-accelerator-integrated-routing-kind  Exercise automatic integrated Secret routing in Kind"
 	@echo "  test-accelerator-release-contract  Validate exact immutable release contracts offline"
 	@echo "  test-accelerator-publication-local  Exercise publication against a disposable registry"
+	@echo "  test-accelerator-e2e  Run the closed offline Kubikles Accelerator acceptance gate"
 	@echo "  verify-accelerator-release-ghcr  Verify one exact authenticated published release"
 	@echo "  typecheck          Run TypeScript type checking (tsc --noEmit)"
 	@echo ""
@@ -169,6 +173,10 @@ endif
 GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "")
 GIT_DIRTY := $(shell git diff --quiet 2>/dev/null && echo "false" || echo "true")
 BUILD_VERSION ?= dev
+ifeq ($(KUBIKLES_ACCELERATOR_E2E_REUSE),1)
+  GIT_DIRTY := false
+  ACCELERATOR_DOCKER_BUILD_FLAGS := --network=none --pull=false
+endif
 VERSION_LDFLAGS := -X main.BuildVersion=$(BUILD_VERSION) -X main.GitCommit=$(GIT_COMMIT) -X main.GitDirty=$(GIT_DIRTY)
 BUILD_FLAGS := -trimpath -ldflags "-s -w $(VERSION_LDFLAGS)"
 
@@ -295,6 +303,11 @@ stage-accelerator-appicon:
 	@mkdir -p frontend/src/assets/images
 	cp build/appicon.svg frontend/src/assets/images/appicon.svg
 
+ifeq ($(KUBIKLES_ACCELERATOR_E2E_REUSE),1)
+build-accelerator:
+	@test "$(BUILD_VERSION)" = v0.0.0 || (echo "BUILD_VERSION=v0.0.0 is required for Accelerator acceptance" >&2; exit 1)
+	@go run ./internal/acceleratoracceptance/cmd/accelerator-e2e-artifact '$(ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT)'
+else
 build-accelerator: stage-accelerator-appicon
 	@test -n "$(BUILD_VERSION)" || (echo "BUILD_VERSION is required" >&2; exit 1)
 	@mkdir -p build/bin
@@ -302,15 +315,26 @@ build-accelerator: stage-accelerator-appicon
 	@cd frontend && BUILD_VERSION='$(BUILD_VERSION)' npm run test:accelerator-browser-artifact
 	CGO_ENABLED=0 GOOS=linux GOARCH='$(ACCELERATOR_GOARCH)' go build -trimpath -buildvcs=false -tags 'headless accelerator' -ldflags '-s -w -buildid= $(VERSION_LDFLAGS) -X main.acceleratorBuildIdentity=kubikles-accelerator-build-identity:$(BUILD_VERSION)|$(GIT_COMMIT)|$(GIT_DIRTY)' -o build/bin/kubikles-accelerator .
 	go run ./scripts/cmd/inspect-accelerator-binary build/bin/kubikles-accelerator '$(ACCELERATOR_GOARCH)' '$(BUILD_VERSION)' '$(GIT_COMMIT)' '$(GIT_DIRTY)'
+endif
 
 ACCELERATOR_IMAGE ?= kubikles-accelerator:local
 SOURCE_DATE_EPOCH ?= $(shell git show -s --format=%ct $(GIT_COMMIT) 2>/dev/null || echo 0)
 accelerator-docker-preflight:
 	@./scripts/preflight-accelerator-docker.sh
 
+ifeq ($(KUBIKLES_ACCELERATOR_E2E_REUSE),1)
+build-accelerator-image: accelerator-docker-preflight build-accelerator
+	@port="$${KUBIKLES_ACCELERATOR_E2E_REGISTRY##*:}"; \
+	  case "$$port" in ''|*[!0-9]*) echo 'Accelerator acceptance registry port is invalid' >&2; exit 1;; esac; \
+	  digest="$$(go run ./scripts/accelerator-release field '$(ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT)/kubikles-accelerator-release-v0.0.0.json' image-digest)"; \
+	  source="127.0.0.1:$$port/skrobylabs/kubikles-accelerator@$$digest"; \
+	  docker pull --platform "linux/$$(go env GOARCH)" "$$source" >/dev/null; \
+	  docker image tag "$$source" '$(ACCELERATOR_IMAGE)'
+else
 build-accelerator-image: accelerator-docker-preflight
 	@test -n "$(GIT_COMMIT)" || (echo "GIT_COMMIT is required" >&2; exit 1)
-	SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' docker buildx build --output type=docker,rewrite-timestamp=true -f Dockerfile.accelerator -t '$(ACCELERATOR_IMAGE)' --build-arg BUILD_VERSION='$(BUILD_VERSION)' --build-arg GIT_COMMIT='$(GIT_COMMIT)' --build-arg GIT_DIRTY='$(GIT_DIRTY)' --build-arg SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' .
+	SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' docker buildx build $(ACCELERATOR_DOCKER_BUILD_FLAGS) --output type=docker,rewrite-timestamp=true -f Dockerfile.accelerator -t '$(ACCELERATOR_IMAGE)' --build-arg BUILD_VERSION='$(BUILD_VERSION)' --build-arg GIT_COMMIT='$(GIT_COMMIT)' --build-arg GIT_DIRTY='$(GIT_DIRTY)' --build-arg SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' .
+endif
 
 test-accelerator-image: build-accelerator-image
 	ACCELERATOR_IMAGE='$(ACCELERATOR_IMAGE)' BUILD_VERSION='$(BUILD_VERSION)' GIT_COMMIT='$(GIT_COMMIT)' GIT_DIRTY='$(GIT_DIRTY)' SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' ./scripts/test-accelerator-image.sh

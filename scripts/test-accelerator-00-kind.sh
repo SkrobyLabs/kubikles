@@ -4,9 +4,11 @@ umask 077
 export LC_ALL=C
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$root/scripts/lib/accelerator-e2e-kind.sh"
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/kubikles-accelerator00.XXXXXX")"; chmod 700 "$tmp"
 cluster="kubikles-accelerator00-${$}-${RANDOM}"
 image="kubikles-accelerator00:${$}-${RANDOM}"
+reuse_mode="$(accelerator_e2e_reuse_mode)" || { echo 'accelerator-00-kind:invalid-reuse-boundary' >&2; exit 1; }
 cluster_owned=0
 image_owned=0
 stage() { echo "accelerator-00-kind:$1" >&2; exit 1; }
@@ -40,7 +42,13 @@ trap 'exit 1' INT TERM
 
 for tool in kind kubectl docker go; do command -v "$tool" >/dev/null 2>&1 || stage "missing-${tool}"; done
 docker info >/dev/null 2>&1 || stage daemon-unavailable
-if kind get clusters 2>/dev/null | grep -Fx "$cluster" >/dev/null; then stage ownership-collision; fi
+if [ "$reuse_mode" = reuse ]; then
+  accelerator_e2e_validate_reused_fixture || stage reuse-fixture
+  cluster="$KUBIKLES_ACCELERATOR_E2E_KIND_NAME"
+  accelerator_e2e_prepare_child_kubeconfig "$tmp/kubeconfig" "$KUBIKLES_ACCELERATOR_E2E_NAMESPACE" || stage reuse-kubeconfig
+elif kind get clusters 2>/dev/null | grep -Fx "$cluster" >/dev/null; then
+  stage ownership-collision
+fi
 if docker image inspect "$image" >"$tmp/image-collision" 2>&1; then stage ownership-collision; fi
 case "$(docker info --format '{{.Architecture}}' 2>"$tmp/architecture")" in
   amd64|x86_64) arch=amd64 ;;
@@ -50,12 +58,14 @@ esac
 GOOS=linux GOARCH="$arch" CGO_ENABLED=0 go build -o "$tmp/accelerator00-echo" "$root/testdata/accelerator00/echo" >"$tmp/build" 2>&1 || stage build
 image_owned=1
 docker build -t "$image" -f "$root/testdata/accelerator00/Dockerfile" "$tmp" >"$tmp/image" 2>&1 || stage image-build
-cluster_owned=1
-kind create cluster --name "$cluster" --kubeconfig "$tmp/kubeconfig" --wait 60s >"$tmp/cluster" 2>&1 || stage cluster-create
-chmod 600 "$tmp/kubeconfig"
+if [ "$reuse_mode" = standalone ]; then
+  cluster_owned=1
+  kind create cluster --name "$cluster" --kubeconfig "$tmp/kubeconfig" --wait 60s >"$tmp/cluster" 2>&1 || stage cluster-create
+  chmod 600 "$tmp/kubeconfig"
+fi
 kind load docker-image "$image" --name "$cluster" >"$tmp/load" 2>&1 || stage image-load
 if KUBECONFIG="$tmp/kubeconfig" kubectl --request-timeout=5s get --raw=/readyz >"$tmp/api-ready" 2>&1; then
-  KUBECONFIG="$tmp/kubeconfig" ACCELERATOR00_KIND_IMAGE="$image" go test -tags=accelerator_kind -count=1 -timeout=8m ./pkg/k8s -run '^TestAccelerator00ExactPodLoopbackKind$' >"$tmp/test" 2>&1 || stage test
+  KUBECONFIG="$tmp/kubeconfig" ACCELERATOR00_KIND_IMAGE="$image" ACCELERATOR00_KIND_NAMESPACE="${KUBIKLES_ACCELERATOR_E2E_NAMESPACE-}" go test -tags=accelerator_kind -count=1 -timeout=8m ./pkg/k8s -run '^TestAccelerator00ExactPodLoopbackKind$' >"$tmp/test" 2>&1 || stage test
 elif can_fallback_from_api_failure "$tmp/api-ready"; then
   # A mounted Docker socket can belong to a daemon in another network
   # namespace, making its loopback-published API port unreachable here. Run
@@ -66,7 +76,7 @@ elif can_fallback_from_api_failure "$tmp/api-ready"; then
   chmod 600 "$tmp/internal-kubeconfig"
   docker cp "$tmp/accelerator00-kind.test" "$cluster-control-plane:/accelerator00-kind.test" >"$tmp/test-copy" 2>&1 || stage test-copy
   docker cp "$tmp/internal-kubeconfig" "$cluster-control-plane:/accelerator00-kubeconfig" >"$tmp/config-copy" 2>&1 || stage config-copy
-  docker exec -e KUBECONFIG=/accelerator00-kubeconfig -e ACCELERATOR00_KIND_IMAGE="$image" "$cluster-control-plane" /accelerator00-kind.test -test.count=1 -test.timeout=8m -test.run '^TestAccelerator00ExactPodLoopbackKind$' >"$tmp/test" 2>&1 || stage test
+  docker exec -e KUBECONFIG=/accelerator00-kubeconfig -e ACCELERATOR00_KIND_IMAGE="$image" -e ACCELERATOR00_KIND_NAMESPACE="${KUBIKLES_ACCELERATOR_E2E_NAMESPACE-}" "$cluster-control-plane" /accelerator00-kind.test -test.count=1 -test.timeout=8m -test.run '^TestAccelerator00ExactPodLoopbackKind$' >"$tmp/test" 2>&1 || stage test
 else
   stage api-ready
 fi

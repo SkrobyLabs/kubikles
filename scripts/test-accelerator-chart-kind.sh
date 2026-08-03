@@ -132,10 +132,13 @@ fi
 # No NetworkPolicy is rendered: managed API-server and DNS egress endpoints are
 # cluster-specific. The chart deliberately creates no Service or public port.
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$root/scripts/lib/accelerator-e2e-kind.sh"
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/kubikles-accelerator-chart.XXXXXX")"
 cluster="kubikles-accelerator-${RANDOM}-${RANDOM}"
 namespace="accelerator-smoke-${RANDOM}"
 release="accelerator-smoke"
+secondary_namespace="accelerator-smoke-other"
+reuse_mode="$(accelerator_e2e_reuse_mode)" || { echo 'accelerator-chart-kind: invalid-reuse-boundary' >&2; exit 1; }
 kubeconfig="$tmp/kubeconfig"
 kind_config="$tmp/kind.yaml"
 job="${release}-kubikles-accelerator"
@@ -148,6 +151,7 @@ cluster_created=false
 cluster_create_attempted=false
 cluster_absent_at_start=false
 namespace_created=false
+secondary_namespace_created=false
 release_installed=false
 cleanup_failed=false
 fail() { echo "accelerator-chart-kind: $1" >&2; exit 1; }
@@ -182,6 +186,14 @@ cleanup() {
   if [ "$release_installed" = true ]; then
     KUBECONFIG="$kubeconfig" helm uninstall "$release" -n "$namespace" >"$tmp/uninstall-cleanup" 2>&1 || cleanup_failed=true
   fi
+  if [ "$secondary_namespace_created" = true ]; then
+    KUBECONFIG="$kubeconfig" kubectl delete namespace "$secondary_namespace" --wait=true --timeout=45s >"$tmp/secondary-namespace-cleanup" 2>&1 || cleanup_failed=true
+    secondary_namespace_created=false
+  fi
+  if [ "$namespace_created" = true ]; then
+    KUBECONFIG="$kubeconfig" kubectl delete namespace "$namespace" --wait=true --timeout=45s >"$tmp/namespace-cleanup" 2>&1 || cleanup_failed=true
+    namespace_created=false
+  fi
   if { [ "$cluster_created" = true ] || [ "$cluster_create_attempted" = true ]; } && [ "$cluster_absent_at_start" = true ]; then
     if ! kind get clusters >"$tmp/kind-existing" 2>&1; then
       cleanup_failed=true
@@ -203,6 +215,20 @@ trap 'exit 143' TERM
 for tool in helm kind kubectl docker curl jq; do command -v "$tool" >/dev/null 2>&1 || fail "missing-$tool; install it and rerun make test-accelerator-chart-kind"; done
 helm version --short 2>/dev/null | grep -Eq '^v3\.' || fail "Helm 3 is required and must be usable"
 docker info >/dev/null 2>&1 || fail "Docker daemon unavailable"
+if [ "$reuse_mode" = reuse ]; then
+  command -v sha256sum >/dev/null 2>&1 || fail "missing-sha256sum"
+  command -v oras >/dev/null 2>&1 || fail "missing-oras"
+  accelerator_e2e_validate_reused_fixture || fail "reuse-fixture"
+  cluster="$KUBIKLES_ACCELERATOR_E2E_KIND_NAME"
+  namespace="$KUBIKLES_ACCELERATOR_E2E_NAMESPACE"
+  secondary_namespace="${namespace}-other"
+  [ "${#secondary_namespace}" -le 63 ] || fail "reuse-secondary-namespace"
+  release="a60a-${namespace##*-}"
+  job="${release}-kubikles-accelerator"
+  sa="system:serviceaccount:${namespace}:${job}"
+  accelerator_e2e_prepare_child_kubeconfig "$kubeconfig" "$namespace" || fail "reuse-kubeconfig"
+  cluster_created=true
+fi
 api_server_address="${ACCELERATOR_KIND_API_SERVER_ADDRESS-127.0.0.1}"
 api_server_host="${ACCELERATOR_KIND_API_SERVER_HOST-$api_server_address}"
 accelerator_chart_kind_validate_api_server_address "$api_server_address" || fail "ACCELERATOR_KIND_API_SERVER_ADDRESS must be a canonical IPv4 address"
@@ -213,20 +239,31 @@ accelerator_chart_kind_write_config "$kind_config" "$api_server_address" || fail
 : "${ACCELERATOR_IMAGE_VERSION:?ACCELERATOR_IMAGE_VERSION must equal the Accelerator BuildVersion>}"
 [[ "$ACCELERATOR_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "ACCELERATOR_IMAGE_DIGEST must be sha256:<64 lowercase hex>"
 image="$ACCELERATOR_IMAGE_REPOSITORY@$ACCELERATOR_IMAGE_DIGEST"
-docker image inspect "$image" >"$tmp/image-inspect" 2>&1 || fail "immutable local image $image is unavailable; build/load the completed Accelerator image by digest"
-[ "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$ACCELERATOR_IMAGE_VERSION" ] || fail "image BuildVersion label mismatch"
-host_image_id="$(docker image inspect "$image" --format '{{.Id}}')"
-host_image_labels="$(docker image inspect "$image" --format '{{json .Config.Labels}}')"
+if [ "$reuse_mode" = reuse ]; then
+  [ "$ACCELERATOR_IMAGE_REPOSITORY" = "$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator" ] || fail "reuse-image-repository"
+  oras manifest fetch --plain-http --output "$tmp/image-index.json" "$image" 2>"$tmp/image-index.stderr" || fail "reuse-image-index"
+  [ "sha256:$(sha256sum "$tmp/image-index.json" | cut -d ' ' -f 1)" = "$ACCELERATOR_IMAGE_DIGEST" ] || fail "reuse-image-index-digest"
+  jq -e --arg digest "$ACCELERATOR_IMAGE_DIGEST" '(.schemaVersion == 2) and ([.manifests[].platform | .os + "/" + .architecture] | sort) == ["linux/amd64","linux/arm64"]' "$tmp/image-index.json" >/dev/null || fail "reuse-image-platforms"
+else
+  docker image inspect "$image" >"$tmp/image-inspect" 2>&1 || fail "immutable local image $image is unavailable; build/load the completed Accelerator image by digest"
+  [ "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$ACCELERATOR_IMAGE_VERSION" ] || fail "image BuildVersion label mismatch"
+  host_image_id="$(docker image inspect "$image" --format '{{.Id}}')"
+  host_image_labels="$(docker image inspect "$image" --format '{{json .Config.Labels}}')"
+fi
 
-kind get clusters >"$tmp/kind-before-create" 2>&1 || fail "kind-list-before-create"
-grep -Fx "$cluster" "$tmp/kind-before-create" >/dev/null && fail "generated-cluster-name-already-exists"
-cluster_absent_at_start=true
+if [ "$reuse_mode" = standalone ]; then
+  kind get clusters >"$tmp/kind-before-create" 2>&1 || fail "kind-list-before-create"
+  grep -Fx "$cluster" "$tmp/kind-before-create" >/dev/null && fail "generated-cluster-name-already-exists"
+  cluster_absent_at_start=true
+fi
 jq -n --arg repository "$ACCELERATOR_IMAGE_REPOSITORY" --arg digest "$ACCELERATOR_IMAGE_DIGEST" --arg version "$ACCELERATOR_IMAGE_VERSION" --arg verifier "$creator_verifier" '{image:{repository:$repository,digest:$digest,version:$version},accelerator:{workloadSessionId:"smoke-session-1"},auth:{creatorVerifier:$verifier}}' >"$tmp/values.yaml"
-cluster_create_attempted=true
-kind create cluster --name "$cluster" --config "$kind_config" --kubeconfig "$kubeconfig" >"$tmp/kind-create" 2>&1 || fail "kind-create"
-cluster_created=true
-chmod 600 "$kubeconfig"
-accelerator_chart_kind_rewrite_kubeconfig "$kubeconfig" "$api_server_address" "$api_server_host" || fail "kubeconfig-api-server-rewrite"
+if [ "$reuse_mode" = standalone ]; then
+  cluster_create_attempted=true
+  kind create cluster --name "$cluster" --config "$kind_config" --kubeconfig "$kubeconfig" >"$tmp/kind-create" 2>&1 || fail "kind-create"
+  cluster_created=true
+  chmod 600 "$kubeconfig"
+  accelerator_chart_kind_rewrite_kubeconfig "$kubeconfig" "$api_server_address" "$api_server_host" || fail "kubeconfig-api-server-rewrite"
+fi
 ready_deadline=$((SECONDS + 90))
 ready=false
 while [ "$SECONDS" -lt "$ready_deadline" ]; do
@@ -237,20 +274,24 @@ while [ "$SECONDS" -lt "$ready_deadline" ]; do
   sleep 1
 done
 [ "$ready" = true ] || fail "api-server-readyz"
-# Kind's Docker-archive loader does not preserve a digest-qualified localhost
-# repository name. Load the same image through a unique test-only tag, then add
-# the admitted digest reference to the node's containerd image store.
-preload_image="${ACCELERATOR_IMAGE_REPOSITORY}:kind-preload-${cluster#kubikles-accelerator-}"
-docker tag "$image" "$preload_image" || fail "kind-preload-tag"
-kind load docker-image "$preload_image" --name "$cluster" >"$tmp/kind-load" 2>&1 || fail "kind-load-image"
-docker exec "${cluster}-control-plane" ctr -n k8s.io images tag "$preload_image" "$image" >"$tmp/kind-image-alias" 2>&1 || fail "kind-digest-image-alias"
-docker exec "${cluster}-control-plane" crictl inspecti "$image" >"$tmp/node-image-inspect.json" 2>"$tmp/node-image-inspect.stderr" || fail "kind-digest-image-inspect"
-jq -e --arg id "$host_image_id" --argjson labels "$host_image_labels" '(.status.id == $id) and (.info.imageSpec.config.Labels == $labels)' "$tmp/node-image-inspect.json" >/dev/null || fail "kind-image-identity-or-labels"
-docker image rm "$preload_image" >"$tmp/preload-tag-remove" 2>&1 || fail "kind-preload-tag-remove"
-preload_image=""
+if [ "$reuse_mode" = standalone ]; then
+  # Kind's Docker-archive loader does not preserve a digest-qualified localhost
+  # repository name. Load the same image through a unique test-only tag, then add
+  # the admitted digest reference to the node's containerd image store.
+  preload_image="${ACCELERATOR_IMAGE_REPOSITORY}:kind-preload-${cluster#kubikles-accelerator-}"
+  docker tag "$image" "$preload_image" || fail "kind-preload-tag"
+  kind load docker-image "$preload_image" --name "$cluster" >"$tmp/kind-load" 2>&1 || fail "kind-load-image"
+  docker exec "${cluster}-control-plane" ctr -n k8s.io images tag "$preload_image" "$image" >"$tmp/kind-image-alias" 2>&1 || fail "kind-digest-image-alias"
+  docker exec "${cluster}-control-plane" crictl inspecti "$image" >"$tmp/node-image-inspect.json" 2>"$tmp/node-image-inspect.stderr" || fail "kind-digest-image-inspect"
+  jq -e --arg id "$host_image_id" --argjson labels "$host_image_labels" '(.status.id == $id) and (.info.imageSpec.config.Labels == $labels)' "$tmp/node-image-inspect.json" >/dev/null || fail "kind-image-identity-or-labels"
+  docker image rm "$preload_image" >"$tmp/preload-tag-remove" 2>&1 || fail "kind-preload-tag-remove"
+  preload_image=""
+fi
 KUBECONFIG="$kubeconfig" kubectl create namespace "$namespace" >"$tmp/namespace" 2>&1 || fail "namespace-create"
 namespace_created=true
-for ns in "$namespace" accelerator-smoke-other; do KUBECONFIG="$kubeconfig" kubectl create namespace "$ns" >"$tmp/ns" 2>&1 || true; KUBECONFIG="$kubeconfig" kubectl -n "$ns" create secret generic admin-owned --from-literal=value=redacted >"$tmp/secret" 2>&1 || fail "admin-secret-create"; done
+KUBECONFIG="$kubeconfig" kubectl create namespace "$secondary_namespace" >"$tmp/secondary-namespace" 2>&1 || fail "secondary-namespace-create"
+secondary_namespace_created=true
+for ns in "$namespace" "$secondary_namespace"; do KUBECONFIG="$kubeconfig" kubectl -n "$ns" create secret generic admin-owned --from-literal=value=redacted >"$tmp/secret" 2>&1 || fail "admin-secret-create"; done
 for verb in create update patch delete deletecollection; do accelerator_chart_kind_can_i_result "$kubeconfig" "$sa" "$namespace" "$verb" "$tmp/default-secret-$verb.stderr" >"$tmp/default-secret-$verb" || fail "default-secret-$verb-authorization-review"; done
 KUBECONFIG="$kubeconfig" helm upgrade --install "$release" "$root/deploy/charts/kubikles-accelerator" -n "$namespace" -f "$tmp/values.yaml" --wait >"$tmp/install" 2>&1 || fail "helm-install"
 release_installed=true
@@ -259,7 +300,7 @@ KUBECONFIG="$kubeconfig" kubectl -n "$namespace" get job "$job" -o json >"$tmp/l
 jq -e '(.spec.completions == 1) and (.spec.parallelism == 1) and (.spec.backoffLimit == 0) and (.spec.ttlSecondsAfterFinished == 3600) and ((.spec | has("activeDeadlineSeconds")) | not)' "$tmp/live-job.json" >/dev/null || fail "live-job-lifecycle-is-not-exact"
 KUBECONFIG="$kubeconfig" kubectl -n "$namespace" get serviceaccount "$job" -o json >"$tmp/serviceaccount.json" || fail "read-serviceaccount-json"
 jq -e '.automountServiceAccountToken == false and ((.secrets // []) | length == 0)' "$tmp/serviceaccount.json" >/dev/null || fail "serviceaccount-token-automount-or-legacy-secret"
-for ns in "$namespace" accelerator-smoke-other; do for verb in get list watch; do result="$(accelerator_chart_kind_can_i_result "$kubeconfig" "$sa" "$ns" "$verb" "$tmp/secret-$verb-$ns.stderr")" || fail "secret-$verb-$ns-authorization-review"; [ "$result" = yes ] || fail "missing-secret-$verb-$ns"; done; done
+for ns in "$namespace" "$secondary_namespace"; do for verb in get list watch; do result="$(accelerator_chart_kind_can_i_result "$kubeconfig" "$sa" "$ns" "$verb" "$tmp/secret-$verb-$ns.stderr")" || fail "secret-$verb-$ns-authorization-review"; [ "$result" = yes ] || fail "missing-secret-$verb-$ns"; done; done
 for verb in create update patch delete deletecollection; do
   result="$(accelerator_chart_kind_can_i_result "$kubeconfig" "$sa" "$namespace" "$verb" "$tmp/chart-secret-$verb.stderr")" || fail "chart-secret-$verb-authorization-review"
   default_result="$(cat "$tmp/default-secret-$verb")"
