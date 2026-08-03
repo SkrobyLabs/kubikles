@@ -189,6 +189,8 @@ func (c *Coordinator) FenceContextSwitch(oldContext string) {
 	if slot == nil {
 		return
 	}
+	slot.navigationMu.Lock()
+	defer slot.navigationMu.Unlock()
 	slot.mu.Lock()
 	wasAvailable := slot.state == CoordinatorActive && slot.session != nil
 	if slot.workerCancel != nil {
@@ -250,6 +252,7 @@ func (c *Coordinator) Quiesce(context.Context) {
 	slots := c.slotListLocked()
 	c.mu.Unlock()
 	for _, slot := range slots {
+		slot.navigationMu.Lock()
 		slot.mu.Lock()
 		wasAvailable := slot.state == CoordinatorActive && slot.session != nil
 		slot.operationEpoch++
@@ -262,6 +265,7 @@ func (c *Coordinator) Quiesce(context.Context) {
 			slot.signalLocked()
 		}
 		slot.mu.Unlock()
+		slot.navigationMu.Unlock()
 	}
 }
 
@@ -315,11 +319,13 @@ func (c *Coordinator) Close(context.Context) {
 	}
 	var workloads []retainedWorkload
 	for _, slot := range slots {
+		slot.navigationMu.Lock()
 		slot.mu.Lock()
 		if slot.workload != nil {
 			workloads = append(workloads, retainedWorkload{slot: slot, workload: slot.workload})
 		}
 		slot.mu.Unlock()
+		slot.navigationMu.Unlock()
 	}
 	if len(workloads) == 0 {
 		return

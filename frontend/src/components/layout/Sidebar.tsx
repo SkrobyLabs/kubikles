@@ -13,6 +13,7 @@ import {
     WrenchScrewdriverIcon,
     MagnifyingGlassIcon,
     XMarkIcon,
+	RocketLaunchIcon,
 } from '@heroicons/react/24/outline';
 import ContextManager from './ContextManager';
 import { useConfig, useK8s } from '~/context';
@@ -28,6 +29,7 @@ import { useDebugLogs } from '~/hooks/useDebugLogs';
 import SearchSelect from '../shared/SearchSelect';
 import Logger from '~/utils/Logger';
 import { GetVersionInfo, IsDebugClusterEnabled } from 'wailsjs/go/main/App';
+import { OpenAcceleratorBrowser } from '~/lib/wailsjs-adapter/go/main/App';
 import DebugClusterPanel from './DebugClusterPanel';
 import { filterCRDGroups, filterSidebarGroups, matchesSidebarSearch } from './sidebarSearch';
 
@@ -65,6 +67,39 @@ export default function Sidebar({
     const [debugClusterEnabled, setDebugClusterEnabled] = useState(false);
     const [showContextManager, setShowContextManager] = useState(false);
     const [menuSearch, setMenuSearch] = useState('');
+	const [browserLaunchState, setBrowserLaunchState] = useState<'idle' | 'opening' | 'opened' | 'unavailable'>('idle');
+	const browserLaunchPending = useRef(false);
+	const browserLaunchEpoch = useRef(0);
+
+	useEffect(() => {
+		browserLaunchEpoch.current += 1;
+		browserLaunchPending.current = false;
+		setBrowserLaunchState('idle');
+		return () => {
+			browserLaunchEpoch.current += 1;
+		};
+	}, [currentContext]);
+
+	const openAcceleratorBrowser = async () => {
+		if (browserLaunchPending.current) return;
+		browserLaunchPending.current = true;
+		const epoch = ++browserLaunchEpoch.current;
+		setBrowserLaunchState('opening');
+		try {
+			const result = await OpenAcceleratorBrowser();
+			if (browserLaunchEpoch.current === epoch) {
+				setBrowserLaunchState(result === 'opened' || result === 'already_open' ? 'opened' : 'unavailable');
+			}
+		} catch {
+			if (browserLaunchEpoch.current === epoch) {
+				setBrowserLaunchState('unavailable');
+			}
+		} finally {
+			if (browserLaunchEpoch.current === epoch) {
+				browserLaunchPending.current = false;
+			}
+		}
+	};
 
     useEffect(() => {
         GetVersionInfo().then(setVersionInfo).catch(() => {});
@@ -299,6 +334,28 @@ export default function Sidebar({
                     onOpen={onContextSelectorOpen}
                     preserveOrder
                 />
+				{!isServerMode && currentContext && (
+					<div className="mt-3">
+						<button
+							type="button"
+							onClick={openAcceleratorBrowser}
+							disabled={browserLaunchState === 'opening'}
+							className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-surface-light px-3 py-2 text-xs font-medium text-gray-200 transition-colors hover:border-primary hover:text-white disabled:cursor-wait disabled:opacity-60"
+						>
+							<RocketLaunchIcon className="h-4 w-4" />
+							Open Accelerator Browser
+						</button>
+						{browserLaunchState !== 'idle' && (
+							<p className="mt-1 text-xs text-gray-400" role="status" aria-live="polite">
+								{browserLaunchState === 'opening'
+									? 'Opening…'
+									: browserLaunchState === 'opened'
+										? 'Opened'
+										: 'Unable to open Accelerator Browser'}
+							</p>
+						)}
+					</div>
+				)}
             </div>
 
             {/* Debug Cluster Config (dev builds only, debug-cluster context only) */}

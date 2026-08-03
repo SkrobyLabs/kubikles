@@ -3162,6 +3162,8 @@ func (c *AppMethodCaller) CallMethod(callContext agent.AuthenticatedCallContext,
 			return nil, err
 		}
 		return nil, c.app.LogoutOCIRegistry(p0)
+	case "OpenAcceleratorBrowser":
+		return c.app.OpenAcceleratorBrowser(), nil
 	case "OpenCrashLogDir":
 		return nil, c.app.OpenCrashLogDir()
 	case "OpenIssueRulesDir":

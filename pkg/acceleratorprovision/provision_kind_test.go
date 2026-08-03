@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -25,10 +26,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"kubikles/pkg/acceleratorrelease"
 	"kubikles/pkg/agent"
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
+	"kubikles/pkg/server"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -106,6 +109,10 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 	entropy := &recordingSequenceEntropy{}
 	service.entropy = entropy
 	request := kindRequest(k8sClient.GetCurrentContext(), chartDigest, imageDigest)
+	if os.Getenv("ACCELERATOR_BROWSER_LIFECYCLE_KIND") == "1" {
+		exerciseBrowserLifecycleKind(t, service, helmClient, k8sClient, request, sentinel, malformed)
+		return
+	}
 	if os.Getenv("ACCELERATOR_LIFECYCLE_KIND") == "1" {
 		exerciseLifecycleKind(t, service, helmClient, k8sClient, request, sentinel, malformed)
 		return
@@ -244,6 +251,534 @@ func (d *kindRecordingDisposer) DisposeNow(ctx context.Context, workload *Provis
 }
 func (d *kindRecordingDisposer) DrainAndDispose(ctx context.Context, workload *ProvisionedWorkload) DisposalResult {
 	return d.service.DrainAndDispose(ctx, workload)
+}
+func (d *kindRecordingDisposer) DisposeAfterBrowser(ctx context.Context, workload *browserOwnedWorkload) DisposalResult {
+	return d.service.DisposeAfterBrowser(ctx, workload)
+}
+
+type kindBrowserSubstitute struct {
+	mu         sync.Mutex
+	baseURL    string
+	bearer     string
+	sessionID  agent.SessionID
+	generation server.AcceleratorSocketGeneration
+	socket     *websocket.Conn
+	opens      atomic.Int32
+}
+
+func (b *kindBrowserSubstitute) Open(target string) bool {
+	b.opens.Add(1)
+	parsed, err := url.Parse(target)
+	if err != nil || parsed.Scheme != "http" || parsed.Hostname() != "127.0.0.1" || parsed.Port() == "" || parsed.Path != "/accelerator/browser/" || parsed.RawQuery != "" {
+		return false
+	}
+	fragment, err := url.ParseQuery(parsed.Fragment)
+	if err != nil || len(fragment) != 1 || len(fragment["ticket"]) != 1 || len(fragment.Get("ticket")) != 43 {
+		return false
+	}
+	ticket := fragment.Get("ticket")
+	parsed.Fragment = ""
+	client := &http.Client{
+		Transport:     &http.Transport{Proxy: nil},
+		Timeout:       5 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	entry, err := client.Get(parsed.String())
+	if err != nil || entry == nil || entry.StatusCode != http.StatusOK || entry.Header.Get("Cache-Control") == "" {
+		if entry != nil {
+			_ = entry.Body.Close()
+		}
+		return false
+	}
+	_, entryReadErr := io.Copy(io.Discard, io.LimitReader(entry.Body, 1<<20))
+	_ = entry.Body.Close()
+	if entryReadErr != nil {
+		return false
+	}
+	base := "http://" + parsed.Host
+	exchange, err := http.NewRequest(http.MethodPost, base+"/api/accelerator-browser-session", strings.NewReader(`{"ticket":"`+ticket+`"}`))
+	if err != nil {
+		return false
+	}
+	exchange.Header.Set("Content-Type", "application/json")
+	response, err := client.Do(exchange)
+	ticket = ""
+	if err != nil || response == nil || response.StatusCode != http.StatusOK || response.Header.Get("Set-Cookie") != "" {
+		if response != nil {
+			_ = response.Body.Close()
+		}
+		return false
+	}
+	var wire struct {
+		Bearer    string `json:"bearer"`
+		ExpiresAt string `json:"expiresAt"`
+	}
+	decoder := json.NewDecoder(io.LimitReader(response.Body, 4097))
+	decoder.DisallowUnknownFields()
+	decodeErr := decoder.Decode(&wire)
+	trailingErr := decoder.Decode(&struct{}{})
+	_ = response.Body.Close()
+	if decodeErr != nil || trailingErr != io.EOF || len(wire.Bearer) != 43 {
+		return false
+	}
+	expiresAt, err := time.Parse(time.RFC3339Nano, wire.ExpiresAt)
+	if err != nil || !time.Now().Before(expiresAt) {
+		return false
+	}
+	infoRequest, err := http.NewRequest(http.MethodGet, base+"/api/accelerator-info", nil)
+	if err != nil {
+		return false
+	}
+	infoRequest.Header.Set("Authorization", "Bearer "+wire.Bearer)
+	infoResponse, err := client.Do(infoRequest)
+	if err != nil || infoResponse == nil || infoResponse.StatusCode != http.StatusOK {
+		if infoResponse != nil {
+			_ = infoResponse.Body.Close()
+		}
+		return false
+	}
+	var info server.AuthenticatedAcceleratorInfo
+	infoDecoder := json.NewDecoder(io.LimitReader(infoResponse.Body, 16<<10))
+	infoDecoder.DisallowUnknownFields()
+	infoErr := infoDecoder.Decode(&info)
+	infoTrailing := infoDecoder.Decode(&struct{}{})
+	_ = infoResponse.Body.Close()
+	if infoErr != nil || infoTrailing != io.EOF || info.Runtime != "accelerator" || info.Build.BuildVersion != "v1.2.3" || info.InstanceID == "" {
+		return false
+	}
+	connection, connected, ok := kindDialBrowser(base, wire.Bearer)
+	if !ok {
+		return false
+	}
+	b.mu.Lock()
+	b.baseURL = base
+	b.bearer = wire.Bearer
+	b.sessionID = connected.SessionID
+	b.generation = connected.Generation
+	b.socket = connection
+	b.mu.Unlock()
+	wire.Bearer = ""
+	return true
+}
+
+func kindDialBrowser(baseURL, bearer string) (*websocket.Conn, server.AcceleratorConnectedEvent, bool) {
+	parsed, err := url.Parse(baseURL)
+	if err != nil || parsed.Scheme != "http" || parsed.Host == "" || len(bearer) != 43 {
+		return nil, server.AcceleratorConnectedEvent{}, false
+	}
+	dialer := websocket.Dialer{
+		Proxy:            nil,
+		HandshakeTimeout: 5 * time.Second,
+		Subprotocols: []string{
+			server.AcceleratorWebSocketProtocol,
+			server.AcceleratorBrowserCredentialProtocolPrefix + bearer,
+		},
+	}
+	connection, response, err := dialer.Dial("ws://"+parsed.Host+"/ws", nil)
+	if response != nil && response.Body != nil {
+		_ = response.Body.Close()
+	}
+	if err != nil || connection == nil || connection.Subprotocol() != server.AcceleratorWebSocketProtocol {
+		if connection != nil {
+			_ = connection.Close()
+		}
+		return nil, server.AcceleratorConnectedEvent{}, false
+	}
+	_ = connection.SetReadDeadline(time.Now().Add(5 * time.Second))
+	messageType, payload, err := connection.ReadMessage()
+	_ = connection.SetReadDeadline(time.Time{})
+	if err != nil || messageType != websocket.TextMessage {
+		_ = connection.Close()
+		return nil, server.AcceleratorConnectedEvent{}, false
+	}
+	var envelope struct {
+		Type string                           `json:"type"`
+		Name string                           `json:"name"`
+		Data server.AcceleratorConnectedEvent `json:"data"`
+	}
+	if json.Unmarshal(payload, &envelope) != nil || envelope.Type != "event" || envelope.Name != "connected" || envelope.Data.SessionID == "" || envelope.Data.InstanceID == "" || envelope.Data.Generation == 0 {
+		_ = connection.Close()
+		return nil, server.AcceleratorConnectedEvent{}, false
+	}
+	return connection, envelope.Data, true
+}
+
+func (b *kindBrowserSubstitute) Reconnect() bool {
+	b.mu.Lock()
+	base, bearer, sessionID, generation := b.baseURL, b.bearer, b.sessionID, b.generation
+	b.mu.Unlock()
+	connection, connected, ok := kindDialBrowser(base, bearer)
+	if !ok || connected.SessionID != sessionID || connected.Generation <= generation || !connected.Resumed {
+		if connection != nil {
+			_ = connection.Close()
+		}
+		return false
+	}
+	b.mu.Lock()
+	b.socket = connection
+	b.generation = connected.Generation
+	b.mu.Unlock()
+	return true
+}
+
+func (b *kindBrowserSubstitute) Close() {
+	b.mu.Lock()
+	connection := b.socket
+	b.socket = nil
+	b.mu.Unlock()
+	if connection != nil {
+		_ = connection.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second))
+		_ = connection.Close()
+	}
+}
+
+type kindBrowserOwnership struct {
+	workload   *ProvisionedWorkload
+	session    *ConnectedSession
+	tunnel     tunnel
+	credential *creatorCredential
+	browser    *kindBrowserSubstitute
+}
+
+func exerciseBrowserLifecycleKind(t *testing.T, service *Service, helmClient *helm.Client, client *k8s.Client, request Request, sentinel, malformed string) {
+	t.Helper()
+	contextName := request.ContextName
+	disposer := &kindRecordingDisposer{service: NewDisposalService(service)}
+	coordinator := newCoordinator(desktopContexts{client: client}, kindStaticResolver{resolution: request.Resolution}, service, NewConnector("v1.2.3"), NewReconnector("v1.2.3"), disposer, processResumeClock{})
+	pollDone := make(chan struct{})
+	pollFailure := make(chan string, 1)
+	go pollKindKubectlPortForward(pollDone, pollFailure)
+	defer close(pollDone)
+
+	directSnapshot, err := client.SnapshotCurrentContext(contextName)
+	if err != nil {
+		t.Fatal("browser lifecycle context snapshot")
+	}
+	if _, err = directSnapshot.Clientset().CoreV1().Secrets("default").List(context.Background(), metav1.ListOptions{Limit: 1}); err != nil {
+		t.Fatal("browser lifecycle direct Secret tripwire")
+	}
+
+	natural := openKindBrowserOwned(t, coordinator, contextName, false)
+	assertKindOneAcceleratorJob(t, client, natural.workload)
+	direct := coordinator.AcquireSecretDemand(context.Background(), contextName)
+	if !direct.Accepted || direct.Lease == nil {
+		t.Fatal("browser-owned Direct demand rejected")
+	}
+	if sessionLease, ok := direct.Lease.TrySession(); ok {
+		sessionLease.Close()
+		t.Fatal("browser-owned demand published a creator session")
+	}
+	time.Sleep(time.Second)
+	if snapshot := coordinator.Snapshot(contextName); snapshot.State != CoordinatorBrowserOwned || snapshot.Available {
+		t.Fatalf("browser-owned demand snapshot=%#v", snapshot)
+	}
+	assertKindOneAcceleratorJob(t, client, natural.workload)
+
+	natural.browser.Close()
+	time.Sleep(time.Second)
+	assertKindJobNonterminal(t, client, natural.workload)
+	if !natural.browser.Reconnect() {
+		t.Fatal("Browser reconnect during server grace failed")
+	}
+	time.Sleep(time.Second)
+	assertKindJobNonterminal(t, client, natural.workload)
+	natural.browser.Close()
+	direct.Lease.Close()
+	waitKindBrowserTerminalCleanup(t, coordinator, helmClient, client, natural.workload, natural.tunnel, 4*time.Minute)
+
+	escalated := openKindBrowserOwned(t, coordinator, contextName, true)
+	coordinator.FenceContextSwitch(contextName)
+	coordinator.ContextSwitched(contextName, true)
+	waitKindReleaseGone(t, helmClient, escalated.workload, 2*time.Minute)
+	waitKindTunnelDone(t, escalated.tunnel, 10*time.Second)
+	assertFailedKindObjectsGone(t, context.Background(), client, escalated.workload.ReleaseNamespace, escalated.workload.ReleaseName, escalated.workload.WorkloadSessionID)
+	escalated.browser.Close()
+
+	shutdown := openKindBrowserOwned(t, coordinator, contextName, false)
+	coordinator.Quiesce(context.Background())
+	coordinator.Close(context.Background())
+	waitKindReleaseGone(t, helmClient, shutdown.workload, 2*time.Minute)
+	waitKindTunnelDone(t, shutdown.tunnel, 10*time.Second)
+	assertFailedKindObjectsGone(t, context.Background(), client, shutdown.workload.ReleaseNamespace, shutdown.workload.ReleaseName, shutdown.workload.WorkloadSessionID)
+	shutdown.browser.Close()
+
+	exerciseKindCrashTTLSweep(t, service, helmClient, client, request)
+	for _, retained := range []string{sentinel, malformed} {
+		if _, err = helmClient.GetRelease(contextName, "default", retained); err != nil {
+			t.Fatalf("browser lifecycle removed sentinel %s", retained)
+		}
+	}
+	select {
+	case process := <-pollFailure:
+		t.Fatalf("browser lifecycle invoked kubectl port-forward: %s", process)
+	default:
+	}
+}
+
+func openKindBrowserOwned(t *testing.T, coordinator *Coordinator, contextName string, proveFailure bool) kindBrowserOwnership {
+	t.Helper()
+	anchor := coordinator.AcquireSecretDemand(context.Background(), contextName)
+	if !anchor.Accepted || anchor.Lease == nil {
+		t.Fatal("Browser anchor demand rejected")
+	}
+	session := waitKindCoordinatorSession(t, coordinator, anchor.Lease, contextName, 180*time.Second)
+	workload := kindCoordinatorWorkload(coordinator)
+	if workload == nil || workload.credential == nil || session.tunnel == nil {
+		t.Fatal("Browser activation omitted workload transport authority")
+	}
+	if proveFailure {
+		calls := 0
+		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+		failed := coordinator.OpenAcceleratorBrowser(ctx, func(string) bool {
+			calls++
+			return false
+		})
+		cancel()
+		if failed != BrowserUnavailable || calls != 1 {
+			t.Fatalf("failed Browser Open result=%s calls=%d", failed, calls)
+		}
+		if lease, ok := anchor.Lease.TrySession(); !ok {
+			t.Fatal("failed Browser Open revoked the current creator")
+		} else {
+			lease.Close()
+		}
+	}
+	browser := &kindBrowserSubstitute{}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	opened := coordinator.OpenAcceleratorBrowser(ctx, browser.Open)
+	cancel()
+	if opened != BrowserOpened || browser.opens.Load() != 1 {
+		t.Fatalf("Browser Open result=%s opens=%d", opened, browser.opens.Load())
+	}
+	if repeated := coordinator.OpenAcceleratorBrowser(context.Background(), browser.Open); repeated != BrowserAlreadyOpen || browser.opens.Load() != 1 {
+		t.Fatalf("repeated Browser Open result=%s opens=%d", repeated, browser.opens.Load())
+	}
+	if lease, ok := anchor.Lease.TrySession(); !ok || lease.Session() != session {
+		if ok {
+			lease.Close()
+		}
+		t.Fatal("creator and Browser did not coexist on the exact session")
+	} else {
+		lease.Close()
+	}
+	browser.mu.Lock()
+	unsafe := []string{browser.baseURL, browser.bearer, string(browser.sessionID), workload.ReleaseName, workload.WorkloadSessionID}
+	browser.mu.Unlock()
+	for _, formatted := range []string{fmt.Sprintf("%v", opened), fmt.Sprintf("%+v", opened), fmt.Sprintf("%#v", opened), fmt.Sprintf("%s", opened)} {
+		assertNoCredentialCorpus(t, formatted, unsafe)
+	}
+	encoded, err := json.Marshal(opened)
+	if err != nil {
+		t.Fatal("Browser fixed result encode")
+	}
+	assertNoCredentialCorpus(t, string(encoded), unsafe)
+
+	activeTunnel := session.tunnel
+	credential := workload.credential
+	anchor.Lease.Close()
+	waitKindCoordinatorState(t, coordinator, contextName, CoordinatorBrowserOwned, 20*time.Second)
+	select {
+	case <-session.Done():
+	case <-time.After(10 * time.Second):
+		t.Fatal("Browser handoff retained creator session")
+	}
+	if session.EndReason() != SessionBrowserHandoff {
+		t.Fatalf("Browser handoff creator reason=%s", session.EndReason())
+	}
+	anchor.Lease.slot.mu.Lock()
+	owned := anchor.Lease.slot.browserOwned
+	anchor.Lease.slot.mu.Unlock()
+	if owned == nil || owned.workload != workload || owned.tunnel != activeTunnel {
+		t.Fatal("Browser handoff changed exact workload tunnel")
+	}
+	select {
+	case <-activeTunnel.Done():
+		t.Fatal("Browser handoff closed the retained tunnel")
+	default:
+	}
+	if credential.withCreatorAuthorization(context.Background(), func(context.Context, creatorAuthorizationLease) error { return nil }) == nil {
+		t.Fatal("Browser handoff retained creator credential")
+	}
+	if resumed := NewReconnector("v1.2.3").Resume(context.Background(), ResumeRequest{Prior: session, Workload: workload}); resumed.Availability != Unavailable || resumed.Session != nil {
+		t.Fatal("Browser handoff permitted Resume")
+	}
+	return kindBrowserOwnership{workload: workload, session: session, tunnel: activeTunnel, credential: credential, browser: browser}
+}
+
+func assertKindOneAcceleratorJob(t *testing.T, client *k8s.Client, workload *ProvisionedWorkload) {
+	t.Helper()
+	snapshot, err := client.SnapshotCurrentContext(workload.ContextName)
+	if err != nil {
+		t.Fatal("Browser Job snapshot")
+	}
+	jobs, err := snapshot.Clientset().BatchV1().Jobs(workload.ReleaseNamespace).List(context.Background(), metav1.ListOptions{LabelSelector: "app.kubernetes.io/name=kubikles-accelerator"})
+	if err != nil || len(jobs.Items) != 1 || jobs.Items[0].Name != workload.Job.Name || string(jobs.Items[0].UID) != workload.Job.UID {
+		t.Fatal("browser-owned demand created or replaced a Job")
+	}
+}
+
+func assertKindJobNonterminal(t *testing.T, client *k8s.Client, workload *ProvisionedWorkload) {
+	t.Helper()
+	snapshot, err := client.SnapshotCurrentContext(workload.ContextName)
+	if err != nil {
+		t.Fatal("Browser grace Job snapshot")
+	}
+	job, err := snapshot.Clientset().BatchV1().Jobs(workload.ReleaseNamespace).Get(context.Background(), workload.Job.Name, metav1.GetOptions{})
+	if err != nil || string(job.UID) != workload.Job.UID {
+		t.Fatal("Browser grace lost the exact Job")
+	}
+	for _, condition := range job.Status.Conditions {
+		if (condition.Type == batchv1.JobComplete || condition.Type == batchv1.JobFailed) && condition.Status == corev1.ConditionTrue {
+			t.Fatal("Browser reconnect did not cancel zero-client grace")
+		}
+	}
+}
+
+func waitKindBrowserTerminalCleanup(t *testing.T, coordinator *Coordinator, helmClient *helm.Client, client *k8s.Client, workload *ProvisionedWorkload, activeTunnel tunnel, timeout time.Duration) {
+	t.Helper()
+	snapshot, err := client.SnapshotCurrentContext(workload.ContextName)
+	if err != nil {
+		t.Fatal("Browser terminal Job snapshot")
+	}
+	deadline := time.Now().Add(timeout)
+	terminal := false
+	for time.Now().Before(deadline) {
+		job, getErr := snapshot.Clientset().BatchV1().Jobs(workload.ReleaseNamespace).Get(context.Background(), workload.Job.Name, metav1.GetOptions{})
+		if getErr == nil {
+			if string(job.UID) != workload.Job.UID {
+				t.Fatal("Browser terminal observer followed a replacement Job")
+			}
+			for _, condition := range job.Status.Conditions {
+				terminal = terminal || ((condition.Type == batchv1.JobComplete || condition.Type == batchv1.JobFailed) && condition.Status == corev1.ConditionTrue)
+			}
+		} else if !apierrors.IsNotFound(getErr) {
+			t.Fatal("Browser terminal Job read")
+		}
+		_, releaseErr := helmClient.GetRelease(workload.ContextName, workload.ReleaseNamespace, workload.ReleaseName)
+		if releaseErr != nil && !terminal {
+			t.Fatal("Browser release cleanup preceded exact Job terminal proof")
+		}
+		if terminal {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if !terminal {
+		t.Fatal("Browser Job did not become terminal after exact two-minute grace")
+	}
+	waitKindReleaseGone(t, helmClient, workload, 90*time.Second)
+	waitKindCoordinatorState(t, coordinator, workload.ContextName, CoordinatorDirectOnly, 30*time.Second)
+	waitKindTunnelDone(t, activeTunnel, 10*time.Second)
+	assertFailedKindObjectsGone(t, context.Background(), client, workload.ReleaseNamespace, workload.ReleaseName, workload.WorkloadSessionID)
+}
+
+func waitKindReleaseGone(t *testing.T, helmClient *helm.Client, workload *ProvisionedWorkload, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if _, err := helmClient.GetRelease(workload.ContextName, workload.ReleaseNamespace, workload.ReleaseName); err != nil {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatal("Browser-owned Helm release remained")
+}
+
+func waitKindTunnelDone(t *testing.T, active tunnel, timeout time.Duration) {
+	t.Helper()
+	if active == nil {
+		return
+	}
+	select {
+	case <-active.Done():
+	case <-time.After(timeout):
+		t.Fatal("Browser-owned tunnel remained open after cleanup")
+	}
+}
+
+func exerciseKindCrashTTLSweep(t *testing.T, service *Service, helmClient *helm.Client, client *k8s.Client, request Request) {
+	t.Helper()
+	provisionCtx, provisionCancel := context.WithTimeout(context.Background(), 150*time.Second)
+	provisioned := service.Provision(provisionCtx, request)
+	provisionCancel()
+	if provisioned.Workload == nil {
+		t.Fatalf("crash fixture provision reason=%s", provisioned.Reason)
+	}
+	orphan := provisioned.Workload
+	connectCtx, connectCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	connected := NewConnector("v1.2.3").Connect(connectCtx, orphan)
+	connectCancel()
+	if connected.Session == nil || connected.Availability != Available {
+		t.Fatal("crash fixture creator connect")
+	}
+	connected.Session.tunnel.Stop()
+	_ = connected.Session.tunnel.Wait(context.Background())
+	snapshot, err := client.SnapshotCurrentContext(request.ContextName)
+	if err != nil {
+		t.Fatal("crash fixture snapshot")
+	}
+	deadline := time.Now().Add(3 * time.Minute)
+	for {
+		job, getErr := snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Get(context.Background(), orphan.Job.Name, metav1.GetOptions{})
+		if getErr != nil || string(job.UID) != orphan.Job.UID {
+			t.Fatal("crash fixture exact Job disappeared")
+		}
+		complete := false
+		for _, condition := range job.Status.Conditions {
+			complete = complete || ((condition.Type == batchv1.JobComplete || condition.Type == batchv1.JobFailed) && condition.Status == corev1.ConditionTrue)
+		}
+		if complete {
+			one := int32(1)
+			job.Spec.TTLSecondsAfterFinished = &one
+			if _, err = snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Update(context.Background(), job, metav1.UpdateOptions{}); err != nil {
+				t.Fatal("crash fixture TTL patch")
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("crash fixture Job did not exit through server grace")
+		}
+		time.Sleep(time.Second)
+	}
+	deadline = time.Now().Add(45 * time.Second)
+	for {
+		_, jobErr := snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Get(context.Background(), orphan.Job.Name, metav1.GetOptions{})
+		_, podErr := snapshot.Clientset().CoreV1().Pods(orphan.ReleaseNamespace).Get(context.Background(), orphan.Pod.Name, metav1.GetOptions{})
+		if apierrors.IsNotFound(jobErr) && apierrors.IsNotFound(podErr) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("crash fixture TTL did not remove Job and Pod")
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if _, err = helmClient.GetRelease(request.ContextName, orphan.ReleaseNamespace, orphan.ReleaseName); err != nil {
+		t.Fatal("crash fixture unexpectedly removed Helm release")
+	}
+
+	disposer := &kindRecordingDisposer{service: NewDisposalService(service)}
+	coordinator := newCoordinator(desktopContexts{client: client}, kindStaticResolver{resolution: request.Resolution}, service, NewConnector("v1.2.3"), NewReconnector("v1.2.3"), disposer, processResumeClock{})
+	demand := coordinator.AcquireSecretDemand(context.Background(), request.ContextName)
+	if !demand.Accepted || demand.Lease == nil {
+		t.Fatal("post-crash demand rejected")
+	}
+	_ = waitKindCoordinatorSession(t, coordinator, demand.Lease, request.ContextName, 180*time.Second)
+	if disposer.sweeps.Load() != 1 {
+		t.Fatal("post-crash first demand omitted one inert sweep")
+	}
+	if _, err = helmClient.GetRelease(request.ContextName, orphan.ReleaseNamespace, orphan.ReleaseName); err == nil {
+		t.Fatal("post-crash sweep retained inert release")
+	}
+	fresh := kindCoordinatorWorkload(coordinator)
+	if fresh == nil || fresh == orphan || fresh.ReleaseName == orphan.ReleaseName {
+		t.Fatal("post-crash sweep did not create one fresh workload")
+	}
+	demand.Lease.Close()
+	coordinator.FenceContextSwitch(request.ContextName)
+	coordinator.ContextSwitched(request.ContextName, true)
+	waitKindReleaseGone(t, helmClient, fresh, 2*time.Minute)
+	assertFailedKindObjectsGone(t, context.Background(), client, fresh.ReleaseNamespace, fresh.ReleaseName, fresh.WorkloadSessionID)
+	coordinator.Close(context.Background())
 }
 
 func exerciseLifecycleKind(t *testing.T, service *Service, helmClient *helm.Client, client *k8s.Client, request Request, sentinel, malformed string) {

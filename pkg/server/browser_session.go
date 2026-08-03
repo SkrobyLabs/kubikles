@@ -25,6 +25,7 @@ const (
 const (
 	browserTicketDomain = "kubikles/accelerator/browser-ticket/v1\x00"
 	browserBearerDomain = "kubikles/accelerator/browser-bearer/v1\x00"
+	browserLaunchDomain = "kubikles/accelerator/browser-launch/v1\x00"
 )
 
 var (
@@ -35,6 +36,10 @@ var (
 type BrowserTicket struct{ value [32]byte }
 type BrowserBearer struct{ value [32]byte }
 type browserVerifier struct{ value [32]byte }
+type browserLaunchReceipt struct {
+	value [32]byte
+	valid bool
+}
 type browserStateRedactor struct{}
 
 func parseBrowserValue(text string, target *[32]byte, sentinel error) error {
@@ -65,8 +70,14 @@ func DeriveBrowserTicketVerifier(ticket BrowserTicket) [32]byte {
 func DeriveBrowserBearerVerifier(bearer BrowserBearer) [32]byte {
 	return deriveBrowserVerifier(browserBearerDomain, bearer.value).value
 }
-func (v BrowserTicket) encoded() string            { return base64.RawURLEncoding.EncodeToString(v.value[:]) }
-func (v BrowserBearer) encoded() string            { return base64.RawURLEncoding.EncodeToString(v.value[:]) }
+func (v BrowserTicket) encoded() string { return base64.RawURLEncoding.EncodeToString(v.value[:]) }
+func (v BrowserBearer) encoded() string { return base64.RawURLEncoding.EncodeToString(v.value[:]) }
+func (v browserLaunchReceipt) encoded() string {
+	if !v.valid {
+		return ""
+	}
+	return base64.RawURLEncoding.EncodeToString(v.value[:])
+}
 func (v BrowserTicket) String() string             { return "<redacted>" }
 func (v BrowserBearer) String() string             { return "<redacted>" }
 func (v browserVerifier) String() string           { return "<redacted>" }
@@ -114,12 +125,41 @@ type browserTicketState struct {
 	browserStateRedactor
 	verifier  browserVerifier
 	expiresAt time.Time
+	launch    *browserLaunchBinding
 }
 type browserSessionState struct {
 	browserStateRedactor
 	verifier                browserVerifier
 	context                 agent.AuthenticatedCallContext
 	createdAt, lastActivity time.Time
+	launch                  *browserLaunchBinding
+}
+
+type browserLaunchBinding struct {
+	browserStateRedactor
+	receiptVerifier browserVerifier
+	creator         AcceleratorSessionTarget
+	expiresAt       time.Time
+	browserSession  agent.SessionID
+	browserSocket   AcceleratorSocketGeneration
+	pendingSocket   AcceleratorSocketGeneration
+	activeEnded     bool
+	confirmed       bool
+}
+
+type browserLaunchControlEmitter interface {
+	LookupSessionLease(agent.SessionID) (AcceleratorSessionLease, bool)
+	EmitEventToTargets([]AcceleratorSessionTarget, Event)
+}
+
+type browserLaunchControl struct {
+	Receipt string `json:"receipt"`
+	Status  string `json:"status"`
+}
+
+func (browserLaunchControl) String() string { return "<redacted>" }
+func (browserLaunchControl) Format(s fmt.State, _ rune) {
+	_, _ = io.WriteString(s, "<redacted>")
 }
 
 type browserSessionStore struct {
@@ -198,6 +238,55 @@ func (m *BrowserSessionManager) Mint() (BrowserTicket, time.Time, error) {
 	m.state.mu.Unlock()
 	return ticket, expiry, nil
 }
+
+// mintForCreator adds the non-authorizing receipt used only to correlate a
+// Browser WebSocket activation back to the exact current creator generation.
+// Only its verifier is retained by the server.
+func (m *BrowserSessionManager) mintForCreator(call agent.AuthenticatedCallContext) (BrowserTicket, browserLaunchReceipt, time.Time, error) {
+	controls, ok := m.revoker.(browserLaunchControlEmitter)
+	if !call.IsAuthenticated() {
+		return BrowserTicket{}, browserLaunchReceipt{}, time.Time{}, errors.New("browser launch unavailable")
+	}
+	// Compatibility/server-only compositions have no creator WebSocket registry
+	// and therefore cannot produce a launch confirmation. Preserve their
+	// existing ticket behavior; the desktop launch path is never composed there.
+	if !ok {
+		ticket, expiry, err := m.Mint()
+		return ticket, browserLaunchReceipt{}, expiry, err
+	}
+	lease, ok := controls.LookupSessionLease(call.SessionID)
+	if !ok || !lease.Connected {
+		// The pre-41C Browser bootstrap remains usable for direct server tests and
+		// non-launch callers. A desktop launch rejects this ticket because the
+		// receipt is absent, so it cannot navigate or establish a Browser hold.
+		ticket, expiry, err := m.Mint()
+		return ticket, browserLaunchReceipt{}, expiry, err
+	}
+	ticketRaw, err := browserRandom(m.entropy)
+	if err != nil {
+		return BrowserTicket{}, browserLaunchReceipt{}, time.Time{}, err
+	}
+	receiptRaw, err := browserRandom(m.entropy)
+	if err != nil {
+		return BrowserTicket{}, browserLaunchReceipt{}, time.Time{}, err
+	}
+	now := m.now()
+	expiry := now.Add(BrowserTicketLifetime)
+	ticket := BrowserTicket{value: ticketRaw}
+	receipt := browserLaunchReceipt{value: receiptRaw, valid: true}
+	m.state.mu.Lock()
+	m.state.ticket = &browserTicketState{
+		verifier:  deriveBrowserVerifier(browserTicketDomain, ticketRaw),
+		expiresAt: expiry,
+		launch: &browserLaunchBinding{
+			receiptVerifier: deriveBrowserVerifier(browserLaunchDomain, receiptRaw),
+			creator:         AcceleratorSessionTarget{SessionID: call.SessionID, Generation: lease.Generation},
+			expiresAt:       expiry,
+		},
+	}
+	m.state.mu.Unlock()
+	return ticket, receipt, expiry, nil
+}
 func (m *BrowserSessionManager) Exchange(ticket BrowserTicket) (BrowserBearer, time.Time, error) {
 	entryTime := m.now()
 	wanted := deriveBrowserVerifier(browserTicketDomain, ticket.value)
@@ -232,11 +321,15 @@ func (m *BrowserSessionManager) Exchange(ticket BrowserTicket) (BrowserBearer, t
 		m.state.mu.Unlock()
 		return BrowserBearer{}, time.Time{}, ErrInvalidBrowserTicket
 	}
+	launch := m.state.ticket.launch
 	m.state.ticket = nil
 	old := m.state.session
 	oldTimer := m.state.timer
 	ctx := agent.AuthenticatedCallContext{PrincipalID: agent.PrincipalID(principal), SessionID: agent.SessionID(sessionID)}
-	session := &browserSessionState{verifier: deriveBrowserVerifier(browserBearerDomain, raw), context: ctx, createdAt: now, lastActivity: now}
+	if launch != nil {
+		launch.browserSession = ctx.SessionID
+	}
+	session := &browserSessionState{verifier: deriveBrowserVerifier(browserBearerDomain, raw), context: ctx, createdAt: now, lastActivity: now, launch: launch}
 	m.state.session = session
 	record := &browserSessionTimerRecord{session: session, cancel: make(chan struct{})}
 	record.timer = m.clock.NewTimer(BrowserSessionHardTTL)
@@ -248,6 +341,7 @@ func (m *BrowserSessionManager) Exchange(ticket BrowserTicket) (BrowserBearer, t
 	}
 	if old != nil {
 		m.revoker.RevokeBrowserSession(context.Background(), old.context.SessionID)
+		m.emitBrowserLaunchControl(old.launch, "ended")
 	}
 	go func() {
 		select {
@@ -257,6 +351,92 @@ func (m *BrowserSessionManager) Exchange(ticket BrowserTicket) (BrowserBearer, t
 		}
 	}()
 	return BrowserBearer{value: raw}, now.Add(BrowserSessionHardTTL), nil
+}
+
+// browserSocketActivated is called only after the registry has completed the
+// exact Browser socket activation and made that generation ready/current.
+func (m *BrowserSessionManager) browserSocketActivated(id agent.SessionID, generation AcceleratorSocketGeneration) {
+	if m == nil {
+		return
+	}
+	var launch *browserLaunchBinding
+	m.state.mu.Lock()
+	if session := m.state.session; session != nil && session.context.SessionID == id && session.launch != nil {
+		candidate := session.launch
+		if !candidate.confirmed && !m.now().Before(candidate.expiresAt) {
+			session.launch = nil
+		} else if candidate.pendingSocket == 0 || candidate.pendingSocket == generation {
+			candidate.browserSocket = generation
+			candidate.pendingSocket = 0
+			candidate.activeEnded = false
+			if !candidate.confirmed {
+				candidate.confirmed = true
+				launch = candidate
+			}
+		}
+	}
+	m.state.mu.Unlock()
+	m.emitBrowserLaunchControl(launch, "confirmed")
+}
+
+// browserSocketPreparedLocked binds replacement intent before the registry
+// closes the prior generation. The caller holds the Browser session mutex.
+func (m *BrowserSessionManager) browserSocketPreparedLocked(id agent.SessionID, generation AcceleratorSocketGeneration) {
+	if session := m.state.session; session != nil && session.context.SessionID == id && session.launch != nil {
+		session.launch.pendingSocket = generation
+	}
+}
+
+func (m *BrowserSessionManager) browserSocketActivationFailed(id agent.SessionID, generation AcceleratorSocketGeneration) {
+	if m == nil {
+		return
+	}
+	var launch *browserLaunchBinding
+	m.state.mu.Lock()
+	if session := m.state.session; session != nil && session.context.SessionID == id && session.launch != nil && session.launch.pendingSocket == generation {
+		candidate := session.launch
+		candidate.pendingSocket = 0
+		if candidate.activeEnded {
+			launch = candidate
+			session.launch = nil
+		}
+	}
+	m.state.mu.Unlock()
+	m.emitBrowserLaunchControl(launch, "ended")
+}
+
+// browserSocketEnded clears only the binding for the exact latest Browser
+// generation. A replaced generation cannot end the current hold.
+func (m *BrowserSessionManager) browserSocketEnded(id agent.SessionID, generation AcceleratorSocketGeneration) {
+	if m == nil {
+		return
+	}
+	var launch *browserLaunchBinding
+	m.state.mu.Lock()
+	if session := m.state.session; session != nil && session.context.SessionID == id && session.launch != nil && session.launch.browserSocket == generation {
+		if session.launch.pendingSocket != 0 {
+			session.launch.activeEnded = true
+		} else {
+			launch = session.launch
+			session.launch = nil
+		}
+	}
+	m.state.mu.Unlock()
+	m.emitBrowserLaunchControl(launch, "ended")
+}
+
+func (m *BrowserSessionManager) emitBrowserLaunchControl(launch *browserLaunchBinding, status string) {
+	if launch == nil || !launch.confirmed || (status != "confirmed" && status != "ended") {
+		return
+	}
+	controls, ok := m.revoker.(browserLaunchControlEmitter)
+	if !ok {
+		return
+	}
+	controls.EmitEventToTargets([]AcceleratorSessionTarget{launch.creator}, Event{
+		Type: "event", Name: "browser-launch",
+		Data: browserLaunchControl{Receipt: base64.RawURLEncoding.EncodeToString(launch.receiptVerifier.value[:]), Status: status},
+	})
 }
 func (m *BrowserSessionManager) expire(record *browserSessionTimerRecord) {
 	if m == nil || record == nil {
@@ -271,6 +451,7 @@ func (m *BrowserSessionManager) expire(record *browserSessionTimerRecord) {
 	m.state.session, m.state.timer = nil, nil
 	m.state.mu.Unlock()
 	m.revoker.RevokeBrowserSession(context.Background(), old.context.SessionID)
+	m.emitBrowserLaunchControl(old.launch, "ended")
 }
 func (m *BrowserSessionManager) Authenticate(bearer BrowserBearer) (agent.AuthenticatedCallContext, bool) {
 	wanted := deriveBrowserVerifier(browserBearerDomain, bearer.value)
@@ -295,6 +476,7 @@ func (m *BrowserSessionManager) Authenticate(bearer BrowserBearer) (agent.Authen
 	m.state.mu.Unlock()
 	if revoked != nil {
 		m.revoker.RevokeBrowserSession(context.Background(), revoked.context.SessionID)
+		m.emitBrowserLaunchControl(revoked.launch, "ended")
 	}
 	return agent.AuthenticatedCallContext{}, false
 }
@@ -324,6 +506,7 @@ func (m *BrowserSessionManager) withActiveBrowserSession(id agent.SessionID, act
 	m.state.mu.Unlock()
 	if revoked != nil {
 		m.revoker.RevokeBrowserSession(context.Background(), revoked.context.SessionID)
+		m.emitBrowserLaunchControl(revoked.launch, "ended")
 	}
 	return ok
 }
@@ -346,6 +529,7 @@ func (m *BrowserSessionManager) Touch(id agent.SessionID) {
 	m.state.mu.Unlock()
 	if revoked != nil {
 		m.revoker.RevokeBrowserSession(context.Background(), revoked.context.SessionID)
+		m.emitBrowserLaunchControl(revoked.launch, "ended")
 	}
 }
 func (m *BrowserSessionManager) Revoke(ctx context.Context) {
@@ -375,6 +559,7 @@ func (m *BrowserSessionManager) clear(ctx context.Context) {
 	}
 	if old != nil {
 		m.revoker.RevokeBrowserSession(ctx, old.context.SessionID)
+		m.emitBrowserLaunchControl(old.launch, "ended")
 	}
 }
 

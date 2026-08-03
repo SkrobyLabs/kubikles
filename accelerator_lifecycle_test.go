@@ -3,12 +3,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -29,6 +33,7 @@ type recordingDesktopAcceleratorCoordinator struct {
 	events   []string
 	onFence  func(string)
 	onNotify func(string, bool)
+	onOpen   func(func(string) bool)
 }
 
 func (c *recordingDesktopAcceleratorCoordinator) record(event string) {
@@ -43,6 +48,13 @@ func (c *recordingDesktopAcceleratorCoordinator) snapshot() []string {
 }
 func (c *recordingDesktopAcceleratorCoordinator) AcquireSecretDemand(context.Context, string) acceleratorprovision.DemandResult {
 	return acceleratorprovision.DemandResult{Reason: acceleratorprovision.DemandRuntimeClosing}
+}
+func (c *recordingDesktopAcceleratorCoordinator) OpenAcceleratorBrowser(_ context.Context, navigator func(string) bool) acceleratorprovision.BrowserOpenResult {
+	c.record("open-browser")
+	if c.onOpen != nil {
+		c.onOpen(navigator)
+	}
+	return acceleratorprovision.BrowserOpened
 }
 func (c *recordingDesktopAcceleratorCoordinator) FenceContextSwitch(name string) {
 	c.record("fence:" + name)
@@ -151,6 +163,63 @@ func TestDesktopAcceleratorConstructionIsDormantAndModeIsolated(t *testing.T) {
 		if _, ok := isolated.acceleratorLifecycle.(directOnlyAcceleratorCoordinator); !ok {
 			t.Fatalf("mode %s lifecycle=%T", mode, isolated.acceleratorLifecycle)
 		}
+	}
+}
+
+func TestOpenAcceleratorBrowserDesktopOnlyAndSafe(t *testing.T) {
+	client := newContextSwitchTestClient(t)
+	recorder := &recordingDesktopAcceleratorCoordinator{}
+	app := &App{runtimeMode: RuntimeModeDesktop, ctx: context.Background(), k8sClient: client, acceleratorLifecycle: recorder}
+	if got := app.OpenAcceleratorBrowser(); got != acceleratorprovision.BrowserOpened {
+		t.Fatalf("desktop result=%q", string(got))
+	}
+	if got := recorder.snapshot(); !reflect.DeepEqual(got, []string{"open-browser"}) {
+		t.Fatalf("events=%v", got)
+	}
+	app.runtimeMode = RuntimeModeServer
+	if got := app.OpenAcceleratorBrowser(); got != acceleratorprovision.BrowserUnavailable {
+		t.Fatalf("server result=%q", string(got))
+	}
+	if got := recorder.snapshot(); !reflect.DeepEqual(got, []string{"open-browser"}) {
+		t.Fatalf("server invoked coordinator: %v", got)
+	}
+}
+
+func TestBrowserNavigatorURLStaysInsidePrivateAppHandoff(t *testing.T) {
+	const ticket = "hostile-browser-ticket-AAAAAAAAAAAAAAAAAAAA"
+	const target = "http://127.0.0.1:43123/accelerator/browser/#ticket=" + ticket
+	originalFactory := acceleratorBrowserNavigatorFactory
+	defer func() { acceleratorBrowserNavigatorFactory = originalFactory }()
+	var platformTargets []string
+	acceleratorBrowserNavigatorFactory = func(*App) func(string) bool {
+		return func(value string) bool {
+			platformTargets = append(platformTargets, value)
+			return true
+		}
+	}
+	recorder := &recordingDesktopAcceleratorCoordinator{onOpen: func(navigate func(string) bool) {
+		if !navigate(target) {
+			t.Fatal("private navigator rejected target")
+		}
+	}}
+	app := &App{runtimeMode: RuntimeModeDesktop, ctx: context.Background(), k8sClient: newContextSwitchTestClient(t), acceleratorLifecycle: recorder}
+	var logs bytes.Buffer
+	priorWriter := log.Writer()
+	log.SetOutput(&logs)
+	defer log.SetOutput(priorWriter)
+	result := app.OpenAcceleratorBrowser()
+	wire, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifacts := []string{fmt.Sprint(result), fmt.Sprintf("%+v", result), string(wire), fmt.Sprint(recorder.snapshot()), logs.String()}
+	for _, artifact := range artifacts {
+		if strings.Contains(artifact, ticket) || strings.Contains(artifact, target) {
+			t.Fatalf("private navigator material crossed public artifact: %q", artifact)
+		}
+	}
+	if !reflect.DeepEqual(platformTargets, []string{target}) || result != acceleratorprovision.BrowserOpened {
+		t.Fatalf("platform targets/result=%v/%q", platformTargets, string(result))
 	}
 }
 

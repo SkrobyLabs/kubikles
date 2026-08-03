@@ -184,7 +184,11 @@ func (c *Coordinator) releaseDemand(lease *SecretDemandLease) {
 	}
 	if s.sessionLeaseCount == 0 && s.state == CoordinatorActive {
 		s.settleDemandLocked()
-		c.startIdleLocked(s)
+		if s.browserHold != nil {
+			c.startBrowserHandoffLocked(s)
+		} else {
+			c.startIdleLocked(s)
+		}
 		s.mu.Unlock()
 		return
 	}
@@ -220,7 +224,11 @@ func (c *Coordinator) releaseSession(lease *SessionLease) {
 	}
 	if s.sessionLeaseCount == 0 && s.demandCount == 0 && s.state == CoordinatorActive {
 		s.settleDemandLocked()
-		c.startIdleLocked(s)
+		if s.browserHold != nil {
+			c.startBrowserHandoffLocked(s)
+		} else {
+			c.startIdleLocked(s)
+		}
 	}
 	s.mu.Unlock()
 }
@@ -515,6 +523,11 @@ func (c *Coordinator) monitorSession(s *contextSlot, fence operationFence, workl
 		return
 	}
 	s.terminalCleanupPending = false
+	if s.browserHold != nil {
+		s.browserHold.unregister()
+		s.browserHold = nil
+	}
+	s.browserOwned = nil
 	if s.demandCount > 0 {
 		c.startResumeLocked(s, nil)
 		s.mu.Unlock()
@@ -646,6 +659,17 @@ func (s *contextSlot) clearWorkloadAuthorityLocked() {
 	s.normalEnded = false
 	s.drainDeadline = time.Time{}
 	s.terminalCleanupPending = false
+	if s.browserHold != nil {
+		s.browserHold.unregister()
+		s.browserHold = nil
+	}
+	s.browserOwned = nil
+	if s.launch != nil {
+		s.launch.result = BrowserUnavailable
+		close(s.launch.done)
+		s.launch = nil
+	}
+	s.launchEpoch++
 	s.sessionLeaseEpoch++
 	s.sessionLeaseCount = 0
 	if s.demandCount == 0 {
@@ -690,7 +714,8 @@ func (c *Coordinator) coordinateDisposal(slot *contextSlot, workload *Provisione
 			if async, ok := c.disposer.(coordinatorAsyncDisposer); ok {
 				func() {
 					defer existing.markFenced()
-					_ = async.startDisposeNow(context.Background(), workload)
+					completion := async.startDisposeNow(context.Background(), workload)
+					completion.waitTransportFenced()
 				}()
 			} else {
 				_ = c.disposer.DisposeNow(context.Background(), workload)
@@ -734,7 +759,8 @@ func (c *Coordinator) startCoordinatedDisposeNow(slot *contextSlot, workload *Pr
 			if async, ok := c.disposer.(coordinatorAsyncDisposer); ok {
 				func() {
 					defer existing.markFenced()
-					_ = async.startDisposeNow(context.Background(), workload)
+					completion := async.startDisposeNow(context.Background(), workload)
+					completion.waitTransportFenced()
 				}()
 			} else {
 				go func() {
@@ -759,6 +785,7 @@ func (c *Coordinator) startCoordinatedDisposeNow(slot *contextSlot, workload *Pr
 		func() {
 			defer operation.markFenced()
 			completion = async.startDisposeNow(context.Background(), workload)
+			completion.waitTransportFenced()
 		}()
 		go func() {
 			if completion != nil && completion.Done() != nil {

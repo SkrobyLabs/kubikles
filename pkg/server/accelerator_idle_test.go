@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -117,14 +118,32 @@ type joinedIdleLifecycle struct {
 	registry *AcceleratorSessionRegistry
 	clears   atomic.Int32
 	exits    atomic.Int32
+	eventsMu sync.Mutex
+	events   []string
 }
 
 func (l *joinedIdleLifecycle) ClearSessionAndWatcherState(ctx context.Context) error {
 	l.clears.Add(1)
+	l.record("clear")
 	l.browser.RevokeAll(ctx)
-	return l.registry.Close(ctx)
+	err := l.registry.Close(ctx)
+	l.record("terminal")
+	return err
 }
-func (l *joinedIdleLifecycle) RequestProcessExit() { l.exits.Add(1) }
+func (l *joinedIdleLifecycle) RequestProcessExit() {
+	l.exits.Add(1)
+	l.record("exit")
+}
+func (l *joinedIdleLifecycle) record(event string) {
+	l.eventsMu.Lock()
+	l.events = append(l.events, event)
+	l.eventsMu.Unlock()
+}
+func (l *joinedIdleLifecycle) snapshot() []string {
+	l.eventsMu.Lock()
+	defer l.eventsMu.Unlock()
+	return append([]string(nil), l.events...)
+}
 
 func newIdleTestLifecycle() *idleTestLifecycle {
 	return &idleTestLifecycle{exit: make(chan struct{}, 1)}
@@ -549,4 +568,88 @@ func TestAcceleratorIdleJoinedComponentShutdown(t *testing.T) {
 	if !closed || registry.accepting.Load() || records != 0 {
 		t.Fatalf("joined registry closed/accepting/records = %v/%v/%d", closed, registry.accepting.Load(), records)
 	}
+}
+
+func TestConfirmedBrowserOwnsExactServerGraceLifecycle(t *testing.T) {
+	clock := &idleTestClock{}
+	lifecycle := &joinedIdleLifecycle{}
+	idle := newAcceleratorIdleCoordinator(clock, lifecycle, context.Background(), nil)
+	registry := NewAcceleratorSessionRegistry("browser-grace", idle)
+	browser := newBrowserSessionManager(
+		func() time.Time { return time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC) },
+		bytes.NewReader(bytes.Repeat([]byte{0x79}, 512)), registry,
+	)
+	lifecycle.browser, lifecycle.registry = browser, registry
+	idle.MarkReady()
+	initial := idle.timer
+	creator := acceleratorTestCall("browser-grace-creator")
+	creatorConn := newFakeAcceleratorConn()
+	creatorSocket, ok := registry.register(creator, creatorConn)
+	if !ok {
+		t.Fatal("creator registration rejected")
+	}
+	waitIdleSignal(t, initial.waiterDone, "creator cancellation of ready grace")
+	ticket, _, _, err := browser.mintForCreator(creator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bearer, _, err := browser.Exchange(ticket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	browserCall, authenticated := browser.Authenticate(bearer)
+	if !authenticated {
+		t.Fatal("Browser bearer rejected")
+	}
+	browserSocket, ok := registry.register(browserCall, newFakeAcceleratorConn())
+	if !ok {
+		t.Fatal("Browser registration rejected")
+	}
+	browser.browserSocketActivated(browserCall.SessionID, browserSocket.snapshot.Generation)
+	creatorSocket.requestClose(acceleratorSocketClose{})
+	waitIdleSignal(t, creatorSocket.pumpsDone, "creator close")
+	waitAccelerator(t, "creator terminal observation", func() bool {
+		idle.mu.Lock()
+		defer idle.mu.Unlock()
+		return len(idle.current) == 1 && idle.current[browserCall.SessionID] == browserSocket.snapshot.Generation && idle.timer == nil
+	})
+
+	browserSocket.requestClose(acceleratorSocketClose{})
+	waitIdleSignal(t, browserSocket.pumpsDone, "first Browser close")
+	browser.browserSocketEnded(browserCall.SessionID, browserSocket.snapshot.Generation)
+	var firstGrace *acceleratorIdleTimerRecord
+	waitAccelerator(t, "first Browser grace", func() bool {
+		idle.mu.Lock()
+		defer idle.mu.Unlock()
+		firstGrace = idle.timer
+		return firstGrace != nil
+	})
+	_, durations := clock.snapshot()
+	if durations[len(durations)-1] != 2*time.Minute || durations[len(durations)-1] != agent.AcceleratorIdleReconnectGrace {
+		t.Fatalf("Browser grace durations=%v", durations)
+	}
+
+	reconnected, ok := registry.register(browserCall, newFakeAcceleratorConn())
+	if !ok {
+		t.Fatal("Browser reconnect rejected")
+	}
+	waitIdleSignal(t, firstGrace.waiterDone, "Browser reconnect cancellation")
+	reconnected.requestClose(acceleratorSocketClose{})
+	waitIdleSignal(t, reconnected.pumpsDone, "final Browser close")
+	var finalGrace *acceleratorIdleTimerRecord
+	waitAccelerator(t, "final Browser grace", func() bool {
+		idle.mu.Lock()
+		defer idle.mu.Unlock()
+		finalGrace = idle.timer
+		return finalGrace != nil && finalGrace != firstGrace
+	})
+	finalGrace.timer.(*idleTestTimer).fire()
+	waitAccelerator(t, "joined Browser expiry", func() bool { return lifecycle.exits.Load() == 1 })
+	if got := lifecycle.snapshot(); !reflect.DeepEqual(got, []string{"clear", "terminal", "exit"}) {
+		t.Fatalf("expiry order=%v", got)
+	}
+	if lifecycle.clears.Load() != 1 || lifecycle.exits.Load() != 1 {
+		t.Fatalf("expiry counts=%d/%d", lifecycle.clears.Load(), lifecycle.exits.Load())
+	}
+	idle.Shutdown()
 }

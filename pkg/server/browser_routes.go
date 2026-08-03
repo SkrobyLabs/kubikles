@@ -12,8 +12,9 @@ import (
 const BrowserExchangeMaxBodyBytes int64 = 4096
 
 type browserTicketResponse struct {
-	Ticket    string `json:"ticket"`
-	ExpiresAt string `json:"expiresAt"`
+	Ticket        string `json:"ticket"`
+	LaunchReceipt string `json:"launchReceipt,omitempty"`
+	ExpiresAt     string `json:"expiresAt"`
 }
 type browserExchangeRequest struct {
 	Ticket string `json:"ticket"`
@@ -52,15 +53,20 @@ func (s *Server) handleMintBrowserTicket(w http.ResponseWriter, r *http.Request)
 		writeAcceleratorError(w, http.StatusServiceUnavailable, "unavailable")
 		return
 	}
-	ticket, expiry, err := s.options.BrowserSessions.Mint()
+	call, ok := authenticatedCreatorContext(r.Context())
+	if !ok {
+		writeAcceleratorError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+	ticket, receipt, expiry, err := s.options.BrowserSessions.mintForCreator(call)
 	if err != nil {
-		writeAcceleratorError(w, http.StatusInternalServerError, "internal error")
+		writeAcceleratorError(w, http.StatusServiceUnavailable, "unavailable")
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = writeJSON(w, browserTicketResponse{Ticket: ticket.encoded(), ExpiresAt: expiry.Format(time.RFC3339Nano)})
+	_ = writeJSON(w, browserTicketResponse{Ticket: ticket.encoded(), LaunchReceipt: receipt.encoded(), ExpiresAt: expiry.Format(time.RFC3339Nano)})
 }
 func (s *Server) handleExchangeBrowserSession(w http.ResponseWriter, r *http.Request) {
 	if r.URL.RawQuery != "" || r.URL.ForceQuery || len(r.Header.Values("Authorization")) != 0 || len(r.Header.Values("Cookie")) != 0 {

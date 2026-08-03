@@ -523,6 +523,10 @@ type acceleratorRegistration struct {
 }
 
 func (r *AcceleratorSessionRegistry) prepareRegistration(call agent.AuthenticatedCallContext, conn acceleratorSocketConnection) (*acceleratorRegistration, bool) {
+	return r.prepareRegistrationWithHook(call, conn, nil)
+}
+
+func (r *AcceleratorSessionRegistry) prepareRegistrationWithHook(call agent.AuthenticatedCallContext, conn acceleratorSocketConnection, prepared func(AcceleratorSocketGeneration)) (*acceleratorRegistration, bool) {
 	if !call.IsAuthenticated() || conn == nil {
 		return nil, false
 	}
@@ -563,6 +567,9 @@ func (r *AcceleratorSessionRegistry) prepareRegistration(call agent.Authenticate
 			registration.replacementBatch = r.reserveCallbackBatchLocked(record, acceleratorObservation{kind: acceleratorObservedDisconnect, snapshot: old.snapshot})
 		}
 		r.mu.Unlock()
+		if prepared != nil {
+			prepared(socket.snapshot.Generation)
+		}
 
 		if old != nil {
 			old.requestClose(acceleratorSocketClose{code: websocket.CloseGoingAway, reason: "replaced"})

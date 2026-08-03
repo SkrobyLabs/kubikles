@@ -1116,8 +1116,10 @@ func TestBrowserManagerAndDTOFormattingAlwaysRedacts(t *testing.T) {
 func TestBrowserSessionStateFormattingAlwaysRedacts(t *testing.T) {
 	ticketRaw := [32]byte([]byte("TICKET-RAW-0123456789-ABCDEFGHIJ"))
 	bearerRaw := [32]byte([]byte("BEARER-RAW-0123456789-ABCDEFGHIJ"))
+	receiptRaw := [32]byte([]byte("RECEIPT-RAW-0123456789-ABCDEFGHI"))
 	ticketVerifier := sha256.Sum256(append([]byte(browserTicketDomain), ticketRaw[:]...))
 	bearerVerifier := sha256.Sum256(append([]byte(browserBearerDomain), bearerRaw[:]...))
+	receiptVerifier := sha256.Sum256(append([]byte(browserLaunchDomain), receiptRaw[:]...))
 	if got := deriveBrowserVerifier(browserTicketDomain, ticketRaw).value; got != ticketVerifier {
 		t.Fatalf("ticket verifier was not independently reproduced: %x != %x", got, ticketVerifier)
 	}
@@ -1134,13 +1136,15 @@ func TestBrowserSessionStateFormattingAlwaysRedacts(t *testing.T) {
 	if got := hex.EncodeToString(bearerVerifier[:]); got != wantBearerVerifierHex {
 		t.Fatalf("bearer SHA-256 verifier = %s", got)
 	}
-	if ticketRaw == bearerRaw || ticketVerifier == bearerVerifier {
+	if ticketRaw == bearerRaw || ticketVerifier == bearerVerifier || receiptVerifier == ticketVerifier || receiptVerifier == bearerVerifier {
 		t.Fatal("credential and domain-separated verifier fixtures must differ")
 	}
+	launchState := browserLaunchBinding{receiptVerifier: browserVerifier{value: receiptVerifier}, confirmed: true}
 
 	ticketState := browserTicketState{
 		verifier:  browserVerifier{value: ticketVerifier},
 		expiresAt: time.Date(2026, 8, 1, 5, 7, 7, 123, time.UTC),
+		launch:    &launchState,
 	}
 	sessionState := browserSessionState{
 		verifier: browserVerifier{value: bearerVerifier},
@@ -1150,6 +1154,7 @@ func TestBrowserSessionStateFormattingAlwaysRedacts(t *testing.T) {
 		},
 		createdAt:    time.Date(2026, 8, 1, 5, 6, 7, 123, time.UTC),
 		lastActivity: time.Date(2026, 8, 1, 5, 6, 8, 123, time.UTC),
+		launch:       &launchState,
 	}
 	values := []struct {
 		name  string
@@ -1159,6 +1164,8 @@ func TestBrowserSessionStateFormattingAlwaysRedacts(t *testing.T) {
 		{name: "ticket pointer", value: &ticketState},
 		{name: "session value", value: sessionState},
 		{name: "session pointer", value: &sessionState},
+		{name: "launch value", value: launchState},
+		{name: "launch pointer", value: &launchState},
 		{name: "store value", value: browserSessionStore{ticket: &ticketState, session: &sessionState}},
 		{name: "store pointer", value: &browserSessionStore{ticket: &ticketState, session: &sessionState}},
 	}
@@ -1207,9 +1214,13 @@ func TestBrowserSessionStateFormattingAlwaysRedacts(t *testing.T) {
 	}
 	ticketVerifierRepresentations = append(ticketVerifierRepresentations, base64Representations(ticketVerifier[:])...)
 	bearerVerifierRepresentations = append(bearerVerifierRepresentations, base64Representations(bearerVerifier[:])...)
+	receiptVerifierRepresentations := []string{string(receiptVerifier[:]), hex.EncodeToString(receiptVerifier[:]), strings.ToUpper(hex.EncodeToString(receiptVerifier[:]))}
+	receiptVerifierRepresentations = append(receiptVerifierRepresentations, base64Representations(receiptVerifier[:])...)
 	credentialRepresentations := append([]string{string(ticketRaw[:]), hex.EncodeToString(ticketRaw[:]), strings.ToUpper(hex.EncodeToString(ticketRaw[:]))}, base64Representations(ticketRaw[:])...)
 	credentialRepresentations = append(credentialRepresentations, string(bearerRaw[:]), hex.EncodeToString(bearerRaw[:]), strings.ToUpper(hex.EncodeToString(bearerRaw[:])))
 	credentialRepresentations = append(credentialRepresentations, base64Representations(bearerRaw[:])...)
+	credentialRepresentations = append(credentialRepresentations, string(receiptRaw[:]), hex.EncodeToString(receiptRaw[:]), strings.ToUpper(hex.EncodeToString(receiptRaw[:])))
+	credentialRepresentations = append(credentialRepresentations, base64Representations(receiptRaw[:])...)
 	for i := range ticketVerifierRepresentations {
 		if ticketVerifierRepresentations[i] == "" || bearerVerifierRepresentations[i] == "" {
 			t.Fatalf("verifier representation %d is vacuous", i)
@@ -1220,6 +1231,7 @@ func TestBrowserSessionStateFormattingAlwaysRedacts(t *testing.T) {
 	}
 	needles := append(credentialRepresentations, ticketVerifierRepresentations...)
 	needles = append(needles, bearerVerifierRepresentations...)
+	needles = append(needles, receiptVerifierRepresentations...)
 	formattedCorpus := formatted.String()
 	for _, needle := range needles {
 		if needle == "" || needle == "<redacted>" {

@@ -32,6 +32,7 @@ const (
 	CoordinatorReconnecting CoordinatorState = "reconnecting"
 	CoordinatorDraining     CoordinatorState = "draining"
 	CoordinatorDisposing    CoordinatorState = "disposing"
+	CoordinatorBrowserOwned CoordinatorState = "browser_owned"
 	CoordinatorUnavailable  CoordinatorState = "unavailable"
 	CoordinatorClosed       CoordinatorState = "closed"
 )
@@ -114,7 +115,8 @@ type operationFence struct {
 }
 
 type contextSlot struct {
-	mu sync.Mutex
+	mu           sync.Mutex
+	navigationMu sync.Mutex
 
 	contextName    string
 	contextEpoch   uint64
@@ -146,6 +148,11 @@ type contextSlot struct {
 	normalEnded            bool
 	drainDeadline          time.Time
 	terminalCleanupPending bool
+
+	launchEpoch  uint64
+	launch       *coordinatorBrowserLaunch
+	browserHold  *coordinatorBrowserHold
+	browserOwned *browserOwnedWorkload
 }
 
 func newContextSlot(name string, epoch uint64) *contextSlot {
@@ -163,6 +170,18 @@ func (s *contextSlot) fenceLocked() operationFence {
 
 func (s *contextSlot) matchesLocked(f operationFence) bool {
 	return s.contextEpoch == f.contextEpoch && s.demandEpoch == f.demandEpoch && s.operationEpoch == f.operationEpoch && s.state != CoordinatorClosed
+}
+
+type browserHandoffFence struct {
+	contextEpoch   uint64
+	operationEpoch uint64
+	workload       *ProvisionedWorkload
+	session        *ConnectedSession
+	hold           *coordinatorBrowserHold
+}
+
+func (s *contextSlot) matchesBrowserHandoffLocked(f browserHandoffFence) bool {
+	return s.contextEpoch == f.contextEpoch && s.operationEpoch == f.operationEpoch && s.state == CoordinatorBrowserOwned && s.workload == f.workload && s.session == f.session && s.browserHold == f.hold
 }
 
 type failureClass uint8

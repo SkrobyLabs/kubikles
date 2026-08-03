@@ -16,6 +16,13 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 "$root/scripts/check-accelerator-desktop-provision-scope.sh"
 source_image="${ACCELERATOR_PROVISION_KIND_IMAGE:-kubikles-accelerator:provision-kind}"
 docker image inspect "$source_image" >/dev/null 2>&1 || fail "missing-image-$source_image"
+revision_json="$(docker image inspect "$source_image" --format '{{json (index .Config.Labels "org.opencontainers.image.revision")}}' 2>/dev/null)" || fail "source-image-revision-unavailable"
+revision_json_pattern='^"([0-9a-f]{40})"$'
+[[ "$revision_json" =~ $revision_json_pattern ]] || fail "source-image-revision-invalid"
+source_revision="${BASH_REMATCH[1]}"
+expected_revision="$(git -C "$root" rev-parse HEAD 2>/dev/null)" || fail "checkout-revision-unavailable"
+[[ "$expected_revision" =~ ^[0-9a-f]{40}$ ]] || fail "checkout-revision-invalid"
+test "$source_revision" = "$expected_revision" || fail "source-image-revision-mismatch"
 docker image inspect kindest/node:v1.32.2 >/dev/null 2>&1 || fail "missing-kindest-node-v1.32.2"
 docker image inspect registry:2.8.3 >/dev/null 2>&1 || fail "missing-registry-v2.8.3"
 test -f "$root/deploy/charts/kubikles-accelerator/Chart.yaml" || fail "missing-chart-source"
@@ -190,6 +197,9 @@ KUBECONFIG="$kubeconfig" helm install "$malformed" "$tmp/sentinel" --namespace d
 go_test_timeout=5m
 if [[ "${ACCELERATOR_DISPOSAL_KIND:-0}" == "1" || "${ACCELERATOR_LIFECYCLE_KIND:-0}" == "1" ]]; then
   go_test_timeout=9m
+fi
+if [[ "${ACCELERATOR_BROWSER_LIFECYCLE_KIND:-0}" == "1" ]]; then
+  go_test_timeout=18m
 fi
 (cd "$root" && HOME="$test_home" KUBECONFIG="$kubeconfig" \
   ACCELERATOR_PROVISION_KIND_CHART="$chart_archive" \

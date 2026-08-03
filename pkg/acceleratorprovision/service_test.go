@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -636,6 +637,168 @@ func TestKindHarnessScansSuccessfulOutputForCredentialCorpus(t *testing.T) {
 	}
 	if strings.Contains(source, `echo "$sensitive"`) || strings.Contains(source, `fail "$sensitive"`) {
 		t.Fatal("Kind output gate would disclose the matched sensitive value")
+	}
+}
+
+func TestKindHarnessRejectsStaleSourceImageBeforeMutation(t *testing.T) {
+	sourceBytes, err := os.ReadFile(filepath.Join("..", "..", "scripts", "test-accelerator-desktop-provision-kind.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(sourceBytes)
+	revisionRead := strings.Index(source, `revision_json="$(docker image inspect "$source_image" --format '{{json (index .Config.Labels "org.opencontainers.image.revision")}}' 2>/dev/null)"`)
+	pattern := strings.Index(source, `revision_json_pattern='^"([0-9a-f]{40})"$'`)
+	matchAndCapture := `[[ "$revision_json" =~ $revision_json_pattern ]] || fail "source-image-revision-invalid"` + "\n" + `source_revision="${BASH_REMATCH[1]}"`
+	capture := strings.Index(source, matchAndCapture)
+	headRead := strings.Index(source, `expected_revision="$(git -C "$root" rev-parse HEAD 2>/dev/null)"`)
+	rejection := strings.Index(source, `test "$source_revision" = "$expected_revision" || fail "source-image-revision-mismatch"`)
+	mutableSetup := strings.Index(source, `tmp="$(mktemp -d`)
+	firstContainer := strings.Index(source, `docker run --detach`)
+	if revisionRead < 0 || pattern < 0 || capture < 0 || headRead < 0 || rejection < 0 {
+		t.Fatal("Kind harness does not bind its source image revision to the exact checkout")
+	}
+	if !(revisionRead < pattern && pattern < capture && capture < headRead && headRead < rejection && rejection < mutableSetup && rejection < firstContainer) {
+		t.Fatalf("source image revision gate ordering read=%d pattern=%d capture=%d head=%d rejection=%d setup=%d container=%d", revisionRead, pattern, capture, headRead, rejection, mutableSetup, firstContainer)
+	}
+	if strings.Contains(source, `--format '{{index .Config.Labels "org.opencontainers.image.revision"}}'`) {
+		t.Fatal("Kind harness retained raw Docker label inspection")
+	}
+	for _, line := range strings.Split(source[revisionRead:mutableSetup], "\n") {
+		failure := strings.Index(line, "fail ")
+		if failure < 0 {
+			continue
+		}
+		message := line[failure:]
+		for _, variable := range []string{"$revision_json", "$source_revision", "$expected_revision", "${revision_json}", "${source_revision}", "${expected_revision}"} {
+			if strings.Contains(message, variable) {
+				t.Fatalf("source image revision failure interpolates private state: %s", message)
+			}
+		}
+	}
+}
+
+func TestKindHarnessCanonicalRevisionFixtures(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !filepath.IsAbs(realGit) {
+		realGit, err = filepath.Abs(realGit)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	canonical := strings.Repeat("a", 40)
+	different := strings.Repeat("b", 40)
+	malformedCheckout := "checkout-malformed-secret"
+	unavailableCheckout := "checkout-unavailable-secret"
+	tests := []struct {
+		name, revisionJSON, checkoutRevision, gitExit, wantFailure string
+		accepted                                                   bool
+	}{
+		{name: "exact", revisionJSON: `"` + canonical + `"`, checkoutRevision: canonical, gitExit: "0", wantFailure: "registry-start", accepted: true},
+		{name: "image trailing newline", revisionJSON: `"` + canonical + `\n"`, checkoutRevision: canonical, gitExit: "0", wantFailure: "source-image-revision-invalid"},
+		{name: "image embedded nul", revisionJSON: `"` + canonical + `\u0000"`, checkoutRevision: canonical, gitExit: "0", wantFailure: "source-image-revision-invalid"},
+		{name: "image missing", revisionJSON: "", checkoutRevision: canonical, gitExit: "0", wantFailure: "source-image-revision-invalid"},
+		{name: "image missing null", revisionJSON: "null", checkoutRevision: canonical, gitExit: "0", wantFailure: "source-image-revision-invalid"},
+		{name: "image malformed", revisionJSON: `"ABC"`, checkoutRevision: canonical, gitExit: "0", wantFailure: "source-image-revision-invalid"},
+		{name: "image mismatch", revisionJSON: `"` + different + `"`, checkoutRevision: canonical, gitExit: "0", wantFailure: "source-image-revision-mismatch"},
+		{name: "checkout malformed", revisionJSON: `"` + canonical + `"`, checkoutRevision: malformedCheckout, gitExit: "0", wantFailure: "checkout-revision-invalid"},
+		{name: "checkout unavailable", revisionJSON: `"` + canonical + `"`, checkoutRevision: unavailableCheckout, gitExit: "42", wantFailure: "checkout-revision-unavailable"},
+		{name: "checkout mismatch", revisionJSON: `"` + canonical + `"`, checkoutRevision: different, gitExit: "0", wantFailure: "source-image-revision-mismatch"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := t.TempDir()
+			bin := filepath.Join(fixture, "bin")
+			if err := os.Mkdir(bin, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			writeTool := func(name, body string) {
+				t.Helper()
+				if err := os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\nset -eu\n"+body), 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			writeTool("docker", `case "${1:-}:${2:-}" in
+info:) exit 0 ;;
+image:inspect)
+  case " $* " in
+    *" --format "*) printf '%s\n' "$KIND_IMAGE_REVISION_JSON" ;;
+    *) exit 0 ;;
+  esac ;;
+run:--detach) : > "$KIND_MUTATION_MARKER"; exit 23 ;;
+*) exit 0 ;;
+esac
+`)
+			writeTool("git", `if [ "$#" -eq 4 ] && [ "$1" = -C ] && [ "$2" = "$KIND_REPO_ROOT" ] && [ "$3" = rev-parse ] && [ "$4" = HEAD ]; then
+  : > "$KIND_GIT_HEAD_MARKER"
+  if [ "$KIND_GIT_EXIT" != 0 ]; then
+    exit "$KIND_GIT_EXIT"
+  fi
+  printf '%s\n' "$KIND_CHECKOUT_REVISION"
+  exit 0
+fi
+: > "$KIND_GIT_PROXY_MARKER"
+exec "$KIND_REAL_GIT" "$@"
+`)
+			writeTool("kind", `test "${1:-}" = version && printf '%s\n' 'kind v0.32.0 go1.24 linux/amd64'
+`)
+			writeTool("helm", `test "${1:-}" = version && printf '%s\n' 'v3.21.3+gfixture'
+`)
+			writeTool("oras", `test "${1:-}" = version && printf '%s\n' 'Version:        1.3.3'
+`)
+			for _, name := range []string{"kubectl", "go", "curl", "openssl"} {
+				writeTool(name, "exit 0\n")
+			}
+			marker := filepath.Join(fixture, "mutated")
+			headMarker := filepath.Join(fixture, "git-head")
+			proxyMarker := filepath.Join(fixture, "git-proxy")
+			command := exec.Command("bash", filepath.Join(repoRoot, "scripts", "test-accelerator-desktop-provision-kind.sh"))
+			command.Dir = repoRoot
+			command.Env = append(os.Environ(),
+				"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
+				"TMPDIR="+fixture,
+				"KIND_IMAGE_REVISION_JSON="+test.revisionJSON,
+				"KIND_MUTATION_MARKER="+marker,
+				"KIND_REAL_GIT="+realGit,
+				"KIND_REPO_ROOT="+repoRoot,
+				"KIND_CHECKOUT_REVISION="+test.checkoutRevision,
+				"KIND_GIT_EXIT="+test.gitExit,
+				"KIND_GIT_HEAD_MARKER="+headMarker,
+				"KIND_GIT_PROXY_MARKER="+proxyMarker,
+			)
+			output, runErr := command.CombinedOutput()
+			if runErr == nil || !strings.Contains(string(output), "accelerator-desktop-provision-kind: "+test.wantFailure) {
+				t.Fatalf("result err=%v output=%q", runErr, output)
+			}
+			_, markerErr := os.Stat(marker)
+			if test.accepted && markerErr != nil {
+				t.Fatalf("canonical revision did not reach the controlled mutation: %v", markerErr)
+			}
+			if !test.accepted && !os.IsNotExist(markerErr) {
+				t.Fatalf("rejected revision crossed the mutation fence: %v", markerErr)
+			}
+			_, headErr := os.Stat(headMarker)
+			if test.wantFailure == "source-image-revision-invalid" && !os.IsNotExist(headErr) {
+				t.Fatalf("invalid image revision reached checkout Git: %v", headErr)
+			}
+			if test.wantFailure != "source-image-revision-invalid" && headErr != nil {
+				t.Fatalf("checkout revision invocation bypassed fake Git: %v", headErr)
+			}
+			if _, err := os.Stat(proxyMarker); err != nil {
+				t.Fatalf("scope-check invocation did not proxy to real Git: %v", err)
+			}
+			for _, secret := range []string{canonical, different, malformedCheckout, unavailableCheckout, test.revisionJSON, strings.Trim(test.revisionJSON, `"`), test.checkoutRevision} {
+				if secret != "" && secret != "null" && strings.Contains(string(output), secret) {
+					t.Fatal("revision fixture escaped through harness output")
+				}
+			}
+		})
 	}
 }
 

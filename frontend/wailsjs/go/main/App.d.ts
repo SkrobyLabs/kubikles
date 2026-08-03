@@ -16,6 +16,8 @@ export function AddPortForwardConfig(arg1:main.PortForwardConfig):Promise<main.P
 
 export function ApplyYAML(arg1:string):Promise<void>;
 
+export function OpenAcceleratorBrowser():Promise<string>;
+
 export function CancelAIRequest(arg1:string):Promise<void>;
 
 export function CancelConnectionTest():Promise<void>;

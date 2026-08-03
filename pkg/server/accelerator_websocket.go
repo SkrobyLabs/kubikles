@@ -98,7 +98,13 @@ func (a AcceleratorWebSocketAuthenticator) handleAdmitted(w http.ResponseWriter,
 	var registration *acceleratorRegistration
 	prepare := func() bool {
 		var prepared bool
-		registration, prepared = a.Registry.prepareRegistration(identity.call, conn)
+		if identity.browser {
+			registration, prepared = a.Registry.prepareRegistrationWithHook(identity.call, conn, func(generation AcceleratorSocketGeneration) {
+				a.BrowserSessions.browserSocketPreparedLocked(identity.call.SessionID, generation)
+			})
+		} else {
+			registration, prepared = a.Registry.prepareRegistration(identity.call, conn)
+		}
 		return prepared
 	}
 	if identity.browser {
@@ -111,6 +117,12 @@ func (a AcceleratorWebSocketAuthenticator) handleAdmitted(w http.ResponseWriter,
 			_ = conn.Close()
 			return
 		}
+		activated := false
+		defer func() {
+			if !activated {
+				a.BrowserSessions.browserSocketActivationFailed(identity.call.SessionID, registration.socket.snapshot.Generation)
+			}
+		}()
 		a.Registry.observeReplacement(registration)
 		if a.afterPrepare != nil {
 			a.afterPrepare()
@@ -125,9 +137,17 @@ func (a AcceleratorWebSocketAuthenticator) handleAdmitted(w http.ResponseWriter,
 			_ = conn.Close()
 			return
 		}
-		if _, activated := a.Registry.finishRegistrationActivation(registration); !activated {
+		socket, activated := a.Registry.finishRegistrationActivation(registration)
+		if !activated {
 			_ = conn.Close()
+			return
 		}
+		a.BrowserSessions.browserSocketActivated(identity.call.SessionID, socket.snapshot.Generation)
+		activated = true
+		go func() {
+			<-socket.pumpsDone
+			a.BrowserSessions.browserSocketEnded(identity.call.SessionID, socket.snapshot.Generation)
+		}()
 		return
 	}
 	prepared := prepare()
