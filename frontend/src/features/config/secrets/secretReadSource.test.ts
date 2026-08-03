@@ -1,14 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const bridge = vi.hoisted(() => ({
+  CancelIntegratedSecretListRequest: vi.fn(),
   CancelListRequest: vi.fn(),
+  GetIntegratedSecretData: vi.fn(),
+  GetIntegratedSecretYaml: vi.fn(),
   GetSecretData: vi.fn(),
   GetSecretYaml: vi.fn(),
   ListAcceleratorSecretsMetadata: vi.fn(),
+  ListIntegratedSecretsMetadata: vi.fn(),
   ListSecretsMetadata: vi.fn(),
+  ReleaseIntegratedSecretReads: vi.fn(),
+  RetainIntegratedSecretReads: vi.fn(),
+  SubscribeIntegratedSecretWatcher: vi.fn(),
   SubscribeResourceWatcher: vi.fn(),
   SubscribeSecretWatcher: vi.fn(),
   UnsubscribeSecretWatcher: vi.fn(),
+  UnsubscribeIntegratedSecretWatcher: vi.fn(),
   UnsubscribeWatcher: vi.fn(),
 }));
 const runtime = vi.hoisted(() => {
@@ -29,7 +37,7 @@ const runtime = vi.hoisted(() => {
 vi.mock('wailsjs/go/main/App', () => bridge);
 vi.mock('wailsjs/runtime/runtime', () => ({ EventsOn: runtime.EventsOn }));
 
-import { createAcceleratorSecretReadSource, directSecretReadSource } from './secretReadSource';
+import { createAcceleratorSecretReadSource, createIntegratedAcceleratorSecretReadSource, directSecretReadSource } from './secretReadSource';
 import { SecretListOperationController, type SecretListState } from './secretListOperations';
 
 function deferred<T>() {
@@ -50,6 +58,8 @@ describe('Secret read sources', () => {
     bridge.CancelListRequest.mockResolvedValue(undefined);
     bridge.UnsubscribeWatcher.mockResolvedValue(undefined);
     bridge.UnsubscribeSecretWatcher.mockResolvedValue(undefined);
+    bridge.CancelIntegratedSecretListRequest.mockResolvedValue(true);
+    bridge.UnsubscribeIntegratedSecretWatcher.mockResolvedValue(undefined);
   });
 
   it('direct source preserves ordinary call shape', async () => {
@@ -145,6 +155,47 @@ describe('Secret read sources', () => {
     expect(bridge.UnsubscribeSecretWatcher).toHaveBeenCalledWith('spec-a');
     disposeEvent(); disposeStatus(); disposeError();
     expect(() => createAcceleratorSecretReadSource('')).toThrow(/non-empty/);
+  });
+
+  it('integrated source calls only six token-scoped bridges and projects targeted events', async () => {
+    const token = `s.${'A'.repeat(22)}.0000000000000001`;
+    const source = createIntegratedAcceleratorSecretReadSource(token);
+    bridge.ListIntegratedSecretsMetadata.mockResolvedValue([{ metadata: { uid: 'one' } }]);
+    bridge.GetIntegratedSecretData.mockResolvedValue([{ key: 'one' }]);
+    bridge.GetIntegratedSecretYaml.mockResolvedValue('yaml');
+    bridge.SubscribeIntegratedSecretWatcher.mockResolvedValue('spec-a');
+
+    await source.list('request', 'a', true);
+    await source.getSecretData('a', 'one');
+    await source.getSecretYaml('a', 'one');
+    await source.cancelList('request');
+    await expect(source.subscribe('a', true)).resolves.toBe('spec-a');
+    expect(bridge.ListIntegratedSecretsMetadata).toHaveBeenCalledWith(token, 'request', 'a', true);
+    expect(bridge.GetIntegratedSecretData).toHaveBeenCalledWith(token, 'a', 'one');
+    expect(bridge.GetIntegratedSecretYaml).toHaveBeenCalledWith(token, 'a', 'one');
+    expect(bridge.CancelIntegratedSecretListRequest).toHaveBeenCalledWith(token, 'request');
+    expect(bridge.SubscribeIntegratedSecretWatcher).toHaveBeenCalledWith(token, 'a', true);
+
+    const resources: any[] = [];
+    const statuses: any[] = [];
+    const errors: any[] = [];
+    const disposeResource = source.onResource(event => resources.push(event));
+    const disposeStatus = source.onStatus(event => statuses.push(event));
+    const disposeError = source.onError(event => errors.push(event));
+    const resource = { metadata: { name: 'one', namespace: 'a', uid: 'uid', creationTimestamp: 'now', labels: { private: 'marker' } }, type: 'Opaque', dataKeys: 1, data: { value: 'HOSTILE' } };
+    runtime.emit('accelerator:secret-resource', { sourceToken: `s.${'B'.repeat(22)}.0000000000000002`, type: 'ADDED', resourceType: 'secrets', namespace: 'a', watcherSpecId: 'spec-a', resource });
+    runtime.emit('accelerator:secret-resource', { sourceToken: token, type: 'ADDED', resourceType: 'secrets', namespace: 'a', watcherSpecId: 'spec-a', resource, raw: 'HOSTILE_RAW' });
+    runtime.emit('accelerator:secret-watcher-status', { sourceToken: token, watcherSpecId: 'spec-a', status: 'connected', raw: 'HOSTILE_RAW' });
+    runtime.emit('accelerator:secret-watcher-error', { sourceToken: token, watcherSpecId: 'spec-a', code: 'watch_unavailable', recoverable: true, raw: 'HOSTILE_RAW' });
+    expect(resources).toEqual([{ type: 'ADDED', resourceType: 'secrets', namespace: 'a', watcherSpecId: 'spec-a', sourceKey: token, resource: { metadata: { name: 'one', namespace: 'a', uid: 'uid', creationTimestamp: 'now' }, type: 'Opaque', dataKeys: 1 } }]);
+    expect(statuses).toEqual([{ watcherSpecId: 'spec-a', status: 'connected', sourceKey: token }]);
+    expect(errors).toEqual([{ watcherSpecId: 'spec-a', code: 'watch_unavailable', recoverable: true, sourceKey: token }]);
+    expect(JSON.stringify([resources, statuses, errors])).not.toMatch(/HOSTILE|labels|"data":/);
+
+    await source.unsubscribe('spec-a');
+    expect(bridge.UnsubscribeIntegratedSecretWatcher).toHaveBeenCalledWith(token, 'spec-a');
+    disposeResource(); disposeStatus(); disposeError();
+    expect(() => createIntegratedAcceleratorSecretReadSource('session-identity')).toThrow(/unavailable/);
   });
 
   it('retains only bounded projected candidates until the exact subscription ID resolves', async () => {

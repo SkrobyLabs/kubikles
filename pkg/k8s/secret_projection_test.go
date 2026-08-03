@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/yaml"
 )
 
 func TestListSecretsMetadataProjectionPaginationAndHelmFilter(t *testing.T) {
@@ -55,8 +56,17 @@ func TestListSecretsMetadataProjectionPaginationAndHelmFilter(t *testing.T) {
 	}
 }
 
-func TestGetSecretProjectedYamlIsClosedDeterministicAndDoesNotMutate(t *testing.T) {
-	secret := &v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "example", Namespace: "ns", Labels: map[string]string{"sensitive": "marker"}, Annotations: map[string]string{"internal": "marker"}, ResourceVersion: "large", Finalizers: []string{"finalizer"}}, Type: v1.SecretTypeOpaque, Data: map[string][]byte{"z": []byte("z"), "a": []byte("a")}, StringData: map[string]string{"plaintext": "marker"}}
+func TestGetSecretYamlPreservesEditableMetadataAndStripsManagedFields(t *testing.T) {
+	secret := &v1.Secret{
+		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "example", Namespace: "ns", UID: "uid-1", ResourceVersion: "rv-9",
+			Labels: map[string]string{"label": "value"}, Annotations: map[string]string{"annotation": "value"},
+			Finalizers: []string{"example/finalizer"}, OwnerReferences: []metav1.OwnerReference{{APIVersion: "v1", Kind: "ConfigMap", Name: "owner", UID: "owner-uid"}},
+			ManagedFields: []metav1.ManagedFieldsEntry{{Manager: "HOSTILE_MANAGER"}},
+		},
+		Type: v1.SecretTypeOpaque, Data: map[string][]byte{"z": []byte("z"), "a": []byte("a")},
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet || r.URL.Path != "/api/v1/namespaces/ns/secrets/example" {
 			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
@@ -70,26 +80,28 @@ func TestGetSecretProjectedYamlIsClosedDeterministicAndDoesNotMutate(t *testing.
 		t.Fatal(err)
 	}
 	client := &Client{clientset: cs}
-	first, err := client.GetSecretProjectedYaml("ns", "example")
+	first, err := client.GetSecretYaml("ns", "example")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := client.GetSecretProjectedYaml("ns", "example")
+	second, err := client.GetSecretYaml("ns", "example")
 	if err != nil || first != second {
 		t.Fatalf("determinism = %q, %v", second, err)
 	}
-	for _, marker := range []string{"labels", "annotations", "sensitive", "internal", "resourceVersion", "finalizers", "stringData", "plaintext", "large", "marker"} {
-		if strings.Contains(first, marker) {
-			t.Fatalf("projection leaked %q: %s", marker, first)
-		}
-	}
-	for _, required := range []string{"apiVersion: v1", "kind: Secret", "name: example", "namespace: ns", "type: Opaque", "a: YQ==", "z: eg=="} {
+	for _, required := range []string{"name: example", "namespace: ns", "uid: uid-1", "resourceVersion: rv-9", "labels:", "annotations:", "finalizers:", "ownerReferences:", "type: Opaque", "a: YQ==", "z: eg=="} {
 		if !strings.Contains(first, required) {
-			t.Fatalf("projection missing %q: %s", required, first)
+			t.Fatalf("editable YAML missing %q: %s", required, first)
 		}
 	}
-	if secret.Labels["sensitive"] != "marker" || string(secret.Data["a"]) != "a" || secret.StringData["plaintext"] != "marker" {
-		t.Fatalf("source secret mutated: %#v", secret)
+	if strings.Contains(first, "managedFields") || strings.Contains(first, "HOSTILE_MANAGER") {
+		t.Fatalf("managed fields leaked: %s", first)
+	}
+	var decoded v1.Secret
+	if err := yaml.Unmarshal([]byte(first), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.ResourceVersion != secret.ResourceVersion || decoded.UID != secret.UID || decoded.Labels["label"] != "value" || decoded.Annotations["annotation"] != "value" || len(decoded.Finalizers) != 1 || len(decoded.OwnerReferences) != 1 || decoded.Type != secret.Type || string(decoded.Data["a"]) != "a" {
+		t.Fatalf("editable YAML lost fields: %#v", decoded)
 	}
 }
 

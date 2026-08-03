@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -74,9 +75,31 @@ type secretClientError struct {
 }
 
 func (e secretClientError) Error() string { return string(e.reason) }
+func (e secretClientError) SecretClientReason() acceleratorsecret.SecretClientReason {
+	return e.reason
+}
 
 func newSecretClientError(reason acceleratorsecret.SecretClientReason) error {
 	return secretClientError{reason: reason}
+}
+
+// SecretClientReasonOf exposes only the closed reason enum needed by the
+// desktop router. Untyped errors are deliberately not classified by text.
+func SecretClientReasonOf(err error) (acceleratorsecret.SecretClientReason, bool) {
+	type reasoned interface {
+		SecretClientReason() acceleratorsecret.SecretClientReason
+	}
+	var failure reasoned
+	if !errors.As(err, &failure) {
+		return "", false
+	}
+	reason := failure.SecretClientReason()
+	for _, allowed := range acceleratorsecret.SecretClientReasons() {
+		if reason == allowed {
+			return reason, true
+		}
+	}
+	return "", false
 }
 
 func NewSecretRPCClient(lease *SessionLease) (SecretRPCClient, error) {

@@ -8,6 +8,7 @@ import SecretList from './SecretList';
 
 const mocks = vi.hoisted(() => ({
   resourceProps: null as any,
+  bulkOptions: null as any,
   list: vi.fn(),
   setSelectedNamespaces: vi.fn(),
   editKeyValue: vi.fn(),
@@ -20,7 +21,7 @@ vi.mock('~/context', () => ({ useK8s: () => ({ currentContext: 'ctx', selectedNa
 vi.mock('~/components/shared/ResourceList', () => ({ default: (props: any) => { mocks.resourceProps = props; return props.customHeaderActions; } }));
 vi.mock('~/components/shared/BulkActionModal', () => ({ default: () => null }));
 vi.mock('~/hooks/useSelection', () => ({ useSelection: () => ({ selectedCount: 0 }) }));
-vi.mock('~/hooks/useBulkActions', () => ({ useBulkActions: () => ({ bulkModalProps: {}, openBulkDelete: mocks.openBulkDelete, exportYaml: vi.fn() }) }));
+vi.mock('~/hooks/useBulkActions', () => ({ useBulkActions: (options: any) => { mocks.bulkOptions = options; return { bulkModalProps: {}, openBulkDelete: mocks.openBulkDelete, exportYaml: vi.fn() }; } }));
 vi.mock('./useSecretActions', () => ({ useSecretActions: () => ({ handleEditYaml: mocks.editYaml, handleEditKeyValue: mocks.editKeyValue, handleShowDependencies: mocks.dependencies }) }));
 vi.mock('~/hooks/useMenuPosition', () => ({ useMenuPosition: () => ({ activeMenuId: null, menuPosition: null, handleMenuOpenChange: vi.fn() }) }));
 vi.mock('./SecretActionsMenu', () => ({ default: () => null }));
@@ -49,17 +50,21 @@ describe('SecretList', () => {
     });
   });
 
-  it('preserves view behavior while rendering projected numeric keys without Size', () => {
+  it('preserves view behavior and passes exact source YAML to bulk export', async () => {
+    const exactYaml = `metadata:\n  resourceVersion: "17"\n  uid: uid-one\n  labels:\n    owner: exact-source\ndata:\n  token: cGxhaW4=\ntype: Opaque\n`;
+    vi.mocked(source.getSecretYaml).mockResolvedValueOnce(exactYaml);
     render(<SecretReadSourceProvider value={source}><SecretList isVisible={true} /></SecretReadSourceProvider>);
-    expect(mocks.list).toHaveBeenCalledWith('ctx', ['a'], ['a', 'b'], true, true);
+    expect(mocks.list).toHaveBeenCalledWith(source, 'ctx', ['a'], ['a', 'b'], true, true);
     const checkbox = screen.getByRole('checkbox', { name: /Hide Helm/i });
     expect((checkbox as HTMLInputElement).checked).toBe(true);
     fireEvent.click(checkbox);
-    expect(mocks.list).toHaveBeenLastCalledWith('ctx', ['a'], ['a', 'b'], true, false);
+    expect(mocks.list).toHaveBeenLastCalledWith(source, 'ctx', ['a'], ['a', 'b'], true, false);
 
     const props = mocks.resourceProps;
     expect(props.loadingProgress).toEqual({ loaded: 2, total: 3 });
-    expect(props.getYamlApi).not.toBe(source.getSecretYaml);
+    expect(mocks.bulkOptions.getYamlApi).toBe(source.getSecretYaml);
+    await expect(mocks.bulkOptions.getYamlApi('a', 'one')).resolves.toBe(exactYaml);
+    expect(source.getSecretYaml).toHaveBeenCalledWith('a', 'one');
     expect(props.data).toHaveLength(3);
     expect(props.columns.map((column: any) => column.key)).toEqual(['name', 'namespace', 'type', 'age', 'keys', 'actions']);
     expect(props.columns.map((column: any) => column.label)).not.toContain('Size');

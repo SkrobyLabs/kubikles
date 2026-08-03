@@ -46,6 +46,23 @@ describe('SecretEditor source reads', () => {
 
   it('keeps initial and post-save reads exact and concurrent while mutations stay direct', async () => {
     const source = makeSource('source-a');
+    const exactYaml = `apiVersion: v1
+kind: Secret
+metadata:
+  name: secret
+  namespace: a
+  resourceVersion: "17"
+  uid: uid-secret
+  labels:
+    owner: exact-source
+  annotations:
+    note: preserved
+  finalizers:
+    - example.test/finalizer
+type: Opaque
+data:
+  token: cGxhaW4=
+`;
     const yamlInitial = deferred<string>();
     const dataInitial = deferred<any[]>();
     (source.getSecretYaml as any).mockReturnValueOnce(yamlInitial.promise);
@@ -54,9 +71,9 @@ describe('SecretEditor source reads', () => {
     expect(source.getSecretYaml).toHaveBeenCalledWith('a', 'secret');
     expect(source.getSecretData).toHaveBeenCalledWith('a', 'secret');
     expect(screen.getByText(/Loading secret/)).toBeTruthy();
-    yamlInitial.resolve('initial: yaml');
+    yamlInitial.resolve(exactYaml);
     dataInitial.resolve([{ key: 'token', value: 'plain', base64Value: 'cGxhaW4=', isBinary: false, source: 'data', encoding: 'text' }]);
-    await waitFor(() => expect((screen.getByLabelText('yaml-editor') as HTMLTextAreaElement).value).toBe('initial: yaml'));
+    await waitFor(() => expect((screen.getByLabelText('yaml-editor') as HTMLTextAreaElement).value).toBe(exactYaml));
 
     (source.getSecretData as any).mockResolvedValueOnce([{ key: 'after-yaml', value: 'v' }]);
     fireEvent.change(screen.getByLabelText('yaml-editor'), { target: { value: 'updated: yaml' } });

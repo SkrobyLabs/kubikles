@@ -48,6 +48,7 @@ func (a *App) SwitchContext(name string) error {
 	defer a.contextMutationMu.Unlock()
 
 	oldContext := a.k8sClient.GetCurrentContext()
+	a.integratedSecretReads().FenceContextSwitch(oldContext)
 	if a.acceleratorLifecycle != nil {
 		a.acceleratorLifecycle.FenceContextSwitch(oldContext)
 	}
@@ -76,6 +77,7 @@ func (a *App) SwitchContext(name string) error {
 	if a.acceleratorLifecycle != nil {
 		a.acceleratorLifecycle.ContextSwitched(name, err == nil)
 	}
+	a.integratedSecretReads().ContextSwitched(a.k8sClient.GetCurrentContext(), err == nil)
 	return err
 }
 
@@ -129,12 +131,18 @@ func (a *App) RenameContext(oldName, newName string) error {
 	defer a.contextMutationMu.Unlock()
 	active := a.k8sClient.GetCurrentContext()
 	isActive := oldName == active
+	if isActive {
+		a.integratedSecretReads().FenceContextSwitch(active)
+	}
 	if isActive && a.acceleratorLifecycle != nil {
 		a.acceleratorLifecycle.FenceContextSwitch(active)
 	}
 	err := a.k8sClient.RenameContext(oldName, newName)
 	if isActive && a.acceleratorLifecycle != nil {
 		a.acceleratorLifecycle.ContextSwitched(newName, err == nil)
+	}
+	if isActive {
+		a.integratedSecretReads().ContextSwitched(a.k8sClient.GetCurrentContext(), err == nil)
 	}
 	return err
 }
@@ -153,12 +161,18 @@ func (a *App) UpdateContextDetail(name string, req k8s.ContextUpdateRequest) err
 	a.contextMutationMu.Lock()
 
 	isActive := name == a.k8sClient.GetCurrentContext()
+	if isActive {
+		a.integratedSecretReads().FenceContextSwitch(name)
+	}
 	if isActive && a.acceleratorLifecycle != nil {
 		a.acceleratorLifecycle.FenceContextSwitch(name)
 	}
 	err := a.k8sClient.UpdateContextDetail(name, req)
 	if isActive && a.acceleratorLifecycle != nil {
 		a.acceleratorLifecycle.ContextSwitched(name, err == nil)
+	}
+	if isActive {
+		a.integratedSecretReads().ContextSwitched(a.k8sClient.GetCurrentContext(), err == nil)
 	}
 	a.contextMutationMu.Unlock()
 	if err != nil {
@@ -183,12 +197,18 @@ func (a *App) SetExtraKubeconfigPaths(paths []string) {
 		a.contextMutationMu.Lock()
 		defer a.contextMutationMu.Unlock()
 		active := a.k8sClient.GetCurrentContext()
+		if active != "" {
+			a.integratedSecretReads().FenceContextSwitch(active)
+		}
 		if active != "" && a.acceleratorLifecycle != nil {
 			a.acceleratorLifecycle.FenceContextSwitch(active)
 		}
 		a.k8sClient.SetExtraKubeconfigPaths(paths)
 		if active != "" && a.acceleratorLifecycle != nil {
 			a.acceleratorLifecycle.ContextSwitched(active, true)
+		}
+		if active != "" {
+			a.integratedSecretReads().ContextSwitched(a.k8sClient.GetCurrentContext(), true)
 		}
 		debug.LogConfig("Extra kubeconfig paths", map[string]interface{}{"paths": paths})
 	}

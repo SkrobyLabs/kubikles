@@ -621,7 +621,7 @@ func TestKindHarnessScansSuccessfulOutputForCredentialCorpus(t *testing.T) {
 		"MDEyMzQ1Njc4OTo7PD0-P0BBQkNERUZHSElKS0xNTk8",
 		"w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM",
 		"66-MHiCJFjcS0tgtsrGBc-19KNhsQvlV7hXKV3AF2Mo",
-		`grep -Fq -- "$sensitive" "$tmp/go-test"`,
+		`grep -Fq -- "$sensitive" "$capture"`,
 		`fail "go-service-output-sensitive"`,
 		"[REDACTED_TEST_CORPUS]",
 	} {
@@ -630,13 +630,287 @@ func TestKindHarnessScansSuccessfulOutputForCredentialCorpus(t *testing.T) {
 		}
 	}
 	testCapture := strings.Index(source, `>"$tmp/go-test" 2>&1`)
-	outputScan := strings.Index(source, `grep -Fq -- "$sensitive" "$tmp/go-test"`)
+	outputScan := strings.Index(source, `captured_output_sensitive "$tmp/go-test" "$integrated_output"`)
 	passed := strings.Index(source, `echo "accelerator-desktop-provision-kind: passed"`)
 	if testCapture < 0 || outputScan <= testCapture || passed <= outputScan {
 		t.Fatal("Kind output scan does not gate success after captured go test output")
 	}
 	if strings.Contains(source, `echo "$sensitive"`) || strings.Contains(source, `fail "$sensitive"`) {
 		t.Fatal("Kind output gate would disclose the matched sensitive value")
+	}
+}
+
+func TestKindHarnessIntegratedRoutingDiagnosticExtractorIsClosed(t *testing.T) {
+	helper := filepath.Join("..", "..", "scripts", "extract-accelerator-kind-diagnostic.sh")
+	harnessBytes, err := os.ReadFile(filepath.Join("..", "..", "scripts", "test-accelerator-desktop-provision-kind.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	harness := string(harnessBytes)
+	testName := "TestAcceleratorIntegratedRoutingKind"
+	phaseCodes := []string{
+		"initial-missing", "initial-sweeping", "initial-resolving-zero", "initial-resolving-after-provision",
+		"initial-provisioning", "initial-connecting", "initial-active-client-bind", "initial-active-ready-path",
+		"initial-unavailable", "initial-terminal", "initial-unknown", "initial-count-invalid", "initial-client-repeat",
+		"initial-provision-retry", "initial-provision-context-input", "initial-provision-chart-pull",
+		"initial-provision-chart-integrity-render", "initial-provision-install-conflict-permission", "initial-provision-image-pull",
+		"initial-provision-job-pod", "initial-provision-timeout-cancel", "initial-provision-mixed", "initial-provision-unknown",
+		"initial-connect-not-entered", "initial-connect-tunnel",
+		"initial-connect-accelerator", "initial-connect-version", "initial-connect-authoritative", "initial-connect-cancelled",
+		"initial-session-client-bind", "initial-session-ready-path", "initial-stage-mixed",
+		"stage-setup", "stage-direct", "stage-pre-ready", "stage-ready", "stage-list", "stage-cancel", "stage-detail",
+		"stage-watch", "stage-loss", "stage-resume", "stage-mismatch", "stage-isolation", "stage-release", "stage-final-verification",
+	}
+	recordAt := func(timestamp, testName, output string) string {
+		encoded, err := json.Marshal(struct {
+			Time, Action, Package, Test, Output string
+		}{Time: timestamp, Action: "output", Package: "kubikles", Test: testName, Output: output})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(encoded) + "\n"
+	}
+	record := func(testName, output string) string {
+		return recordAt("2026-08-03T00:00:00Z", testName, output)
+	}
+	run := func(stream string) string {
+		t.Helper()
+		capture := filepath.Join(t.TempDir(), "go-test.json")
+		if err := os.WriteFile(capture, []byte(stream), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		output, err := exec.Command("bash", helper, capture, testName).CombinedOutput()
+		if err != nil {
+			t.Fatalf("diagnostic extractor failed: %v", err)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	for _, code := range phaseCodes {
+		t.Run(code, func(t *testing.T) {
+			stream := record(testName, "    accelerator_integrated_routing_kind_test.go:470: accelerator-kind-diagnostic:"+code+"\n")
+			if got, want := run(stream), "go-service-test-"+code; got != want {
+				t.Fatalf("diagnostic = %q, want %q", got, want)
+			}
+			if !strings.Contains(harness, "go-service-test-"+code) {
+				t.Fatal("Kind harness diagnostic allowlist is missing the fixed code")
+			}
+		})
+	}
+	markerOutput := "    accelerator_integrated_routing_kind_test.go:470: accelerator-kind-diagnostic:initial-connecting\n"
+	for _, test := range []struct {
+		name, timestamp string
+	}{
+		{name: "UTC", timestamp: "2026-08-03T00:00:00Z"},
+		{name: "positive offset", timestamp: "2024-02-29T23:59:59.1+05:30"},
+		{name: "negative offset", timestamp: "2000-02-29T00:00:00.123456789-04:00"},
+		{name: "calendar edge", timestamp: "2026-04-30T12:30:45+23:59"},
+		{name: "unknown local offset", timestamp: "2026-12-31T23:59:59-00:00"},
+	} {
+		t.Run("timestamp "+test.name, func(t *testing.T) {
+			if got, want := run(recordAt(test.timestamp, testName, markerOutput)), "go-service-test-initial-connecting"; got != want {
+				t.Fatalf("timestamp diagnostic = %q, want %q", got, want)
+			}
+		})
+	}
+	test2jsonInput := "=== RUN   " + testName + "\n" + markerOutput
+	for _, test := range []struct {
+		name, zone string
+		sign       byte
+	}{
+		{name: "test2json positive offset", zone: "Pacific/Auckland", sign: '+'},
+		{name: "test2json negative offset", zone: "America/New_York", sign: '-'},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			command := exec.Command("go", "tool", "test2json", "-t", "-p", "kubikles")
+			for _, variable := range os.Environ() {
+				if !strings.HasPrefix(variable, "TZ=") {
+					command.Env = append(command.Env, variable)
+				}
+			}
+			command.Env = append(command.Env, "TZ="+test.zone)
+			command.Stdin = strings.NewReader(test2jsonInput)
+			stream, err := command.CombinedOutput()
+			if err != nil {
+				t.Fatalf("test2json failed: %v", err)
+			}
+			var timestamp string
+			for _, line := range strings.Split(strings.TrimSpace(string(stream)), "\n") {
+				var event struct{ Time, Output string }
+				if json.Unmarshal([]byte(line), &event) == nil && event.Output == markerOutput {
+					timestamp = event.Time
+				}
+			}
+			if len(timestamp) < 6 || timestamp[len(timestamp)-6] != test.sign {
+				t.Fatal("test2json did not emit the requested non-UTC zone")
+			}
+			if got, want := run(string(stream)), "go-service-test-initial-connecting"; got != want {
+				t.Fatalf("test2json diagnostic = %q, want %q", got, want)
+			}
+		})
+	}
+	for _, superseded := range []string{"initial-count-fallback", "initial-provision-unavailable"} {
+		if strings.Contains(harness, "go-service-test-"+superseded) {
+			t.Fatal("Kind harness retained a superseded generic diagnostic code")
+		}
+	}
+	credentialCorpus := "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
+	exact := record(testName, "    accelerator_integrated_routing_kind_test.go:470: accelerator-kind-diagnostic:initial-connecting\n")
+	hostileBeforeOutput := strings.Replace(exact, `,"Output":`, `,"Hostile":"private","Output":`, 1)
+	hostileJSON := strings.TrimSpace(exact)[:len(strings.TrimSpace(exact))-1] + `,"hostile":"private"}` + "\n"
+	hostileMarker := record(testName, "hostile accelerator-kind-diagnostic:initial-connecting\n")
+	legacyMarker := record(testName, "    accelerator_integrated_routing_kind_test.go:470: accelerator-kind-initial-diagnostic:initial-connecting\n")
+	stageMarker := record(testName, "    accelerator_integrated_routing_kind_test.go:470: accelerator-kind-diagnostic:stage-list\n")
+	noncanonicalTime := strings.Replace(exact, `"Time":"2026-08-03T00:00:00Z"`, `"Time":"fixed"`, 1)
+	for _, test := range []struct {
+		name, stream string
+	}{
+		{name: "arbitrary", stream: record(testName, "hostile-private-marker\n")},
+		{name: "zero marker", stream: record(testName, "ordinary fixed failure\n")},
+		{name: "unknown code", stream: record(testName, "    accelerator_integrated_routing_kind_test.go:470: accelerator-kind-diagnostic:stage-hostile\n")},
+		{name: "superseded code", stream: record(testName, "    accelerator_integrated_routing_kind_test.go:470: accelerator-kind-diagnostic:initial-count-fallback\n")},
+		{name: "superseded provision code", stream: record(testName, "    accelerator_integrated_routing_kind_test.go:470: accelerator-kind-diagnostic:initial-provision-unavailable\n")},
+		{name: "legacy marker", stream: legacyMarker},
+		{name: "wrong test", stream: record("TestOther", "    accelerator_integrated_routing_kind_test.go:470: accelerator-kind-diagnostic:initial-connecting\n")},
+		{name: "credential prefix", stream: record(testName, credentialCorpus+" accelerator-kind-diagnostic:initial-connecting\n")},
+		{name: "credential suffix", stream: record(testName, "    accelerator_integrated_routing_kind_test.go:470: accelerator-kind-diagnostic:initial-connecting "+credentialCorpus+"\n")},
+		{name: "duplicate", stream: exact + exact},
+		{name: "mixed initial and stage", stream: exact + stageMarker},
+		{name: "mixed unified and legacy", stream: exact + legacyMarker},
+		{name: "mixed canonical and hostile", stream: exact + hostileMarker},
+		{name: "extra JSON field before output", stream: hostileBeforeOutput},
+		{name: "extra JSON field", stream: hostileJSON},
+		{name: "non JSON prefix", stream: "hostile-private-prefix" + exact},
+		{name: "non JSON suffix", stream: strings.TrimSuffix(exact, "\n") + "hostile-private-suffix\n"},
+		{name: "noncanonical time", stream: noncanonicalTime},
+		{name: "non JSON", stream: "accelerator-kind-diagnostic:initial-connecting\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := run(test.stream); got != "go-service-test" {
+				t.Fatalf("hostile diagnostic escaped as %q", got)
+			}
+		})
+	}
+	for _, test := range []struct {
+		name, timestamp string
+	}{
+		{name: "non leap February", timestamp: "2023-02-29T00:00:00Z"},
+		{name: "century non leap February", timestamp: "1900-02-29T00:00:00Z"},
+		{name: "short April", timestamp: "2024-04-31T00:00:00Z"},
+		{name: "month zero", timestamp: "2024-00-01T00:00:00Z"},
+		{name: "month thirteen", timestamp: "2024-13-01T00:00:00Z"},
+		{name: "day zero", timestamp: "2024-01-00T00:00:00Z"},
+		{name: "hour twenty four", timestamp: "2024-01-01T24:00:00Z"},
+		{name: "minute sixty", timestamp: "2024-01-01T00:60:00Z"},
+		{name: "second sixty", timestamp: "2024-01-01T00:00:60Z"},
+		{name: "empty fraction", timestamp: "2024-01-01T00:00:00.Z"},
+		{name: "long fraction", timestamp: "2024-01-01T00:00:00.1234567890Z"},
+		{name: "lowercase zone", timestamp: "2024-01-01T00:00:00z"},
+		{name: "missing zone", timestamp: "2024-01-01T00:00:00"},
+		{name: "offset hour twenty four", timestamp: "2024-01-01T00:00:00+24:00"},
+		{name: "offset minute sixty", timestamp: "2024-01-01T00:00:00-04:60"},
+		{name: "compact offset", timestamp: "2024-01-01T00:00:00+0530"},
+		{name: "short offset hour", timestamp: "2024-01-01T00:00:00+5:30"},
+	} {
+		t.Run("timestamp "+test.name, func(t *testing.T) {
+			if got := run(recordAt(test.timestamp, testName, markerOutput)); got != "go-service-test" {
+				t.Fatalf("invalid timestamp escaped as %q", got)
+			}
+		})
+	}
+}
+
+func TestKindHarnessIntegratedRoutingTimeoutBudgetsAreExplicit(t *testing.T) {
+	repoRoot := filepath.Join("..", "..")
+	testSource, err := os.ReadFile(filepath.Join(repoRoot, "accelerator_integrated_routing_kind_test.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	harnessSource, err := os.ReadFile(filepath.Join(repoRoot, "scripts", "test-accelerator-desktop-provision-kind.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(testSource), "integratedRoutingKindInitialReadinessTimeout = acceleratorprovision.SweepTimeout + acceleratorprovision.ActivationAttemptTimeout + time.Minute") {
+		t.Fatal("integrated routing initial readiness is not tied to production sweep and activation bounds")
+	}
+	if !strings.Contains(string(testSource), "integratedRoutingKindSequentialTimeout = integratedRoutingKindFixtureSetupTimeout") {
+		t.Fatal("integrated routing sequential bound is not assembled from its inner phases")
+	}
+	if !strings.Contains(string(testSource), "client.SetAPITimeout(integratedRoutingKindDesktopAPITimeout)") {
+		t.Fatal("integrated routing Direct Kubernetes calls do not have an explicit harness deadline")
+	}
+	teardownRegistration := strings.Index(string(testSource), "// Register bounded teardown first.")
+	reporterRegistration := strings.Index(string(testSource), "diagnostic.report(t.Failed()")
+	bodyStart := strings.Index(string(testSource), `chartDigest := requiredIntegratedRoutingKindEnv`)
+	if teardownRegistration < 0 || reporterRegistration <= teardownRegistration || bodyStart <= reporterRegistration {
+		t.Fatal("integrated routing diagnostic reporter is not registered after teardown and before the body")
+	}
+	if strings.Count(string(testSource), "integratedRoutingKindDiagnosticMarker") != 2 {
+		t.Fatal("integrated routing test can emit a diagnostic marker outside the single reporter")
+	}
+	for _, required := range []string{
+		"installIntegratedRoutingKindOperationBounds(app)",
+		"return context.WithTimeout(parent, timeout)",
+		"integratedRoutingKindFailureSequentialTimeout = integratedRoutingKindFixtureSetupTimeout",
+		"c.probe.success(integratedRoutingKindList)",
+		"c.probe.success(integratedRoutingKindData)",
+		"c.probe.success(integratedRoutingKindYAML)",
+	} {
+		if !strings.Contains(string(testSource), required) {
+			t.Fatalf("integrated routing bounded remote-success proof missing %q", required)
+		}
+	}
+	for _, unbounded := range []string{
+		`.Create(context.Background()`,
+		`.Get(context.Background()`,
+		`.Update(context.Background()`,
+		`.Delete(context.Background()`,
+		`.List(context.Background()`,
+		`helmClient.ListReleases(`,
+	} {
+		if strings.Contains(string(testSource), unbounded) {
+			t.Fatalf("integrated routing source retained unbounded API call %q", unbounded)
+		}
+	}
+	if !strings.Contains(string(harnessSource), "go_test_timeout=34m") {
+		t.Fatal("integrated routing outer timeout does not cover its sequential bounded phases")
+	}
+	privacy := strings.Index(string(harnessSource), `captured_output_sensitive "$tmp/go-test" 1`)
+	extraction := strings.Index(string(harnessSource), `extract-accelerator-kind-diagnostic.sh" "$tmp/go-test"`)
+	if privacy < 0 || extraction <= privacy {
+		t.Fatal("integrated routing diagnostic extraction is not gated by the privacy scan")
+	}
+}
+
+func TestKindHarnessMandatoryTestDiscoveryIsExactAndSilent(t *testing.T) {
+	helper := filepath.Join("..", "..", "scripts", "check-accelerator-kind-test-discovery.sh")
+	testName := "TestAcceleratorIntegratedRoutingKind"
+	run := `{"Time":"fixed","Action":"run","Package":"kubikles","Test":"` + testName + `"}` + "\n"
+	pass := `{"Time":"fixed","Action":"pass","Package":"kubikles","Test":"` + testName + `","Elapsed":0}` + "\n"
+	skip := `{"Time":"fixed","Action":"skip","Package":"kubikles","Test":"` + testName + `","Elapsed":0}` + "\n"
+	for _, test := range []struct {
+		name, stream string
+		accepted     bool
+	}{
+		{name: "exact", stream: run + `{"Action":"output","Package":"kubikles","Test":"` + testName + `","Output":"hostile-private-marker\\n"}` + "\n" + pass, accepted: true},
+		{name: "zero", stream: `{"Action":"pass","Package":"kubikles"}` + "\n"},
+		{name: "duplicate run", stream: run + run + pass},
+		{name: "duplicate pass", stream: run + pass + pass},
+		{name: "skip", stream: run + skip},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			capture := filepath.Join(t.TempDir(), "go-test.json")
+			if err := os.WriteFile(capture, []byte(test.stream), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			command := exec.Command("bash", helper, capture, testName)
+			output, err := command.CombinedOutput()
+			if (err == nil) != test.accepted {
+				t.Fatalf("discovery acceptance=%v want=%v", err == nil, test.accepted)
+			}
+			if len(output) != 0 {
+				t.Fatal("discovery helper disclosed captured test output")
+			}
+		})
 	}
 }
 
@@ -731,7 +1005,9 @@ image:inspect)
     *" --format "*) printf '%s\n' "$KIND_IMAGE_REVISION_JSON" ;;
     *) exit 0 ;;
   esac ;;
-run:--detach) : > "$KIND_MUTATION_MARKER"; exit 23 ;;
+container:inspect) test -e "$KIND_MUTATION_MARKER" ;;
+run:--detach) : > "$KIND_MUTATION_REACHED"; : > "$KIND_MUTATION_MARKER"; exit 23 ;;
+rm:-f) rm -f "$KIND_MUTATION_MARKER"; : > "$KIND_CLEANUP_MARKER"; exit 0 ;;
 *) exit 0 ;;
 esac
 `)
@@ -755,7 +1031,9 @@ exec "$KIND_REAL_GIT" "$@"
 			for _, name := range []string{"kubectl", "go", "curl", "openssl"} {
 				writeTool(name, "exit 0\n")
 			}
-			marker := filepath.Join(fixture, "mutated")
+			marker := filepath.Join(fixture, "partial-container")
+			mutationReached := filepath.Join(fixture, "mutation-reached")
+			cleanupMarker := filepath.Join(fixture, "partial-cleanup")
 			headMarker := filepath.Join(fixture, "git-head")
 			proxyMarker := filepath.Join(fixture, "git-proxy")
 			command := exec.Command("bash", filepath.Join(repoRoot, "scripts", "test-accelerator-desktop-provision-kind.sh"))
@@ -765,6 +1043,8 @@ exec "$KIND_REAL_GIT" "$@"
 				"TMPDIR="+fixture,
 				"KIND_IMAGE_REVISION_JSON="+test.revisionJSON,
 				"KIND_MUTATION_MARKER="+marker,
+				"KIND_MUTATION_REACHED="+mutationReached,
+				"KIND_CLEANUP_MARKER="+cleanupMarker,
 				"KIND_REAL_GIT="+realGit,
 				"KIND_REPO_ROOT="+repoRoot,
 				"KIND_CHECKOUT_REVISION="+test.checkoutRevision,
@@ -777,11 +1057,13 @@ exec "$KIND_REAL_GIT" "$@"
 				t.Fatalf("result err=%v output=%q", runErr, output)
 			}
 			_, markerErr := os.Stat(marker)
-			if test.accepted && markerErr != nil {
-				t.Fatalf("canonical revision did not reach the controlled mutation: %v", markerErr)
+			_, reachedErr := os.Stat(mutationReached)
+			_, cleanupErr := os.Stat(cleanupMarker)
+			if test.accepted && (reachedErr != nil || !os.IsNotExist(markerErr) || cleanupErr != nil) {
+				t.Fatalf("partial create cleanup reached=%v residue=%v cleanup=%v", reachedErr, markerErr, cleanupErr)
 			}
-			if !test.accepted && !os.IsNotExist(markerErr) {
-				t.Fatalf("rejected revision crossed the mutation fence: %v", markerErr)
+			if !test.accepted && (!os.IsNotExist(markerErr) || !os.IsNotExist(reachedErr) || !os.IsNotExist(cleanupErr)) {
+				t.Fatalf("rejected revision crossed the mutation fence: residue=%v reached=%v cleanup=%v", markerErr, reachedErr, cleanupErr)
 			}
 			_, headErr := os.Stat(headMarker)
 			if test.wantFailure == "source-image-revision-invalid" && !os.IsNotExist(headErr) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -114,6 +115,18 @@ func TestSecretClientSafeTypedSurface(t *testing.T) {
 	}
 	if client.Reason() != acceleratorsecret.ReasonSessionUnavailable || lease.Session() != nil {
 		t.Fatalf("revoked reason/session=%s/%v", client.Reason(), lease.Session())
+	}
+}
+
+func TestSecretClientReasonOfIsClosedAndFailSafe(t *testing.T) {
+	for _, reason := range acceleratorsecret.SecretClientReasons() {
+		got, ok := SecretClientReasonOf(newSecretClientError(reason))
+		if !ok || got != reason {
+			t.Fatalf("SecretClientReasonOf(%q) = %q, %v", reason, got, ok)
+		}
+	}
+	if got, ok := SecretClientReasonOf(errors.New("capacity")); ok || got != "" {
+		t.Fatalf("untyped error classified as %q, %v", got, ok)
 	}
 }
 
@@ -356,6 +369,68 @@ func TestSecretClientCancellationAndLateResult(t *testing.T) {
 	client.mu.Unlock()
 	if remainingCalls != 0 || remainingLists != 0 || client.Reason() != "" {
 		t.Fatalf("response race residue=%d/%d reason=%s", remainingCalls, remainingLists, client.Reason())
+	}
+}
+
+func TestSecretClientCloseClearsWatchBeforeBestEffortUnsubscribe(t *testing.T) {
+	client, socket, _, _ := secretClientFixture(t)
+	type subscribed struct {
+		subscription acceleratorsecret.SecretWatchSubscription
+		lease        SecretWatchLease
+		err          error
+	}
+	result := make(chan subscribed, 1)
+	go func() {
+		subscription, lease, err := client.SubscribeSecretWatcher(context.Background(), "team", false)
+		result <- subscribed{subscription: subscription, lease: lease, err: err}
+	}()
+	call := readSecretCall(t, socket)
+	if call.Operation != acceleratorsecret.OperationSubscribeSecretWatcher {
+		t.Fatal("watch subscribe operation mismatch")
+	}
+	want := acceleratorsecret.SecretWatchSubscription{WatcherSpecID: acceleratorsecret.SecretWatchSpecIDFor("team", false)}
+	sendSecretResult(t, socket, call.ID, want)
+	active := <-result
+	if active.err != nil || active.subscription != want || active.lease == nil {
+		t.Fatal("watch setup failed")
+	}
+
+	closed := make(chan struct{})
+	go func() {
+		client.Close(context.Background())
+		close(closed)
+	}()
+	select {
+	case <-closed:
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("client close waited for unsubscribe response")
+	}
+	select {
+	case <-active.lease.Done():
+	default:
+		t.Fatal("client close did not locally terminate subscription")
+	}
+	bestEffort := readSecretCall(t, socket)
+	if bestEffort.Operation != acceleratorsecret.OperationUnsubscribeSecretWatcher || rawStringArg(t, bestEffort.Args[0]) != string(want.WatcherSpecID) {
+		t.Fatal("client close did not emit one typed best-effort unsubscribe")
+	}
+
+	leaseClosed := make(chan struct{})
+	go func() {
+		active.lease.Close(context.Background())
+		close(leaseClosed)
+	}()
+	select {
+	case <-leaseClosed:
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("watch lease close was not idempotent after client termination")
+	}
+	select {
+	case extra := <-socket.writes:
+		if len(extra) != 0 {
+			t.Fatal("idempotent watch close emitted a second unsubscribe")
+		}
+	case <-time.After(20 * time.Millisecond):
 	}
 }
 

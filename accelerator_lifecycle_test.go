@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"kubikles/pkg/acceleratorprovision"
 	"kubikles/pkg/acceleratorrelease"
+	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
 	"kubikles/pkg/events"
 	"kubikles/pkg/helm"
@@ -31,6 +32,7 @@ import (
 type recordingDesktopAcceleratorCoordinator struct {
 	mu       sync.Mutex
 	events   []string
+	onRecord func(string)
 	onFence  func(string)
 	onNotify func(string, bool)
 	onOpen   func(func(string) bool)
@@ -39,7 +41,11 @@ type recordingDesktopAcceleratorCoordinator struct {
 func (c *recordingDesktopAcceleratorCoordinator) record(event string) {
 	c.mu.Lock()
 	c.events = append(c.events, event)
+	onRecord := c.onRecord
 	c.mu.Unlock()
+	if onRecord != nil {
+		onRecord(event)
+	}
 }
 func (c *recordingDesktopAcceleratorCoordinator) snapshot() []string {
 	c.mu.Lock()
@@ -365,6 +371,160 @@ func TestActiveContextMutationsFenceAcceleratorAuthority(t *testing.T) {
 		if got := recorder.snapshot(); !reflect.DeepEqual(got, []string{"fence:old", "switched:old"}) {
 			t.Fatalf("paths events=%v", got)
 		}
+	})
+}
+
+func TestIntegratedSecretAppContextTransactionsUseActualCurrentAndOrderedShutdown(t *testing.T) {
+	client := newContextSwitchTestClient(t)
+	var orderMu sync.Mutex
+	order := make([]string, 0, 64)
+	record := func(event string) {
+		orderMu.Lock()
+		order = append(order, event)
+		orderMu.Unlock()
+	}
+	mark := func() int {
+		orderMu.Lock()
+		defer orderMu.Unlock()
+		return len(order)
+	}
+	assertSince := func(start int, want []string) {
+		t.Helper()
+		orderMu.Lock()
+		got := append([]string(nil), order[start:]...)
+		orderMu.Unlock()
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("transaction order=%v want=%v", got, want)
+		}
+	}
+
+	recorder := &recordingDesktopAcceleratorCoordinator{onRecord: func(event string) { record("coordinator:" + event) }}
+	ready := make(chan integratedSecretSourceSignal, 16)
+	unavailable := make(chan integratedSecretSourceSignal, 16)
+	var acquiredMu sync.Mutex
+	var demands []*fakeRouterDemand
+	var clients []*fakeRouterClient
+	generation := 0
+	router, err := newIntegratedSecretRouter(integratedSecretRouterDependencies{
+		acquire: func(_ context.Context, contextName string) (secretRouterDemandLease, bool) {
+			record("router-acquire:" + contextName)
+			acquiredMu.Lock()
+			generation++
+			currentGeneration := generation
+			acquiredMu.Unlock()
+			remote := newFakeRouterClient()
+			demand := newFakeRouterDemand(newFakeRouterSession(currentGeneration, remote))
+			acquiredMu.Lock()
+			demands = append(demands, demand)
+			clients = append(clients, remote)
+			acquiredMu.Unlock()
+			return demand, true
+		},
+		ready: func(signal integratedSecretSourceSignal) {
+			record("router-ready")
+			ready <- signal
+		},
+		unavailable: func(signal integratedSecretSourceSignal) {
+			record("router-unavailable")
+			unavailable <- signal
+		},
+		entropy: bytes.NewReader(make([]byte, 16)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := &App{
+		runtimeMode:          RuntimeModeDesktop,
+		ctx:                  context.Background(),
+		k8sClient:            client,
+		agentRouter:          secretReadAgentRouter{base: NoopAgentRouter{}, secrets: router},
+		acceleratorLifecycle: recorder,
+	}
+	app.lifecycle = chainedRuntimeLifecycle{accelerator: router, next: chainedRuntimeLifecycle{accelerator: recorder, next: orderedRootLifecycle{coordinator: recorder}}}
+	t.Cleanup(func() { router.Close(context.Background()) })
+
+	start := mark()
+	app.RetainIntegratedSecretReads()
+	latest := waitRouterSignal(t, ready)
+	assertSince(start, []string{"router-acquire:old", "router-ready"})
+
+	start = mark()
+	if err := app.SwitchContext("new"); err != nil {
+		t.Fatal(err)
+	}
+	if got := waitRouterSignal(t, unavailable).SourceToken; got != latest.SourceToken {
+		t.Fatal("switch fenced the wrong source")
+	}
+	latest = waitRouterSignal(t, ready)
+	assertSince(start, []string{"router-unavailable", "coordinator:fence:old", "coordinator:switched:new", "router-acquire:new", "router-ready"})
+
+	start = mark()
+	if err := app.RenameContext("new", "renamed"); err != nil {
+		t.Fatal(err)
+	}
+	waitRouterSignal(t, unavailable)
+	latest = waitRouterSignal(t, ready)
+	assertSince(start, []string{"router-unavailable", "coordinator:fence:new", "coordinator:switched:renamed", "router-acquire:renamed", "router-ready"})
+
+	start = mark()
+	if err := app.RenameContext("renamed", "old"); err == nil {
+		t.Fatal("rename onto existing context succeeded")
+	}
+	waitRouterSignal(t, unavailable)
+	latest = waitRouterSignal(t, ready)
+	assertSince(start, []string{"router-unavailable", "coordinator:fence:renamed", "coordinator:failed:old", "router-acquire:renamed", "router-ready"})
+
+	start = mark()
+	app.SetExtraKubeconfigPaths([]string{filepath.Join(t.TempDir(), "missing-extra-kubeconfig")})
+	waitRouterSignal(t, unavailable)
+	latest = waitRouterSignal(t, ready)
+	assertSince(start, []string{"router-unavailable", "coordinator:fence:renamed", "coordinator:switched:renamed", "router-acquire:renamed", "router-ready"})
+
+	start = mark()
+	invalidServer := "://invalid-server"
+	if err := app.UpdateContextDetail("renamed", k8s.ContextUpdateRequest{Server: &invalidServer}); err == nil {
+		t.Fatal("invalid active context update succeeded")
+	}
+	waitRouterSignal(t, unavailable)
+	latest = waitRouterSignal(t, ready)
+	assertSince(start, []string{"router-unavailable", "coordinator:fence:renamed", "coordinator:failed:renamed", "router-acquire:renamed", "router-ready"})
+	if got := app.GetCurrentContext(); got != "renamed" {
+		t.Fatalf("failure reacquired attempted rather than actual current context %q", got)
+	}
+
+	start = mark()
+	if result := app.OpenAcceleratorBrowser(); result != acceleratorprovision.BrowserOpened {
+		t.Fatalf("browser result=%q", result)
+	}
+	if data, callErr := app.GetIntegratedSecretData(string(latest.SourceToken), "ns", "name"); callErr != nil || len(data) != 1 {
+		t.Fatalf("browser launch disrupted Secret session: data=%v err=%v", data, callErr)
+	}
+	acquiredMu.Lock()
+	activeClient := clients[len(clients)-1]
+	activeDemand := demands[len(demands)-1]
+	acquiredMu.Unlock()
+	activeClient.terminate(acceleratorsecret.ReasonSessionUnavailable)
+	if got := waitRouterSignal(t, unavailable).SourceToken; got != latest.SourceToken {
+		t.Fatal("session loss fenced the wrong source")
+	}
+	assertSince(start, []string{"coordinator:open-browser", "router-unavailable"})
+
+	replacementClient := newFakeRouterClient()
+	acquiredMu.Lock()
+	replacementGeneration := generation + 1
+	acquiredMu.Unlock()
+	activeDemand.signal(newFakeRouterSession(replacementGeneration, replacementClient))
+	latest = waitRouterSignal(t, ready)
+	if latest.SourceToken == "" {
+		t.Fatal("replacement session did not become active")
+	}
+	start = mark()
+	app.runShutdownPhases(context.Background())
+	assertSince(start, []string{
+		"router-unavailable",
+		"coordinator:accelerator-quiesce", "coordinator:next-quiesce",
+		"coordinator:accelerator-stop", "coordinator:next-stop",
+		"coordinator:accelerator-close", "coordinator:next-close",
 	})
 }
 

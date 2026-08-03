@@ -1601,13 +1601,16 @@ func TestAcceleratorSecretPayloadByteBoundaries(t *testing.T) {
 	if err := json.Unmarshal(yamlResponse.Body.Bytes(), &yamlEnvelope); err != nil {
 		t.Fatal(err)
 	}
-	wantYAML := "apiVersion: v1\ndata:\n  a-plain: REVUQUlMX0FMTE9XRURfTUFSS0VS\n  z-binary: /wB/\nkind: Secret\nmetadata:\n  name: detail\n  namespace: evidence\ntype: Opaque\n"
+	wantYAML := "data:\n  a-plain: REVUQUlMX0FMTE9XRURfTUFSS0VS\n  z-binary: /wB/\nmetadata:\n  annotations:\n    kubectl.kubernetes.io/last-applied-configuration: DETAIL_LAST_APPLIED_FORBIDDEN\n  finalizers:\n  - DETAIL_FINALIZER_FORBIDDEN\n  labels:\n    private: DETAIL_LABEL_FORBIDDEN\n  name: detail\n  namespace: evidence\n  ownerReferences:\n  - apiVersion: \"\"\n    kind: \"\"\n    name: DETAIL_OWNER_FORBIDDEN\n    uid: \"\"\n  resourceVersion: DETAIL_RESOURCE_VERSION_FORBIDDEN\nstringData:\n  never: DETAIL_STRING_DATA_FORBIDDEN\ntype: Opaque\n"
 	if yamlEnvelope.Data != wantYAML || !strings.Contains(yamlEnvelope.Data, "a-plain") {
 		t.Fatalf("YAML envelope = %q, want %q", yamlEnvelope.Data, wantYAML)
 	}
-	for _, forbidden := range []string{"DETAIL_LABEL_FORBIDDEN", "DETAIL_LAST_APPLIED_FORBIDDEN", "DETAIL_MANAGED_FORBIDDEN", "DETAIL_FINALIZER_FORBIDDEN", "DETAIL_OWNER_FORBIDDEN", "DETAIL_RESOURCE_VERSION_FORBIDDEN", "DETAIL_STRING_DATA_FORBIDDEN"} {
-		if strings.Contains(yamlEnvelope.Data, forbidden) || strings.Contains(dataResponse.Body.String(), forbidden) {
-			t.Fatalf("detail envelope leaked %q", forbidden)
+	for _, yamlOnly := range []string{"DETAIL_LABEL_FORBIDDEN", "DETAIL_LAST_APPLIED_FORBIDDEN", "DETAIL_FINALIZER_FORBIDDEN", "DETAIL_OWNER_FORBIDDEN", "DETAIL_RESOURCE_VERSION_FORBIDDEN", "DETAIL_STRING_DATA_FORBIDDEN"} {
+		if !strings.Contains(yamlEnvelope.Data, yamlOnly) || strings.Contains(dataResponse.Body.String(), yamlOnly) {
+			t.Fatalf("editable YAML parity mismatch for %q", yamlOnly)
 		}
+	}
+	if strings.Contains(yamlEnvelope.Data, "DETAIL_MANAGED_FORBIDDEN") || strings.Contains(dataResponse.Body.String(), "DETAIL_MANAGED_FORBIDDEN") {
+		t.Fatal("detail envelope retained managed fields")
 	}
 }

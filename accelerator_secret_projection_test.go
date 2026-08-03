@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/yaml"
 
 	"kubikles/pkg/agent"
 	"kubikles/pkg/k8s"
@@ -122,8 +123,10 @@ func TestAcceleratorSecretDetailMethods(t *testing.T) {
 	secret := v1.Secret{
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "detail", Namespace: "evidence", Labels: map[string]string{"private-label": "LIST_FORBIDDEN"},
-			Annotations: map[string]string{"private-annotation": "DETAIL_FORBIDDEN"}, ResourceVersion: "rv-forbidden",
+			Name: "detail", Namespace: "evidence", UID: "uid-detail", Labels: map[string]string{"private-label": "label-value"},
+			Annotations: map[string]string{"private-annotation": "annotation-value"}, ResourceVersion: "rv-detail",
+			Finalizers: []string{"example/finalizer"}, OwnerReferences: []metav1.OwnerReference{{APIVersion: "v1", Kind: "ConfigMap", Name: "owner", UID: "owner-uid"}},
+			ManagedFields: []metav1.ManagedFieldsEntry{{Manager: "MANAGED_FIELDS_FORBIDDEN"}},
 		},
 		Type:       v1.SecretTypeOpaque,
 		Data:       map[string][]byte{"z-binary": {0xff, 0x00, 0x7f}, "a-text": []byte("DETAIL_MARKER")},
@@ -159,9 +162,9 @@ func TestAcceleratorSecretDetailMethods(t *testing.T) {
 	if !reflect.DeepEqual(entries, wantEntries) {
 		t.Fatalf("GetSecretData = %#v, want %#v", entries, wantEntries)
 	}
-	decoded, err := k8s.BytesFromDataEntry(entries[1])
-	if err != nil || !reflect.DeepEqual(decoded, []byte{0xff, 0x00, 0x7f}) {
-		t.Fatalf("binary bytes = %v, %v", decoded, err)
+	decodedBytes, err := k8s.BytesFromDataEntry(entries[1])
+	if err != nil || !reflect.DeepEqual(decodedBytes, []byte{0xff, 0x00, 0x7f}) {
+		t.Fatalf("binary bytes = %v, %v", decodedBytes, err)
 	}
 	entries[0].Value = "mutated"
 	second, err := caller.CallMethod(trusted, "GetSecretData", args)
@@ -173,9 +176,19 @@ func TestAcceleratorSecretDetailMethods(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantYAML := "apiVersion: v1\ndata:\n  a-text: REVUQUlMX01BUktFUg==\n  z-binary: /wB/\nkind: Secret\nmetadata:\n  name: detail\n  namespace: evidence\ntype: Opaque\n"
-	if yaml, ok := result.(string); !ok || yaml != wantYAML {
-		t.Fatalf("GetSecretYaml = %T %q, want %q", result, result, wantYAML)
+	yamlText, ok := result.(string)
+	if !ok {
+		t.Fatalf("GetSecretYaml = %T", result)
+	}
+	if strings.Contains(yamlText, "managedFields") || strings.Contains(yamlText, "MANAGED_FIELDS_FORBIDDEN") {
+		t.Fatalf("GetSecretYaml leaked managed fields: %s", yamlText)
+	}
+	var decoded v1.Secret
+	if err := yaml.Unmarshal([]byte(yamlText), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.ResourceVersion != "rv-detail" || decoded.UID != "uid-detail" || decoded.Labels["private-label"] != "label-value" || decoded.Annotations["private-annotation"] != "annotation-value" || len(decoded.Finalizers) != 1 || len(decoded.OwnerReferences) != 1 || decoded.Type != v1.SecretTypeOpaque || !reflect.DeepEqual(decoded.Data, secret.Data) {
+		t.Fatalf("GetSecretYaml lost Direct-compatible fields: %#v", decoded)
 	}
 }
 

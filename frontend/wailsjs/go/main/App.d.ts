@@ -24,6 +24,8 @@ export function CancelConnectionTest():Promise<void>;
 
 export function CancelListRequest(arg1:string):Promise<boolean>;
 
+export function CancelIntegratedSecretListRequest(arg1:string,arg2:string):Promise<boolean>;
+
 export function CancelMetricsRequest(arg1:string):Promise<boolean>;
 
 export function CheckAIProvider():Promise<main.AIProviderStatus>;
@@ -350,6 +352,10 @@ export function GetRoleYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetSecretData(arg1:string,arg2:string):Promise<Array<k8s.DataEntry>>;
 
+export function GetIntegratedSecretData(arg1:string,arg2:string,arg3:string):Promise<Array<k8s.DataEntry>>;
+
+export function GetIntegratedSecretYaml(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function GetSecretYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetServiceAccountYaml(arg1:string,arg2:string):Promise<string>;
@@ -387,6 +393,8 @@ export function IsHelmAvailable():Promise<boolean>;
 export function IsRequestCancellationEnabled():Promise<boolean>;
 
 export function ListCRDs():Promise<Array<v1.CustomResourceDefinition>>;
+
+export function ListIntegratedSecretsMetadata(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<Array<k8s.SecretListItem>>;
 
 export function ListCSIDrivers(arg1:string):Promise<Array<v1.CSIDriver>>;
 
@@ -643,6 +651,14 @@ export function TestEmit():Promise<void>;
 export function TestPrometheusEndpoint(arg1:string,arg2:string,arg3:number):Promise<void>;
 
 export function TriggerCronJob(arg1:string,arg2:string):Promise<void>;
+
+export function RetainIntegratedSecretReads():Promise<void>;
+
+export function ReleaseIntegratedSecretReads():Promise<void>;
+
+export function SubscribeIntegratedSecretWatcher(arg1:string,arg2:string,arg3:boolean):Promise<string>;
+
+export function UnsubscribeIntegratedSecretWatcher(arg1:string,arg2:string):Promise<void>;
 
 export function UninstallHelmRelease(arg1:string,arg2:string):Promise<void>;
 

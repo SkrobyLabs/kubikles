@@ -28,15 +28,25 @@ func (*SecretDemandLease) MarshalJSON() ([]byte, error) {
 }
 
 func (l *SecretDemandLease) Changes() <-chan struct{} {
-	if l == nil || l.slot == nil || l.closed.Load() {
+	changes, valid := l.CurrentChanges()
+	if !valid {
 		return closedCoordinatorSignal()
+	}
+	return changes
+}
+
+// CurrentChanges atomically snapshots the replaceable demand notification
+// channel and whether this lease still owns its coordinator demand epoch.
+func (l *SecretDemandLease) CurrentChanges() (<-chan struct{}, bool) {
+	if l == nil || l.slot == nil || l.closed.Load() {
+		return nil, false
 	}
 	l.slot.mu.Lock()
 	defer l.slot.mu.Unlock()
 	if l.closed.Load() || l.slot.demandEpoch != l.demandEpoch || l.slot.state == CoordinatorClosed {
-		return closedCoordinatorSignal()
+		return nil, false
 	}
-	return l.slot.change
+	return l.slot.change, l.slot.change != nil
 }
 
 func (l *SecretDemandLease) TrySession() (*SessionLease, bool) {

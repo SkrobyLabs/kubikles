@@ -4,6 +4,7 @@ package main
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"kubikles/pkg/agent"
@@ -103,8 +104,26 @@ func TestNoopAgentRouterSupportsNothing(t *testing.T) {
 			t.Fatalf("NoopAgentRouter supports %q", capability)
 		}
 	}
+	if router.SecretReads() == nil {
+		t.Fatal("NoopAgentRouter returned a nil Secret reader")
+	}
 	lifecycle := NoopRuntimeLifecycle{}
 	lifecycle.Quiesce(nil)
 	lifecycle.StopProducers(nil)
 	lifecycle.Close(nil)
+}
+
+func TestAgentRouterSecretReadSurfaceIsClosed(t *testing.T) {
+	typeOf := reflect.TypeOf((*SecretReadRouter)(nil)).Elem()
+	got := make([]string, typeOf.NumMethod())
+	for index := range got {
+		got[index] = typeOf.Method(index).Name
+	}
+	want := []string{
+		"CancelListRequest", "Close", "ContextSwitched", "FenceContextSwitch", "GetSecretData", "GetSecretYaml",
+		"ListSecretsMetadata", "Quiesce", "Release", "Retain", "StopProducers", "SubscribeSecretWatcher", "UnsubscribeSecretWatcher",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("SecretReadRouter methods = %v, want %v", got, want)
+	}
 }

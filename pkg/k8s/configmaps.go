@@ -529,54 +529,6 @@ func (c *Client) GetSecretYaml(namespace, name string) (string, error) {
 	return string(yamlBytes), nil
 }
 
-// GetSecretProjectedYaml returns the closed Secret representation used by the
-// Accelerator boundary. It intentionally has no mutable or server-managed
-// metadata beyond the identity required to address the Secret.
-func (c *Client) GetSecretProjectedYaml(namespace, name string) (string, error) {
-	cs, err := c.getClientset()
-	if err != nil {
-		return "", err
-	}
-	ctx, cancel := c.contextWithTimeout()
-	defer cancel()
-	secret, err := cs.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-
-	projected := secretYAMLProjection{
-		APIVersion: "v1",
-		Kind:       "Secret",
-		Metadata: secretYAMLProjectionMetadata{
-			Name:      secret.Name,
-			Namespace: secret.Namespace,
-		},
-		Type: string(secret.Type),
-		Data: map[string][]byte{},
-	}
-	for key, value := range secret.Data {
-		projected.Data[key] = append([]byte(nil), value...)
-	}
-	yamlBytes, err := yaml.Marshal(projected)
-	if err != nil {
-		return "", err
-	}
-	return string(yamlBytes), nil
-}
-
-type secretYAMLProjectionMetadata struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
-}
-
-type secretYAMLProjection struct {
-	APIVersion string                       `json:"apiVersion"`
-	Kind       string                       `json:"kind"`
-	Metadata   secretYAMLProjectionMetadata `json:"metadata"`
-	Type       string                       `json:"type"`
-	Data       map[string][]byte            `json:"data"`
-}
-
 func (c *Client) UpdateSecretYaml(namespace, name, yamlContent string) error {
 	cs, err := c.getClientset()
 	if err != nil {

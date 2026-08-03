@@ -33,6 +33,7 @@ import ConfigEditorDialog from '~/components/shared/ConfigEditorDialog';
 import CommandPalette from '~/components/shared/CommandPalette';
 import CreateResourceModal from '~/components/shared/CreateResourceModal';
 import ConnectionError from '~/components/shared/ConnectionError';
+import { RuntimeSecretReadSourceProvider } from '~/features/config/secrets/secretReadSource';
 
 // Resource templates by view
 const resourceTemplates: Record<string, (ns?: string) => string> = {
@@ -791,8 +792,10 @@ function App() {
                                 <AIChatProvider>
                                     <IssueDetectorProvider>
                                     <MenuProvider>
-                                        <MainLayout />
-                                        <ToastContainer />
+                                        <RuntimeSecretReadSourceProvider>
+                                            <MainLayout />
+                                            <ToastContainer />
+                                        </RuntimeSecretReadSourceProvider>
                                     </MenuProvider>
                                     </IssueDetectorProvider>
                                 </AIChatProvider>

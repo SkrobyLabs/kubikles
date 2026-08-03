@@ -1,16 +1,25 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
+  CancelIntegratedSecretListRequest,
   CancelListRequest,
+  GetIntegratedSecretData,
+  GetIntegratedSecretYaml,
   GetSecretData,
   GetSecretYaml,
   ListAcceleratorSecretsMetadata,
+  ListIntegratedSecretsMetadata,
   ListSecretsMetadata,
+  ReleaseIntegratedSecretReads,
+  RetainIntegratedSecretReads,
+  SubscribeIntegratedSecretWatcher,
   SubscribeResourceWatcher,
   SubscribeSecretWatcher,
+  UnsubscribeIntegratedSecretWatcher,
   UnsubscribeSecretWatcher,
   UnsubscribeWatcher,
 } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
+import { isInServerMode } from '~/lib/wailsjs-adapter/runtime/runtime';
 import type { SecretEvent, SecretReadSource, WatcherError, WatcherStatus } from './secretReadSourceContract';
 export type { SecretEvent, SecretListState, SecretReadSource, WatcherError, WatcherStatus } from './secretReadSourceContract';
 
@@ -232,6 +241,217 @@ export function createAcceleratorSecretReadSource(sourceKey: string): SecretRead
   };
 }
 
-const SecretReadSourceContext = createContext<SecretReadSource>(directSecretReadSource);
-export const SecretReadSourceProvider = SecretReadSourceContext.Provider;
-export const useSecretReadSource = () => useContext(SecretReadSourceContext);
+const INTEGRATED_READY_EVENT = 'accelerator:secret-source-ready';
+const INTEGRATED_UNAVAILABLE_EVENT = 'accelerator:secret-source-unavailable';
+const INTEGRATED_RESOURCE_EVENT = 'accelerator:secret-resource';
+const INTEGRATED_STATUS_EVENT = 'accelerator:secret-watcher-status';
+const INTEGRATED_ERROR_EVENT = 'accelerator:secret-watcher-error';
+const SOURCE_TOKEN = /^s\.[A-Za-z0-9_-]{22}\.[0-9a-f]{16}$/;
+
+const noListener = () => () => {};
+const validSourceToken = (value: unknown): value is string => typeof value === 'string' && SOURCE_TOKEN.test(value);
+const exactControlToken = (event: any) => {
+  if (!event || Object.keys(event).length !== 1 || !validSourceToken(event.sourceToken)) return '';
+  return event.sourceToken;
+};
+
+const projectIntegratedResource = (event: any, sourceKey: string): SecretEvent | null => {
+  if (event?.sourceToken !== sourceKey) return null;
+  const metadata = event?.resource?.metadata;
+  if (event.resourceType !== 'secrets' || !['ADDED', 'MODIFIED', 'DELETED'].includes(event.type) ||
+      typeof event.watcherSpecId !== 'string' || !event.watcherSpecId || !metadata?.uid ||
+      event.namespace !== metadata.namespace) return null;
+  return {
+    type: event.type,
+    resourceType: 'secrets',
+    namespace: event.namespace,
+    watcherSpecId: event.watcherSpecId,
+    sourceKey,
+    resource: {
+      metadata: {
+        name: metadata.name,
+        namespace: metadata.namespace,
+        uid: metadata.uid,
+        creationTimestamp: metadata.creationTimestamp,
+      },
+      type: event.resource.type,
+      dataKeys: typeof event.resource.dataKeys === 'number' ? event.resource.dataKeys : 0,
+    },
+  };
+};
+
+export function createIntegratedAcceleratorSecretReadSource(sourceToken: string): SecretReadSource {
+  if (!validSourceToken(sourceToken)) throw new Error('Secret read source token is unavailable');
+  const specs = new Set<string>();
+  const resourceCallbacks = new Set<(event: SecretEvent) => void>();
+  const pending = new Set<{ candidates: SecretEvent[]; consumers: Set<(event: SecretEvent) => void> }>();
+  let disposeResource: (() => void) | null = null;
+
+  const deliverResource = (raw: any) => {
+    if (raw?.sourceToken !== sourceToken) return;
+    const event = projectIntegratedResource(raw, sourceToken);
+    if (!event) return;
+    if (specs.has(event.watcherSpecId ?? '')) {
+      for (const callback of resourceCallbacks) callback(event);
+      return;
+    }
+    for (const candidate of pending) appendPendingEvent(candidate.candidates, event);
+  };
+
+  return {
+    sourceKey: sourceToken,
+    list: (requestId, namespace, excludeHelmReleases) =>
+      ListIntegratedSecretsMetadata(sourceToken, requestId, namespace, excludeHelmReleases),
+    cancelList: requestId => CancelIntegratedSecretListRequest(sourceToken, requestId),
+    subscribe: async (namespace, excludeHelmReleases) => {
+      const candidate = { candidates: [] as SecretEvent[], consumers: new Set(resourceCallbacks) };
+      if (candidate.consumers.size !== 0) pending.add(candidate);
+      try {
+        const watcherSpecId = await SubscribeIntegratedSecretWatcher(sourceToken, namespace, excludeHelmReleases);
+        pending.delete(candidate);
+        if (!watcherSpecId) return '';
+        specs.add(watcherSpecId);
+        for (const event of candidate.candidates) {
+          if (event.watcherSpecId !== watcherSpecId) continue;
+          for (const callback of candidate.consumers) if (resourceCallbacks.has(callback)) callback(event);
+        }
+        return watcherSpecId;
+      } catch (error) {
+        pending.delete(candidate);
+        candidate.candidates.length = 0;
+        throw error;
+      }
+    },
+    unsubscribe: async watcherSpecId => {
+      specs.delete(watcherSpecId);
+      return UnsubscribeIntegratedSecretWatcher(sourceToken, watcherSpecId);
+    },
+    getSecretData: (namespace, name) => GetIntegratedSecretData(sourceToken, namespace, name),
+    getSecretYaml: (namespace, name) => GetIntegratedSecretYaml(sourceToken, namespace, name),
+    onProgress: noListener,
+    onConnected: noListener,
+    onResource: callback => {
+      resourceCallbacks.add(callback);
+      if (resourceCallbacks.size === 1) disposeResource = EventsOn(INTEGRATED_RESOURCE_EVENT, deliverResource);
+      return () => {
+        resourceCallbacks.delete(callback);
+        for (const candidate of pending) candidate.consumers.delete(callback);
+        if (resourceCallbacks.size !== 0) return;
+        disposeResource?.();
+        disposeResource = null;
+      };
+    },
+    onStatus: callback => EventsOn(INTEGRATED_STATUS_EVENT, (event: any) => {
+      if (event?.sourceToken !== sourceToken || !specs.has(event.watcherSpecId)) return;
+      callback({ watcherSpecId: event.watcherSpecId, status: event.status, sourceKey: sourceToken });
+    }),
+    onError: callback => EventsOn(INTEGRATED_ERROR_EVENT, (event: any) => {
+      if (event?.sourceToken !== sourceToken || !specs.has(event.watcherSpecId)) return;
+      callback({ watcherSpecId: event.watcherSpecId, code: event.code, recoverable: event.recoverable === true, sourceKey: sourceToken });
+    }),
+  };
+}
+
+type SecretReadSourceContextValue = {
+  source: SecretReadSource;
+  retain: () => () => void;
+};
+
+const noRetain = () => () => {};
+const SecretReadSourceContext = createContext<SecretReadSourceContextValue>({ source: directSecretReadSource, retain: noRetain });
+
+export function SecretReadSourceProvider({ value, children }: { value: SecretReadSource; children: React.ReactNode }) {
+  const contextValue = useMemo(() => ({ source: value, retain: noRetain }), [value]);
+  return <SecretReadSourceContext.Provider value={contextValue}>{children}</SecretReadSourceContext.Provider>;
+}
+
+type IntegratedSourceTransition = 'stable' | 'awaitingDirectCommit';
+type IntegratedSourceState = {
+  source: SecretReadSource;
+  transition: IntegratedSourceTransition;
+};
+
+export function IntegratedSecretReadSourceProvider({ children }: { children: React.ReactNode }) {
+  const [sourceState, setSourceState] = useState<IntegratedSourceState>({ source: directSecretReadSource, transition: 'stable' });
+  const transition = useRef<IntegratedSourceTransition>('stable');
+  const currentOrPendingToken = useRef('');
+  const lifecycle = useRef<Promise<void>>(Promise.resolve());
+
+  useLayoutEffect(() => {
+    const disposeReady = EventsOn(INTEGRATED_READY_EVENT, (event: any) => {
+      const token = exactControlToken(event);
+      if (!token || currentOrPendingToken.current) return;
+      currentOrPendingToken.current = token;
+      if (transition.current === 'awaitingDirectCommit') return;
+      setSourceState({ source: createIntegratedAcceleratorSecretReadSource(token), transition: 'stable' });
+    });
+    const disposeUnavailable = EventsOn(INTEGRATED_UNAVAILABLE_EVENT, (event: any) => {
+      const token = exactControlToken(event);
+      if (!token || currentOrPendingToken.current !== token) return;
+      currentOrPendingToken.current = '';
+      if (transition.current === 'awaitingDirectCommit') return;
+      transition.current = 'awaitingDirectCommit';
+      setSourceState({ source: directSecretReadSource, transition: 'awaitingDirectCommit' });
+    });
+    return () => {
+      transition.current = 'stable';
+      currentOrPendingToken.current = '';
+      disposeReady();
+      disposeUnavailable();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (sourceState.transition !== 'awaitingDirectCommit' || transition.current !== 'awaitingDirectCommit') return;
+    // Descendant passive effects observe and replace Direct before this parent
+    // passive effect applies the sole pending ready token in a later commit.
+    transition.current = 'stable';
+    const pendingToken = currentOrPendingToken.current;
+    const pendingSource = pendingToken ? createIntegratedAcceleratorSecretReadSource(pendingToken) : directSecretReadSource;
+    setSourceState(current => current.transition === 'awaitingDirectCommit'
+      ? { source: pendingSource, transition: 'stable' }
+      : current);
+  }, [sourceState]);
+
+  const retain = useCallback(() => {
+    let active = true;
+    let retained = false;
+    lifecycle.current = lifecycle.current.then(async () => {
+      if (!active) return;
+      try {
+        await RetainIntegratedSecretReads();
+        retained = true;
+      } catch {
+        return;
+      }
+      if (!active && retained) {
+        retained = false;
+        try { await ReleaseIntegratedSecretReads(); } catch { /* direct remains authoritative */ }
+      }
+    });
+    return () => {
+      active = false;
+      lifecycle.current = lifecycle.current.then(async () => {
+        if (!retained) return;
+        retained = false;
+        try { await ReleaseIntegratedSecretReads(); } catch { /* backend teardown remains authoritative */ }
+      });
+    };
+  }, []);
+
+  const value = useMemo(() => ({ source: sourceState.source, retain }), [sourceState.source, retain]);
+  return <SecretReadSourceContext.Provider value={value}>{children}</SecretReadSourceContext.Provider>;
+}
+
+export function RuntimeSecretReadSourceProvider({ children }: { children: React.ReactNode }) {
+  if (isInServerMode()) {
+    return <SecretReadSourceProvider value={directSecretReadSource}>{children}</SecretReadSourceProvider>;
+  }
+  return <IntegratedSecretReadSourceProvider>{children}</IntegratedSecretReadSourceProvider>;
+}
+
+export const useSecretReadSource = () => {
+  const value = useContext(SecretReadSourceContext);
+  useEffect(() => value.retain(), [value.retain]);
+  return value.source;
+};

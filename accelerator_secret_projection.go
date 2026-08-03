@@ -133,7 +133,7 @@ func (a *App) acceleratorSecretYAML(namespace, name string) (string, error) {
 	if a.k8sClient == nil {
 		return "", fmt.Errorf("k8s client not initialized")
 	}
-	return a.k8sClient.GetSecretProjectedYaml(namespace, name)
+	return a.k8sClient.GetSecretYaml(namespace, name)
 }
 
 func (a *App) acceleratorSecretsMetadata(requestID, namespace string, options k8s.SecretListOptions) ([]acceleratorSecretListItem, error) {

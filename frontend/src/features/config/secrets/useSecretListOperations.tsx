@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useK8s } from '~/context';
 import { optimizeNamespaceQuery } from '~/hooks/useNamespaceOptimization';
-import { useSecretReadSource } from './secretReadSource';
+import type { SecretReadSource } from './secretReadSource';
 import { normalizeSecretNamespaces, SecretListOperationController, type SecretListState } from './secretListOperations';
 import Logger from '~/utils/Logger';
 
@@ -22,13 +22,13 @@ const normalizedQuery = (selectedNamespaces: string | string[], allNamespaces: s
 };
 
 export function useSecretListOperations(
+  source: SecretReadSource,
   currentContext: string,
   selectedNamespaces: string | string[],
   allNamespaces: string[],
   visible: boolean,
   hideHelm: boolean,
 ) {
-  const source = useSecretReadSource();
   const { lastRefresh, reconcileToken, checkConnectionError } = useK8s();
   const [state, setState] = useState<SecretListState>({ secrets: [], loading: false, error: null, loadingProgress: null });
   const checkConnectionErrorRef = useRef(checkConnectionError);

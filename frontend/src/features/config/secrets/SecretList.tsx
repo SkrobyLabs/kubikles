@@ -4,7 +4,7 @@ import BulkActionModal from '~/components/shared/BulkActionModal';
 import { useK8s } from '~/context';
 import { useSelection } from '~/hooks/useSelection';
 import { useBulkActions } from '~/hooks/useBulkActions';
-import { DeleteSecret, GetSecretYaml } from 'wailsjs/go/main/App';
+import { DeleteSecret } from 'wailsjs/go/main/App';
 import { formatAge } from '~/utils/formatting';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import SecretActionsMenu from './SecretActionsMenu';
@@ -17,8 +17,8 @@ export default function SecretList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const [hideHelmSecrets, setHideHelmSecrets] = useState(true);
-    const { secrets, loading, loadingProgress } = useSecretListOperations(currentContext, selectedNamespaces, namespaces, isVisible, hideHelmSecrets);
     const secretSource = useSecretReadSource();
+    const { secrets, loading, loadingProgress } = useSecretListOperations(secretSource, currentContext, selectedNamespaces, namespaces, isVisible, hideHelmSecrets);
     const { handleEditYaml, handleEditKeyValue, handleShowDependencies } = useSecretActions();
     const selection = useSelection();
 
@@ -31,7 +31,7 @@ export default function SecretList({ isVisible }: { isVisible: boolean }) {
         resourceType: 'secrets',
         isNamespaced: true,
         deleteApi: DeleteSecret,
-        getYamlApi: GetSecretYaml,
+        getYamlApi: secretSource.getSecretYaml,
 
     });
 

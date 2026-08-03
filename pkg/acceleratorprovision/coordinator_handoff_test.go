@@ -115,7 +115,10 @@ func TestSecretDemandLeaseReplaceableSignalsAndNestedCounts(t *testing.T) {
 		return ConnectResult{Availability: Available, Session: session}
 	}
 	demand := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
-	initialEdge := demand.Changes()
+	initialEdge, valid := demand.CurrentChanges()
+	if !valid || initialEdge == nil {
+		t.Fatal("fresh demand did not atomically expose a valid change channel")
+	}
 	<-connectEntered
 	close(releaseConnect)
 	select {
@@ -124,7 +127,10 @@ func TestSecretDemandLeaseReplaceableSignalsAndNestedCounts(t *testing.T) {
 		t.Fatal("active publication did not close initial edge")
 	}
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
-	activeEdge := demand.Changes()
+	activeEdge, valid := demand.CurrentChanges()
+	if !valid || activeEdge == nil {
+		t.Fatal("active demand did not atomically expose a valid change channel")
+	}
 	if initialEdge == activeEdge {
 		t.Fatal("active publication did not replace change channel")
 	}
@@ -139,6 +145,9 @@ func TestSecretDemandLeaseReplaceableSignalsAndNestedCounts(t *testing.T) {
 	}
 	demand.Close()
 	demand.Close()
+	if edge, valid := demand.CurrentChanges(); valid || edge != nil {
+		t.Fatal("closed demand remained valid")
+	}
 	select {
 	case <-activeEdge:
 	case <-time.After(time.Second):

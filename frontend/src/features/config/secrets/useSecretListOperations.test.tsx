@@ -68,7 +68,7 @@ describe('useSecretListOperations', () => {
     );
     const { result, rerender, unmount } = renderHook(
       (props: { selected: string[]; all: string[]; visible: boolean; context: string; hide: boolean }) =>
-        useSecretListOperations(props.context, props.selected, props.all, props.visible, props.hide),
+        useSecretListOperations(activeSource, props.context, props.selected, props.all, props.visible, props.hide),
       { wrapper, initialProps: { selected: ['b', 'a'], all: ['a', 'b', 'c'], visible: true, context: 'ctx', hide: true } },
     );
     await waitFor(() => expect(result.current.secrets).toHaveLength(2));
@@ -120,7 +120,7 @@ describe('useSecretListOperations', () => {
       <SecretReadSourceProvider value={source}>{children}</SecretReadSourceProvider>
     );
     const mounted = renderHook(
-      () => useSecretListOperations('ctx', ['team'], ['team', 'other'], true, true),
+      () => useSecretListOperations(source, 'ctx', ['team'], ['team', 'other'], true, true),
       { wrapper },
     );
     await waitFor(() => expect(logger).toHaveBeenCalledWith(

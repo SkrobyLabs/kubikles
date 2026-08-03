@@ -4,6 +4,34 @@ umask 077
 
 fail() { echo "accelerator-desktop-provision-kind: $1" >&2; exit 1; }
 
+captured_output_sensitive() {
+  local capture="$1"
+  local integrated="${2:-0}"
+  local sensitive
+  while IFS= read -r sensitive; do
+    grep -Fq -- "$sensitive" "$capture" && return 0
+  done <<'EOF'
+AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8
+MDEyMzQ1Njc4OTo7PD0-P0BBQkNERUZHSElKS0xNTk8
+w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM
+66-MHiCJFjcS0tgtsrGBc-19KNhsQvlV7hXKV3AF2Mo
+Bearer registry-secret-T11
+/secret/kubeconfig/path-T11
+raw-registry-error-T11
+raw-helm-error-T11
+raw-kubernetes-status-T11
+raw-cleanup-error-T11
+raw helm manifest T11
+raw helm value T11
+EOF
+  if test "$integrated" = 1 && grep -Eq \
+    's\.[A-Za-z0-9_-]{22}\.[0-9a-f]{16}|integrated-routing-[0-9a-f]{16}|explicit-detail-value|mutated-direct|ZXhwbGljaXQtZGV0YWlsLXZhbHVl|bXV0YXRlZC1kaXJlY3Q|routing\.test/(origin|note|watch)' \
+    "$capture"; then
+    return 0
+  fi
+  return 1
+}
+
 for tool in kind docker kubectl helm oras go curl openssl; do
   command -v "$tool" >/dev/null 2>&1 || fail "missing-$tool"
 done
@@ -69,8 +97,12 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-docker run --detach --rm --name "$registry_container" --publish 127.0.0.1:0:5000 registry:2.8.3 >"$tmp/registry-id" 2>"$tmp/registry-start" || fail "registry-start"
+docker container inspect "$registry_container" >/dev/null 2>&1 && fail "ownership-collision"
+docker container inspect "$chart_registry_container" >/dev/null 2>&1 && fail "ownership-collision"
+kind get clusters 2>/dev/null | grep -Fx "$cluster" >/dev/null && fail "ownership-collision"
+
 registry_created=true
+docker run --detach --rm --name "$registry_container" --publish 127.0.0.1:0:5000 registry:2.8.3 >"$tmp/registry-id" 2>"$tmp/registry-start" || fail "registry-start"
 registry_port="$(docker inspect "$registry_container" --format '{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostPort}}')"
 [[ "$registry_port" =~ ^[1-9][0-9]{0,4}$ ]] || fail "registry-port"
 registry_daemon="127.0.0.1:$registry_port"
@@ -89,10 +121,10 @@ done
 mkdir -p "$tmp/chart-registry-certs"
 openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=host.docker.internal' -addext 'subjectAltName=DNS:localhost,DNS:host.docker.internal,IP:127.0.0.1' \
   -keyout "$tmp/chart-registry-certs/key.pem" -out "$tmp/chart-registry-certs/cert.pem" >"$tmp/chart-registry-cert" 2>&1 || fail "chart-registry-cert"
+chart_registry_created=true
 docker create --name "$chart_registry_container" --publish 127.0.0.1:0:5000 \
   --env REGISTRY_HTTP_ADDR=0.0.0.0:5000 --env REGISTRY_HTTP_TLS_CERTIFICATE=/cert.pem --env REGISTRY_HTTP_TLS_KEY=/key.pem \
   registry:2.8.3 >"$tmp/chart-registry-id" 2>"$tmp/chart-registry-create" || fail "chart-registry-create"
-chart_registry_created=true
 docker cp "$tmp/chart-registry-certs/cert.pem" "$chart_registry_container:/cert.pem" >"$tmp/chart-registry-cert-copy" 2>&1 || fail "chart-registry-cert-copy"
 docker cp "$tmp/chart-registry-certs/key.pem" "$chart_registry_container:/key.pem" >"$tmp/chart-registry-key-copy" 2>&1 || fail "chart-registry-key-copy"
 docker start "$chart_registry_container" >"$tmp/chart-registry-start" 2>&1 || fail "chart-registry-start"
@@ -137,8 +169,8 @@ containerdConfigPatches:
     [plugins."io.containerd.cri.v1.images".registry]
       config_path = "/etc/containerd/certs.d"
 EOF
-kind create cluster --name "$cluster" --image kindest/node:v1.32.2 --config "$tmp/kind.yaml" --kubeconfig "$kubeconfig" --wait 90s >"$tmp/kind-create" 2>&1 || fail "kind-create"
 cluster_created=true
+kind create cluster --name "$cluster" --image kindest/node:v1.32.2 --config "$tmp/kind.yaml" --kubeconfig "$kubeconfig" --wait 90s >"$tmp/kind-create" 2>&1 || fail "kind-create"
 api_host="${ACCELERATOR_PROVISION_KIND_API_HOST:-host.docker.internal}"
 cluster_name="$(KUBECONFIG="$kubeconfig" kubectl config view -o jsonpath='{.contexts[0].context.cluster}')"
 server="$(KUBECONFIG="$kubeconfig" kubectl config view -o "jsonpath={.clusters[?(@.name=='$cluster_name')].cluster.server}")"
@@ -195,11 +227,22 @@ KUBECONFIG="$kubeconfig" helm install "$sentinel" "$tmp/sentinel" --namespace de
 KUBECONFIG="$kubeconfig" helm install "$malformed" "$tmp/sentinel" --namespace default >"$tmp/malformed-install" 2>&1 || fail "malformed-install"
 
 go_test_timeout=5m
+go_test_package=./pkg/acceleratorprovision
+go_test_run='^TestAcceleratorDesktopProvisionKind$'
+go_test_output=-v
 if [[ "${ACCELERATOR_DISPOSAL_KIND:-0}" == "1" || "${ACCELERATOR_LIFECYCLE_KIND:-0}" == "1" ]]; then
   go_test_timeout=9m
 fi
 if [[ "${ACCELERATOR_BROWSER_LIFECYCLE_KIND:-0}" == "1" ]]; then
   go_test_timeout=18m
+fi
+if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" ]]; then
+  # The test source machine-checks a 33m17s sequential inner bound. This is
+  # the smallest whole-minute timeout above it and leaves a 43s margin.
+  go_test_timeout=34m
+  go_test_package=.
+  go_test_run='^TestAcceleratorIntegratedRoutingKind$'
+  go_test_output=-json
 fi
 (cd "$root" && HOME="$test_home" KUBECONFIG="$kubeconfig" \
   ACCELERATOR_PROVISION_KIND_CHART="$chart_archive" \
@@ -209,7 +252,17 @@ fi
   ACCELERATOR_PROVISION_KIND_IMAGE_DIGEST="$image_digest" \
   ACCELERATOR_PROVISION_KIND_SENTINEL="$sentinel" \
   ACCELERATOR_PROVISION_KIND_MALFORMED="$malformed" \
-  go test -v -tags=helm,accelerator_provision_kind -count=1 -timeout="$go_test_timeout" ./pkg/acceleratorprovision -run '^TestAcceleratorDesktopProvisionKind$') >"$tmp/go-test" 2>&1 || {
+  go test "$go_test_output" -tags=helm,accelerator_provision_kind -count=1 -timeout="$go_test_timeout" "$go_test_package" -run "$go_test_run") >"$tmp/go-test" 2>&1 || {
+  if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" ]]; then
+    captured_output_sensitive "$tmp/go-test" 1 && fail "go-service-output-sensitive"
+    diagnostic="$("$root/scripts/extract-accelerator-kind-diagnostic.sh" "$tmp/go-test" TestAcceleratorIntegratedRoutingKind)" || fail "go-service-test"
+    case "$diagnostic" in
+      go-service-test|go-service-test-initial-missing|go-service-test-initial-sweeping|go-service-test-initial-resolving-zero|go-service-test-initial-resolving-after-provision|go-service-test-initial-provisioning|go-service-test-initial-connecting|go-service-test-initial-active-client-bind|go-service-test-initial-active-ready-path|go-service-test-initial-unavailable|go-service-test-initial-terminal|go-service-test-initial-unknown|go-service-test-initial-count-invalid|go-service-test-initial-client-repeat|go-service-test-initial-provision-retry|go-service-test-initial-provision-context-input|go-service-test-initial-provision-chart-pull|go-service-test-initial-provision-chart-integrity-render|go-service-test-initial-provision-install-conflict-permission|go-service-test-initial-provision-image-pull|go-service-test-initial-provision-job-pod|go-service-test-initial-provision-timeout-cancel|go-service-test-initial-provision-mixed|go-service-test-initial-provision-unknown|go-service-test-initial-connect-not-entered|go-service-test-initial-connect-tunnel|go-service-test-initial-connect-accelerator|go-service-test-initial-connect-version|go-service-test-initial-connect-authoritative|go-service-test-initial-connect-cancelled|go-service-test-initial-session-client-bind|go-service-test-initial-session-ready-path|go-service-test-initial-stage-mixed|go-service-test-stage-setup|go-service-test-stage-direct|go-service-test-stage-pre-ready|go-service-test-stage-ready|go-service-test-stage-list|go-service-test-stage-cancel|go-service-test-stage-detail|go-service-test-stage-watch|go-service-test-stage-loss|go-service-test-stage-resume|go-service-test-stage-mismatch|go-service-test-stage-isolation|go-service-test-stage-release|go-service-test-stage-final-verification)
+        fail "$diagnostic"
+        ;;
+      *) fail "go-service-test" ;;
+    esac
+  fi
   sed -E \
     -e 's/[A-Za-z0-9_-]{43}/[REDACTED_43]/g' \
     -e 's#Bearer registry-secret-T11#[REDACTED_TEST_CORPUS]#g' \
@@ -220,23 +273,13 @@ fi
   fail "go-service-test"
 }
 
-while IFS= read -r sensitive; do
-  if grep -Fq -- "$sensitive" "$tmp/go-test"; then
-    fail "go-service-output-sensitive"
-  fi
-done <<'EOF'
-AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8
-MDEyMzQ1Njc4OTo7PD0-P0BBQkNERUZHSElKS0xNTk8
-w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM
-66-MHiCJFjcS0tgtsrGBc-19KNhsQvlV7hXKV3AF2Mo
-Bearer registry-secret-T11
-/secret/kubeconfig/path-T11
-raw-registry-error-T11
-raw-helm-error-T11
-raw-kubernetes-status-T11
-raw-cleanup-error-T11
-raw helm manifest T11
-raw helm value T11
-EOF
+integrated_output=0
+[[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" ]] && integrated_output=1
+captured_output_sensitive "$tmp/go-test" "$integrated_output" && fail "go-service-output-sensitive"
+
+if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" ]] && \
+  ! "$root/scripts/check-accelerator-kind-test-discovery.sh" "$tmp/go-test" TestAcceleratorIntegratedRoutingKind; then
+  fail "mandatory-test-discovery"
+fi
 
 echo "accelerator-desktop-provision-kind: passed" >&2
