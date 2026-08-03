@@ -60,7 +60,8 @@ func (l *SecretDemandLease) TrySession() (*SessionLease, bool) {
 	default:
 	}
 	s.sessionLeaseCount++
-	return &SessionLease{coordinator: l.coordinator, slot: s, leaseEpoch: s.sessionLeaseEpoch, session: s.session}, true
+	state := &sessionLeaseState{coordinator: l.coordinator, slot: s, leaseEpoch: s.sessionLeaseEpoch, session: s.session, revoked: s.sessionLeaseRevoked, closedCh: make(chan struct{})}
+	return &SessionLease{state: state}, true
 }
 
 func (l *SecretDemandLease) Close() {
@@ -83,11 +84,20 @@ func (l *SecretDemandLease) Close() {
 }
 
 type SessionLease struct {
+	state *sessionLeaseState
+}
+
+type sessionLeaseState struct {
 	coordinator *Coordinator
 	slot        *contextSlot
 	leaseEpoch  uint64
 	session     *ConnectedSession
+	revoked     <-chan struct{}
+	closedCh    chan struct{}
+	closed      atomic.Bool
 	closeOnce   sync.Once
+	claimMu     sync.Mutex
+	claimed     bool
 }
 
 func (*SessionLease) String() string { return "<accelerator session lease>" }
@@ -98,20 +108,64 @@ func (*SessionLease) MarshalJSON() ([]byte, error) {
 	return json.Marshal("<accelerator session lease>")
 }
 func (l *SessionLease) Session() *ConnectedSession {
-	if l == nil {
+	if l == nil || l.state == nil {
 		return nil
 	}
-	return l.session
+	return l.state.currentSession()
 }
 func (l *SessionLease) Close() {
-	if l == nil {
+	if l == nil || l.state == nil {
 		return
 	}
-	l.closeOnce.Do(func() {
-		if l.coordinator != nil {
-			l.coordinator.releaseSession(l)
+	state := l.state
+	state.closeOnce.Do(func() {
+		state.closed.Store(true)
+		close(state.closedCh)
+		if state.coordinator != nil {
+			state.coordinator.releaseSession(state)
 		}
 	})
+}
+
+func (s *sessionLeaseState) currentSession() *ConnectedSession {
+	if s == nil || s.closed.Load() || s.slot == nil || s.session == nil {
+		return nil
+	}
+	select {
+	case <-s.revoked:
+		return nil
+	default:
+	}
+	s.slot.mu.Lock()
+	current := !s.closed.Load() && s.slot.sessionLeaseEpoch == s.leaseEpoch && s.slot.state == CoordinatorActive && s.slot.session == s.session
+	s.slot.mu.Unlock()
+	if !current {
+		return nil
+	}
+	select {
+	case <-s.session.terminalStarted():
+		return nil
+	default:
+		return s.session
+	}
+}
+
+func (l *SessionLease) claimForSecretClient() (*ConnectedSession, <-chan struct{}, <-chan struct{}, bool) {
+	if l == nil || l.state == nil {
+		return nil, closedCoordinatorSignal(), closedCoordinatorSignal(), false
+	}
+	state := l.state
+	state.claimMu.Lock()
+	defer state.claimMu.Unlock()
+	if state.claimed {
+		return nil, state.revoked, state.closedCh, false
+	}
+	session := state.currentSession()
+	if session == nil {
+		return nil, state.revoked, state.closedCh, false
+	}
+	state.claimed = true
+	return session, state.revoked, state.closedCh, true
 }
 
 var coordinatorClosedSignal = func() <-chan struct{} {

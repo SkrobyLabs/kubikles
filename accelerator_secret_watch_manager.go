@@ -12,17 +12,18 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
+	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/server"
 )
 
 const (
-	secretWatcherConnected                   = "connected"
-	secretWatcherReconnecting                = "reconnecting"
-	secretWatchUnavailable                   = "watch_unavailable"
-	secretWatchRVExpired                     = "resource_version_expired"
-	secretWatchMalformed                     = "malformed_watch_event"
+	secretWatcherConnected                   = acceleratorsecret.WatchStatusConnected
+	secretWatcherReconnecting                = acceleratorsecret.WatchStatusReconnecting
+	secretWatchUnavailable                   = acceleratorsecret.WatchErrorUnavailable
+	secretWatchRVExpired                     = acceleratorsecret.WatchErrorResourceVersionExpired
+	secretWatchMalformed                     = acceleratorsecret.WatchErrorMalformed
 	acceleratorSecretWatchMaxSpecsPerSession = 128
 )
 
@@ -183,14 +184,14 @@ func (m *AcceleratorSecretWatchManager) emitFor(stream *secretWatchStream, name 
 }
 
 func (m *AcceleratorSecretWatchManager) emitStatus(stream *secretWatchStream, status string) {
-	m.emitFor(stream, "watcher-status", AcceleratorSecretWatcherStatus{WatcherSpecID: stream.id, Status: status})
+	m.emitFor(stream, acceleratorsecret.EventWatcherStatus, AcceleratorSecretWatcherStatus{WatcherSpecID: stream.id, Status: status})
 }
 
 func (m *AcceleratorSecretWatchManager) emitRestart(stream *secretWatchStream, code string) {
 	if stream.ctx.Err() != nil {
 		return
 	}
-	accepted := m.emitFor(stream, "watcher-error", AcceleratorSecretWatcherError{WatcherSpecID: stream.id, Code: code, Recoverable: true})
+	accepted := m.emitFor(stream, acceleratorsecret.EventWatcherError, AcceleratorSecretWatcherError{WatcherSpecID: stream.id, Code: code, Recoverable: true})
 	m.emitStatus(stream, secretWatcherReconnecting)
 	if accepted && m.logger != nil {
 		switch code {
@@ -278,9 +279,9 @@ func (m *AcceleratorSecretWatchManager) consumeWatch(stream *secretWatchStream, 
 				if stream.spec.excludeHelmReleases && string(secret.Type) == k8s.HelmReleaseSecretType {
 					continue
 				}
-				m.emitFor(stream, "resource-event", AcceleratorSecretResourceEvent{
+				m.emitFor(stream, acceleratorsecret.EventResource, AcceleratorSecretResourceEvent{
 					Type:          string(event.Type),
-					ResourceType:  "secrets",
+					ResourceType:  acceleratorsecret.SecretResourceType,
 					Namespace:     secret.Namespace,
 					WatcherSpecID: stream.id,
 					Resource:      projectAcceleratorSecretListItem(k8s.ProjectSecretListItem(secret)),

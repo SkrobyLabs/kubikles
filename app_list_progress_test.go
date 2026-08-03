@@ -50,11 +50,19 @@ func TestListProgressRequestCorrelation(t *testing.T) {
 	if _, err := app.acceleratorSecretsMetadata("accelerator-request", "accelerator", k8s.SecretListOptions{ExcludeHelmReleases: true}); err != nil {
 		t.Fatal(err)
 	}
-	if len(progress) != 4 || progress[2].RequestID != "direct-request" || progress[3].RequestID != "accelerator-request" {
+	if len(progress) != 3 || progress[2].RequestID != "direct-request" {
 		t.Fatalf("direct/Accelerator progress = %#v", progress)
 	}
-	if progress[2].ResourceType != "secrets" || progress[3].ResourceType != "secrets" {
+	if progress[2].ResourceType != "secrets" {
 		t.Fatalf("resource correlation = %#v", progress)
+	}
+	for _, update := range progress {
+		if update.RequestID == "accelerator-request" {
+			t.Fatalf("private Accelerator list emitted App progress: %#v", progress)
+		}
+	}
+	if stats := app.listRequestManager.GetStats(); stats.Completed != 2 || stats.Pending != 0 {
+		t.Fatalf("private Accelerator request lifecycle = %#v", stats)
 	}
 }
 

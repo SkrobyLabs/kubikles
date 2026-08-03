@@ -667,49 +667,65 @@ func TestAcceleratorWebSocketBareQueryDoesNotPublishSession(t *testing.T) {
 	}
 }
 
-func TestAcceleratorWebSocketOversizedInboundAndDiscard(t *testing.T) {
-	fixture := newAcceleratorWebSocketFixture(t)
-	connection, response, err := dialAccelerator(t, fixture.url, nil, fixture.creatorHeader())
-	if err != nil {
-		t.Fatal(err)
-	}
-	closeDialResponse(response)
-	defer connection.Close()
-	_, _ = readConnectedEvent(t, connection)
-	if err := connection.WriteMessage(websocket.TextMessage, []byte(`{"ignored":true}`)); err != nil {
-		t.Fatal(err)
-	}
-	fixture.registry.EmitEvent("after-inbound", "safe")
-	_ = connection.SetReadDeadline(time.Now().Add(time.Second))
-	var event Event
-	if err := connection.ReadJSON(&event); err != nil || event.Name != "after-inbound" {
-		t.Fatalf("discard/event = %+v err=%v", event, err)
-	}
-	sibling, siblingResponse, err := dialAccelerator(t, fixture.url, fixture.browserProtocols(fixture.browserBearer), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer sibling.Close()
-	closeDialResponse(siblingResponse)
-	_, siblingConnected := readConnectedEvent(t, sibling)
-	if err := connection.WriteMessage(websocket.TextMessage, bytes.Repeat([]byte("x"), int(AcceleratorSocketReadLimit)+1)); err != nil {
-		t.Fatal(err)
-	}
-	waitAccelerator(t, "oversized disconnect", func() bool {
-		_, active, _ := fixture.registry.snapshot(fixture.creator.context.SessionID)
-		return !active
+func TestAcceleratorWebSocketInvalidAndOversizedInboundClose(t *testing.T) {
+	t.Run("unknown application frame", func(t *testing.T) {
+		fixture := newAcceleratorWebSocketFixture(t)
+		connection, response, err := dialAccelerator(t, fixture.url, nil, fixture.creatorHeader())
+		if err != nil {
+			t.Fatal(err)
+		}
+		closeDialResponse(response)
+		defer connection.Close()
+		_, _ = readConnectedEvent(t, connection)
+		if err := connection.WriteMessage(websocket.TextMessage, []byte(`{"ignored":true}`)); err != nil {
+			t.Fatal(err)
+		}
+		_ = connection.SetReadDeadline(time.Now().Add(time.Second))
+		if _, _, err := connection.ReadMessage(); err == nil {
+			t.Fatal("unknown inbound frame remained connected")
+		}
+		waitAccelerator(t, "invalid inbound disconnect", func() bool {
+			_, active, _ := fixture.registry.snapshot(fixture.creator.context.SessionID)
+			return !active
+		})
 	})
-	fixture.registry.EmitEvent("oversized-sibling-probe", "safe")
-	_ = sibling.SetReadDeadline(time.Now().Add(time.Second))
-	if err := sibling.ReadJSON(&event); err != nil || event.Name != "oversized-sibling-probe" {
-		t.Fatalf("oversized sibling event=%+v err=%v", event, err)
-	}
-	if got := fmt.Sprint(fixture.observer.eventsForSession(fixture.creator.context.SessionID)); got != "[connect:1 disconnect:1]" {
-		t.Fatalf("oversized creator callbacks=%s", got)
-	}
-	if got := fmt.Sprint(fixture.observer.eventsForSession(siblingConnected.SessionID)); got != "[connect:1]" {
-		t.Fatalf("oversized sibling callbacks=%s", got)
-	}
+
+	t.Run("oversized application frame", func(t *testing.T) {
+		fixture := newAcceleratorWebSocketFixture(t)
+		connection, response, err := dialAccelerator(t, fixture.url, nil, fixture.creatorHeader())
+		if err != nil {
+			t.Fatal(err)
+		}
+		closeDialResponse(response)
+		defer connection.Close()
+		_, _ = readConnectedEvent(t, connection)
+		sibling, siblingResponse, err := dialAccelerator(t, fixture.url, fixture.browserProtocols(fixture.browserBearer), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer sibling.Close()
+		closeDialResponse(siblingResponse)
+		_, siblingConnected := readConnectedEvent(t, sibling)
+		if err := connection.WriteMessage(websocket.TextMessage, bytes.Repeat([]byte("x"), int(AcceleratorSocketReadLimit)+1)); err != nil {
+			t.Fatal(err)
+		}
+		waitAccelerator(t, "oversized disconnect", func() bool {
+			_, active, _ := fixture.registry.snapshot(fixture.creator.context.SessionID)
+			return !active
+		})
+		fixture.registry.EmitEvent("oversized-sibling-probe", "safe")
+		_ = sibling.SetReadDeadline(time.Now().Add(time.Second))
+		var event Event
+		if err := sibling.ReadJSON(&event); err != nil || event.Name != "oversized-sibling-probe" {
+			t.Fatalf("oversized sibling event=%+v err=%v", event, err)
+		}
+		if got := fmt.Sprint(fixture.observer.eventsForSession(fixture.creator.context.SessionID)); got != "[connect:1 disconnect:1]" {
+			t.Fatalf("oversized creator callbacks=%s", got)
+		}
+		if got := fmt.Sprint(fixture.observer.eventsForSession(siblingConnected.SessionID)); got != "[connect:1]" {
+			t.Fatalf("oversized sibling callbacks=%s", got)
+		}
+	})
 }
 
 func TestAcceleratorWebSocketExactPathEncoding(t *testing.T) {

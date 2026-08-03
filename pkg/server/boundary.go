@@ -151,7 +151,7 @@ func (s *Server) acceleratorHandler() http.Handler {
 				s.writeError(w, http.StatusServiceUnavailable, "unavailable")
 				return
 			}
-			s.options.AcceleratorWebSocketAuthenticator.handleAdmitted(w, r, release)
+			s.options.AcceleratorWebSocketAuthenticator.handleAdmitted(w, r, release, s.acceleratorRPC)
 		default:
 			http.NotFound(w, r)
 		}

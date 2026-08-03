@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
 )
 
@@ -59,12 +60,15 @@ type fakeAcceleratorConn struct {
 	readDeadlineChanged  chan struct{}
 	closed               chan struct{}
 	closeOnce            sync.Once
+	closeEntered         chan struct{}
+	closeEnteredOnce     sync.Once
+	blockClose           <-chan struct{}
 	writers              atomic.Int32
 	maxWriters           atomic.Int32
 }
 
 func newFakeAcceleratorConn() *fakeAcceleratorConn {
-	return &fakeAcceleratorConn{read: make(chan fakeAcceleratorRead, 8), readDeadlineChanged: make(chan struct{}), closed: make(chan struct{})}
+	return &fakeAcceleratorConn{read: make(chan fakeAcceleratorRead, 8), readDeadlineChanged: make(chan struct{}), closed: make(chan struct{}), closeEntered: make(chan struct{})}
 }
 
 func (c *fakeAcceleratorConn) SetWriteDeadline(deadline time.Time) error {
@@ -212,6 +216,10 @@ func (c *fakeAcceleratorConn) ReadMessage() (int, []byte, error) {
 }
 
 func (c *fakeAcceleratorConn) Close() error {
+	c.closeEnteredOnce.Do(func() { close(c.closeEntered) })
+	if c.blockClose != nil {
+		<-c.blockClose
+	}
 	c.closeOnce.Do(func() { close(c.closed) })
 	return nil
 }
@@ -825,6 +833,93 @@ func TestAcceleratorSocketLivenessBounds(t *testing.T) {
 		t.Fatalf("concurrent data/control writers = %d", conn.maxWriters.Load())
 	}
 	closeAcceleratorSocket(t, socket)
+}
+
+func TestAcceleratorWriterFailureSynchronouslyFencesRPC(t *testing.T) {
+	releaseWorker := make(chan struct{})
+	caller := &recordingAcceleratorRPCCaller{entered: make(chan acceleratorRPCCall, 1), release: releaseWorker, result: "worker-private-result"}
+	dispatcher := NewAcceleratorRPCDispatcher(caller, MethodAuthorizerFunc(func(agent.AuthenticatedCallContext, string) bool { return true }))
+	registry := newAcceleratorSessionRegistry("instance", nil, acceleratorTestConfig())
+	connection := newFakeAcceleratorConn()
+	releaseClose := make(chan struct{})
+	connection.blockClose = releaseClose
+	callContext := acceleratorTestCall("writer-failure-rpc")
+	registration, ok := registry.prepareRPCRegistration(callContext, connection, dispatcher)
+	if !ok {
+		t.Fatal("RPC registration rejected")
+	}
+	socket, ok := registry.completeRegistration(registration)
+	if !ok {
+		t.Fatal("RPC registration did not bootstrap")
+	}
+	id, _ := acceleratorsecret.CallID("AAAAAAAAAAAAAAAAAAAAAA", 1)
+	request, _ := acceleratorsecret.EncodeGetSecretYAMLCall(id, "namespace", "name")
+	connection.read <- fakeAcceleratorRead{messageType: websocket.TextMessage, payload: request}
+	select {
+	case <-caller.entered:
+	case <-time.After(time.Second):
+		t.Fatal("RPC worker was not admitted")
+	}
+
+	connection.mu.Lock()
+	connection.writeErr = errors.New("forced post-bootstrap write failure")
+	connection.blockWrite = make(chan struct{})
+	connection.mu.Unlock()
+	if !socket.enqueue(Event{Type: "event", Name: "force-writer-failure"}) {
+		t.Fatal("failure trigger was not queued")
+	}
+	waitAccelerator(t, "failed writer entered", func() bool { return connection.writers.Load() == 1 })
+	acceptedSensitive := []byte(`{"type":"result","result":"accepted-private-marker"}`)
+	if !socket.enqueueResult(acceptedSensitive) {
+		t.Fatal("pre-fence concurrent result was not admitted")
+	}
+	close(connection.blockWrite)
+	select {
+	case <-connection.closeEntered:
+	case <-time.After(time.Second):
+		t.Fatal("writer failure did not reach delayed network close")
+	}
+	if socket.eligible.Load() {
+		t.Fatal("writer failure left generation eligible")
+	}
+	if !errors.Is(socket.rpc.err(), errAcceleratorRPCUnavailable) {
+		t.Fatalf("writer failure RPC state=%v", socket.rpc.err())
+	}
+	socket.enqueueMu.Lock()
+	accepting, queued := socket.accepting, len(socket.queue)
+	socket.enqueueMu.Unlock()
+	if accepting || queued != 0 || !allAcceleratorBytesZero(acceptedSensitive) {
+		t.Fatalf("writer fence accepting=%v queue=%d sensitive=%q", accepting, queued, acceptedSensitive)
+	}
+	rejectedSensitive := []byte(`{"type":"result","result":"rejected-private-marker"}`)
+	if socket.enqueueResult(rejectedSensitive) || !allAcceleratorBytesZero(rejectedSensitive) {
+		t.Fatalf("post-fence sensitive result accepted/retained: %q", rejectedSensitive)
+	}
+	secondID, _ := acceleratorsecret.CallID("AAAAAAAAAAAAAAAAAAAAAA", 2)
+	second, _ := acceleratorsecret.EncodeGetSecretYAMLCall(secondID, "namespace", "second")
+	if socket.rpc.handle(second) || caller.count() != 1 {
+		t.Fatal("writer failure admitted a later RPC")
+	}
+	close(releaseWorker)
+	socket.rpc.waitWorkers()
+	if len(socket.queue) != 0 {
+		t.Fatalf("late worker refilled writerless queue: %d", len(socket.queue))
+	}
+	close(releaseClose)
+	select {
+	case <-socket.pumpsDone:
+	case <-time.After(time.Second):
+		t.Fatal("writer failure pumps did not complete")
+	}
+}
+
+func allAcceleratorBytesZero(payload []byte) bool {
+	for _, value := range payload {
+		if value != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func TestAcceleratorSocketElapsedLivenessIsolation(t *testing.T) {

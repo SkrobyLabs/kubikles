@@ -223,7 +223,7 @@ func (c *Coordinator) startBrowserHandoffLocked(s *contextSlot) {
 	}
 	hold := s.browserHold
 	handoff := browserHandoffFence{contextEpoch: s.contextEpoch, workload: s.workload, session: s.session, hold: hold}
-	s.sessionLeaseEpoch++
+	s.advanceSessionLeaseEpochLocked(false)
 	s.signalLocked()
 	c.startWorkerLocked(s, CoordinatorBrowserOwned, func(ctx context.Context, fence operationFence) {
 		exact := handoff

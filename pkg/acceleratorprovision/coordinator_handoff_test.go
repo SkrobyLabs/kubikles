@@ -1074,6 +1074,7 @@ type cleanupBlockingSessionSocket struct {
 }
 
 func (*cleanupBlockingSessionSocket) SetWriteDeadline(time.Time) error { return nil }
+func (*cleanupBlockingSessionSocket) WriteMessage(int, []byte) error   { return nil }
 func (*cleanupBlockingSessionSocket) WriteControl(int, []byte, time.Time) error {
 	return nil
 }

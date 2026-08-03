@@ -1,6 +1,7 @@
 package acceleratorprovision
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -12,6 +13,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"kubikles/pkg/acceleratorsecret"
 )
 
 const (
@@ -40,12 +43,6 @@ type browserLaunchWaiter struct {
 	updates   chan browserLaunchStatus
 	confirmed bool
 	ended     bool
-}
-
-type browserLaunchControlEnvelope struct {
-	Type string          `json:"type"`
-	Name string          `json:"name"`
-	Data json.RawMessage `json:"data"`
 }
 
 type browserLaunchControlData struct {
@@ -111,13 +108,12 @@ func (s *ConnectedSession) closeBrowserLaunchWaiters() {
 	s.launchMu.Unlock()
 }
 
-func (s *ConnectedSession) interceptBrowserLaunchControl(payload []byte) (handled, valid bool) {
-	var envelope browserLaunchControlEnvelope
-	if json.Unmarshal(payload, &envelope) != nil || envelope.Type != "event" || envelope.Name != "browser-launch" {
+func (s *ConnectedSession) interceptBrowserLaunchControl(envelope acceleratorsecret.EventFrame) (handled, valid bool) {
+	if envelope.Name != "browser-launch" {
 		return false, true
 	}
-	var control browserLaunchControlData
-	if json.Unmarshal(envelope.Data, &control) != nil || !canonicalLaunchControlKey(control.Receipt) || (control.Status != "confirmed" && control.Status != "ended") {
+	control, ok := decodeBrowserLaunchControl(envelope.Data)
+	if !ok || !canonicalLaunchControlKey(control.Receipt) || (control.Status != "confirmed" && control.Status != "ended") {
 		return true, false
 	}
 	s.launchMu.Lock()
@@ -140,6 +136,43 @@ func (s *ConnectedSession) interceptBrowserLaunchControl(payload []byte) (handle
 	waiter.ended = true
 	waiter.updates <- browserLaunchEnded
 	return true, true
+}
+
+func decodeBrowserLaunchControl(payload []byte) (browserLaunchControlData, bool) {
+	var control browserLaunchControlData
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	token, err := decoder.Token()
+	if err != nil || token != json.Delim('{') {
+		return control, false
+	}
+	fields := make(map[string]json.RawMessage, 2)
+	for decoder.More() {
+		token, err = decoder.Token()
+		name, ok := token.(string)
+		if err != nil || !ok || (name != "receipt" && name != "status") {
+			return control, false
+		}
+		if _, duplicate := fields[name]; duplicate {
+			return control, false
+		}
+		var raw json.RawMessage
+		if decoder.Decode(&raw) != nil {
+			return control, false
+		}
+		fields[name] = raw
+	}
+	if token, err = decoder.Token(); err != nil || token != json.Delim('}') || len(fields) != 2 {
+		return control, false
+	}
+	if err = decoder.Decode(&struct{}{}); err != io.EOF {
+		return control, false
+	}
+	if json.Unmarshal(fields["receipt"], &control.Receipt) != nil || json.Unmarshal(fields["status"], &control.Status) != nil {
+		return control, false
+	}
+	receipt, _ := json.Marshal(control.Receipt)
+	status, _ := json.Marshal(control.Status)
+	return control, bytes.Equal(receipt, fields["receipt"]) && bytes.Equal(status, fields["status"])
 }
 
 func (s *ConnectedSession) isExactCurrentCreatorSession() bool {

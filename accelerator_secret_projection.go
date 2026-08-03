@@ -2,12 +2,13 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
+	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
+	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/server"
@@ -106,7 +107,10 @@ func acceleratorHideHelmOption(args []json.RawMessage) (bool, error) {
 }
 
 func (a *App) acceleratorSecretData(namespace, name string) ([]k8s.DataEntry, error) {
-	entries, err := a.GetSecretData(namespace, name)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	entries, err := a.k8sClient.GetSecretData(namespace, name)
 	if err != nil {
 		return nil, err
 	}
@@ -116,31 +120,13 @@ func (a *App) acceleratorSecretData(namespace, name string) ([]k8s.DataEntry, er
 	return projected, nil
 }
 
-// acceleratorSecretListItem is a closed wire DTO. The shared ordinary
-// SecretMetadata contract intentionally remains richer for desktop callers.
-type acceleratorSecretListItem struct {
-	Metadata struct {
-		Name              string      `json:"name"`
-		Namespace         string      `json:"namespace"`
-		UID               string      `json:"uid"`
-		CreationTimestamp metav1.Time `json:"creationTimestamp"`
-	} `json:"metadata"`
-	Type     string `json:"type"`
-	DataKeys int    `json:"dataKeys"`
-}
+type acceleratorSecretListItem = acceleratorsecret.SecretListItem
 
 // projectAcceleratorSecretListItem is the single closed 20A projection used by
 // both list responses and 20B watch events. The ordinary desktop DTO remains
 // untouched and may retain its richer metadata fields.
 func projectAcceleratorSecretListItem(item k8s.SecretListItem) acceleratorSecretListItem {
-	var projected acceleratorSecretListItem
-	projected.Metadata.Name = item.Metadata.Name
-	projected.Metadata.Namespace = item.Metadata.Namespace
-	projected.Metadata.UID = item.Metadata.UID
-	projected.Metadata.CreationTimestamp = item.Metadata.CreationTimestamp
-	projected.Type = item.Type
-	projected.DataKeys = item.DataKeys
-	return projected
+	return acceleratorsecret.ProjectSecretListItem(item)
 }
 
 func (a *App) acceleratorSecretYAML(namespace, name string) (string, error) {
@@ -151,7 +137,23 @@ func (a *App) acceleratorSecretYAML(namespace, name string) (string, error) {
 }
 
 func (a *App) acceleratorSecretsMetadata(requestID, namespace string, options k8s.SecretListOptions) ([]acceleratorSecretListItem, error) {
-	items, err := a.listSecretsMetadataWithOptions(requestID, namespace, options)
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+	var items []k8s.SecretListItem
+	var err error
+	if requestID != "" {
+		ctx, sequence := a.listRequestManager.StartRequest(requestID)
+		defer a.listRequestManager.CompleteRequest(requestID, sequence)
+		items, err = a.k8sClient.ListSecretsMetadataWithOptions(ctx, namespace, options, nil)
+	} else {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		items, err = a.k8sClient.ListSecretsMetadataWithOptions(ctx, namespace, options)
+	}
+	if err == k8s.ErrRequestCancelled {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}

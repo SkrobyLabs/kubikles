@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
 	"kubikles/pkg/server"
 )
@@ -18,6 +19,7 @@ var errSessionCloseTimeout = errors.New("accelerator session close timeout")
 
 type sessionSocket interface {
 	SetWriteDeadline(time.Time) error
+	WriteMessage(int, []byte) error
 	WriteControl(int, []byte, time.Time) error
 	SetPongHandler(func(string) error)
 	SetReadLimit(int64)
@@ -36,6 +38,7 @@ type ConnectedSession struct {
 	done           chan struct{}
 	terminalStart  chan struct{}
 	readerDone     chan struct{}
+	writerDone     chan struct{}
 	terminalOnce   sync.Once
 	mu             sync.RWMutex
 	reason         SessionEndReason
@@ -43,7 +46,8 @@ type ConnectedSession struct {
 	resumeClaimed  bool
 	closeRequested bool
 	resumeStop     chan struct{}
-	frames         chan []byte
+	arbiter        *sessionFrameArbiter
+	outbound       chan []byte
 	launchMu       sync.Mutex
 	launchWaiters  map[string]*browserLaunchWaiter
 	candidateNonce string
@@ -92,15 +96,17 @@ func newConnectedSessionWithCandidateFence(receipt *workloadReceipt, info server
 		capabilities: append([]agent.Capability(nil), info.Capabilities...),
 		receipt:      receipt,
 		clock:        clock,
-		socket:       socket, tunnel: activeTunnel, done: make(chan struct{}), terminalStart: make(chan struct{}), readerDone: make(chan struct{}), frames: make(chan []byte, 64),
+		socket:       socket, tunnel: activeTunnel, done: make(chan struct{}), terminalStart: make(chan struct{}), readerDone: make(chan struct{}), writerDone: make(chan struct{}), outbound: make(chan []byte, acceleratorsecret.OutboundSocketSlots),
 		launchWaiters:  make(map[string]*browserLaunchWaiter),
 		candidateNonce: candidateNonce, candidatePong: candidatePong,
 	}
 	session.self = session
+	session.arbiter = newSessionFrameArbiter(session)
 	if receipt != nil && receipt.owner != nil {
 		session.ownerState = receipt.owner.connectorState
 	}
 	go session.pump()
+	go session.writePump()
 	go func() {
 		select {
 		case <-activeTunnel.Done():
@@ -231,13 +237,16 @@ func (s *ConnectedSession) cleanup(normal bool) {
 			if contextDeadline, ok := cleanupCtx.Deadline(); ok && contextDeadline.Before(deadline) {
 				deadline = contextDeadline
 			}
-			_ = s.socket.SetWriteDeadline(deadline)
 			_ = s.socket.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), deadline)
 		}
 		_ = s.socket.Close()
 	}
 	select {
 	case <-s.readerDone:
+	case <-cleanupCtx.Done():
+	}
+	select {
+	case <-s.writerDone:
 	case <-cleanupCtx.Done():
 	}
 	if s.tunnel != nil {
@@ -326,11 +335,21 @@ func (s *ConnectedSession) detachCreatorForBrowser(ctx context.Context) (*browse
 	cleanupCtx, cancelCleanup := context.WithTimeout(context.Background(), closeTimeout)
 	defer cancelCleanup()
 	deadline := time.Now().Add(closeTimeout)
-	_ = s.socket.SetWriteDeadline(deadline)
 	_ = s.socket.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), deadline)
 	_ = s.socket.Close()
 	select {
 	case <-s.readerDone:
+	case <-cleanupCtx.Done():
+		activeTunnel := s.tunnel
+		s.tunnel = nil
+		activeTunnel.Stop()
+		_ = activeTunnel.Wait(cleanupCtx)
+		_ = credential.closeAndDestroy(cleanupCtx)
+		close(s.done)
+		return nil, false
+	}
+	select {
+	case <-s.writerDone:
 	case <-cleanupCtx.Done():
 		activeTunnel := s.tunnel
 		s.tunnel = nil
@@ -416,29 +435,108 @@ func (s *ConnectedSession) claimResumeWithIdle(workload *ProvisionedWorkload, id
 func (s *ConnectedSession) pump() {
 	defer close(s.readerDone)
 	defer s.closeBrowserLaunchWaiters()
-	s.socket.SetReadLimit(server.AcceleratorSocketReadLimit)
+	defer s.arbiter.close()
+	s.socket.SetReadLimit(int64(acceleratorsecret.MaxCreatorResponseFrameBytes))
 	for {
 		messageType, payload, err := s.socket.ReadMessage()
 		if err != nil {
 			s.beginTermination(SessionPeerClosed, false)
 			return
 		}
-		if messageType != websocket.TextMessage || len(payload) > int(server.AcceleratorSocketReadLimit) || !json.Valid(payload) {
+		if messageType != websocket.TextMessage || len(payload) > acceleratorsecret.MaxCreatorResponseFrameBytes {
 			s.beginTermination(SessionProtocolFailed, false)
 			return
 		}
-		if handled, valid := s.interceptBrowserLaunchControl(payload); handled {
-			if !valid {
+		frame, err := acceleratorsecret.DecodeServerFrame(payload)
+		clear(payload)
+		if err != nil {
+			s.beginTermination(SessionProtocolFailed, false)
+			return
+		}
+		if frame.Event != nil {
+			if handled, valid := s.interceptBrowserLaunchControl(*frame.Event); handled {
+				clearServerFrame(&frame)
+				if !valid {
+					s.beginTermination(SessionProtocolFailed, false)
+					return
+				}
+				continue
+			}
+			switch frame.Event.Name {
+			case acceleratorsecret.EventResource, acceleratorsecret.EventWatcherStatus, acceleratorsecret.EventWatcherError:
+			default:
+				clearServerFrame(&frame)
 				s.beginTermination(SessionProtocolFailed, false)
 				return
 			}
-			continue
 		}
-		select {
-		case s.frames <- append([]byte(nil), payload...):
-		default:
+		if !s.arbiter.route(frame) {
 			s.beginTermination(SessionProtocolFailed, false)
 			return
 		}
 	}
+}
+
+func (s *ConnectedSession) writePump() {
+	defer close(s.writerDone)
+	defer s.clearOutbound()
+	for {
+		select {
+		case <-s.terminalStart:
+			return
+		default:
+		}
+		select {
+		case <-s.terminalStart:
+			return
+		case payload := <-s.outbound:
+			deadline := time.Now().Add(server.AcceleratorSocketWriteTimeout)
+			if s.socket.SetWriteDeadline(deadline) != nil || s.socket.WriteMessage(websocket.TextMessage, payload) != nil {
+				clear(payload)
+				s.beginTermination(SessionPeerClosed, false)
+				return
+			}
+			clear(payload)
+		}
+	}
+}
+
+func (s *ConnectedSession) clearOutbound() {
+	for {
+		select {
+		case payload := <-s.outbound:
+			clear(payload)
+		default:
+			return
+		}
+	}
+}
+
+func (s *ConnectedSession) sendApplicationFrame(payload []byte) acceleratorsecret.SecretClientReason {
+	if s == nil || len(payload) == 0 || len(payload) > acceleratorsecret.MaxCreatorRequestFrameBytes || !json.Valid(payload) {
+		return acceleratorsecret.ReasonProtocol
+	}
+	select {
+	case <-s.terminalStart:
+		return acceleratorsecret.ReasonSessionUnavailable
+	default:
+	}
+	owned := append([]byte(nil), payload...)
+	select {
+	case <-s.terminalStart:
+		clear(owned)
+		return acceleratorsecret.ReasonSessionUnavailable
+	case s.outbound <- owned:
+		return ""
+	default:
+		clear(owned)
+		return acceleratorsecret.ReasonCapacity
+	}
+}
+
+func (s *ConnectedSession) attachSecretFrameHandler(handler sessionFrameHandler) (func(), bool) {
+	if s == nil || s.self != s || s.arbiter == nil {
+		return func() {}, false
+	}
+	return s.arbiter.attach(handler)
 }

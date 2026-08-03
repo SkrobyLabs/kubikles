@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/client-go/kubernetes/fake"
+	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
 	"kubikles/pkg/server"
 )
@@ -614,7 +615,7 @@ func TestResumeQueuedGracefulCloseFailsCandidateAndRetriesAboveFence(t *testing.
 }
 
 func TestCandidateRetainsApplicationFrameBeforeMatchingPong(t *testing.T) {
-	applicationFrame := []byte(`{"type":"event","name":"application","data":{"value":7}}`)
+	applicationFrame := []byte(`{"type":"event","name":"watcher-status","data":{"watcherSpecId":"safe","status":"connected"}}`)
 	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
 	protocol := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
@@ -652,10 +653,22 @@ func TestCandidateRetainsApplicationFrameBeforeMatchingPong(t *testing.T) {
 	if result.Session == nil || result.Session.Identity().Generation != 2 {
 		t.Fatalf("result=%#v", result)
 	}
+	retained := make(chan string, 1)
+	detach, attached := result.Session.attachSecretFrameHandler(func(frame acceleratorsecret.ServerFrame) bool {
+		if frame.Event == nil {
+			return false
+		}
+		retained <- frame.Event.Name + "|" + string(frame.Event.Data)
+		return true
+	})
+	if !attached {
+		t.Fatal("application handler did not attach")
+	}
+	defer detach()
 	select {
-	case frame := <-result.Session.frames:
-		if !reflect.DeepEqual(frame, applicationFrame) {
-			t.Fatalf("retained frame=%s want=%s", frame, applicationFrame)
+	case frame := <-retained:
+		if frame != acceleratorsecret.EventWatcherStatus+`|{"watcherSpecId":"safe","status":"connected"}` {
+			t.Fatalf("retained frame=%s", frame)
 		}
 	case <-time.After(time.Second):
 		t.Fatal("application frame was not retained by candidate pump")

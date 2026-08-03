@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -16,6 +17,7 @@ import (
 
 	"k8s.io/client-go/rest"
 	"kubikles/pkg/acceleratorrelease"
+	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
 	"kubikles/pkg/server"
 )
@@ -835,7 +837,7 @@ func TestCoordinatorRedactionAndDirectOnlyNonRegression(t *testing.T) {
 		config:       &rest.Config{Host: "https://rest-config.invalid/private", BearerToken: hostile[0], UserAgent: hostile[1], TLSClientConfig: rest.TLSClientConfig{CAData: []byte(hostile[8])}},
 	}
 	hostile = append(hostile, services.snapshot.RESTConfig().Host)
-	session.frames <- []byte(hostile[7])
+	session.arbiter.route(acceleratorsecret.ServerFrame{Result: &acceleratorsecret.ResultFrame{Result: json.RawMessage(strconv.Quote(hostile[7]))}})
 	services.provisionHook = func(context.Context, int, Request) Result { return available(workload) }
 	services.connectHook = func(context.Context, int, *ProvisionedWorkload) ConnectResult {
 		return ConnectResult{Availability: Available, Session: session}

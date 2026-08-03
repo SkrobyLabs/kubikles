@@ -126,10 +126,11 @@ type contextSlot struct {
 	state  CoordinatorState
 	change chan struct{}
 
-	demandCount       int
-	sessionLeaseCount int
-	sessionLeaseEpoch uint64
-	demandSettled     bool
+	demandCount         int
+	sessionLeaseCount   int
+	sessionLeaseEpoch   uint64
+	sessionLeaseRevoked chan struct{}
+	demandSettled       bool
 
 	sweepAttempted       bool
 	mismatchRecreateUsed bool
@@ -156,7 +157,30 @@ type contextSlot struct {
 }
 
 func newContextSlot(name string, epoch uint64) *contextSlot {
-	return &contextSlot{contextName: name, contextEpoch: epoch, demandSettled: true, state: CoordinatorDirectOnly, change: make(chan struct{})}
+	return &contextSlot{contextName: name, contextEpoch: epoch, demandSettled: true, state: CoordinatorDirectOnly, change: make(chan struct{}), sessionLeaseRevoked: closedSessionLeaseSignal()}
+}
+
+func closedSessionLeaseSignal() chan struct{} {
+	signal := make(chan struct{})
+	close(signal)
+	return signal
+}
+
+func (s *contextSlot) advanceSessionLeaseEpochLocked(active bool) {
+	if s.sessionLeaseRevoked != nil {
+		select {
+		case <-s.sessionLeaseRevoked:
+		default:
+			close(s.sessionLeaseRevoked)
+		}
+	}
+	s.sessionLeaseEpoch++
+	s.sessionLeaseCount = 0
+	if active {
+		s.sessionLeaseRevoked = make(chan struct{})
+	} else {
+		s.sessionLeaseRevoked = closedSessionLeaseSignal()
+	}
 }
 
 func (s *contextSlot) signalLocked() {

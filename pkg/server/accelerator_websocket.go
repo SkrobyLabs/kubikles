@@ -68,10 +68,10 @@ func (a AcceleratorWebSocketAuthenticator) Handler(w http.ResponseWriter, r *htt
 		writeAcceleratorError(w, http.StatusServiceUnavailable, "unavailable")
 		return
 	}
-	a.handleAdmitted(w, r, release)
+	a.handleAdmitted(w, r, release, nil)
 }
 
-func (a AcceleratorWebSocketAuthenticator) handleAdmitted(w http.ResponseWriter, r *http.Request, release func()) {
+func (a AcceleratorWebSocketAuthenticator) handleAdmitted(w http.ResponseWriter, r *http.Request, release func(), dispatcher *AcceleratorRPCDispatcher) {
 	if r.Method != http.MethodGet || a.Registry == nil {
 		release()
 		http.NotFound(w, r)
@@ -103,7 +103,7 @@ func (a AcceleratorWebSocketAuthenticator) handleAdmitted(w http.ResponseWriter,
 				a.BrowserSessions.browserSocketPreparedLocked(identity.call.SessionID, generation)
 			})
 		} else {
-			registration, prepared = a.Registry.prepareRegistration(identity.call, conn)
+			registration, prepared = a.Registry.prepareRPCRegistration(identity.call, conn, dispatcher)
 		}
 		return prepared
 	}

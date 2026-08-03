@@ -73,8 +73,7 @@ func (c *Coordinator) startIdleLocked(s *contextSlot) {
 	if s == nil || s.state != CoordinatorActive || s.demandCount != 0 || s.sessionLeaseCount != 0 || s.session == nil || s.workload == nil {
 		return
 	}
-	s.sessionLeaseEpoch++
-	s.sessionLeaseCount = 0
+	s.advanceSessionLeaseEpochLocked(false)
 	s.signalLocked()
 	c.startWorkerLocked(s, CoordinatorDraining, func(ctx context.Context, fence operationFence) {
 		c.runIdleRelease(ctx, s, fence)
@@ -199,8 +198,7 @@ func (c *Coordinator) FenceContextSwitch(oldContext string) {
 	slot.operationEpoch++
 	slot.demandEpoch++
 	slot.demandCount = 0
-	slot.sessionLeaseEpoch++
-	slot.sessionLeaseCount = 0
+	slot.advanceSessionLeaseEpochLocked(false)
 	slot.state = CoordinatorClosed
 	workload := slot.workload
 	if wasAvailable {
@@ -258,8 +256,7 @@ func (c *Coordinator) Quiesce(context.Context) {
 		slot.operationEpoch++
 		slot.demandEpoch++
 		slot.demandCount = 0
-		slot.sessionLeaseEpoch++
-		slot.sessionLeaseCount = 0
+		slot.advanceSessionLeaseEpochLocked(false)
 		slot.state = CoordinatorClosed
 		if wasAvailable {
 			slot.signalLocked()

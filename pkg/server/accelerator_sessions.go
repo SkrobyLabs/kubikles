@@ -127,19 +127,23 @@ type acceleratorSocket struct {
 
 	registry *AcceleratorSessionRegistry
 	snapshot AcceleratorSessionSnapshot
+	rpc      *acceleratorRPCConnection
 	config   acceleratorSocketConfig
 }
 
 type acceleratorOutboundEvent struct {
-	event   Event
-	once    sync.Once
-	payload []byte
-	err     error
+	event     Event
+	once      sync.Once
+	payload   []byte
+	sensitive bool
+	err       error
 }
 
 func (e *acceleratorOutboundEvent) marshal() ([]byte, error) {
 	e.once.Do(func() {
-		e.payload, e.err = json.Marshal(e.event)
+		if e.payload == nil {
+			e.payload, e.err = json.Marshal(e.event)
+		}
 		if e.err != nil {
 			log.Print("Accelerator WebSocket outbound event serialization failed")
 		}
@@ -147,7 +151,14 @@ func (e *acceleratorOutboundEvent) marshal() ([]byte, error) {
 	return e.payload, e.err
 }
 
-func newAcceleratorSocket(r *AcceleratorSessionRegistry, conn acceleratorSocketConnection, snapshot AcceleratorSessionSnapshot) *acceleratorSocket {
+func (e *acceleratorOutboundEvent) clear() {
+	if e != nil && e.sensitive {
+		clear(e.payload)
+		e.payload = nil
+	}
+}
+
+func newAcceleratorSocket(r *AcceleratorSessionRegistry, conn acceleratorSocketConnection, snapshot AcceleratorSessionSnapshot, dispatcher *AcceleratorRPCDispatcher) *acceleratorSocket {
 	s := &acceleratorSocket{
 		conn:           conn,
 		queue:          make(chan *acceleratorOutboundEvent, AcceleratorSocketQueueSize),
@@ -161,6 +172,9 @@ func newAcceleratorSocket(r *AcceleratorSessionRegistry, conn acceleratorSocketC
 		registry:       r,
 		snapshot:       snapshot,
 		config:         r.config,
+	}
+	if dispatcher != nil {
+		s.rpc = dispatcher.attach(snapshot, s.enqueueResult, s.pumpsDone)
 	}
 	s.queue <- &acceleratorOutboundEvent{event: Event{Type: "event", Name: "connected", Data: AcceleratorConnectedEvent{
 		SessionID: snapshot.CallContext.SessionID, InstanceID: r.instanceID,
@@ -206,6 +220,15 @@ func (s *acceleratorSocket) enqueue(event Event) bool {
 	return s.enqueueOutbound(&acceleratorOutboundEvent{event: event})
 }
 
+func (s *acceleratorSocket) enqueueResult(payload []byte) bool {
+	outbound := &acceleratorOutboundEvent{payload: payload, sensitive: true}
+	if s.enqueueOutbound(outbound) {
+		return true
+	}
+	outbound.clear()
+	return false
+}
+
 func (s *acceleratorSocket) enqueueOutbound(event *acceleratorOutboundEvent) bool {
 	s.enqueueMu.Lock()
 	if !s.accepting {
@@ -226,6 +249,9 @@ func (s *acceleratorSocket) enqueueOutbound(event *acceleratorOutboundEvent) boo
 
 func (s *acceleratorSocket) requestClose(close acceleratorSocketClose) {
 	s.eligible.Store(false)
+	if s.rpc != nil {
+		s.rpc.fail(errAcceleratorRPCUnavailable)
+	}
 	s.enqueueMu.Lock()
 	if s.accepting {
 		s.accepting = false
@@ -266,13 +292,21 @@ func (s *acceleratorSocket) hardCloseAfter(timeout time.Duration) {
 
 func (s *acceleratorSocket) writer() {
 	defer s.wg.Done()
+	defer s.clearPendingOutbound()
 	<-s.startCh
 	if s.cancelled.Load() {
 		s.bootstrapDone <- false
 		return
 	}
 	connected := <-s.queue
-	if s.conn.SetWriteDeadline(s.config.now().Add(s.config.writeTimeout)) != nil || s.writeEvent(connected) != nil {
+	if s.conn.SetWriteDeadline(s.config.now().Add(s.config.writeTimeout)) != nil {
+		connected.clear()
+		s.fenceWriterFailure()
+		s.bootstrapDone <- false
+		return
+	}
+	if s.writeEvent(connected) != nil {
+		s.fenceWriterFailure()
 		s.bootstrapDone <- false
 		return
 	}
@@ -294,19 +328,48 @@ func (s *acceleratorSocket) writer() {
 			return
 		case event := <-s.queue:
 			if err := s.conn.SetWriteDeadline(s.config.now().Add(s.config.writeTimeout)); err != nil {
+				event.clear()
+				s.fenceWriterFailure()
 				return
 			}
 			if err := s.writeEvent(event); err != nil {
+				s.fenceWriterFailure()
 				return
 			}
 		case <-ping.C:
 			deadline := s.config.now().Add(s.config.writeTimeout)
 			if err := s.conn.SetWriteDeadline(deadline); err != nil {
+				s.fenceWriterFailure()
 				return
 			}
 			if err := s.conn.WriteControl(websocket.PingMessage, nil, deadline); err != nil {
+				s.fenceWriterFailure()
 				return
 			}
+		}
+	}
+}
+
+// fenceWriterFailure closes every producer-side admission gate before the
+// writer drains sensitive ownership or begins its bounded network close.
+func (s *acceleratorSocket) fenceWriterFailure() {
+	s.eligible.Store(false)
+	if s.rpc != nil {
+		s.rpc.fail(errAcceleratorRPCUnavailable)
+	}
+	s.enqueueMu.Lock()
+	s.accepting = false
+	s.enqueueMu.Unlock()
+	s.clearPendingOutbound()
+}
+
+func (s *acceleratorSocket) clearPendingOutbound() {
+	for {
+		select {
+		case outbound := <-s.queue:
+			outbound.clear()
+		default:
+			return
 		}
 	}
 }
@@ -342,6 +405,7 @@ drained:
 }
 
 func (s *acceleratorSocket) writeEvent(event *acceleratorOutboundEvent) error {
+	defer event.clear()
 	payload, err := event.marshal()
 	if err != nil {
 		return err
@@ -361,8 +425,13 @@ func (s *acceleratorSocket) reader() {
 		return s.conn.SetReadDeadline(s.config.now().Add(s.config.pongTimeout))
 	})
 	for {
-		if _, _, err := s.conn.ReadMessage(); err != nil {
+		messageType, payload, err := s.conn.ReadMessage()
+		if err != nil {
 			s.requestClose(acceleratorSocketClose{code: websocket.CloseGoingAway, reason: "connection closed"})
+			return
+		}
+		if messageType != websocket.TextMessage || s.rpc == nil || !s.rpc.handle(payload) {
+			s.requestClose(acceleratorSocketClose{code: websocket.ClosePolicyViolation, reason: "protocol error"})
 			return
 		}
 	}
@@ -523,10 +592,18 @@ type acceleratorRegistration struct {
 }
 
 func (r *AcceleratorSessionRegistry) prepareRegistration(call agent.AuthenticatedCallContext, conn acceleratorSocketConnection) (*acceleratorRegistration, bool) {
-	return r.prepareRegistrationWithHook(call, conn, nil)
+	return r.prepareRegistrationWithHookAndDispatcher(call, conn, nil, nil)
 }
 
 func (r *AcceleratorSessionRegistry) prepareRegistrationWithHook(call agent.AuthenticatedCallContext, conn acceleratorSocketConnection, prepared func(AcceleratorSocketGeneration)) (*acceleratorRegistration, bool) {
+	return r.prepareRegistrationWithHookAndDispatcher(call, conn, prepared, nil)
+}
+
+func (r *AcceleratorSessionRegistry) prepareRPCRegistration(call agent.AuthenticatedCallContext, conn acceleratorSocketConnection, dispatcher *AcceleratorRPCDispatcher) (*acceleratorRegistration, bool) {
+	return r.prepareRegistrationWithHookAndDispatcher(call, conn, nil, dispatcher)
+}
+
+func (r *AcceleratorSessionRegistry) prepareRegistrationWithHookAndDispatcher(call agent.AuthenticatedCallContext, conn acceleratorSocketConnection, prepared func(AcceleratorSocketGeneration), dispatcher *AcceleratorRPCDispatcher) (*acceleratorRegistration, bool) {
 	if !call.IsAuthenticated() || conn == nil {
 		return nil, false
 	}
@@ -560,7 +637,7 @@ func (r *AcceleratorSessionRegistry) prepareRegistrationWithHook(call agent.Auth
 		record.ever = true
 		record.lastSnapshot = snapshot
 		r.socketStartedLocked()
-		socket := newAcceleratorSocket(r, conn, snapshot)
+		socket := newAcceleratorSocket(r, conn, snapshot, dispatcher)
 		record.socket = socket
 		registration := &acceleratorRegistration{socket: socket, old: old}
 		if old != nil && old.observed.Load() {

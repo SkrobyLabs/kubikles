@@ -11,17 +11,21 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
 	"kubikles/pkg/server"
 )
 
 type recordedSessionSocket struct {
-	mu        sync.Mutex
-	order     *[]string
-	messages  chan socketMessage
-	closed    chan struct{}
-	closeOnce sync.Once
-	readLimit int64
+	mu            sync.Mutex
+	order         *[]string
+	messages      chan socketMessage
+	writes        chan []byte
+	closed        chan struct{}
+	closeOnce     sync.Once
+	readLimit     int64
+	readLimitSet  chan struct{}
+	readLimitOnce sync.Once
 }
 
 type socketMessage struct {
@@ -30,8 +34,67 @@ type socketMessage struct {
 	err     error
 }
 
+type blockedWriterSessionSocket struct {
+	closed          chan struct{}
+	closeOnce       sync.Once
+	writeEntered    chan struct{}
+	writeEnteredOne sync.Once
+	writeRelease    chan struct{}
+	controlCalled   chan struct{}
+	controlOnce     sync.Once
+	mu              sync.Mutex
+	inWrite         bool
+	deadlineRaced   bool
+}
+
+func newBlockedWriterSessionSocket() *blockedWriterSessionSocket {
+	return &blockedWriterSessionSocket{closed: make(chan struct{}), writeEntered: make(chan struct{}), writeRelease: make(chan struct{}), controlCalled: make(chan struct{})}
+}
+
+func (s *blockedWriterSessionSocket) SetWriteDeadline(time.Time) error {
+	s.mu.Lock()
+	s.deadlineRaced = s.deadlineRaced || s.inWrite
+	s.mu.Unlock()
+	return nil
+}
+func (*blockedWriterSessionSocket) SetPongHandler(func(string) error) {}
+func (s *blockedWriterSessionSocket) WriteMessage(kind int, _ []byte) error {
+	if kind != websocket.TextMessage {
+		return errors.New("invalid message type")
+	}
+	s.mu.Lock()
+	s.inWrite = true
+	s.mu.Unlock()
+	s.writeEnteredOne.Do(func() { close(s.writeEntered) })
+	<-s.writeRelease
+	s.mu.Lock()
+	s.inWrite = false
+	s.mu.Unlock()
+	return nil
+}
+func (s *blockedWriterSessionSocket) WriteControl(kind int, _ []byte, _ time.Time) error {
+	if kind == websocket.CloseMessage {
+		s.controlOnce.Do(func() { close(s.controlCalled) })
+	}
+	return nil
+}
+func (*blockedWriterSessionSocket) SetReadLimit(int64) {}
+func (s *blockedWriterSessionSocket) ReadMessage() (int, []byte, error) {
+	<-s.closed
+	return 0, nil, errors.New("closed")
+}
+func (s *blockedWriterSessionSocket) Close() error {
+	s.closeOnce.Do(func() { close(s.closed) })
+	return nil
+}
+func (s *blockedWriterSessionSocket) concurrentDeadline() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.deadlineRaced
+}
+
 func newRecordedSessionSocket(order *[]string) *recordedSessionSocket {
-	return &recordedSessionSocket{order: order, messages: make(chan socketMessage, 128), closed: make(chan struct{})}
+	return &recordedSessionSocket{order: order, messages: make(chan socketMessage, 128), writes: make(chan []byte, 128), closed: make(chan struct{}), readLimitSet: make(chan struct{})}
 }
 func (s *recordedSessionSocket) record(value string) {
 	s.mu.Lock()
@@ -43,13 +106,35 @@ func (s *recordedSessionSocket) SetWriteDeadline(time.Time) error {
 	return nil
 }
 func (s *recordedSessionSocket) SetPongHandler(func(string) error) {}
+func (s *recordedSessionSocket) WriteMessage(kind int, payload []byte) error {
+	if kind != websocket.TextMessage {
+		return errors.New("invalid message type")
+	}
+	s.record("websocket-write")
+	select {
+	case s.writes <- append([]byte(nil), payload...):
+		return nil
+	case <-s.closed:
+		return errors.New("closed")
+	}
+}
 func (s *recordedSessionSocket) WriteControl(kind int, _ []byte, _ time.Time) error {
 	if kind == websocket.CloseMessage {
 		s.record("websocket-close-control")
 	}
 	return nil
 }
-func (s *recordedSessionSocket) SetReadLimit(limit int64) { s.readLimit = limit }
+func (s *recordedSessionSocket) SetReadLimit(limit int64) {
+	s.mu.Lock()
+	s.readLimit = limit
+	s.mu.Unlock()
+	s.readLimitOnce.Do(func() { close(s.readLimitSet) })
+}
+func (s *recordedSessionSocket) readLimitValue() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.readLimit
+}
 func (s *recordedSessionSocket) ReadMessage() (int, []byte, error) {
 	select {
 	case message := <-s.messages:
@@ -139,8 +224,8 @@ func TestConnectedSessionSafeSurface(t *testing.T) {
 	if err := session.Close(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if socket.readLimit != server.AcceleratorSocketReadLimit || session.EndReason() != SessionClosed {
-		t.Fatalf("unexpected closed state: limit=%d reason=%s", socket.readLimit, session.EndReason())
+	if socket.readLimitValue() != int64(acceleratorsecret.MaxCreatorResponseFrameBytes) || session.EndReason() != SessionClosed {
+		t.Fatalf("unexpected closed state: limit=%d reason=%s", socket.readLimitValue(), session.EndReason())
 	}
 }
 
@@ -182,6 +267,78 @@ func TestConnectedSessionCloseOrderAndRaces(t *testing.T) {
 	if err := blocked.Close(cancelled); !errors.Is(err, errSessionCloseTimeout) {
 		t.Fatalf("Close exposed non-fixed timeout: %v", err)
 	}
+}
+
+func TestConnectedSessionTeardownPreservesSoleDataWriter(t *testing.T) {
+	t.Run("normal close", func(t *testing.T) {
+		socket := newBlockedWriterSessionSocket()
+		tunnel := newRecordedTunnel(&[]string{})
+		session := sessionFixture(t, socket, tunnel)
+		if reason := session.sendApplicationFrame([]byte(`{"type":"call"}`)); reason != "" {
+			t.Fatalf("send reason=%s", reason)
+		}
+		<-socket.writeEntered
+		completed := make(chan error, 1)
+		go func() { completed <- session.Close(context.Background()) }()
+		select {
+		case <-socket.controlCalled:
+		case <-time.After(time.Second):
+			t.Fatal("normal close control was not written")
+		}
+		close(socket.writeRelease)
+		select {
+		case err := <-completed:
+			if err != nil {
+				t.Fatal(err)
+			}
+		case <-time.After(time.Second):
+			t.Fatal("normal teardown did not complete")
+		}
+		if socket.concurrentDeadline() {
+			t.Fatal("normal teardown mutated write deadline during data write")
+		}
+	})
+
+	t.Run("browser handoff", func(t *testing.T) {
+		socket := newBlockedWriterSessionSocket()
+		workload := connectorWorkload(t)
+		tunnel := newRecordedTunnel(&[]string{})
+		session := newConnectedSession(workload.connectorState.receipt, server.AuthenticatedAcceleratorInfo{Capabilities: agent.V1Capabilities()}, connectedIdentity{sessionID: "session-a", instanceID: "instance-a", generation: 1}, socket, tunnel, processResumeClock{})
+		if !workload.publishCurrentSession(session) {
+			t.Fatal("session publication rejected")
+		}
+		if reason := session.sendApplicationFrame([]byte(`{"type":"call"}`)); reason != "" {
+			t.Fatalf("send reason=%s", reason)
+		}
+		<-socket.writeEntered
+		type handoffResult struct {
+			owned *browserOwnedWorkload
+			ok    bool
+		}
+		completed := make(chan handoffResult, 1)
+		go func() {
+			owned, ok := session.detachCreatorForBrowser(context.Background())
+			completed <- handoffResult{owned: owned, ok: ok}
+		}()
+		select {
+		case <-socket.controlCalled:
+		case <-time.After(time.Second):
+			t.Fatal("Browser handoff control was not written")
+		}
+		close(socket.writeRelease)
+		select {
+		case result := <-completed:
+			if !result.ok || result.owned == nil {
+				t.Fatal("Browser handoff did not complete")
+			}
+			result.owned.tunnel.Stop()
+		case <-time.After(time.Second):
+			t.Fatal("Browser handoff remained blocked")
+		}
+		if socket.concurrentDeadline() {
+			t.Fatal("Browser handoff mutated write deadline during data write")
+		}
+	})
 }
 
 func TestConnectedSessionPumpFailsClosed(t *testing.T) {

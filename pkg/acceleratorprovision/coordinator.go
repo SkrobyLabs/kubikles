@@ -213,7 +213,7 @@ func (c *Coordinator) releaseDemand(lease *SecretDemandLease) {
 	s.mu.Unlock()
 }
 
-func (c *Coordinator) releaseSession(lease *SessionLease) {
+func (c *Coordinator) releaseSession(lease *sessionLeaseState) {
 	if c == nil || lease == nil || lease.slot == nil {
 		return
 	}
@@ -484,8 +484,7 @@ func (c *Coordinator) publishSession(s *contextSlot, fence operationFence, workl
 	s.idle = nil
 	s.normalEnded = false
 	s.drainDeadline = time.Time{}
-	s.sessionLeaseEpoch++
-	s.sessionLeaseCount = 0
+	s.advanceSessionLeaseEpochLocked(true)
 	if s.replacementAttempt {
 		s.replacementAttempt = false
 	}
@@ -507,8 +506,7 @@ func (c *Coordinator) monitorSession(s *contextSlot, fence operationFence, workl
 		s.mu.Unlock()
 		return
 	}
-	s.sessionLeaseEpoch++
-	s.sessionLeaseCount = 0
+	s.advanceSessionLeaseEpochLocked(false)
 	s.signalLocked()
 	s.terminalCleanupPending = true
 	s.state = CoordinatorReconnecting
@@ -670,8 +668,7 @@ func (s *contextSlot) clearWorkloadAuthorityLocked() {
 		s.launch = nil
 	}
 	s.launchEpoch++
-	s.sessionLeaseEpoch++
-	s.sessionLeaseCount = 0
+	s.advanceSessionLeaseEpochLocked(false)
 	if s.demandCount == 0 {
 		s.settleDemandLocked()
 	}

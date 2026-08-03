@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
 	"kubikles/pkg/server"
 )
@@ -49,15 +50,27 @@ func TestCreatorPumpInterceptsLaunchReceipt(t *testing.T) {
 		t.Fatal("waiter rejected")
 	}
 	defer unregister()
-	normal := []byte(`{"type":"event","name":"ordinary","data":{"safe":true}}`)
+	application := make(chan string, 1)
+	detach, ok := session.attachSecretFrameHandler(func(frame acceleratorsecret.ServerFrame) bool {
+		if frame.Event == nil {
+			return false
+		}
+		application <- frame.Event.Name + "|" + string(frame.Event.Data)
+		return true
+	})
+	if !ok {
+		t.Fatal("application handler rejected")
+	}
+	defer detach()
+	normal := []byte(`{"type":"event","name":"watcher-status","data":{"watcherSpecId":"safe","status":"connected"}}`)
 	socket.messages <- socketMessage{kind: websocket.TextMessage, payload: normal}
 	for _, status := range []string{"confirmed", "confirmed", "ended", "ended"} {
 		payload, _ := json.Marshal(map[string]interface{}{"type": "event", "name": "browser-launch", "data": map[string]string{"receipt": key, "status": status}})
 		socket.messages <- socketMessage{kind: websocket.TextMessage, payload: payload}
 	}
 	select {
-	case frame := <-session.frames:
-		if string(frame) != string(normal) {
+	case frame := <-application:
+		if frame != acceleratorsecret.EventWatcherStatus+`|{"watcherSpecId":"safe","status":"connected"}` {
 			t.Fatalf("ordinary frame=%s", frame)
 		}
 	case <-time.After(time.Second):
@@ -74,7 +87,7 @@ func TestCreatorPumpInterceptsLaunchReceipt(t *testing.T) {
 		}
 	}
 	select {
-	case frame := <-session.frames:
+	case frame := <-application:
 		t.Fatalf("control leaked to application frames: %s", frame)
 	default:
 	}
@@ -391,6 +404,7 @@ func TestOpenSerializationAndBrowserHandoff(t *testing.T) {
 	}
 	slot := newContextSlot("ctx", 1)
 	slot.state, slot.workload, slot.session = CoordinatorActive, workload, session
+	slot.advanceSessionLeaseEpochLocked(true)
 	coordinator.slots[1] = slot
 
 	entered, release := make(chan struct{}), make(chan struct{})
@@ -645,6 +659,7 @@ func TestBrowserNavigatorIsFencedByContextAndShutdown(t *testing.T) {
 			}
 			slot := newContextSlot("ctx", coordinator.currentEpoch)
 			slot.state, slot.workload, slot.session = CoordinatorActive, workload, session
+			slot.advanceSessionLeaseEpochLocked(true)
 			coordinator.mu.Lock()
 			coordinator.slots[coordinator.currentEpoch] = slot
 			coordinator.mu.Unlock()

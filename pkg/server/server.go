@@ -66,6 +66,7 @@ type Server struct {
 	quiescing             atomic.Bool
 	ownedShutdown         atomic.Bool
 	afterWebSocketUpgrade func()
+	acceleratorRPC        *AcceleratorRPCDispatcher
 }
 
 // Event represents a WebSocket event to send to clients
@@ -116,6 +117,9 @@ func newServer(caller MethodCaller, assets embed.FS, options Options) *Server {
 				return true // Allow all origins in server mode
 			},
 		},
+	}
+	if options.BoundaryMode == BoundaryModeAccelerator && options.AcceleratorWebSocketAuthenticator != nil {
+		server.acceleratorRPC = NewAcceleratorRPCDispatcher(caller, options.MethodAuthorizer)
 	}
 	server.httpServer = &http.Server{
 		Addr:         options.ListenAddress,
