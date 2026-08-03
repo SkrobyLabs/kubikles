@@ -40,11 +40,11 @@ func TestWorkflowReleaseContract(t *testing.T) {
 
 	for _, required := range []string{
 		"build_version:", "default: dev", "BUILD_VERSION='${{ inputs.build_version }}'",
-		"permissions:\n  contents: read", "publish: false", "build_version: dev",
+		"permissions:\n  contents: read", "publish: false", "build_version: v0.0.0",
 		"group: release-${{ github.ref_name }}", "cancel-in-progress: false", "^v(0|[1-9][0-9]*)",
 		"packages: write", "contents: write", "actions: read", "packages: read",
 		"Docker Buildx must be exactly v0.36.0", "helm-v3.21.3", "oras_1.3.3", "gh_2.97.0",
-		"kubikles-accelerator-release-$tag.json", "make verify-accelerator-release-ghcr",
+		"kubikles-accelerator-release-$BUILD_VERSION.json", "make verify-accelerator-release-ghcr",
 		"verify-release-assets", "GitHub Release could not be classified authoritatively",
 		"Install checksum-pinned Helm for release contracts", "helm-v3.21.3-linux-amd64.tar.gz",
 		"15e041a93a590dce8100f39385cd98c84a765c9e36aeeb9e2dc6ff9e4769e2e0", `>> "$GITHUB_PATH"`,
@@ -89,15 +89,15 @@ func TestDesktopReleaseAssetsRemainExact(t *testing.T) {
 	release := workflow(t, "release.yml")
 	assets := []string{"Kubikles-windows-amd64.zip", "Kubikles-windows-arm64.zip", "Kubikles-macos-arm64.zip", "Kubikles-macos-amd64.zip", "Kubikles-linux-amd64.zip"}
 	for _, asset := range assets {
-		if !strings.Contains(build, asset) || !strings.Contains(release, asset) {
+		if !strings.Contains(build, asset) {
 			t.Errorf("desktop asset %s was not preserved", asset)
 		}
 	}
-	exact := append(append([]string(nil), assets...), "kubikles-accelerator-release-v1.4.2.json", "kubikles-accelerator-release-v1.4.2.json.sha256")
+	exact := append(append([]string(nil), assets...), "kubikles-accelerator-release-v1.4.2.json", "kubikles-accelerator-release-v1.4.2.json.sha256", "kubikles-accelerator-image-linux-amd64-v1.4.2.spdx.json", "kubikles-accelerator-image-linux-arm64-v1.4.2.spdx.json", "kubikles-accelerator-chart-v1.4.2.spdx.json", "kubikles-accelerator-attestations-v1.4.2.jsonl")
 	if err := VerifyReleaseAssetNames("v1.4.2", exact); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(release, `find "$RUNNER_TEMP/artifacts" -type f -printf '%f\n'`) || strings.Contains(release, `--pattern "kubikles-accelerator-release-$tag.json*"`) {
+	if !strings.Contains(release, `find "$assets" -type f -printf '%f\n'`) || strings.Contains(release, `--pattern "kubikles-accelerator-release-$tag.json*"`) {
 		t.Fatal("workflow does not enforce the exact finalized asset set")
 	}
 }
@@ -122,8 +122,8 @@ func TestPublisherUsesHardenedReleaseInspectionArguments(t *testing.T) {
 	}
 	text := string(script)
 	inspectCalls := regexp.MustCompile(`(?m)^\s*go run \./scripts/accelerator-release inspect-chart ([^\n]+)$`).FindAllStringSubmatch(text, -1)
-	if len(inspectCalls) != 4 {
-		t.Fatalf("inspect-chart call count = %d, want 4", len(inspectCalls))
+	if len(inspectCalls) != 6 {
+		t.Fatalf("inspect-chart call count = %d, want 6", len(inspectCalls))
 	}
 	for _, call := range inspectCalls {
 		if !strings.Contains(call[1], `"$CHART_SOURCE"`) || (!strings.Contains(call[1], `"$epoch"`) && !strings.Contains(call[1], `"$SOURCE_DATE_EPOCH"`)) {
@@ -133,7 +133,7 @@ func TestPublisherUsesHardenedReleaseInspectionArguments(t *testing.T) {
 	if !strings.Contains(text, `"$tmp/first" "$epoch" absent`) || !strings.Contains(text, `"$tmp/second" "$epoch" absent`) || !strings.Contains(text, `"$work/publication" "$SOURCE_DATE_EPOCH" "$release_state"`) {
 		t.Fatal("publish_registry does not propagate release identity and finalization state")
 	}
-	if strings.Count(text, `go run ./scripts/accelerator-release verify-git`) != 3 {
+	if strings.Count(text, `go run ./scripts/accelerator-release verify-git`) != 4 {
 		t.Fatal("publication and read-back do not use hardened Git source authority")
 	}
 	release := workflow(t, "release.yml")
@@ -367,7 +367,7 @@ done
 		t.Fatalf("GitHub Release metadata contract was not exact: %v (%s)", err, output)
 	}
 	release := workflow(t, "release.yml")
-	for _, required := range []string{".tag_name, .name, .draft, .prerelease", `release_name" = "$tag`, `release_draft" = false`, `release_prerelease" = false`} {
+	for _, required := range []string{".tag_name, .name, .draft, .prerelease", `release_tag" = "$BUILD_VERSION`, `release_name" = "$BUILD_VERSION`, `release_draft" = false`, `release_prerelease" = false`} {
 		if !strings.Contains(release, required) {
 			t.Errorf("release finalizer metadata contract missing %q", required)
 		}

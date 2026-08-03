@@ -604,6 +604,10 @@ func TestVerifyReleaseAssetNamesExact(t *testing.T) {
 		"Kubikles-linux-amd64.zip",
 		"kubikles-accelerator-release-v1.4.2.json",
 		"kubikles-accelerator-release-v1.4.2.json.sha256",
+		"kubikles-accelerator-image-linux-amd64-v1.4.2.spdx.json",
+		"kubikles-accelerator-image-linux-arm64-v1.4.2.spdx.json",
+		"kubikles-accelerator-chart-v1.4.2.spdx.json",
+		"kubikles-accelerator-attestations-v1.4.2.jsonl",
 	}
 	if err := VerifyReleaseAssetNames("v1.4.2", names); err != nil {
 		t.Fatal(err)

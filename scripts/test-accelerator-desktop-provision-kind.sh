@@ -314,6 +314,10 @@ go_test_package=./pkg/acceleratorprovision
 go_test_run='^TestAcceleratorDesktopProvisionKind$'
 go_test_output=-v
 go_test_tags=helm,accelerator_provision_kind
+go_test_environment=()
+if [ "${ACCELERATOR_E2E_OFFLINE:-0}" = 1 ]; then
+  go_test_environment=(GOTOOLCHAIN=go1.25.12 GOPROXY=off GOSUMDB=off)
+fi
 if [[ "${ACCELERATOR_DISPOSAL_KIND:-0}" == "1" || "${ACCELERATOR_LIFECYCLE_KIND:-0}" == "1" ]]; then
   go_test_timeout=9m
 fi
@@ -335,7 +339,7 @@ if [[ "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" == "1" ]]; then
   go_test_output=-json
   go_test_tags=helm,accelerator_provision_kind,accelerator_e2e
 fi
-(cd "$root" && HOME="$test_home" KUBECONFIG="$kubeconfig" \
+(cd "$root" && env "${go_test_environment[@]}" HOME="$test_home" KUBECONFIG="$kubeconfig" \
   ACCELERATOR_PROVISION_KIND_CHART="$chart_archive" \
   ACCELERATOR_PROVISION_KIND_CHART_DIGEST="$chart_digest" \
   ACCELERATOR_PROVISION_KIND_REGISTRY_TLS_URL="$registry_tls_url" \

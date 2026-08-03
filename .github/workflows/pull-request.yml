@@ -2,8 +2,6 @@ name: PR
 
 on:
   pull_request:
-  issue_comment:
-    types: [created]
   workflow_dispatch:
 
 permissions:
@@ -11,11 +9,7 @@ permissions:
 
 jobs:
   build:
-    if: >
-      github.event_name == 'pull_request' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.issue.pull_request && github.event.comment.body == '/build')
     uses: ./.github/workflows/build.yml
     with:
       publish: false
-      build_version: dev
+      build_version: v0.0.0

@@ -12,7 +12,7 @@ RUN test -s /src/build/appicon.svg && rm -f src/assets/images/appicon.svg && cp 
 FROM gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35 AS accelerator-assets
 COPY --from=frontend /src/frontend/dist /frontend/dist
 
-FROM golang:1.24.2-bookworm@sha256:79390b5e5af9ee6e7b1173ee3eac7fadf6751a545297672916b59bfa0ecf6f71 AS build
+FROM golang:1.25.12-bookworm@sha256:ea341baa9bd5ba6784f6d7161ace70544349a6242d54d34a0fbfd2c4d51c9d58 AS build
 ARG BUILD_VERSION
 ARG GIT_COMMIT
 ARG GIT_DIRTY

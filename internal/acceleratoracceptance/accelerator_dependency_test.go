@@ -37,7 +37,7 @@ func TestAcceptanceAcceleratorDependencyClosure(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			command := exec.Command("go", "list", "-e", "-json", "-tags", test.tags, ".")
 			command.Dir = root
-			command.Env = append(os.Environ(), "GOTOOLCHAIN=go1.24.2", "GOPROXY=off", "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
+			command.Env = append(os.Environ(), "GOTOOLCHAIN=go1.25.12", "GOPROXY=off", "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
 			output, err := command.Output()
 			if err != nil {
 				t.Fatal("go list dependency closure")

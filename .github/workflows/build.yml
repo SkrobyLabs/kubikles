@@ -16,8 +16,8 @@ permissions:
   contents: read
 
 env:
-  GO_VERSION: "1.24"
-  NODE_VERSION: "20"
+  GO_VERSION: "1.25.12"
+  NODE_VERSION: "22.23.2"
 
 jobs:
   test:
@@ -73,6 +73,43 @@ jobs:
 
       - name: Accelerator release contracts
         run: make test-accelerator-release-contract
+
+  accelerator-supply-chain:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - id: buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        with:
+          version: v0.36.0
+          driver-opts: image=moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
+      - name: Install exact Accelerator release and security tools
+        run: ./scripts/install-accelerator-release-tools.sh "$RUNNER_TEMP/accelerator-tools"
+      - name: Cache exact BuildKit image
+        run: docker pull moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
+      - name: Prepare fresh Trivy database
+        run: |
+          export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
+          trivy image --cache-dir "$RUNNER_TEMP/trivy-cache" --download-db-only --no-progress
+      - name: Validate exact local Accelerator supply chain
+        env:
+          ACCELERATOR_BUILDER: ${{ steps.buildx.outputs.name }}
+          TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
+        run: |
+          export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
+          make test-accelerator-supply-chain BUILD_VERSION='${{ inputs.build_version }}'
 
   build-linux:
     needs: test

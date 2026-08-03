@@ -1,10 +1,17 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind test-accelerator-desktop-provision-kind test-accelerator-desktop-connector-kind test-accelerator-desktop-resume-kind test-accelerator-desktop-disposal-kind test-accelerator-desktop-lifecycle-kind test-accelerator-browser-lifecycle-kind test-accelerator-integrated-routing-kind test-accelerator-release-contract test-accelerator-publication-local verify-accelerator-release-ghcr test-accelerator-e2e
+.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind test-accelerator-desktop-provision-kind test-accelerator-desktop-connector-kind test-accelerator-desktop-resume-kind test-accelerator-desktop-disposal-kind test-accelerator-desktop-lifecycle-kind test-accelerator-browser-lifecycle-kind test-accelerator-integrated-routing-kind test-accelerator-release-contract test-accelerator-publication-local verify-accelerator-release-ghcr test-accelerator-e2e test-accelerator-supply-chain verify-accelerator-supply-chain-ghcr
 
 test-accelerator-e2e:
 	@bash scripts/test-accelerator-e2e.sh
+
+test-accelerator-supply-chain:
+	@BUILD_VERSION='$(BUILD_VERSION)' bash scripts/test-accelerator-supply-chain.sh
+
+verify-accelerator-supply-chain-ghcr:
+	@test -n "$(BUILD_VERSION)" || (echo "BUILD_VERSION=vX.Y.Z is required" >&2; exit 1)
+	@BUILD_VERSION='$(BUILD_VERSION)' bash scripts/verify-accelerator-supply-chain-ghcr.sh
 
 .DEFAULT_GOAL := help
 
@@ -109,6 +116,8 @@ help:
 	@echo "  test-accelerator-release-contract  Validate exact immutable release contracts offline"
 	@echo "  test-accelerator-publication-local  Exercise publication against a disposable registry"
 	@echo "  test-accelerator-e2e  Run the closed offline Kubikles Accelerator acceptance gate"
+	@echo "  test-accelerator-supply-chain  Validate exact Accelerator SBOM, vulnerability, attestation, and workflow contracts"
+	@echo "  verify-accelerator-supply-chain-ghcr  Verify one authorized published supply-chain set"
 	@echo "  verify-accelerator-release-ghcr  Verify one exact authenticated published release"
 	@echo "  typecheck          Run TypeScript type checking (tsc --noEmit)"
 	@echo ""

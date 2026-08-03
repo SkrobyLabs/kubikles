@@ -20,7 +20,7 @@ accelerator_e2e_validate_reused_fixture || fail fixture
 for cached in \
   'docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e' \
   'node:20.19.5-bookworm-slim@sha256:9e70124bd00f47dd023e349cd587132ae61892acc0e47ed641416c3e18f401c3' \
-  'golang:1.24.2-bookworm@sha256:79390b5e5af9ee6e7b1173ee3eac7fadf6751a545297672916b59bfa0ecf6f71' \
+  'golang:1.25.12-bookworm@sha256:ea341baa9bd5ba6784f6d7161ace70544349a6242d54d34a0fbfd2c4d51c9d58' \
   'gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35' \
   'curlimages/curl:8.17.0@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40'; do
   docker image inspect "$cached" >/dev/null 2>&1 || fail missing-offline-image
@@ -66,7 +66,7 @@ ldflags="-s -w -buildid= -X main.BuildVersion=v0.0.0 -X main.GitCommit=$commit -
 for architecture in amd64 arm64; do
   binary="$work/$architecture/kubikles-accelerator"
   mkdir -m 700 -p "$(dirname "$binary")"
-  (cd "$source_root" && GOTOOLCHAIN=go1.24.2 GOPROXY=off SOURCE_DATE_EPOCH="$epoch" CGO_ENABLED=0 GOOS=linux GOARCH="$architecture" \
+  (cd "$source_root" && GOTOOLCHAIN=go1.25.12 GOPROXY=off SOURCE_DATE_EPOCH="$epoch" CGO_ENABLED=0 GOOS=linux GOARCH="$architecture" \
     go build -trimpath -buildvcs=false -tags 'headless accelerator' -ldflags "$ldflags" -o "$binary" .) >"$artifact_root/go-build-$architecture.log" 2>&1 || fail offline-go-build
   touch -d "@$epoch" "$binary"
   (cd "$root" && go run ./scripts/cmd/inspect-accelerator-binary "$binary" "$architecture" v0.0.0 "$commit" false) || fail binary-inspection

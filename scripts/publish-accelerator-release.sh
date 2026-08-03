@@ -8,6 +8,7 @@ readonly CHART_SOURCE=deploy/charts/kubikles-accelerator
 readonly HELM_VERSION='v3.21.3+g1ad6e68'
 readonly ORAS_COMMIT='210747c29c1d38732b3194878dfd8b5a6b9ad7eb'
 readonly GH_VERSION='gh version 2.97.0 (2026-07-31)'
+readonly BUILDKIT_IMAGE='moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec'
 
 CLIENT_CONFIG_ROOT=''
 ORAS_CONFIG=''
@@ -31,6 +32,21 @@ HOSTILE_RAW_TOKEN=''
 capture_gh_token() {
   GH_TOKEN_VALUE=${GH_TOKEN:-}
   unset GH_TOKEN
+}
+
+require_buildkit_image() {
+  docker image inspect "$BUILDKIT_IMAGE" >/dev/null 2>&1 || fail "exact BuildKit image is required"
+}
+
+require_supplied_builder() {
+  local builder=${ACCELERATOR_BUILDER:-} container expected_image actual_image
+  [[ "$builder" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]] || fail "ACCELERATOR_BUILDER is required"
+  [ "$(docker buildx inspect "$builder" 2>/dev/null | sed -n 's/^Driver:[[:space:]]*//p')" = docker-container ] || fail "supplied builder driver is invalid"
+  container="buildx_buildkit_${builder}0"
+  expected_image=$(docker image inspect "$BUILDKIT_IMAGE" --format '{{.Id}}' 2>/dev/null) || fail "exact BuildKit image is required"
+  actual_image=$(docker container inspect "$container" --format '{{.Image}}' 2>/dev/null) || fail "supplied builder container is invalid"
+  [ "$actual_image" = "$expected_image" ] && [ "$(docker container inspect "$container" --format '{{.State.Running}}' 2>/dev/null)" = true ] || fail "supplied builder image is invalid"
+  printf '%s\n' "$builder"
 }
 
 github_cli() {
@@ -179,7 +195,7 @@ require_offline_cached_images() {
   for cached in \
     'docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e' \
     'node:20.19.5-bookworm-slim@sha256:9e70124bd00f47dd023e349cd587132ae61892acc0e47ed641416c3e18f401c3' \
-    'golang:1.24.2-bookworm@sha256:79390b5e5af9ee6e7b1173ee3eac7fadf6751a545297672916b59bfa0ecf6f71' \
+    'golang:1.25.12-bookworm@sha256:ea341baa9bd5ba6784f6d7161ace70544349a6242d54d34a0fbfd2c4d51c9d58' \
     'gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35' \
     'registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373'; do
     docker image inspect "$cached" >/dev/null 2>&1 || fail "offline cached image is missing"
@@ -471,7 +487,11 @@ write_local_asset_contract() {
   printf '%s\n' \
     Kubikles-linux-amd64.zip Kubikles-macos-amd64.zip Kubikles-macos-arm64.zip \
     Kubikles-windows-amd64.zip Kubikles-windows-arm64.zip \
-    "$(basename "$descriptor")" "$(basename "$descriptor.sha256")" > "$directory/assets.txt"
+    "$(basename "$descriptor")" "$(basename "$descriptor.sha256")" \
+    "kubikles-accelerator-image-linux-amd64-$version.spdx.json" \
+    "kubikles-accelerator-image-linux-arm64-$version.spdx.json" \
+    "kubikles-accelerator-chart-$version.spdx.json" \
+    "kubikles-accelerator-attestations-$version.jsonl" > "$directory/assets.txt"
 }
 
 expect_publication_failure() {
@@ -569,7 +589,8 @@ local_test() {
     go run ./internal/acceleratoracceptance/cmd/accelerator-e2e-artifact "$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT" || fail "offline artifact evidence is invalid"
   else
     RUN_CONTAINER="$run-registry"; RUN_NETWORK="$run-network"; RUN_BUILDER="$run-builder"
-    docker buildx create --name "$RUN_BUILDER" --driver docker-container >/dev/null
+    require_buildkit_image
+    docker buildx create --name "$RUN_BUILDER" --driver docker-container --driver-opt "image=$BUILDKIT_IMAGE" >/dev/null
     docker buildx inspect "$RUN_BUILDER" --bootstrap >/dev/null
     docker network create "$RUN_NETWORK" >/dev/null
     bind_host=${ACCELERATOR_LOCAL_REGISTRY_BIND_HOST:-127.0.0.1}
@@ -735,7 +756,81 @@ publish_ghcr() {
   install -m 0600 "$descriptor.sha256" "$ACCELERATOR_RELEASE_OUTPUT/$(basename "$descriptor.sha256")"
 }
 
+prepare_release() {
+  require_common_tools; require_command jq
+  [ -n "${BUILD_VERSION:-}" ] || fail "BUILD_VERSION is required"
+  [ -n "${SOURCE_COMMIT:-}" ] || fail "SOURCE_COMMIT is required"
+  [ -n "${SOURCE_DATE_EPOCH:-}" ] || fail "SOURCE_DATE_EPOCH is required"
+  [ -n "${ACCELERATOR_PREPARED_OUTPUT:-}" ] || fail "ACCELERATOR_PREPARED_OUTPUT is required"
+  normalize "$BUILD_VERSION"
+  [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || fail "SOURCE_COMMIT must be a full lowercase hash"
+  [ "$(git rev-parse HEAD)" = "$SOURCE_COMMIT" ] || fail "prepared source differs from HEAD"
+  [ "$(git show -s --format=%ct "$SOURCE_COMMIT")" = "$SOURCE_DATE_EPOCH" ] || fail "prepared source epoch differs"
+  [ ! -e "$ACCELERATOR_PREPARED_OUTPUT" ] || fail "prepared output must be absent"
+  mkdir -m 0700 "$ACCELERATOR_PREPARED_OUTPUT"
+  trap cleanup_on_exit EXIT
+  trap 'cleanup_on_signal 130' INT
+  trap 'cleanup_on_signal 143' TERM
+  local chart_version=${BUILD_VERSION#v} layout package chart_layout chart_digest builder
+  require_buildkit_image
+  builder=$(require_supplied_builder)
+  layout="$ACCELERATOR_PREPARED_OUTPUT/image-layout"
+  package="$ACCELERATOR_PREPARED_OUTPUT/kubikles-accelerator-$chart_version.tgz"
+  chart_layout="$ACCELERATOR_PREPARED_OUTPUT/chart-layout"
+  mkdir -m 0700 "$layout"
+  SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build --builder "$builder" --file Dockerfile.accelerator --platform linux/amd64,linux/arm64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$BUILD_VERSION" --build-arg "GIT_COMMIT=$SOURCE_COMMIT" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=ghcr.io/skrobylabs/kubikles-accelerator:$BUILD_VERSION" .
+  go run ./scripts/accelerator-release package-chart "$CHART_SOURCE" "$package" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH"
+  chart_digest=$(go run ./scripts/accelerator-release package-chart-oci "$package" "$CHART_SOURCE" "$chart_layout" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH")
+  [[ "$chart_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "prepared chart digest is invalid"
+  go run ./scripts/accelerator-release inspect-oci "$layout" "$BUILD_VERSION" "$SOURCE_COMMIT" "$ACCELERATOR_PREPARED_OUTPUT/image-evidence.json"
+  go run ./scripts/accelerator-release inspect-chart "$package" "$CHART_SOURCE" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH"
+  jq -n --arg version "$BUILD_VERSION" --arg commit "$SOURCE_COMMIT" --arg chart "$chart_digest" --argjson epoch "$SOURCE_DATE_EPOCH" \
+    '{schemaVersion:1,buildVersion:$version,sourceCommit:$commit,sourceEpoch:$epoch,chartDigest:$chart}' > "$ACCELERATOR_PREPARED_OUTPUT/source.json"
+  find "$ACCELERATOR_PREPARED_OUTPUT" -type d -exec chmod 0700 {} +
+  find "$ACCELERATOR_PREPARED_OUTPUT" -type f -exec chmod 0600 {} +
+  SUCCESS_MESSAGE="accelerator release preparation: passed for $BUILD_VERSION"
+}
+
+publish_existing_ghcr() {
+  capture_gh_token
+  require_common_tools; require_gh_tool; require_command jq
+  [ -n "${BUILD_VERSION:-}" ] || fail "BUILD_VERSION is required"
+  [ -n "${SOURCE_COMMIT:-}" ] || fail "SOURCE_COMMIT is required"
+  [ -n "${SOURCE_DATE_EPOCH:-}" ] || fail "SOURCE_DATE_EPOCH is required"
+  [ -n "${ACCELERATOR_PREPARED_ROOT:-}" ] || fail "ACCELERATOR_PREPARED_ROOT is required"
+  [ -n "${ACCELERATOR_RELEASE_OUTPUT:-}" ] || fail "ACCELERATOR_RELEASE_OUTPUT is required"
+  normalize "$BUILD_VERSION"
+  [ -d "$ACCELERATOR_PREPARED_ROOT/image-layout" ] && [ -d "$ACCELERATOR_PREPARED_ROOT/chart-layout" ] || fail "prepared release layout is incomplete"
+  [ -f "$ACCELERATOR_PREPARED_ROOT/source.json" ] && [ -f "$ACCELERATOR_PREPARED_ROOT/image-evidence.json" ] || fail "prepared release evidence is incomplete"
+  [ "$(jq -r .buildVersion "$ACCELERATOR_PREPARED_ROOT/source.json")" = "$BUILD_VERSION" ] || fail "prepared BuildVersion differs"
+  [ "$(jq -r .sourceCommit "$ACCELERATOR_PREPARED_ROOT/source.json")" = "$SOURCE_COMMIT" ] || fail "prepared source differs"
+  [ "$(jq -r .sourceEpoch "$ACCELERATOR_PREPARED_ROOT/source.json")" = "$SOURCE_DATE_EPOCH" ] || fail "prepared epoch differs"
+  trap cleanup_on_exit EXIT
+  trap 'cleanup_on_signal 130' INT
+  trap 'cleanup_on_signal 143' TERM
+  init_client_configs
+  local chart_version=${BUILD_VERSION#v} package layout chart_layout work descriptor release_state remote_commit
+  MODE_TMP=$(mktemp -d "${RUNNER_TEMP:-/tmp}/kubikles-ghcr-publish-existing.XXXXXX"); chmod 700 "$MODE_TMP"; work=$MODE_TMP
+  package="$ACCELERATOR_PREPARED_ROOT/kubikles-accelerator-$chart_version.tgz"
+  layout="$ACCELERATOR_PREPARED_ROOT/image-layout"
+  chart_layout="$ACCELERATOR_PREPARED_ROOT/chart-layout"
+  [ -f "$package" ] || fail "prepared chart is missing"
+  go run ./scripts/accelerator-release inspect-oci "$layout" "$BUILD_VERSION" "$SOURCE_COMMIT" "$work/verified-image.json"
+  go run ./scripts/accelerator-release inspect-chart "$package" "$CHART_SOURCE" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH"
+  cmp "$ACCELERATOR_PREPARED_ROOT/image-evidence.json" "$work/verified-image.json" >/dev/null || fail "prepared image evidence differs"
+  rm -f "$work/verified-image.json"
+  login_ghcr
+  [ "$(go run ./scripts/accelerator-release verify-git . "$BUILD_VERSION" "$SOURCE_COMMIT")" = "$SOURCE_COMMIT" ] || fail "release source differs"
+  remote_commit=$(remote_tag_commit "$BUILD_VERSION"); [ "$remote_commit" = "$SOURCE_COMMIT" ] || fail "GitHub tag source differs from workflow preflight"
+  release_state=$(github_release_state "$BUILD_VERSION" "$work/release-state")
+  PUBLICATION_AUTHORITY=github publish_registry ghcr.io/skrobylabs false "$layout" "$package" "$chart_layout" "$BUILD_VERSION" "$chart_version" "$SOURCE_COMMIT" "$work/publication" "$SOURCE_DATE_EPOCH" "$release_state" "$work/release-state"
+  descriptor="$work/publication/kubikles-accelerator-release-$BUILD_VERSION.json"
+  mkdir -m 0700 "$ACCELERATOR_RELEASE_OUTPUT"
+  install -m 0600 "$descriptor" "$ACCELERATOR_RELEASE_OUTPUT/$(basename "$descriptor")"
+  install -m 0600 "$descriptor.sha256" "$ACCELERATOR_RELEASE_OUTPUT/$(basename "$descriptor.sha256")"
+}
+
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-  [ "$#" -eq 1 ] || fail "usage: publish-accelerator-release.sh local-test|ghcr|verify-ghcr"
-  case $1 in local-test) local_test;; ghcr) publish_ghcr;; verify-ghcr) verify_ghcr;; *) fail "unknown publication mode";; esac
+  [ "$#" -eq 1 ] || fail "usage: publish-accelerator-release.sh local-test|prepare|publish-existing|ghcr|verify-ghcr"
+  case $1 in local-test) local_test;; prepare) prepare_release;; publish-existing) publish_existing_ghcr;; ghcr) publish_ghcr;; verify-ghcr) verify_ghcr;; *) fail "unknown publication mode";; esac
 fi

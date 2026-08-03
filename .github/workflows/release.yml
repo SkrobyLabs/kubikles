@@ -2,10 +2,8 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
-    branches-ignore:
-      - "**"
+    tags: ["v*"]
+    branches-ignore: ["**"]
 
 concurrency:
   group: release-${{ github.ref_name }}
@@ -16,7 +14,10 @@ permissions:
 
 jobs:
   preflight:
+    if: github.repository == 'SkrobyLabs/kubikles' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     outputs:
       build_version: ${{ steps.release.outputs.build_version }}
       chart_version: ${{ steps.release.outputs.chart_version }}
@@ -34,11 +35,13 @@ jobs:
           tag="${GITHUB_REF#refs/tags/}"
           [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo "Error: release tag must be canonical vMAJOR.MINOR.PATCH" >&2; exit 1; }
           commit="$(go run ./scripts/accelerator-release verify-git . "$tag")"
+          git merge-base --is-ancestor "$commit" origin/main || { echo "Error: release source is not on protected main" >&2; exit 1; }
+          [ "$commit" = "$GITHUB_SHA" ] || { echo "Error: release tag differs from checked-out source" >&2; exit 1; }
           {
             echo "build_version=$tag"
             echo "chart_version=${tag#v}"
             echo "source_commit=$commit"
-            echo "source_epoch=$(git show -s --format=%ct HEAD)"
+            echo "source_epoch=$(git show -s --format=%ct "$commit")"
           } >> "$GITHUB_OUTPUT"
 
   build:
@@ -48,37 +51,166 @@ jobs:
       publish: true
       build_version: ${{ needs.preflight.outputs.build_version }}
 
-  accelerator:
+  release-acceptance:
     needs: preflight
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-      packages: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: 1.25.12
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - id: buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
         with:
           version: v0.36.0
+          driver-opts: image=moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
+      - name: Install exact acceptance tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/install-accelerator-release-tools.sh "$RUNNER_TEMP/accelerator-tools"
+          tools="$RUNNER_TEMP/accelerator-tools"
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://github.com/kubernetes-sigs/kind/releases/download/v0.32.0/kind-linux-amd64 -o "$tools/kind"
+          printf '%s  %s\n' 50030de23cf40a18505f20426f6a8506bedf13c6e509244bd1fa9463721b0f54 "$tools/kind" | sha256sum --check --status
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://dl.k8s.io/release/v1.36.3/bin/linux/amd64/kubectl -o "$tools/kubectl"
+          printf '%s  %s\n' ebbd080e7c2e275093b55915722043257eb24004363e20acb3c4d71919f88336 "$tools/kubectl" | sha256sum --check --status
+          chmod 0755 "$tools/kind" "$tools/kubectl"
+          printf '%s\n' "$tools" >> "$GITHUB_PATH"
+      - name: Cache exact acceptance images
+        run: |
+          docker pull kindest/node:v1.32.2
+          docker pull registry:2.8.3
+          docker pull docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+          docker pull node:20.19.5-bookworm-slim@sha256:9e70124bd00f47dd023e349cd587132ae61892acc0e47ed641416c3e18f401c3
+          docker pull golang:1.25.12-bookworm@sha256:ea341baa9bd5ba6784f6d7161ace70544349a6242d54d34a0fbfd2c4d51c9d58
+          docker pull gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35
+          docker pull curlimages/curl:8.17.0@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40
+      - name: Run canonical Accelerator acceptance before authority
+        run: make test-accelerator-e2e
+
+  accelerator-prepare:
+    needs: [preflight, release-acceptance]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      image_index: ${{ steps.evidence.outputs.image_index }}
+      image_amd64: ${{ steps.evidence.outputs.image_amd64 }}
+      image_arm64: ${{ steps.evidence.outputs.image_arm64 }}
+      chart_digest: ${{ steps.evidence.outputs.chart_digest }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: 1.25.12
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - id: buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        with:
+          version: v0.36.0
+          driver-opts: image=moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
+      - name: Install exact release and security tools
+        run: ./scripts/install-accelerator-release-tools.sh "$RUNNER_TEMP/accelerator-tools"
+      - name: Cache exact BuildKit image
+        run: docker pull moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
+      - name: Prepare fresh vulnerability database
+        run: |
+          export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
+          trivy image --cache-dir "$RUNNER_TEMP/trivy-cache" --download-db-only --no-progress
+      - name: Build exact release inputs once
+        env:
+          ACCELERATOR_BUILDER: ${{ steps.buildx.outputs.name }}
+          BUILD_VERSION: ${{ needs.preflight.outputs.build_version }}
+          SOURCE_COMMIT: ${{ needs.preflight.outputs.source_commit }}
+          SOURCE_DATE_EPOCH: ${{ needs.preflight.outputs.source_epoch }}
+          ACCELERATOR_PREPARED_OUTPUT: ${{ runner.temp }}/accelerator-prepared
+        run: |
+          export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
+          ./scripts/publish-accelerator-release.sh prepare
+      - name: Generate, scan, and bundle the prepared inputs
+        env:
+          BUILD_VERSION: ${{ needs.preflight.outputs.build_version }}
+          TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
+          ACCELERATOR_PREPARED_ROOT: ${{ runner.temp }}/accelerator-prepared
+          ACCELERATOR_SUPPLY_CHAIN_OUTPUT: ${{ runner.temp }}/accelerator-transfer
+        run: |
+          export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
+          make test-accelerator-supply-chain BUILD_VERSION="$BUILD_VERSION"
+      - id: evidence
+        name: Export immutable subject digests
+        shell: bash
+        run: |
+          evidence="$RUNNER_TEMP/accelerator-prepared/image-evidence.json"
+          source="$RUNNER_TEMP/accelerator-prepared/source.json"
+          {
+            echo "image_index=$(jq -er .imageDigest "$evidence")"
+            echo "image_amd64=$(jq -er '.platforms[]|select(.architecture=="amd64")|.manifestDigest' "$evidence")"
+            echo "image_arm64=$(jq -er '.platforms[]|select(.architecture=="arm64")|.manifestDigest' "$evidence")"
+            echo "chart_digest=$(jq -er .chartDigest "$source")"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: kubikles-accelerator-prepared
+          path: ${{ runner.temp }}/accelerator-transfer/*
+          retention-days: 1
+          if-no-files-found: error
+
+  accelerator-publish:
+    needs: [preflight, accelerator-prepare]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: 1.25.12
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: kubikles-accelerator-prepared
+          path: ${{ runner.temp }}/accelerator-transfer
       - uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - name: Install checksum-pinned release tools
-        shell: bash
+      - name: Install exact release tools
         run: ./scripts/install-accelerator-release-tools.sh "$RUNNER_TEMP/accelerator-tools"
-      - name: Publish or verify immutable Accelerator artifacts
+      - name: Verify transferred bytes and publish without rebuilding
         env:
           BUILD_VERSION: ${{ needs.preflight.outputs.build_version }}
           SOURCE_COMMIT: ${{ needs.preflight.outputs.source_commit }}
           SOURCE_DATE_EPOCH: ${{ needs.preflight.outputs.source_epoch }}
           GH_TOKEN: ${{ github.token }}
           ACCELERATOR_RELEASE_OUTPUT: ${{ runner.temp }}/accelerator-release
+        shell: bash
         run: |
+          set -euo pipefail
           export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
-          ./scripts/publish-accelerator-release.sh ghcr
+          archive="$RUNNER_TEMP/accelerator-transfer/kubikles-accelerator-prepared-$BUILD_VERSION.tar"
+          checksum="$archive.sha256"
+          prepared="$RUNNER_TEMP/accelerator-prepared"
+          go run ./scripts/accelerator-supply-chain/cmd/accelerator-supply-chain bundle-verify "$archive" "$checksum" "$prepared" "$BUILD_VERSION" "$SOURCE_COMMIT"
+          ACCELERATOR_PREPARED_ROOT="$prepared" ./scripts/publish-accelerator-release.sh publish-existing
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: kubikles-accelerator-release
@@ -86,13 +218,104 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+  accelerator-attest:
+    needs: [preflight, accelerator-prepare, accelerator-publish]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: kubikles-accelerator-prepared
+          path: ${{ runner.temp }}/accelerator-transfer
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: kubikles-accelerator-release
+          path: ${{ runner.temp }}/accelerator-release
+      - id: extract
+        name: Verify prepared transfer for attestation
+        env:
+          BUILD_VERSION: ${{ needs.preflight.outputs.build_version }}
+          SOURCE_COMMIT: ${{ needs.preflight.outputs.source_commit }}
+        run: |
+          archive="$RUNNER_TEMP/accelerator-transfer/kubikles-accelerator-prepared-$BUILD_VERSION.tar"
+          go run ./scripts/accelerator-supply-chain/cmd/accelerator-supply-chain bundle-verify "$archive" "$archive.sha256" "$RUNNER_TEMP/accelerator-prepared" "$BUILD_VERSION" "$SOURCE_COMMIT"
+      - id: image-provenance
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-name: ghcr.io/skrobylabs/kubikles-accelerator
+          subject-digest: ${{ needs.accelerator-prepare.outputs.image_index }}
+          push-to-registry: true
+      - id: chart-provenance
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-name: ghcr.io/skrobylabs/helm/kubikles-accelerator
+          subject-digest: ${{ needs.accelerator-prepare.outputs.chart_digest }}
+          push-to-registry: true
+      - id: descriptor-provenance
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-path: ${{ runner.temp }}/accelerator-release/kubikles-accelerator-release-${{ needs.preflight.outputs.build_version }}.json
+      - id: image-amd64-spdx
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-name: ghcr.io/skrobylabs/kubikles-accelerator
+          subject-digest: ${{ needs.accelerator-prepare.outputs.image_amd64 }}
+          sbom-path: ${{ runner.temp }}/accelerator-prepared/kubikles-accelerator-image-linux-amd64-${{ needs.preflight.outputs.build_version }}.spdx.json
+          push-to-registry: true
+      - id: image-arm64-spdx
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-name: ghcr.io/skrobylabs/kubikles-accelerator
+          subject-digest: ${{ needs.accelerator-prepare.outputs.image_arm64 }}
+          sbom-path: ${{ runner.temp }}/accelerator-prepared/kubikles-accelerator-image-linux-arm64-${{ needs.preflight.outputs.build_version }}.spdx.json
+          push-to-registry: true
+      - id: chart-spdx
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-name: ghcr.io/skrobylabs/helm/kubikles-accelerator
+          subject-digest: ${{ needs.accelerator-prepare.outputs.chart_digest }}
+          sbom-path: ${{ runner.temp }}/accelerator-prepared/kubikles-accelerator-chart-${{ needs.preflight.outputs.build_version }}.spdx.json
+          push-to-registry: true
+      - name: Assemble exact machine assets
+        env:
+          BUILD_VERSION: ${{ needs.preflight.outputs.build_version }}
+          BUNDLE_1: ${{ steps.image-provenance.outputs.bundle-path }}
+          BUNDLE_2: ${{ steps.chart-provenance.outputs.bundle-path }}
+          BUNDLE_3: ${{ steps.descriptor-provenance.outputs.bundle-path }}
+          BUNDLE_4: ${{ steps.image-amd64-spdx.outputs.bundle-path }}
+          BUNDLE_5: ${{ steps.image-arm64-spdx.outputs.bundle-path }}
+          BUNDLE_6: ${{ steps.chart-spdx.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/accelerator-supply-chain"; mkdir -m 0700 "$output"
+          for bundle in "$BUNDLE_1" "$BUNDLE_2" "$BUNDLE_3" "$BUNDLE_4" "$BUNDLE_5" "$BUNDLE_6"; do jq -c . "$bundle"; done > "$output/kubikles-accelerator-attestations-$BUILD_VERSION.jsonl"
+          install -m 0600 "$RUNNER_TEMP/accelerator-prepared/kubikles-accelerator-image-linux-amd64-$BUILD_VERSION.spdx.json" "$output/"
+          install -m 0600 "$RUNNER_TEMP/accelerator-prepared/kubikles-accelerator-image-linux-arm64-$BUILD_VERSION.spdx.json" "$output/"
+          install -m 0600 "$RUNNER_TEMP/accelerator-prepared/kubikles-accelerator-chart-$BUILD_VERSION.spdx.json" "$output/"
+          [ "$(wc -l < "$output/kubikles-accelerator-attestations-$BUILD_VERSION.jsonl")" = 6 ]
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: kubikles-accelerator-supply-chain
+          path: ${{ runner.temp }}/accelerator-supply-chain/*
+          retention-days: 1
+          if-no-files-found: error
+
   release:
-    needs: [preflight, build, accelerator]
+    needs: [preflight, build, release-acceptance, accelerator-prepare, accelerator-publish, accelerator-attest]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
-      actions: read
       packages: read
+      actions: read
+      attestations: read
+      artifact-metadata: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -100,91 +323,58 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: ${{ runner.temp }}/artifacts
-      - name: Install checksum-pinned release tools
+      - name: Install exact verification tools
         run: ./scripts/install-accelerator-release-tools.sh "$RUNNER_TEMP/accelerator-tools"
-      - name: Finalize immutable GitHub Release
+      - name: Verify subjects and finalize immutable GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_VERSION: ${{ needs.preflight.outputs.build_version }}
+          SOURCE_COMMIT: ${{ needs.preflight.outputs.source_commit }}
         shell: bash
         run: |
           set -euo pipefail
-          github_token="$GH_TOKEN"
-          unset GH_TOKEN
-          github_cli() { GH_TOKEN="$github_token" gh "$@"; }
           export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
-          gh_config="$(mktemp -d "$RUNNER_TEMP/accelerator-gh.XXXXXX")"
-          chmod 700 "$gh_config"
-          : > "$gh_config/config.yml"
-          chmod 600 "$gh_config/config.yml"
-          export GH_CONFIG_DIR="$gh_config"
-          trap 'rm -rf "$gh_config"' EXIT
-          tag="$BUILD_VERSION"
-          descriptor="$RUNNER_TEMP/artifacts/kubikles-accelerator-release/kubikles-accelerator-release-$tag.json"
+          assets="$RUNNER_TEMP/release-assets"; mkdir -m 0700 "$assets"
+          find "$RUNNER_TEMP/artifacts" -type f \( -name '*.zip' -o -name 'kubikles-accelerator-release-*.json' -o -name 'kubikles-accelerator-release-*.json.sha256' -o -name '*.spdx.json' -o -name 'kubikles-accelerator-attestations-*.jsonl' \) -exec cp {} "$assets/" \;
+          find "$assets" -type f -printf '%f\n' | LC_ALL=C sort > "$RUNNER_TEMP/assets.txt"
+          go run ./scripts/accelerator-release verify-release-assets "$BUILD_VERSION" "$RUNNER_TEMP/assets.txt"
+          ACCELERATOR_SUPPLY_CHAIN_ASSET_ROOT="$assets" make verify-accelerator-supply-chain-ghcr BUILD_VERSION="$BUILD_VERSION"
+          descriptor="$assets/kubikles-accelerator-release-$BUILD_VERSION.json"
           checksum="$descriptor.sha256"
-          expected_assets="$RUNNER_TEMP/expected-release-assets.txt"
-          find "$RUNNER_TEMP/artifacts" -type f -printf '%f\n' | LC_ALL=C sort > "$expected_assets"
-          go run ./scripts/accelerator-release verify-release-assets "$tag" "$expected_assets"
-          [ "$(github_cli api "repos/${{ github.repository }}" --jq .full_name)" = '${{ github.repository }}' ] || { echo "Error: repository access failed" >&2; exit 1; }
+          github_token="$GH_TOKEN"; unset GH_TOKEN
+          github_cli() { GH_TOKEN="$github_token" gh "$@"; }
           classify_release() {
             local output error_file metadata release_tag release_name release_draft release_prerelease
             error_file="$(mktemp "$RUNNER_TEMP/release-state.XXXXXX")"
-            if output="$(github_cli api "repos/${{ github.repository }}/releases/tags/$tag" --jq '([.tag_name, .name, .draft, .prerelease] | @tsv), (.assets[].name)' 2>"$error_file")"; then
+            if output="$(github_cli api "repos/${{ github.repository }}/releases/tags/$BUILD_VERSION" --jq '([.tag_name, .name, .draft, .prerelease] | @tsv), (.assets[].name)' 2>"$error_file")"; then
               rm -f "$error_file"
               metadata="$(printf '%s\n' "$output" | sed -n '1p')"
               IFS=$'\t' read -r release_tag release_name release_draft release_prerelease <<< "$metadata"
-              [ "$release_tag" = "$tag" ] || { echo "Error: finalized Release tag differs" >&2; exit 1; }
-              [ "$release_name" = "$tag" ] || { echo "Error: finalized Release name differs" >&2; exit 1; }
-              [ "$release_draft" = false ] || { echo "Error: finalized Release must not be a draft" >&2; exit 1; }
-              [ "$release_prerelease" = false ] || { echo "Error: finalized Release must not be a prerelease" >&2; exit 1; }
+              [ "$release_tag" = "$BUILD_VERSION" ] && [ "$release_name" = "$BUILD_VERSION" ] && [ "$release_draft" = false ] && [ "$release_prerelease" = false ] || exit 1
               printf '%s\n' "$output" | sed '1d' > "$RUNNER_TEMP/finalized-assets.txt"
-              go run ./scripts/accelerator-release verify-release-assets "$tag" "$RUNNER_TEMP/finalized-assets.txt"
+              go run ./scripts/accelerator-release verify-release-assets "$BUILD_VERSION" "$RUNNER_TEMP/finalized-assets.txt"
               printf 'existing\n'
-            elif grep -Eq '\(HTTP 404\)$' "$error_file"; then
-              rm -f "$error_file"
-              printf 'absent\n'
-            else
-              rm -f "$error_file"
-              echo "Error: GitHub Release could not be classified authoritatively" >&2
-              exit 1
-            fi
+            elif grep -Eq '\(HTTP 404\)$' "$error_file"; then rm -f "$error_file"; printf 'absent\n'
+            else rm -f "$error_file"; exit 1; fi
           }
-          release_state="$(classify_release)"
-          if [ "$release_state" = existing ]; then
-            tmp="$(mktemp -d "$RUNNER_TEMP/finalized-release.XXXXXX")"; chmod 700 "$tmp"
-            github_cli release download "$tag" --pattern "kubikles-accelerator-release-$tag.json" --dir "$tmp"
-            github_cli release download "$tag" --pattern "kubikles-accelerator-release-$tag.json.sha256" --dir "$tmp"
-            cmp "$descriptor" "$tmp/$(basename "$descriptor")" >/dev/null || { echo "Error: finalized Release descriptor conflicts" >&2; exit 1; }
-            cmp "$checksum" "$tmp/$(basename "$checksum")" >/dev/null || { echo "Error: finalized Release checksum conflicts" >&2; exit 1; }
+          state="$(classify_release)"
+          if [ "$state" = existing ]; then
+            existing="$RUNNER_TEMP/existing"; mkdir -m 0700 "$existing"
+            github_cli release download "$BUILD_VERSION" --dir "$existing"
+            for asset in "$assets"/*; do cmp "$asset" "$existing/$(basename "$asset")" >/dev/null; done
           else
+            [ "$(github_cli api "repos/${{ github.repository }}/commits/$BUILD_VERSION" --jq .sha)" = "$SOURCE_COMMIT" ]
+            [ "$(classify_release)" = absent ]
             notes="$RUNNER_TEMP/accelerator-release-notes.md"
-            github_cli api "repos/${{ github.repository }}/releases/generate-notes" -f tag_name="$tag" --jq '.body' > "$notes"
-            cat >> "$notes" <<'NOTES'
-
-          ---
-
-          ## Downloads
-
-          | Platform | Architecture | File |
-          |----------|-------------|------|
-          | Windows | x64 | `Kubikles-windows-amd64.zip` |
-          | Windows | ARM64 | `Kubikles-windows-arm64.zip` |
-          | macOS | Apple Silicon | `Kubikles-macos-arm64.zip` |
-          | macOS | Intel | `Kubikles-macos-amd64.zip` |
-          | Linux | x64 | `Kubikles-linux-amd64.zip` |
-
-          > **macOS users:** see `README.txt` inside the zip for instructions on running unsigned builds.
-          NOTES
-            commit="$(go run ./scripts/accelerator-release verify-git . "$tag" '${{ needs.preflight.outputs.source_commit }}')"
-            [ "$(github_cli api "repos/${{ github.repository }}/commits/$tag" --jq .sha)" = "$commit" ] || { echo "Error: GitHub tag source moved before finalization" >&2; exit 1; }
-            [ "$(classify_release)" = absent ] || { echo "Error: Release appeared after preflight; refusing to mutate it" >&2; exit 1; }
-            github_cli release create "$tag" --title "$tag" -F "$notes" "$RUNNER_TEMP"/artifacts/*/*.zip "$descriptor" "$checksum"
-            [ "$(classify_release)" = existing ] || { echo "Error: finalized Release read-back failed" >&2; exit 1; }
+            github_cli api "repos/${{ github.repository }}/releases/generate-notes" -f tag_name="$BUILD_VERSION" --jq .body > "$notes"
+            github_cli release create "$BUILD_VERSION" --title "$BUILD_VERSION" -F "$notes" "$assets"/*
+            [ "$(classify_release)" = existing ]
           fi
-      - name: Verify public exact release handoff
+      - name: Verify finalized public release handoff
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_VERSION: ${{ needs.preflight.outputs.build_version }}
         run: |
           export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
           make verify-accelerator-release-ghcr BUILD_VERSION="$BUILD_VERSION"
+          make verify-accelerator-supply-chain-ghcr BUILD_VERSION="$BUILD_VERSION"

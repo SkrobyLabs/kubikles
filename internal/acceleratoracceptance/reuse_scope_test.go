@@ -96,6 +96,8 @@ func TestAcceptanceBrowserFixtureAndRealGraceAreClosed(t *testing.T) {
 		`cidr: $api_service_ip/32`,
 		`ACCELERATOR_ACCEPTANCE_COMPOSED_KIND`,
 		`go_test_tags=helm,accelerator_provision_kind,accelerator_e2e`,
+		`go_test_environment=(GOTOOLCHAIN=go1.25.12 GOPROXY=off GOSUMDB=off)`,
+		`env "${go_test_environment[@]}" HOME="$test_home"`,
 	} {
 		if !strings.Contains(harness, exact) {
 			t.Fatalf("acceptance Browser harness boundary missing %q", exact)

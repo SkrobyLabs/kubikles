@@ -1,0 +1,68 @@
+name: Main Accelerator acceptance
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: main-accelerator-${{ github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  accelerator-main:
+    if: github.repository == 'SkrobyLabs/kubikles' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: 1.25.12
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - id: buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        with:
+          version: v0.36.0
+          driver-opts: image=moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
+      - name: Install exact Accelerator tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/install-accelerator-release-tools.sh "$RUNNER_TEMP/accelerator-tools"
+          tools="$RUNNER_TEMP/accelerator-tools"
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://github.com/kubernetes-sigs/kind/releases/download/v0.32.0/kind-linux-amd64 -o "$tools/kind"
+          printf '%s  %s\n' 50030de23cf40a18505f20426f6a8506bedf13c6e509244bd1fa9463721b0f54 "$tools/kind" | sha256sum --check --status
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://dl.k8s.io/release/v1.36.3/bin/linux/amd64/kubectl -o "$tools/kubectl"
+          printf '%s  %s\n' ebbd080e7c2e275093b55915722043257eb24004363e20acb3c4d71919f88336 "$tools/kubectl" | sha256sum --check --status
+          chmod 0755 "$tools/kind" "$tools/kubectl"
+          printf '%s\n' "$tools" >> "$GITHUB_PATH"
+      - name: Cache exact E2E prerequisite images
+        run: |
+          docker pull moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
+          docker pull kindest/node:v1.32.2
+          docker pull registry:2.8.3
+          docker pull docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+          docker pull node:20.19.5-bookworm-slim@sha256:9e70124bd00f47dd023e349cd587132ae61892acc0e47ed641416c3e18f401c3
+          docker pull golang:1.25.12-bookworm@sha256:ea341baa9bd5ba6784f6d7161ace70544349a6242d54d34a0fbfd2c4d51c9d58
+          docker pull gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35
+          docker pull curlimages/curl:8.17.0@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40
+      - name: Run canonical functional and security acceptance
+        run: make test-accelerator-e2e
+      - name: Prepare fresh Trivy database
+        run: trivy image --cache-dir "$RUNNER_TEMP/trivy-cache" --download-db-only --no-progress
+      - name: Run exact local supply-chain gate
+        env:
+          ACCELERATOR_BUILDER: ${{ steps.buildx.outputs.name }}
+          TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
+        run: make test-accelerator-supply-chain BUILD_VERSION=v0.0.0

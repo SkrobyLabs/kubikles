@@ -29,7 +29,17 @@ fetch "https://github.com/cli/cli/releases/download/v2.97.0/gh_2.97.0_linux_amd6
 tar -xzf "$tmp/gh.tar.gz" -C "$tmp"
 install -m 0755 "$tmp/gh_2.97.0_linux_amd64/bin/gh" "$destination/gh"
 
+fetch "https://github.com/anchore/syft/releases/download/v1.44.0/syft_1.44.0_linux_amd64.tar.gz" "0e91737aee2b5baf1d255b959630194a302335d848ff97bb07921eb6205b5f5a" syft.tar.gz
+tar -xzf "$tmp/syft.tar.gz" -C "$tmp" syft
+install -m 0755 "$tmp/syft" "$destination/syft"
+
+fetch "https://github.com/aquasecurity/trivy/releases/download/v0.70.0/trivy_0.70.0_Linux-64bit.tar.gz" "8b4376d5d6befe5c24d503f10ff136d9e0c49f9127a4279fd110b727929a5aa9" trivy.tar.gz
+tar -xzf "$tmp/trivy.tar.gz" -C "$tmp" trivy
+install -m 0755 "$tmp/trivy" "$destination/trivy"
+
 [ "$("$destination/helm" version --short)" = 'v3.21.3+g1ad6e68' ] || fail "installed Helm build differs from canonical v3.21.3"
 [ "$("$destination/oras" version | sed -n 's/^Version:[[:space:]]*//p')" = '1.3.3' ] || fail "installed ORAS version differs from 1.3.3"
 [ "$("$destination/oras" version | sed -n 's/^Git commit:[[:space:]]*//p')" = '210747c29c1d38732b3194878dfd8b5a6b9ad7eb' ] || fail "installed ORAS build differs from canonical v1.3.3"
 [ "$("$destination/gh" --version | sed -n '1p')" = 'gh version 2.97.0 (2026-07-31)' ] || fail "installed GitHub CLI build differs from canonical v2.97.0"
+[ "$("$destination/syft" version -o json | jq -r .version)" = '1.44.0' ] || fail "installed Syft build differs from canonical v1.44.0"
+[ "$("$destination/trivy" --version | sed -n 's/^Version: //p')" = '0.70.0' ] || fail "installed Trivy build differs from canonical v0.70.0"
