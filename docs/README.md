@@ -21,6 +21,7 @@ This index groups the docs by purpose.
 - [Issue Detector](features/issue-detector.md)
 - [AI Assistant](features/ai-assistant.md)
 - [Helm Management](features/helm.md)
+- [Kubikles Accelerator](features/accelerator.md)
 
 ## Run & operate
 
@@ -28,6 +29,17 @@ This index groups the docs by purpose.
 - [Server Mode](server-mode.md) — headless / browser / in-cluster deployment
 - [Linux Support](linux.md) — runtime dependencies and AppImage packaging
 - [Custom Issue Detector Rules](custom-issue-rules.md) — the YAML rule format
+- [Accelerator Operations](accelerator/operations.md) — automatic lifecycle, safe diagnostics, and release verification
+
+## Security
+
+- [Accelerator Security](accelerator/security.md) — boundaries, threat model, privacy, and residual risk
+
+## For maintainers
+
+- [Accelerator Architecture](accelerator/architecture.md) — request and lifecycle flows
+- [Accelerator Maintainer Contract](accelerator/development.md) — exact operations and ownership
+- [Accelerator Acceptance Evidence](accelerator/evidence.md) — checked gate provenance
 
 ## For AI assistants
 

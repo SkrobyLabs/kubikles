@@ -1,5 +1,9 @@
 # Server / Headless Mode
 
+<!-- accelerator-docs:begin distinction -->
+> Ordinary Server Mode is an unauthenticated, unrestricted full-frontend mode and is distinct from [Kubikles Accelerator](features/accelerator.md). Accelerator is an automatically managed, authenticated, dedicated Secret-only read path; this page does not describe its deployment or security model.
+<!-- accelerator-docs:end distinction -->
+
 Kubikles can run without a desktop environment, serving the full UI over HTTP with real-time updates via WebSocket. This is useful for:
 
 - Headless servers, containers, and remote machines

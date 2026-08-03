@@ -32,6 +32,7 @@ busy clusters. See [Overview](docs/overview.md) for the full argument.
 - **[Issue detector](docs/features/issue-detector.md)** — rule-based cluster scanning with built-in and custom YAML rules.
 - **[AI assistant](docs/features/ai-assistant.md)** — a pluggable AI pair with read-only cluster tools.
 - **[Helm management](docs/features/helm.md)** — releases, repositories, and OCI charts (optional build).
+- **[Kubikles Accelerator](docs/features/accelerator.md)** — optional, automatically managed acceleration for a fixed Secret-read boundary.
 
 Also included: X.509 certificate inspection, an in-cluster embedded browser
 (noVNC), customisable hot-reloadable themes, and a multi-language scratchpad.
@@ -46,6 +47,7 @@ Also included: X.509 certificate inspection, an in-cluster embedded browser
 | Understand why key choices were made | [Decisions](docs/decisions.md) |
 | Set up and run the app locally | [Getting Started](docs/getting-started.md) |
 | Run it headless / in a browser / in-cluster | [Server Mode](docs/server-mode.md) |
+| Understand or operate Accelerator | [Accelerator](docs/features/accelerator.md) · [Operations](docs/accelerator/operations.md) · [Security](docs/accelerator/security.md) |
 | Install Linux runtime dependencies | [Linux Support](docs/linux.md) |
 | Write custom issue-detector rules | [Custom Rules](docs/custom-issue-rules.md) |
 | Work on the code as an AI assistant | [AI Reference](docs/ai/README.md) |

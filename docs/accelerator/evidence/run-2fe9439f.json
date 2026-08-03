@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "owner": "2fe9439f",
+  "command": "make test-accelerator-e2e",
+  "testedCommit": "8ea711de249842cf205b52d720b35849f4190529",
+  "authorityInputsSha256": "c268039e59c67437bc1f7d0a4e4355dd8d5be6dd9c09fca6872139cb7dfec95f",
+  "capturedAt": "2026-08-03T21:28:16Z",
+  "cleanCapture": true,
+  "result": "pass",
+  "durationMs": 1267646,
+  "fixture": "closed offline build-N-1/build-N/build-N+1 acceptance",
+  "environment": {
+    "architecture": "arm64",
+    "buildVersion": "v0.0.0",
+    "buildx": "github.com/docker/buildx v0.36.0 df28b0a0b6a44453a87bd53c438432f4120962c9",
+    "docker": "Docker version 29.7.0, build c1eba93",
+    "go": "go version go1.25.12 linux/arm64",
+    "helm": "v3.21.3+g1ad6e68",
+    "kind": "kind v0.32.0 go1.26.3 linux/arm64",
+    "kubectl": "Client Version: v1.36.3",
+    "node": "v22.23.2",
+    "npm": "10.9.8",
+    "oras": "Version:        1.3.3",
+    "os": "linux",
+    "syft": "1.44.0",
+    "trivy": "Version: 0.70.0"
+  },
+  "measurements": {
+    "acceptanceCases": 22
+  }
+}
