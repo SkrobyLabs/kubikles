@@ -22,12 +22,12 @@ export function CancelConnectionTest() {
   return window['go']['main']['App']['CancelConnectionTest']();
 }
 
-export function CancelListRequest(arg1) {
-  return window['go']['main']['App']['CancelListRequest'](arg1);
-}
-
 export function CancelIntegratedSecretListRequest(arg1, arg2) {
   return window['go']['main']['App']['CancelIntegratedSecretListRequest'](arg1, arg2);
+}
+
+export function CancelListRequest(arg1) {
+  return window['go']['main']['App']['CancelListRequest'](arg1);
 }
 
 export function CancelMetricsRequest(arg1) {
@@ -502,6 +502,14 @@ export function GetIngressYaml(arg1, arg2) {
   return window['go']['main']['App']['GetIngressYaml'](arg1, arg2);
 }
 
+export function GetIntegratedSecretData(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetIntegratedSecretData'](arg1, arg2, arg3);
+}
+
+export function GetIntegratedSecretYaml(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetIntegratedSecretYaml'](arg1, arg2, arg3);
+}
+
 export function GetIssueRulesDir() {
   return window['go']['main']['App']['GetIssueRulesDir']();
 }
@@ -682,14 +690,6 @@ export function GetSecretData(arg1, arg2) {
   return window['go']['main']['App']['GetSecretData'](arg1, arg2);
 }
 
-export function GetIntegratedSecretData(arg1, arg2, arg3) {
-  return window['go']['main']['App']['GetIntegratedSecretData'](arg1, arg2, arg3);
-}
-
-export function GetIntegratedSecretYaml(arg1, arg2, arg3) {
-  return window['go']['main']['App']['GetIntegratedSecretYaml'](arg1, arg2, arg3);
-}
-
 export function GetSecretYaml(arg1, arg2) {
   return window['go']['main']['App']['GetSecretYaml'](arg1, arg2);
 }
@@ -764,10 +764,6 @@ export function IsRequestCancellationEnabled() {
 
 export function ListCRDs() {
   return window['go']['main']['App']['ListCRDs']();
-}
-
-export function ListIntegratedSecretsMetadata(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['ListIntegratedSecretsMetadata'](arg1, arg2, arg3, arg4);
 }
 
 export function ListCSIDrivers(arg1) {
@@ -848,6 +844,10 @@ export function ListIngressClasses(arg1) {
 
 export function ListIngresses(arg1, arg2) {
   return window['go']['main']['App']['ListIngresses'](arg1, arg2);
+}
+
+export function ListIntegratedSecretsMetadata(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ListIntegratedSecretsMetadata'](arg1, arg2, arg3, arg4);
 }
 
 export function ListIssueRules() {
@@ -1010,6 +1010,10 @@ export function RefreshIngressHostnames(arg1) {
   return window['go']['main']['App']['RefreshIngressHostnames'](arg1);
 }
 
+export function ReleaseIntegratedSecretReads() {
+  return window['go']['main']['App']['ReleaseIntegratedSecretReads']();
+}
+
 export function ReloadIssueRules() {
   return window['go']['main']['App']['ReloadIssueRules']();
 }
@@ -1056,6 +1060,10 @@ export function RestartDeployment(arg1, arg2) {
 
 export function RestartStatefulSet(arg1, arg2) {
   return window['go']['main']['App']['RestartStatefulSet'](arg1, arg2);
+}
+
+export function RetainIntegratedSecretReads() {
+  return window['go']['main']['App']['RetainIntegratedSecretReads']();
 }
 
 export function RollbackHelmRelease(arg1, arg2, arg3) {
@@ -1250,8 +1258,16 @@ export function SubscribeCRDWatcher(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SubscribeCRDWatcher'](arg1, arg2, arg3, arg4);
 }
 
+export function SubscribeIntegratedSecretWatcher(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SubscribeIntegratedSecretWatcher'](arg1, arg2, arg3);
+}
+
 export function SubscribeResourceWatcher(arg1, arg2) {
   return window['go']['main']['App']['SubscribeResourceWatcher'](arg1, arg2);
+}
+
+export function SubscribeSecretWatcher(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SubscribeSecretWatcher'](arg1, arg2, arg3);
 }
 
 export function SuspendCronJob(arg1, arg2, arg3) {
@@ -1282,24 +1298,16 @@ export function TriggerCronJob(arg1, arg2) {
   return window['go']['main']['App']['TriggerCronJob'](arg1, arg2);
 }
 
-export function RetainIntegratedSecretReads() {
-  return window['go']['main']['App']['RetainIntegratedSecretReads']();
-}
-
-export function ReleaseIntegratedSecretReads() {
-  return window['go']['main']['App']['ReleaseIntegratedSecretReads']();
-}
-
-export function SubscribeIntegratedSecretWatcher(arg1, arg2, arg3) {
-  return window['go']['main']['App']['SubscribeIntegratedSecretWatcher'](arg1, arg2, arg3);
+export function UninstallHelmRelease(arg1, arg2) {
+  return window['go']['main']['App']['UninstallHelmRelease'](arg1, arg2);
 }
 
 export function UnsubscribeIntegratedSecretWatcher(arg1, arg2) {
   return window['go']['main']['App']['UnsubscribeIntegratedSecretWatcher'](arg1, arg2);
 }
 
-export function UninstallHelmRelease(arg1, arg2) {
-  return window['go']['main']['App']['UninstallHelmRelease'](arg1, arg2);
+export function UnsubscribeSecretWatcher(arg1, arg2) {
+  return window['go']['main']['App']['UnsubscribeSecretWatcher'](arg1, arg2);
 }
 
 export function UnsubscribeWatcher(arg1) {

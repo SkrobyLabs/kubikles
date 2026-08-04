@@ -9,6 +9,8 @@ import {v2} from '../models';
 import {issuedetector} from '../models';
 import {events} from '../models';
 import {terminal} from '../models';
+import {agent} from '../models';
+import {acceleratorsecret} from '../models';
 
 export function AddHelmRepository(arg1:string,arg2:string,arg3:number):Promise<void>;
 
@@ -20,9 +22,9 @@ export function CancelAIRequest(arg1:string):Promise<void>;
 
 export function CancelConnectionTest():Promise<void>;
 
-export function CancelListRequest(arg1:string):Promise<boolean>;
-
 export function CancelIntegratedSecretListRequest(arg1:string,arg2:string):Promise<boolean>;
+
+export function CancelListRequest(arg1:string):Promise<boolean>;
 
 export function CancelMetricsRequest(arg1:string):Promise<boolean>;
 
@@ -260,6 +262,10 @@ export function GetIngressForwardState():Promise<main.IngressForwardState>;
 
 export function GetIngressYaml(arg1:string,arg2:string):Promise<string>;
 
+export function GetIntegratedSecretData(arg1:string,arg2:string,arg3:string):Promise<Array<k8s.DataEntry>>;
+
+export function GetIntegratedSecretYaml(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function GetIssueRulesDir():Promise<string>;
 
 export function GetJobYaml(arg1:string,arg2:string):Promise<string>;
@@ -350,10 +356,6 @@ export function GetRoleYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetSecretData(arg1:string,arg2:string):Promise<Array<k8s.DataEntry>>;
 
-export function GetIntegratedSecretData(arg1:string,arg2:string,arg3:string):Promise<Array<k8s.DataEntry>>;
-
-export function GetIntegratedSecretYaml(arg1:string,arg2:string,arg3:string):Promise<string>;
-
 export function GetSecretYaml(arg1:string,arg2:string):Promise<string>;
 
 export function GetServiceAccountYaml(arg1:string,arg2:string):Promise<string>;
@@ -391,8 +393,6 @@ export function IsHelmAvailable():Promise<boolean>;
 export function IsRequestCancellationEnabled():Promise<boolean>;
 
 export function ListCRDs():Promise<Array<v1.CustomResourceDefinition>>;
-
-export function ListIntegratedSecretsMetadata(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<Array<k8s.SecretListItem>>;
 
 export function ListCSIDrivers(arg1:string):Promise<Array<v1.CSIDriver>>;
 
@@ -433,6 +433,8 @@ export function ListHelmRepositories():Promise<Array<helm.Repository>>;
 export function ListIngressClasses(arg1:string):Promise<Array<v1.IngressClass>>;
 
 export function ListIngresses(arg1:string,arg2:string):Promise<Array<v1.Ingress>>;
+
+export function ListIntegratedSecretsMetadata(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<Array<k8s.SecretListItem>>;
 
 export function ListIssueRules():Promise<Array<issuedetector.RuleInfo>>;
 
@@ -514,6 +516,8 @@ export function OpenThemesDir():Promise<void>;
 
 export function RefreshIngressHostnames(arg1:Array<string>):Promise<void>;
 
+export function ReleaseIntegratedSecretReads():Promise<void>;
+
 export function ReloadIssueRules():Promise<Array<issuedetector.RuleInfo>>;
 
 export function ReloadThemes():Promise<Array<main.Theme>>;
@@ -537,6 +541,8 @@ export function RestartDaemonSet(arg1:string,arg2:string):Promise<void>;
 export function RestartDeployment(arg1:string,arg2:string):Promise<void>;
 
 export function RestartStatefulSet(arg1:string,arg2:string):Promise<void>;
+
+export function RetainIntegratedSecretReads():Promise<void>;
 
 export function RollbackHelmRelease(arg1:string,arg2:string,arg3:number):Promise<void>;
 
@@ -634,7 +640,11 @@ export function StopPortForward(arg1:string):Promise<void>;
 
 export function SubscribeCRDWatcher(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
 
+export function SubscribeIntegratedSecretWatcher(arg1:string,arg2:string,arg3:boolean):Promise<string>;
+
 export function SubscribeResourceWatcher(arg1:string,arg2:string):Promise<string>;
+
+export function SubscribeSecretWatcher(arg1:agent.AuthenticatedCallContext,arg2:string,arg3:boolean):Promise<acceleratorsecret.SecretWatchSubscription>;
 
 export function SuspendCronJob(arg1:string,arg2:string,arg3:boolean):Promise<void>;
 
@@ -650,15 +660,11 @@ export function TestPrometheusEndpoint(arg1:string,arg2:string,arg3:number):Prom
 
 export function TriggerCronJob(arg1:string,arg2:string):Promise<void>;
 
-export function RetainIntegratedSecretReads():Promise<void>;
-
-export function ReleaseIntegratedSecretReads():Promise<void>;
-
-export function SubscribeIntegratedSecretWatcher(arg1:string,arg2:string,arg3:boolean):Promise<string>;
+export function UninstallHelmRelease(arg1:string,arg2:string):Promise<void>;
 
 export function UnsubscribeIntegratedSecretWatcher(arg1:string,arg2:string):Promise<void>;
 
-export function UninstallHelmRelease(arg1:string,arg2:string):Promise<void>;
+export function UnsubscribeSecretWatcher(arg1:agent.AuthenticatedCallContext,arg2:string):Promise<void>;
 
 export function UnsubscribeWatcher(arg1:string):Promise<void>;
 

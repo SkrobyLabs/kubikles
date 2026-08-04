@@ -1,3 +1,39 @@
+export namespace acceleratorsecret {
+	
+	export class SecretWatchSubscription {
+	    watcherSpecId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SecretWatchSubscription(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.watcherSpecId = source["watcherSpecId"];
+	    }
+	}
+
+}
+
+export namespace agent {
+	
+	export class AuthenticatedCallContext {
+	    PrincipalID: string;
+	    SessionID: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AuthenticatedCallContext(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.PrincipalID = source["PrincipalID"];
+	        this.SessionID = source["SessionID"];
+	    }
+	}
+
+}
+
 export namespace helm {
 	
 	export class ChartVersion {
