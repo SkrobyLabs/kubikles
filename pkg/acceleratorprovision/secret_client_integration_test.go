@@ -157,15 +157,13 @@ func TestSecretClientLoopbackAuthenticatedCreatorSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := server.NewAcceleratorSessionRegistry("loopback-instance", nil)
-	browserSessions := server.NewBrowserSessionManager(registry)
-	authenticator := &server.AcceleratorWebSocketAuthenticator{Creator: creator, BrowserSessions: browserSessions, Registry: registry}
+	authenticator := &server.AcceleratorWebSocketAuthenticator{Creator: creator, Registry: registry}
 	caller := &loopbackSecretCaller{
 		listEntered: make(chan string, 1), listRelease: make(chan struct{}), detailEntered: make(chan string, 2),
 		detailRelease: map[string]chan struct{}{"reverse-a": make(chan struct{}), "reverse-b": make(chan struct{})},
 	}
-	options := server.AcceleratorOptions(0, nil, server.CreatorOrBrowserGuard(creator, browserSessions))
+	options := server.AcceleratorOptions(0, nil, creator.Guard)
 	options.MethodAuthorizer = server.NewAcceleratorMethodAuthorizer(agent.CapabilityResolution{Capabilities: agent.V1Capabilities()})
-	options.BrowserSessions = browserSessions
 	options.AcceleratorSessions = registry
 	options.AcceleratorWebSocketAuthenticator = authenticator
 	srv, err := server.NewWithOptions(caller, embed.FS{}, options)
@@ -271,7 +269,6 @@ func TestSecretClientLoopbackAuthenticatedCreatorSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	target := []server.AcceleratorSessionTarget{{SessionID: connected.Data.SessionID, Generation: connected.Data.Generation}}
-	registry.EmitEventToTargets(target, server.Event{Type: "event", Name: "browser-launch", Data: map[string]string{"receipt": base64.RawURLEncoding.EncodeToString(make([]byte, 32)), "status": "confirmed"}})
 	registry.EmitEventToTargets(target, server.Event{Type: "event", Name: acceleratorsecret.EventWatcherStatus, Data: acceleratorsecret.SecretWatcherStatus{WatcherSpecID: subscription.WatcherSpecID, Status: acceleratorsecret.WatchStatusConnected}})
 	select {
 	case event := <-watchLease.Events():

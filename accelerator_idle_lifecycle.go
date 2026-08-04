@@ -37,7 +37,6 @@ type acceleratorDisposableLifecycle struct {
 	srv interface {
 		Quiesce()
 	}
-	browser  *server.BrowserSessionManager
 	sessions *server.AcceleratorSessionRegistry
 	// closeSessions is captured from the exact bound registry. Keeping the call
 	// narrow also permits deterministic error-order tests without a live socket.
@@ -52,16 +51,16 @@ var _ agent.DisposableIdleLifecycle = (*acceleratorDisposableLifecycle)(nil)
 
 func (l *acceleratorDisposableLifecycle) bind(srv interface {
 	Quiesce()
-}, browser *server.BrowserSessionManager, sessions *server.AcceleratorSessionRegistry, cleaner acceleratorSessionStateCleaner) error {
+}, sessions *server.AcceleratorSessionRegistry, cleaner acceleratorSessionStateCleaner) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.bound {
 		return errAcceleratorIdleLifecycleRebind
 	}
-	if srv == nil || browser == nil || sessions == nil || cleaner == nil || l.cancel == nil {
+	if srv == nil || sessions == nil || cleaner == nil || l.cancel == nil {
 		return errAcceleratorIdleLifecycleUnbound
 	}
-	l.srv, l.browser, l.sessions, l.cleaner = srv, browser, sessions, cleaner
+	l.srv, l.sessions, l.cleaner = srv, sessions, cleaner
 	l.closeSessions = sessions.Close
 	l.bound = true
 	return nil
@@ -72,13 +71,10 @@ func (l *acceleratorDisposableLifecycle) ClearSessionAndWatcherState(ctx context
 		l.mu.Unlock()
 		return errAcceleratorIdleLifecycleUnbound
 	}
-	srv, browser, closeSessions, cleaner := l.srv, l.browser, l.closeSessions, l.cleaner
+	srv, closeSessions, cleaner := l.srv, l.closeSessions, l.cleaner
 	l.mu.Unlock()
 	if srv != nil {
 		srv.Quiesce()
-	}
-	if browser != nil {
-		browser.RevokeAll(ctx)
 	}
 	var errs []error
 	if closeSessions != nil {

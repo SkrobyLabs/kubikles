@@ -3,16 +3,6 @@ import { useK8s } from '~/context';
 import { optimizeNamespaceQuery } from '~/hooks/useNamespaceOptimization';
 import type { SecretReadSource } from './secretReadSource';
 import { normalizeSecretNamespaces, SecretListOperationController, type SecretListState } from './secretListOperations';
-import Logger from '~/utils/Logger';
-
-const reportSecretOperationFailure = (event: 'subscription_failure' | 'list_failure', requestId: string, namespace: string) => {
-  if (typeof window === 'undefined') return;
-  Logger.error('Secret list operation failure', {
-    event,
-    requestId,
-    namespace: namespace || 'all-namespaces',
-  }, 'config');
-};
 
 const normalizedQuery = (selectedNamespaces: string | string[], allNamespaces: string[]) => {
   const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
@@ -34,12 +24,7 @@ export function useSecretListOperations(
   const checkConnectionErrorRef = useRef(checkConnectionError);
   checkConnectionErrorRef.current = checkConnectionError;
   const controller = useMemo(
-    () => new SecretListOperationController(
-      source,
-      setState,
-      error => checkConnectionErrorRef.current(error),
-      reportSecretOperationFailure,
-    ),
+    () => new SecretListOperationController(source, setState, error => checkConnectionErrorRef.current(error)),
     [],
   );
   const namespaces = normalizedQuery(selectedNamespaces, allNamespaces);

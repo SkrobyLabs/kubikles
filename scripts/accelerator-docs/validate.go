@@ -82,7 +82,9 @@ func validateAuthorities(root string, c contract) error {
 	checks := map[string][]string{
 		"pkg/agent/policy.go":                                   {"ListSecretsMetadata", "GetSecretData", "GetSecretYaml", "CancelListRequest", "SubscribeSecretWatcher", "UnsubscribeSecretWatcher", "core/v1/secrets:get", "core/v1/secrets:list", "core/v1/secrets:watch"},
 		"pkg/agent/lifecycle.go":                                {"2 * time.Minute"},
-		"pkg/server/browser_session.go":                         {"15 * time.Minute", "8 * time.Hour"},
+		"accelerator_secret_router.go":                          {"integratedSecretRouter"},
+		"app_integrated_secrets.go":                             {"RetainIntegratedSecretReads", "ReleaseIntegratedSecretReads"},
+		"pkg/server/accelerator_rpc.go":                         {"DecodeCall", "LookupMethodPolicy", "Authorize"},
 		"deploy/charts/kubikles-accelerator/templates/job.yaml": {"ttlSecondsAfterFinished: 3600", "terminationGracePeriodSeconds: 30", "cpu: 100m", "memory: 128Mi", "cpu: \"1\"", "memory: 512Mi"},
 		"release/accelerator-release.schema.json":               {"ghcr.io/skrobylabs/kubikles-accelerator", "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator", "exact-build-version"},
 	}

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -20,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -757,17 +755,13 @@ func TestOrdinaryServerHasNoAcceleratorIdleCoordinator(t *testing.T) {
 	for _, mode := range []RuntimeMode{RuntimeModeDesktop, RuntimeModeServer} {
 		t.Run(string(mode), func(t *testing.T) {
 			dependencies := productionServerModeDependencies()
-			idleFactories, registries, browsers := 0, 0, 0
+			idleFactories, registries := 0, 0
 			dependencies.newAcceleratorIdleCoordinator = func(agent.DisposableIdleLifecycle, context.Context, func()) acceleratorIdleCoordinator {
 				idleFactories++
 				return nil
 			}
 			dependencies.newAcceleratorSessions = func(string, server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry {
 				registries++
-				return nil
-			}
-			dependencies.newBrowserSessions = func(func() time.Time, io.Reader, server.BrowserSessionRevoker) *server.BrowserSessionManager {
-				browsers++
 				return nil
 			}
 			ordinary := &idleCompositionServer{runStarted: make(chan struct{}, 1)}
@@ -802,8 +796,8 @@ func TestOrdinaryServerHasNoAcceleratorIdleCoordinator(t *testing.T) {
 			ordinary.mu.Lock()
 			runCalls, runReadyCalls, quiesceCalls := ordinary.runCalls, ordinary.runReadyCalls, ordinary.quiesceCalls
 			ordinary.mu.Unlock()
-			if idleFactories != 0 || registries != 0 || browsers != 0 || runCalls != 1 || runReadyCalls != 0 || quiesceCalls != 0 {
-				t.Fatalf("ordinary idle/registry/browser/run/ready/quiesce = %d/%d/%d/%d/%d/%d", idleFactories, registries, browsers, runCalls, runReadyCalls, quiesceCalls)
+			if idleFactories != 0 || registries != 0 || runCalls != 1 || runReadyCalls != 0 || quiesceCalls != 0 {
+				t.Fatalf("ordinary idle/registry/run/ready/quiesce = %d/%d/%d/%d/%d", idleFactories, registries, runCalls, runReadyCalls, quiesceCalls)
 			}
 		})
 	}
@@ -837,233 +831,6 @@ func TestAcceleratorRejectsServerWithoutIdleLifecycle(t *testing.T) {
 	if !errors.Is(err, errAcceleratorIdleServerUnsupported) {
 		t.Fatalf("unsupported server error = %v", err)
 	}
-}
-
-func TestBrowserEntryOneTimeEndToEnd(t *testing.T) {
-	client, err := k8s.NewClientForRESTConfig(&rest.Config{Host: "http://127.0.0.1"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	creator, err := server.NewCreatorAuthenticator(testCreatorVerifier(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	captured := &capturedServerModeServer{runStarted: make(chan struct{}), waitForRunContext: true}
-	dependencies := productionServerModeDependencies()
-	dependencies.lookupEnv = func(string) string { return "creator identity seam" }
-	dependencies.newCreatorIdentity = func(string) (*server.CreatorAuthenticator, string, error) {
-		return creator, "accel-browser-composition", nil
-	}
-	watchResolver := &recordingCapabilityResolver{resolution: agent.CapabilityResolution{Capabilities: []agent.Capability{agent.CapabilitySecretsWatch}}}
-	dependencies.capabilityResolverFactory = func(*k8s.Client) agent.CapabilityResolverFactory {
-		return func() agent.CapabilityResolver { return watchResolver }
-	}
-	compositionClock := &serverModeTestClock{now: time.Date(2026, 8, 1, 7, 8, 9, 123, time.UTC)}
-	compositionEntropy := bytes.NewReader(bytes.Repeat([]byte{0x5a}, 256))
-	compositionObserver := &recordingCompositionObserver{}
-	compositionIdle := &recordingIdleCoordinator{observer: compositionObserver}
-	dependencies.newAcceleratorIdleCoordinator = func(agent.DisposableIdleLifecycle, context.Context, func()) acceleratorIdleCoordinator {
-		return compositionIdle
-	}
-	dependencies.browserSessionNow = compositionClock.Now
-	dependencies.browserSessionEntropy = compositionEntropy
-	dependencies.newBrowserEntryGate = func(embed.FS, string) server.BrowserEntryAvailability { return alwaysAvailableBrowserEntry{} }
-	var registryFactoryCalls int
-	var composedRegistry *server.AcceleratorSessionRegistry
-	dependencies.newAcceleratorSessions = func(instanceID string, observer server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry {
-		registryFactoryCalls++
-		if instanceID != "accel-browser-composition" {
-			t.Fatalf("registry instance ID = %q", instanceID)
-		}
-		chain, ok := observer.(*acceleratorSessionObserverChain)
-		if !ok || chain.idle != compositionIdle {
-			t.Fatalf("injected observer = %T, want chain for %T", observer, compositionIdle)
-		}
-		composedRegistry = server.NewAcceleratorSessionRegistry(instanceID, observer)
-		return composedRegistry
-	}
-	var factoryCalls int
-	var composed *server.BrowserSessionManager
-	dependencies.newBrowserSessions = func(now func() time.Time, entropy io.Reader, revoker server.BrowserSessionRevoker) *server.BrowserSessionManager {
-		factoryCalls++
-		if revoker != composedRegistry {
-			t.Fatalf("production revoker = %T/%p, want composed registry %p", revoker, revoker, composedRegistry)
-		}
-		if got := now(); !got.Equal(compositionClock.Now()) || entropy != compositionEntropy {
-			t.Fatalf("browser dependencies = %v/%T, want %v/%T", got, entropy, compositionClock.Now(), compositionEntropy)
-		}
-		composed = server.NewBrowserSessionManagerWithDependencies(now, entropy, revoker)
-		return composed
-	}
-	dependencies.newServer = captured.newServer
-	runCtx, stopRun := context.WithCancel(context.Background())
-	t.Cleanup(stopRun)
-	runResult := make(chan error, 1)
-	go func() {
-		runResult <- runServerWithOptions(runCtx, assets, 0, "accelerator", AppOptions{
-			Mode: RuntimeModeAccelerator, KubernetesClientFactory: func() (*k8s.Client, error) { return client, nil },
-		}, dependencies)
-	}()
-	select {
-	case <-captured.runStarted:
-	case <-time.After(2 * time.Second):
-		t.Fatal("composed server did not enter RunWithReady")
-	}
-	options := captured.option(t)
-	if registryFactoryCalls != 1 || factoryCalls != 1 || composed == nil || options.BrowserSessions != composed || options.AcceleratorSessions != composedRegistry || options.AcceleratorWebSocketAuthenticator == nil || options.ProtectedRouteGuard == nil || options.BoundaryMode != server.BoundaryModeAccelerator {
-		t.Fatalf("composition registry/manager/options = %d/%d/%p/%p/%#v", registryFactoryCalls, factoryCalls, composed, options.BrowserSessions, options)
-	}
-	handler := captured.handler(t)
-	request := func(method, target, authorization, body string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest(method, target, strings.NewReader(body))
-		r.Host = "localhost"
-		if authorization != "" {
-			r.Header.Set("Authorization", authorization)
-		}
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
-		return w
-	}
-	creatorAuthorization := "Bearer AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-	mint := request(http.MethodPost, "/api/accelerator-browser-ticket", creatorAuthorization, "")
-	if mint.Code != http.StatusCreated {
-		t.Fatalf("mint = %d %q", mint.Code, mint.Body.String())
-	}
-	var minted struct {
-		Ticket    string `json:"ticket"`
-		ExpiresAt string `json:"expiresAt"`
-	}
-	if err := json.Unmarshal(mint.Body.Bytes(), &minted); err != nil || len(minted.Ticket) != 43 || minted.ExpiresAt != compositionClock.Now().Add(server.BrowserTicketLifetime).Format(time.RFC3339Nano) {
-		t.Fatalf("mint body = %q, err=%v", mint.Body.String(), err)
-	}
-	exchange := request(http.MethodPost, "/api/accelerator-browser-session", "", `{"ticket":"`+minted.Ticket+`"}`)
-	if exchange.Code != http.StatusOK {
-		t.Fatalf("exchange = %d %q", exchange.Code, exchange.Body.String())
-	}
-	var exchanged struct {
-		Bearer    string `json:"bearer"`
-		ExpiresAt string `json:"expiresAt"`
-	}
-	if err := json.Unmarshal(exchange.Body.Bytes(), &exchanged); err != nil || len(exchanged.Bearer) != 43 || exchanged.ExpiresAt != compositionClock.Now().Add(server.BrowserSessionHardTTL).Format(time.RFC3339Nano) {
-		t.Fatalf("exchange body = %q, err=%v", exchange.Body.String(), err)
-	}
-	browserAuthorization := "Bearer " + exchanged.Bearer
-	if info := request(http.MethodGet, "/api/accelerator-info", browserAuthorization, ""); info.Code != http.StatusOK || !strings.Contains(info.Body.String(), `"instanceId":"accel-browser-composition"`) {
-		t.Fatalf("browser info = %d %q", info.Code, info.Body.String())
-	}
-	if denied := request(http.MethodPost, "/api/accelerator-browser-ticket", browserAuthorization, ""); denied.Code != http.StatusForbidden {
-		t.Fatalf("browser mint = %d %q", denied.Code, denied.Body.String())
-	}
-	webSocketServer := httptest.NewServer(handler)
-	webSocketURL := "ws" + strings.TrimPrefix(webSocketServer.URL, "http") + "/ws"
-	dialer := websocket.Dialer{Subprotocols: []string{
-		server.AcceleratorWebSocketProtocol,
-		server.AcceleratorBrowserCredentialProtocolPrefix + exchanged.Bearer,
-	}}
-	browserSocket, response, err := dialer.Dial(webSocketURL, nil)
-	if err != nil {
-		webSocketServer.Close()
-		t.Fatalf("composed browser WebSocket dial: %v", err)
-	}
-	if response != nil && response.Body != nil {
-		_ = response.Body.Close()
-	}
-	var connected server.Event
-	if err := browserSocket.ReadJSON(&connected); err != nil || connected.Name != "connected" {
-		_ = browserSocket.Close()
-		webSocketServer.Close()
-		t.Fatalf("composed browser connected = %+v err=%v", connected, err)
-	}
-	parsedBearer, err := server.ParseBrowserBearer(exchanged.Bearer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	browserCall, authenticated := composed.Authenticate(parsedBearer)
-	if !authenticated {
-		t.Fatal("connected browser bearer no longer authenticates")
-	}
-	if lease, found := composedRegistry.LookupSessionLease(browserCall.SessionID); !found || !lease.Connected {
-		t.Fatalf("post-connected browser lease=%+v found=%v", lease, found)
-	}
-	if _, err := captured.caller(t).CallMethod(browserCall, "SubscribeSecretWatcher", []json.RawMessage{json.RawMessage(`"evidence"`), json.RawMessage(`false`)}); err != nil {
-		t.Fatalf("direct immediate post-connected subscribe: %v", err)
-	}
-	immediateSubscribe := request(http.MethodPost, "/api/call", browserAuthorization, `{"method":"SubscribeSecretWatcher","args":["evidence",false]}`)
-	if immediateSubscribe.Code != http.StatusOK || !strings.Contains(immediateSubscribe.Body.String(), `"watcherSpecId"`) {
-		t.Fatalf("immediate post-connected subscribe = %d %q", immediateSubscribe.Code, immediateSubscribe.Body.String())
-	}
-	connectedEvents := compositionObserver.wait(t, 1)
-	if len(connectedEvents) != 1 || !strings.HasPrefix(connectedEvents[0], "connect:browser-http-") || !strings.HasSuffix(connectedEvents[0], ":1") {
-		t.Fatalf("composed observer connect=%v", connectedEvents)
-	}
-	if revoked := request(http.MethodPost, "/api/accelerator-browser-session/revoke", creatorAuthorization, ""); revoked.Code != http.StatusNoContent {
-		t.Fatalf("creator revoke = %d %q", revoked.Code, revoked.Body.String())
-	}
-	_ = browserSocket.SetReadDeadline(time.Now().Add(time.Second))
-	for {
-		if _, _, err := browserSocket.ReadMessage(); err != nil {
-			break
-		}
-	}
-	revokedEvents := compositionObserver.wait(t, 2)
-	if len(revokedEvents) != 2 || !strings.HasPrefix(revokedEvents[1], "revoke:browser-http-") || !strings.HasSuffix(revokedEvents[1], ":1") || strings.TrimPrefix(revokedEvents[0], "connect:") != strings.TrimPrefix(revokedEvents[1], "revoke:") {
-		t.Fatalf("composed observer revoke=%v", revokedEvents)
-	}
-	_ = browserSocket.Close()
-	webSocketServer.Close()
-	if expired := request(http.MethodGet, "/api/accelerator-info", browserAuthorization, ""); expired.Code != http.StatusUnauthorized {
-		t.Fatalf("revoked browser info = %d %q", expired.Code, expired.Body.String())
-	}
-	stopRun()
-	if err := <-runResult; err != nil {
-		t.Fatal(err)
-	}
-
-	for _, mode := range []RuntimeMode{RuntimeModeDesktop, RuntimeModeServer} {
-		t.Run(string(mode)+" constructs zero managers", func(t *testing.T) {
-			ordinaryCapture := &capturedServerModeServer{}
-			ordinaryDependencies := productionServerModeDependencies()
-			ordinaryFactoryCalls := 0
-			ordinaryRegistryCalls := 0
-			ordinaryDependencies.newAcceleratorSessions = func(string, server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry {
-				ordinaryRegistryCalls++
-				return server.NewAcceleratorSessionRegistry("unexpected", nil)
-			}
-			ordinaryDependencies.newBrowserSessions = func(func() time.Time, io.Reader, server.BrowserSessionRevoker) *server.BrowserSessionManager {
-				ordinaryFactoryCalls++
-				return server.NewBrowserSessionManager(server.NoopBrowserSessionRevoker{})
-			}
-			ordinaryDependencies.newServer = ordinaryCapture.newServer
-			if err := runServerWithOptions(context.Background(), assets, 0, "ordinary", AppOptions{
-				Mode: mode, KubernetesClientFactory: func() (*k8s.Client, error) { return nil, errors.New("ordinary client unavailable") },
-			}, ordinaryDependencies); err != nil {
-				t.Fatal(err)
-			}
-			ordinaryOptions := ordinaryCapture.option(t)
-			if ordinaryFactoryCalls != 0 || ordinaryRegistryCalls != 0 || ordinaryOptions.BrowserSessions != nil || ordinaryOptions.AcceleratorSessions != nil || ordinaryOptions.AcceleratorWebSocketAuthenticator != nil || ordinaryOptions.ProtectedRouteGuard != nil {
-				t.Fatalf("ordinary factory/options = %d/%d/%#v", ordinaryFactoryCalls, ordinaryRegistryCalls, ordinaryOptions)
-			}
-			for _, target := range []string{"/api/accelerator-browser-ticket", "/api/accelerator-browser-session", "/api/accelerator-browser-session/revoke"} {
-				r := httptest.NewRequest(http.MethodPost, target, nil)
-				w := httptest.NewRecorder()
-				ordinaryCapture.handler(t).ServeHTTP(w, r)
-				if ordinaryDispatcherBuild && w.Code != http.StatusNotFound {
-					t.Fatalf("ordinary route %s = %d, want 404", target, w.Code)
-				}
-			}
-		})
-	}
-}
-
-// TestAcceleratorWebSocketComposition pins the Accelerator-only transport seam.
-func TestAcceleratorWebSocketComposition(t *testing.T) {
-	TestBrowserEntryOneTimeEndToEnd(t)
-}
-
-// TestAcceleratorBrowserEntryComposition keeps the exact Accelerator-only
-// composition evidence adjacent to the real ticket/exchange/WebSocket flow.
-func TestAcceleratorBrowserEntryComposition(t *testing.T) {
-	TestBrowserEntryOneTimeEndToEnd(t)
 }
 
 func TestOrdinaryServerIgnoresCreatorVerifier(t *testing.T) {

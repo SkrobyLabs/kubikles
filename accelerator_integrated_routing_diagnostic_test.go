@@ -383,7 +383,6 @@ func TestIntegratedRoutingKindInitialDiagnosticClassifier(t *testing.T) {
 		{name: "reconnecting terminal", state: acceleratorprovision.CoordinatorReconnecting, stages: acceleratorprovision.IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: 1}, want: integratedRoutingKindInitialTerminal},
 		{name: "draining terminal", state: acceleratorprovision.CoordinatorDraining, stages: acceleratorprovision.IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: 1}, want: integratedRoutingKindInitialTerminal},
 		{name: "disposing terminal", state: acceleratorprovision.CoordinatorDisposing, stages: acceleratorprovision.IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: 1}, want: integratedRoutingKindInitialTerminal},
-		{name: "browser terminal", state: acceleratorprovision.CoordinatorBrowserOwned, stages: acceleratorprovision.IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: 1}, want: integratedRoutingKindInitialTerminal},
 		{name: "closed terminal", state: acceleratorprovision.CoordinatorClosed, want: integratedRoutingKindInitialTerminal},
 		{name: "unknown", state: acceleratorprovision.CoordinatorState("future"), want: integratedRoutingKindInitialUnknown},
 		{name: "retry cycles", state: acceleratorprovision.CoordinatorResolving, stages: acceleratorprovision.IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: acceleratorprovision.MaxTransientActivationAttempts + 1}, want: integratedRoutingKindInitialProvisionRetry},

@@ -3,7 +3,7 @@
   "product": {
     "formalName": "Kubikles Accelerator",
     "shortName": "Accelerator",
-    "modes": ["Browser", "Direct", "Integrated"],
+    "modes": ["Direct", "Integrated"],
     "readCategories": ["Secret detail", "Secret list", "Secret watch"]
   },
   "operations": [
@@ -15,9 +15,6 @@
     {"method": "UnsubscribeSecretWatcher", "capability": "secrets.watch", "action": ""}
   ],
   "durationsSeconds": {
-    "browserHardLifetime": 28800,
-    "browserIdle": 900,
-    "browserTicket": 60,
     "jobTerminationGrace": 30,
     "reconnectGrace": 120,
     "ttlAfterFinished": 3600
@@ -70,6 +67,8 @@
   "authorityInputs": [
     "Dockerfile.accelerator",
     "accelerator_lifecycle_contract.go",
+    "accelerator_secret_router.go",
+    "app_integrated_secrets.go",
     "deploy/charts/kubikles-accelerator/Chart.yaml",
     "deploy/charts/kubikles-accelerator/templates/clusterrole.yaml",
     "deploy/charts/kubikles-accelerator/templates/clusterrolebinding.yaml",
@@ -77,7 +76,6 @@
     "deploy/charts/kubikles-accelerator/templates/job.yaml",
     "deploy/charts/kubikles-accelerator/templates/serviceaccount.yaml",
     "deploy/charts/kubikles-accelerator/values.schema.json",
-    "frontend/src/accelerator-browser/BrowserApp.tsx",
     "internal/acceleratoracceptance/contract.go",
     "internal/acceleratoracceptance/report.go",
     "pkg/acceleratorprovision/coordinator.go",
@@ -90,8 +88,7 @@
     "pkg/agent/protocol.go",
     "pkg/k8s/accelerator_capabilities.go",
     "pkg/server/accelerator_idle.go",
-    "pkg/server/browser_entry.go",
-    "pkg/server/browser_session.go",
+    "pkg/server/accelerator_rpc.go",
     "release/accelerator-release.schema.json",
     "scripts/accelerator-supply-chain/attestation.go",
     "scripts/accelerator-supply-chain/evidence.go",
@@ -101,7 +98,6 @@
   ],
   "plans": [
     {"id":"020e8648","title":"Accelerator 40C: Connect exact authenticated desktop sessions","group":"lifecycle","target":"test-accelerator-desktop-connector-kind"},
-    {"id":"033fde0a","title":"Accelerator 12C: Add one-time browser tickets and bounded browser session","group":"transport","target":"go test ./pkg/server"},
     {"id":"1cec4c3a","title":"Accelerator 40B: Provision exact disposable desktop workloads","group":"lifecycle","target":"test-accelerator-desktop-provision-kind"},
     {"id":"1ff2446c","title":"Accelerator 32: Publish immutable artifacts and exact release descriptor","group":"release","target":"test-accelerator-release-contract"},
     {"id":"2289380c","title":"Accelerator 05C: Carry authenticated context through generated dispatch","group":"protocol","target":"go test ./pkg/server"},
@@ -116,16 +112,13 @@
     {"id":"70e5466d","title":"Accelerator 40E: Dispose exact releases and sweep inert orphans","group":"lifecycle","target":"test-accelerator-desktop-disposal-kind"},
     {"id":"71facaab","title":"Accelerator 40A: Resolve exact desktop release descriptors safely","group":"release","target":"test-accelerator-release-contract"},
     {"id":"8ebf3759","title":"Accelerator 12E: Exit after two-minute authenticated-client grace","group":"lifecycle","target":"go test ./pkg/server"},
-    {"id":"949c4709","title":"Accelerator 41C: Open system Browser and hand off workload ownership","group":"browser","target":"test-accelerator-browser-lifecycle-kind"},
     {"id":"a02bce49","title":"Accelerator 31: Deploy the disposable Job with fixed Secret RBAC","group":"deployment","target":"test-accelerator-chart"},
-    {"id":"a5d2c80a","title":"Accelerator 41B: Build dedicated Secret-only Browser artifact","group":"browser","target":"npm run test:accelerator-browser-artifact"},
     {"id":"ac978c3f","title":"Accelerator 40D: Resume exact creator sessions within grace","group":"lifecycle","target":"test-accelerator-desktop-resume-kind"},
     {"id":"b1854aa3","title":"Accelerator 40F: Coordinate automatic desktop Accelerator lifecycle","group":"lifecycle","target":"test-accelerator-desktop-lifecycle-kind"},
     {"id":"b3ffc033","title":"Accelerator 05B: Add isolated runtime composition and lifecycle seams","group":"runtime","target":"go test ./pkg/server"},
     {"id":"d0eb9876","title":"Accelerator 50B: Route integrated desktop Secret reads automatically","group":"routing","target":"test-accelerator-integrated-routing-kind"},
     {"id":"d4f712fd","title":"Accelerator 20A: Project and filter Secret list and detail payloads","group":"privacy","target":"go test ./pkg/k8s"},
     {"id":"dd19f7b6","title":"Accelerator 00: Characterize exact-Pod loopback and Direct Secret baselines","group":"baseline","target":"test-accelerator-00-kind"},
-    {"id":"e34515b0","title":"Accelerator 41A: Add authenticated co-located Browser entry bootstrap","group":"browser","target":"go test ./pkg/server"},
     {"id":"e590da1e","title":"Accelerator 10B: Resolve exact Secret capabilities from ServiceAccount access","group":"rbac","target":"go test ./pkg/k8s"},
     {"id":"e6c23dbd","title":"Accelerator 30: Build the dedicated executable and minimal OCI image","group":"artifact","target":"test-accelerator-image"},
     {"id":"f256001c","title":"Accelerator 20C: Own Secret frontend list and watch operations","group":"privacy","target":"npm test"},

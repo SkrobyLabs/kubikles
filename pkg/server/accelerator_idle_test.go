@@ -1,10 +1,8 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -114,7 +112,6 @@ type idleTestLifecycle struct {
 }
 
 type joinedIdleLifecycle struct {
-	browser  *BrowserSessionManager
 	registry *AcceleratorSessionRegistry
 	clears   atomic.Int32
 	exits    atomic.Int32
@@ -125,7 +122,6 @@ type joinedIdleLifecycle struct {
 func (l *joinedIdleLifecycle) ClearSessionAndWatcherState(ctx context.Context) error {
 	l.clears.Add(1)
 	l.record("clear")
-	l.browser.RevokeAll(ctx)
 	err := l.registry.Close(ctx)
 	l.record("terminal")
 	return err
@@ -289,13 +285,6 @@ func TestAcceleratorIdleCoordinatorGenerationFence(t *testing.T) {
 	if newer != 7 {
 		t.Fatalf("newer generation after selected stale tick = %d", newer)
 	}
-}
-
-// TestBrowserEntryUsesAcceleratorSessionLifecycle documents that Browser
-// connectivity uses the existing generation-fenced observer and sole grace
-// coordinator; it introduces no entry-specific count or timer.
-func TestBrowserEntryUsesAcceleratorSessionLifecycle(t *testing.T) {
-	TestAcceleratorIdleCoordinatorGenerationFence(t)
 }
 
 func TestAcceleratorIdleCoordinatorExactGraceAndTimerEpoch(t *testing.T) {
@@ -479,177 +468,4 @@ func TestAcceleratorIdleShutdownConcurrent(t *testing.T) {
 	if clears, exits := life.counts(); clears > 1 || exits > 1 || clears != exits {
 		t.Fatalf("concurrent shutdown counts = %d/%d", clears, exits)
 	}
-}
-
-func TestAcceleratorIdleJoinedComponentShutdown(t *testing.T) {
-	clock := &idleTestClock{}
-	cleanupCtx, cancelCleanup := context.WithCancel(context.Background())
-	defer cancelCleanup()
-	lifecycle := &joinedIdleLifecycle{}
-	coordinator := newAcceleratorIdleCoordinator(clock, lifecycle, cleanupCtx, nil)
-	registry := NewAcceleratorSessionRegistry("joined-idle", coordinator)
-	browser := newBrowserSessionManager(
-		func() time.Time { return time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC) },
-		bytes.NewReader(bytes.Repeat([]byte{0x73}, 96)), registry,
-	)
-	lifecycle.browser, lifecycle.registry = browser, registry
-
-	coordinator.MarkReady()
-	initialRecord := coordinator.timer
-	_, _, browserCall := mintAndExchange(t, browser)
-	connection := newFakeAcceleratorConn()
-	socket, ok := registry.register(browserCall, connection)
-	if !ok {
-		t.Fatal("real registry rejected joined browser socket")
-	}
-	if initialRecord == nil {
-		t.Fatal("initial ready grace record missing")
-	}
-	waitIdleSignal(t, initialRecord.waiterDone, "joined reconnect cancellation")
-
-	// Model a transport callback already delivered ahead of the registry's
-	// physical close. This leaves a real active socket while the current grace
-	// races the joined browser/registry/coordinator teardown.
-	coordinator.SessionDisconnected(socket.snapshot)
-	currentRecord := coordinator.timer
-	if currentRecord == nil || currentRecord == initialRecord {
-		t.Fatal("joined current grace was not rearmed")
-	}
-
-	start := make(chan struct{})
-	var joined sync.WaitGroup
-	joined.Add(5)
-	go func() { defer joined.Done(); <-start; currentRecord.timer.(*idleTestTimer).fire() }()
-	go func() { defer joined.Done(); <-start; browser.RevokeAll(cleanupCtx) }()
-	go func() { defer joined.Done(); <-start; _ = registry.Close(cleanupCtx) }()
-	go func() { defer joined.Done(); <-start; cancelCleanup() }()
-	go func() {
-		defer joined.Done()
-		<-start
-		var shutdowns sync.WaitGroup
-		for i := 0; i < 16; i++ {
-			shutdowns.Add(1)
-			go func() { defer shutdowns.Done(); coordinator.Shutdown() }()
-		}
-		shutdowns.Wait()
-	}()
-	close(start)
-	joinedDone := make(chan struct{})
-	go func() { joined.Wait(); close(joinedDone) }()
-	waitIdleSignal(t, joinedDone, "joined component teardown")
-	coordinator.Shutdown()
-	if err := registry.Close(context.Background()); err != nil {
-		t.Fatalf("final registry join: %v", err)
-	}
-	waitIdleSignal(t, socket.pumpsDone, "joined socket pumps")
-
-	if clears, exits := lifecycle.clears.Load(), lifecycle.exits.Load(); clears > 1 || exits > 1 || clears != exits {
-		t.Fatalf("joined cleanup/exit counts = %d/%d", clears, exits)
-	}
-	coordinator.mu.Lock()
-	stopped, timer := coordinator.stopped, coordinator.timer
-	coordinator.mu.Unlock()
-	if !stopped || timer != nil {
-		t.Fatalf("joined coordinator stopped/timer = %v/%v", stopped, timer)
-	}
-	for i, record := range []*acceleratorIdleTimerRecord{initialRecord, currentRecord} {
-		select {
-		case <-record.waiterDone:
-		default:
-			t.Fatalf("joined timer record %d waiter remained open", i)
-		}
-	}
-	if live, max := clock.liveAndMax(); live != 0 || max > 1 {
-		t.Fatalf("joined live/max waiters = %d/%d", live, max)
-	}
-	registry.mu.Lock()
-	closed, records := registry.closed, len(registry.records)
-	registry.mu.Unlock()
-	if !closed || registry.accepting.Load() || records != 0 {
-		t.Fatalf("joined registry closed/accepting/records = %v/%v/%d", closed, registry.accepting.Load(), records)
-	}
-}
-
-func TestConfirmedBrowserOwnsExactServerGraceLifecycle(t *testing.T) {
-	clock := &idleTestClock{}
-	lifecycle := &joinedIdleLifecycle{}
-	idle := newAcceleratorIdleCoordinator(clock, lifecycle, context.Background(), nil)
-	registry := NewAcceleratorSessionRegistry("browser-grace", idle)
-	browser := newBrowserSessionManager(
-		func() time.Time { return time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC) },
-		bytes.NewReader(bytes.Repeat([]byte{0x79}, 512)), registry,
-	)
-	lifecycle.browser, lifecycle.registry = browser, registry
-	idle.MarkReady()
-	initial := idle.timer
-	creator := acceleratorTestCall("browser-grace-creator")
-	creatorConn := newFakeAcceleratorConn()
-	creatorSocket, ok := registry.register(creator, creatorConn)
-	if !ok {
-		t.Fatal("creator registration rejected")
-	}
-	waitIdleSignal(t, initial.waiterDone, "creator cancellation of ready grace")
-	ticket, _, _, err := browser.mintForCreator(creator)
-	if err != nil {
-		t.Fatal(err)
-	}
-	bearer, _, err := browser.Exchange(ticket)
-	if err != nil {
-		t.Fatal(err)
-	}
-	browserCall, authenticated := browser.Authenticate(bearer)
-	if !authenticated {
-		t.Fatal("Browser bearer rejected")
-	}
-	browserSocket, ok := registry.register(browserCall, newFakeAcceleratorConn())
-	if !ok {
-		t.Fatal("Browser registration rejected")
-	}
-	browser.browserSocketActivated(browserCall.SessionID, browserSocket.snapshot.Generation)
-	creatorSocket.requestClose(acceleratorSocketClose{})
-	waitIdleSignal(t, creatorSocket.pumpsDone, "creator close")
-	waitAccelerator(t, "creator terminal observation", func() bool {
-		idle.mu.Lock()
-		defer idle.mu.Unlock()
-		return len(idle.current) == 1 && idle.current[browserCall.SessionID] == browserSocket.snapshot.Generation && idle.timer == nil
-	})
-
-	browserSocket.requestClose(acceleratorSocketClose{})
-	waitIdleSignal(t, browserSocket.pumpsDone, "first Browser close")
-	browser.browserSocketEnded(browserCall.SessionID, browserSocket.snapshot.Generation)
-	var firstGrace *acceleratorIdleTimerRecord
-	waitAccelerator(t, "first Browser grace", func() bool {
-		idle.mu.Lock()
-		defer idle.mu.Unlock()
-		firstGrace = idle.timer
-		return firstGrace != nil
-	})
-	_, durations := clock.snapshot()
-	if durations[len(durations)-1] != 2*time.Minute || durations[len(durations)-1] != agent.AcceleratorIdleReconnectGrace {
-		t.Fatalf("Browser grace durations=%v", durations)
-	}
-
-	reconnected, ok := registry.register(browserCall, newFakeAcceleratorConn())
-	if !ok {
-		t.Fatal("Browser reconnect rejected")
-	}
-	waitIdleSignal(t, firstGrace.waiterDone, "Browser reconnect cancellation")
-	reconnected.requestClose(acceleratorSocketClose{})
-	waitIdleSignal(t, reconnected.pumpsDone, "final Browser close")
-	var finalGrace *acceleratorIdleTimerRecord
-	waitAccelerator(t, "final Browser grace", func() bool {
-		idle.mu.Lock()
-		defer idle.mu.Unlock()
-		finalGrace = idle.timer
-		return finalGrace != nil && finalGrace != firstGrace
-	})
-	finalGrace.timer.(*idleTestTimer).fire()
-	waitAccelerator(t, "joined Browser expiry", func() bool { return lifecycle.exits.Load() == 1 })
-	if got := lifecycle.snapshot(); !reflect.DeepEqual(got, []string{"clear", "terminal", "exit"}) {
-		t.Fatalf("expiry order=%v", got)
-	}
-	if lifecycle.clears.Load() != 1 || lifecycle.exits.Load() != 1 {
-		t.Fatalf("expiry counts=%d/%d", lifecycle.clears.Load(), lifecycle.exits.Load())
-	}
-	idle.Shutdown()
 }

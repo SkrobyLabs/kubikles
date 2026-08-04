@@ -53,7 +53,7 @@ type CompatibilityResult struct {
 }
 
 // CheckBuildCompatibility checks literal, non-empty desktop and Accelerator build version equality.
-// Only desktop-to-Accelerator lifecycle calls this function; same-image browser assets do not negotiate compatibility.
+// Desktop-to-Accelerator lifecycle calls this function before publishing an Integrated session.
 func CheckBuildCompatibility(desktopBuildVersion, acceleratorBuildVersion string) CompatibilityResult {
 	result := CompatibilityResult{
 		DesktopBuildVersion:     desktopBuildVersion,

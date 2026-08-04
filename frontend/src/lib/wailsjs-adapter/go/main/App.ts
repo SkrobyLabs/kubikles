@@ -84,7 +84,6 @@ const AppProxy = new Proxy({}, handler);
 export function AddHelmRepository(...args) { return AppProxy.AddHelmRepository(...args); }
 export function AddPortForwardConfig(...args) { return AppProxy.AddPortForwardConfig(...args); }
 export function ApplyYAML(...args) { return AppProxy.ApplyYAML(...args); }
-export function OpenAcceleratorBrowser(...args) { return AppProxy.OpenAcceleratorBrowser(...args); }
 export function CancelConnectionTest(...args) { return AppProxy.CancelConnectionTest(...args); }
 export function CancelAIRequest(...args) { return AppProxy.CancelAIRequest(...args); }
 export function CancelListRequest(...args) { return AppProxy.CancelListRequest(...args); }

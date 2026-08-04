@@ -148,9 +148,9 @@ done
 go run ./scripts/cmd/inspect-accelerator-oci "$tmp/first.oci.tar" "$tmp/second.oci.tar"
 
 # T7 mutation evidence uses complete product-image builds, not synthetic Go
-# fixtures. Version changes must flow through Browser marker, binary, and OCI
-# label identity. Commit-only changes must affect binary/revision identity while
-# leaving the Browser output and ordinary compressed frontend bytes unchanged.
+# fixtures. Version changes must flow through binary and OCI label identity.
+# Commit-only changes must affect binary/revision identity while leaving ordinary
+# compressed frontend bytes unchanged.
 version_mutated="${BUILD_VERSION}-completion-mutation"
 case "$GIT_COMMIT" in
 	0*) commit_mutated="1${GIT_COMMIT#?}" ;;
@@ -211,21 +211,6 @@ test -s "$tmp/ordinary-baseline.sha256" || fail "ordinary frontend produced no g
 cmp "$tmp/ordinary-baseline.sha256" "$tmp/ordinary-version.sha256" >/dev/null || fail "ordinary gzip hashes changed with BuildVersion"
 cmp "$tmp/ordinary-baseline.sha256" "$tmp/ordinary-commit.sha256" >/dev/null || fail "ordinary gzip hashes changed with commit-only mutation"
 
-baseline_browser="$baseline_assets/frontend/dist/accelerator-browser"
-version_browser="$version_assets/frontend/dist/accelerator-browser"
-commit_browser="$commit_assets/frontend/dist/accelerator-browser"
-for relative in assets/browser.js assets/browser.css; do
-	baseline_browser_hash=$(sha256sum "$baseline_browser/$relative" | awk '{print $1}')
-	test "$baseline_browser_hash" = "$(sha256sum "$version_browser/$relative" | awk '{print $1}')" || fail "$relative changed with BuildVersion"
-	test "$baseline_browser_hash" = "$(sha256sum "$commit_browser/$relative" | awk '{print $1}')" || fail "$relative changed with commit-only mutation"
-done
-baseline_marker_hash=$(sha256sum "$baseline_browser/.kubikles-browser-v1.json" | awk '{print $1}')
-version_marker_hash=$(sha256sum "$version_browser/.kubikles-browser-v1.json" | awk '{print $1}')
-commit_marker_hash=$(sha256sum "$commit_browser/.kubikles-browser-v1.json" | awk '{print $1}')
-test "$baseline_marker_hash" != "$version_marker_hash" || fail "Browser marker did not change with BuildVersion"
-test "$baseline_marker_hash" = "$commit_marker_hash" || fail "Browser marker changed with commit-only mutation"
-grep -F "\"buildVersion\":\"$BUILD_VERSION\"" "$baseline_browser/.kubikles-browser-v1.json" >/dev/null || fail "baseline Browser marker version mismatch"
-grep -F "\"buildVersion\":\"$version_mutated\"" "$version_browser/.kubikles-browser-v1.json" >/dev/null || fail "mutated Browser marker version mismatch"
 else
     [ -n "${ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT:-}" ] || fail "offline artifact root is missing"
     go run ./internal/acceleratoracceptance/cmd/accelerator-e2e-artifact "$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT" || fail "offline artifact evidence is invalid"

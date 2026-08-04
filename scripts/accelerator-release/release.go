@@ -640,12 +640,9 @@ func inspectAcceleratorBinary(binary []byte, architecture, version, commit strin
 	for _, required := range []string{
 		"kubikles-accelerator-build-identity:" + version + "|" + commit + "|false",
 		"frontend/dist/index.html",
-		"accelerator-browser/.kubikles-browser-v1.json",
-		"kubikles-accelerator-browser",
-		`"buildVersion":"` + version + `"`,
 	} {
 		if !strings.Contains(text, required) {
-			return errors.New("Accelerator binary is missing release identity or Browser assets")
+			return errors.New("Accelerator binary is missing release identity or embedded frontend")
 		}
 	}
 	return nil

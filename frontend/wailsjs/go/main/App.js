@@ -14,10 +14,6 @@ export function ApplyYAML(arg1) {
   return window['go']['main']['App']['ApplyYAML'](arg1);
 }
 
-export function OpenAcceleratorBrowser() {
-  return window['go']['main']['App']['OpenAcceleratorBrowser']();
-}
-
 export function CancelAIRequest(arg1) {
   return window['go']['main']['App']['CancelAIRequest'](arg1);
 }

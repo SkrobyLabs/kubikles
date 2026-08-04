@@ -82,25 +82,22 @@ var expectedOwners = []expectedOwner{
 	{"A60A-010-RESUME", OwnerMake, "test-accelerator-desktop-resume-kind"},
 	{"A60A-011-DISPOSAL", OwnerMake, "test-accelerator-desktop-disposal-kind"},
 	{"A60A-012-LIFECYCLE", OwnerMake, "test-accelerator-desktop-lifecycle-kind"},
-	{"A60A-013-BROWSER-ARTIFACT", OwnerNPM, "test:accelerator-browser-artifact"},
-	{"A60A-014-BROWSER-LIFECYCLE", OwnerMake, "test-accelerator-browser-lifecycle-kind"},
 	{"A60A-015-INTEGRATED-ROUTING", OwnerMake, "test-accelerator-integrated-routing-kind"},
 	{"A60A-016-INTEGRATED-HAPPY", OwnerGo, "TestAcceleratorAcceptanceKind/IntegratedHappyPath"},
 	{"A60A-017-MISMATCH", OwnerGo, "TestAcceleratorAcceptanceKind/VersionAndArtifactMismatch"},
 	{"A60A-018-TRANSPORT-RESUME", OwnerGo, "TestAcceleratorAcceptanceKind/TransportResumeAndRecreate"},
-	{"A60A-019-BROWSER-HANDOFF", OwnerGo, "TestAcceleratorAcceptanceKind/BrowserHandoff"},
 	{"A60A-020-REAL-GRACE", OwnerGo, "TestAcceleratorAcceptanceKind/RealTwoMinuteAuthenticatedClientGrace"},
 	{"A60A-021-SECURITY-PRIVACY", OwnerGo, "TestAcceleratorAcceptanceKind/SecurityPrivacyBackpressure"},
 	{"A60A-022-CLEANUP-ISOLATION", OwnerGo, "TestAcceleratorAcceptanceKind/CleanupSweepIsolation"},
 }
 
 var requiredPrerequisites = map[string]struct{}{
-	"020e8648": {}, "033fde0a": {}, "1cec4c3a": {}, "1ff2446c": {}, "2289380c": {},
+	"020e8648": {}, "1cec4c3a": {}, "1ff2446c": {}, "2289380c": {},
 	"2d45b95b": {}, "2e710408": {}, "44ea1f82": {}, "53dfebec": {}, "63140918": {},
-	"66f24342": {}, "70e5466d": {}, "71facaab": {}, "8ebf3759": {}, "949c4709": {},
-	"a02bce49": {}, "a5d2c80a": {}, "ac978c3f": {}, "b1854aa3": {}, "b3ffc033": {},
-	"d0eb9876": {}, "d4f712fd": {}, "dd19f7b6": {}, "e34515b0": {}, "e590da1e": {},
-	"e6c23dbd": {}, "f256001c": {}, "f2769f29": {}, "f604c5fb": {},
+	"66f24342": {}, "70e5466d": {}, "71facaab": {}, "8ebf3759": {},
+	"a02bce49": {}, "ac978c3f": {}, "b1854aa3": {}, "b3ffc033": {},
+	"d0eb9876": {}, "d4f712fd": {}, "dd19f7b6": {}, "e590da1e": {},
+	"e6c23dbd": {}, "f604c5fb": {},
 }
 
 var (

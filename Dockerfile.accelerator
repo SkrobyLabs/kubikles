@@ -7,7 +7,7 @@ RUN npm ci
 COPY frontend ./
 COPY build/appicon.svg /src/build/appicon.svg
 COPY scripts/compress-dist.sh /src/scripts/compress-dist.sh
-RUN test -s /src/build/appicon.svg && rm -f src/assets/images/appicon.svg && cp /src/build/appicon.svg src/assets/images/appicon.svg && test -s src/assets/images/appicon.svg && BUILD_VERSION="$BUILD_VERSION" npm run build:accelerator && BUILD_VERSION="$BUILD_VERSION" npm run test:accelerator-browser-artifact
+RUN test -s /src/build/appicon.svg && rm -f src/assets/images/appicon.svg && cp /src/build/appicon.svg src/assets/images/appicon.svg && test -s src/assets/images/appicon.svg && BUILD_VERSION="$BUILD_VERSION" npm run build
 
 FROM gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35 AS accelerator-assets
 COPY --from=frontend /src/frontend/dist /frontend/dist

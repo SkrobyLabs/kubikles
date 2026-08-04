@@ -19,13 +19,12 @@ A generated App/Wails method does not authorize or accelerate itself. Trusted 05
 
 - `pkg/agent` owns compatibility, policy, authenticated call context, and idle lifecycle contracts.
 - `pkg/k8s` owns the fixed in-cluster context, Secret projection, and value-free watch behavior.
-- `pkg/server` owns loopback HTTP/WebSocket authentication, creator and Browser sessions, and idle expiry.
+- `pkg/server` owns loopback HTTP/WebSocket authentication, creator sessions, and idle expiry.
 - `pkg/acceleratorsecret` owns the typed six-operation RPC contract; root integrated router/lifecycle files and `pkg/acceleratorprovision` own Direct fallback and workload coordination.
-- `frontend/src/accelerator-browser` is the dedicated Browser artifact. It is distinct from the desktop frontend and does not use the desktop `AgentRouter`.
 - `deploy/charts/kubikles-accelerator`, `Dockerfile.accelerator`, `pkg/acceleratorrelease`, and the release schema/helper own deployment and immutable artifacts.
 - `test/accelerator/acceptance-v1.json` with `internal/acceleratoracceptance` owns 60A functional/security evidence. `security/accelerator-toolchain.json` and `scripts/accelerator-supply-chain` own 60B evidence.
 
-The machine-readable [documentation contract](contract-v1.json) contains the complete 31-plan title/group/focused-target map. It is checked against merged source rather than copied from work-queue state.
+The machine-readable [documentation contract](contract-v1.json) contains the complete 27-plan title/group/focused-target map. It is checked against merged source rather than copied from work-queue state.
 
 ## Safe extension checklist
 

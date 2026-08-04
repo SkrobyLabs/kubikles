@@ -554,8 +554,6 @@ func newAcceleratorSessionRegistry(instanceID string, observer AcceleratorSessio
 	return r
 }
 
-var _ BrowserSessionRevoker = (*AcceleratorSessionRegistry)(nil)
-
 func (r *AcceleratorSessionRegistry) beginUpgrade() (func(), bool) {
 	if !r.accepting.Load() {
 		return nil, false
@@ -664,8 +662,8 @@ func (r *AcceleratorSessionRegistry) observeReplacement(registration *accelerato
 }
 
 // beginRegistrationActivation commits the exact generation and callback batch
-// without invoking external observers. Browser activation calls this while its
-// own session-state mutex supplies the final expiry/revocation linearization.
+// without invoking external observers. Registration calls this while its own
+// state mutex supplies the final revocation linearization.
 func (r *AcceleratorSessionRegistry) beginRegistrationActivation(registration *acceleratorRegistration) bool {
 	if registration == nil || registration.socket == nil {
 		return false
@@ -862,7 +860,7 @@ func (r *AcceleratorSessionRegistry) EmitEventToTargets(targets []AcceleratorSes
 	r.mu.Unlock()
 }
 
-func (r *AcceleratorSessionRegistry) RevokeBrowserSession(_ context.Context, id agent.SessionID) {
+func (r *AcceleratorSessionRegistry) RevokeSession(_ context.Context, id agent.SessionID) {
 	for {
 		r.mu.Lock()
 		if r.closed {

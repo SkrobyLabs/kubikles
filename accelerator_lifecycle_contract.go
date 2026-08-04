@@ -11,7 +11,6 @@ import (
 type desktopAcceleratorCoordinator interface {
 	RuntimeLifecycle
 	AcquireSecretDemand(context.Context, string) acceleratorprovision.DemandResult
-	OpenAcceleratorBrowser(context.Context, func(string) bool) acceleratorprovision.BrowserOpenResult
 	FenceContextSwitch(string)
 	ContextSwitched(string, bool)
 }
@@ -20,9 +19,6 @@ type directOnlyAcceleratorCoordinator struct{}
 
 func (directOnlyAcceleratorCoordinator) AcquireSecretDemand(context.Context, string) acceleratorprovision.DemandResult {
 	return acceleratorprovision.DemandResult{Reason: acceleratorprovision.DemandRuntimeClosing}
-}
-func (directOnlyAcceleratorCoordinator) OpenAcceleratorBrowser(context.Context, func(string) bool) acceleratorprovision.BrowserOpenResult {
-	return acceleratorprovision.BrowserUnavailable
 }
 func (directOnlyAcceleratorCoordinator) FenceContextSwitch(string)     {}
 func (directOnlyAcceleratorCoordinator) ContextSwitched(string, bool)  {}

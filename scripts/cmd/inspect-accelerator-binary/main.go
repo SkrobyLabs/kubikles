@@ -82,7 +82,7 @@ func inspect(path, arch, version, commit, dirty string) error {
 	if !strings.Contains(text, identity) {
 		return fmt.Errorf("missing exact build identity %q", identity)
 	}
-	for _, required := range []string{"frontend/dist/index.html", "accelerator-browser/.kubikles-browser-v1.json", "kubikles-accelerator-browser", `"buildVersion":"` + version + `"`} {
+	for _, required := range []string{"frontend/dist/index.html"} {
 		if !strings.Contains(text, required) {
 			return fmt.Errorf("missing embedded asset identity %q", required)
 		}

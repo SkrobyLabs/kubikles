@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"embed"
 	"errors"
 	"fmt"
-	"io"
 	"k8s.io/apimachinery/pkg/watch"
 	"os"
 	"os/signal"
@@ -53,11 +51,7 @@ type serverModeDependencies struct {
 	lookupEnv                     func(string) string
 	newCreatorIdentity            func(string) (*server.CreatorAuthenticator, string, error)
 	acceleratorObserver           server.AcceleratorSessionObserver
-	browserSessionNow             func() time.Time
-	browserSessionEntropy         io.Reader
 	newAcceleratorSessions        func(string, server.AcceleratorSessionObserver) *server.AcceleratorSessionRegistry
-	newBrowserSessions            func(func() time.Time, io.Reader, server.BrowserSessionRevoker) *server.BrowserSessionManager
-	newBrowserEntryGate           func(embed.FS, string) server.BrowserEntryAvailability
 	capabilityResolverFactory     func(*k8s.Client) agent.CapabilityResolverFactory
 	newServer                     func(server.MethodCaller, embed.FS, server.Options) (serverModeServer, error)
 	newAcceleratorIdleCoordinator func(agent.DisposableIdleLifecycle, context.Context, func()) acceleratorIdleCoordinator
@@ -97,14 +91,8 @@ func productionServerModeDependencies() serverModeDependencies {
 			}
 			return creator, instanceID, nil
 		},
-		acceleratorObserver:    server.NoopAcceleratorSessionObserver{},
-		browserSessionNow:      time.Now,
-		browserSessionEntropy:  rand.Reader,
-		newAcceleratorSessions: server.NewAcceleratorSessionRegistry,
-		newBrowserSessions:     server.NewBrowserSessionManagerWithDependencies,
-		newBrowserEntryGate: func(assets embed.FS, version string) server.BrowserEntryAvailability {
-			return server.NewBrowserEntryGate(assets, version)
-		},
+		acceleratorObserver:       server.NoopAcceleratorSessionObserver{},
+		newAcceleratorSessions:    server.NewAcceleratorSessionRegistry,
 		capabilityResolverFactory: k8s.NewSecretCapabilityResolverFactory,
 		newServer: func(caller server.MethodCaller, assets embed.FS, options server.Options) (serverModeServer, error) {
 			return server.NewWithOptions(caller, assets, options)
@@ -222,7 +210,7 @@ func runServerWithOptions(ctx context.Context, assets embed.FS, port int, label 
 		if !ok {
 			return errAcceleratorIdleServerUnsupported
 		}
-		if err := idleLifecycle.bind(acceleratorSrv, idleProtection.BrowserSessions, idleProtection.AcceleratorSessions, acceleratorSessionStateCleanerFunc(app.clearAcceleratorSessionState)); err != nil {
+		if err := idleLifecycle.bind(acceleratorSrv, idleProtection.AcceleratorSessions, acceleratorSessionStateCleanerFunc(app.clearAcceleratorSessionState)); err != nil {
 			return err
 		}
 	}
@@ -248,10 +236,8 @@ type acceleratorHTTPProtection struct {
 	Guard                  server.ProtectedRouteGuard
 	Info                   server.AcceleratorInfoProvider
 	Authorizer             server.MethodAuthorizer
-	BrowserSessions        *server.BrowserSessionManager
 	AcceleratorSessions    *server.AcceleratorSessionRegistry
 	WebSocketAuthenticator *server.AcceleratorWebSocketAuthenticator
-	BrowserEntry           server.BrowserEntryAvailability
 }
 
 // acceleratorSessionObserverChain keeps Secret cleanup ahead of idle accounting.
@@ -308,10 +294,6 @@ func newAcceleratorHTTPProtectionWithDependencies(ctx context.Context, assets em
 		}
 	}
 	build := agent.BuildIdentity{BuildVersion: BuildVersion, Commit: GitCommit, Dirty: GitDirty == "true"}
-	newBrowserSessions := dependencies.newBrowserSessions
-	if newBrowserSessions == nil {
-		newBrowserSessions = server.NewBrowserSessionManagerWithDependencies
-	}
 	newAcceleratorSessions := dependencies.newAcceleratorSessions
 	if newAcceleratorSessions == nil {
 		newAcceleratorSessions = server.NewAcceleratorSessionRegistry
@@ -320,34 +302,16 @@ func newAcceleratorHTTPProtectionWithDependencies(ctx context.Context, assets em
 	if observer == nil {
 		observer = server.NoopAcceleratorSessionObserver{}
 	}
-	now := dependencies.browserSessionNow
-	if now == nil {
-		now = time.Now
-	}
-	entropy := dependencies.browserSessionEntropy
-	if entropy == nil {
-		entropy = rand.Reader
-	}
 	registry := newAcceleratorSessions(instanceID, observer)
-	sessions := newBrowserSessions(now, entropy, registry)
-	newGate := dependencies.newBrowserEntryGate
-	if newGate == nil {
-		newGate = func(assets embed.FS, version string) server.BrowserEntryAvailability {
-			return server.NewBrowserEntryGate(assets, version)
-		}
-	}
-	gate := newGate(assets, BuildVersion)
-	return acceleratorHTTPProtection{Guard: server.CreatorOrBrowserGuard(creator, sessions), Info: server.NewAuthenticatedAcceleratorInfo(build, instanceID, resolution), Authorizer: server.NewAcceleratorMethodAuthorizer(resolution), BrowserSessions: sessions, AcceleratorSessions: registry, WebSocketAuthenticator: &server.AcceleratorWebSocketAuthenticator{Creator: creator, BrowserSessions: sessions, Registry: registry}, BrowserEntry: gate}, nil
+	return acceleratorHTTPProtection{Guard: creator.Guard, Info: server.NewAuthenticatedAcceleratorInfo(build, instanceID, resolution), Authorizer: server.NewAcceleratorMethodAuthorizer(resolution), AcceleratorSessions: registry, WebSocketAuthenticator: &server.AcceleratorWebSocketAuthenticator{Creator: creator, Registry: registry}}, nil
 }
 
 func installAcceleratorHTTPProtection(options *server.Options, protection acceleratorHTTPProtection) {
 	options.ProtectedRouteGuard = protection.Guard
 	options.AcceleratorInfoProvider = protection.Info
 	options.MethodAuthorizer = protection.Authorizer
-	options.BrowserSessions = protection.BrowserSessions
 	options.AcceleratorSessions = protection.AcceleratorSessions
 	options.AcceleratorWebSocketAuthenticator = protection.WebSocketAuthenticator
-	options.BrowserEntryAvailability = protection.BrowserEntry
 }
 
 func serverOptionsForRuntime(mode RuntimeMode, port int, readiness server.ReadinessProvider) (server.Options, error) {

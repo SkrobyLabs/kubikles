@@ -25,7 +25,7 @@ fi
 if grep -Eq 'ListSecretsMetadata|GetSecretData|GetSecretYaml|CancelListRequest|SubscribeSecretWatcher|UnsubscribeSecretWatcher' <<<"$added"; then
   fail "secret-routing-out-of-scope"
 fi
-if git diff --name-only "$base...$lifecycle_head" | grep -Eq '(^frontend/|^pkg/server/|^deploy/charts/|^pkg/helm/|^pkg/acceleratorrelease/|^accelerator_browser|^browser_)'; then
+if git diff --name-only "$base...$lifecycle_head" | grep -Eq '(^frontend/|^pkg/server/|^deploy/charts/|^pkg/helm/|^pkg/acceleratorrelease/)'; then
   fail "forbidden-surface"
 fi
 

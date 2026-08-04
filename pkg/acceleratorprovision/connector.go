@@ -89,7 +89,6 @@ const (
 	SessionTunnelClosed   SessionEndReason = "tunnel_closed"
 	SessionProtocolFailed SessionEndReason = "protocol_failed"
 	SessionIdleReleased   SessionEndReason = "idle_released"
-	SessionBrowserHandoff SessionEndReason = "browser_handoff"
 )
 
 type tunnel interface {

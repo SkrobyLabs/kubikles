@@ -54,14 +54,7 @@ mkdir -m 700 "$layout"
 mkdir -m 700 -p "$source_root"
 
 git -C "$root" archive "$commit" | tar -x -C "$source_root" || fail source-archive
-(cd "$source_root/frontend" && npm ci --offline --no-audit --no-fund && test -s ../build/appicon.svg && rm -f src/assets/images/appicon.svg && cp ../build/appicon.svg src/assets/images/appicon.svg && test -s src/assets/images/appicon.svg && BUILD_VERSION=v0.0.0 npm run build:accelerator && ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT= BUILD_VERSION=v0.0.0 npm run test:accelerator-browser-artifact) >"$artifact_root/browser-build.log" 2>&1 || fail offline-browser-build
-browser_fixture="$artifact_root/browser-artifact"
-mkdir -m 700 -p "$browser_fixture/assets" "$browser_fixture/bootstrap"
-install -m 600 "$source_root/frontend/dist/accelerator-browser/.kubikles-browser-v1.json" "$browser_fixture/.kubikles-browser-v1.json"
-install -m 600 "$source_root/frontend/dist/accelerator-browser/assets/browser.js" "$browser_fixture/assets/browser.js"
-install -m 600 "$source_root/frontend/dist/accelerator-browser/assets/browser.css" "$browser_fixture/assets/browser.css"
-install -m 600 "$source_root/pkg/server/browserbootstrap/index.html" "$browser_fixture/bootstrap/index.html"
-install -m 600 "$source_root/pkg/server/browserbootstrap/bootstrap.js" "$browser_fixture/bootstrap/bootstrap.js"
+(cd "$source_root/frontend" && npm ci --offline --no-audit --no-fund && test -s ../build/appicon.svg && rm -f src/assets/images/appicon.svg && cp ../build/appicon.svg src/assets/images/appicon.svg && test -s src/assets/images/appicon.svg && BUILD_VERSION=v0.0.0 npm run build) >"$artifact_root/frontend-build.log" 2>&1 || fail offline-frontend-build
 ldflags="-s -w -buildid= -X main.BuildVersion=v0.0.0 -X main.GitCommit=$commit -X main.GitDirty=false -X main.acceleratorBuildIdentity=kubikles-accelerator-build-identity:v0.0.0|$commit|false"
 for architecture in amd64 arm64; do
   binary="$work/$architecture/kubikles-accelerator"

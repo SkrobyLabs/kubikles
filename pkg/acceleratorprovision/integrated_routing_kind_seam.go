@@ -22,7 +22,9 @@ type integratedRoutingKindResolver struct {
 // and value-free closed stage buckets. It is unavailable outside the special
 // Kind test build.
 type IntegratedRoutingKindCoordinatorProbe struct {
+	coordinator                   *Coordinator
 	provisions                    atomic.Int32
+	terminalCleanups              atomic.Int32
 	provisionAvailable            atomic.Bool
 	provisionUnavailable          atomic.Bool
 	provisionContextInput         atomic.Bool
@@ -39,6 +41,64 @@ type IntegratedRoutingKindCoordinatorProbe struct {
 	connectVersionMismatch        atomic.Bool
 	connectAuthoritative          atomic.Bool
 	connectCancelled              atomic.Bool
+}
+
+// IntegratedRoutingKindActiveWorkload is the exact, redacted identity needed
+// by the disposable Kind harness to observe owned cleanup. It carries neither
+// a credential nor any production API capability.
+type IntegratedRoutingKindActiveWorkload struct {
+	ReleaseNamespace string
+	ReleaseName      string
+	JobName          string
+	JobUID           string
+	PodName          string
+	PodUID           string
+}
+
+// ActiveWorkload returns a copy of the retained active workload identity. A
+// missing, switched, quiesced, or otherwise fenced coordinator is unavailable.
+func (p *IntegratedRoutingKindCoordinatorProbe) ActiveWorkload() (IntegratedRoutingKindActiveWorkload, bool) {
+	if p == nil || p.coordinator == nil {
+		return IntegratedRoutingKindActiveWorkload{}, false
+	}
+	coordinator := p.coordinator
+	coordinator.mu.Lock()
+	if coordinator.closed || coordinator.quiesced || coordinator.switching || coordinator.currentName == "" {
+		coordinator.mu.Unlock()
+		return IntegratedRoutingKindActiveWorkload{}, false
+	}
+	slot := coordinator.slots[coordinator.currentEpoch]
+	if slot == nil {
+		coordinator.mu.Unlock()
+		return IntegratedRoutingKindActiveWorkload{}, false
+	}
+	slot.mu.Lock()
+	workload := slot.workload
+	if slot.state != CoordinatorActive || workload == nil || workload.ReleaseNamespace == "" || workload.ReleaseName == "" || workload.Job.Name == "" || workload.Job.UID == "" || workload.Pod.Name == "" || workload.Pod.UID == "" {
+		slot.mu.Unlock()
+		coordinator.mu.Unlock()
+		return IntegratedRoutingKindActiveWorkload{}, false
+	}
+	identity := IntegratedRoutingKindActiveWorkload{
+		ReleaseNamespace: workload.ReleaseNamespace,
+		ReleaseName:      workload.ReleaseName,
+		JobName:          workload.Job.Name,
+		JobUID:           workload.Job.UID,
+		PodName:          workload.Pod.Name,
+		PodUID:           workload.Pod.UID,
+	}
+	slot.mu.Unlock()
+	coordinator.mu.Unlock()
+	return identity, true
+}
+
+// TerminalCleanupCount reports completed terminal drain disposals observed by
+// the Kind-only harness.
+func (p *IntegratedRoutingKindCoordinatorProbe) TerminalCleanupCount() int {
+	if p == nil {
+		return 0
+	}
+	return int(p.terminalCleanups.Load())
 }
 
 // IntegratedRoutingKindCoordinatorProbeSnapshot exposes only closed harness
@@ -182,6 +242,8 @@ func NewIntegratedRoutingKindCoordinator(
 ) (*Coordinator, *IntegratedRoutingKindCoordinatorProbe) {
 	probe := &IntegratedRoutingKindCoordinatorProbe{}
 	coordinator := newCoordinator(desktopContexts{client: client}, integratedRoutingKindResolver{resolution: resolution}, integratedRoutingKindProvisioner{delegate: provisioner, probe: probe}, integratedRoutingKindConnector{delegate: connector, probe: probe}, reconnector, disposer, processResumeClock{})
+	probe.coordinator = coordinator
+	coordinator.terminalCleanupObserver = func() { probe.terminalCleanups.Add(1) }
 	return coordinator, probe
 }
 

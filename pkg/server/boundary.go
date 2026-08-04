@@ -18,12 +18,12 @@ import (
 )
 
 func (s *Server) buildHandler() (http.Handler, error) {
-	if s.options.BoundaryMode == BoundaryModeAccelerator {
-		return s.acceleratorHandler(), nil
-	}
 	static, err := s.staticHandler()
 	if err != nil {
 		return nil, err
+	}
+	if s.options.BoundaryMode == BoundaryModeAccelerator {
+		return s.acceleratorHandler(static), nil
 	}
 	return s.compatibilityHandler(static), nil
 }
@@ -46,34 +46,14 @@ func (s *Server) compatibilityHandler(static http.Handler) http.Handler {
 	return mux
 }
 
-func (s *Server) acceleratorHandler() http.Handler {
+func (s *Server) acceleratorHandler(_ http.Handler) http.Handler {
 	protected := http.NewServeMux()
 	protected.HandleFunc("POST /api/call", s.handleCanonicalAPI)
 	if hasAcceleratorInfoProvider(s.options.AcceleratorInfoProvider) {
 		protected.HandleFunc("GET /api/accelerator-info", s.handleAcceleratorInfo)
 	}
-	if s.options.BrowserSessions != nil {
-		protected.Handle("POST /api/accelerator-browser-ticket", requireCreator(http.HandlerFunc(s.handleMintBrowserTicket)))
-		protected.Handle("POST /api/accelerator-browser-session/revoke", requireCreator(http.HandlerFunc(s.handleRevokeBrowserSession)))
-	}
 	canonical := s.options.ProtectedRouteGuard(protected)
 	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// The Browser namespace owns its defensive headers even for malformed
-		// escaped paths rejected before the entry gate can inspect them.
-		if strings.HasPrefix(r.URL.Path, "/accelerator/browser") {
-			if s.options.BrowserEntryAvailability == nil {
-				browserEntryHeaders(w)
-				http.NotFound(w, r)
-				return
-			}
-			if gate, ok := s.options.BrowserEntryAvailability.(*BrowserEntryGate); ok {
-				gate.serve(w, r)
-				return
-			}
-			browserEntryHeaders(w)
-			http.NotFound(w, r)
-			return
-		}
 		if !exactRequestPath(r, r.URL.Path) {
 			http.NotFound(w, r)
 			return
@@ -94,36 +74,6 @@ func (s *Server) acceleratorHandler() http.Handler {
 			}
 			if r.Method != wantMethod {
 				w.Header().Set("Allow", wantMethod)
-				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-				return
-			}
-			if s.quiescing.Load() {
-				s.writeError(w, http.StatusServiceUnavailable, "unavailable")
-				return
-			}
-			canonical.ServeHTTP(w, r)
-		case "/api/accelerator-browser-session":
-			if s.options.BrowserSessions == nil {
-				http.NotFound(w, r)
-				return
-			}
-			if r.Method != http.MethodPost {
-				w.Header().Set("Allow", http.MethodPost)
-				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-				return
-			}
-			if s.quiescing.Load() {
-				s.writeError(w, http.StatusServiceUnavailable, "unavailable")
-				return
-			}
-			s.handleExchangeBrowserSession(w, r)
-		case "/api/accelerator-browser-ticket", "/api/accelerator-browser-session/revoke":
-			if s.options.BrowserSessions == nil {
-				http.NotFound(w, r)
-				return
-			}
-			if r.Method != http.MethodPost {
-				w.Header().Set("Allow", http.MethodPost)
 				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 				return
 			}
@@ -157,11 +107,6 @@ func (s *Server) acceleratorHandler() http.Handler {
 		}
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/accelerator/browser") {
-			// Validation runs outside the namespace router. Set these before it so
-			// malformed authority/origin requests receive the same privacy policy.
-			browserEntryHeaders(w)
-		}
 		if status := validateAcceleratorRequest(r); status != 0 {
 			http.Error(w, http.StatusText(status), status)
 			return
@@ -251,7 +196,7 @@ func validateAcceleratorRequest(r *http.Request) int {
 	}
 	originHost, err := parseLoopbackAuthority(origin.Host)
 	if err != nil {
-		return http.StatusForbidden
+		return http.StatusBadRequest
 	}
 	if host != originHost {
 		return http.StatusForbidden

@@ -105,7 +105,7 @@ func TestAcceptanceFocusedRunnerClosedOrderAndFailure(t *testing.T) {
 		if !reflect.DeepEqual(executor.checks, []string{"make:make-bin", "npm:npm-bin"}) {
 			t.Fatal("focused runner tool preflight drifted")
 		}
-		if len(executor.commands) != 15 || len(auditor.cases) != 15 || len(report.Cases) != 15 {
+		if len(executor.commands) != 13 || len(auditor.cases) != 13 || len(report.Cases) != 13 {
 			t.Fatal("focused runner did not execute, audit, and record every focused owner exactly once")
 		}
 		for index, command := range executor.commands {

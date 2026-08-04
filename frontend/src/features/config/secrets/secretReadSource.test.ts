@@ -37,7 +37,7 @@ const runtime = vi.hoisted(() => {
 vi.mock('wailsjs/go/main/App', () => bridge);
 vi.mock('wailsjs/runtime/runtime', () => ({ EventsOn: runtime.EventsOn }));
 
-import { createAcceleratorSecretReadSource, createIntegratedAcceleratorSecretReadSource, directSecretReadSource } from './secretReadSource';
+import { createIntegratedAcceleratorSecretReadSource, directSecretReadSource } from './secretReadSource';
 import { SecretListOperationController, type SecretListState } from './secretListOperations';
 
 function deferred<T>() {
@@ -123,40 +123,6 @@ describe('Secret read sources', () => {
     await expect(directSecretReadSource.list('object', 'a', true)).resolves.toEqual([]);
   });
 
-  it('accelerator source preserves dedicated contracts', async () => {
-    const source = createAcceleratorSecretReadSource('accelerator-instance-a');
-    const row = { type: 'Opaque', metadata: { uid: 'one', namespace: 'a' } };
-    bridge.ListAcceleratorSecretsMetadata.mockResolvedValue([row]);
-    bridge.SubscribeSecretWatcher.mockResolvedValue({ watcherSpecId: 'spec-a' });
-
-    await expect(source.list('request-a', 'a', false)).resolves.toEqual([row]);
-    expect(bridge.ListAcceleratorSecretsMetadata).toHaveBeenCalledWith('request-a', 'a', false);
-    await expect(source.subscribe('a', false)).resolves.toBe('spec-a');
-    expect(bridge.SubscribeSecretWatcher).toHaveBeenCalledWith('a', false);
-
-    const events: any[] = [];
-    const statuses: any[] = [];
-    const errors: any[] = [];
-    const disposeEvent = source.onResource(event => events.push(event));
-    const disposeStatus = source.onStatus(event => statuses.push(event));
-    const disposeError = source.onError(event => errors.push(event));
-    runtime.emit('resource-event', { type: 'ADDED', resourceType: 'secrets', namespace: 'b', watcherSpecId: 'spec-a', resource: { ...row, metadata: { uid: 'wrong-ns', namespace: 'b' } } });
-    runtime.emit('resource-event', { type: 'ADDED', resourceType: 'secrets', namespace: 'a', watcherSpecId: 'wrong-spec', resource: row });
-    runtime.emit('resource-event', { type: 'ADDED', resourceType: 'secrets', namespace: 'a', watcherSpecId: 'spec-a', resource: row });
-    runtime.emit('watcher-status', { watcherSpecId: 'spec-a', status: 'reconnecting' });
-    runtime.emit('watcher-error', { watcherSpecId: 'spec-a', code: 'resource_version_expired', recoverable: true });
-    expect(events).toEqual([{ type: 'ADDED', resourceType: 'secrets', namespace: 'a', watcherSpecId: 'spec-a', resource: { metadata: { name: undefined, namespace: 'a', uid: 'one', creationTimestamp: undefined }, type: 'Opaque', dataKeys: 0 }, sourceKey: 'accelerator-instance-a' }]);
-    expect(statuses[0]).toMatchObject({ watcherSpecId: 'spec-a', status: 'reconnecting', sourceKey: 'accelerator-instance-a' });
-    expect(errors[0]).toMatchObject({ watcherSpecId: 'spec-a', code: 'resource_version_expired', sourceKey: 'accelerator-instance-a' });
-
-    await source.cancelList('request-a');
-    await source.unsubscribe('spec-a');
-    expect(bridge.CancelListRequest).toHaveBeenCalledWith('request-a');
-    expect(bridge.UnsubscribeSecretWatcher).toHaveBeenCalledWith('spec-a');
-    disposeEvent(); disposeStatus(); disposeError();
-    expect(() => createAcceleratorSecretReadSource('')).toThrow(/non-empty/);
-  });
-
   it('integrated source calls only six token-scoped bridges and projects targeted events', async () => {
     const token = `s.${'A'.repeat(22)}.0000000000000001`;
     const source = createIntegratedAcceleratorSecretReadSource(token);
@@ -198,6 +164,7 @@ describe('Secret read sources', () => {
     expect(() => createIntegratedAcceleratorSecretReadSource('session-identity')).toThrow(/unavailable/);
   });
 
+  /* Browser-only standalone-source cases removed with the Accelerator Browser surface.
   it('retains only bounded projected candidates until the exact subscription ID resolves', async () => {
     const subscription = deferred<any>();
     bridge.SubscribeSecretWatcher.mockReturnValue(subscription.promise);
@@ -325,4 +292,5 @@ describe('Secret read sources', () => {
     expect(events).toEqual([]);
     dispose();
   });
+  */
 });

@@ -299,46 +299,6 @@ func TestConnectedSessionTeardownPreservesSoleDataWriter(t *testing.T) {
 		}
 	})
 
-	t.Run("browser handoff", func(t *testing.T) {
-		socket := newBlockedWriterSessionSocket()
-		workload := connectorWorkload(t)
-		tunnel := newRecordedTunnel(&[]string{})
-		session := newConnectedSession(workload.connectorState.receipt, server.AuthenticatedAcceleratorInfo{Capabilities: agent.V1Capabilities()}, connectedIdentity{sessionID: "session-a", instanceID: "instance-a", generation: 1}, socket, tunnel, processResumeClock{})
-		if !workload.publishCurrentSession(session) {
-			t.Fatal("session publication rejected")
-		}
-		if reason := session.sendApplicationFrame([]byte(`{"type":"call"}`)); reason != "" {
-			t.Fatalf("send reason=%s", reason)
-		}
-		<-socket.writeEntered
-		type handoffResult struct {
-			owned *browserOwnedWorkload
-			ok    bool
-		}
-		completed := make(chan handoffResult, 1)
-		go func() {
-			owned, ok := session.detachCreatorForBrowser(context.Background())
-			completed <- handoffResult{owned: owned, ok: ok}
-		}()
-		select {
-		case <-socket.controlCalled:
-		case <-time.After(time.Second):
-			t.Fatal("Browser handoff control was not written")
-		}
-		close(socket.writeRelease)
-		select {
-		case result := <-completed:
-			if !result.ok || result.owned == nil {
-				t.Fatal("Browser handoff did not complete")
-			}
-			result.owned.tunnel.Stop()
-		case <-time.After(time.Second):
-			t.Fatal("Browser handoff remained blocked")
-		}
-		if socket.concurrentDeadline() {
-			t.Fatal("Browser handoff mutated write deadline during data write")
-		}
-	})
 }
 
 func TestConnectedSessionPumpFailsClosed(t *testing.T) {

@@ -8,7 +8,6 @@ Kubikles Accelerator is an optional, automatically managed, disposable Kubernete
 |---|---|---|---|
 | Direct | Always, including every fallback | All ordinary desktop operations through the desktop Kubernetes client | Depend on the disposable Job |
 | Integrated | Automatically after exact identity, version, authentication, and capability checks | Secret list, detail, and watch reads | Mutations or non-Secret reads |
-| Browser | When the user explicitly opens the co-located experience | Dedicated authenticated, read-only Secret list/detail/watch UI | Serve the unrestricted desktop frontend or use the desktop router |
 
 There is no routing or RBAC mode for users to select. Integrated covers exactly three user-visible read categories. Its six technical operations are maintained in the [development contract](../accelerator/development.md#exact-operation-boundary).
 

@@ -35,20 +35,17 @@ func TestAcceptanceContractExactCaseSet(t *testing.T) {
 		{"A60A-006-RELEASE-CONTRACT", "1ff2446c", OwnerMake, "test-accelerator-release-contract", "release.checksum,release.descriptor,release.immutable"},
 		{"A60A-007-LOCAL-PUBLICATION", "1ff2446c", OwnerMake, "test-accelerator-publication-local", "release.loopback,release.readback"},
 		{"A60A-008-PROVISION", "1cec4c3a,71facaab", OwnerMake, "test-accelerator-desktop-provision-kind", "desktop.provision,desktop.resolve"},
-		{"A60A-009-CONNECT", "020e8648,033fde0a,2d45b95b,44ea1f82,8ebf3759,f604c5fb", OwnerMake, "test-accelerator-desktop-connector-kind", "desktop.auth,desktop.connect,desktop.tunnel"},
+		{"A60A-009-CONNECT", "020e8648,2d45b95b,44ea1f82,8ebf3759,f604c5fb", OwnerMake, "test-accelerator-desktop-connector-kind", "desktop.auth,desktop.connect,desktop.tunnel"},
 		{"A60A-010-RESUME", "ac978c3f", OwnerMake, "test-accelerator-desktop-resume-kind", "desktop.generation,desktop.resume"},
 		{"A60A-011-DISPOSAL", "70e5466d", OwnerMake, "test-accelerator-desktop-disposal-kind", "desktop.dispose,desktop.sweep"},
 		{"A60A-012-LIFECYCLE", "2289380c,2e710408,63140918,66f24342,b1854aa3,b3ffc033,e590da1e", OwnerMake, "test-accelerator-desktop-lifecycle-kind", "desktop.coordinator,desktop.direct,desktop.replacement"},
-		{"A60A-013-BROWSER-ARTIFACT", "a5d2c80a", OwnerNPM, "test:accelerator-browser-artifact", "browser.artifact,browser.secret-only"},
-		{"A60A-014-BROWSER-LIFECYCLE", "949c4709,e34515b0,f256001c,f2769f29", OwnerMake, "test-accelerator-browser-lifecycle-kind", "browser.auth,browser.handoff,browser.ownership"},
 		{"A60A-015-INTEGRATED-ROUTING", "53dfebec,d0eb9876,d4f712fd", OwnerMake, "test-accelerator-integrated-routing-kind", "routing.direct,routing.operations,routing.source"},
 		{"A60A-016-INTEGRATED-HAPPY", "1cec4c3a,53dfebec,71facaab,b1854aa3,d0eb9876", OwnerGo, "TestAcceleratorAcceptanceKind/IntegratedHappyPath", "composed.integrated,composed.operations,composed.value-free"},
 		{"A60A-017-MISMATCH", "020e8648,1cec4c3a,66f24342,70e5466d,71facaab,b1854aa3", OwnerGo, "TestAcceleratorAcceptanceKind/VersionAndArtifactMismatch", "mismatch.direct,mismatch.literal,mismatch.one-replacement"},
 		{"A60A-018-TRANSPORT-RESUME", "020e8648,ac978c3f,b1854aa3,d0eb9876", OwnerGo, "TestAcceleratorAcceptanceKind/TransportResumeAndRecreate", "recovery.direct,recovery.resume,recovery.stale-fence"},
-		{"A60A-019-BROWSER-HANDOFF", "949c4709,a5d2c80a,e34515b0", OwnerGo, "TestAcceleratorAcceptanceKind/BrowserHandoff", "handoff.browser,handoff.creator,handoff.replay"},
-		{"A60A-020-REAL-GRACE", "8ebf3759,949c4709", OwnerGo, "TestAcceleratorAcceptanceKind/RealTwoMinuteAuthenticatedClientGrace", "grace.cancelled,grace.elapsed,grace.single-expiry"},
+		{"A60A-020-REAL-GRACE", "8ebf3759,b1854aa3", OwnerGo, "TestAcceleratorAcceptanceKind/RealTwoMinuteAuthenticatedClientGrace", "grace.cancelled,grace.elapsed,grace.single-expiry"},
 		{"A60A-021-SECURITY-PRIVACY", "2d45b95b,44ea1f82,a02bce49,d0eb9876", OwnerGo, "TestAcceleratorAcceptanceKind/SecurityPrivacyBackpressure", "security.loopback,security.privacy,security.rbac"},
-		{"A60A-022-CLEANUP-ISOLATION", "70e5466d,949c4709,b1854aa3", OwnerGo, "TestAcceleratorAcceptanceKind/CleanupSweepIsolation", "cleanup.owned,cleanup.sentinel,cleanup.sweep"},
+		{"A60A-022-CLEANUP-ISOLATION", "70e5466d,b1854aa3", OwnerGo, "TestAcceleratorAcceptanceKind/CleanupSweepIsolation", "cleanup.owned,cleanup.sentinel,cleanup.sweep"},
 	}
 	if contract.SchemaVersion != SchemaVersion || contract.Suite != SuiteIdentity || contract.BuildVersion != BuildIdentity || len(contract.Cases) != len(expected) {
 		t.Fatal("acceptance contract identity or case cardinality drifted")

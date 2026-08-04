@@ -34,6 +34,11 @@ type Coordinator struct {
 
 	disposalMu sync.Mutex
 	disposals  map[*ProvisionedWorkload]*coordinatorDisposal
+
+	// terminalCleanupObserver is populated only by the disposable Kind harness.
+	// It observes a completed drain disposal; it never participates in runtime
+	// lifecycle decisions.
+	terminalCleanupObserver func()
 }
 
 type coordinatorDisposal struct {
@@ -184,11 +189,7 @@ func (c *Coordinator) releaseDemand(lease *SecretDemandLease) {
 	}
 	if s.sessionLeaseCount == 0 && s.state == CoordinatorActive {
 		s.settleDemandLocked()
-		if s.browserHold != nil {
-			c.startBrowserHandoffLocked(s)
-		} else {
-			c.startIdleLocked(s)
-		}
+		c.startIdleLocked(s)
 		s.mu.Unlock()
 		return
 	}
@@ -224,11 +225,7 @@ func (c *Coordinator) releaseSession(lease *sessionLeaseState) {
 	}
 	if s.sessionLeaseCount == 0 && s.demandCount == 0 && s.state == CoordinatorActive {
 		s.settleDemandLocked()
-		if s.browserHold != nil {
-			c.startBrowserHandoffLocked(s)
-		} else {
-			c.startIdleLocked(s)
-		}
+		c.startIdleLocked(s)
 	}
 	s.mu.Unlock()
 }
@@ -521,11 +518,6 @@ func (c *Coordinator) monitorSession(s *contextSlot, fence operationFence, workl
 		return
 	}
 	s.terminalCleanupPending = false
-	if s.browserHold != nil {
-		s.browserHold.unregister()
-		s.browserHold = nil
-	}
-	s.browserOwned = nil
 	if s.demandCount > 0 {
 		c.startResumeLocked(s, nil)
 		s.mu.Unlock()
@@ -657,17 +649,6 @@ func (s *contextSlot) clearWorkloadAuthorityLocked() {
 	s.normalEnded = false
 	s.drainDeadline = time.Time{}
 	s.terminalCleanupPending = false
-	if s.browserHold != nil {
-		s.browserHold.unregister()
-		s.browserHold = nil
-	}
-	s.browserOwned = nil
-	if s.launch != nil {
-		s.launch.result = BrowserUnavailable
-		close(s.launch.done)
-		s.launch = nil
-	}
-	s.launchEpoch++
 	s.advanceSessionLeaseEpochLocked(false)
 	if s.demandCount == 0 {
 		s.settleDemandLocked()
@@ -819,9 +800,14 @@ func (c *Coordinator) finishCoordinatorDisposal(workload *ProvisionedWorkload, o
 	}
 	delete(c.disposals, workload)
 	close(operation.done)
+	terminalCleanupObserver := c.terminalCleanupObserver
+	terminalCleanup := operation.drain
 	c.disposalMu.Unlock()
 	for _, slot := range owners {
 		c.pruneClosedSlot(slot)
+	}
+	if terminalCleanup && terminalCleanupObserver != nil {
+		terminalCleanupObserver()
 	}
 }
 

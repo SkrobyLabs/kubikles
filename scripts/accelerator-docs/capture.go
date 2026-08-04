@@ -54,7 +54,7 @@ func captureEvidence(root string) error {
 	captured := time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)
 	gates := []gate{
 		{"dd19f7b6", "make test-accelerator-00-kind", "disposable exact-Pod loopback and Direct baseline", map[string]int64{"exactPodLoopback": 1}},
-		{"2fe9439f", "make test-accelerator-e2e", "closed offline build-N-1/build-N/build-N+1 acceptance", map[string]int64{"acceptanceCases": 22}},
+		{"2fe9439f", "make test-accelerator-e2e", "closed offline Integrated acceptance", map[string]int64{"acceptanceCases": 19}},
 		{"4026deaf", "make test-accelerator-supply-chain", "reproducible two-platform image and chart release set", map[string]int64{"attestations": 6, "sbomSubjects": 3}},
 	}
 	records := map[string]evidenceRecord{}

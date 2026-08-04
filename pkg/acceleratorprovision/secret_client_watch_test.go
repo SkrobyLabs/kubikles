@@ -427,42 +427,6 @@ func TestSecretClientTerminalRaceMatrix(t *testing.T) {
 		assertSecretClientTerminalResidue(t, current, currentLease, currentSlot, currentWatch)
 	})
 
-	t.Run("Browser handoff", func(t *testing.T) {
-		workload := connectorWorkload(t)
-		order := []string{}
-		currentSocket := newRecordedSessionSocket(&order)
-		currentTunnel := newRecordedTunnel(&order)
-		currentSession := newConnectedSession(workload.connectorState.receipt, server.AuthenticatedAcceleratorInfo{Capabilities: agent.V1Capabilities()}, connectedIdentity{sessionID: "session-a", instanceID: "instance-a", generation: 1}, currentSocket, currentTunnel, processResumeClock{})
-		if !workload.publishCurrentSession(currentSession) {
-			t.Fatal("Browser handoff session publication rejected")
-		}
-		currentSlot := newContextSlot("ctx", 1)
-		currentSlot.state, currentSlot.session, currentSlot.workload = CoordinatorActive, currentSession, workload
-		currentSlot.sessionLeaseEpoch, currentSlot.sessionLeaseCount, currentSlot.sessionLeaseRevoked = 1, 1, make(chan struct{})
-		state := &sessionLeaseState{coordinator: &Coordinator{}, slot: currentSlot, leaseEpoch: 1, session: currentSession, revoked: currentSlot.sessionLeaseRevoked, closedCh: make(chan struct{})}
-		currentLease := &SessionLease{state: state}
-		current, err := newSecretRPCClient(currentLease, bytes.NewReader(make([]byte, 16)))
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, currentWatch := subscribeSecretWatch(t, current, currentSocket, "browser", false)
-		callDone := make(chan error, 1)
-		go func() {
-			_, err := current.GetSecretYaml(context.Background(), "browser", "pending")
-			callDone <- err
-		}()
-		_ = readSecretCall(t, currentSocket)
-		owned, ok := currentSession.detachCreatorForBrowser(context.Background())
-		if !ok || owned == nil {
-			t.Fatal("Browser handoff failed")
-		}
-		if err := <-callDone; err == nil || err.Error() != string(acceleratorsecret.ReasonSessionUnavailable) {
-			t.Fatalf("Browser pending result=%v", err)
-		}
-		<-currentWatch.Done()
-		assertSecretClientTerminalResidue(t, current, currentLease, currentSlot, currentWatch)
-		owned.tunnel.Stop()
-	})
 }
 
 func coordinatorSecretClientFixture(t *testing.T) (*Coordinator, *secretRPCClient, *recordedSessionSocket, *SessionLease, *contextSlot, *SecretDemandLease) {

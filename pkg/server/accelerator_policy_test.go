@@ -4,8 +4,6 @@ import (
 	"context"
 	"embed"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"kubikles/pkg/agent"
@@ -163,43 +161,5 @@ func TestAcceleratorPolicyHTTPMatrixRejectsBeforeCaller(t *testing.T) {
 				t.Fatalf("caller context = %#v, want server-owned %#v", caller.context, trusted)
 			}
 		})
-	}
-}
-
-func TestBrowserBearerAuthorizesSecretWatchHTTPDispatch(t *testing.T) {
-	sessions := NewBrowserSessionManager(NoopBrowserSessionRevoker{})
-	ticket, _, err := sessions.Mint()
-	if err != nil {
-		t.Fatal(err)
-	}
-	bearer, _, err := sessions.Exchange(ticket)
-	if err != nil {
-		t.Fatal(err)
-	}
-	browserCall, ok := sessions.Authenticate(bearer)
-	if !ok || !browserCall.IsAuthenticated() {
-		t.Fatalf("browser bearer did not authenticate: %#v", browserCall)
-	}
-	caller := &recordingMethodCaller{}
-	options := AcceleratorOptions(0, nil, CreatorOrBrowserGuard(nil, sessions))
-	options.BrowserSessions = sessions
-	options.MethodAuthorizer = NewAcceleratorMethodAuthorizer(agent.CapabilityResolution{Capabilities: []agent.Capability{agent.CapabilitySecretsWatch}})
-	srv, err := NewWithOptions(caller, embed.FS{}, options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	request := httptest.NewRequest(http.MethodPost, "/api/call", strings.NewReader(`{"method":"SubscribeSecretWatcher","args":[{"PrincipalID":"forged","SessionID":"forged"},"evidence",false]}`))
-	request.Host = "localhost"
-	request.Header.Set("Authorization", "Bearer "+bearer.encoded())
-	response := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(response, request)
-	if response.Code != http.StatusOK || caller.callCount() != 1 {
-		t.Fatalf("browser watch dispatch = %d %q calls=%d", response.Code, response.Body.String(), caller.callCount())
-	}
-	if caller.context != browserCall || caller.method != "SubscribeSecretWatcher" {
-		t.Fatalf("browser watch caller = context %#v method %q, want %#v", caller.context, caller.method, browserCall)
-	}
-	if len(caller.args) != 3 || strings.Contains(string(caller.args[0]), string(browserCall.PrincipalID)) || strings.Contains(string(caller.args[0]), string(browserCall.SessionID)) {
-		t.Fatalf("browser server-owned identity/args = %#v / %#v", caller.context, caller.args)
 	}
 }

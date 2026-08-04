@@ -98,7 +98,6 @@ type workloadConnectorState struct {
 	mu                  sync.Mutex
 	closed              bool
 	disposing           bool
-	browserOwned        bool
 	active              int
 	freshConnectClaimed bool
 	receipt             *workloadReceipt
@@ -107,7 +106,6 @@ type workloadConnectorState struct {
 	currentSession      *ConnectedSession
 	changed             chan struct{}
 	disposal            *disposalOperation
-	browserTransport    *browserOwnedWorkload
 }
 
 func (s *workloadConnectorState) signalChangedLocked() {
@@ -129,7 +127,7 @@ func (w *ProvisionedWorkload) beginLifecycleOperation(parent context.Context) (c
 		state.mu.Unlock()
 		return nil, nil, WorkloadDisposing
 	}
-	if state.closed || state.browserOwned {
+	if state.closed {
 		state.mu.Unlock()
 		return nil, nil, InvalidWorkload
 	}
@@ -160,7 +158,7 @@ func (w *ProvisionedWorkload) publishCurrentSession(session *ConnectedSession) b
 	state := w.connectorState
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	if state.disposing || state.closed || state.browserOwned || state.receipt == nil || session.receipt != state.receipt {
+	if state.disposing || state.closed || state.receipt == nil || session.receipt != state.receipt {
 		return false
 	}
 	state.currentSession = session
@@ -195,7 +193,7 @@ func (w *ProvisionedWorkload) connectorLease() (connectorLease, bool) {
 	}
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	if state.closed || state.disposing || state.browserOwned || state.freshConnectClaimed || state.receipt == nil || state.receipt.owner != w || w.credential == nil || w.snapshot == nil || !matchesReceipt(w, state.receipt) {
+	if state.closed || state.disposing || state.freshConnectClaimed || state.receipt == nil || state.receipt.owner != w || w.credential == nil || w.snapshot == nil || !matchesReceipt(w, state.receipt) {
 		return connectorLease{}, false
 	}
 	state.freshConnectClaimed = true
@@ -224,7 +222,7 @@ func (w *ProvisionedWorkload) resumeConnectorLease(receipt *workloadReceipt) (co
 	}
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	if state.closed || state.disposing || state.browserOwned || state.receipt != receipt || receipt.owner != w || w.credential == nil || w.snapshot == nil || receipt.snapshot != w.snapshot || !matchesReceipt(w, receipt) {
+	if state.closed || state.disposing || state.receipt != receipt || receipt.owner != w || w.credential == nil || w.snapshot == nil || receipt.snapshot != w.snapshot || !matchesReceipt(w, receipt) {
 		return connectorLease{}, false
 	}
 	state.active++
@@ -246,7 +244,7 @@ func (w *ProvisionedWorkload) matchesResumeHandle(receipt *workloadReceipt) bool
 	state := w.connectorState
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	return !state.closed && !state.disposing && !state.browserOwned && state.receipt == receipt && receipt.owner == w && w.credential != nil && w.snapshot != nil && receipt.snapshot == w.snapshot && matchesReceipt(w, receipt)
+	return !state.closed && !state.disposing && state.receipt == receipt && receipt.owner == w && w.credential != nil && w.snapshot != nil && receipt.snapshot == w.snapshot && matchesReceipt(w, receipt)
 }
 
 func matchesReceipt(w *ProvisionedWorkload, r *workloadReceipt) bool {

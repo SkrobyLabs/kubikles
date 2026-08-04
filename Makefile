@@ -1,7 +1,7 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind test-accelerator-desktop-provision-kind test-accelerator-desktop-connector-kind test-accelerator-desktop-resume-kind test-accelerator-desktop-disposal-kind test-accelerator-desktop-lifecycle-kind test-accelerator-browser-lifecycle-kind test-accelerator-integrated-routing-kind test-accelerator-release-contract test-accelerator-publication-local verify-accelerator-release-ghcr test-accelerator-e2e test-accelerator-supply-chain verify-accelerator-supply-chain-ghcr test-accelerator-docs capture-accelerator-docs-evidence
+.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind test-accelerator-desktop-provision-kind test-accelerator-desktop-connector-kind test-accelerator-desktop-resume-kind test-accelerator-desktop-disposal-kind test-accelerator-desktop-lifecycle-kind test-accelerator-integrated-routing-kind test-accelerator-release-contract test-accelerator-publication-local verify-accelerator-release-ghcr test-accelerator-e2e test-accelerator-supply-chain verify-accelerator-supply-chain-ghcr test-accelerator-docs capture-accelerator-docs-evidence
 
 test-accelerator-docs:
 	@go test ./scripts/accelerator-docs
@@ -46,9 +46,6 @@ test-accelerator-desktop-disposal-kind:
 
 test-accelerator-desktop-lifecycle-kind:
 	@./scripts/test-accelerator-desktop-lifecycle-kind.sh
-
-test-accelerator-browser-lifecycle-kind:
-	@./scripts/test-accelerator-browser-lifecycle-kind.sh
 
 test-accelerator-integrated-routing-kind:
 	@./scripts/test-accelerator-integrated-routing-kind.sh
@@ -118,7 +115,6 @@ help:
 	@echo "  test-accelerator-desktop-resume-kind  Drop and resume one exact authenticated desktop session in Kind"
 	@echo "  test-accelerator-desktop-disposal-kind  Drain, immediately dispose, and sweep exact Accelerator releases in Kind"
 	@echo "  test-accelerator-desktop-lifecycle-kind  Exercise automatic desktop Accelerator lifecycle composition in Kind"
-	@echo "  test-accelerator-browser-lifecycle-kind  Exercise authenticated Browser handoff and cleanup in Kind"
 	@echo "  test-accelerator-integrated-routing-kind  Exercise automatic integrated Secret routing in Kind"
 	@echo "  test-accelerator-release-contract  Validate exact immutable release contracts offline"
 	@echo "  test-accelerator-publication-local  Exercise publication against a disposable registry"
@@ -329,8 +325,7 @@ else
 build-accelerator: stage-accelerator-appicon
 	@test -n "$(BUILD_VERSION)" || (echo "BUILD_VERSION is required" >&2; exit 1)
 	@mkdir -p build/bin
-	@cd frontend && BUILD_VERSION='$(BUILD_VERSION)' npm run build:accelerator
-	@cd frontend && BUILD_VERSION='$(BUILD_VERSION)' npm run test:accelerator-browser-artifact
+	@cd frontend && BUILD_VERSION='$(BUILD_VERSION)' npm run build
 	CGO_ENABLED=0 GOOS=linux GOARCH='$(ACCELERATOR_GOARCH)' go build -trimpath -buildvcs=false -tags 'headless accelerator' -ldflags '-s -w -buildid= $(VERSION_LDFLAGS) -X main.acceleratorBuildIdentity=kubikles-accelerator-build-identity:$(BUILD_VERSION)|$(GIT_COMMIT)|$(GIT_DIRTY)' -o build/bin/kubikles-accelerator .
 	go run ./scripts/cmd/inspect-accelerator-binary build/bin/kubikles-accelerator '$(ACCELERATOR_GOARCH)' '$(BUILD_VERSION)' '$(GIT_COMMIT)' '$(GIT_DIRTY)'
 endif

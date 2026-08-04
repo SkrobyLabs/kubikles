@@ -32,6 +32,33 @@ func TestIntegratedRoutingKindProbeSnapshotCarriesOnlyClosedBuckets(t *testing.T
 	}
 }
 
+func TestIntegratedRoutingKindProbeActiveWorkloadIsExactAndFenced(t *testing.T) {
+	coordinator := newCoordinator(nil, nil, nil, nil, nil, nil, nil)
+	coordinator.currentName = "kind"
+	slot := newContextSlot("kind", coordinator.currentEpoch)
+	coordinator.slots[coordinator.currentEpoch] = slot
+	probe := &IntegratedRoutingKindCoordinatorProbe{coordinator: coordinator}
+	if _, ok := probe.ActiveWorkload(); ok {
+		t.Fatal("empty Kind probe exposed a workload")
+	}
+	slot.workload = &ProvisionedWorkload{
+		ReleaseNamespace: "namespace", ReleaseName: "release",
+		Job: ObjectIdentity{Name: "job", UID: "job-uid"},
+		Pod: ObjectIdentity{Name: "pod", UID: "pod-uid"},
+	}
+	slot.state = CoordinatorActive
+	want := IntegratedRoutingKindActiveWorkload{ReleaseNamespace: "namespace", ReleaseName: "release", JobName: "job", JobUID: "job-uid", PodName: "pod", PodUID: "pod-uid"}
+	if got, ok := probe.ActiveWorkload(); !ok || got != want {
+		t.Fatalf("active workload = %#v, %t", got, ok)
+	}
+	coordinator.mu.Lock()
+	coordinator.quiesced = true
+	coordinator.mu.Unlock()
+	if _, ok := probe.ActiveWorkload(); ok {
+		t.Fatal("fenced Kind probe exposed a workload")
+	}
+}
+
 func TestIntegratedRoutingKindProvisionerRecordsClosedOutcomeBuckets(t *testing.T) {
 	tests := []struct {
 		name   string

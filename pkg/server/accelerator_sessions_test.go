@@ -458,7 +458,7 @@ func TestAcceleratorTargetedDeliveryGenerationFenceAndSharedFrame(t *testing.T) 
 	if got := currentConn.writeCount(); got != before {
 		t.Fatalf("disconnected generation received %d additional frames", got-before)
 	}
-	registry.RevokeBrowserSession(context.Background(), firstCall.SessionID)
+	registry.RevokeSession(context.Background(), firstCall.SessionID)
 	if _, found := registry.LookupSessionLease(firstCall.SessionID); found {
 		t.Fatal("revoked lease remained visible")
 	}
@@ -724,7 +724,7 @@ func TestAcceleratorPreActivationOverflowLifecycleRaces(t *testing.T) {
 		go func() {
 			defer operations.Done()
 			<-start
-			registry.RevokeBrowserSession(context.Background(), call.SessionID)
+			registry.RevokeSession(context.Background(), call.SessionID)
 		}()
 		go func() {
 			defer operations.Done()
@@ -1079,7 +1079,7 @@ func TestAcceleratorSessionObserverOrdering(t *testing.T) {
 	closeAcceleratorSocket(t, second)
 	waitAccelerator(t, "generation two disconnect", func() bool { return len(observer.eventCopy()) == 4 })
 	third, _ := registry.register(call, newFakeAcceleratorConn())
-	registry.RevokeBrowserSession(context.Background(), call.SessionID)
+	registry.RevokeSession(context.Background(), call.SessionID)
 	<-third.pumpsDone
 	got := observer.eventCopy()
 	want := "[connect:1 disconnect:1 connect:2 disconnect:2 connect:3 revoke:3]"
@@ -1162,7 +1162,7 @@ func TestConcurrentRevokeWaitsForItsCallback(t *testing.T) {
 		t.Fatal("connect callback not entered")
 	}
 	revokeDone := make(chan struct{})
-	go func() { registry.RevokeBrowserSession(context.Background(), call.SessionID); close(revokeDone) }()
+	go func() { registry.RevokeSession(context.Background(), call.SessionID); close(revokeDone) }()
 	select {
 	case <-revokeEntered:
 		t.Fatal("revoke callback overlapped SessionConnected")
@@ -1490,7 +1490,7 @@ func TestAcceleratorSerializationFailureIsSanitizedOnce(t *testing.T) {
 
 // T8: revoke removes state before its callback, waits pumps and callback, and
 // cannot affect stale/different/new IDs.
-func TestRegistryRevokeBrowserSessionWaitsForCleanup(t *testing.T) {
+func TestRegistryRevokeSessionWaitsForCleanup(t *testing.T) {
 	releaseObserver := make(chan struct{})
 	observerEntered := make(chan struct{})
 	observer := &recordingAcceleratorObserver{}
@@ -1501,14 +1501,14 @@ func TestRegistryRevokeBrowserSessionWaitsForCleanup(t *testing.T) {
 		}
 	}
 	registry := newAcceleratorSessionRegistry("instance", observer, acceleratorTestConfig())
-	call := acceleratorTestCall("browser-old")
+	call := acceleratorTestCall("session-old")
 	socket, ok := registry.register(call, newFakeAcceleratorConn())
 	if !ok {
 		t.Fatal("register rejected")
 	}
 	returned := make(chan struct{})
 	go func() {
-		registry.RevokeBrowserSession(context.Background(), call.SessionID)
+		registry.RevokeSession(context.Background(), call.SessionID)
 		close(returned)
 	}()
 	select {
@@ -1531,14 +1531,14 @@ func TestRegistryRevokeBrowserSessionWaitsForCleanup(t *testing.T) {
 	}
 	close(releaseObserver)
 	<-returned
-	registry.RevokeBrowserSession(context.Background(), call.SessionID)
-	registry.RevokeBrowserSession(context.Background(), "different")
+	registry.RevokeSession(context.Background(), call.SessionID)
+	registry.RevokeSession(context.Background(), "different")
 	if got := observer.eventCopy(); fmt.Sprint(got) != "[connect:1 revoke:1]" {
 		t.Fatalf("events = %v", got)
 	}
-	newCall := acceleratorTestCall("browser-new")
+	newCall := acceleratorTestCall("session-new")
 	newSocket, _ := registry.register(newCall, newFakeAcceleratorConn())
-	registry.RevokeBrowserSession(context.Background(), call.SessionID)
+	registry.RevokeSession(context.Background(), call.SessionID)
 	if _, active, found := registry.snapshot(newCall.SessionID); !found || !active {
 		t.Fatal("stale revoke affected new ID")
 	}
@@ -1647,7 +1647,7 @@ func TestAcceleratorRegistryQuiesceAndClose(t *testing.T) {
 		go func(value int) { defer closedOperations.Done(); draining.EmitEvent("closed", value) }(i)
 		go func(value int) {
 			defer closedOperations.Done()
-			draining.RevokeBrowserSession(context.Background(), agent.SessionID(fmt.Sprintf("missing-%d", value)))
+			draining.RevokeSession(context.Background(), agent.SessionID(fmt.Sprintf("missing-%d", value)))
 		}(i)
 		go func() { defer closedOperations.Done(); draining.Quiesce() }()
 	}
@@ -1705,7 +1705,7 @@ func TestAcceleratorRegistryQuiesceAndClose(t *testing.T) {
 		}()
 		go func() {
 			defer operations.Done()
-			racing.RevokeBrowserSession(context.Background(), call.SessionID)
+			racing.RevokeSession(context.Background(), call.SessionID)
 		}()
 		go func() {
 			defer operations.Done()
@@ -1726,43 +1726,6 @@ func TestAcceleratorRegistryQuiesceAndClose(t *testing.T) {
 			t.Fatalf("shutdown race %d final close: %v", iteration, err)
 		}
 		cancel()
-	}
-}
-
-func TestBrowserWebSocketExpiryRecheckClearsAndRevokes(t *testing.T) {
-	now := time.Unix(1_700_000_000, 0)
-	observer := &recordingAcceleratorObserver{}
-	registry := newAcceleratorSessionRegistry("instance", observer, acceleratorTestConfig())
-	manager := newBrowserSessionManager(func() time.Time { return now }, &incrementingEntropy{}, registry)
-	ticket, _, err := manager.Mint()
-	if err != nil {
-		t.Fatal(err)
-	}
-	bearer, _, err := manager.Exchange(ticket)
-	if err != nil {
-		t.Fatal(err)
-	}
-	call, ok := manager.Authenticate(bearer)
-	if !ok {
-		t.Fatal("fresh browser bearer rejected")
-	}
-	socket, ok := registry.register(call, newFakeAcceleratorConn())
-	if !ok {
-		t.Fatal("browser socket register rejected")
-	}
-	now = now.Add(BrowserSessionIdleTTL)
-	if manager.withActiveBrowserSession(call.SessionID, func() bool {
-		t.Fatal("expired session reached activation")
-		return true
-	}) {
-		t.Fatal("exact idle expiry remained active")
-	}
-	<-socket.pumpsDone
-	if _, _, found := registry.snapshot(call.SessionID); found {
-		t.Fatal("expired browser registry record retained")
-	}
-	if got := observer.eventCopy(); fmt.Sprint(got) != "[connect:1 revoke:1]" {
-		t.Fatalf("expiry observer events = %v", got)
 	}
 }
 

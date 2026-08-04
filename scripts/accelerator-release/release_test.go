@@ -362,7 +362,7 @@ func releaseBinary(t *testing.T, arch, version, commit string) []byte {
 	source := `package main
 import "fmt"
 var identity = "unset"
-var assets = []string{"frontend/dist/index.html", "accelerator-browser/.kubikles-browser-v1.json", "kubikles-accelerator-browser", "\"buildVersion\":\"` + version + `\""}
+var assets = []string{"frontend/dist/index.html"}
 func main(){ fmt.Print(identity, assets) }
 `
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.invalid/releasefixture\n\ngo 1.24.2\n"), 0600); err != nil {
@@ -585,7 +585,7 @@ func TestInspectAcceleratorOCIRejectsRuntimeContractDrift(t *testing.T) {
 		t.Fatal("accepted fake JSON layer evidence")
 	}
 	if err := inspectAcceleratorBinary(releaseBinary(t, "amd64", "v1.4.1", testCommit), "amd64", "v1.4.2", testCommit); err == nil {
-		t.Fatal("accepted binary with mismatched embedded BuildVersion/Browser identity")
+		t.Fatal("accepted binary with mismatched embedded BuildVersion identity")
 	}
 }
 

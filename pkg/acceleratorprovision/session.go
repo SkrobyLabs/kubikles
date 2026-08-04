@@ -48,8 +48,6 @@ type ConnectedSession struct {
 	resumeStop     chan struct{}
 	arbiter        *sessionFrameArbiter
 	outbound       chan []byte
-	launchMu       sync.Mutex
-	launchWaiters  map[string]*browserLaunchWaiter
 	candidateNonce string
 	candidatePong  <-chan struct{}
 	ownerState     *workloadConnectorState
@@ -97,7 +95,6 @@ func newConnectedSessionWithCandidateFence(receipt *workloadReceipt, info server
 		receipt:      receipt,
 		clock:        clock,
 		socket:       socket, tunnel: activeTunnel, done: make(chan struct{}), terminalStart: make(chan struct{}), readerDone: make(chan struct{}), writerDone: make(chan struct{}), outbound: make(chan []byte, acceleratorsecret.OutboundSocketSlots),
-		launchWaiters:  make(map[string]*browserLaunchWaiter),
 		candidateNonce: candidateNonce, candidatePong: candidatePong,
 	}
 	session.self = session
@@ -264,113 +261,6 @@ func (s *ConnectedSession) cleanup(normal bool) {
 	close(s.done)
 }
 
-type browserOwnedWorkload struct {
-	workload *ProvisionedWorkload
-	receipt  *workloadReceipt
-	tunnel   tunnel
-	state    *workloadConnectorState
-}
-
-func (*browserOwnedWorkload) String() string { return "<accelerator browser-owned workload>" }
-func (*browserOwnedWorkload) Format(state fmt.State, _ rune) {
-	_, _ = io.WriteString(state, "<accelerator browser-owned workload>")
-}
-
-// detachCreatorForBrowser irreversibly transfers the existing tunnel away
-// from the creator session. It never opens a second port-forward.
-func (s *ConnectedSession) detachCreatorForBrowser(ctx context.Context) (*browserOwnedWorkload, bool) {
-	if s == nil || s.self != s || s.receipt == nil || s.receipt.owner == nil || s.ownerState == nil || s.tunnel == nil {
-		return nil, false
-	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	if ctx.Err() != nil {
-		return nil, false
-	}
-	state, workload := s.ownerState, s.receipt.owner
-	state.mu.Lock()
-	if state.closed || state.disposing || state.browserOwned || state.currentSession != s || state.receipt != s.receipt || workload.credential == nil {
-		state.mu.Unlock()
-		return nil, false
-	}
-	state.browserOwned = true
-	state.closed = true
-	state.currentSession = nil
-	credential := workload.credential
-	handle := &browserOwnedWorkload{workload: workload, receipt: s.receipt, tunnel: s.tunnel, state: state}
-	state.browserTransport = handle
-	state.signalChangedLocked()
-	state.mu.Unlock()
-
-	won := false
-	s.terminalOnce.Do(func() {
-		won = true
-		s.mu.Lock()
-		s.reason = SessionBrowserHandoff
-		s.closeRequested = true
-		s.disconnect = &disconnectRecord{at: s.clock.Now(), reason: SessionBrowserHandoff, workloadNonce: s.receipt, instanceID: s.identity.InstanceID, sessionID: s.identity.SessionID, generation: s.identity.Generation}
-		if s.resumeStop != nil {
-			select {
-			case <-s.resumeStop:
-			default:
-				close(s.resumeStop)
-			}
-		}
-		s.mu.Unlock()
-		close(s.terminalStart)
-	})
-	if !won {
-		state.mu.Lock()
-		state.browserOwned = false
-		state.closed = false
-		if state.browserTransport == handle {
-			state.browserTransport = nil
-		}
-		state.signalChangedLocked()
-		state.mu.Unlock()
-		return nil, false
-	}
-
-	cleanupCtx, cancelCleanup := context.WithTimeout(context.Background(), closeTimeout)
-	defer cancelCleanup()
-	deadline := time.Now().Add(closeTimeout)
-	_ = s.socket.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), deadline)
-	_ = s.socket.Close()
-	select {
-	case <-s.readerDone:
-	case <-cleanupCtx.Done():
-		activeTunnel := s.tunnel
-		s.tunnel = nil
-		activeTunnel.Stop()
-		_ = activeTunnel.Wait(cleanupCtx)
-		_ = credential.closeAndDestroy(cleanupCtx)
-		close(s.done)
-		return nil, false
-	}
-	select {
-	case <-s.writerDone:
-	case <-cleanupCtx.Done():
-		activeTunnel := s.tunnel
-		s.tunnel = nil
-		activeTunnel.Stop()
-		_ = activeTunnel.Wait(cleanupCtx)
-		_ = credential.closeAndDestroy(cleanupCtx)
-		close(s.done)
-		return nil, false
-	}
-	activeTunnel := s.tunnel
-	s.tunnel = nil
-	if !credential.closeAndDestroy(cleanupCtx) {
-		activeTunnel.Stop()
-		_ = activeTunnel.Wait(cleanupCtx)
-		close(s.done)
-		return nil, false
-	}
-	close(s.done)
-	return handle, true
-}
-
 func (s *ConnectedSession) Close(ctx context.Context) error {
 	if s == nil {
 		return nil
@@ -434,7 +324,6 @@ func (s *ConnectedSession) claimResumeWithIdle(workload *ProvisionedWorkload, id
 
 func (s *ConnectedSession) pump() {
 	defer close(s.readerDone)
-	defer s.closeBrowserLaunchWaiters()
 	defer s.arbiter.close()
 	s.socket.SetReadLimit(int64(acceleratorsecret.MaxCreatorResponseFrameBytes))
 	for {
@@ -454,14 +343,6 @@ func (s *ConnectedSession) pump() {
 			return
 		}
 		if frame.Event != nil {
-			if handled, valid := s.interceptBrowserLaunchControl(*frame.Event); handled {
-				clearServerFrame(&frame)
-				if !valid {
-					s.beginTermination(SessionProtocolFailed, false)
-					return
-				}
-				continue
-			}
 			switch frame.Event.Name {
 			case acceleratorsecret.EventResource, acceleratorsecret.EventWatcherStatus, acceleratorsecret.EventWatcherError:
 			default:

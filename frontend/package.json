@@ -6,9 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && bash ../scripts/compress-dist.sh",
-    "build:accelerator-browser": "node scripts/build-accelerator-browser.mjs",
-    "build:accelerator": "npm run build && npm run build:accelerator-browser",
-    "test:accelerator-browser-artifact": "node scripts/test-accelerator-browser-artifact.mjs",
     "analyze": "ANALYZE=1 vite build",
     "preview": "vite preview",
     "test": "vitest run",

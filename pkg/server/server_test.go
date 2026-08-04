@@ -83,68 +83,6 @@ func TestServerOptionsValidateAcceleratorListenAddress(t *testing.T) {
 	}
 }
 
-func TestAcceleratorWebSocketOptionsRequireOneCompositionGraph(t *testing.T) {
-	registry := NewAcceleratorSessionRegistry("instance", nil)
-	manager := NewBrowserSessionManager(registry)
-	httpOnly := AcceleratorOptions(0, nil, DenyProtectedRoutes)
-	httpOnly.BrowserSessions = NewBrowserSessionManager(NoopBrowserSessionRevoker{})
-	if err := validateOptions(httpOnly); err != nil {
-		t.Fatalf("HTTP-only browser sessions: %v", err)
-	}
-	if err := validateOptions(AcceleratorOptions(0, nil, DenyProtectedRoutes)); err != nil {
-		t.Fatalf("Accelerator without browser or WebSocket state: %v", err)
-	}
-	valid := AcceleratorOptions(0, nil, DenyProtectedRoutes)
-	valid.BrowserSessions = manager
-	valid.AcceleratorSessions = registry
-	valid.AcceleratorWebSocketAuthenticator = &AcceleratorWebSocketAuthenticator{BrowserSessions: manager, Registry: registry}
-	if err := validateOptions(valid); err != nil {
-		t.Fatalf("valid composition: %v", err)
-	}
-	for name, mutate := range map[string]func(*Options){
-		"missing manager":       func(o *Options) { o.BrowserSessions = nil },
-		"missing registry":      func(o *Options) { o.AcceleratorSessions = nil },
-		"missing authenticator": func(o *Options) { o.AcceleratorWebSocketAuthenticator = nil },
-		"distinct manager":      func(o *Options) { o.BrowserSessions = NewBrowserSessionManager(registry) },
-		"noop revoker": func(o *Options) {
-			m := NewBrowserSessionManager(NoopBrowserSessionRevoker{})
-			o.BrowserSessions, o.AcceleratorWebSocketAuthenticator.BrowserSessions = m, m
-		},
-		"different registry revoker": func(o *Options) {
-			m := NewBrowserSessionManager(NewAcceleratorSessionRegistry("other", nil))
-			o.BrowserSessions, o.AcceleratorWebSocketAuthenticator.BrowserSessions = m, m
-		},
-		"distinct auth registry": func(o *Options) {
-			o.AcceleratorWebSocketAuthenticator.Registry = NewAcceleratorSessionRegistry("other", nil)
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			o := valid
-			authenticator := *valid.AcceleratorWebSocketAuthenticator
-			o.AcceleratorWebSocketAuthenticator = &authenticator
-			mutate(&o)
-			if err := validateOptions(o); err == nil {
-				t.Fatal("invalid composition accepted")
-			}
-		})
-	}
-
-	compatibility := CompatibilityOptions(0, nil)
-	for name, mutate := range map[string]func(*Options){
-		"browser manager": func(o *Options) { o.BrowserSessions = manager },
-		"registry":        func(o *Options) { o.AcceleratorSessions = registry },
-		"authenticator":   func(o *Options) { o.AcceleratorWebSocketAuthenticator = valid.AcceleratorWebSocketAuthenticator },
-	} {
-		t.Run("compatibility rejects "+name, func(t *testing.T) {
-			o := compatibility
-			mutate(&o)
-			if err := validateOptions(o); err == nil {
-				t.Fatal("compatibility composition accepted")
-			}
-		})
-	}
-}
-
 func TestEmitEventRoutesOnlyInAcceleratorMode(t *testing.T) {
 	registry := newAcceleratorSessionRegistry("instance", nil, acceleratorTestConfig())
 	conn := newFakeAcceleratorConn()

@@ -341,8 +341,8 @@ func TestCreatorGuardMarksCreatorCredentialKind(t *testing.T) {
 	}
 	request := httptest.NewRequest(http.MethodPost, "/api/call?PrincipalID=forged&SessionID=forged", strings.NewReader(`{"PrincipalID":"forged","SessionID":"forged"}`))
 	request.Header.Set("Authorization", "Bearer "+creatorTestToken)
-	request.Header.Set("X-Credential-Kind", "browser")
-	request = request.WithContext(authenticatedContext(request.Context(), agent.AuthenticatedCallContext{PrincipalID: "forged", SessionID: "forged"}, credentialKindBrowser))
+	request.Header.Set("X-Credential-Kind", "forged")
+	request = request.WithContext(authenticatedContext(request.Context(), agent.AuthenticatedCallContext{PrincipalID: "forged", SessionID: "forged"}, credentialKindUntrusted))
 	response := httptest.NewRecorder()
 	auth.Guard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		call, ok := authenticatedCreatorContext(r.Context())

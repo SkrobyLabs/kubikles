@@ -26,7 +26,6 @@ const (
 	DisposalDrain               DisposalOperation = "drain"
 	DisposalImmediate           DisposalOperation = "immediate"
 	DisposalImmediateEscalation DisposalOperation = "immediate_escalation"
-	DisposalBrowser             DisposalOperation = "browser"
 )
 
 type DrainObservationStatus string
@@ -151,14 +150,12 @@ type disposalStart struct {
 	state      *workloadConnectorState
 	current    *ConnectedSession
 	receipt    *workloadReceipt
-	browser    *browserOwnedWorkload
 	cancels    []context.CancelFunc
 }
 
 type DisposalService struct {
 	gates               *gateSet
 	observeDrain        func(context.Context, *workloadReceipt, <-chan struct{}, func(DrainObservationStatus) DrainObservationStatus) DrainObservationStatus
-	observeBrowser      func(context.Context, *workloadReceipt, <-chan struct{}) DrainObservationStatus
 	cleanupOwned        func(context.Context, *workloadReceipt) (OwnershipStatus, UninstallStatus, DisappearanceStatus)
 	sweeper             acceleratorInertSweeper
 	acceptSweepSnapshot func(ContextSnapshot) bool
@@ -172,7 +169,6 @@ func NewDisposalService(provisioner *Service) *DisposalService {
 	if provisioner != nil {
 		service.gates = &provisioner.gates
 		service.observeDrain = observeExactDrainJobSettled
-		service.observeBrowser = observeExactBrowserTerminal
 		if cleaner, ok := provisioner.charts.(interface {
 			disposeOwned(context.Context, ContextSnapshot, *preparedChart, *ownedRelease, ObjectIdentity) (OwnershipStatus, UninstallStatus, DisappearanceStatus)
 		}); ok {
@@ -196,14 +192,6 @@ func (s *DisposalService) DrainAndDispose(ctx context.Context, workload *Provisi
 
 func (s *DisposalService) DisposeNow(ctx context.Context, workload *ProvisionedWorkload) DisposalResult {
 	return s.dispose(ctx, workload, DisposalImmediate)
-}
-
-func (s *DisposalService) DisposeAfterBrowser(ctx context.Context, owned *browserOwnedWorkload) DisposalResult {
-	start := s.beginBrowserDisposal(owned)
-	if start.owner {
-		s.executeDisposal(ctx, owned.workload, start)
-	}
-	return start.completion.wait()
 }
 
 // startDisposeNow is the coordinator-only asynchronous entry point. The
@@ -236,17 +224,10 @@ func completedInvalidDisposal(requested DisposalOperation) disposalStart {
 }
 
 func (s *DisposalService) beginDisposal(workload *ProvisionedWorkload, requested DisposalOperation) disposalStart {
-	return s.beginDisposalAuthorized(workload, requested, nil)
+	return s.beginDisposalAuthorized(workload, requested)
 }
 
-func (s *DisposalService) beginBrowserDisposal(owned *browserOwnedWorkload) disposalStart {
-	if owned == nil {
-		return completedInvalidDisposal(DisposalBrowser)
-	}
-	return s.beginDisposalAuthorized(owned.workload, DisposalBrowser, owned)
-}
-
-func (s *DisposalService) beginDisposalAuthorized(workload *ProvisionedWorkload, requested DisposalOperation, browser *browserOwnedWorkload) disposalStart {
+func (s *DisposalService) beginDisposalAuthorized(workload *ProvisionedWorkload, requested DisposalOperation) disposalStart {
 	if s == nil || workload == nil || workload.connectorState == nil {
 		return completedInvalidDisposal(requested)
 	}
@@ -259,24 +240,15 @@ func (s *DisposalService) beginDisposalAuthorized(workload *ProvisionedWorkload,
 			completed = true
 		default:
 		}
-		var retained *browserOwnedWorkload
-		if !completed && requested == DisposalImmediate && (existing.effective == DisposalBrowser || (existing.effective == DisposalDrain && !existing.observationSettled)) {
+		if !completed && requested == DisposalImmediate && existing.effective == DisposalDrain && !existing.observationSettled {
 			existing.effective = DisposalImmediateEscalation
 			existing.forceOnce.Do(func() { close(existing.force) })
-			retained = state.browserTransport
 		}
 		state.mu.Unlock()
-		if retained != nil && retained.tunnel != nil {
-			retained.tunnel.Stop()
-		}
 		if !completed && requested == DisposalImmediate {
 			existing.markTransportFenced()
 		}
 		return disposalStart{completion: &disposalCompletion{operation: existing}}
-	}
-	if requested == DisposalBrowser && (browser == nil || browser.workload != workload || browser.state != state || browser.receipt != state.receipt || browser.tunnel == nil || state.browserTransport != browser || !state.browserOwned) {
-		state.mu.Unlock()
-		return completedInvalidDisposal(requested)
 	}
 	if workload.credential == nil {
 		state.mu.Unlock()
@@ -292,16 +264,10 @@ func (s *DisposalService) beginDisposalAuthorized(workload *ProvisionedWorkload,
 	}
 	current := state.currentSession
 	receipt := state.receipt
-	ownedTransport := state.browserTransport
 	state.signalChangedLocked()
 	state.mu.Unlock()
-	if requested != DisposalBrowser {
-		if ownedTransport != nil && ownedTransport.tunnel != nil {
-			ownedTransport.tunnel.Stop()
-		}
-		op.markTransportFenced()
-	}
-	return disposalStart{completion: &disposalCompletion{operation: op}, owner: true, state: state, current: current, receipt: receipt, browser: ownedTransport, cancels: cancels}
+	op.markTransportFenced()
+	return disposalStart{completion: &disposalCompletion{operation: op}, owner: true, state: state, current: current, receipt: receipt, cancels: cancels}
 }
 
 func (s *DisposalService) executeDisposal(ctx context.Context, workload *ProvisionedWorkload, start disposalStart) {
@@ -318,18 +284,7 @@ func (s *DisposalService) executeDisposal(ctx context.Context, workload *Provisi
 	if current != nil && current.Close(quiesceCtx) != nil {
 		quiescence = QuiescenceTimedOut
 	}
-	state.mu.Lock()
-	transportOwnedByBrowser := op.effective == DisposalBrowser
-	state.mu.Unlock()
-	if !transportOwnedByBrowser && start.browser != nil && start.browser.tunnel != nil {
-		start.browser.tunnel.Stop()
-		op.markTransportFenced()
-		if start.browser.tunnel.Wait(quiesceCtx) != nil {
-			quiescence = QuiescenceTimedOut
-		}
-	} else if !transportOwnedByBrowser {
-		op.markTransportFenced()
-	}
+	op.markTransportFenced()
 	if !waitLifecycleIdle(quiesceCtx, state) {
 		quiescence = QuiescenceTimedOut
 	}
@@ -343,31 +298,7 @@ func (s *DisposalService) executeDisposal(ctx context.Context, workload *Provisi
 	state.mu.Lock()
 	effective := op.effective
 	state.mu.Unlock()
-	if effective == DisposalBrowser {
-		if s.observeBrowser != nil {
-			observation = s.observeBrowser(base, receipt, op.force)
-		} else {
-			observation = DrainReadError
-		}
-		state.mu.Lock()
-		if op.effective != DisposalBrowser {
-			observation = DrainEscalated
-		}
-		op.observationSettled = true
-		effective = op.effective
-		state.mu.Unlock()
-		if start.browser != nil && start.browser.tunnel != nil {
-			transportCtx, cancelTransport := s.withPhaseTimeout(base, TransportQuiesceTimeout)
-			start.browser.tunnel.Stop()
-			op.markTransportFenced()
-			if start.browser.tunnel.Wait(transportCtx) != nil {
-				quiescence = QuiescenceTimedOut
-			}
-			cancelTransport()
-		} else {
-			op.markTransportFenced()
-		}
-	} else if effective == DisposalDrain && s.observeDrain != nil {
+	if effective == DisposalDrain && s.observeDrain != nil {
 		observeCtx, cancelObserve := s.withPhaseTimeout(base, DrainObservationTimeout)
 		observation = s.observeDrain(observeCtx, receipt, op.force, func(status DrainObservationStatus) DrainObservationStatus {
 			state.mu.Lock()
@@ -417,8 +348,6 @@ func (s *DisposalService) executeDisposal(ctx context.Context, workload *Provisi
 	op.markTransportFenced()
 	state.currentSession = nil
 	state.receipt = nil
-	state.browserTransport = nil
-	state.browserOwned = false
 	workload.credential = nil
 	workload.snapshot = nil
 	close(op.done)

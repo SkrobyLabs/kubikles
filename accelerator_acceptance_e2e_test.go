@@ -3,13 +3,8 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
 	"errors"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -45,7 +40,7 @@ func TestAcceleratorAcceptanceKind(t *testing.T) {
 		if milliseconds < 1 {
 			milliseconds = 1
 		}
-		if index < 15 || index >= len(contract.Cases) || report.RecordPass(contract.Cases[index], milliseconds) != nil {
+		if index < 13 || index >= len(contract.Cases) || report.RecordPass(contract.Cases[index], milliseconds) != nil {
 			allPassed = false
 			t.Error("accelerator acceptance composed report failed")
 		}
@@ -57,26 +52,14 @@ func TestAcceleratorAcceptanceKind(t *testing.T) {
 		routingOnce.Do(func() { routing = runAcceleratorIntegratedRoutingKind(t) })
 		return routing
 	}
-	var browserOnce sync.Once
-	var browser acceptanceBrowserKindProof
-	var browserErr error
-	ensureBrowser := func(t *testing.T) acceptanceBrowserKindProof {
-		t.Helper()
-		browserOnce.Do(func() { browser, browserErr = runAcceptanceBrowserKind() })
-		if browserErr != nil {
-			t.Fatal("accelerator acceptance Browser composition failed")
-		}
-		return browser
-	}
-
-	record(15, "IntegratedHappyPath", func(t *testing.T) {
+	record(13, "IntegratedHappyPath", func(t *testing.T) {
 		routing := ensureRouting(t)
 		if !routing.integratedHappy || !routing.sixOperations || !routing.valueFreeBoundaries {
 			t.Fatal("accelerator acceptance integrated proof incomplete")
 		}
 	}, nil)
 
-	record(16, "VersionAndArtifactMismatch", func(t *testing.T) {
+	record(14, "VersionAndArtifactMismatch", func(t *testing.T) {
 		routing := ensureRouting(t)
 		fixture, err := acceleratoracceptance.LoadArtifactFixture(os.Getenv("ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT"))
 		if err != nil || acceleratoracceptance.ValidateArtifactFixture(fixture) != nil {
@@ -91,37 +74,30 @@ func TestAcceleratorAcceptanceKind(t *testing.T) {
 		}
 	}, nil)
 
-	record(17, "TransportResumeAndRecreate", func(t *testing.T) {
+	record(15, "TransportResumeAndRecreate", func(t *testing.T) {
 		routing := ensureRouting(t)
 		if !routing.immediateDirect || !routing.resumedHigherSource || !routing.staleSourceRejected || routing.mismatchAttempts != 2 || !routing.mismatchNoThird {
 			t.Fatal("accelerator acceptance transport recovery proof incomplete")
 		}
 	}, nil)
 
-	record(18, "BrowserHandoff", func(t *testing.T) {
-		browser := ensureBrowser(t)
-		if !browser.artifact || !browser.authentication || !browser.handoff {
-			t.Fatal("accelerator acceptance Browser handoff proof incomplete")
+	record(16, "RealTwoMinuteAuthenticatedClientGrace", func(t *testing.T) {
+		routing := ensureRouting(t)
+		if routing.elapsed < 119*time.Second || routing.elapsed > 126*time.Second || !routing.reconnectCancelled || !routing.singleExpiry {
+			t.Fatal("accelerator acceptance Integrated grace proof incomplete")
 		}
 	}, nil)
 
-	record(19, "RealTwoMinuteAuthenticatedClientGrace", func(t *testing.T) {
-		browser := ensureBrowser(t)
-		if browser.elapsed < 119*time.Second || browser.elapsed > 126*time.Second || !browser.reconnectCancelled || !browser.singleExpiry {
-			t.Fatal("accelerator acceptance Browser grace proof incomplete")
-		}
-	}, func(time.Duration) time.Duration { return browser.elapsed })
-
-	record(20, "SecurityPrivacyBackpressure", func(t *testing.T) {
-		browser := ensureBrowser(t)
-		if !browser.loopback || !browser.privacy || !browser.rbac {
+	record(17, "SecurityPrivacyBackpressure", func(t *testing.T) {
+		routing := ensureRouting(t)
+		if !routing.loopback || !routing.privacy || !routing.rbac {
 			t.Fatal("accelerator acceptance security proof incomplete")
 		}
 	}, nil)
 
-	record(21, "CleanupSweepIsolation", func(t *testing.T) {
-		browser := ensureBrowser(t)
-		if !browser.ownedCleanup || !browser.sentinel || !browser.sweep {
+	record(18, "CleanupSweepIsolation", func(t *testing.T) {
+		routing := ensureRouting(t)
+		if !routing.ownedCleanup || !routing.sentinel || !routing.sweep {
 			t.Fatal("accelerator acceptance cleanup proof incomplete")
 		}
 	}, nil)
@@ -144,7 +120,7 @@ func loadAcceptanceReportPrefix(t *testing.T) (acceleratoracceptance.Contract, a
 	}
 	report, parseErr := acceleratoracceptance.ParseReport(progress)
 	_ = progress.Close()
-	if parseErr != nil || report.SchemaVersion != acceleratoracceptance.ReportSchemaVersion || len(report.Cases) != 15 || len(contract.Cases) != 22 {
+	if parseErr != nil || report.SchemaVersion != acceleratoracceptance.ReportSchemaVersion || len(report.Cases) != 13 || len(contract.Cases) != 19 {
 		t.Fatal("accelerator acceptance focused report invalid")
 	}
 	for index, result := range report.Cases {
@@ -166,63 +142,4 @@ func loadAcceptanceReportPrefix(t *testing.T) (acceleratoracceptance.Contract, a
 		t.Fatal("accelerator acceptance stale final report")
 	}
 	return contract, report, finalReport
-}
-
-type acceptanceBrowserKindProof struct {
-	elapsed            time.Duration
-	artifact           bool
-	authentication     bool
-	handoff            bool
-	reconnectCancelled bool
-	singleExpiry       bool
-	loopback           bool
-	privacy            bool
-	rbac               bool
-	ownedCleanup       bool
-	sentinel           bool
-	sweep              bool
-}
-
-func runAcceptanceBrowserKind() (acceptanceBrowserKindProof, error) {
-	root := os.Getenv("ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT")
-	if !filepath.IsAbs(root) {
-		return acceptanceBrowserKindProof{}, errors.New("acceptance Browser preflight failed")
-	}
-	proofPath := filepath.Join(root, "acceptance-browser-proof.json")
-	if _, err := os.Stat(proofPath); !errors.Is(err, os.ErrNotExist) {
-		return acceptanceBrowserKindProof{}, errors.New("acceptance Browser preflight failed")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 9*time.Minute)
-	defer cancel()
-	command := exec.CommandContext(ctx, "go", "test", "-count=1", "-timeout=8m", "-tags=helm,accelerator_provision_kind", "./pkg/acceleratorprovision", "-run", "^TestAcceleratorDesktopProvisionKind$")
-	command.Env = append(os.Environ(),
-		"ACCELERATOR_ACCEPTANCE_BROWSER_KIND=1",
-		"ACCELERATOR_ACCEPTANCE_BROWSER_PROOF="+proofPath,
-		"GOPROXY=off",
-	)
-	command.Stdout = io.Discard
-	command.Stderr = io.Discard
-	if command.Run() != nil || ctx.Err() != nil {
-		return acceptanceBrowserKindProof{}, errors.New("acceptance Browser process failed")
-	}
-	encoded, err := os.ReadFile(proofPath)
-	if err != nil || len(encoded) == 0 || len(encoded) > 256 {
-		return acceptanceBrowserKindProof{}, errors.New("acceptance Browser proof failed")
-	}
-	decoder := json.NewDecoder(bytes.NewReader(encoded))
-	decoder.DisallowUnknownFields()
-	var wire struct {
-		SchemaVersion int   `json:"schemaVersion"`
-		ElapsedMS     int64 `json:"elapsedMs"`
-	}
-	if decoder.Decode(&wire) != nil || decoder.Decode(&struct{}{}) != io.EOF || wire.SchemaVersion != 1 || wire.ElapsedMS < 119000 || wire.ElapsedMS > 126000 {
-		return acceptanceBrowserKindProof{}, errors.New("acceptance Browser proof failed")
-	}
-	return acceptanceBrowserKindProof{
-		elapsed:  time.Duration(wire.ElapsedMS) * time.Millisecond,
-		artifact: true, authentication: true, handoff: true,
-		reconnectCancelled: true, singleExpiry: true,
-		loopback: true, privacy: true, rbac: true,
-		ownedCleanup: true, sentinel: true, sweep: true,
-	}, nil
 }

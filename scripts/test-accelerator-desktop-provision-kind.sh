@@ -321,9 +321,6 @@ fi
 if [[ "${ACCELERATOR_DISPOSAL_KIND:-0}" == "1" || "${ACCELERATOR_LIFECYCLE_KIND:-0}" == "1" ]]; then
   go_test_timeout=9m
 fi
-if [[ "${ACCELERATOR_BROWSER_LIFECYCLE_KIND:-0}" == "1" ]]; then
-  go_test_timeout=18m
-fi
 if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" ]]; then
   # The test source machine-checks a 33m17s sequential inner bound. This is
   # the smallest whole-minute timeout above it and leaves a 43s margin.

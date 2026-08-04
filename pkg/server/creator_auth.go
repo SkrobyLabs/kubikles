@@ -70,7 +70,7 @@ type credentialKind uint8
 
 const (
 	credentialKindCreator credentialKind = iota + 1
-	credentialKindBrowser
+	credentialKindUntrusted
 )
 
 func authenticatedCreatorContext(ctx context.Context) (agent.AuthenticatedCallContext, bool) {

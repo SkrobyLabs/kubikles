@@ -6,16 +6,13 @@ import {
   GetIntegratedSecretYaml,
   GetSecretData,
   GetSecretYaml,
-  ListAcceleratorSecretsMetadata,
   ListIntegratedSecretsMetadata,
   ListSecretsMetadata,
   ReleaseIntegratedSecretReads,
   RetainIntegratedSecretReads,
   SubscribeIntegratedSecretWatcher,
   SubscribeResourceWatcher,
-  SubscribeSecretWatcher,
   UnsubscribeIntegratedSecretWatcher,
-  UnsubscribeSecretWatcher,
   UnsubscribeWatcher,
 } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
@@ -208,38 +205,6 @@ function createDirectSecretReadSource(): SecretReadSource {
 }
 
 export const directSecretReadSource = createDirectSecretReadSource();
-
-export function createAcceleratorSecretReadSource(sourceKey: string): SecretReadSource {
-  if (!sourceKey.trim()) throw new Error('Secret read source key must be non-empty');
-  const specs = new Map<string, OwnedSpec>();
-  const listenerState = sourceListeners(sourceKey, specs, true);
-  return {
-    sourceKey,
-    list: (requestId, namespace, excludeHelmReleases) =>
-      ListAcceleratorSecretsMetadata(requestId, namespace, excludeHelmReleases),
-    cancelList: requestId => CancelListRequest(requestId),
-    subscribe: async (namespace, excludeHelmReleases) => {
-      const pending = listenerState.beginPending(namespace, excludeHelmReleases);
-      try {
-        const result: any = await SubscribeSecretWatcher(namespace, excludeHelmReleases);
-        const watcherSpecId = result?.watcherSpecId ?? result;
-        if (watcherSpecId) specs.set(watcherSpecId, { namespace, excludeHelmReleases });
-        listenerState.settlePending(pending, watcherSpecId);
-        return watcherSpecId;
-      } catch (error) {
-        listenerState.settlePending(pending, '');
-        throw error;
-      }
-    },
-    unsubscribe: async watcherSpecId => {
-      specs.delete(watcherSpecId);
-      return UnsubscribeSecretWatcher(watcherSpecId);
-    },
-    getSecretData: GetSecretData,
-    getSecretYaml: GetSecretYaml,
-    ...listenerState.listeners,
-  };
-}
 
 const INTEGRATED_READY_EVENT = 'accelerator:secret-source-ready';
 const INTEGRATED_UNAVAILABLE_EVENT = 'accelerator:secret-source-unavailable';
