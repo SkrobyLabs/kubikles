@@ -63,7 +63,7 @@ export default function AcceleratorConnectionPanel({ contextName, contextNamespa
     }
   };
   const remove = async () => {
-    if (!window.confirm('Disable Accelerator and remove its exact owned workload?')) return;
+    if (workload && !window.confirm('Disable Accelerator and remove its exact owned workload?')) return;
     save({ enabled: false });
     if (current) await disable();
   };

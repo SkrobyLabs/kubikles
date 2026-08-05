@@ -5,18 +5,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AcceleratorConnectionPanel from './AcceleratorConnectionPanel';
 
 const retry = vi.fn();
+const disable = vi.fn();
+const setConfig = vi.fn();
 let acceleratorStatus: any = { state: 'direct_only', enabled: false, namespace: '', available: false };
 vi.mock('~/context', () => ({
-  useConfig: () => ({ config: { accelerator: { enabledByDefault: false, defaultNamespace: '', connectionOverrides: [] } }, setConfig: vi.fn() }),
+  useConfig: () => ({ config: { accelerator: { enabledByDefault: false, defaultNamespace: '', connectionOverrides: [] } }, setConfig }),
   useK8s: () => ({ currentContext: 'prod', setSelectedNamespaces: vi.fn() }),
   useUI: () => ({ navigateWithSearch: vi.fn() }),
-  useAccelerator: () => ({ status: acceleratorStatus, enable: vi.fn(), retry, disable: vi.fn() }),
+  useAccelerator: () => ({ status: acceleratorStatus, enable: vi.fn(), retry, disable }),
 }));
 
 describe('AcceleratorConnectionPanel', () => {
   beforeEach(() => {
     acceleratorStatus = { state: 'direct_only', enabled: false, namespace: '', available: false };
     retry.mockReset();
+    disable.mockReset();
+    setConfig.mockReset();
   });
 
   it('links inheritance guidance to global Accelerator settings', () => {
@@ -35,5 +39,16 @@ describe('AcceleratorConnectionPanel', () => {
     expect(screen.queryByRole('button', { name: 'Redeploy' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => expect(retry).toHaveBeenCalledOnce());
+  });
+
+  it('disables a failed deployment without asking to remove a nonexistent workload', async () => {
+    acceleratorStatus = { state: 'unavailable', enabled: true, namespace: 'default', available: false, diagnostics: [] };
+    const confirm = vi.spyOn(window, 'confirm');
+    render(<AcceleratorConnectionPanel contextName="prod" contextNamespace="default" onOpenSettings={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Disable & Remove' }));
+    await waitFor(() => expect(disable).toHaveBeenCalledOnce());
+    expect(confirm).not.toHaveBeenCalled();
+    expect(setConfig).toHaveBeenCalledWith('accelerator.connectionOverrides', [{ contextName: 'prod', enabled: false }]);
+    confirm.mockRestore();
   });
 });
