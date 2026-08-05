@@ -32,7 +32,7 @@ func TestWorkflowEventPermissionAuthorityMatrix(t *testing.T) {
 			}
 		}
 	}
-	positions := []string{"release-acceptance:", "accelerator-prepare:", "accelerator-publish:", "accelerator-attest:", "release:"}
+	positions := []string{"\n  release-acceptance:", "\n  accelerator-prepare:", "\n  accelerator-publish:", "\n  accelerator-attest:", "\n  release:"}
 	previous := -1
 	for _, marker := range positions {
 		index := strings.Index(string(release), marker)

@@ -52,7 +52,7 @@ type Resolution struct {
 }
 
 var stableVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
-var releaseVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
+var releaseVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?$`)
 
 type httpDoer interface {
 	Do(*http.Request) (*http.Response, error)
@@ -89,7 +89,7 @@ func available(source Source, release VerifiedRelease) Resolution {
 }
 
 func (r *Resolver) Resolve(ctx context.Context) Resolution {
-	if !stableVersion.MatchString(r.buildVersion) {
+	if !releaseVersion.MatchString(r.buildVersion) {
 		return unavailable(InvalidLocalBuild)
 	}
 	descriptorURL, checksumURL, ok := assetURLs(r.buildVersion)
@@ -127,21 +127,17 @@ func (r *Resolver) Resolve(ctx context.Context) Resolution {
 }
 
 // ResolveOverride resolves an explicitly selected development release. The
-// normal resolver remains stable-only; this path requires a canonical version
-// and an optional explicit HTTPS descriptor URL and deliberately bypasses the
-// production cache.
+// normal resolver accepts officially published stable and prerelease versions;
+// this path additionally accepts an explicit HTTPS descriptor URL and
+// deliberately bypasses the production cache for that custom location.
 func (r *Resolver) ResolveOverride(ctx context.Context, buildVersion, descriptorURL string) Resolution {
 	if r == nil || !releaseVersion.MatchString(buildVersion) {
 		return unavailable(InvalidLocalBuild)
 	}
-	if descriptorURL == "" && stableVersion.MatchString(buildVersion) {
+	if descriptorURL == "" {
 		clone := *r
 		clone.buildVersion = buildVersion
 		return clone.Resolve(ctx)
-	}
-	if descriptorURL == "" {
-		name := releaseAssetPrefix + buildVersion + ".json"
-		descriptorURL = "https://github.com/SkrobyLabs/kubikles/releases/download/" + buildVersion + "/" + name
 	}
 	u, err := url.Parse(descriptorURL)
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.Fragment != "" || strings.TrimSpace(descriptorURL) != descriptorURL {

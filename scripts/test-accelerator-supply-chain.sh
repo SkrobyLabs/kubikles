@@ -15,7 +15,7 @@ buildkit_image='moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b2
 docker image inspect "$buildkit_image" >/dev/null 2>&1 || fail buildkit-image-missing
 
 version="${BUILD_VERSION:-v0.0.0}"
-[[ "$version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || fail build-version
+go run ./scripts/accelerator-release normalize "$version" >/dev/null || fail build-version
 commit="$(git -C "$root" rev-parse HEAD)"
 [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || fail source-commit
 git -C "$root" diff --quiet && git -C "$root" diff --cached --quiet || fail dirty-source

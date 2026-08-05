@@ -29,10 +29,10 @@ func main() {
 		}
 	case "normalize":
 		if len(os.Args) != 3 {
-			fatal("usage: normalize vMAJOR.MINOR.PATCH")
+			fatal("usage: normalize vMAJOR.MINOR.PATCH[-PRERELEASE]")
 		}
 		var v Version
-		v, err = NormalizeStableReleaseTag(os.Args[2])
+		v, err = NormalizeReleaseTag(os.Args[2])
 		if err == nil {
 			err = writeCanonicalJSON("/dev/stdout", v)
 		}
@@ -80,7 +80,7 @@ func main() {
 			break
 		}
 		var v Version
-		v, err = NormalizeStableReleaseTag(os.Args[3])
+		v, err = NormalizeReleaseTag(os.Args[3])
 		if err == nil && os.Args[7] != v.GitTag {
 			err = fmt.Errorf("Git tag and BuildVersion differ")
 		}

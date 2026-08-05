@@ -20,8 +20,20 @@ func TestAssetURLsUseLiteralStableBuildVersion(t *testing.T) {
 	}
 }
 
+func TestAssetURLsUseLiteralPrereleaseBuildVersion(t *testing.T) {
+	version := "v1.4.2-alpha.1"
+	descriptorURL, checksumURL, ok := assetURLs(version)
+	if !ok {
+		t.Fatal("canonical prerelease rejected")
+	}
+	want := "https://github.com/SkrobyLabs/kubikles/releases/download/" + version + "/kubikles-accelerator-release-" + version + ".json"
+	if descriptorURL != want || checksumURL != want+".sha256" {
+		t.Fatalf("URLs = %q, %q", descriptorURL, checksumURL)
+	}
+}
+
 func TestAssetURLsRejectNonCanonicalBuildVersionsWithoutIO(t *testing.T) {
-	invalid := []string{"", "dev", " v1.4.2", "v1.4.2 ", "V1.4.2", "v01.4.2", "v1.04.2", "v1.4.02", "1.4.2", "v1.4", "v1.4.2.0", "v1.4.2-rc.1", "v1.4.2+build", "latest", "main", "0123456789abcdef0123456789abcdef01234567", "v1.4.*", "v1.4.2/other", "v1.4.2?token=x", "v1.4.2\n"}
+	invalid := []string{"", "dev", " v1.4.2", "v1.4.2 ", "V1.4.2", "v01.4.2", "v1.04.2", "v1.4.02", "1.4.2", "v1.4", "v1.4.2.0", "v1.4.2-rc.01", "v1.4.2+build", "latest", "main", "0123456789abcdef0123456789abcdef01234567", "v1.4.*", "v1.4.2/other", "v1.4.2?token=x", "v1.4.2\n"}
 	for _, version := range invalid {
 		t.Run(version, func(t *testing.T) {
 			if descriptorURL, checksumURL, ok := assetURLs(version); ok || descriptorURL != "" || checksumURL != "" {

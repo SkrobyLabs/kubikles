@@ -41,7 +41,7 @@ func TestWorkflowReleaseContract(t *testing.T) {
 	for _, required := range []string{
 		"build_version:", "default: dev", "BUILD_VERSION='${{ inputs.build_version }}'",
 		"permissions:\n  contents: read", "publish: false", "build_version: v0.0.0",
-		"group: release-${{ github.ref_name }}", "cancel-in-progress: false", "^v(0|[1-9][0-9]*)",
+		"group: release-publication", "cancel-in-progress: false", `release_json="$(go run ./scripts/accelerator-release normalize "$tag")"`,
 		"packages: write", "contents: write", "actions: read", "packages: read",
 		"Docker Buildx must be exactly v0.36.0", "helm-v3.21.3", "oras_1.3.3", "gh_2.97.0",
 		"kubikles-accelerator-release-$BUILD_VERSION.json", "make verify-accelerator-release-ghcr",
@@ -355,6 +355,7 @@ set -euo pipefail
 source "$1"
 tab=$'\t'
 validate_release_metadata v1.2.3 "v1.2.3${tab}v1.2.3${tab}false${tab}false"
+validate_release_metadata v1.2.3-alpha.1 "v1.2.3-alpha.1${tab}v1.2.3-alpha.1${tab}false${tab}true"
 for metadata in \
   "v1.2.4${tab}v1.2.3${tab}false${tab}false" \
   "v1.2.3${tab}different${tab}false${tab}false" \
@@ -367,9 +368,36 @@ done
 		t.Fatalf("GitHub Release metadata contract was not exact: %v (%s)", err, output)
 	}
 	release := workflow(t, "release.yml")
-	for _, required := range []string{".tag_name, .name, .draft, .prerelease", `release_tag" = "$BUILD_VERSION`, `release_name" = "$BUILD_VERSION`, `release_draft" = false`, `release_prerelease" = false`} {
+	for _, required := range []string{".tag_name, .name, .draft, .prerelease", `release_tag" = "$BUILD_VERSION`, `release_name" = "$BUILD_VERSION`, `release_draft" = false`, `release_prerelease" = "$RELEASE_PRERELEASE`, `release_flags+=(--prerelease)`, `select(.prerelease == true and .draft == false)`, `--method DELETE`} {
 		if !strings.Contains(release, required) {
 			t.Errorf("release finalizer metadata contract missing %q", required)
+		}
+	}
+}
+
+func TestPrereleaseSlotReplacementCannotDeleteStableReleasesOrTags(t *testing.T) {
+	release := workflow(t, "release.yml")
+	selector := `select(.prerelease == true and .draft == false)`
+	for _, required := range []string{
+		`if [ "$RELEASE_PRERELEASE" = true ]; then`,
+		selector,
+		`if [ "$release_tag" != "$BUILD_VERSION" ]; then`,
+		`api --method DELETE "repos/${{ github.repository }}/releases/$release_id"`,
+		`[ "$remaining" = "$BUILD_VERSION" ]`,
+	} {
+		if !strings.Contains(release, required) {
+			t.Errorf("prerelease slot contract missing %q", required)
+		}
+	}
+	create := strings.Index(release, `github_cli release create "$BUILD_VERSION"`)
+	verify := strings.LastIndex(release, `make verify-accelerator-supply-chain-ghcr BUILD_VERSION="$BUILD_VERSION"`)
+	deleteOld := strings.Index(release, `api --method DELETE "repos/${{ github.repository }}/releases/$release_id"`)
+	if create < 0 || verify < create || deleteOld < verify {
+		t.Fatal("old prerelease is removed before the replacement is created and verified")
+	}
+	for _, forbidden := range []string{"git push --delete", "git tag -d", "/git/refs/", "/packages/"} {
+		if strings.Contains(release, forbidden) {
+			t.Errorf("slot replacement can mutate an out-of-scope identity: %q", forbidden)
 		}
 	}
 }

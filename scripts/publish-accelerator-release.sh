@@ -308,12 +308,13 @@ recheck_source() {
 }
 
 validate_release_metadata() {
-  local version=$1 metadata=$2 tag name draft prerelease
+  local version=$1 metadata=$2 tag name draft prerelease expected_prerelease=false
+  if [[ "$version" == *-* ]]; then expected_prerelease=true; fi
   IFS=$'\t' read -r tag name draft prerelease <<< "$metadata"
   [ "$tag" = "$version" ] || fail "GitHub Release tag differs from exact BuildVersion"
   [ "$name" = "$version" ] || fail "GitHub Release name differs from exact BuildVersion"
   [ "$draft" = false ] || fail "GitHub Release must not be a draft"
-  [ "$prerelease" = false ] || fail "GitHub Release must not be a prerelease"
+  [ "$prerelease" = "$expected_prerelease" ] || fail "GitHub Release prerelease classification differs from BuildVersion"
 }
 
 github_release_state() {

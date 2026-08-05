@@ -6,7 +6,7 @@ on:
     branches-ignore: ["**"]
 
 concurrency:
-  group: release-${{ github.ref_name }}
+  group: release-publication
   cancel-in-progress: false
 
 permissions:
@@ -23,25 +23,30 @@ jobs:
       chart_version: ${{ steps.release.outputs.chart_version }}
       source_commit: ${{ steps.release.outputs.source_commit }}
       source_epoch: ${{ steps.release.outputs.source_epoch }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
       - id: release
-        name: Verify exact stable release identity
+        name: Verify exact release identity
         shell: bash
         run: |
           set -euo pipefail
           tag="${GITHUB_REF#refs/tags/}"
-          [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo "Error: release tag must be canonical vMAJOR.MINOR.PATCH" >&2; exit 1; }
+          release_json="$(go run ./scripts/accelerator-release normalize "$tag")"
+          prerelease="$(jq -er .prerelease <<< "$release_json")"
           commit="$(go run ./scripts/accelerator-release verify-git . "$tag")"
-          git merge-base --is-ancestor "$commit" origin/main || { echo "Error: release source is not on protected main" >&2; exit 1; }
+          if [ "$prerelease" = false ]; then
+            git merge-base --is-ancestor "$commit" origin/main || { echo "Error: stable release source is not on protected main" >&2; exit 1; }
+          fi
           [ "$commit" = "$GITHUB_SHA" ] || { echo "Error: release tag differs from checked-out source" >&2; exit 1; }
           {
             echo "build_version=$tag"
             echo "chart_version=${tag#v}"
             echo "source_commit=$commit"
             echo "source_epoch=$(git show -s --format=%ct "$commit")"
+            echo "prerelease=$prerelease"
           } >> "$GITHUB_OUTPUT"
 
   build:
@@ -330,6 +335,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_VERSION: ${{ needs.preflight.outputs.build_version }}
           SOURCE_COMMIT: ${{ needs.preflight.outputs.source_commit }}
+          RELEASE_PRERELEASE: ${{ needs.preflight.outputs.prerelease }}
         shell: bash
         run: |
           set -euo pipefail
@@ -350,7 +356,7 @@ jobs:
               rm -f "$error_file"
               metadata="$(printf '%s\n' "$output" | sed -n '1p')"
               IFS=$'\t' read -r release_tag release_name release_draft release_prerelease <<< "$metadata"
-              [ "$release_tag" = "$BUILD_VERSION" ] && [ "$release_name" = "$BUILD_VERSION" ] && [ "$release_draft" = false ] && [ "$release_prerelease" = false ] || exit 1
+              [ "$release_tag" = "$BUILD_VERSION" ] && [ "$release_name" = "$BUILD_VERSION" ] && [ "$release_draft" = false ] && [ "$release_prerelease" = "$RELEASE_PRERELEASE" ] || exit 1
               printf '%s\n' "$output" | sed '1d' > "$RUNNER_TEMP/finalized-assets.txt"
               go run ./scripts/accelerator-release verify-release-assets "$BUILD_VERSION" "$RUNNER_TEMP/finalized-assets.txt"
               printf 'existing\n'
@@ -367,7 +373,9 @@ jobs:
             [ "$(classify_release)" = absent ]
             notes="$RUNNER_TEMP/accelerator-release-notes.md"
             github_cli api "repos/${{ github.repository }}/releases/generate-notes" -f tag_name="$BUILD_VERSION" --jq .body > "$notes"
-            github_cli release create "$BUILD_VERSION" --title "$BUILD_VERSION" -F "$notes" "$assets"/*
+            release_flags=()
+            if [ "$RELEASE_PRERELEASE" = true ]; then release_flags+=(--prerelease); fi
+            github_cli release create "$BUILD_VERSION" --title "$BUILD_VERSION" "${release_flags[@]}" -F "$notes" "$assets"/*
             [ "$(classify_release)" = existing ]
           fi
       - name: Verify finalized public release handoff
@@ -378,3 +386,22 @@ jobs:
           export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
           make verify-accelerator-release-ghcr BUILD_VERSION="$BUILD_VERSION"
           make verify-accelerator-supply-chain-ghcr BUILD_VERSION="$BUILD_VERSION"
+      - name: Replace the verified GitHub prerelease slot
+        if: needs.preflight.outputs.prerelease == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_VERSION: ${{ needs.preflight.outputs.build_version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          github_token="$GH_TOKEN"; unset GH_TOKEN
+          github_cli() { GH_TOKEN="$github_token" gh "$@"; }
+          old_releases="$(github_cli api --paginate --slurp "repos/${{ github.repository }}/releases?per_page=100" --jq 'add | map(select(.prerelease == true and .draft == false)) | .[] | [.id, .tag_name] | @tsv')"
+          while IFS=$'\t' read -r release_id release_tag; do
+            [ -n "$release_id" ] || continue
+            if [ "$release_tag" != "$BUILD_VERSION" ]; then
+              github_cli api --method DELETE "repos/${{ github.repository }}/releases/$release_id"
+            fi
+          done <<< "$old_releases"
+          remaining="$(github_cli api --paginate --slurp "repos/${{ github.repository }}/releases?per_page=100" --jq 'add | map(select(.prerelease == true and .draft == false)) | map(.tag_name) | join("\t")')"
+          [ "$remaining" = "$BUILD_VERSION" ]

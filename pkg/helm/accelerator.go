@@ -59,7 +59,7 @@ var errAcceleratorCreatePermission = errors.New("accelerator resource create per
 var errAcceleratorRenderMismatch = errors.New("accelerator live render did not match prepared release")
 
 var acceleratorDigest = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
-var acceleratorVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
+var acceleratorVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?$`)
 var acceleratorSession = regexp.MustCompile(`^[0-9a-f]{32}$`)
 var acceleratorVerifier = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
 

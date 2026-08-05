@@ -96,7 +96,7 @@ type DeploymentOptions struct {
 	AllowVersionMismatch bool   `json:"allowVersionMismatch,omitempty"`
 }
 
-var deploymentReleaseVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
+var deploymentReleaseVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?$`)
 
 func ValidateDeploymentOptions(options DeploymentOptions) error {
 	if options.ReleaseVersion != "" && (!deploymentReleaseVersion.MatchString(options.ReleaseVersion) || len(options.ReleaseVersion) > 128) {

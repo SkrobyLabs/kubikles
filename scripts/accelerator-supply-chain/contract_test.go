@@ -25,7 +25,10 @@ func TestToolchainAndReleaseIdentityContract(t *testing.T) {
 	if chart, err := ValidateReleaseIdentity("v1.4.0", strings.Repeat("a", 40)); err != nil || chart != "1.4.0" {
 		t.Fatal("stable identity")
 	}
-	for _, invalid := range []string{"1.4.0", "v01.4.0", "v1.4", "v1.4.0a", "v1.4.0-alpha", "latest"} {
+	if chart, err := ValidateReleaseIdentity("v1.4.0-alpha.1", strings.Repeat("a", 40)); err != nil || chart != "1.4.0-alpha.1" {
+		t.Fatal("prerelease identity")
+	}
+	for _, invalid := range []string{"1.4.0", "v01.4.0", "v1.4", "v1.4.0a", "v1.4.0-alpha.01", "latest"} {
 		if _, err := ValidateReleaseIdentity(invalid, strings.Repeat("a", 40)); err == nil {
 			t.Fatalf("accepted invalid identity %q", invalid)
 		}

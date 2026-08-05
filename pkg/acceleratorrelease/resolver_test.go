@@ -124,6 +124,22 @@ func TestResolveOverrideAcceptsPrereleaseFromCustomDescriptorURL(t *testing.T) {
 	}
 }
 
+func TestResolveOfficialPrereleaseWithoutDevelopmentOverride(t *testing.T) {
+	const version = "v1.4.2-alpha.1"
+	descriptorBytes, checksumBytes := pairForVersion(t, version)
+	doer := &scriptedDoer{steps: []responseStep{{status: 200, body: checksumBytes}, {status: 200, body: descriptorBytes}}}
+	root := filepath.Join(t.TempDir(), "cache")
+	resolver := newResolver(version, root, doer, osFileOps, time.Now)
+
+	result := resolver.Resolve(context.Background())
+	if result.Availability != Available || result.Source != SourceNetwork || result.Release.BuildVersion != version || doer.count() != 2 {
+		t.Fatalf("resolution=%#v requests=%d", result, doer.count())
+	}
+	if _, state := newReleaseCache(root, osFileOps).loadExact(version, time.Now()); state != cacheOK {
+		t.Fatalf("published prerelease was not cached: %v", state)
+	}
+}
+
 func TestResolveBodyFailureFallsBackAndDescriptorChecksumBindsCache(t *testing.T) {
 	descriptorBytes, checksumBytes := goldenPair(t)
 	now := time.Unix(1_900_000_000, 0)

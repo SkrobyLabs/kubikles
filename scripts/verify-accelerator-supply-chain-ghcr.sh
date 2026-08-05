@@ -4,7 +4,7 @@ umask 077
 
 fail() { printf 'accelerator-supply-chain verification: %s\n' "$1" >&2; exit 1; }
 [ -n "${BUILD_VERSION:-}" ] || fail build-version-required
-[[ "$BUILD_VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || fail build-version-invalid
+go run ./scripts/accelerator-release normalize "$BUILD_VERSION" >/dev/null || fail build-version-invalid
 [ -n "${GH_TOKEN:-}" ] || fail github-token-required
 command -v gh >/dev/null 2>&1 || fail gh-required
 [ "$(gh --version | sed -n '1p')" = 'gh version 2.97.0 (2026-07-31)' ] || fail gh-version

@@ -8,7 +8,7 @@
   "properties": {
     "schemaVersion": {"const": 1},
     "$schema": {"type": "string", "pattern": "^https://raw\\.githubusercontent\\.com/SkrobyLabs/kubikles/[0-9a-f]{40}/release/accelerator-release\\.schema\\.json$"},
-    "buildVersion": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+    "buildVersion": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+)(\\.[0-9A-Za-z-]+)*)?$"},
     "source": {
       "type": "object",
       "additionalProperties": false,
@@ -16,7 +16,7 @@
       "properties": {
         "repository": {"const": "https://github.com/SkrobyLabs/kubikles"},
         "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-        "gitTag": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"}
+        "gitTag": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+)(\\.[0-9A-Za-z-]+)*)?$"}
       }
     },
     "compatibility": {
@@ -25,8 +25,8 @@
       "required": ["mode", "desktopBuildVersion", "acceleratorBuildVersion"],
       "properties": {
         "mode": {"const": "exact-build-version"},
-        "desktopBuildVersion": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
-        "acceleratorBuildVersion": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"}
+        "desktopBuildVersion": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+)(\\.[0-9A-Za-z-]+)*)?$"},
+        "acceleratorBuildVersion": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+)(\\.[0-9A-Za-z-]+)*)?$"}
       }
     },
     "image": {
@@ -66,7 +66,7 @@
         "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "reference": {"type": "string", "pattern": "^oci://ghcr\\.io/skrobylabs/helm/kubikles-accelerator@sha256:[0-9a-f]{64}$"},
         "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
-        "appVersion": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"}
+        "appVersion": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+)(\\.[0-9A-Za-z-]+)*)?$"}
       }
     }
   }

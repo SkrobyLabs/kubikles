@@ -25,9 +25,9 @@ const (
 )
 
 var (
-	stableVersionPattern = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
-	hex40Pattern         = regexp.MustCompile(`^[0-9a-f]{40}$`)
-	hex64Pattern         = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	releaseVersionPattern = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?$`)
+	hex40Pattern          = regexp.MustCompile(`^[0-9a-f]{40}$`)
+	hex64Pattern          = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 
 type ActionPin struct {
@@ -101,7 +101,7 @@ func ValidateToolchain(value Toolchain) error {
 }
 
 func ValidateReleaseIdentity(version, commit string) (string, error) {
-	if !stableVersionPattern.MatchString(version) || !hex40Pattern.MatchString(commit) {
+	if !releaseVersionPattern.MatchString(version) || !hex40Pattern.MatchString(commit) {
 		return "", errors.New("invalid release identity")
 	}
 	return strings.TrimPrefix(version, "v"), nil

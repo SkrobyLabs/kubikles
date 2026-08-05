@@ -68,6 +68,10 @@ func TestVerifyGitSourceAuthority(t *testing.T) {
 	if got, err := VerifyGitSource(repository, "v1.4.2", second); err != nil || got != second {
 		t.Fatalf("verify moved tag against new authority: %q %v", got, err)
 	}
+	git(t, repository, "tag", "v1.5.0-alpha.1", second)
+	if got, err := VerifyGitSource(repository, "v1.5.0-alpha.1", second); err != nil || got != second {
+		t.Fatalf("verify prerelease source: %q %v", got, err)
+	}
 	// A shallow marker is the exact local authority checked by rev-parse.
 	gitDir := git(t, repository, "rev-parse", "--git-dir")
 	if !filepath.IsAbs(gitDir) {
@@ -102,8 +106,46 @@ func TestNormalizeStableReleaseTag(t *testing.T) {
 	}
 }
 
+func TestNormalizeReleaseTagClassifiesCanonicalPrereleases(t *testing.T) {
+	for _, tag := range []string{"v1.4.0-alpha", "v1.4.0-alpha.1", "v2.0.0-beta.12", "v2.0.0-rc.1"} {
+		got, err := NormalizeReleaseTag(tag)
+		if err != nil || !got.Prerelease || got.BuildVersion != tag || got.ChartVersion != strings.TrimPrefix(tag, "v") {
+			t.Fatalf("normalize prerelease %q: %#v %v", tag, got, err)
+		}
+	}
+	stable, err := NormalizeReleaseTag("v1.4.0")
+	if err != nil || stable.Prerelease {
+		t.Fatalf("stable classification: %#v %v", stable, err)
+	}
+	for _, tag := range []string{"v1.4.0-alpha.01", "v1.4.0+build", "v1.4.0-", "v1.4.0-alpha..1", "v1.4.0a"} {
+		if _, err := NormalizeReleaseTag(tag); err == nil {
+			t.Fatalf("accepted non-canonical release %q", tag)
+		}
+	}
+}
+
 func testEvidence() Evidence {
 	return Evidence{BuildVersion: "v1.4.2", Commit: testCommit, GitTag: "v1.4.2", ImageDigest: digestC, Platforms: []Platform{{OS: "linux", Architecture: "arm64", ManifestDigest: digestB}, {OS: "linux", Architecture: "amd64", ManifestDigest: digestA}}, ChartDigest: digestB, ChartVersion: "1.4.2", ChartAppVersion: "v1.4.2"}
+}
+
+func TestPrereleaseDescriptorPreservesExactIdentity(t *testing.T) {
+	evidence := testEvidence()
+	evidence.BuildVersion = "v1.5.0-alpha.1"
+	evidence.GitTag = evidence.BuildVersion
+	evidence.ChartVersion = "1.5.0-alpha.1"
+	evidence.ChartAppVersion = evidence.BuildVersion
+	descriptor, err := NewDescriptor(evidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := CanonicalDescriptor(descriptor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := DecodeStrictDescriptor(encoded)
+	if err != nil || decoded.BuildVersion != evidence.BuildVersion || decoded.Chart.Version != evidence.ChartVersion || decoded.Source.GitTag != evidence.GitTag {
+		t.Fatalf("prerelease descriptor identity = %#v, %v", decoded, err)
+	}
 }
 
 func TestDescriptorV1CanonicalBytes(t *testing.T) {

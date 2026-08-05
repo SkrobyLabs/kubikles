@@ -19,7 +19,7 @@ const (
 	cacheMaxAge        = 30 * 24 * time.Hour
 )
 
-var cacheNameRE = regexp.MustCompile(`^(v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))--([0-9a-f]{64})(\.json|\.sha256)$`)
+var cacheNameRE = regexp.MustCompile(`^(v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?)--([0-9a-f]{64})(\.json|\.sha256)$`)
 
 type cacheState int
 
@@ -93,7 +93,7 @@ func (c *releaseCache) loadExact(buildVersion string, now time.Time) (VerifiedRe
 func (c *releaseCache) loadExactDigest(buildVersion, requiredDigest string, now time.Time) (VerifiedRelease, cacheState) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !stableVersion.MatchString(buildVersion) {
+	if !releaseVersion.MatchString(buildVersion) {
 		return VerifiedRelease{}, cacheBad
 	}
 	rootInfo, err := c.ops.lstat(c.root)
@@ -239,7 +239,7 @@ func collectCachePairs(entries []os.DirEntry) ([]cachePair, bool) {
 
 func (c *releaseCache) storeVerified(buildVersion string, checksumBytes, descriptorBytes []byte, now time.Time) error {
 	release, class := validateAndProject(buildVersion, checksumBytes, descriptorBytes)
-	if class != descriptorValid || !stableVersion.MatchString(buildVersion) || !hex64RE.MatchString(release.DescriptorSHA256) {
+	if class != descriptorValid || !releaseVersion.MatchString(buildVersion) || !hex64RE.MatchString(release.DescriptorSHA256) {
 		return os.ErrInvalid
 	}
 	c.mu.Lock()

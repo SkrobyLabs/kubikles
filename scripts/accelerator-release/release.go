@@ -31,9 +31,10 @@ const (
 )
 
 var (
-	stableTagRE = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
-	commitRE    = regexp.MustCompile(`^[0-9a-f]{40}$`)
-	digestRE    = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+	stableTagRE  = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
+	releaseTagRE = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?$`)
+	commitRE     = regexp.MustCompile(`^[0-9a-f]{40}$`)
+	digestRE     = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 )
 
 var chartSourceFiles = []string{
@@ -61,7 +62,7 @@ func gitOutput(repository string, args ...string) (string, error) {
 // authority. expectedCommit is empty during the first preflight and is the
 // previously observed commit during every pre-write/read-back recheck.
 func VerifyGitSource(repository, tag, expectedCommit string) (string, error) {
-	if _, err := NormalizeStableReleaseTag(tag); err != nil {
+	if _, err := NormalizeReleaseTag(tag); err != nil {
 		return "", err
 	}
 	if expectedCommit != "" && !commitRE.MatchString(expectedCommit) {
@@ -81,14 +82,14 @@ func VerifyGitSource(repository, tag, expectedCommit string) (string, error) {
 	}
 	ref, err := gitOutput(repository, "show-ref", "--verify", "--hash", "refs/tags/"+tag)
 	if err != nil || ref == "" || strings.Contains(ref, "\n") {
-		return "", errors.New("stable release tag is absent or ambiguous")
+		return "", errors.New("release tag is absent or ambiguous")
 	}
 	tagCommit, err := gitOutput(repository, "rev-parse", "--verify", "refs/tags/"+tag+"^{commit}")
 	if err != nil || !commitRE.MatchString(tagCommit) || tagCommit != head {
-		return "", errors.New("stable release tag does not resolve to checked-out HEAD")
+		return "", errors.New("release tag does not resolve to checked-out HEAD")
 	}
 	if expectedCommit != "" && head != expectedCommit {
-		return "", errors.New("stable release tag moved after preflight")
+		return "", errors.New("release tag moved after preflight")
 	}
 	return head, nil
 }
@@ -97,14 +98,21 @@ type Version struct {
 	GitTag       string `json:"gitTag"`
 	BuildVersion string `json:"buildVersion"`
 	ChartVersion string `json:"chartVersion"`
+	Prerelease   bool   `json:"prerelease"`
 }
 
 func NormalizeStableReleaseTag(tag string) (Version, error) {
-	match := stableTagRE.FindStringSubmatch(tag)
-	if match == nil {
+	if !stableTagRE.MatchString(tag) {
 		return Version{}, errors.New("release tag must be canonical vMAJOR.MINOR.PATCH")
 	}
 	return Version{GitTag: tag, BuildVersion: tag, ChartVersion: strings.TrimPrefix(tag, "v")}, nil
+}
+
+func NormalizeReleaseTag(tag string) (Version, error) {
+	if !releaseTagRE.MatchString(tag) {
+		return Version{}, errors.New("release tag must be canonical vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-PRERELEASE")
+	}
+	return Version{GitTag: tag, BuildVersion: tag, ChartVersion: strings.TrimPrefix(tag, "v"), Prerelease: !stableTagRE.MatchString(tag)}, nil
 }
 
 type Platform struct {
@@ -162,7 +170,7 @@ type Evidence struct {
 }
 
 func NewDescriptor(e Evidence) (Descriptor, error) {
-	v, err := NormalizeStableReleaseTag(e.BuildVersion)
+	v, err := NormalizeReleaseTag(e.BuildVersion)
 	if err != nil || e.GitTag != e.BuildVersion || e.ChartVersion != v.ChartVersion || e.ChartAppVersion != e.BuildVersion {
 		return Descriptor{}, errors.New("release evidence has inconsistent exact version identity")
 	}
@@ -192,7 +200,7 @@ func NewDescriptor(e Evidence) (Descriptor, error) {
 }
 
 func ValidateDescriptor(d Descriptor) error {
-	v, err := NormalizeStableReleaseTag(d.BuildVersion)
+	v, err := NormalizeReleaseTag(d.BuildVersion)
 	if err != nil || d.SchemaVersion != 1 || !commitRE.MatchString(d.Source.Commit) {
 		return errors.New("descriptor identity is invalid")
 	}
@@ -248,7 +256,7 @@ type chartMetadata struct {
 }
 
 func PackageChart(source, output, chartVersion, appVersion string, epoch int64) error {
-	if _, err := NormalizeStableReleaseTag(appVersion); err != nil || strings.TrimPrefix(appVersion, "v") != chartVersion || epoch <= 0 {
+	if _, err := NormalizeReleaseTag(appVersion); err != nil || strings.TrimPrefix(appVersion, "v") != chartVersion || epoch <= 0 {
 		return errors.New("invalid deterministic chart identity")
 	}
 	root, err := filepath.Abs(source)
@@ -330,7 +338,7 @@ func PackageChart(source, output, chartVersion, appVersion string, epoch int64) 
 }
 
 func InspectChart(path, source, version, appVersion string, epoch int64) error {
-	if _, err := NormalizeStableReleaseTag(appVersion); err != nil || strings.TrimPrefix(appVersion, "v") != version || epoch <= 0 {
+	if _, err := NormalizeReleaseTag(appVersion); err != nil || strings.TrimPrefix(appVersion, "v") != version || epoch <= 0 {
 		return errors.New("invalid chart inspection identity")
 	}
 	f, err := os.Open(path)
@@ -670,7 +678,7 @@ func inspectAcceleratorLayer(blob []byte, architecture, version, commit string) 
 }
 
 func InspectOCIIndex(layout, version, commit string) (string, []Platform, error) {
-	if _, err := NormalizeStableReleaseTag(version); err != nil || !commitRE.MatchString(commit) {
+	if _, err := NormalizeReleaseTag(version); err != nil || !commitRE.MatchString(commit) {
 		return "", nil, errors.New("invalid OCI expected identity")
 	}
 	layoutBytes, err := os.ReadFile(filepath.Join(layout, "oci-layout"))
@@ -905,7 +913,7 @@ type helmOCIConfig struct {
 }
 
 func canonicalChartArtifact(packagePath, source, version, appVersion string, epoch int64) ([]byte, []byte, string, error) {
-	if _, err := NormalizeStableReleaseTag(appVersion); err != nil || strings.TrimPrefix(appVersion, "v") != version || epoch <= 0 {
+	if _, err := NormalizeReleaseTag(appVersion); err != nil || strings.TrimPrefix(appVersion, "v") != version || epoch <= 0 {
 		return nil, nil, "", errors.New("invalid chart OCI identity")
 	}
 	metadataBytes, err := os.ReadFile(filepath.Join(source, "Chart.yaml"))
@@ -1065,7 +1073,7 @@ func VerifyRegistryEvidence(descriptorPath, imageEvidencePath, chartDigest, buil
 }
 
 func VerifyReleaseAssetNames(buildVersion string, names []string) error {
-	if _, err := NormalizeStableReleaseTag(buildVersion); err != nil {
+	if _, err := NormalizeReleaseTag(buildVersion); err != nil {
 		return err
 	}
 	want := []string{

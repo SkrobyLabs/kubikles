@@ -24,9 +24,23 @@ Settings > Accelerator > Development overrides can select a target release versi
 
 ## Release trust
 
-The image repository is `ghcr.io/skrobylabs/kubikles-accelerator`; the chart repository is `oci://ghcr.io/skrobylabs/helm/kubikles-accelerator`. Consumers use descriptor and digest identity, not `latest`, a mutable channel, or a tag-only install. A stable tag `vX.Y.Z`, `BuildVersion` `vX.Y.Z`, and chart version `X.Y.Z` identify the same release.
+The image repository is `ghcr.io/skrobylabs/kubikles-accelerator`; the chart repository is `oci://ghcr.io/skrobylabs/helm/kubikles-accelerator`. Consumers use descriptor and digest identity, not `latest`, a mutable channel, or a tag-only install. A stable tag `vX.Y.Z`, `BuildVersion` `vX.Y.Z`, and chart version `X.Y.Z` identify the same release. Stable tags must point to protected `main`, produce ordinary GitHub Releases, and remain immutable.
 
-Each release includes `kubikles-accelerator-release-vX.Y.Z.json` and its checksum, plus three SPDX files: the chart, linux/amd64 image, and linux/arm64 image SBOMs. Six attestations cover chart provenance/SBOM, image provenance/SBOM, and release provenance/SBOM. Vulnerability policy covers LOW through CRITICAL; HIGH/CRITICAL exceptions require the exact vulnerability ID, purl, artifact, owner, justification, and an exclusive `expiresOn` date. Verification fixes the GitHub workflow identity to this repository and release workflow.
+Canonical SemVer prerelease tags such as `v1.4.0-alpha.1`, `v1.4.0-beta.2`, or `v1.4.0-rc.1` run the same build, acceptance, digest read-back, SBOM, attestation, and descriptor pipeline. They may point to a development-branch commit and are published as GitHub prereleases. The repository exposes one moving prerelease slot: after the new prerelease is completely created and verified, older non-draft GitHub prereleases are deleted. Stable releases, drafts, Git tags, and digest-addressed GHCR artifacts are never removed by slot replacement. All release publications are serialized to prevent two prerelease tags racing the slot.
+
+Push the appropriate exact tag to publish:
+
+```sh
+git tag v1.4.0-alpha.1 <development-commit>
+git push origin v1.4.0-alpha.1
+
+git tag v1.4.0 <commit-on-main>
+git push origin v1.4.0
+```
+
+An officially published prerelease desktop resolves its matching Accelerator descriptor automatically. Development overrides remain available for custom descriptor hosting and mismatched local builds.
+
+Each release includes `kubikles-accelerator-release-VERSION.json` and its checksum, plus three SPDX files: the chart, linux/amd64 image, and linux/arm64 image SBOMs. Six attestations cover chart provenance/SBOM, image provenance/SBOM, and release provenance/SBOM. Vulnerability policy covers LOW through CRITICAL; HIGH/CRITICAL exceptions require the exact vulnerability ID, purl, artifact, owner, justification, and an exclusive `expiresOn` date. Verification fixes the GitHub workflow identity to this repository and release workflow.
 
 Run the bounded checks rather than copying mutable registry commands:
 
