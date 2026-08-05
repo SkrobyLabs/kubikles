@@ -8,7 +8,7 @@ import {
     NotificationProvider,
     ThemeProvider,
     AIChatProvider, useAIChat,
-    IssueDetectorProvider
+    IssueDetectorProvider, AcceleratorProvider
 } from '~/context';
 import Sidebar from '~/components/layout/Sidebar';
 import BottomPanel from '~/components/layout/BottomPanel';
@@ -792,10 +792,12 @@ function App() {
                                 <AIChatProvider>
                                     <IssueDetectorProvider>
                                     <MenuProvider>
+                                        <AcceleratorProvider>
                                         <RuntimeSecretReadSourceProvider>
                                             <MainLayout />
                                             <ToastContainer />
                                         </RuntimeSecretReadSourceProvider>
+                                        </AcceleratorProvider>
                                     </MenuProvider>
                                     </IssueDetectorProvider>
                                 </AIChatProvider>

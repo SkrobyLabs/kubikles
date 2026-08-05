@@ -53,8 +53,9 @@ type ObjectIdentity struct {
 	UID  string `json:"uid"`
 }
 type Request struct {
-	ContextName string
-	Resolution  acceleratorrelease.Resolution
+	ContextName       string
+	NamespaceOverride string
+	Resolution        acceleratorrelease.Resolution
 }
 type ProvisionedWorkload struct {
 	ContextName       string         `json:"contextName"`

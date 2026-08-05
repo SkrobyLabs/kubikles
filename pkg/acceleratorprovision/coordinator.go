@@ -123,26 +123,7 @@ func (c *Coordinator) AcquireSecretDemand(ctx context.Context, contextName strin
 	}
 	slot.demandCount++
 	lease := &SecretDemandLease{coordinator: c, slot: slot, demandEpoch: slot.demandEpoch}
-	if first {
-		delay := time.Duration(0)
-		if slot.mismatchLatched {
-			if remaining := slot.unavailableUntil.Sub(c.clock.Now()); remaining > 0 {
-				delay = remaining
-			} else {
-				slot.mismatchLatched = false
-			}
-		}
-		switch slot.state {
-		case CoordinatorDirectOnly, CoordinatorUnavailable:
-			c.startActivationLocked(slot, delay)
-		case CoordinatorDraining:
-			if slot.idle != nil {
-				c.startResumeLocked(slot, slot.idle)
-			} else if slot.normalEnded {
-				c.startResumeLocked(slot, nil)
-			}
-		}
-	} else if slot.state == CoordinatorDraining {
+	if slot.enabled && slot.state == CoordinatorDraining {
 		if slot.idle != nil {
 			c.startResumeLocked(slot, slot.idle)
 		} else if slot.normalEnded {
@@ -169,7 +150,136 @@ func (c *Coordinator) Snapshot(contextName string) CoordinatorSnapshot {
 	}
 	slot.mu.Lock()
 	defer slot.mu.Unlock()
-	return CoordinatorSnapshot{State: slot.state, DemandCount: slot.demandCount, SessionLeases: slot.sessionLeaseCount, Available: slot.state == CoordinatorActive && slot.session != nil}
+	return CoordinatorSnapshot{State: slot.state, Enabled: slot.enabled, Namespace: slot.namespace, DemandCount: slot.demandCount, SessionLeases: slot.sessionLeaseCount, Available: slot.state == CoordinatorActive && slot.session != nil, Workload: safeWorkloadProjection(slot.workload)}
+}
+
+func safeWorkloadProjection(workload *ProvisionedWorkload) *ProvisionedWorkload {
+	if workload == nil {
+		return nil
+	}
+	return &ProvisionedWorkload{
+		ContextName: workload.ContextName, ReleaseNamespace: workload.ReleaseNamespace,
+		ReleaseName: workload.ReleaseName, WorkloadSessionID: workload.WorkloadSessionID,
+		Job: workload.Job, Pod: workload.Pod, BuildVersion: workload.BuildVersion,
+		ImageDigest: workload.ImageDigest, ChartDigest: workload.ChartDigest,
+	}
+}
+
+// Enable is the sole lifecycle authority. Secret demand only leases an already
+// active source, so merely opening Secrets cannot provision a workload.
+func (c *Coordinator) Enable(contextName, namespace string) {
+	if c == nil || contextName == "" {
+		return
+	}
+	c.mu.Lock()
+	if c.closed || c.quiesced || c.switching || contextName != c.currentName {
+		c.mu.Unlock()
+		return
+	}
+	s := c.slots[c.currentEpoch]
+	if s == nil {
+		s = newContextSlot(contextName, c.currentEpoch)
+		c.slots[c.currentEpoch] = s
+	}
+	c.mu.Unlock()
+	s.mu.Lock()
+	if s.state == CoordinatorClosed || (s.enabled && s.namespace == namespace) {
+		s.mu.Unlock()
+		return
+	}
+	// A namespace change is a new exact target: fence the old session first,
+	// then dispose its private receipt before a fresh activation can begin.
+	if s.enabled && s.workload != nil {
+		if s.workerCancel != nil {
+			s.workerCancel()
+		}
+		s.operationEpoch++
+		s.advanceSessionLeaseEpochLocked(false)
+		workload := s.workload
+		s.enabled, s.namespace, s.state = true, namespace, CoordinatorDisposing
+		s.mu.Unlock()
+		go func() {
+			c.disposeNowOwned(s, workload)
+			s.mu.Lock()
+			if s.enabled && s.state != CoordinatorClosed && s.workload == nil {
+				s.state = CoordinatorDirectOnly
+				c.startActivationLocked(s, 0)
+			}
+			s.mu.Unlock()
+		}()
+		return
+	}
+	s.enabled, s.namespace, s.mismatchLatched = true, namespace, false
+	s.unavailableUntil = time.Time{}
+	if s.state == CoordinatorDirectOnly || s.state == CoordinatorUnavailable {
+		c.startActivationLocked(s, 0)
+	}
+	s.mu.Unlock()
+}
+
+func (c *Coordinator) Retry(contextName string) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	s, current := c.slots[c.currentEpoch], c.currentName
+	c.mu.Unlock()
+	if s == nil || current != contextName {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.enabled || s.state == CoordinatorClosed {
+		return
+	}
+	s.mismatchLatched, s.unavailableUntil = false, time.Time{}
+	if s.state == CoordinatorUnavailable || s.state == CoordinatorDirectOnly {
+		c.startActivationLocked(s, 0)
+	}
+}
+
+// Disable synchronously revokes Integrated leases before asynchronous exact
+// cleanup, making Direct fallback authoritative immediately.
+func (c *Coordinator) Disable(contextName string) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	s, current := c.slots[c.currentEpoch], c.currentName
+	c.mu.Unlock()
+	if s == nil || current != contextName {
+		return
+	}
+	s.mu.Lock()
+	if !s.enabled {
+		s.mu.Unlock()
+		return
+	}
+	s.enabled = false
+	s.advanceSessionLeaseEpochLocked(false)
+	if s.workerCancel != nil {
+		s.workerCancel()
+	}
+	s.operationEpoch++
+	workload := s.workload
+	s.state = CoordinatorDisposing
+	s.mu.Unlock()
+	if workload != nil {
+		go func() {
+			c.drainAndDisposeOwned(s, workload)
+			s.mu.Lock()
+			if !s.enabled && s.state == CoordinatorDisposing && s.workload == nil && s.state != CoordinatorClosed {
+				s.state = CoordinatorDirectOnly
+			}
+			s.mu.Unlock()
+		}()
+	} else {
+		s.mu.Lock()
+		if s.state != CoordinatorClosed {
+			s.state = CoordinatorDirectOnly
+		}
+		s.mu.Unlock()
+	}
 }
 
 func (c *Coordinator) releaseDemand(lease *SecretDemandLease) {
@@ -187,9 +297,8 @@ func (c *Coordinator) releaseDemand(lease *SecretDemandLease) {
 		s.mu.Unlock()
 		return
 	}
-	if s.sessionLeaseCount == 0 && s.state == CoordinatorActive {
+	if s.enabled {
 		s.settleDemandLocked()
-		c.startIdleLocked(s)
 		s.mu.Unlock()
 		return
 	}
@@ -223,7 +332,7 @@ func (c *Coordinator) releaseSession(lease *sessionLeaseState) {
 	if s.sessionLeaseEpoch == lease.leaseEpoch && s.sessionLeaseCount > 0 {
 		s.sessionLeaseCount--
 	}
-	if s.sessionLeaseCount == 0 && s.demandCount == 0 && s.state == CoordinatorActive {
+	if !s.enabled && s.sessionLeaseCount == 0 && s.demandCount == 0 && s.state == CoordinatorActive {
 		s.settleDemandLocked()
 		c.startIdleLocked(s)
 	}
@@ -231,7 +340,7 @@ func (c *Coordinator) releaseSession(lease *sessionLeaseState) {
 }
 
 func (c *Coordinator) startActivationLocked(s *contextSlot, delay time.Duration) {
-	if s == nil || s.demandCount == 0 || s.state == CoordinatorClosed || (s.mismatchLatched && delay <= 0) {
+	if s == nil || !s.enabled || s.state == CoordinatorClosed || (s.mismatchLatched && delay <= 0) {
 		return
 	}
 	doSweep := !s.sweepAttempted
@@ -389,9 +498,14 @@ func (c *Coordinator) runActivation(ctx context.Context, s *contextSlot, fence o
 			}
 			break
 		}
-		if !c.cooldown(ctx, s, fence) {
-			return
+		// Explicit lifecycle failures settle. Retry is user controlled; there is
+		// no background cooldown loop that can surprise an idle connection.
+		s.mu.Lock()
+		if s.matchesLocked(fence) && s.enabled {
+			s.state = CoordinatorUnavailable
 		}
+		s.mu.Unlock()
+		return
 	}
 }
 
@@ -440,7 +554,16 @@ func (c *Coordinator) provision(ctx context.Context, contextName string, resolut
 	if c.provisioner == nil {
 		return unavailable(ContextUnavailable, CleanupNotNeeded)
 	}
-	return c.provisioner.Provision(ctx, Request{ContextName: contextName, Resolution: resolution})
+	c.mu.Lock()
+	s := c.slots[c.currentEpoch]
+	c.mu.Unlock()
+	namespace := ""
+	if s != nil {
+		s.mu.Lock()
+		namespace = s.namespace
+		s.mu.Unlock()
+	}
+	return c.provisioner.Provision(ctx, Request{ContextName: contextName, NamespaceOverride: namespace, Resolution: resolution})
 }
 
 func (c *Coordinator) connect(ctx context.Context, workload *ProvisionedWorkload) ConnectResult {
@@ -453,7 +576,7 @@ func (c *Coordinator) connect(ctx context.Context, workload *ProvisionedWorkload
 func (c *Coordinator) transition(s *contextSlot, fence operationFence, state CoordinatorState) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if !s.matchesLocked(fence) || s.demandCount == 0 {
+	if !s.matchesLocked(fence) || !s.enabled {
 		return false
 	}
 	s.state = state
@@ -463,7 +586,7 @@ func (c *Coordinator) transition(s *contextSlot, fence operationFence, state Coo
 func (c *Coordinator) retainWorkloadAndTransition(s *contextSlot, fence operationFence, workload *ProvisionedWorkload, state CoordinatorState) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if !s.matchesLocked(fence) || s.demandCount == 0 || workload == nil {
+	if !s.matchesLocked(fence) || !s.enabled || workload == nil {
 		return false
 	}
 	s.workload = workload
@@ -473,7 +596,7 @@ func (c *Coordinator) retainWorkloadAndTransition(s *contextSlot, fence operatio
 
 func (c *Coordinator) publishSession(s *contextSlot, fence operationFence, workload *ProvisionedWorkload, session *ConnectedSession) bool {
 	s.mu.Lock()
-	if !s.matchesLocked(fence) || s.demandCount == 0 || s.workload != workload || session == nil {
+	if !s.matchesLocked(fence) || !s.enabled || s.workload != workload || session == nil {
 		s.mu.Unlock()
 		return false
 	}

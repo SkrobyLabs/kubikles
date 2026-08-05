@@ -62,6 +62,18 @@ interface DebugConfig {
     showLogSourceMarkers: boolean;
 }
 
+export interface AcceleratorConnectionOverride {
+    contextName: string;
+    enabled?: boolean;
+    namespace?: string;
+}
+
+interface AcceleratorConfig {
+    enabledByDefault: boolean;
+    defaultNamespace: string;
+    connectionOverrides: AcceleratorConnectionOverride[];
+}
+
 interface AppConfig {
     logs: LogsConfig;
     ai: AIConfig;
@@ -70,6 +82,7 @@ interface AppConfig {
     metrics: MetricsConfig;
     performance: PerformanceConfig;
     debug: DebugConfig;
+    accelerator: AcceleratorConfig;
 }
 
 interface ConfigContextValue {
@@ -164,6 +177,11 @@ const defaultConfig: AppConfig = {
         // [BEFORE], [AFTER]. Useful for debugging log viewer pagination issues.
         showDebugIcon: false,
         showLogSourceMarkers: false
+    },
+    accelerator: {
+        enabledByDefault: false,
+        defaultNamespace: '',
+        connectionOverrides: []
     }
 };
 

@@ -1,6 +1,8 @@
 # Kubikles Accelerator
 
-Kubikles Accelerator is an optional, automatically managed, disposable Kubernetes Job that can move a narrowly defined set of Secret reads closer to the API server. After this formal first use, this guide calls it Accelerator. Direct access remains immediate and authoritative whenever acceleration is unavailable or unsafe.
+Kubikles Accelerator is an optional, explicitly enabled, connection-scoped disposable Kubernetes Job that can move a narrowly defined set of Secret reads closer to the API server. Accelerator is disabled by default. Direct access remains immediate and authoritative whenever acceleration is unavailable or unsafe.
+
+Enable & Deploy is owned by the selected connection, never by the Secrets view. The Settings default can enable a connection and set a namespace; a connection can override either value. Namespace resolution is connection override, Settings default, kubeconfig context namespace, then `default`. The connection control shows safe lifecycle progress and can Retry a settled failure or Disable & Remove an owned workload. Exact release and Pod metadata navigate to the existing Helm Releases and Pods views; Kubikles does not expose deployment logs, credentials, Secret values, or raw backend errors.
 
 ## Choose a mode
 

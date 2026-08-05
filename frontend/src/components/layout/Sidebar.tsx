@@ -30,6 +30,7 @@ import Logger from '~/utils/Logger';
 import { GetVersionInfo, IsDebugClusterEnabled } from 'wailsjs/go/main/App';
 import DebugClusterPanel from './DebugClusterPanel';
 import { filterCRDGroups, filterSidebarGroups, matchesSidebarSearch } from './sidebarSearch';
+import AcceleratorStatusBadge from '~/features/accelerator/AcceleratorStatusBadge';
 
 interface VersionInfo {
     version?: string;
@@ -299,6 +300,7 @@ export default function Sidebar({
                     onOpen={onContextSelectorOpen}
                     preserveOrder
                 />
+                <AcceleratorStatusBadge onOpen={() => setShowContextManager(true)} />
             </div>
 
             {/* Debug Cluster Config (dev builds only, debug-cluster context only) */}

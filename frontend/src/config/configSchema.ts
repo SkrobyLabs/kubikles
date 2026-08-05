@@ -1,5 +1,11 @@
 // Configuration schema - single source of truth for property metadata
 export const configSchema: Record<string, any> = {
+	accelerator: {
+		_meta: { label: 'Accelerator', description: 'Defaults for explicitly enabled Accelerator deployments' },
+		enabledByDefault: { type: 'boolean', label: 'Enabled by Default', description: 'New connections remain Direct unless enabled', default: false },
+		defaultNamespace: { type: 'string', label: 'Deployment Namespace', description: 'Leave blank to use the kubeconfig context namespace', default: '' },
+		connectionOverrides: { type: 'hidden', default: [] }
+	},
     app: {
         _meta: { label: 'App', description: 'Application information and diagnostics' },
         crashLogPath: {

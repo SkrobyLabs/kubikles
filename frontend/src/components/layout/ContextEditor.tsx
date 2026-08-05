@@ -12,6 +12,7 @@ import {
     UpdateContextDetail,
 } from 'wailsjs/go/main/App';
 import { useK8s, useNotification } from '~/context';
+import AcceleratorConnectionPanel from '~/features/accelerator/AcceleratorConnectionPanel';
 
 interface ExecEnvVar {
     name: string;
@@ -62,7 +63,7 @@ interface ContextEditorProps {
     onSaved: () => void;
 }
 
-type Tab = 'context' | 'cluster' | 'auth' | 'exec';
+type Tab = 'context' | 'cluster' | 'auth' | 'exec' | 'accelerator';
 
 // --- Reusable field components ---
 
@@ -127,6 +128,7 @@ const TABS: { key: Tab; label: string }[] = [
     { key: 'cluster', label: 'Cluster' },
     { key: 'auth', label: 'Auth' },
     { key: 'exec', label: 'Exec / Commands' },
+    { key: 'accelerator', label: 'Accelerator' },
 ];
 
 export default function ContextEditor({ contextName, onBack, onSaved }: ContextEditorProps) {
@@ -616,6 +618,7 @@ export default function ContextEditor({ contextName, onBack, onSaved }: ContextE
                         )}
                     </>
                 )}
+                {tab === 'accelerator' && <AcceleratorConnectionPanel contextName={contextName} contextNamespace={namespace || detail.namespace || 'default'} />}
             </div>
 
             {/* Footer */}

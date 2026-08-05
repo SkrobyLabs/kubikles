@@ -1,6 +1,6 @@
 # Kubikles Accelerator architecture
 
-Kubikles Accelerator is described below as Accelerator. The desktop owns one optional disposable workload per demand epoch and begins on the Direct path.
+Kubikles Accelerator is described below as Accelerator. The selected desktop connection owns one optional disposable workload when explicitly enabled and begins on the Direct path. Secret demand can lease an enabled session but never starts, retries, or removes a deployment; an enabled workload remains alive when demand returns to zero.
 
 ## Boundaries and data flow
 
@@ -33,7 +33,7 @@ The release resolver/cache selects an immutable descriptor. Provisioning creates
 
 Resume reuses only the same workload and authenticated creator session while it remains valid.
 
-When the authenticated client count reaches zero, an exact two-minute grace begins. Reconnection during that grace cancels expiry. Expiry clears creator-session and watcher state, then the process exits naturally. The Job has a 30-second termination grace and `ttlSecondsAfterFinished: 3600`.
+Disable & Remove synchronously revokes Integrated routing, then uses exact owned disposal. Context switching and shutdown use the same fencing first. Activation failures make the enabled connection unavailable after bounded transient attempts; only the explicit Retry control starts a new activation epoch. The Job has a 30-second termination grace and `ttlSecondsAfterFinished: 3600`.
 
 Accelerator never deletes itself. Kubernetes TTL removes only a completed Job and its Pod; normal desktop disposal uses Helm uninstall to remove the five release objects. On desktop crash, TTL cannot act until the process completes. A later desktop startup may sweep only a release proven both owned and inert; ambiguous or active resources are left alone and Direct stays available.
 

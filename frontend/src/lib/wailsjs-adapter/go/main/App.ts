@@ -460,6 +460,10 @@ export function UpdateValidatingWebhookConfigurationYaml(...args) { return AppPr
 export function UpgradeHelmRelease(...args) { return AppProxy.UpgradeHelmRelease(...args); }
 export function UploadFileToPod(...args) { return AppProxy.UploadFileToPod(...args); }
 export function UploadToPod(...args) { return AppProxy.UploadToPod(...args); }
+export function GetAcceleratorStatus(...args) { return AppProxy.GetAcceleratorStatus(...args); }
+export function EnableAccelerator(...args) { return AppProxy.EnableAccelerator(...args); }
+export function RetryAccelerator(...args) { return AppProxy.RetryAccelerator(...args); }
+export function DisableAccelerator(...args) { return AppProxy.DisableAccelerator(...args); }
 
 // Also export the proxy itself for dynamic access
 export default AppProxy;

@@ -84,6 +84,22 @@ const debugConfigSchema = z.object({
   showDebugIcon: z.boolean().optional(),
   showLogSourceMarkers: z.boolean().optional(),
 });
+const acceleratorOverrideSchema = z.object({
+  contextName: z.string().min(1),
+  enabled: z.boolean().optional(),
+  namespace: z.string().regex(/^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/).or(z.literal('')).optional(),
+});
+const acceleratorConfigSchema = z.object({
+  enabledByDefault: z.boolean().optional(),
+  defaultNamespace: z.string().regex(/^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/).or(z.literal('')).optional(),
+  connectionOverrides: z.array(acceleratorOverrideSchema).optional(),
+}).superRefine((value, ctx) => {
+  const names = new Set<string>();
+  value.connectionOverrides?.forEach((override, index) => {
+    if (names.has(override.contextName)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['connectionOverrides', index, 'contextName'], message: 'duplicate context override' });
+    names.add(override.contextName);
+  });
+});
 
 /**
  * Complete app config schema
@@ -97,6 +113,7 @@ export const appConfigSchema = z.object({
   metrics: metricsConfigSchema.optional(),
   performance: performanceConfigSchema.optional(),
   debug: debugConfigSchema.optional(),
+  accelerator: acceleratorConfigSchema.optional(),
 });
 
 export type AppConfigValidated = z.infer<typeof appConfigSchema>;

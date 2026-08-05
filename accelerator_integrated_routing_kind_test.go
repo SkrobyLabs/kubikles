@@ -702,6 +702,9 @@ func runAcceleratorIntegratedRoutingKind(t *testing.T) integratedRoutingKindAcce
 	}
 	diagnostic.set(integratedRoutingKindStageDirect)
 	assertIntegratedRoutingKindOriginProof(t, originProbe, expectedOrigin, "integrated routing initial Direct origin proof failed")
+	// Retained Secret demand must stay Direct until the connection owner
+	// explicitly enables its Accelerator lifecycle.
+	coordinator.Enable(contextName, "")
 	diagnostic.set(integratedRoutingKindStageReady)
 	firstToken := waitIntegratedRoutingKindInitialToken(t, diagnostic, ready, coordinator, coordinatorProbe, contextName, &clientConstructions)
 

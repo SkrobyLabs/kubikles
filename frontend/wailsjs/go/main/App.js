@@ -1501,3 +1501,8 @@ export function UploadFileToPod(arg1, arg2, arg3, arg4, arg5) {
 export function UploadToPod(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['UploadToPod'](arg1, arg2, arg3, arg4);
 }
+
+export function GetAcceleratorStatus(arg1) { return window['go']['main']['App']['GetAcceleratorStatus'](arg1); }
+export function EnableAccelerator(arg1, arg2) { return window['go']['main']['App']['EnableAccelerator'](arg1, arg2); }
+export function RetryAccelerator(arg1) { return window['go']['main']['App']['RetryAccelerator'](arg1); }
+export function DisableAccelerator(arg1) { return window['go']['main']['App']['DisableAccelerator'](arg1); }

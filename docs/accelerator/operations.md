@@ -1,6 +1,6 @@
 # Kubikles Accelerator operations
 
-Kubikles Accelerator is referred to here as Accelerator. It is automatically provisioned when the desktop proves exact release identity, capability, and access. Failure or denial leaves reads on Direct; operators do not choose a routing or RBAC mode.
+Kubikles Accelerator is referred to here as Accelerator. It is deployed only after the selected connection is explicitly enabled (or inherits an enabled Settings default) and the desktop proves exact release identity, capability, and access. Failure or denial leaves reads on Direct; operators do not choose a routing or RBAC mode.
 
 ## Runtime prerequisites and ownership
 
@@ -18,7 +18,7 @@ helm status example-accelerator -n example
 
 ## Provisioning and cleanup
 
-The desktop resolves and verifies an immutable descriptor, creates the release, observes its exact Pod, opens the loopback tunnel, authenticates, and checks capabilities. Bounded retry never makes Accelerator authoritative. Normal disposal is a desktop-owned Helm uninstall. Natural completion is cleaned by Kubernetes TTL after 3600 seconds; Accelerator does not self-delete. Startup sweep is limited to inert, owned releases.
+Use the selected connection's Enable & Deploy control. It displays the final namespace before mutation: connection override, then Settings default, then kubeconfig context namespace, then `default`. The namespace must already exist. Retry is explicit after a settled failure. Disable & Remove immediately returns reads to Direct, then performs the desktop-owned exact Helm cleanup. Bounded retry never makes Accelerator authoritative. Natural completion is cleaned by Kubernetes TTL after 3600 seconds; Accelerator does not self-delete. Startup sweep is limited to inert, owned releases.
 
 ## Release trust
 

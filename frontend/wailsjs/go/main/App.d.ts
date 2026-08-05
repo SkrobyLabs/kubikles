@@ -761,3 +761,8 @@ export function UpgradeHelmRelease(arg1:string,arg2:string,arg3:helm.UpgradeOpti
 export function UploadFileToPod(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
 
 export function UploadToPod(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
+export function GetAcceleratorStatus(arg1:string):Promise<any>;
+export function EnableAccelerator(arg1:string,arg2:string):Promise<void>;
+export function RetryAccelerator(arg1:string):Promise<void>;
+export function DisableAccelerator(arg1:string):Promise<void>;

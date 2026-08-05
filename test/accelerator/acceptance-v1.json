@@ -73,13 +73,13 @@
       "id": "A60A-012-LIFECYCLE",
       "prerequisites": ["2289380c", "2e710408", "63140918", "66f24342", "b1854aa3", "b3ffc033", "e590da1e"],
       "owner": {"kind": "make", "target": "test-accelerator-desktop-lifecycle-kind"},
-      "evidence": ["desktop.coordinator", "desktop.direct", "desktop.replacement"]
+      "evidence": ["desktop.coordinator", "desktop.direct", "desktop.explicit-enable", "desktop.replacement"]
     },
     {
       "id": "A60A-015-INTEGRATED-ROUTING",
       "prerequisites": ["53dfebec", "d0eb9876", "d4f712fd"],
       "owner": {"kind": "make", "target": "test-accelerator-integrated-routing-kind"},
-      "evidence": ["routing.direct", "routing.operations", "routing.source"]
+      "evidence": ["routing.direct", "routing.enabled-lifetime", "routing.operations", "routing.source"]
     },
     {
       "id": "A60A-016-INTEGRATED-HAPPY",

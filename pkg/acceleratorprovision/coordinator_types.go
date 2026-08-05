@@ -65,9 +65,14 @@ func (r DemandResult) MarshalJSON() ([]byte, error) {
 
 type CoordinatorSnapshot struct {
 	State         CoordinatorState `json:"state"`
+	Enabled       bool             `json:"enabled"`
+	Namespace     string           `json:"namespace"`
 	DemandCount   int              `json:"demandCount"`
 	SessionLeases int              `json:"sessionLeases"`
 	Available     bool             `json:"available"`
+	// Workload is a defensive display-only projection.  Its private receipt
+	// remains the sole authority for connect and disposal operations.
+	Workload *ProvisionedWorkload `json:"workload,omitempty"`
 }
 
 func (CoordinatorSnapshot) String() string { return "<accelerator coordinator snapshot>" }
@@ -130,6 +135,8 @@ type contextSlot struct {
 	sessionLeaseEpoch   uint64
 	sessionLeaseRevoked chan struct{}
 	demandSettled       bool
+	enabled             bool
+	namespace           string
 
 	sweepAttempted       bool
 	mismatchRecreateUsed bool

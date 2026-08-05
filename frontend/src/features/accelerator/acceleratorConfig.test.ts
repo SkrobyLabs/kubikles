@@ -1,0 +1,20 @@
+import { describe, expect, it } from 'vitest';
+import { acceleratorPolicy, removeAcceleratorOverride, renameAcceleratorOverride, upsertAcceleratorOverride } from './acceleratorConfig';
+
+const settings = { enabledByDefault: false, defaultNamespace: 'shared', connectionOverrides: [] };
+
+describe('accelerator connection policy', () => {
+  it('uses the Settings namespace before the context namespace', () => {
+    expect(acceleratorPolicy(settings, 'prod', 'context-ns')).toMatchObject({ enabled: false, namespace: 'shared', namespaceSource: 'Kubikles Settings' });
+  });
+  it('preserves an explicit empty override as context namespace inheritance', () => {
+    const next = upsertAcceleratorOverride(settings, { contextName: 'prod', enabled: true, namespace: '' });
+    expect(acceleratorPolicy(next, 'prod', 'context-ns')).toMatchObject({ enabled: true, namespace: 'context-ns', namespaceSource: 'context namespace' });
+  });
+  it('updates only the selected context and supports rename and reset', () => {
+    const saved = upsertAcceleratorOverride({ ...settings, connectionOverrides: [{ contextName: 'keep', enabled: true }] }, { contextName: 'old', namespace: 'target' });
+    const renamed = renameAcceleratorOverride(saved, 'old', 'new');
+    expect(renamed.connectionOverrides.map(item => item.contextName)).toEqual(['keep', 'new']);
+    expect(removeAcceleratorOverride(renamed, 'new').connectionOverrides).toEqual([{ contextName: 'keep', enabled: true }]);
+  });
+});

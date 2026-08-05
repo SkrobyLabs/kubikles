@@ -19,6 +19,7 @@ import {
     SelectKubeconfigFile,
 } from 'wailsjs/go/main/App';
 import ContextEditor from './ContextEditor';
+import { removeAcceleratorOverride, renameAcceleratorOverride } from '~/features/accelerator/acceleratorConfig';
 
 interface ContextDetail {
     name: string;
@@ -77,6 +78,7 @@ export default function ContextManager({ onClose, onContextsChanged }: ContextMa
         setActionLoading(true);
         try {
             await DeleteContext(name);
+            setConfig('accelerator.connectionOverrides', removeAcceleratorOverride(config.accelerator, name).connectionOverrides);
             addNotification({ type: 'success', title: 'Context deleted', message: `Removed "${name}"` });
             setDeletingContext(null);
             await fetchContexts();
@@ -97,6 +99,7 @@ export default function ContextManager({ onClose, onContextsChanged }: ContextMa
         setActionLoading(true);
         try {
             await RenameContext(oldName, newName);
+            setConfig('accelerator.connectionOverrides', renameAcceleratorOverride(config.accelerator, oldName, newName).connectionOverrides);
             addNotification({ type: 'success', title: 'Context renamed', message: `"${oldName}" → "${newName}"` });
             setRenamingContext(null);
             await fetchContexts();

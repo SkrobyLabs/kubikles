@@ -366,6 +366,7 @@ func exerciseKindCrashTTLSweep(t *testing.T, service *Service, helmClient *helm.
 	if !demand.Accepted || demand.Lease == nil {
 		t.Fatal("post-crash demand rejected")
 	}
+	coordinator.Enable(request.ContextName, request.NamespaceOverride)
 	_ = waitKindCoordinatorSession(t, coordinator, demand.Lease, request.ContextName, 180*time.Second)
 	if disposer.sweeps.Load() != 1 {
 		t.Fatal("post-crash first demand omitted one inert sweep")
@@ -409,6 +410,10 @@ func exerciseLifecycleKind(t *testing.T, service *Service, helmClient *helm.Clie
 	if !first.Accepted || first.Lease == nil {
 		t.Fatalf("first demand=%#v", first)
 	}
+	if snapshot := coordinator.Snapshot(contextName); snapshot.State != CoordinatorDirectOnly || snapshot.Enabled || kindCoordinatorWorkload(coordinator) != nil || disposer.sweeps.Load() != 0 {
+		t.Fatalf("disabled demand started lifecycle: %#v", snapshot)
+	}
+	coordinator.Enable(contextName, request.NamespaceOverride)
 	active := waitKindCoordinatorSession(t, coordinator, first.Lease, contextName, 180*time.Second)
 	firstIdentity := active.Identity()
 	workload := kindCoordinatorWorkload(coordinator)
@@ -435,19 +440,21 @@ func exerciseLifecycleKind(t *testing.T, service *Service, helmClient *helm.Clie
 	assertKindSameWorkloadHigherGeneration(t, firstIdentity, resumedIdentity)
 
 	first.Lease.Close()
-	waitKindCoordinatorState(t, coordinator, contextName, CoordinatorDraining, 10*time.Second)
-	time.Sleep(time.Second)
+	waitKindCoordinatorState(t, coordinator, contextName, CoordinatorActive, 10*time.Second)
 	returned := coordinator.AcquireSecretDemand(context.Background(), contextName)
 	if !returned.Accepted || returned.Lease == nil {
-		t.Fatal("within-grace demand rejected")
+		t.Fatal("enabled connection demand rejected")
 	}
-	idleResumed := waitKindCoordinatorSession(t, coordinator, returned.Lease, contextName, 45*time.Second)
-	assertKindSameWorkloadHigherGeneration(t, resumedIdentity, idleResumed.Identity())
+	reused := waitKindCoordinatorSession(t, coordinator, returned.Lease, contextName, 45*time.Second)
+	if reused.Identity() != resumedIdentity {
+		t.Fatal("zero-demand enabled connection did not retain its active session")
+	}
 	if disposer.sweeps.Load() != 1 || kindCoordinatorWorkload(coordinator) != workload {
-		t.Fatal("within-grace return created a new workload or sweep")
+		t.Fatal("enabled connection return created a new workload or sweep")
 	}
 
 	returned.Lease.Close()
+	coordinator.Disable(contextName)
 	waitKindCoordinatorState(t, coordinator, contextName, CoordinatorDirectOnly, 5*time.Minute)
 	if credential.withCreatorAuthorization(context.Background(), func(context.Context, creatorAuthorizationLease) error { return nil }) == nil {
 		t.Fatal("final lifecycle drain retained creator credential")

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"kubikles/pkg/acceleratorrelease"
@@ -114,12 +115,18 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	if request.ContextName == "" || strings.TrimSpace(request.ContextName) != request.ContextName {
 		return unavailable(ContextUnavailable, CleanupNotNeeded)
 	}
+	if request.NamespaceOverride != "" && len(validation.IsDNS1123Label(request.NamespaceOverride)) != 0 {
+		return unavailable(ContextUnavailable, CleanupNotNeeded)
+	}
 	if ctx == nil || s == nil || s.contexts == nil || s.charts == nil || s.observer == nil || s.entropy == nil {
 		return unavailable(ContextUnavailable, CleanupNotNeeded)
 	}
 	opCtx, cancel := context.WithTimeout(ctx, ProvisionTimeout)
 	defer cancel()
 	snapshot, err := s.contexts.SnapshotCurrentContext(request.ContextName)
+	if err == nil && request.NamespaceOverride != "" {
+		snapshot = namespaceOverrideSnapshot{ContextSnapshot: snapshot, namespace: request.NamespaceOverride}
+	}
 	initialGateKey := releaseMutationGateKey(snapshot)
 	if err != nil || initialGateKey == "" {
 		return unavailable(ContextUnavailable, CleanupNotNeeded)
@@ -133,6 +140,9 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	// Refresh after gate entry so a waiter never reuses the preceding attempt's
 	// snapshot or current-context decision.
 	snapshot, err = s.contexts.SnapshotCurrentContext(request.ContextName)
+	if err == nil && request.NamespaceOverride != "" {
+		snapshot = namespaceOverrideSnapshot{ContextSnapshot: snapshot, namespace: request.NamespaceOverride}
+	}
 	if err != nil || releaseMutationGateKey(snapshot) != initialGateKey {
 		return unavailable(ContextChanged, CleanupNotNeeded)
 	}
@@ -221,6 +231,15 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	credential = nil
 	return available(workload)
 }
+
+// namespaceOverrideSnapshot changes only the release target. Credentials and
+// connection identity remain those of the immutable current-context snapshot.
+type namespaceOverrideSnapshot struct {
+	ContextSnapshot
+	namespace string
+}
+
+func (s namespaceOverrideSnapshot) Namespace() string { return s.namespace }
 
 func releaseMutationGateKey(snapshot ContextSnapshot) string {
 	if snapshot == nil || snapshot.Identity() == "" || snapshot.Namespace() == "" {
