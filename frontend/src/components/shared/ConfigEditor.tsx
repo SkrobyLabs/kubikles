@@ -116,7 +116,7 @@ const unflattenConfig = (text: string) => {
     return result;
 };
 
-export default function ConfigEditor() {
+export default function ConfigEditor({ initialSection }: { initialSection?: string }) {
     const {
         config,
         getConfigJson,
@@ -415,7 +415,7 @@ export default function ConfigEditor() {
 
     // Render UI mode
     if (mode === 'ui') {
-        return <ConfigEditorUI onSwitchMode={switchMode} />;
+        return <ConfigEditorUI onSwitchMode={switchMode} initialSection={initialSection} />;
     }
 
     // Render text editor modes (flat/json)

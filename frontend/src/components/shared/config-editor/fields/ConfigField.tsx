@@ -13,6 +13,9 @@ export default function ConfigField({ schema, value, onChange, isModified, async
     const { type, label, description } = schema;
 
     switch (type) {
+        case 'hidden':
+            return null;
+
         case 'boolean':
             return (
                 <BooleanField

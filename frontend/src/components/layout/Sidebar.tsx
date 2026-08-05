@@ -65,6 +65,7 @@ export default function Sidebar({
     const [isMac, setIsMac] = useState(() => navigator.platform.includes('Mac'));
     const [debugClusterEnabled, setDebugClusterEnabled] = useState(false);
     const [showContextManager, setShowContextManager] = useState(false);
+    const [contextManagerRoute, setContextManagerRoute] = useState<{ contextName?: string; tab?: 'accelerator' }>({});
     const [menuSearch, setMenuSearch] = useState('');
 
     useEffect(() => {
@@ -285,7 +286,10 @@ export default function Sidebar({
                         Context
                     </label>
                     <button
-                        onClick={() => setShowContextManager(true)}
+                        onClick={() => {
+                            setContextManagerRoute({});
+                            setShowContextManager(true);
+                        }}
                         className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
                         title="Manage contexts"
                     >
@@ -300,7 +304,10 @@ export default function Sidebar({
                     onOpen={onContextSelectorOpen}
                     preserveOrder
                 />
-                <AcceleratorStatusBadge onOpen={() => setShowContextManager(true)} />
+                <AcceleratorStatusBadge onOpen={() => {
+                    setContextManagerRoute(currentContext ? { contextName: currentContext, tab: 'accelerator' } : {});
+                    setShowContextManager(true);
+                }} />
             </div>
 
             {/* Debug Cluster Config (dev builds only, debug-cluster context only) */}
@@ -489,7 +496,7 @@ export default function Sidebar({
                         )}
                     </span>
                     <button
-                        onClick={openConfigEditor}
+                        onClick={() => openConfigEditor()}
                         className="p-1 rounded transition-colors text-gray-500 hover:text-white hover:bg-white/10"
                         title="Settings"
                     >
@@ -529,7 +536,12 @@ export default function Sidebar({
 
             {showContextManager && (
                 <ContextManager
-                    onClose={() => setShowContextManager(false)}
+                    initialContext={contextManagerRoute.contextName}
+                    initialTab={contextManagerRoute.tab}
+                    onClose={() => {
+                        setShowContextManager(false);
+                        setContextManagerRoute({});
+                    }}
                     onContextsChanged={() => onContextSelectorOpen?.()}
                 />
             )}

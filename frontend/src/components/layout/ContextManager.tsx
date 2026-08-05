@@ -33,9 +33,11 @@ interface ContextDetail {
 interface ContextManagerProps {
     onClose: () => void;
     onContextsChanged: () => void;
+    initialContext?: string;
+    initialTab?: 'context' | 'cluster' | 'auth' | 'exec' | 'accelerator';
 }
 
-export default function ContextManager({ onClose, onContextsChanged }: ContextManagerProps) {
+export default function ContextManager({ onClose, onContextsChanged, initialContext, initialTab }: ContextManagerProps) {
     const [contexts, setContexts] = useState<ContextDetail[]>([]);
     const [loading, setLoading] = useState(true);
     const [renamingContext, setRenamingContext] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export default function ContextManager({ onClose, onContextsChanged }: ContextMa
     const [deletingContext, setDeletingContext] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [editingContext, setEditingContext] = useState<string | null>(null);
+    const [editingContext, setEditingContext] = useState<string | null>(initialContext ?? null);
     const { addNotification } = useNotification();
     const { config, setConfig } = useConfig();
 
@@ -149,6 +151,7 @@ export default function ContextManager({ onClose, onContextsChanged }: ContextMa
                 {editingContext ? (
                     <ContextEditor
                         contextName={editingContext}
+                        initialTab={initialTab}
                         onBack={() => setEditingContext(null)}
                         onSaved={() => {
                             fetchContexts();

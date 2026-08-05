@@ -61,6 +61,7 @@ interface ContextEditorProps {
     contextName: string;
     onBack: () => void;
     onSaved: () => void;
+    initialTab?: Tab;
 }
 
 type Tab = 'context' | 'cluster' | 'auth' | 'exec' | 'accelerator';
@@ -131,12 +132,12 @@ const TABS: { key: Tab; label: string }[] = [
     { key: 'accelerator', label: 'Accelerator' },
 ];
 
-export default function ContextEditor({ contextName, onBack, onSaved }: ContextEditorProps) {
+export default function ContextEditor({ contextName, onBack, onSaved, initialTab }: ContextEditorProps) {
     const [detail, setDetail] = useState<FullContextDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
-    const [tab, setTab] = useState<Tab>('context');
+    const [tab, setTab] = useState<Tab>(initialTab ?? 'context');
     const { addNotification } = useNotification();
     const { retryConnection, triggerRefresh } = useK8s();
 
@@ -188,7 +189,7 @@ export default function ContextEditor({ contextName, onBack, onSaved }: ContextE
             setExecAPIVersion(d.authDetail?.execAPIVersion || '');
             setDirty(false);
             // Auto-select exec tab if exec provider is configured
-            if (d.authDetail?.hasExecProvider) {
+            if (!initialTab && d.authDetail?.hasExecProvider) {
                 setTab('exec');
             }
         } catch (err: any) {
@@ -196,7 +197,7 @@ export default function ContextEditor({ contextName, onBack, onSaved }: ContextE
         } finally {
             setLoading(false);
         }
-    }, [contextName, addNotification]);
+    }, [contextName, addNotification, initialTab]);
 
     useEffect(() => { loadDetail(); }, [loadDetail]);
 

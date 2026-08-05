@@ -6,7 +6,6 @@ export function acceleratorPolicy(settings: AcceleratorSettings, contextName: st
   const namespace = override?.namespace === '' ? contextNamespace : (override?.namespace ?? settings.defaultNamespace ?? contextNamespace ?? 'default');
   return {
     enabled: override?.enabled ?? settings.enabledByDefault,
-    enabledSource: override?.enabled === undefined ? 'Kubikles Settings' : 'connection override',
     namespace,
     namespaceSource: override?.namespace !== undefined ? (override.namespace === '' ? 'context namespace' : 'connection override') : (settings.defaultNamespace ? 'Kubikles Settings' : 'context namespace'),
     override,

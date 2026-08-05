@@ -1,9 +1,9 @@
 // Configuration schema - single source of truth for property metadata
 export const configSchema: Record<string, any> = {
 	accelerator: {
-		_meta: { label: 'Accelerator', description: 'Defaults for explicitly enabled Accelerator deployments' },
-		enabledByDefault: { type: 'boolean', label: 'Enabled by Default', description: 'New connections remain Direct unless enabled', default: false },
-		defaultNamespace: { type: 'string', label: 'Deployment Namespace', description: 'Leave blank to use the kubeconfig context namespace', default: '' },
+		_meta: { label: 'Accelerator', description: 'Accelerator manages an in-cluster workload near the Kubernetes API server. It currently supports Secret reads only; Direct remains authoritative whenever Accelerator is disabled, unavailable, or fails. The cluster needs Helm-resource permissions and cluster-wide read-only Secret RBAC permissions. The deployment namespace places the Accelerator Job and its supporting resources.' },
+		enabledByDefault: { type: 'boolean', label: 'Enable Accelerator by Default', description: 'Checked deploys Accelerator for selected connections without an override. Unchecked leaves those connections Direct until enabled per connection.', default: false },
+		defaultNamespace: { type: 'string', label: 'Deployment Namespace', description: 'Places the Accelerator Job and supporting resources here. Leave blank to use the kubeconfig context namespace or default; the namespace must already exist.', default: '' },
 		connectionOverrides: { type: 'hidden', default: [] }
 	},
     app: {

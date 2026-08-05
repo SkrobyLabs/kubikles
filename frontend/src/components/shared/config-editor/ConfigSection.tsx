@@ -131,14 +131,16 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
 
     // Filter top-level fields if searching
     const visibleTopLevelFields = Object.entries(topLevelFields).filter(
-        ([key]) => fieldMatches(key)
+        ([key, schema]: [string, any]) => schema.type !== 'hidden' && fieldMatches(key)
     );
 
     // Filter nested groups if searching
     const visibleNestedGroups = Object.entries(nestedGroups).filter(
         ([groupKey, groupSchema]: [string, any]) => {
             const { _meta: _, ...groupFields } = groupSchema;
-            return groupHasMatches(groupKey, groupFields);
+            return Object.entries(groupFields).some(([fieldKey, schema]: [string, any]) =>
+                schema.type !== 'hidden' && fieldMatches(fieldKey, groupKey)
+            );
         }
     );
 
@@ -221,13 +223,11 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
                 const basePath = `${section}.${groupKey}`;
 
                 // Filter fields within the group if searching
-                const visibleGroupFields = showAllFields
-                    ? groupFields
-                    : Object.fromEntries(
-                        Object.entries(groupFields).filter(
-                            ([fieldKey]) => fieldMatches(fieldKey, groupKey)
-                        )
-                    );
+                const visibleGroupFields = Object.fromEntries(
+                    Object.entries(groupFields).filter(([fieldKey, schema]: [string, any]) =>
+                        schema.type !== 'hidden' && (showAllFields || fieldMatches(fieldKey, groupKey))
+                    )
+                );
 
                 return (
                     <ConfigFieldGroup

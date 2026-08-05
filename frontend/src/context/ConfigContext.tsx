@@ -94,7 +94,8 @@ interface ConfigContextValue {
     getConfigJson: () => string;
     defaultConfig: AppConfig;
     showConfigEditor: boolean;
-    openConfigEditor: () => void;
+    configEditorSection: string | null;
+    openConfigEditor: (section?: string) => void;
     closeConfigEditor: () => void;
 }
 
@@ -304,6 +305,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     const [showConfigEditor, setShowConfigEditor] = useState<boolean>(false);
+    const [configEditorSection, setConfigEditorSection] = useState<string | null>(null);
 
     // Persist config to localStorage (only save values that differ from defaults)
     useEffect(() => {
@@ -376,12 +378,14 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, [config]);
 
     // Open/close config editor
-    const openConfigEditor = useCallback((): void => {
+    const openConfigEditor = useCallback((section?: string): void => {
+        setConfigEditorSection(section ?? null);
         setShowConfigEditor(true);
     }, []);
 
     const closeConfigEditor = useCallback((): void => {
         setShowConfigEditor(false);
+        setConfigEditorSection(null);
     }, []);
 
     const value: ConfigContextValue = useMemo(() => ({
@@ -393,9 +397,10 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         getConfigJson,
         defaultConfig,
         showConfigEditor,
+        configEditorSection,
         openConfigEditor,
         closeConfigEditor
-    }), [config, getConfig, setConfig, updateConfig, resetConfig, getConfigJson, showConfigEditor, openConfigEditor, closeConfigEditor]);
+    }), [config, getConfig, setConfig, updateConfig, resetConfig, getConfigJson, showConfigEditor, configEditorSection, openConfigEditor, closeConfigEditor]);
 
     return (
         <ConfigContext.Provider value={value}>

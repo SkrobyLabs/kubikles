@@ -19,6 +19,7 @@ export default function ConfigFieldGroup({ title, fields, basePath, config, onFi
                 if (key === '_meta') return null;
                 // Skip nested groups (handled separately)
                 if (schema._meta?.isNested) return null;
+                if (schema.type === 'hidden') return null;
 
                 const path = `${basePath}.${key}`;
 

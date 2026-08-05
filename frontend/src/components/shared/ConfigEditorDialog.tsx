@@ -4,7 +4,7 @@ import { useConfig } from '~/context';
 import ConfigEditor from './ConfigEditor';
 
 export default function ConfigEditorDialog() {
-    const { showConfigEditor, closeConfigEditor } = useConfig();
+    const { showConfigEditor, configEditorSection, closeConfigEditor } = useConfig();
 
     useEffect(() => {
         if (!showConfigEditor) return;
@@ -24,7 +24,7 @@ export default function ConfigEditorDialog() {
         <div className="fixed inset-0 z-[90] flex items-center justify-center">
             <div className="absolute inset-0 bg-black/50" onClick={closeConfigEditor} />
             <div className="relative bg-surface border border-border rounded-lg shadow-xl w-[1400px] max-w-[90vw] h-[80vh] flex flex-col overflow-hidden">
-                <ConfigEditor />
+                <ConfigEditor initialSection={configEditorSection ?? undefined} />
             </div>
         </div>,
         document.body

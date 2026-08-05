@@ -6,10 +6,10 @@ import ConfigSidebar from './ConfigSidebar';
 import ConfigSection from './ConfigSection';
 import { getSortedSections, searchFields, getModifiedFields } from '~/config/configSchema';
 
-export default function ConfigEditorUI({ onSwitchMode }: any) {
+export default function ConfigEditorUI({ onSwitchMode, initialSection }: any) {
     const { config, setConfig, resetConfig, closeConfigEditor } = useConfig();
     const { openModal, closeModal } = useUI();
-    const [activeSection, setActiveSection] = useState(() => getSortedSections()[0]);
+    const [activeSection, setActiveSection] = useState(() => getSortedSections().includes(initialSection) ? initialSection : getSortedSections()[0]);
     const [saved, setSaved] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [showSearch, setShowSearch] = useState(false);
