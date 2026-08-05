@@ -61,6 +61,7 @@ interface ContextEditorProps {
     contextName: string;
     onBack: () => void;
     onSaved: () => void;
+    onOpenAcceleratorSettings: () => void;
     initialTab?: Tab;
 }
 
@@ -132,7 +133,7 @@ const TABS: { key: Tab; label: string }[] = [
     { key: 'accelerator', label: 'Accelerator' },
 ];
 
-export default function ContextEditor({ contextName, onBack, onSaved, initialTab }: ContextEditorProps) {
+export default function ContextEditor({ contextName, onBack, onSaved, onOpenAcceleratorSettings, initialTab }: ContextEditorProps) {
     const [detail, setDetail] = useState<FullContextDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -619,7 +620,7 @@ export default function ContextEditor({ contextName, onBack, onSaved, initialTab
                         )}
                     </>
                 )}
-                {tab === 'accelerator' && <AcceleratorConnectionPanel contextName={contextName} contextNamespace={namespace || detail.namespace || 'default'} />}
+                {tab === 'accelerator' && <AcceleratorConnectionPanel contextName={contextName} contextNamespace={namespace || detail.namespace || 'default'} onOpenSettings={onOpenAcceleratorSettings} />}
             </div>
 
             {/* Footer */}

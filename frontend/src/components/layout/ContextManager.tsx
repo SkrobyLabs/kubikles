@@ -47,7 +47,7 @@ export default function ContextManager({ onClose, onContextsChanged, initialCont
     const [searchQuery, setSearchQuery] = useState('');
     const [editingContext, setEditingContext] = useState<string | null>(initialContext ?? null);
     const { addNotification } = useNotification();
-    const { config, setConfig } = useConfig();
+    const { config, setConfig, openConfigEditor } = useConfig();
 
     const extraPaths: string[] = config?.kubernetes?.extraKubeconfigPaths || [];
 
@@ -156,6 +156,10 @@ export default function ContextManager({ onClose, onContextsChanged, initialCont
                         onSaved={() => {
                             fetchContexts();
                             onContextsChanged();
+                        }}
+                        onOpenAcceleratorSettings={() => {
+                            onClose();
+                            openConfigEditor('accelerator');
                         }}
                     />
                 ) : (<>

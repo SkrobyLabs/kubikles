@@ -1,3 +1,111 @@
+export namespace acceleratorprovision {
+	
+	export class ObjectIdentity {
+	    name: string;
+	    uid: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ObjectIdentity(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.uid = source["uid"];
+	    }
+	}
+	export class ProvisionedWorkload {
+	    contextName: string;
+	    releaseNamespace: string;
+	    releaseName: string;
+	    workloadSessionId: string;
+	    job: ObjectIdentity;
+	    pod: ObjectIdentity;
+	    buildVersion: string;
+	    imageDigest: string;
+	    chartDigest: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProvisionedWorkload(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.contextName = source["contextName"];
+	        this.releaseNamespace = source["releaseNamespace"];
+	        this.releaseName = source["releaseName"];
+	        this.workloadSessionId = source["workloadSessionId"];
+	        this.job = this.convertValues(source["job"], ObjectIdentity);
+	        this.pod = this.convertValues(source["pod"], ObjectIdentity);
+	        this.buildVersion = source["buildVersion"];
+	        this.imageDigest = source["imageDigest"];
+	        this.chartDigest = source["chartDigest"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CoordinatorSnapshot {
+	    state: string;
+	    enabled: boolean;
+	    namespace: string;
+	    demandCount: number;
+	    sessionLeases: number;
+	    available: boolean;
+	    workload?: ProvisionedWorkload;
+	
+	    static createFrom(source: any = {}) {
+	        return new CoordinatorSnapshot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.state = source["state"];
+	        this.enabled = source["enabled"];
+	        this.namespace = source["namespace"];
+	        this.demandCount = source["demandCount"];
+	        this.sessionLeases = source["sessionLeases"];
+	        this.available = source["available"];
+	        this.workload = this.convertValues(source["workload"], ProvisionedWorkload);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+
+}
+
 export namespace acceleratorsecret {
 	
 	export class SecretWatchSubscription {

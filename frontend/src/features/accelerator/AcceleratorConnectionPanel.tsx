@@ -3,8 +3,8 @@ import { useAccelerator, useConfig, useK8s, useUI } from '~/context';
 import { acceleratorPolicy, removeAcceleratorOverride, upsertAcceleratorOverride } from './acceleratorConfig';
 import { acceleratorStateLabel } from './AcceleratorStatusBadge';
 
-export default function AcceleratorConnectionPanel({ contextName, contextNamespace }: { contextName: string; contextNamespace: string }) {
-  const { config, setConfig, openConfigEditor } = useConfig();
+export default function AcceleratorConnectionPanel({ contextName, contextNamespace, onOpenSettings }: { contextName: string; contextNamespace: string; onOpenSettings: () => void }) {
+  const { config, setConfig } = useConfig();
   const { currentContext, setSelectedNamespaces } = useK8s();
   const { navigateWithSearch } = useUI();
   const { status, enable, retry, disable } = useAccelerator();
@@ -36,7 +36,7 @@ export default function AcceleratorConnectionPanel({ contextName, contextNamespa
     <div className="grid grid-cols-2 gap-2 text-xs">
       <div className="rounded border border-border bg-surface p-2"><span className="text-gray-500">Status</span><div className="mt-1 text-white">{acceleratorStateLabel(shown.state)}</div></div>
     </div>
-    <p className="text-xs text-gray-500">Connection overrides inherit the global defaults. <button type="button" onClick={() => openConfigEditor('accelerator')} className="text-primary hover:underline">Open Settings &gt; Accelerator</button></p>
+    <p className="text-xs text-gray-500">Connection overrides inherit the global defaults. <button type="button" onClick={onOpenSettings} className="text-primary hover:underline">Open Settings &gt; Accelerator</button></p>
     <div>
       <label className="mb-1 block text-xs text-gray-400">Deployment namespace</label>
       <input value={namespace} onChange={event => setNamespace(event.target.value)} placeholder={contextNamespace || 'default'} className="w-full rounded border border-border bg-surface px-2.5 py-1.5 text-sm text-white focus:border-primary focus:outline-none" />

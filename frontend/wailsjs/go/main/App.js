@@ -254,6 +254,10 @@ export function DiffResources(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, ar
   return window['go']['main']['App']['DiffResources'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 }
 
+export function DisableAccelerator(arg1) {
+  return window['go']['main']['App']['DisableAccelerator'](arg1);
+}
+
 export function DownloadPodFile(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['DownloadPodFile'](arg1, arg2, arg3, arg4);
 }
@@ -264,6 +268,10 @@ export function DownloadPodFiles(arg1, arg2, arg3, arg4, arg5) {
 
 export function DownloadPodFolder(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['DownloadPodFolder'](arg1, arg2, arg3, arg4);
+}
+
+export function EnableAccelerator(arg1, arg2) {
+  return window['go']['main']['App']['EnableAccelerator'](arg1, arg2);
 }
 
 export function EvictPod(arg1, arg2) {
@@ -288,6 +296,10 @@ export function GetAIModels() {
 
 export function GetAIProviders() {
   return window['go']['main']['App']['GetAIProviders']();
+}
+
+export function GetAcceleratorStatus(arg1) {
+  return window['go']['main']['App']['GetAcceleratorStatus'](arg1);
 }
 
 export function GetActivePortForwards() {
@@ -1066,6 +1078,10 @@ export function RetainIntegratedSecretReads() {
   return window['go']['main']['App']['RetainIntegratedSecretReads']();
 }
 
+export function RetryAccelerator(arg1) {
+  return window['go']['main']['App']['RetryAccelerator'](arg1);
+}
+
 export function RollbackHelmRelease(arg1, arg2, arg3) {
   return window['go']['main']['App']['RollbackHelmRelease'](arg1, arg2, arg3);
 }
@@ -1501,8 +1517,3 @@ export function UploadFileToPod(arg1, arg2, arg3, arg4, arg5) {
 export function UploadToPod(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['UploadToPod'](arg1, arg2, arg3, arg4);
 }
-
-export function GetAcceleratorStatus(arg1) { return window['go']['main']['App']['GetAcceleratorStatus'](arg1); }
-export function EnableAccelerator(arg1, arg2) { return window['go']['main']['App']['EnableAccelerator'](arg1, arg2); }
-export function RetryAccelerator(arg1) { return window['go']['main']['App']['RetryAccelerator'](arg1); }
-export function DisableAccelerator(arg1) { return window['go']['main']['App']['DisableAccelerator'](arg1); }

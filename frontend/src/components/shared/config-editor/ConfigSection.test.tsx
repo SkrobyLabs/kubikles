@@ -13,14 +13,14 @@ describe('ConfigSection', () => {
   it('does not render hidden Accelerator storage', () => {
     const { container } = render(<ConfigSection section="accelerator" config={config} onFieldChange={vi.fn()} searchResults={null} />);
     expect(screen.getByText('Deployment Namespace')).toBeTruthy();
-    expect(screen.getByText('Enable Accelerator by Default')).toBeTruthy();
+    expect(screen.getByText('Enable Accelerator by default')).toBeTruthy();
     expect(screen.queryByText('connectionOverrides')).toBeNull();
     expect(container.querySelectorAll('input[type="text"]')).toHaveLength(1);
   });
 
-  it('explains Accelerator enablement and deployment contract', () => {
+  it('explains the Accelerator deployment contract without checkbox helper text', () => {
     render(<ConfigSection section="accelerator" config={config} onFieldChange={vi.fn()} searchResults={null} />);
-    expect(screen.getByText(/Checked deploys Accelerator/)).toBeTruthy();
+    expect(screen.queryByText(/Checked deploys Accelerator/)).toBeNull();
     expect(screen.getByText(/in-cluster workload near the Kubernetes API server/)).toBeTruthy();
     expect(screen.getByText(/Secret reads only/)).toBeTruthy();
     expect(screen.getByText(/Direct remains authoritative/)).toBeTruthy();
