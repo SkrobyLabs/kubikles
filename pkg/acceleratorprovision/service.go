@@ -24,7 +24,7 @@ const (
 )
 
 var digestRE = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
-var versionRE = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
+var versionRE = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
 var commitRE = regexp.MustCompile(`^[0-9a-f]{40}$`)
 var hex64RE = regexp.MustCompile(`^[0-9a-f]{64}$`)
 

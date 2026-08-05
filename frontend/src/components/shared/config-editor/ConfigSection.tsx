@@ -95,6 +95,8 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
     if (!sectionSchema) return null;
 
     const { _meta, ...fields } = sectionSchema;
+    const acceleratorDevelopment = section === 'accelerator' ? config?.accelerator?.development : null;
+    const acceleratorOverrideActive = Boolean(acceleratorDevelopment?.releaseVersion || acceleratorDevelopment?.descriptorURL || acceleratorDevelopment?.versionPolicy === 'warn');
 
     // Get matching field keys for this section (if searching)
     const matchingFields = searchResults?.[section];
@@ -153,6 +155,12 @@ export default function ConfigSection({ section, config, onFieldChange, searchRe
                     <p className="text-sm text-text-muted mt-1">{_meta.description}</p>
                 )}
             </div>
+
+            {acceleratorOverrideActive && (
+                <div role="alert" className="rounded border border-amber-500/50 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
+                    Accelerator development overrides are active. Release identity or version enforcement differs from the production-safe defaults.
+                </div>
+            )}
 
             {/* Top-level fields */}
             {visibleTopLevelFields.length > 0 && (

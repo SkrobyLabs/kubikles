@@ -4,7 +4,9 @@ package acceleratorrelease
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -50,6 +52,7 @@ type Resolution struct {
 }
 
 var stableVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
+var releaseVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
 
 type httpDoer interface {
 	Do(*http.Request) (*http.Response, error)
@@ -120,6 +123,60 @@ func (r *Resolver) Resolve(ctx context.Context) Resolution {
 		return unavailable(OnlineIntegrity)
 	}
 	_ = r.cache.storeVerified(r.buildVersion, checksumBytes, descriptorBytes, r.now())
+	return available(SourceNetwork, release)
+}
+
+// ResolveOverride resolves an explicitly selected development release. The
+// normal resolver remains stable-only; this path requires a canonical version
+// and an optional explicit HTTPS descriptor URL and deliberately bypasses the
+// production cache.
+func (r *Resolver) ResolveOverride(ctx context.Context, buildVersion, descriptorURL string) Resolution {
+	if r == nil || !releaseVersion.MatchString(buildVersion) {
+		return unavailable(InvalidLocalBuild)
+	}
+	if descriptorURL == "" && stableVersion.MatchString(buildVersion) {
+		clone := *r
+		clone.buildVersion = buildVersion
+		return clone.Resolve(ctx)
+	}
+	if descriptorURL == "" {
+		name := releaseAssetPrefix + buildVersion + ".json"
+		descriptorURL = "https://github.com/SkrobyLabs/kubikles/releases/download/" + buildVersion + "/" + name
+	}
+	u, err := url.Parse(descriptorURL)
+	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.Fragment != "" || strings.TrimSpace(descriptorURL) != descriptorURL {
+		return unavailable(InvalidLocalBuild)
+	}
+	checksumLocation := *u
+	checksumLocation.Path += ".sha256"
+	checksumBytes, checksumClass := fetchAsset(ctx, r.client, checksumLocation.String(), maxChecksumBytes)
+	if checksumClass == fetchMissing {
+		return unavailable(DescriptorMissing)
+	}
+	if checksumClass != fetchOK {
+		if checksumClass == fetchIntegrity {
+			return unavailable(OnlineIntegrity)
+		}
+		return unavailable(NetworkUnavailable)
+	}
+	name := releaseAssetPrefix + buildVersion + ".json"
+	if _, ok := parseChecksumLine(checksumBytes, name); !ok {
+		return unavailable(OnlineIntegrity)
+	}
+	descriptorBytes, descriptorClass := fetchAsset(ctx, r.client, descriptorURL, maxDescriptorBytes)
+	if descriptorClass == fetchMissing {
+		return unavailable(DescriptorMissing)
+	}
+	if descriptorClass != fetchOK {
+		if descriptorClass == fetchIntegrity {
+			return unavailable(OnlineIntegrity)
+		}
+		return unavailable(NetworkUnavailable)
+	}
+	release, class := validateAndProject(buildVersion, checksumBytes, descriptorBytes)
+	if class != descriptorValid {
+		return unavailable(OnlineIntegrity)
+	}
 	return available(SourceNetwork, release)
 }
 

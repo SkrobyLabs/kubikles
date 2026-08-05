@@ -27,7 +27,17 @@ func (c *Coordinator) runResume(ctx context.Context, s *contextSlot, fence opera
 	request := ResumeRequest{Prior: prior, Workload: workload}
 	result := unavailableResume(ResumeInvalid)
 	if c.reconnector != nil {
-		if idle != nil {
+		options := c.optionsForWorkload(workload)
+		if policy, ok := c.reconnector.(interface {
+			ResumeWithVersionPolicy(context.Context, ResumeRequest, string, bool) ResumeResult
+			resumeIdleWithVersionPolicy(context.Context, ResumeRequest, *coordinatorIdleToken, string, bool) ResumeResult
+		}); ok && (options.ReleaseVersion != "" || options.AllowVersionMismatch) {
+			if idle != nil {
+				result = policy.resumeIdleWithVersionPolicy(ctx, request, idle.token, workload.BuildVersion, options.AllowVersionMismatch)
+			} else {
+				result = policy.ResumeWithVersionPolicy(ctx, request, workload.BuildVersion, options.AllowVersionMismatch)
+			}
+		} else if idle != nil {
 			result = c.reconnector.resumeIdle(ctx, request, idle.token)
 		} else {
 			result = c.reconnector.Resume(ctx, request)

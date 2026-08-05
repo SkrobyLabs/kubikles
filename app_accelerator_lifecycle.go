@@ -2,7 +2,14 @@
 
 package main
 
-import "kubikles/pkg/acceleratorprovision"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+
+	"kubikles/pkg/acceleratorprovision"
+)
 
 //kubikles:dispatch exclude
 func (a *App) GetAcceleratorStatus(contextName string) acceleratorprovision.CoordinatorSnapshot {
@@ -18,12 +25,36 @@ func (a *App) GetAcceleratorStatus(contextName string) acceleratorprovision.Coor
 }
 
 //kubikles:dispatch exclude
-func (a *App) EnableAccelerator(contextName, namespaceOverride string) {
+func (a *App) EnableAccelerator(contextName, namespaceOverride, optionsJSON string) error {
+	options := acceleratorprovision.DeploymentOptions{}
+	if optionsJSON != "" {
+		decoder := json.NewDecoder(bytes.NewBufferString(optionsJSON))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&options); err != nil {
+			return fmt.Errorf("invalid Accelerator development options")
+		}
+		if err := decoder.Decode(new(any)); err != io.EOF {
+			return fmt.Errorf("invalid Accelerator development options")
+		}
+	}
+	if err := acceleratorprovision.ValidateDeploymentOptions(options); err != nil {
+		return err
+	}
 	if a != nil && a.runtimeMode == RuntimeModeDesktop {
+		if lifecycle, ok := a.acceleratorLifecycle.(interface {
+			EnableWithOptions(string, string, acceleratorprovision.DeploymentOptions)
+		}); ok {
+			lifecycle.EnableWithOptions(contextName, namespaceOverride, options)
+			return nil
+		}
 		if lifecycle, ok := a.acceleratorLifecycle.(interface{ Enable(string, string) }); ok {
+			if options != (acceleratorprovision.DeploymentOptions{}) {
+				return fmt.Errorf("Accelerator development options are unavailable")
+			}
 			lifecycle.Enable(contextName, namespaceOverride)
 		}
 	}
+	return nil
 }
 
 //kubikles:dispatch exclude

@@ -8,8 +8,9 @@ const retry = vi.fn();
 const disable = vi.fn();
 const setConfig = vi.fn();
 let acceleratorStatus: any = { state: 'direct_only', enabled: false, namespace: '', available: false };
+let acceleratorConfig: any = { enabledByDefault: false, defaultNamespace: '', development: { releaseVersion: '', descriptorURL: '', versionPolicy: 'exact' }, connectionOverrides: [] };
 vi.mock('~/context', () => ({
-  useConfig: () => ({ config: { accelerator: { enabledByDefault: false, defaultNamespace: '', connectionOverrides: [] } }, setConfig }),
+  useConfig: () => ({ config: { accelerator: acceleratorConfig }, setConfig }),
   useK8s: () => ({ currentContext: 'prod', setSelectedNamespaces: vi.fn() }),
   useUI: () => ({ navigateWithSearch: vi.fn() }),
   useAccelerator: () => ({ status: acceleratorStatus, enable: vi.fn(), retry, disable }),
@@ -18,6 +19,7 @@ vi.mock('~/context', () => ({
 describe('AcceleratorConnectionPanel', () => {
   beforeEach(() => {
     acceleratorStatus = { state: 'direct_only', enabled: false, namespace: '', available: false };
+    acceleratorConfig = { enabledByDefault: false, defaultNamespace: '', development: { releaseVersion: '', descriptorURL: '', versionPolicy: 'exact' }, connectionOverrides: [] };
     retry.mockReset();
     disable.mockReset();
     setConfig.mockReset();
@@ -50,5 +52,15 @@ describe('AcceleratorConnectionPanel', () => {
     expect(confirm).not.toHaveBeenCalled();
     expect(setConfig).toHaveBeenCalledWith('accelerator.connectionOverrides', [{ contextName: 'prod', enabled: false }]);
     confirm.mockRestore();
+  });
+
+  it('keeps development release and mismatch overrides visibly marked', () => {
+    acceleratorConfig = { ...acceleratorConfig, development: { releaseVersion: 'v1.4.0-alpha.1', descriptorURL: 'https://artifacts.example.test/release.json', versionPolicy: 'warn' } };
+    acceleratorStatus = { state: 'active', enabled: true, namespace: 'default', available: true, versionMismatchWarning: true };
+    render(<AcceleratorConnectionPanel contextName="prod" contextNamespace="default" onOpenSettings={vi.fn()} />);
+    expect(screen.getByRole('alert').textContent).toContain('target v1.4.0-alpha.1');
+    expect(screen.getByRole('alert').textContent).toContain('custom descriptor');
+    expect(screen.getByRole('alert').textContent).toContain('version mismatches allowed');
+    expect(screen.getByRole('status').textContent).toContain('Connected despite an Accelerator version mismatch');
   });
 });

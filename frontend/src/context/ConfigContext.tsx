@@ -71,6 +71,11 @@ export interface AcceleratorConnectionOverride {
 interface AcceleratorConfig {
     enabledByDefault: boolean;
     defaultNamespace: string;
+    development: {
+        releaseVersion: string;
+        descriptorURL: string;
+        versionPolicy: 'exact' | 'warn';
+    };
     connectionOverrides: AcceleratorConnectionOverride[];
 }
 
@@ -182,6 +187,11 @@ const defaultConfig: AppConfig = {
     accelerator: {
         enabledByDefault: false,
         defaultNamespace: '',
+        development: {
+            releaseVersion: '',
+            descriptorURL: '',
+            versionPolicy: 'exact'
+        },
         connectionOverrides: []
     }
 };

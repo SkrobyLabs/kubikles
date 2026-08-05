@@ -27,7 +27,7 @@ The listener inside the Pod is `127.0.0.1:8080`. The desktop opens an OS-assigne
 
 ## Compatibility and replacement
 
-The release resolver/cache selects an immutable descriptor. Provisioning creates one exact Job; connection authenticates one exact Pod tunnel. Literal nonempty `BuildVersion` mismatch causes disposal, fresh descriptor resolution, and at most one replacement. A repeated mismatch disposes the replacement, creates no third workload, and latches Direct for the current desktop session or continuous-demand epoch. Generation fencing rejects stale connection and callback state.
+The release resolver/cache selects an immutable descriptor. Provisioning creates one exact Job; connection authenticates one exact Pod tunnel. Literal nonempty `BuildVersion` mismatch causes disposal, fresh descriptor resolution, and at most one replacement by default. Settings can explicitly select a development release version and HTTPS descriptor; the separately marked Warn and continue policy relaxes only the runtime version comparison while retaining authentication, capability, ownership, and Direct-fallback checks. A repeated mismatch under the default policy disposes the replacement, creates no third workload, and latches Direct for the current desktop session or continuous-demand epoch. Generation fencing rejects stale connection and callback state.
 
 ## Session and workload lifecycle
 

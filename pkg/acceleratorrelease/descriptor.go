@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"regexp"
+	"strings"
 )
 
 const (
@@ -72,7 +73,7 @@ const (
 )
 
 func validateAndProject(buildVersion string, checksumBytes, descriptorBytes []byte) (VerifiedRelease, descriptorClass) {
-	versionMatch := stableVersion.FindStringSubmatch(buildVersion)
+	versionMatch := releaseVersion.FindStringSubmatch(buildVersion)
 	if versionMatch == nil {
 		return VerifiedRelease{}, descriptorIntegrity
 	}
@@ -127,7 +128,7 @@ func validateAndProject(buildVersion string, checksumBytes, descriptorBytes []by
 		wire.Image.Platforms[0].ManifestDigest == wire.Image.Platforms[1].ManifestDigest {
 		return VerifiedRelease{}, descriptorIntegrity
 	}
-	chartVersion := versionMatch[1] + "." + versionMatch[2] + "." + versionMatch[3]
+	chartVersion := strings.TrimPrefix(buildVersion, "v")
 	if wire.Chart.Repository != chartRepository ||
 		!digestRE.MatchString(wire.Chart.Digest) ||
 		wire.Chart.Reference != wire.Chart.Repository+"@"+wire.Chart.Digest ||

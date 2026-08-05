@@ -765,6 +765,29 @@ func TestConnectReportsOnlyLiteralBuildVersionMismatch(t *testing.T) {
 	_ = result.Session.Close(context.Background())
 }
 
+func TestConnectWarnPolicyAllowsVersionMismatchButNotProtocolMismatch(t *testing.T) {
+	info := server.AuthenticatedAcceleratorInfo{Runtime: "accelerator", Build: agent.BuildIdentity{BuildVersion: "v1.4.1"}, InstanceID: "instance-a", Capabilities: agent.V1Capabilities(), CapabilityDiagnostics: []agent.CapabilityDiagnostic{}}
+	protocol, _ := connectorProtocolServerWithInfo(t, knownCreatorToken, info)
+	defer protocol.Close()
+	order := []string{}
+	connector := connectorForEndpoint(t, protocol.URL, func(context.Context, *ProvisionedWorkload, ContextSnapshot) UnavailableReason { return "" }, &order)
+	workload := connectorWorkload(t)
+	workload.BuildVersion = "v1.4.0"
+	workload.connectorState.receipt.buildVersion = "v1.4.0"
+
+	result := connector.ConnectWithVersionPolicy(context.Background(), workload, "v1.4.0", true)
+	if result.Availability != Available || result.Session == nil || !result.Session.versionMismatch {
+		t.Fatalf("warn result=%#v", result)
+	}
+	_ = result.Session.Close(context.Background())
+
+	bad := info
+	bad.Capabilities = nil
+	if authenticatedInfoFailureWithPolicy(bad, "v1.4.0", "v1.4.0", true) == nil {
+		t.Fatal("warn policy accepted incompatible capabilities")
+	}
+}
+
 func TestAuthenticatedInfoMismatchClassificationIsNarrowAndRedacted(t *testing.T) {
 	base := server.AuthenticatedAcceleratorInfo{Runtime: "accelerator", Build: agent.BuildIdentity{BuildVersion: "build-N"}, InstanceID: "instance-a", Capabilities: agent.V1Capabilities(), CapabilityDiagnostics: []agent.CapabilityDiagnostic{}}
 	tests := []struct {

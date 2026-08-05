@@ -106,6 +106,24 @@ func TestResolveOutcomeMatrix(t *testing.T) {
 	}
 }
 
+func TestResolveOverrideAcceptsPrereleaseFromCustomDescriptorURL(t *testing.T) {
+	const version = "v1.4.2-alpha.1"
+	descriptorBytes, checksumBytes := pairForVersion(t, version)
+	doer := &scriptedDoer{steps: []responseStep{{status: 200, body: checksumBytes}, {status: 200, body: descriptorBytes}}}
+	resolver := newResolver(testBuildVersion, t.TempDir(), doer, osFileOps, time.Now)
+
+	result := resolver.ResolveOverride(context.Background(), version, "https://artifacts.example.test/temporary.json")
+	if result.Availability != Available || result.Source != SourceNetwork || result.Release.BuildVersion != version || doer.count() != 2 {
+		t.Fatalf("resolution=%#v requests=%d", result, doer.count())
+	}
+	if got := doer.requests[0].URL.String(); got != "https://artifacts.example.test/temporary.json.sha256" {
+		t.Fatalf("checksum URL=%q", got)
+	}
+	if got := doer.requests[1].URL.String(); got != "https://artifacts.example.test/temporary.json" {
+		t.Fatalf("descriptor URL=%q", got)
+	}
+}
+
 func TestResolveBodyFailureFallsBackAndDescriptorChecksumBindsCache(t *testing.T) {
 	descriptorBytes, checksumBytes := goldenPair(t)
 	now := time.Unix(1_900_000_000, 0)

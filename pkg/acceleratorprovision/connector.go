@@ -136,13 +136,14 @@ type connectorValidator func(context.Context, *ProvisionedWorkload, ContextSnaps
 type connectorDetailedValidator func(context.Context, *ProvisionedWorkload, ContextSnapshot) workloadValidationResult
 
 type Connector struct {
-	buildVersion     string
-	clock            resumeClock
-	startTunnel      connectorTunnelStarter
-	validate         connectorValidator
-	validateDetailed connectorDetailedValidator
-	observeEndpoint  func(string)
-	beforePublish    func()
+	buildVersion         string
+	allowVersionMismatch bool
+	clock                resumeClock
+	startTunnel          connectorTunnelStarter
+	validate             connectorValidator
+	validateDetailed     connectorDetailedValidator
+	observeEndpoint      func(string)
+	beforePublish        func()
 }
 
 // sealedContext preserves cancellation and deadlines while ensuring caller
@@ -211,6 +212,18 @@ func (c *Connector) Connect(ctx context.Context, workload *ProvisionedWorkload) 
 		return unavailableConnect(WorkloadDisposing)
 	}
 	return ConnectResult{Availability: Available, Session: session}
+}
+
+// ConnectWithVersionPolicy applies an explicit development target without
+// mutating the production connector shared by the coordinator.
+func (c *Connector) ConnectWithVersionPolicy(ctx context.Context, workload *ProvisionedWorkload, expectedVersion string, allowMismatch bool) ConnectResult {
+	if c == nil || expectedVersion == "" {
+		return unavailableConnect(InvalidWorkload)
+	}
+	configured := *c
+	configured.buildVersion = expectedVersion
+	configured.allowVersionMismatch = allowMismatch
+	return configured.Connect(ctx, workload)
 }
 
 type connectionExpectationKind uint8
@@ -326,7 +339,7 @@ func (c *Connector) connectExactAttempt(ctx context.Context, lease connectorLeas
 		if fetchErr != nil {
 			return fetchErr
 		}
-		if infoFailure := authenticatedInfoFailure(info, c.buildVersion, exactWorkload.BuildVersion); infoFailure != nil {
+		if infoFailure := authenticatedInfoFailureWithPolicy(info, c.buildVersion, exactWorkload.BuildVersion, c.allowVersionMismatch); infoFailure != nil {
 			return infoFailure
 		}
 		if expectation.kind == connectionResume && info.InstanceID != expectation.instanceID {
@@ -696,8 +709,12 @@ func decodeExactInfo(reader io.Reader) (server.AuthenticatedAcceleratorInfo, err
 }
 
 func validInfo(info server.AuthenticatedAcceleratorInfo, localVersion, handleVersion string) bool {
+	return validInfoWithPolicy(info, localVersion, handleVersion, false)
+}
+
+func validInfoWithPolicy(info server.AuthenticatedAcceleratorInfo, localVersion, handleVersion string, allowMismatch bool) bool {
 	wanted := agent.V1Capabilities()
-	if info.Runtime != "accelerator" || info.Build.BuildVersion == "" || info.Build.BuildVersion != localVersion || info.Build.BuildVersion != handleVersion || info.InstanceID == "" || len(info.Capabilities) != len(wanted) {
+	if info.Runtime != "accelerator" || info.Build.BuildVersion == "" || (!allowMismatch && (info.Build.BuildVersion != localVersion || info.Build.BuildVersion != handleVersion)) || info.InstanceID == "" || len(info.Capabilities) != len(wanted) {
 		return false
 	}
 	for index := range wanted {
@@ -709,11 +726,18 @@ func validInfo(info server.AuthenticatedAcceleratorInfo, localVersion, handleVer
 }
 
 func authenticatedInfoFailure(info server.AuthenticatedAcceleratorInfo, localVersion, handleVersion string) error {
+	return authenticatedInfoFailureWithPolicy(info, localVersion, handleVersion, false)
+}
+
+func authenticatedInfoFailureWithPolicy(info server.AuthenticatedAcceleratorInfo, localVersion, handleVersion string, allowMismatch bool) error {
+	if allowMismatch && validInfoWithPolicy(info, localVersion, handleVersion, true) {
+		return nil
+	}
 	if info.Runtime == "accelerator" && info.Build.BuildVersion != "" &&
 		(info.Build.BuildVersion != localVersion || info.Build.BuildVersion != handleVersion) {
 		return buildVersionMismatchAttemptError{}
 	}
-	if !validInfo(info, localVersion, handleVersion) {
+	if !validInfoWithPolicy(info, localVersion, handleVersion, allowMismatch) {
 		return protocolAttemptError{}
 	}
 	return nil

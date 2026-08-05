@@ -20,6 +20,8 @@ helm status example-accelerator -n example
 
 Use the selected connection's Enable & Deploy control. It displays the final namespace before mutation: connection override, then Settings default, then kubeconfig context namespace, then `default`. The namespace must already exist. Retry is explicit after a settled failure. Disable & Remove immediately returns reads to Direct, then performs the desktop-owned exact Helm cleanup. Bounded retry never makes Accelerator authoritative. Natural completion is cleaned by Kubernetes TTL after 3600 seconds; Accelerator does not self-delete. Startup sweep is limited to inert, owned releases.
 
+Settings > Accelerator > Development overrides can select a target release version, including a canonical prerelease such as `v1.4.0-alpha.1`, and an HTTPS descriptor URL whose checksum is at the same path with `.sha256` appended. Changing an override redeploys an enabled connection. Exact match remains the default. Warn and continue permits a different nonempty runtime version for local testing, displays a persistent warning, and still requires the authenticated Accelerator runtime, the exact capability contract, immutable workload ownership, and Direct fallback on protocol failure.
+
 ## Release trust
 
 The image repository is `ghcr.io/skrobylabs/kubikles-accelerator`; the chart repository is `oci://ghcr.io/skrobylabs/helm/kubikles-accelerator`. Consumers use descriptor and digest identity, not `latest`, a mutable channel, or a tag-only install. A stable tag `vX.Y.Z`, `BuildVersion` `vX.Y.Z`, and chart version `X.Y.Z` identify the same release.

@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -64,13 +67,14 @@ func (r DemandResult) MarshalJSON() ([]byte, error) {
 }
 
 type CoordinatorSnapshot struct {
-	State         CoordinatorState        `json:"state"`
-	Enabled       bool                    `json:"enabled"`
-	Namespace     string                  `json:"namespace"`
-	DemandCount   int                     `json:"demandCount"`
-	SessionLeases int                     `json:"sessionLeases"`
-	Available     bool                    `json:"available"`
-	Diagnostics   []CoordinatorDiagnostic `json:"diagnostics,omitempty"`
+	State                  CoordinatorState        `json:"state"`
+	Enabled                bool                    `json:"enabled"`
+	Namespace              string                  `json:"namespace"`
+	DemandCount            int                     `json:"demandCount"`
+	SessionLeases          int                     `json:"sessionLeases"`
+	Available              bool                    `json:"available"`
+	VersionMismatchWarning bool                    `json:"versionMismatchWarning,omitempty"`
+	Diagnostics            []CoordinatorDiagnostic `json:"diagnostics,omitempty"`
 	// Workload is a defensive display-only projection.  Its private receipt
 	// remains the sole authority for connect and disposal operations.
 	Workload *ProvisionedWorkload `json:"workload,omitempty"`
@@ -84,6 +88,31 @@ type CoordinatorDiagnostic struct {
 	Phase     string `json:"phase"`
 	Reason    string `json:"reason"`
 	Attempt   int    `json:"attempt,omitempty"`
+}
+
+type DeploymentOptions struct {
+	ReleaseVersion       string `json:"releaseVersion,omitempty"`
+	DescriptorURL        string `json:"descriptorURL,omitempty"`
+	AllowVersionMismatch bool   `json:"allowVersionMismatch,omitempty"`
+}
+
+var deploymentReleaseVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
+
+func ValidateDeploymentOptions(options DeploymentOptions) error {
+	if options.ReleaseVersion != "" && (!deploymentReleaseVersion.MatchString(options.ReleaseVersion) || len(options.ReleaseVersion) > 128) {
+		return fmt.Errorf("invalid Accelerator release version override")
+	}
+	if options.DescriptorURL == "" {
+		return nil
+	}
+	if options.ReleaseVersion == "" || len(options.DescriptorURL) > 2048 || strings.TrimSpace(options.DescriptorURL) != options.DescriptorURL {
+		return fmt.Errorf("custom Accelerator descriptor URL requires an exact release version")
+	}
+	u, err := url.Parse(options.DescriptorURL)
+	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.Fragment != "" {
+		return fmt.Errorf("custom Accelerator descriptor URL must be HTTPS")
+	}
+	return nil
 }
 
 func (CoordinatorSnapshot) String() string { return "<accelerator coordinator snapshot>" }
@@ -167,6 +196,8 @@ type contextSlot struct {
 	drainDeadline          time.Time
 	terminalCleanupPending bool
 	diagnostics            []CoordinatorDiagnostic
+	deploymentOptions      DeploymentOptions
+	versionMismatchWarning bool
 }
 
 func newContextSlot(name string, epoch uint64) *contextSlot {

@@ -70,12 +70,20 @@ export default function AcceleratorConnectionPanel({ contextName, contextNamespa
   const workload = (shown as any).workload;
   const diagnostics = ((shown as any).diagnostics ?? []) as AcceleratorDiagnostic[];
   const busy = pendingAction !== null || busyStates.has(shown.state);
+  const development = config.accelerator.development;
+  const developmentOverrideActive = Boolean(development?.releaseVersion || development?.descriptorURL || development?.versionPolicy === 'warn');
   const view = (kind: 'helmreleases' | 'pods', name: string) => {
     setSelectedNamespaces([shown.namespace || policy.namespace]);
     navigateWithSearch(kind, name, true);
   };
   return <div className="space-y-4">
     <p className="text-xs text-gray-500">This connection owns Accelerator deployment. Secret screens only use an active session; they never start or remove one.</p>
+    {developmentOverrideActive && <div role="alert" className="rounded border border-amber-500/50 bg-amber-950/30 p-3 text-xs text-amber-200">
+      Development override active{development?.releaseVersion ? <> · target <span className="font-mono">{development.releaseVersion}</span></> : ''}{development?.descriptorURL ? ' · custom descriptor' : ''}{development?.versionPolicy === 'warn' ? ' · version mismatches allowed' : ''}.
+    </div>}
+    {(shown as any).versionMismatchWarning && <div role="status" className="rounded border border-amber-500/60 bg-amber-950/40 p-3 text-xs text-amber-100">
+      Connected despite an Accelerator version mismatch. Compatibility is not guaranteed; Direct remains the fallback if the protocol fails.
+    </div>}
     <div className="grid grid-cols-2 gap-2 text-xs">
       <div className="rounded border border-border bg-surface p-2"><span className="text-gray-500">Status</span><div className="mt-1 text-white">{acceleratorStateLabel(shown.state)}</div></div>
     </div>

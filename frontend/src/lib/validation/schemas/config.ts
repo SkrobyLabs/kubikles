@@ -92,6 +92,11 @@ const acceleratorOverrideSchema = z.object({
 const acceleratorConfigSchema = z.object({
   enabledByDefault: z.boolean().optional(),
   defaultNamespace: z.string().regex(/^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/).or(z.literal('')).optional(),
+  development: z.object({
+    releaseVersion: z.string().max(128).optional(),
+    descriptorURL: z.string().url().refine(value => value.startsWith('https://'), 'must use HTTPS').or(z.literal('')).optional(),
+    versionPolicy: z.enum(['exact', 'warn']).optional(),
+  }).optional(),
   connectionOverrides: z.array(acceleratorOverrideSchema).optional(),
 }).superRefine((value, ctx) => {
   const names = new Set<string>();

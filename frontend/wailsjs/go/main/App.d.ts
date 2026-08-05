@@ -147,7 +147,7 @@ export function DownloadPodFiles(arg1:string,arg2:string,arg3:string,arg4:string
 
 export function DownloadPodFolder(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
-export function EnableAccelerator(arg1:string,arg2:string):Promise<void>;
+export function EnableAccelerator(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function EvictPod(arg1:string,arg2:string):Promise<void>;
 

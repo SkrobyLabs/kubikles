@@ -37,15 +37,14 @@ func pairForVersion(t *testing.T, version string) ([]byte, []byte) {
 	if err := json.Unmarshal(descriptorBytes, &wire); err != nil {
 		t.Fatal(err)
 	}
-	match := stableVersion.FindStringSubmatch(version)
-	if match == nil {
+	if !releaseVersion.MatchString(version) {
 		t.Fatalf("invalid test version %q", version)
 	}
 	wire.BuildVersion = version
 	wire.Source.GitTag = version
 	wire.Compatibility.DesktopBuildVersion = version
 	wire.Compatibility.AcceleratorBuildVersion = version
-	wire.Chart.Version = strings.Join(match[1:4], ".")
+	wire.Chart.Version = strings.TrimPrefix(version, "v")
 	wire.Chart.AppVersion = version
 	return encodeTestPair(t, version, wire)
 }

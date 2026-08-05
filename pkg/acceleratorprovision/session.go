@@ -28,30 +28,31 @@ type sessionSocket interface {
 }
 
 type ConnectedSession struct {
-	self           *ConnectedSession
-	identity       SessionIdentity
-	capabilities   []agent.Capability
-	receipt        *workloadReceipt
-	clock          resumeClock
-	socket         sessionSocket
-	tunnel         tunnel
-	done           chan struct{}
-	terminalStart  chan struct{}
-	readerDone     chan struct{}
-	writerDone     chan struct{}
-	terminalOnce   sync.Once
-	mu             sync.RWMutex
-	reason         SessionEndReason
-	disconnect     *disconnectRecord
-	resumeClaimed  bool
-	closeRequested bool
-	resumeStop     chan struct{}
-	arbiter        *sessionFrameArbiter
-	outbound       chan []byte
-	candidateNonce string
-	candidatePong  <-chan struct{}
-	ownerState     *workloadConnectorState
-	idleToken      *coordinatorIdleToken
+	self            *ConnectedSession
+	identity        SessionIdentity
+	capabilities    []agent.Capability
+	versionMismatch bool
+	receipt         *workloadReceipt
+	clock           resumeClock
+	socket          sessionSocket
+	tunnel          tunnel
+	done            chan struct{}
+	terminalStart   chan struct{}
+	readerDone      chan struct{}
+	writerDone      chan struct{}
+	terminalOnce    sync.Once
+	mu              sync.RWMutex
+	reason          SessionEndReason
+	disconnect      *disconnectRecord
+	resumeClaimed   bool
+	closeRequested  bool
+	resumeStop      chan struct{}
+	arbiter         *sessionFrameArbiter
+	outbound        chan []byte
+	candidateNonce  string
+	candidatePong   <-chan struct{}
+	ownerState      *workloadConnectorState
+	idleToken       *coordinatorIdleToken
 }
 
 type disconnectRecord struct {
@@ -91,10 +92,11 @@ func newConnectedSessionWithCandidateFence(receipt *workloadReceipt, info server
 			BuildVersion: receipt.buildVersion, ImageDigest: receipt.imageDigest, ChartDigest: receipt.chartDigest,
 			InstanceID: connected.instanceID, SessionID: connected.sessionID, Generation: connected.generation,
 		},
-		capabilities: append([]agent.Capability(nil), info.Capabilities...),
-		receipt:      receipt,
-		clock:        clock,
-		socket:       socket, tunnel: activeTunnel, done: make(chan struct{}), terminalStart: make(chan struct{}), readerDone: make(chan struct{}), writerDone: make(chan struct{}), outbound: make(chan []byte, acceleratorsecret.OutboundSocketSlots),
+		capabilities:    append([]agent.Capability(nil), info.Capabilities...),
+		versionMismatch: info.Build.BuildVersion != receipt.buildVersion,
+		receipt:         receipt,
+		clock:           clock,
+		socket:          socket, tunnel: activeTunnel, done: make(chan struct{}), terminalStart: make(chan struct{}), readerDone: make(chan struct{}), writerDone: make(chan struct{}), outbound: make(chan []byte, acceleratorsecret.OutboundSocketSlots),
 		candidateNonce: candidateNonce, candidatePong: candidatePong,
 	}
 	session.self = session

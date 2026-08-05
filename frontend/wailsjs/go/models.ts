@@ -1,11 +1,11 @@
 export namespace acceleratorprovision {
-
+	
 	export class CoordinatorDiagnostic {
 	    timestamp: string;
 	    phase: string;
 	    reason: string;
 	    attempt?: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new CoordinatorDiagnostic(source);
 	    }
@@ -85,6 +85,7 @@ export namespace acceleratorprovision {
 	    demandCount: number;
 	    sessionLeases: number;
 	    available: boolean;
+	    versionMismatchWarning?: boolean;
 	    diagnostics?: CoordinatorDiagnostic[];
 	    workload?: ProvisionedWorkload;
 	
@@ -100,6 +101,7 @@ export namespace acceleratorprovision {
 	        this.demandCount = source["demandCount"];
 	        this.sessionLeases = source["sessionLeases"];
 	        this.available = source["available"];
+	        this.versionMismatchWarning = source["versionMismatchWarning"];
 	        this.diagnostics = this.convertValues(source["diagnostics"], CoordinatorDiagnostic);
 	        this.workload = this.convertValues(source["workload"], ProvisionedWorkload);
 	    }
@@ -14949,3 +14951,4 @@ export namespace v2 {
 	
 
 }
+

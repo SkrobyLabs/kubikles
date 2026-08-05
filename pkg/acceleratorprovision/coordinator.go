@@ -150,7 +150,7 @@ func (c *Coordinator) Snapshot(contextName string) CoordinatorSnapshot {
 	}
 	slot.mu.Lock()
 	defer slot.mu.Unlock()
-	return CoordinatorSnapshot{State: slot.state, Enabled: slot.enabled, Namespace: slot.namespace, DemandCount: slot.demandCount, SessionLeases: slot.sessionLeaseCount, Available: slot.state == CoordinatorActive && slot.session != nil, Diagnostics: append([]CoordinatorDiagnostic(nil), slot.diagnostics...), Workload: safeWorkloadProjection(slot.workload)}
+	return CoordinatorSnapshot{State: slot.state, Enabled: slot.enabled, Namespace: slot.namespace, DemandCount: slot.demandCount, SessionLeases: slot.sessionLeaseCount, Available: slot.state == CoordinatorActive && slot.session != nil, VersionMismatchWarning: slot.versionMismatchWarning, Diagnostics: append([]CoordinatorDiagnostic(nil), slot.diagnostics...), Workload: safeWorkloadProjection(slot.workload)}
 }
 
 func safeWorkloadProjection(workload *ProvisionedWorkload) *ProvisionedWorkload {
@@ -168,7 +168,11 @@ func safeWorkloadProjection(workload *ProvisionedWorkload) *ProvisionedWorkload 
 // Enable is the sole lifecycle authority. Secret demand only leases an already
 // active source, so merely opening Secrets cannot provision a workload.
 func (c *Coordinator) Enable(contextName, namespace string) {
-	if c == nil || contextName == "" {
+	c.EnableWithOptions(contextName, namespace, DeploymentOptions{})
+}
+
+func (c *Coordinator) EnableWithOptions(contextName, namespace string, options DeploymentOptions) {
+	if c == nil || contextName == "" || ValidateDeploymentOptions(options) != nil {
 		return
 	}
 	c.mu.Lock()
@@ -183,7 +187,8 @@ func (c *Coordinator) Enable(contextName, namespace string) {
 	}
 	c.mu.Unlock()
 	s.mu.Lock()
-	if s.state == CoordinatorClosed || (s.enabled && s.namespace == namespace) {
+	optionsChanged := s.deploymentOptions != options
+	if s.state == CoordinatorClosed || (s.enabled && s.namespace == namespace && !optionsChanged) {
 		s.mu.Unlock()
 		return
 	}
@@ -197,6 +202,7 @@ func (c *Coordinator) Enable(contextName, namespace string) {
 		s.advanceSessionLeaseEpochLocked(false)
 		workload := s.workload
 		s.enabled, s.namespace, s.state = true, namespace, CoordinatorDisposing
+		s.deploymentOptions = options
 		s.diagnostics = nil
 		s.mu.Unlock()
 		go func() {
@@ -211,9 +217,10 @@ func (c *Coordinator) Enable(contextName, namespace string) {
 		return
 	}
 	s.enabled, s.namespace, s.mismatchLatched = true, namespace, false
+	s.deploymentOptions = options
 	s.diagnostics = nil
 	s.unavailableUntil = time.Time{}
-	if s.state == CoordinatorDirectOnly || s.state == CoordinatorUnavailable {
+	if optionsChanged || s.state == CoordinatorDirectOnly || s.state == CoordinatorUnavailable {
 		c.startActivationLocked(s, 0)
 	}
 	s.mu.Unlock()
@@ -445,7 +452,7 @@ func (c *Coordinator) runActivation(ctx context.Context, s *contextSlot, fence o
 				return
 			}
 			attemptCtx, cancel := context.WithTimeout(ctx, ActivationAttemptTimeout)
-			resolution := c.resolve(attemptCtx)
+			resolution := c.resolve(attemptCtx, s)
 			if resolution.Availability != acceleratorrelease.Available {
 				cancel()
 				c.recordDiagnostic(s, fence, "release resolution", string(resolution.Reason), attempt+1)
@@ -586,8 +593,22 @@ func (c *Coordinator) claimSweep(snapshot ContextSnapshot) bool {
 	return true
 }
 
-func (c *Coordinator) resolve(ctx context.Context) acceleratorrelease.Resolution {
+func (c *Coordinator) resolve(ctx context.Context, s *contextSlot) acceleratorrelease.Resolution {
 	if c.resolver == nil {
+		return acceleratorrelease.Resolution{Availability: acceleratorrelease.Unavailable, Reason: acceleratorrelease.InvalidLocalBuild}
+	}
+	options := DeploymentOptions{}
+	if s != nil {
+		s.mu.Lock()
+		options = s.deploymentOptions
+		s.mu.Unlock()
+	}
+	if options.ReleaseVersion != "" || options.DescriptorURL != "" {
+		if resolver, ok := c.resolver.(interface {
+			ResolveOverride(context.Context, string, string) acceleratorrelease.Resolution
+		}); ok {
+			return resolver.ResolveOverride(ctx, options.ReleaseVersion, options.DescriptorURL)
+		}
 		return acceleratorrelease.Resolution{Availability: acceleratorrelease.Unavailable, Reason: acceleratorrelease.InvalidLocalBuild}
 	}
 	return c.resolver.Resolve(ctx)
@@ -613,7 +634,33 @@ func (c *Coordinator) connect(ctx context.Context, workload *ProvisionedWorkload
 	if c.connector == nil {
 		return unavailableConnect(InvalidWorkload)
 	}
+	options := c.optionsForWorkload(workload)
+	if options.ReleaseVersion != "" || options.AllowVersionMismatch {
+		if connector, ok := c.connector.(interface {
+			ConnectWithVersionPolicy(context.Context, *ProvisionedWorkload, string, bool) ConnectResult
+		}); ok {
+			return connector.ConnectWithVersionPolicy(ctx, workload, workload.BuildVersion, options.AllowVersionMismatch)
+		}
+	}
 	return c.connector.Connect(ctx, workload)
+}
+
+func (c *Coordinator) optionsForWorkload(workload *ProvisionedWorkload) DeploymentOptions {
+	if c == nil || workload == nil {
+		return DeploymentOptions{}
+	}
+	c.mu.Lock()
+	s := c.slots[c.currentEpoch]
+	c.mu.Unlock()
+	if s == nil {
+		return DeploymentOptions{}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.workload != nil && s.workload != workload {
+		return DeploymentOptions{}
+	}
+	return s.deploymentOptions
 }
 
 func (c *Coordinator) transition(s *contextSlot, fence operationFence, state CoordinatorState) bool {
@@ -644,6 +691,7 @@ func (c *Coordinator) publishSession(s *contextSlot, fence operationFence, workl
 		return false
 	}
 	s.session = session
+	s.versionMismatchWarning = session.versionMismatch
 	s.idle = nil
 	s.normalEnded = false
 	s.drainDeadline = time.Time{}
@@ -811,6 +859,7 @@ func (s *contextSlot) clearWorkloadAuthorityLocked() {
 	wasAvailable := s.state == CoordinatorActive && s.session != nil
 	s.workload = nil
 	s.session = nil
+	s.versionMismatchWarning = false
 	s.idle = nil
 	s.normalEnded = false
 	s.drainDeadline = time.Time{}

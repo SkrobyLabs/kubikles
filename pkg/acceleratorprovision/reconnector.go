@@ -81,11 +81,39 @@ func (r *Reconnector) Resume(ctx context.Context, request ResumeRequest) (result
 	return r.resume(ctx, request, nil)
 }
 
+func (r *Reconnector) ResumeWithVersionPolicy(ctx context.Context, request ResumeRequest, expectedVersion string, allowMismatch bool) ResumeResult {
+	configured := r.withVersionPolicy(expectedVersion, allowMismatch)
+	if configured == nil {
+		return unavailableResume(ResumeInvalid)
+	}
+	return configured.resume(ctx, request, nil)
+}
+
 func (r *Reconnector) resumeIdle(ctx context.Context, request ResumeRequest, idle *coordinatorIdleToken) ResumeResult {
 	if idle == nil {
 		return unavailableResume(ResumeSessionIneligible)
 	}
 	return r.resume(ctx, request, idle)
+}
+
+func (r *Reconnector) resumeIdleWithVersionPolicy(ctx context.Context, request ResumeRequest, idle *coordinatorIdleToken, expectedVersion string, allowMismatch bool) ResumeResult {
+	configured := r.withVersionPolicy(expectedVersion, allowMismatch)
+	if configured == nil {
+		return unavailableResume(ResumeInvalid)
+	}
+	return configured.resumeIdle(ctx, request, idle)
+}
+
+func (r *Reconnector) withVersionPolicy(expectedVersion string, allowMismatch bool) *Reconnector {
+	if r == nil || r.connector == nil || expectedVersion == "" {
+		return nil
+	}
+	configured := *r
+	connector := *r.connector
+	connector.buildVersion = expectedVersion
+	connector.allowVersionMismatch = allowMismatch
+	configured.connector = &connector
+	return &configured
 }
 
 func (r *Reconnector) resume(ctx context.Context, request ResumeRequest, idle *coordinatorIdleToken) (result ResumeResult) {

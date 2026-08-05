@@ -280,8 +280,7 @@ func proveClosedAcceleratorRelease(stored *release.Release, namespace, name stri
 	if sessionMatch[1] != request.WorkloadSession {
 		return zero, "session"
 	}
-	versionMatch := acceleratorVersion.FindStringSubmatch(request.BuildVersion)
-	if len(versionMatch) != 4 || stored.Chart.Metadata.Version != versionMatch[1]+"."+versionMatch[2]+"."+versionMatch[3] || stored.Chart.Metadata.AppVersion != request.BuildVersion {
+	if !acceleratorVersion.MatchString(request.BuildVersion) || stored.Chart.Metadata.Version != strings.TrimPrefix(request.BuildVersion, "v") || stored.Chart.Metadata.AppVersion != request.BuildVersion {
 		return zero, "version"
 	}
 	if len(stored.Hooks) != 0 {

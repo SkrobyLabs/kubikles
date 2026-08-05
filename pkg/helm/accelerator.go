@@ -59,7 +59,7 @@ var errAcceleratorCreatePermission = errors.New("accelerator resource create per
 var errAcceleratorRenderMismatch = errors.New("accelerator live render did not match prepared release")
 
 var acceleratorDigest = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
-var acceleratorVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
+var acceleratorVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
 var acceleratorSession = regexp.MustCompile(`^[0-9a-f]{32}$`)
 var acceleratorVerifier = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
 
@@ -169,8 +169,7 @@ func loadAcceleratorArchive(data []byte, request AcceleratorChartRequest) (*char
 }
 
 func validateAcceleratorChart(loaded *chart.Chart, request AcceleratorChartRequest) (*chart.Chart, error) {
-	match := acceleratorVersion.FindStringSubmatch(request.BuildVersion)
-	if len(match) != 4 || loaded == nil || loaded.Metadata == nil || loaded.Metadata.Name != "kubikles-accelerator" || loaded.Metadata.Type != "application" || loaded.Metadata.Version != match[1]+"."+match[2]+"."+match[3] || loaded.Metadata.AppVersion != request.BuildVersion || !exactAcceleratorSchema(loaded.Schema) {
+	if !acceleratorVersion.MatchString(request.BuildVersion) || loaded == nil || loaded.Metadata == nil || loaded.Metadata.Name != "kubikles-accelerator" || loaded.Metadata.Type != "application" || loaded.Metadata.Version != strings.TrimPrefix(request.BuildVersion, "v") || loaded.Metadata.AppVersion != request.BuildVersion || !exactAcceleratorSchema(loaded.Schema) {
 		return nil, ErrAcceleratorIntegrity
 	}
 	return loaded, nil

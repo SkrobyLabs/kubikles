@@ -87,13 +87,14 @@ type coordinatorTestServices struct {
 	snapshot ContextSnapshot
 	clock    coordinatorClock
 
-	resolveHook   func(context.Context, int) acceleratorrelease.Resolution
-	provisionHook func(context.Context, int, Request) Result
-	connectHook   func(context.Context, int, *ProvisionedWorkload) ConnectResult
-	resumeHook    func(context.Context, int, ResumeRequest, *coordinatorIdleToken) ResumeResult
-	disposeHook   func(bool, *ProvisionedWorkload)
-	disposeResult func(bool, *ProvisionedWorkload) DisposalResult
-	sweepHook     func(context.Context, ContextSnapshot)
+	resolveHook         func(context.Context, int) acceleratorrelease.Resolution
+	resolveOverrideHook func(context.Context, int, string, string) acceleratorrelease.Resolution
+	provisionHook       func(context.Context, int, Request) Result
+	connectHook         func(context.Context, int, *ProvisionedWorkload) ConnectResult
+	resumeHook          func(context.Context, int, ResumeRequest, *coordinatorIdleToken) ResumeResult
+	disposeHook         func(bool, *ProvisionedWorkload)
+	disposeResult       func(bool, *ProvisionedWorkload) DisposalResult
+	sweepHook           func(context.Context, ContextSnapshot)
 
 	resolveCalls, provisionCalls, connectCalls, resumeCalls atomic.Int32
 	disposeCalls, drainCalls, sweepCalls                    atomic.Int32
@@ -128,6 +129,14 @@ func (s *coordinatorTestServices) Resolve(ctx context.Context) acceleratorreleas
 		return s.resolveHook(ctx, call)
 	}
 	return coordinatorResolution()
+}
+func (s *coordinatorTestServices) ResolveOverride(ctx context.Context, version, descriptorURL string) acceleratorrelease.Resolution {
+	call := int(s.resolveCalls.Add(1))
+	s.record("resolve-override")
+	if s.resolveOverrideHook != nil {
+		return s.resolveOverrideHook(ctx, call, version, descriptorURL)
+	}
+	return acceleratorrelease.Resolution{Availability: acceleratorrelease.Unavailable, Reason: acceleratorrelease.InvalidLocalBuild}
 }
 func (s *coordinatorTestServices) Provision(ctx context.Context, request Request) Result {
 	call := int(s.provisionCalls.Add(1))
@@ -489,6 +498,33 @@ func TestCoordinatorRetryRedeploysActiveWorkload(t *testing.T) {
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
 	if services.provisionCalls.Load() != 2 || services.connectCalls.Load() != 2 || services.disposeCalls.Load() != 1 {
 		t.Fatalf("provision=%d connect=%d dispose=%d", services.provisionCalls.Load(), services.connectCalls.Load(), services.disposeCalls.Load())
+	}
+	stopCoordinator(t, coordinator)
+}
+
+func TestCoordinatorDevelopmentOptionsResolveTargetAndTriggerRedeploy(t *testing.T) {
+	coordinator, services, _ := newCoordinatorHarness(t)
+	options := DeploymentOptions{ReleaseVersion: "v1.4.0-alpha.1", DescriptorURL: "https://artifacts.example.test/release.json", AllowVersionMismatch: true}
+	seen := make(chan DeploymentOptions, 2)
+	services.resolveOverrideHook = func(_ context.Context, _ int, version, descriptorURL string) acceleratorrelease.Resolution {
+		seen <- DeploymentOptions{ReleaseVersion: version, DescriptorURL: descriptorURL, AllowVersionMismatch: true}
+		return acceleratorrelease.Resolution{Availability: acceleratorrelease.Unavailable, Reason: acceleratorrelease.DescriptorMissing}
+	}
+
+	coordinator.EnableWithOptions("ctx", "default", options)
+	waitCoordinatorState(t, coordinator, CoordinatorUnavailable)
+	if got := <-seen; got != options {
+		t.Fatalf("first options=%#v", got)
+	}
+	updated := options
+	updated.ReleaseVersion = "v1.4.0-alpha.2"
+	coordinator.EnableWithOptions("ctx", "default", updated)
+	waitCoordinatorState(t, coordinator, CoordinatorUnavailable)
+	if got := <-seen; got.ReleaseVersion != updated.ReleaseVersion || got.DescriptorURL != updated.DescriptorURL {
+		t.Fatalf("updated options=%#v", got)
+	}
+	if services.resolveCalls.Load() != 2 {
+		t.Fatalf("resolve calls=%d", services.resolveCalls.Load())
 	}
 	stopCoordinator(t, coordinator)
 }
