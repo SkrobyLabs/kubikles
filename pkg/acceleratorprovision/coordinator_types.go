@@ -64,15 +64,26 @@ func (r DemandResult) MarshalJSON() ([]byte, error) {
 }
 
 type CoordinatorSnapshot struct {
-	State         CoordinatorState `json:"state"`
-	Enabled       bool             `json:"enabled"`
-	Namespace     string           `json:"namespace"`
-	DemandCount   int              `json:"demandCount"`
-	SessionLeases int              `json:"sessionLeases"`
-	Available     bool             `json:"available"`
+	State         CoordinatorState        `json:"state"`
+	Enabled       bool                    `json:"enabled"`
+	Namespace     string                  `json:"namespace"`
+	DemandCount   int                     `json:"demandCount"`
+	SessionLeases int                     `json:"sessionLeases"`
+	Available     bool                    `json:"available"`
+	Diagnostics   []CoordinatorDiagnostic `json:"diagnostics,omitempty"`
 	// Workload is a defensive display-only projection.  Its private receipt
 	// remains the sole authority for connect and disposal operations.
 	Workload *ProvisionedWorkload `json:"workload,omitempty"`
+}
+
+// CoordinatorDiagnostic is a bounded, display-safe record of a lifecycle
+// failure. It deliberately contains only closed reason codes, never raw child
+// errors, credentials, Kubernetes objects, or release descriptors.
+type CoordinatorDiagnostic struct {
+	Timestamp string `json:"timestamp"`
+	Phase     string `json:"phase"`
+	Reason    string `json:"reason"`
+	Attempt   int    `json:"attempt,omitempty"`
 }
 
 func (CoordinatorSnapshot) String() string { return "<accelerator coordinator snapshot>" }
@@ -155,6 +166,7 @@ type contextSlot struct {
 	normalEnded            bool
 	drainDeadline          time.Time
 	terminalCleanupPending bool
+	diagnostics            []CoordinatorDiagnostic
 }
 
 func newContextSlot(name string, epoch uint64) *contextSlot {

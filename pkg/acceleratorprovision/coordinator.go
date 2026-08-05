@@ -150,7 +150,7 @@ func (c *Coordinator) Snapshot(contextName string) CoordinatorSnapshot {
 	}
 	slot.mu.Lock()
 	defer slot.mu.Unlock()
-	return CoordinatorSnapshot{State: slot.state, Enabled: slot.enabled, Namespace: slot.namespace, DemandCount: slot.demandCount, SessionLeases: slot.sessionLeaseCount, Available: slot.state == CoordinatorActive && slot.session != nil, Workload: safeWorkloadProjection(slot.workload)}
+	return CoordinatorSnapshot{State: slot.state, Enabled: slot.enabled, Namespace: slot.namespace, DemandCount: slot.demandCount, SessionLeases: slot.sessionLeaseCount, Available: slot.state == CoordinatorActive && slot.session != nil, Diagnostics: append([]CoordinatorDiagnostic(nil), slot.diagnostics...), Workload: safeWorkloadProjection(slot.workload)}
 }
 
 func safeWorkloadProjection(workload *ProvisionedWorkload) *ProvisionedWorkload {
@@ -197,6 +197,7 @@ func (c *Coordinator) Enable(contextName, namespace string) {
 		s.advanceSessionLeaseEpochLocked(false)
 		workload := s.workload
 		s.enabled, s.namespace, s.state = true, namespace, CoordinatorDisposing
+		s.diagnostics = nil
 		s.mu.Unlock()
 		go func() {
 			c.disposeNowOwned(s, workload)
@@ -210,6 +211,7 @@ func (c *Coordinator) Enable(contextName, namespace string) {
 		return
 	}
 	s.enabled, s.namespace, s.mismatchLatched = true, namespace, false
+	s.diagnostics = nil
 	s.unavailableUntil = time.Time{}
 	if s.state == CoordinatorDirectOnly || s.state == CoordinatorUnavailable {
 		c.startActivationLocked(s, 0)
@@ -228,14 +230,34 @@ func (c *Coordinator) Retry(contextName string) {
 		return
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if !s.enabled || s.state == CoordinatorClosed {
+		s.mu.Unlock()
 		return
 	}
 	s.mismatchLatched, s.unavailableUntil = false, time.Time{}
-	if s.state == CoordinatorUnavailable || s.state == CoordinatorDirectOnly {
-		c.startActivationLocked(s, 0)
+	s.diagnostics = nil
+	if s.workload != nil {
+		if s.workerCancel != nil {
+			s.workerCancel()
+		}
+		s.operationEpoch++
+		s.advanceSessionLeaseEpochLocked(false)
+		workload := s.workload
+		s.state = CoordinatorDisposing
+		s.mu.Unlock()
+		go func() {
+			c.disposeNowOwned(s, workload)
+			s.mu.Lock()
+			if s.enabled && s.state != CoordinatorClosed && s.workload == nil {
+				s.state = CoordinatorDirectOnly
+				c.startActivationLocked(s, 0)
+			}
+			s.mu.Unlock()
+		}()
+		return
 	}
+	c.startActivationLocked(s, 0)
+	s.mu.Unlock()
 }
 
 // Disable synchronously revokes Integrated leases before asynchronous exact
@@ -426,6 +448,7 @@ func (c *Coordinator) runActivation(ctx context.Context, s *contextSlot, fence o
 			resolution := c.resolve(attemptCtx)
 			if resolution.Availability != acceleratorrelease.Available {
 				cancel()
+				c.recordDiagnostic(s, fence, "release resolution", string(resolution.Reason), attempt+1)
 				class := classifyReleaseFailure(resolution.Reason)
 				if c.latchReplacementFailure(s, fence) {
 					return
@@ -445,6 +468,7 @@ func (c *Coordinator) runActivation(ctx context.Context, s *contextSlot, fence o
 			provisioned := c.provision(attemptCtx, s.contextName, resolution)
 			if provisioned.Availability != Available || provisioned.Workload == nil {
 				cancel()
+				c.recordDiagnostic(s, fence, "provisioning", string(provisioned.Reason), attempt+1)
 				class := classifyProvisionFailure(provisioned.Reason)
 				if c.latchReplacementFailure(s, fence) {
 					return
@@ -477,6 +501,7 @@ func (c *Coordinator) runActivation(ctx context.Context, s *contextSlot, fence o
 				_ = connected.Session.Close(context.Background())
 			}
 			class := classifyConnectFailure(connected.Reason)
+			c.recordDiagnostic(s, fence, "connection", string(connected.Reason), attempt+1)
 			if !c.disposeRetained(ctx, s, fence, workload) {
 				return
 			}
@@ -506,6 +531,24 @@ func (c *Coordinator) runActivation(ctx context.Context, s *contextSlot, fence o
 		}
 		s.mu.Unlock()
 		return
+	}
+}
+
+const coordinatorDiagnosticLimit = 12
+
+func (c *Coordinator) recordDiagnostic(s *contextSlot, fence operationFence, phase, reason string, attempt int) {
+	if s == nil || reason == "" || reason == string(Cancelled) || reason == string(ConnectCancelled) {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.matchesLocked(fence) {
+		return
+	}
+	entry := CoordinatorDiagnostic{Timestamp: c.clock.Now().UTC().Format(time.RFC3339), Phase: phase, Reason: reason, Attempt: attempt}
+	s.diagnostics = append(s.diagnostics, entry)
+	if len(s.diagnostics) > coordinatorDiagnosticLimit {
+		s.diagnostics = append([]CoordinatorDiagnostic(nil), s.diagnostics[len(s.diagnostics)-coordinatorDiagnosticLimit:]...)
 	}
 }
 

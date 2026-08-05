@@ -45,6 +45,7 @@ func (c *Coordinator) runResume(ctx context.Context, s *contextSlot, fence opera
 		_ = result.Session.Close(context.Background())
 	}
 	class := classifyResumeFailure(result.Reason)
+	c.recordDiagnostic(s, fence, "reconnection", string(result.Reason), 1)
 	if !c.disposeRetained(ctx, s, fence, workload) {
 		return
 	}

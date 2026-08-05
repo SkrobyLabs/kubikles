@@ -1,5 +1,23 @@
 export namespace acceleratorprovision {
+
+	export class CoordinatorDiagnostic {
+	    timestamp: string;
+	    phase: string;
+	    reason: string;
+	    attempt?: number;
+
+	    static createFrom(source: any = {}) {
+	        return new CoordinatorDiagnostic(source);
+	    }
 	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.timestamp = source["timestamp"];
+	        this.phase = source["phase"];
+	        this.reason = source["reason"];
+	        this.attempt = source["attempt"];
+	    }
+	}
 	export class ObjectIdentity {
 	    name: string;
 	    uid: string;
@@ -67,6 +85,7 @@ export namespace acceleratorprovision {
 	    demandCount: number;
 	    sessionLeases: number;
 	    available: boolean;
+	    diagnostics?: CoordinatorDiagnostic[];
 	    workload?: ProvisionedWorkload;
 	
 	    static createFrom(source: any = {}) {
@@ -81,6 +100,7 @@ export namespace acceleratorprovision {
 	        this.demandCount = source["demandCount"];
 	        this.sessionLeases = source["sessionLeases"];
 	        this.available = source["available"];
+	        this.diagnostics = this.convertValues(source["diagnostics"], CoordinatorDiagnostic);
 	        this.workload = this.convertValues(source["workload"], ProvisionedWorkload);
 	    }
 	
@@ -14929,4 +14949,3 @@ export namespace v2 {
 	
 
 }
-

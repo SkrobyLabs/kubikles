@@ -456,6 +456,43 @@ func TestCoordinatorFailureClassificationClosedTable(t *testing.T) {
 	}
 }
 
+func TestCoordinatorSnapshotReportsDeploymentFailure(t *testing.T) {
+	coordinator, services, _ := newCoordinatorHarness(t)
+	services.resolveHook = func(context.Context, int) acceleratorrelease.Resolution {
+		return acceleratorrelease.Resolution{Availability: acceleratorrelease.Unavailable, Reason: acceleratorrelease.InvalidLocalBuild}
+	}
+
+	coordinator.Enable("ctx", "default")
+	snapshot := waitCoordinatorState(t, coordinator, CoordinatorUnavailable)
+	if len(snapshot.Diagnostics) != 1 {
+		t.Fatalf("diagnostics=%#v", snapshot.Diagnostics)
+	}
+	got := snapshot.Diagnostics[0]
+	if got.Phase != "release resolution" || got.Reason != string(acceleratorrelease.InvalidLocalBuild) || got.Attempt != 1 || got.Timestamp == "" {
+		t.Fatalf("diagnostic=%#v", got)
+	}
+	stopCoordinator(t, coordinator)
+}
+
+func TestCoordinatorRetryRedeploysActiveWorkload(t *testing.T) {
+	coordinator, services, clock := newCoordinatorHarness(t)
+	workloads := []*ProvisionedWorkload{coordinatorWorkload(t), coordinatorWorkload(t)}
+	services.provisionHook = func(_ context.Context, call int, _ Request) Result { return available(workloads[call-1]) }
+	services.connectHook = func(_ context.Context, call int, workload *ProvisionedWorkload) ConnectResult {
+		session, _ := coordinatorSession(workload, clock, call)
+		return ConnectResult{Availability: Available, Session: session}
+	}
+
+	coordinator.Enable("ctx", "default")
+	waitCoordinatorState(t, coordinator, CoordinatorActive)
+	coordinator.Retry("ctx")
+	waitCoordinatorState(t, coordinator, CoordinatorActive)
+	if services.provisionCalls.Load() != 2 || services.connectCalls.Load() != 2 || services.disposeCalls.Load() != 1 {
+		t.Fatalf("provision=%d connect=%d dispose=%d", services.provisionCalls.Load(), services.connectCalls.Load(), services.disposeCalls.Load())
+	}
+	stopCoordinator(t, coordinator)
+}
+
 func TestFailedWorkloadDisposedBeforeRetry(t *testing.T) {
 	coordinator, services, clock := newCoordinatorHarness(t)
 	workloads := []*ProvisionedWorkload{coordinatorWorkload(t), coordinatorWorkload(t)}
