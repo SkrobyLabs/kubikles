@@ -268,7 +268,7 @@ func stopCoordinator(t *testing.T, coordinator *Coordinator) {
 	coordinator.Close(context.Background())
 }
 
-func TestFirstDemandActivationOrderAndDirectAvailability(t *testing.T) {
+func TestExplicitEnableActivationOrderAndDirectAvailability(t *testing.T) {
 	coordinator, services, clock := newCoordinatorHarness(t)
 	sweepEntered, releaseSweep := make(chan struct{}), make(chan struct{})
 	services.sweepHook = func(context.Context, ContextSnapshot) { close(sweepEntered); <-releaseSweep }
@@ -279,6 +279,7 @@ func TestFirstDemandActivationOrderAndDirectAvailability(t *testing.T) {
 		return ConnectResult{Availability: Available, Session: session}
 	}
 
+	coordinator.Enable("ctx", "kubikles-system")
 	result := coordinator.AcquireSecretDemand(context.Background(), "ctx")
 	if !result.Accepted || result.Lease == nil {
 		t.Fatalf("demand=%#v", result)
@@ -324,33 +325,45 @@ func TestFirstDemandActivationOrderAndDirectAvailability(t *testing.T) {
 	stopCoordinator(t, coordinator)
 }
 
-func TestActivationCompletionFencesAndDisposesStaleOwnedResult(t *testing.T) {
+func TestDisableFencesActivationCompletionAndDisposesOwnedResult(t *testing.T) {
 	coordinator, services, clock := newCoordinatorHarness(t)
 	workload := coordinatorWorkload(t)
 	session, _ := coordinatorSession(workload, clock, 1)
 	entered, release := make(chan struct{}), make(chan struct{})
+	drainEntered, releaseDrain := make(chan struct{}), make(chan struct{})
 	services.provisionHook = func(context.Context, int, Request) Result { return available(workload) }
 	services.connectHook = func(context.Context, int, *ProvisionedWorkload) ConnectResult {
 		close(entered)
 		<-release
 		return ConnectResult{Availability: Available, Session: session}
 	}
+	services.disposeHook = func(drain bool, _ *ProvisionedWorkload) {
+		if drain {
+			close(drainEntered)
+			<-releaseDrain
+		}
+	}
 	demand := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
+	coordinator.Enable("ctx", "kubikles-system")
 	<-entered
-	demand.Close()
+	coordinator.Disable("ctx")
+	<-drainEntered
 	close(release)
 	deadline := time.Now().Add(time.Second)
 	for services.disposeCalls.Load() != 1 && time.Now().Before(deadline) {
 		time.Sleep(time.Millisecond)
 	}
-	if services.disposeCalls.Load() != 1 || coordinator.Snapshot("ctx").Available {
-		t.Fatalf("dispose=%d snapshot=%#v", services.disposeCalls.Load(), coordinator.Snapshot("ctx"))
+	close(releaseDrain)
+	waitCoordinatorState(t, coordinator, CoordinatorDirectOnly)
+	if services.drainCalls.Load() != 1 || services.disposeCalls.Load() != 1 || coordinator.Snapshot("ctx").Available {
+		t.Fatalf("drain=%d dispose=%d snapshot=%#v", services.drainCalls.Load(), services.disposeCalls.Load(), coordinator.Snapshot("ctx"))
 	}
 	select {
 	case <-session.Done():
 	case <-time.After(time.Second):
 		t.Fatal("stale session not closed")
 	}
+	demand.Close()
 	stopCoordinator(t, coordinator)
 }
 
@@ -366,23 +379,22 @@ func TestVersionMismatchRecreatesExactlyOnce(t *testing.T) {
 		return ConnectResult{Availability: Available, Session: session}
 	}
 	demand := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
+	coordinator.Enable("ctx", "kubikles-system")
 	waitCoordinatorState(t, coordinator, CoordinatorUnavailable)
 	time.Sleep(10 * time.Millisecond)
 	if services.provisionCalls.Load() != 2 || services.connectCalls.Load() != 2 || services.disposeCalls.Load() != 2 {
 		t.Fatalf("provision=%d connect=%d dispose=%d", services.provisionCalls.Load(), services.connectCalls.Load(), services.disposeCalls.Load())
 	}
-	demand.Close()
-	newDemand := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
-	clock.advance(t, UnavailableCooldown)
+	coordinator.Retry("ctx")
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
 	if services.provisionCalls.Load() != 3 || services.connectCalls.Load() != 3 {
 		t.Fatalf("new epoch provision=%d connect=%d", services.provisionCalls.Load(), services.connectCalls.Load())
 	}
-	newDemand.Close()
+	demand.Close()
 	stopCoordinator(t, coordinator)
 }
 
-func TestCoordinatorRetryTimesAndClosedClassification(t *testing.T) {
+func TestCoordinatorTransientRetryAndExplicitRetryTimes(t *testing.T) {
 	coordinator, services, clock := newCoordinatorHarness(t)
 	var times []time.Time
 	services.resolveHook = func(context.Context, int) acceleratorrelease.Resolution {
@@ -399,12 +411,14 @@ func TestCoordinatorRetryTimesAndClosedClassification(t *testing.T) {
 		return ConnectResult{Availability: Available, Session: session}
 	}
 	demand := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
+	coordinator.Enable("ctx", "kubikles-system")
 	clock.advance(t, time.Second)
 	clock.advance(t, 2*time.Second)
-	clock.advance(t, UnavailableCooldown)
+	waitCoordinatorState(t, coordinator, CoordinatorUnavailable)
+	coordinator.Retry("ctx")
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
 	base := times[0]
-	want := []time.Duration{0, time.Second, 3 * time.Second, 33 * time.Second}
+	want := []time.Duration{0, time.Second, 3 * time.Second, 3 * time.Second}
 	for index := range want {
 		if got := times[index].Sub(base); got != want[index] {
 			t.Fatalf("attempt %d=%s want=%s", index, got, want[index])
@@ -541,8 +555,12 @@ func TestFailedWorkloadDisposedBeforeRetry(t *testing.T) {
 		session, _ := coordinatorSession(workload, clock, 1)
 		return ConnectResult{Availability: Available, Session: session}
 	}
-	services.disposeHook = func(bool, *ProvisionedWorkload) { close(disposeEntered); <-releaseDispose }
+	var blockFirstDisposal sync.Once
+	services.disposeHook = func(bool, *ProvisionedWorkload) {
+		blockFirstDisposal.Do(func() { close(disposeEntered); <-releaseDispose })
+	}
 	demand := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
+	coordinator.Enable("ctx", "kubikles-system")
 	<-disposeEntered
 	if services.provisionCalls.Load() != 1 {
 		t.Fatal("provision overlapped disposal")
@@ -554,7 +572,6 @@ func TestFailedWorkloadDisposedBeforeRetry(t *testing.T) {
 		t.Fatalf("provision calls=%d", services.provisionCalls.Load())
 	}
 	demand.Close()
-	services.disposeHook = nil
 	stopCoordinator(t, coordinator)
 }
 
@@ -574,6 +591,7 @@ func TestTransportLossRevokesBeforeResume(t *testing.T) {
 		return ResumeResult{Availability: Available, Session: second}
 	}
 	demand := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
+	coordinator.Enable("ctx", "kubikles-system")
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
 	change := demand.Changes()
 	_ = firstSocket.Close()
@@ -617,6 +635,7 @@ func TestStaleResumeSuccessCannotPublishOrDoubleDispose(t *testing.T) {
 		return ResumeResult{Availability: Available, Session: stale}
 	}
 	_ = coordinator.AcquireSecretDemand(context.Background(), "ctx")
+	coordinator.Enable("ctx", "kubikles-system")
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
 	_ = firstSocket.Close()
 	<-resumeEntered
@@ -637,52 +656,48 @@ func TestStaleResumeSuccessCannotPublishOrDoubleDispose(t *testing.T) {
 	}
 }
 
-func TestFinalDemandIdleReleaseAndGraceReturn(t *testing.T) {
+func TestEnabledDeploymentRetainsSessionAfterFinalDemand(t *testing.T) {
 	coordinator, services, clock := newCoordinatorHarness(t)
 	workload := coordinatorWorkload(t)
-	first, firstSocket := coordinatorSession(workload, clock, 1)
-	second, _ := coordinatorSession(workload, clock, 2)
+	first, _ := coordinatorSession(workload, clock, 1)
 	services.provisionHook = func(context.Context, int, Request) Result { return available(workload) }
 	services.connectHook = func(context.Context, int, *ProvisionedWorkload) ConnectResult {
 		return ConnectResult{Availability: Available, Session: first}
 	}
-	services.resumeHook = func(_ context.Context, _ int, request ResumeRequest, idle *coordinatorIdleToken) ResumeResult {
-		if idle == nil || request.Workload != workload || request.Prior != first {
-			t.Fatal("idle Resume lost exact ownership")
-		}
-		return ResumeResult{Availability: Available, Session: second}
-	}
 	demand := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
+	coordinator.Enable("ctx", "kubikles-system")
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
-	sessionLease, _ := demand.TrySession()
+	sessionLease, ok := demand.TrySession()
+	if !ok {
+		t.Fatal("active session not leased")
+	}
 	demand.Close()
 	if coordinator.Snapshot("ctx").State != CoordinatorActive {
 		t.Fatal("nested lease did not delay idle release")
 	}
 	sessionLease.Close()
-	waitCoordinatorState(t, coordinator, CoordinatorDraining)
-	var sleep coordinatorSleep
+	if coordinator.Snapshot("ctx").State != CoordinatorActive {
+		t.Fatal("enabled deployment did not retain its zero-demand session")
+	}
 	select {
-	case sleep = <-clock.sleeps:
-	case <-time.After(time.Second):
-		t.Fatal("idle deadline waiter missing")
+	case sleep := <-clock.sleeps:
+		t.Fatalf("enabled deployment scheduled idle sleep %s", sleep.duration)
+	default:
 	}
-	if sleep.duration != agent.AcceleratorIdleReconnectGrace || agent.AcceleratorIdleReconnectGrace != 2*time.Minute {
-		t.Fatalf("idle wait=%s", sleep.duration)
-	}
-	_ = firstSocket.Close() // Idle release already won the terminal arbiter.
 	returned := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
-	waitCoordinatorState(t, coordinator, CoordinatorActive)
-	close(sleep.release) // stale delivered timer must be fenced.
-	time.Sleep(time.Millisecond)
-	if services.drainCalls.Load() != 0 || services.provisionCalls.Load() != 1 {
+	reused, ok := returned.TrySession()
+	if !ok || reused.Session() != first {
+		t.Fatal("returning demand did not reuse the enabled session")
+	}
+	reused.Close()
+	if services.drainCalls.Load() != 0 || services.disposeCalls.Load() != 0 || services.provisionCalls.Load() != 1 {
 		t.Fatalf("drain=%d provision=%d", services.drainCalls.Load(), services.provisionCalls.Load())
 	}
 	returned.Close()
 	stopCoordinator(t, coordinator)
 }
 
-func TestGraceDeadlineWinsDemandRaceOnlyAfterDisposalFence(t *testing.T) {
+func TestReenableDuringDisposalStartsFreshActivationAfterFence(t *testing.T) {
 	coordinator, services, clock := newCoordinatorHarness(t)
 	first, second := coordinatorWorkload(t), coordinatorWorkload(t)
 	firstSession, _ := coordinatorSession(first, clock, 1)
@@ -708,21 +723,20 @@ func TestGraceDeadlineWinsDemandRaceOnlyAfterDisposalFence(t *testing.T) {
 	}
 
 	initial := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
+	coordinator.Enable("ctx", "kubikles-system")
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
-	initial.Close()
-	clock.advance(t, agent.AcceleratorIdleReconnectGrace)
+	coordinator.Disable("ctx")
 	<-disposeEntered
-	returned := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
+	coordinator.Enable("ctx", "kubikles-system")
 	if services.resumeCalls.Load() != 0 || services.provisionCalls.Load() != 1 {
-		t.Fatalf("post-fence demand resume=%d provision=%d", services.resumeCalls.Load(), services.provisionCalls.Load())
+		t.Fatalf("pre-fence re-enable resume=%d provision=%d", services.resumeCalls.Load(), services.provisionCalls.Load())
 	}
 	close(releaseDispose)
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
 	if services.drainCalls.Load() != 1 || services.disposeCalls.Load() != 0 || services.provisionCalls.Load() != 2 || services.resumeCalls.Load() != 0 {
 		t.Fatalf("drain=%d dispose=%d provision=%d resume=%d", services.drainCalls.Load(), services.disposeCalls.Load(), services.provisionCalls.Load(), services.resumeCalls.Load())
 	}
-	returned.Close()
-	services.disposeHook = nil
+	initial.Close()
 	stopCoordinator(t, coordinator)
 }
 
@@ -751,7 +765,7 @@ func TestOnlyCoordinatorIdleReleaseIsResumable(t *testing.T) {
 	}
 }
 
-func TestGraceExpiryInvokesDrainAndDisposeOnce(t *testing.T) {
+func TestDisableDrainsAndDisposesOnce(t *testing.T) {
 	coordinator, services, clock := newCoordinatorHarness(t)
 	workload := coordinatorWorkload(t)
 	session, _ := coordinatorSession(workload, clock, 1)
@@ -760,9 +774,13 @@ func TestGraceExpiryInvokesDrainAndDisposeOnce(t *testing.T) {
 		return ConnectResult{Availability: Available, Session: session}
 	}
 	demand := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
+	coordinator.Enable("ctx", "kubikles-system")
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
 	demand.Close()
-	clock.advance(t, agent.AcceleratorIdleReconnectGrace)
+	if coordinator.Snapshot("ctx").State != CoordinatorActive {
+		t.Fatal("enabled deployment stopped on final demand release")
+	}
+	coordinator.Disable("ctx")
 	waitCoordinatorState(t, coordinator, CoordinatorDirectOnly)
 	if services.drainCalls.Load() != 1 || services.disposeCalls.Load() != 0 {
 		t.Fatalf("drain=%d dispose=%d", services.drainCalls.Load(), services.disposeCalls.Load())
@@ -779,6 +797,7 @@ func TestCoordinatorEventRaceMatrix(t *testing.T) {
 		return ConnectResult{Availability: Available, Session: session}
 	}
 	anchor := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
+	coordinator.Enable("ctx", "kubikles-system")
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
 	var group sync.WaitGroup
 	for index := 0; index < 200; index++ {
@@ -811,6 +830,7 @@ func TestContextSwitchFencesAndReusesExactSweepTombstone(t *testing.T) {
 		return ConnectResult{Availability: Available, Session: session}
 	}
 	_ = coordinator.AcquireSecretDemand(context.Background(), "ctx")
+	coordinator.Enable("ctx", "kubikles-system")
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
 	disposeEntered, releaseDispose := make(chan struct{}), make(chan struct{})
 	var enteredOnce sync.Once
@@ -835,6 +855,7 @@ func TestContextSwitchFencesAndReusesExactSweepTombstone(t *testing.T) {
 	coordinator.ContextSwitched("ctx", true)
 	close(releaseDispose)
 	_ = coordinator.AcquireSecretDemand(context.Background(), "ctx")
+	coordinator.Enable("ctx", "kubikles-system")
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
 	if services.sweepCalls.Load() != 1 || services.provisionCalls.Load() != 2 {
 		t.Fatalf("sweep=%d provision=%d", services.sweepCalls.Load(), services.provisionCalls.Load())
@@ -916,6 +937,7 @@ func TestCoordinatorRedactionAndDirectOnlyNonRegression(t *testing.T) {
 		return ConnectResult{Availability: Available, Session: session}
 	}
 	result := coordinator.AcquireSecretDemand(context.Background(), "ctx")
+	coordinator.Enable("ctx", "kubikles-system")
 	waitCoordinatorState(t, coordinator, CoordinatorActive)
 	snapshot := coordinator.Snapshot("ctx")
 	sessionLease, ok := result.Lease.TrySession()

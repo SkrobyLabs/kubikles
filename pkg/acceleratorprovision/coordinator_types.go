@@ -154,7 +154,6 @@ type coordinatorClock interface {
 
 type operationFence struct {
 	contextEpoch   uint64
-	demandEpoch    uint64
 	operationEpoch uint64
 }
 
@@ -233,11 +232,11 @@ func (s *contextSlot) signalLocked() {
 }
 
 func (s *contextSlot) fenceLocked() operationFence {
-	return operationFence{s.contextEpoch, s.demandEpoch, s.operationEpoch}
+	return operationFence{s.contextEpoch, s.operationEpoch}
 }
 
 func (s *contextSlot) matchesLocked(f operationFence) bool {
-	return s.contextEpoch == f.contextEpoch && s.demandEpoch == f.demandEpoch && s.operationEpoch == f.operationEpoch && s.state != CoordinatorClosed
+	return s.contextEpoch == f.contextEpoch && s.operationEpoch == f.operationEpoch && s.state != CoordinatorClosed
 }
 
 type failureClass uint8

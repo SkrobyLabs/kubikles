@@ -5,7 +5,7 @@ import (
 )
 
 func (c *Coordinator) startResumeLocked(s *contextSlot, idle *coordinatorIdleRelease) {
-	if s == nil || s.demandCount == 0 || s.workload == nil || s.session == nil || s.state == CoordinatorClosed || s.state == CoordinatorDisposing {
+	if s == nil || !s.enabled || s.workload == nil || s.session == nil || s.state == CoordinatorClosed || s.state == CoordinatorDisposing {
 		return
 	}
 	if idle != nil && (idle.prior != s.session || idle.token == nil) {
@@ -18,7 +18,7 @@ func (c *Coordinator) startResumeLocked(s *contextSlot, idle *coordinatorIdleRel
 
 func (c *Coordinator) runResume(ctx context.Context, s *contextSlot, fence operationFence, idle *coordinatorIdleRelease) {
 	s.mu.Lock()
-	if !s.matchesLocked(fence) || s.demandCount == 0 || s.workload == nil || s.session == nil {
+	if !s.matchesLocked(fence) || !s.enabled || s.workload == nil || s.session == nil {
 		s.mu.Unlock()
 		return
 	}
@@ -110,7 +110,7 @@ func (c *Coordinator) runIdleRelease(ctx context.Context, s *contextSlot, fence 
 		if transportEnded {
 			s.normalEnded = true
 			s.drainDeadline = deadline
-			if s.demandCount > 0 {
+			if s.enabled {
 				c.startResumeLocked(s, nil)
 				s.mu.Unlock()
 				return
@@ -141,7 +141,7 @@ func (c *Coordinator) runIdleRelease(ctx context.Context, s *contextSlot, fence 
 		return
 	}
 	s.idle = release
-	if s.demandCount > 0 {
+	if s.enabled {
 		c.startResumeLocked(s, release)
 		s.mu.Unlock()
 		return
@@ -173,7 +173,7 @@ func (c *Coordinator) disposeAndContinue(s *contextSlot, fence operationFence, w
 		s.mu.Unlock()
 		return
 	}
-	if s.demandCount > 0 && freshOnDemand && current {
+	if s.enabled && freshOnDemand && current {
 		s.state = CoordinatorDirectOnly
 		c.startActivationLocked(s, 0)
 	} else if s.state != CoordinatorClosed {

@@ -298,8 +298,11 @@ func (c *Coordinator) Disable(contextName string) {
 		go func() {
 			c.drainAndDisposeOwned(s, workload)
 			s.mu.Lock()
-			if !s.enabled && s.state == CoordinatorDisposing && s.workload == nil && s.state != CoordinatorClosed {
+			if s.state == CoordinatorDisposing && s.workload == nil {
 				s.state = CoordinatorDirectOnly
+				if s.enabled {
+					c.startActivationLocked(s, 0)
+				}
 			}
 			s.mu.Unlock()
 		}()
@@ -571,7 +574,7 @@ func (c *Coordinator) disposeIfRetained(s *contextSlot, workload *ProvisionedWor
 		if s.workload == nil {
 			if s.state != CoordinatorClosed {
 				s.state = CoordinatorDirectOnly
-				if current && s.demandCount > 0 {
+				if current && s.enabled {
 					c.startActivationLocked(s, 0)
 				}
 			}
@@ -733,7 +736,7 @@ func (c *Coordinator) monitorSession(s *contextSlot, fence operationFence, workl
 		return
 	}
 	s.terminalCleanupPending = false
-	if s.demandCount > 0 {
+	if s.enabled {
 		c.startResumeLocked(s, nil)
 		s.mu.Unlock()
 		return
@@ -755,7 +758,7 @@ func (c *Coordinator) afterAttemptFailure(ctx context.Context, s *contextSlot, f
 
 func (c *Coordinator) cooldown(ctx context.Context, s *contextSlot, fence operationFence) bool {
 	s.mu.Lock()
-	if !s.matchesLocked(fence) || s.demandCount == 0 || s.mismatchLatched {
+	if !s.matchesLocked(fence) || !s.enabled || s.mismatchLatched {
 		s.mu.Unlock()
 		return false
 	}
@@ -771,7 +774,7 @@ func (c *Coordinator) cooldown(ctx context.Context, s *contextSlot, fence operat
 func (c *Coordinator) consumeMismatchRecreate(s *contextSlot, fence operationFence) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if !s.matchesLocked(fence) || s.demandCount == 0 {
+	if !s.matchesLocked(fence) || !s.enabled {
 		return false
 	}
 	if !s.mismatchRecreateUsed {
@@ -808,7 +811,7 @@ func (s *contextSlot) settleDemandLocked() {
 func (c *Coordinator) completeMismatchCooldown(s *contextSlot, fence operationFence) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if !s.matchesLocked(fence) || s.demandCount == 0 || !s.mismatchLatched || c.clock.Now().Before(s.unavailableUntil) {
+	if !s.matchesLocked(fence) || !s.enabled || !s.mismatchLatched || c.clock.Now().Before(s.unavailableUntil) {
 		return false
 	}
 	s.mismatchLatched = false
@@ -837,14 +840,14 @@ func (c *Coordinator) disposeRetained(ctx context.Context, s *contextSlot, fence
 	if !s.matchesLocked(fence) || ctx.Err() != nil {
 		if s.state != CoordinatorClosed {
 			s.state = CoordinatorDirectOnly
-			if current && s.demandCount > 0 {
+			if current && s.enabled {
 				c.startActivationLocked(s, 0)
 			}
 		}
 		return false
 	}
 	s.state = CoordinatorResolving
-	return s.demandCount > 0
+	return s.enabled
 }
 
 func (c *Coordinator) isCurrentSlot(s *contextSlot) bool {
