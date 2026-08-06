@@ -303,6 +303,9 @@ func TestRenderAcceleratorReleaseExact(t *testing.T) {
 		"image": func(manifest string) string {
 			return strings.Replace(manifest, request.ImageDigest, "sha256:"+strings.Repeat("e", 64), 1)
 		},
+		"architecture": func(manifest string) string {
+			return strings.Replace(manifest, "kubernetes.io/arch: amd64", "kubernetes.io/arch: arm64", 1)
+		},
 		"secret ref": func(manifest string) string {
 			return strings.Replace(manifest, prepared.verifierName, "wrong-verifier", 1)
 		},

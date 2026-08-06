@@ -48,4 +48,9 @@ func TestWorkflowEventPermissionAuthorityMatrix(t *testing.T) {
 	if !strings.Contains(string(build), "if: ${{ inputs.accelerator_supply_chain == true }}") || !strings.Contains(string(release), "accelerator_supply_chain: false") {
 		t.Fatal("release repeats reusable Accelerator supply-chain preparation")
 	}
+	for name, text := range map[string]string{"main": string(main), "release": string(release)} {
+		if !acceptanceHasOfflinePrerequisites(text) {
+			t.Errorf("%s acceptance does not configure loopback builder access and warm the exact Go and npm caches before its offline gate", name)
+		}
+	}
 }

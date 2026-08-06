@@ -404,15 +404,16 @@ func validateAcceleratorJob(job *unstructured.Unstructured, request AcceleratorR
 	podSpec, podSpecFound, _ := unstructured.NestedMap(template, "spec")
 	if !exactMapKeys(object, "apiVersion", "kind", "metadata", "spec") || !specFound || !exactMapKeys(spec, "completions", "parallelism", "backoffLimit", "ttlSecondsAfterFinished", "template") ||
 		!templateFound || !exactMapKeys(template, "metadata", "spec") || !metadataFound || !exactMapKeys(templateMetadata, "labels", "annotations") || !podSpecFound ||
-		!exactMapKeys(podSpec, "serviceAccountName", "automountServiceAccountToken", "restartPolicy", "terminationGracePeriodSeconds", "securityContext", "containers", "volumes") {
+		!exactMapKeys(podSpec, "serviceAccountName", "automountServiceAccountToken", "restartPolicy", "terminationGracePeriodSeconds", "nodeSelector", "securityContext", "containers", "volumes") {
 		return false
 	}
 	templateLabels, _, _ := unstructured.NestedStringMap(object, "spec", "template", "metadata", "labels")
 	wantTemplateLabels := acceleratorLabels(request.ReleaseName)
 	wantTemplateLabels["kubikles.io/workload-session-id"] = request.WorkloadSession
 	templateAnnotations, _, _ := unstructured.NestedStringMap(object, "spec", "template", "metadata", "annotations")
+	nodeSelector, nodeSelectorFound, _ := unstructured.NestedStringMap(object, "spec", "template", "spec", "nodeSelector")
 	containers, found, _ := unstructured.NestedSlice(object, "spec", "template", "spec", "containers")
-	if !found || len(containers) != 1 || !equalStringMap(templateLabels, wantTemplateLabels) || !equalStringMap(templateAnnotations, map[string]string{"kubikles.io/build-version": request.BuildVersion}) || nestedString(object, "spec", "template", "spec", "serviceAccountName") != baseName ||
+	if !found || len(containers) != 1 || !equalStringMap(templateLabels, wantTemplateLabels) || !equalStringMap(templateAnnotations, map[string]string{"kubikles.io/build-version": request.BuildVersion}) || !nodeSelectorFound || !equalStringMap(nodeSelector, map[string]string{"kubernetes.io/arch": "amd64"}) || nestedString(object, "spec", "template", "spec", "serviceAccountName") != baseName ||
 		!nestedInt64Equals(object, 1, "spec", "completions") || !nestedInt64Equals(object, 1, "spec", "parallelism") || !nestedInt64Equals(object, 0, "spec", "backoffLimit") || !nestedInt64Equals(object, 3600, "spec", "ttlSecondsAfterFinished") ||
 		!nestedBoolEquals(object, false, "spec", "template", "spec", "automountServiceAccountToken") || nestedString(object, "spec", "template", "spec", "restartPolicy") != "Never" || !nestedInt64Equals(object, 30, "spec", "template", "spec", "terminationGracePeriodSeconds") ||
 		!validPodSecurityContext(object) || !validProjectedServiceAccountVolume(object) {

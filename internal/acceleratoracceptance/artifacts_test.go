@@ -56,7 +56,7 @@ func TestAcceptanceOfflineBuildPlumbing(t *testing.T) {
 			}
 		}
 		if strings.Contains(file, "build-accelerator-e2e-artifacts") {
-			for _, exact := range []string{"docker image inspect", "--network=none", "--pull=false", "publish_registry", "ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT"} {
+			for _, exact := range []string{"npm ci --offline --include=optional", "docker image inspect", "--network=none", "--pull=false", "oci-mediatypes=false", "publish_registry", "ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT"} {
 				if !strings.Contains(text, exact) {
 					t.Fatalf("offline artifact build is missing %s", exact)
 				}

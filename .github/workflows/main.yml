@@ -34,7 +34,9 @@ jobs:
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
         with:
           version: v0.36.0
-          driver-opts: image=moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
+          driver-opts: |
+            image=moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
+            network=host
       - name: Install exact Accelerator tools
         shell: bash
         run: |
@@ -57,6 +59,10 @@ jobs:
           docker pull golang:1.25.12-bookworm@sha256:ea341baa9bd5ba6784f6d7161ace70544349a6242d54d34a0fbfd2c4d51c9d58
           docker pull gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35
           docker pull curlimages/curl:8.17.0@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40
+      - name: Cache exact Go dependencies
+        run: go mod download
+      - name: Cache exact frontend dependencies
+        run: cd frontend && npm ci --ignore-scripts --include=optional --no-audit --no-fund
       - name: Run canonical functional and security acceptance
         run: make test-accelerator-e2e
       - name: Prepare fresh Trivy database

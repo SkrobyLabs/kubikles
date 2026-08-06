@@ -54,7 +54,7 @@ mkdir -m 700 "$layout"
 mkdir -m 700 -p "$source_root"
 
 git -C "$root" archive "$commit" | tar -x -C "$source_root" || fail source-archive
-(cd "$source_root/frontend" && npm ci --offline --no-audit --no-fund && test -s ../build/appicon.svg && rm -f src/assets/images/appicon.svg && cp ../build/appicon.svg src/assets/images/appicon.svg && test -s src/assets/images/appicon.svg && BUILD_VERSION=v0.0.0 npm run build) >"$artifact_root/frontend-build.log" 2>&1 || fail offline-frontend-build
+(cd "$source_root/frontend" && npm ci --offline --include=optional --no-audit --no-fund && test -s ../build/appicon.svg && rm -f src/assets/images/appicon.svg && cp ../build/appicon.svg src/assets/images/appicon.svg && test -s src/assets/images/appicon.svg && BUILD_VERSION=v0.0.0 npm run build) >"$artifact_root/frontend-build.log" 2>&1 || fail offline-frontend-build
 ldflags="-s -w -buildid= -X main.BuildVersion=v0.0.0 -X main.GitCommit=$commit -X main.GitDirty=false -X main.acceleratorBuildIdentity=kubikles-accelerator-build-identity:v0.0.0|$commit|false"
 for architecture in amd64; do
   binary="$work/$architecture/kubikles-accelerator"
@@ -91,7 +91,7 @@ ENTRYPOINT ["/kubikles-accelerator"]
 EOF
     SOURCE_DATE_EPOCH="$epoch" docker buildx build --network=none --pull=false --file "$context/Dockerfile" --platform "linux/$architecture" --provenance=false --sbom=false \
       --build-arg BUILD_VERSION=v0.0.0 --build-arg "GIT_COMMIT=$commit" \
-      --output "type=registry,name=$daemon_build_repository:v0.0.0-$architecture,registry.insecure=true,oci-mediatypes=true,rewrite-timestamp=true" "$context" || exit 1
+      --output "type=registry,name=$daemon_build_repository:v0.0.0-$architecture,registry.insecure=true,oci-mediatypes=false,rewrite-timestamp=true" "$context" || exit 1
   done
   oras manifest index create --plain-http "$build_ref" v0.0.0-amd64 || exit 1
   oras cp --from-plain-http --to-oci-layout "$build_ref" "$layout:v0.0.0" || exit 1
