@@ -34,10 +34,9 @@
     "descriptorChecksum": "kubikles-accelerator-release-vX.Y.Z.json.sha256",
     "sboms": [
       "kubikles-accelerator-chart-vX.Y.Z.spdx.json",
-      "kubikles-accelerator-image-linux-amd64-vX.Y.Z.spdx.json",
-      "kubikles-accelerator-image-linux-arm64-vX.Y.Z.spdx.json"
+      "kubikles-accelerator-image-linux-amd64-vX.Y.Z.spdx.json"
     ],
-    "attestations": ["chart-provenance", "chart-sbom", "image-provenance", "image-sbom", "release-provenance", "release-sbom"]
+    "attestations": ["chart-provenance", "chart-spdx", "descriptor-provenance", "image-amd64-spdx", "image-index-provenance"]
   },
   "commands": [
     "make test-accelerator-00-kind",

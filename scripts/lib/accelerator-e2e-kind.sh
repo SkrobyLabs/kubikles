@@ -49,7 +49,7 @@ accelerator_e2e_preflight() {
     command -v "$tool" >/dev/null 2>&1 || return 1
   done
   go_version="$(go version 2>/dev/null)"
-  [[ "$go_version" =~ ^go\ version\ go1\.25\.12\ linux/(amd64|arm64)$ ]] || return 1
+  [[ "$go_version" =~ ^go\ version\ go1\.25\.12\ linux/amd64$ ]] || return 1
   node_version="$(node --version 2>/dev/null)"; [ "$node_version" = v22.23.2 ] || return 1
   npm_version="$(npm --version 2>/dev/null)"; [ "$npm_version" = 10.9.8 ] || return 1
   docker info >/dev/null 2>&1 || return 1

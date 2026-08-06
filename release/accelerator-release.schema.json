@@ -39,18 +39,13 @@
         "reference": {"type": "string", "pattern": "^ghcr\\.io/skrobylabs/kubikles-accelerator@sha256:[0-9a-f]{64}$"},
         "platforms": {
           "type": "array",
-          "minItems": 2,
-          "maxItems": 2,
+          "minItems": 1,
+          "maxItems": 1,
           "prefixItems": [
             {
               "type": "object", "additionalProperties": false,
               "required": ["os", "architecture", "manifestDigest"],
               "properties": {"os": {"const": "linux"}, "architecture": {"const": "amd64"}, "manifestDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
-            },
-            {
-              "type": "object", "additionalProperties": false,
-              "required": ["os", "architecture", "manifestDigest"],
-              "properties": {"os": {"const": "linux"}, "architecture": {"const": "arm64"}, "manifestDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
             }
           ],
           "items": false

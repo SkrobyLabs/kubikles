@@ -93,7 +93,7 @@ func TestDesktopReleaseAssetsRemainExact(t *testing.T) {
 			t.Errorf("desktop asset %s was not preserved", asset)
 		}
 	}
-	exact := append(append([]string(nil), assets...), "kubikles-accelerator-release-v1.4.2.json", "kubikles-accelerator-release-v1.4.2.json.sha256", "kubikles-accelerator-image-linux-amd64-v1.4.2.spdx.json", "kubikles-accelerator-image-linux-arm64-v1.4.2.spdx.json", "kubikles-accelerator-chart-v1.4.2.spdx.json", "kubikles-accelerator-attestations-v1.4.2.jsonl")
+	exact := append(append([]string(nil), assets...), "kubikles-accelerator-release-v1.4.2.json", "kubikles-accelerator-release-v1.4.2.json.sha256", "kubikles-accelerator-image-linux-amd64-v1.4.2.spdx.json", "kubikles-accelerator-chart-v1.4.2.spdx.json", "kubikles-accelerator-attestations-v1.4.2.jsonl")
 	if err := VerifyReleaseAssetNames("v1.4.2", exact); err != nil {
 		t.Fatal(err)
 	}

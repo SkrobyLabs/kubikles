@@ -125,7 +125,7 @@ func TestNormalizeReleaseTagClassifiesCanonicalPrereleases(t *testing.T) {
 }
 
 func testEvidence() Evidence {
-	return Evidence{BuildVersion: "v1.4.2", Commit: testCommit, GitTag: "v1.4.2", ImageDigest: digestC, Platforms: []Platform{{OS: "linux", Architecture: "arm64", ManifestDigest: digestB}, {OS: "linux", Architecture: "amd64", ManifestDigest: digestA}}, ChartDigest: digestB, ChartVersion: "1.4.2", ChartAppVersion: "v1.4.2"}
+	return Evidence{BuildVersion: "v1.4.2", Commit: testCommit, GitTag: "v1.4.2", ImageDigest: digestC, Platforms: []Platform{{OS: "linux", Architecture: "amd64", ManifestDigest: digestA}}, ChartDigest: digestB, ChartVersion: "1.4.2", ChartAppVersion: "v1.4.2"}
 }
 
 func TestPrereleaseDescriptorPreservesExactIdentity(t *testing.T) {
@@ -180,11 +180,6 @@ func TestDescriptorV1CanonicalBytes(t *testing.T) {
         "os": "linux",
         "architecture": "amd64",
         "manifestDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      },
-      {
-        "os": "linux",
-        "architecture": "arm64",
-        "manifestDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     ]
   },
@@ -257,9 +252,9 @@ func mustOpen(t *testing.T, path string) *os.File {
 
 func TestDescriptorRejectsCrossFieldDrift(t *testing.T) {
 	mutations := []func(*Evidence){
-		func(e *Evidence) { e.BuildVersion = "v1.4.3" }, func(e *Evidence) { e.Commit = "ABC" }, func(e *Evidence) { e.GitTag = "v1.4.1" }, func(e *Evidence) { e.ImageDigest = "sha256:BAD" }, func(e *Evidence) { e.ChartDigest = "" }, func(e *Evidence) { e.ChartVersion = "v1.4.2" }, func(e *Evidence) { e.ChartAppVersion = "1.4.2" }, func(e *Evidence) { e.Platforms = e.Platforms[:1] }, func(e *Evidence) {
+		func(e *Evidence) { e.BuildVersion = "v1.4.3" }, func(e *Evidence) { e.Commit = "ABC" }, func(e *Evidence) { e.GitTag = "v1.4.1" }, func(e *Evidence) { e.ImageDigest = "sha256:BAD" }, func(e *Evidence) { e.ChartDigest = "" }, func(e *Evidence) { e.ChartVersion = "v1.4.2" }, func(e *Evidence) { e.ChartAppVersion = "1.4.2" }, func(e *Evidence) { e.Platforms = nil }, func(e *Evidence) {
 			e.Platforms = append(e.Platforms, Platform{OS: "linux", Architecture: "s390x", ManifestDigest: digestC})
-		}, func(e *Evidence) { e.Platforms[0].Architecture = e.Platforms[1].Architecture }, func(e *Evidence) { e.Platforms[0].ManifestDigest = e.Platforms[1].ManifestDigest },
+		}, func(e *Evidence) { e.Platforms[0].Architecture = "arm64" }, func(e *Evidence) { e.Platforms[0].ManifestDigest = "sha256:BAD" },
 	}
 	for i, mutate := range mutations {
 		e := testEvidence()
@@ -557,12 +552,12 @@ func rewriteOCIConfig(t *testing.T, layout, architecture string, mutate func(*oc
 }
 
 func TestInspectAcceleratorOCIIndex(t *testing.T) {
-	layout := makeOCI(t, "v1.4.2", testCommit, []string{"arm64", "amd64"})
+	layout := makeOCI(t, "v1.4.2", testCommit, []string{"amd64"})
 	digest, platforms, err := InspectOCIIndex(layout, "v1.4.2", testCommit)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !digestRE.MatchString(digest) || len(platforms) != 2 || platforms[0].Architecture != "amd64" || platforms[1].Architecture != "arm64" {
+	if !digestRE.MatchString(digest) || len(platforms) != 1 || platforms[0].Architecture != "amd64" {
 		t.Fatal("unexpected OCI evidence")
 	}
 	rootBytes, err := os.ReadFile(filepath.Join(layout, "index.json"))
@@ -587,7 +582,7 @@ func TestInspectAcceleratorOCIIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	pulledDigest, pulledPlatforms, err := InspectOCIIndex(layout, "v1.4.2", testCommit)
-	if err != nil || pulledDigest != digest || len(pulledPlatforms) != 2 {
+	if err != nil || pulledDigest != digest || len(pulledPlatforms) != 1 {
 		t.Fatalf("inspect expanded ORAS layout: %q %#v %v", pulledDigest, pulledPlatforms, err)
 	}
 	root.Manifests = append(root.Manifests, ociDescriptor{MediaType: ociManifestMediaType, Digest: digestA, Size: 1})
@@ -598,12 +593,12 @@ func TestInspectAcceleratorOCIIndex(t *testing.T) {
 	if _, _, err := InspectOCIIndex(layout, "v1.4.2", testCommit); err == nil {
 		t.Fatal("accepted unrelated root manifest beside ORAS digest copy")
 	}
-	for _, arches := range [][]string{{"amd64"}, {"amd64", "arm64", "s390x"}, {"amd64", "amd64"}} {
+	for _, arches := range [][]string{{"arm64"}, {"amd64", "arm64"}, {"amd64", "amd64"}} {
 		if _, _, err := InspectOCIIndex(makeOCI(t, "v1.4.2", testCommit, arches), "v1.4.2", testCommit); err == nil {
 			t.Fatalf("accepted platforms %v", arches)
 		}
 	}
-	if _, _, err := InspectOCIIndex(makeOCI(t, "v1.4.1", testCommit, []string{"amd64", "arm64"}), "v1.4.2", testCommit); err == nil {
+	if _, _, err := InspectOCIIndex(makeOCI(t, "v1.4.1", testCommit, []string{"amd64"}), "v1.4.2", testCommit); err == nil {
 		t.Fatal("accepted config version drift")
 	}
 }
@@ -617,7 +612,7 @@ func TestInspectAcceleratorOCIRejectsRuntimeContractDrift(t *testing.T) {
 		func(config *ociConfig) { config.Config.Labels["org.opencontainers.image.title"] = "other" },
 	}
 	for i, mutate := range mutations {
-		layout := makeOCI(t, "v1.4.2", testCommit, []string{"amd64", "arm64"})
+		layout := makeOCI(t, "v1.4.2", testCommit, []string{"amd64"})
 		rewriteOCIConfig(t, layout, "amd64", mutate)
 		if _, _, err := InspectOCIIndex(layout, "v1.4.2", testCommit); err == nil {
 			t.Fatalf("accepted runtime config mutation %d", i)
@@ -647,7 +642,6 @@ func TestVerifyReleaseAssetNamesExact(t *testing.T) {
 		"kubikles-accelerator-release-v1.4.2.json",
 		"kubikles-accelerator-release-v1.4.2.json.sha256",
 		"kubikles-accelerator-image-linux-amd64-v1.4.2.spdx.json",
-		"kubikles-accelerator-image-linux-arm64-v1.4.2.spdx.json",
 		"kubikles-accelerator-chart-v1.4.2.spdx.json",
 		"kubikles-accelerator-attestations-v1.4.2.jsonl",
 	}

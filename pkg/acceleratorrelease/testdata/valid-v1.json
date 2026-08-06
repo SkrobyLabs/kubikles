@@ -21,11 +21,6 @@
         "os": "linux",
         "architecture": "amd64",
         "manifestDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      },
-      {
-        "os": "linux",
-        "architecture": "arm64",
-        "manifestDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     ]
   },

@@ -29,6 +29,6 @@ chart="$(go run "$root/scripts/accelerator-release" field "$descriptor" chart-re
 for subject in "$image" "$chart"; do
   github_cli attestation verify "oci://$subject" --repo SkrobyLabs/kubikles --signer-workflow SkrobyLabs/kubikles/.github/workflows/release.yml --cert-identity "$identity" --source-ref "refs/tags/$BUILD_VERSION" --source-digest "$commit" >/dev/null || fail attestation-identity
 done
-[ "$(find "$work" -maxdepth 1 -name '*.spdx.json' -type f | wc -l | tr -d ' ')" = 3 ] || fail sbom-assets
-[ "$(wc -l < "$work/kubikles-accelerator-attestations-$BUILD_VERSION.jsonl" | tr -d ' ')" = 6 ] || fail attestation-bundles
+[ "$(find "$work" -maxdepth 1 -name '*.spdx.json' -type f | wc -l | tr -d ' ')" = 2 ] || fail sbom-assets
+[ "$(wc -l < "$work/kubikles-accelerator-attestations-$BUILD_VERSION.jsonl" | tr -d ' ')" = 5 ] || fail attestation-bundles
 printf 'accelerator-supply-chain verification: passed for %s\n' "$BUILD_VERSION"

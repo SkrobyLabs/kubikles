@@ -490,7 +490,6 @@ write_local_asset_contract() {
     Kubikles-windows-amd64.zip Kubikles-windows-arm64.zip \
     "$(basename "$descriptor")" "$(basename "$descriptor.sha256")" \
     "kubikles-accelerator-image-linux-amd64-$version.spdx.json" \
-    "kubikles-accelerator-image-linux-arm64-$version.spdx.json" \
     "kubikles-accelerator-chart-$version.spdx.json" \
     "kubikles-accelerator-attestations-$version.jsonl" > "$directory/assets.txt"
 }
@@ -618,7 +617,7 @@ local_test() {
       fi
     fi
     builder_args=(--builder "$RUN_BUILDER")
-    SOURCE_DATE_EPOCH="$epoch" docker buildx build "${builder_args[@]}" "${offline_build_flags[@]}" --file Dockerfile.accelerator --platform linux/amd64,linux/arm64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$version" --build-arg "GIT_COMMIT=$commit" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$epoch" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=$registry/kubikles-accelerator:$version" "${cache_args[@]}" .
+    SOURCE_DATE_EPOCH="$epoch" docker buildx build "${builder_args[@]}" "${offline_build_flags[@]}" --file Dockerfile.accelerator --platform linux/amd64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$version" --build-arg "GIT_COMMIT=$commit" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$epoch" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=$registry/kubikles-accelerator:$version" "${cache_args[@]}" .
     go run ./scripts/accelerator-release package-chart "$CHART_SOURCE" "$package" "$chart_version" "$version" "$epoch"
     go run ./scripts/accelerator-release package-chart-oci "$package" "$CHART_SOURCE" "$chart_layout" "$chart_version" "$version" "$epoch" >/dev/null
   fi
@@ -748,7 +747,7 @@ publish_ghcr() {
   release_state=$(github_release_state "$BUILD_VERSION" "$work/release-state")
   mkdir -p "$ACCELERATOR_RELEASE_OUTPUT"; chmod 700 "$ACCELERATOR_RELEASE_OUTPUT"
   layout="$work/image-layout"; package="$work/kubikles-accelerator-$chart_version.tgz"; chart_layout="$work/chart-layout"; mkdir -p "$layout"
-  SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build --file Dockerfile.accelerator --platform linux/amd64,linux/arm64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$BUILD_VERSION" --build-arg "GIT_COMMIT=$SOURCE_COMMIT" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=ghcr.io/skrobylabs/kubikles-accelerator:$BUILD_VERSION" .
+  SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build --file Dockerfile.accelerator --platform linux/amd64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$BUILD_VERSION" --build-arg "GIT_COMMIT=$SOURCE_COMMIT" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=ghcr.io/skrobylabs/kubikles-accelerator:$BUILD_VERSION" .
   go run ./scripts/accelerator-release package-chart "$CHART_SOURCE" "$package" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH"
   go run ./scripts/accelerator-release package-chart-oci "$package" "$CHART_SOURCE" "$chart_layout" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH" >/dev/null
   PUBLICATION_AUTHORITY=github publish_registry ghcr.io/skrobylabs false "$layout" "$package" "$chart_layout" "$BUILD_VERSION" "$chart_version" "$SOURCE_COMMIT" "$work/publication" "$SOURCE_DATE_EPOCH" "$release_state" "$work/release-state"
@@ -779,7 +778,7 @@ prepare_release() {
   package="$ACCELERATOR_PREPARED_OUTPUT/kubikles-accelerator-$chart_version.tgz"
   chart_layout="$ACCELERATOR_PREPARED_OUTPUT/chart-layout"
   mkdir -m 0700 "$layout"
-  SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build --builder "$builder" --file Dockerfile.accelerator --platform linux/amd64,linux/arm64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$BUILD_VERSION" --build-arg "GIT_COMMIT=$SOURCE_COMMIT" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=ghcr.io/skrobylabs/kubikles-accelerator:$BUILD_VERSION" .
+  SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build --builder "$builder" --file Dockerfile.accelerator --platform linux/amd64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$BUILD_VERSION" --build-arg "GIT_COMMIT=$SOURCE_COMMIT" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=ghcr.io/skrobylabs/kubikles-accelerator:$BUILD_VERSION" .
   go run ./scripts/accelerator-release package-chart "$CHART_SOURCE" "$package" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH"
   chart_digest=$(go run ./scripts/accelerator-release package-chart-oci "$package" "$CHART_SOURCE" "$chart_layout" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH")
   [[ "$chart_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "prepared chart digest is invalid"

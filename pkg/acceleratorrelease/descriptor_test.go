@@ -62,22 +62,18 @@ func TestDescriptorV1FailsClosed(t *testing.T) {
 		"image repository":    func(d *descriptor) { d.Image.Repository += "-other" },
 		"image digest":        func(d *descriptor) { d.Image.Digest = "sha256:ABC" },
 		"image reference":     func(d *descriptor) { d.Image.Reference = d.Image.Repository + ":v1.4.2" },
-		"platform missing":    func(d *descriptor) { d.Image.Platforms = d.Image.Platforms[:1] },
+		"platform missing":    func(d *descriptor) { d.Image.Platforms = nil },
 		"platform extra": func(d *descriptor) {
 			d.Image.Platforms = append(d.Image.Platforms, platform{OS: "linux", Architecture: "s390x", ManifestDigest: "sha256:" + strings.Repeat("d", 64)})
 		},
-		"platform order": func(d *descriptor) {
-			d.Image.Platforms[0], d.Image.Platforms[1] = d.Image.Platforms[1], d.Image.Platforms[0]
-		},
-		"platform OS":               func(d *descriptor) { d.Image.Platforms[0].OS = "windows" },
-		"platform architecture":     func(d *descriptor) { d.Image.Platforms[1].Architecture = "amd64" },
-		"platform digest":           func(d *descriptor) { d.Image.Platforms[0].ManifestDigest = "sha256:ABC" },
-		"platform duplicate digest": func(d *descriptor) { d.Image.Platforms[1].ManifestDigest = d.Image.Platforms[0].ManifestDigest },
-		"chart repository":          func(d *descriptor) { d.Chart.Repository += "-other" },
-		"chart digest":              func(d *descriptor) { d.Chart.Digest = "sha256:ABC" },
-		"chart reference":           func(d *descriptor) { d.Chart.Reference = d.Chart.Repository + ":1.4.2" },
-		"chart version":             func(d *descriptor) { d.Chart.Version = "1.4.3" },
-		"chart app version":         func(d *descriptor) { d.Chart.AppVersion = "v1.4.3" },
+		"platform OS":           func(d *descriptor) { d.Image.Platforms[0].OS = "windows" },
+		"platform architecture": func(d *descriptor) { d.Image.Platforms[0].Architecture = "arm64" },
+		"platform digest":       func(d *descriptor) { d.Image.Platforms[0].ManifestDigest = "sha256:ABC" },
+		"chart repository":      func(d *descriptor) { d.Chart.Repository += "-other" },
+		"chart digest":          func(d *descriptor) { d.Chart.Digest = "sha256:ABC" },
+		"chart reference":       func(d *descriptor) { d.Chart.Reference = d.Chart.Repository + ":1.4.2" },
+		"chart version":         func(d *descriptor) { d.Chart.Version = "1.4.3" },
+		"chart app version":     func(d *descriptor) { d.Chart.AppVersion = "v1.4.3" },
 	}
 	for name, mutate := range mutations {
 		t.Run(name, func(t *testing.T) {

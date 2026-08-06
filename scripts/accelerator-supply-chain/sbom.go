@@ -179,7 +179,7 @@ func SPDXAssetName(artifact, version string) (string, error) {
 		return "", err
 	}
 	switch artifact {
-	case "image-linux-amd64", "image-linux-arm64":
+	case "image-linux-amd64":
 		return fmt.Sprintf("kubikles-accelerator-%s-%s.spdx.json", artifact, version), nil
 	case "chart":
 		return "kubikles-accelerator-chart-" + version + ".spdx.json", nil

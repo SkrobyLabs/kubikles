@@ -9,7 +9,6 @@ import (
 type ReleaseDigests struct {
 	ImageIndex   string
 	ImageAMD64   string
-	ImageARM64   string
 	Chart        string
 	Descriptor   string
 	BuildVersion string
@@ -40,13 +39,12 @@ func ExactAttestationPlan(digests ReleaseDigests) ([]Attestation, error) {
 	if _, err := ValidateReleaseIdentity(digests.BuildVersion, strings.Repeat("a", 40)); err != nil {
 		return nil, err
 	}
-	for _, digest := range []string{digests.ImageIndex, digests.ImageAMD64, digests.ImageARM64, digests.Chart, digests.Descriptor} {
+	for _, digest := range []string{digests.ImageIndex, digests.ImageAMD64, digests.Chart, digests.Descriptor} {
 		if !strings.HasPrefix(digest, "sha256:") || !hex64Pattern.MatchString(strings.TrimPrefix(digest, "sha256:")) {
 			return nil, errors.New("invalid attestation digest")
 		}
 	}
 	amd64, _ := SPDXAssetName("image-linux-amd64", digests.BuildVersion)
-	arm64, _ := SPDXAssetName("image-linux-arm64", digests.BuildVersion)
 	chart, _ := SPDXAssetName("chart", digests.BuildVersion)
 	descriptor := "kubikles-accelerator-release-" + digests.BuildVersion + ".json"
 	return []Attestation{
@@ -54,7 +52,6 @@ func ExactAttestationPlan(digests ReleaseDigests) ([]Attestation, error) {
 		{"chart-provenance", ChartRepository, digests.Chart, SLSAPredicate, "", true},
 		{"descriptor-provenance", descriptor, digests.Descriptor, SLSAPredicate, "", false},
 		{"image-amd64-spdx", ImageRepository, digests.ImageAMD64, SPDXPredicate, amd64, true},
-		{"image-arm64-spdx", ImageRepository, digests.ImageARM64, SPDXPredicate, arm64, true},
 		{"chart-spdx", ChartRepository, digests.Chart, SPDXPredicate, chart, true},
 	}, nil
 }

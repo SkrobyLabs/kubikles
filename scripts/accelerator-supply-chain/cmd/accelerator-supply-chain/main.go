@@ -67,10 +67,10 @@ func run(arguments []string) error {
 		_, err := supplychain.VerifyBundle(arguments[1], arguments[2], arguments[3], arguments[4], arguments[5])
 		return err
 	case "attestation-plan":
-		if len(arguments) != 8 {
+		if len(arguments) != 7 {
 			return errors.New("invalid arguments")
 		}
-		plan, err := supplychain.ExactAttestationPlan(supplychain.ReleaseDigests{BuildVersion: arguments[1], ImageIndex: arguments[2], ImageAMD64: arguments[3], ImageARM64: arguments[4], Chart: arguments[5], Descriptor: arguments[6]})
+		plan, err := supplychain.ExactAttestationPlan(supplychain.ReleaseDigests{BuildVersion: arguments[1], ImageIndex: arguments[2], ImageAMD64: arguments[3], Chart: arguments[4], Descriptor: arguments[5]})
 		if err != nil {
 			return err
 		}
@@ -78,7 +78,7 @@ func run(arguments []string) error {
 		if err != nil {
 			return err
 		}
-		return writePrivate(arguments[7], append(encoded, '\n'))
+		return writePrivate(arguments[6], append(encoded, '\n'))
 	case "policy":
 		if len(arguments) != 5 {
 			return errors.New("invalid arguments")

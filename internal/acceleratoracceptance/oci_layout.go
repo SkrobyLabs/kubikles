@@ -80,12 +80,12 @@ func CanonicalizeAcceptanceOCIImageLayout(root, tag string) error {
 		return err
 	}
 	var imageIndex acceptanceOCIIndex
-	if json.Unmarshal(rootBytes, &imageIndex) != nil || imageIndex.SchemaVersion != 2 || imageIndex.MediaType != acceptanceOCIIndexMediaType || len(imageIndex.Manifests) != 2 {
+	if json.Unmarshal(rootBytes, &imageIndex) != nil || imageIndex.SchemaVersion != 2 || imageIndex.MediaType != acceptanceOCIIndexMediaType || len(imageIndex.Manifests) != 1 {
 		return errors.New("OCI layout invalid")
 	}
 	seen := map[string]bool{}
 	for index, child := range imageIndex.Manifests {
-		if child.Platform == nil || child.Platform.OS != "linux" || child.MediaType != acceptanceDockerManifestMediaType || (child.Platform.Architecture != "amd64" && child.Platform.Architecture != "arm64") || seen[child.Platform.Architecture] {
+		if child.Platform == nil || child.Platform.OS != "linux" || child.MediaType != acceptanceDockerManifestMediaType || child.Platform.Architecture != "amd64" || seen[child.Platform.Architecture] {
 			return errors.New("OCI layout invalid")
 		}
 		seen[child.Platform.Architecture] = true
@@ -122,7 +122,7 @@ func CanonicalizeAcceptanceOCIImageLayout(root, tag string) error {
 		canonicalDescriptor.Platform = child.Platform
 		imageIndex.Manifests[index] = canonicalDescriptor
 	}
-	if !seen["amd64"] || !seen["arm64"] {
+	if !seen["amd64"] {
 		return errors.New("OCI layout invalid")
 	}
 	canonicalIndex, err := json.Marshal(imageIndex)

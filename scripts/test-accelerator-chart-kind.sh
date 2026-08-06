@@ -243,7 +243,7 @@ if [ "$reuse_mode" = reuse ]; then
   [ "$ACCELERATOR_IMAGE_REPOSITORY" = "$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator" ] || fail "reuse-image-repository"
   oras manifest fetch --plain-http --output "$tmp/image-index.json" "$image" 2>"$tmp/image-index.stderr" || fail "reuse-image-index"
   [ "sha256:$(sha256sum "$tmp/image-index.json" | cut -d ' ' -f 1)" = "$ACCELERATOR_IMAGE_DIGEST" ] || fail "reuse-image-index-digest"
-  jq -e --arg digest "$ACCELERATOR_IMAGE_DIGEST" '(.schemaVersion == 2) and ([.manifests[].platform | .os + "/" + .architecture] | sort) == ["linux/amd64","linux/arm64"]' "$tmp/image-index.json" >/dev/null || fail "reuse-image-platforms"
+  jq -e --arg digest "$ACCELERATOR_IMAGE_DIGEST" '(.schemaVersion == 2) and ([.manifests[].platform | .os + "/" + .architecture] | sort) == ["linux/amd64"]' "$tmp/image-index.json" >/dev/null || fail "reuse-image-platforms"
 else
   docker image inspect "$image" >"$tmp/image-inspect" 2>&1 || fail "immutable local image $image is unavailable; build/load the completed Accelerator image by digest"
   [ "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$ACCELERATOR_IMAGE_VERSION" ] || fail "image BuildVersion label mismatch"

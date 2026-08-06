@@ -55,7 +55,7 @@ func dockerMediaLayout(t *testing.T, architectures []string) string {
 }
 
 func TestCanonicalizeAcceptanceOCIImageLayout(t *testing.T) {
-	root := dockerMediaLayout(t, []string{"amd64", "arm64"})
+	root := dockerMediaLayout(t, []string{"amd64"})
 	if err := CanonicalizeAcceptanceOCIImageLayout(root, BuildIdentity); err != nil {
 		t.Fatal("canonicalize Docker media layout")
 	}
@@ -66,7 +66,7 @@ func TestCanonicalizeAcceptanceOCIImageLayout(t *testing.T) {
 	}
 	indexBytes, err := readAcceptanceOCIBlob(root, layout.Manifests[0])
 	var imageIndex acceptanceOCIIndex
-	if err != nil || json.Unmarshal(indexBytes, &imageIndex) != nil || len(imageIndex.Manifests) != 2 {
+	if err != nil || json.Unmarshal(indexBytes, &imageIndex) != nil || len(imageIndex.Manifests) != 1 {
 		t.Fatal("canonical image index differs")
 	}
 	for _, child := range imageIndex.Manifests {
@@ -87,13 +87,13 @@ func TestCanonicalizeAcceptanceOCIImageLayout(t *testing.T) {
 }
 
 func TestCanonicalizeAcceptanceOCIImageLayoutRejectsDrift(t *testing.T) {
-	if CanonicalizeAcceptanceOCIImageLayout(dockerMediaLayout(t, []string{"amd64"}), BuildIdentity) == nil {
-		t.Fatal("accepted missing platform")
+	if CanonicalizeAcceptanceOCIImageLayout(dockerMediaLayout(t, []string{"arm64"}), BuildIdentity) == nil {
+		t.Fatal("accepted unsupported platform")
 	}
 	if CanonicalizeAcceptanceOCIImageLayout(dockerMediaLayout(t, []string{"amd64", "amd64"}), BuildIdentity) == nil {
 		t.Fatal("accepted duplicate platform")
 	}
-	root := dockerMediaLayout(t, []string{"amd64", "arm64"})
+	root := dockerMediaLayout(t, []string{"amd64"})
 	encoded, err := os.ReadFile(filepath.Join(root, "index.json"))
 	var layout acceptanceOCIIndex
 	if err != nil || json.Unmarshal(encoded, &layout) != nil {

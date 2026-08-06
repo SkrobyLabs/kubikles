@@ -111,7 +111,6 @@ jobs:
     outputs:
       image_index: ${{ steps.evidence.outputs.image_index }}
       image_amd64: ${{ steps.evidence.outputs.image_amd64 }}
-      image_arm64: ${{ steps.evidence.outputs.image_arm64 }}
       chart_digest: ${{ steps.evidence.outputs.chart_digest }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -166,7 +165,6 @@ jobs:
           {
             echo "image_index=$(jq -er .imageDigest "$evidence")"
             echo "image_amd64=$(jq -er '.platforms[]|select(.architecture=="amd64")|.manifestDigest' "$evidence")"
-            echo "image_arm64=$(jq -er '.platforms[]|select(.architecture=="arm64")|.manifestDigest' "$evidence")"
             echo "chart_digest=$(jq -er .chartDigest "$source")"
           } >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -275,13 +273,6 @@ jobs:
           subject-digest: ${{ needs.accelerator-prepare.outputs.image_amd64 }}
           sbom-path: ${{ runner.temp }}/accelerator-prepared/kubikles-accelerator-image-linux-amd64-${{ needs.preflight.outputs.build_version }}.spdx.json
           push-to-registry: true
-      - id: image-arm64-spdx
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
-        with:
-          subject-name: ghcr.io/skrobylabs/kubikles-accelerator
-          subject-digest: ${{ needs.accelerator-prepare.outputs.image_arm64 }}
-          sbom-path: ${{ runner.temp }}/accelerator-prepared/kubikles-accelerator-image-linux-arm64-${{ needs.preflight.outputs.build_version }}.spdx.json
-          push-to-registry: true
       - id: chart-spdx
         uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
@@ -296,16 +287,14 @@ jobs:
           BUNDLE_2: ${{ steps.chart-provenance.outputs.bundle-path }}
           BUNDLE_3: ${{ steps.descriptor-provenance.outputs.bundle-path }}
           BUNDLE_4: ${{ steps.image-amd64-spdx.outputs.bundle-path }}
-          BUNDLE_5: ${{ steps.image-arm64-spdx.outputs.bundle-path }}
-          BUNDLE_6: ${{ steps.chart-spdx.outputs.bundle-path }}
+          BUNDLE_5: ${{ steps.chart-spdx.outputs.bundle-path }}
         run: |
           set -euo pipefail
           output="$RUNNER_TEMP/accelerator-supply-chain"; mkdir -m 0700 "$output"
-          for bundle in "$BUNDLE_1" "$BUNDLE_2" "$BUNDLE_3" "$BUNDLE_4" "$BUNDLE_5" "$BUNDLE_6"; do jq -c . "$bundle"; done > "$output/kubikles-accelerator-attestations-$BUILD_VERSION.jsonl"
+          for bundle in "$BUNDLE_1" "$BUNDLE_2" "$BUNDLE_3" "$BUNDLE_4" "$BUNDLE_5"; do jq -c . "$bundle"; done > "$output/kubikles-accelerator-attestations-$BUILD_VERSION.jsonl"
           install -m 0600 "$RUNNER_TEMP/accelerator-prepared/kubikles-accelerator-image-linux-amd64-$BUILD_VERSION.spdx.json" "$output/"
-          install -m 0600 "$RUNNER_TEMP/accelerator-prepared/kubikles-accelerator-image-linux-arm64-$BUILD_VERSION.spdx.json" "$output/"
           install -m 0600 "$RUNNER_TEMP/accelerator-prepared/kubikles-accelerator-chart-$BUILD_VERSION.spdx.json" "$output/"
-          [ "$(wc -l < "$output/kubikles-accelerator-attestations-$BUILD_VERSION.jsonl")" = 6 ]
+          [ "$(wc -l < "$output/kubikles-accelerator-attestations-$BUILD_VERSION.jsonl")" = 5 ]
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: kubikles-accelerator-supply-chain

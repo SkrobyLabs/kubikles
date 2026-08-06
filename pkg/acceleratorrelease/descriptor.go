@@ -118,14 +118,10 @@ func validateAndProject(buildVersion string, checksumBytes, descriptorBytes []by
 	if wire.Image.Repository != imageRepository ||
 		!digestRE.MatchString(wire.Image.Digest) ||
 		wire.Image.Reference != wire.Image.Repository+"@"+wire.Image.Digest ||
-		len(wire.Image.Platforms) != 2 ||
+		len(wire.Image.Platforms) != 1 ||
 		wire.Image.Platforms[0].OS != "linux" ||
 		wire.Image.Platforms[0].Architecture != "amd64" ||
-		!digestRE.MatchString(wire.Image.Platforms[0].ManifestDigest) ||
-		wire.Image.Platforms[1].OS != "linux" ||
-		wire.Image.Platforms[1].Architecture != "arm64" ||
-		!digestRE.MatchString(wire.Image.Platforms[1].ManifestDigest) ||
-		wire.Image.Platforms[0].ManifestDigest == wire.Image.Platforms[1].ManifestDigest {
+		!digestRE.MatchString(wire.Image.Platforms[0].ManifestDigest) {
 		return VerifiedRelease{}, descriptorIntegrity
 	}
 	chartVersion := strings.TrimPrefix(buildVersion, "v")

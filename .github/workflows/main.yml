@@ -61,8 +61,17 @@ jobs:
         run: make test-accelerator-e2e
       - name: Prepare fresh Trivy database
         run: trivy image --cache-dir "$RUNNER_TEMP/trivy-cache" --download-db-only --no-progress
-      - name: Run exact local supply-chain gate
+      - name: Build linux/amd64 Accelerator release inputs
         env:
           ACCELERATOR_BUILDER: ${{ steps.buildx.outputs.name }}
+          BUILD_VERSION: v0.0.0
+          ACCELERATOR_PREPARED_OUTPUT: ${{ runner.temp }}/accelerator-prepared
+        run: |
+          source_commit="$(git rev-parse HEAD)"
+          source_epoch="$(git show -s --format=%ct "$source_commit")"
+          SOURCE_COMMIT="$source_commit" SOURCE_DATE_EPOCH="$source_epoch" ./scripts/publish-accelerator-release.sh prepare
+      - name: Scan and validate linux/amd64 Accelerator release inputs
+        env:
           TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
+          ACCELERATOR_PREPARED_ROOT: ${{ runner.temp }}/accelerator-prepared
         run: make test-accelerator-supply-chain BUILD_VERSION=v0.0.0

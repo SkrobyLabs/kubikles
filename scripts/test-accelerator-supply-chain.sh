@@ -56,9 +56,8 @@ else
 fi
 image_digest="$(jq -er '.imageDigest | select(test("^sha256:[0-9a-f]{64}$"))' "$prepared/image-evidence.json")" || fail image-evidence
 amd64_digest="$(jq -er '.platforms[] | select(.os=="linux" and .architecture=="amd64") | .manifestDigest' "$prepared/image-evidence.json")" || fail image-evidence
-arm64_digest="$(jq -er '.platforms[] | select(.os=="linux" and .architecture=="arm64") | .manifestDigest' "$prepared/image-evidence.json")" || fail image-evidence
 chart_digest="$(jq -er '.chartDigest | select(test("^sha256:[0-9a-f]{64}$"))' "$prepared/source.json")" || fail chart-evidence
-[ "$image_digest" != "$amd64_digest" ] && [ "$image_digest" != "$arm64_digest" ] && [ "$amd64_digest" != "$arm64_digest" ] || fail platform-evidence
+[ "$image_digest" != "$amd64_digest" ] || fail platform-evidence
 
 chart_version="${version#v}"
 chart="$prepared/kubikles-accelerator-$chart_version.tgz"
@@ -73,7 +72,6 @@ platform_source() {
   printf 'oci-dir:%s\n' "$output"
 }
 amd64_source="$(platform_source amd64 "$amd64_digest")"
-arm64_source="$(platform_source arm64 "$arm64_digest")"
 generate_sbom() {
   local artifact="$1" source="$2" platform="$3" digest="$4" name="$5" output="$6"
   local raw="$work/raw-$artifact.json"
@@ -84,19 +82,16 @@ generate_sbom() {
   chmod 600 "$output"
 }
 amd64_sbom="$prepared/kubikles-accelerator-image-linux-amd64-$version.spdx.json"
-arm64_sbom="$prepared/kubikles-accelerator-image-linux-arm64-$version.spdx.json"
 chart_sbom="$prepared/kubikles-accelerator-chart-$version.spdx.json"
 generate_sbom image-linux-amd64 "$amd64_source" linux/amd64 "$amd64_digest" kubikles-accelerator-image-linux-amd64 "$amd64_sbom"
-generate_sbom image-linux-arm64 "$arm64_source" linux/arm64 "$arm64_digest" kubikles-accelerator-image-linux-arm64 "$arm64_sbom"
 generate_sbom chart "file:$chart" '' "$chart_digest" kubikles-accelerator-chart "$chart_sbom"
 
-for artifact in image-linux-amd64 image-linux-arm64 chart; do
+for artifact in image-linux-amd64 chart; do
   first="$prepared/kubikles-accelerator-$artifact-$version.spdx.json"
   [ "$artifact" != chart ] || first="$chart_sbom"
   second="$work/repeat-$artifact.spdx.json"
   case "$artifact" in
     image-linux-amd64) generate_sbom "$artifact-repeat" "$amd64_source" linux/amd64 "$amd64_digest" kubikles-accelerator-image-linux-amd64 "$second";;
-    image-linux-arm64) generate_sbom "$artifact-repeat" "$arm64_source" linux/arm64 "$arm64_digest" kubikles-accelerator-image-linux-arm64 "$second";;
     chart) generate_sbom "$artifact-repeat" "file:$chart" '' "$chart_digest" kubikles-accelerator-chart "$second";;
   esac
   cmp "$first" "$second" >/dev/null || fail "sbom-nondeterministic-$artifact"
@@ -108,13 +103,12 @@ scan_sbom() {
   trivy sbom --cache-dir "$trivy_cache" --skip-db-update --offline-scan --scanners vuln --severity CRITICAL,HIGH,MEDIUM,LOW --format json --output "$output" "$sbom" >/dev/null 2>&1 || fail "trivy-$artifact"
 }
 scan_sbom image-linux-amd64 "$amd64_sbom"
-scan_sbom image-linux-arm64 "$arm64_sbom"
 scan_sbom chart "$chart_sbom"
 trivy fs --cache-dir "$trivy_cache" --skip-db-update --offline-scan --scanners vuln --severity CRITICAL,HIGH,MEDIUM,LOW --format json --output "$work/trivy-source.json" "$root" >/dev/null 2>&1 || fail trivy-source
 
 findings="$work/findings.json"
 jq -n --arg updated "$db_updated" \
-  --slurpfile amd "$work/trivy-image-linux-amd64.json" --slurpfile arm "$work/trivy-image-linux-arm64.json" \
+  --slurpfile amd "$work/trivy-image-linux-amd64.json" \
   --slurpfile chart "$work/trivy-chart.json" --slurpfile source "$work/trivy-source.json" '
   def rows($doc;$artifact;$type): [$doc[0].Results[]? | select($type=="" or (.Type|ascii_downcase|contains($type))) | .Vulnerabilities[]? |
     (.PkgIdentifier.PURL // "") as $purl |
@@ -122,8 +116,8 @@ jq -n --arg updated "$db_updated" \
       {id:.VulnerabilityID,purl:$purl,artifact:$artifact,severity:(.Severity|ascii_upcase)}
     else error("vulnerability purl invalid") end];
   {schemaVersion:1,dbUpdatedAt:$updated,
-   artifacts:["image-linux-amd64","image-linux-arm64","chart","source-go","source-npm"],
-   findings:(rows($amd;"image-linux-amd64";"")+rows($arm;"image-linux-arm64";"")+rows($chart;"chart";"")+rows($source;"source-go";"gomod")+rows($source;"source-npm";"npm") | unique_by([.id,.purl,.artifact]) | sort_by([.artifact,.id,.purl]))}' > "$findings" || fail trivy-normalize
+   artifacts:["image-linux-amd64","chart","source-go","source-npm"],
+   findings:(rows($amd;"image-linux-amd64";"")+rows($chart;"chart";"")+rows($source;"source-go";"gomod")+rows($source;"source-npm";"npm") | unique_by([.id,.purl,.artifact]) | sort_by([.artifact,.id,.purl]))}' > "$findings" || fail trivy-normalize
 policy_result="$work/policy-result.json"
 go run "$root/scripts/accelerator-supply-chain/cmd/accelerator-supply-chain" policy "$findings" "$root/security/accelerator-vulnerability-exceptions.json" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$policy_result" || fail vulnerability-policy
 

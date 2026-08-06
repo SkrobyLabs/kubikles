@@ -118,7 +118,6 @@ func StableAssetNames(version string) ([]string, error) {
 	}
 	return []string{
 		"kubikles-accelerator-image-linux-amd64-" + version + ".spdx.json",
-		"kubikles-accelerator-image-linux-arm64-" + version + ".spdx.json",
 		"kubikles-accelerator-chart-" + version + ".spdx.json",
 		"kubikles-accelerator-attestations-" + version + ".jsonl",
 	}, nil

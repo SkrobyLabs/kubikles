@@ -7,11 +7,11 @@ import (
 
 func TestExactAttestationSubjectPredicateMatrix(t *testing.T) {
 	digests := ReleaseDigests{
-		ImageIndex: "sha256:" + strings.Repeat("1", 64), ImageAMD64: "sha256:" + strings.Repeat("2", 64), ImageARM64: "sha256:" + strings.Repeat("3", 64),
+		ImageIndex: "sha256:" + strings.Repeat("1", 64), ImageAMD64: "sha256:" + strings.Repeat("2", 64),
 		Chart: "sha256:" + strings.Repeat("4", 64), Descriptor: "sha256:" + strings.Repeat("5", 64), BuildVersion: "v1.4.0",
 	}
 	plan, err := ExactAttestationPlan(digests)
-	if err != nil || len(plan) != 6 || plan[0].SubjectName != ImageRepository || plan[0].PredicateType != SLSAPredicate || plan[3].PredicateType != SPDXPredicate || plan[2].PushToRegistry {
+	if err != nil || len(plan) != 5 || plan[0].SubjectName != ImageRepository || plan[0].PredicateType != SLSAPredicate || plan[3].PredicateType != SPDXPredicate || plan[2].PushToRegistry {
 		t.Fatal("exact attestation plan")
 	}
 	identity := VerifiedIdentity{

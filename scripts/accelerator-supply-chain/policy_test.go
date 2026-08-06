@@ -7,7 +7,7 @@ import (
 )
 
 func completeArtifacts() []Artifact {
-	return []Artifact{ArtifactImageAMD64, ArtifactImageARM64, ArtifactChart, ArtifactSourceGo, ArtifactSourceNPM}
+	return []Artifact{ArtifactImageAMD64, ArtifactChart, ArtifactSourceGo, ArtifactSourceNPM}
 }
 
 func TestVulnerabilityPolicyClosedMatrix(t *testing.T) {
@@ -33,7 +33,7 @@ func TestVulnerabilityPolicyClosedMatrix(t *testing.T) {
 		t.Fatal("accepted stale database")
 	}
 	incomplete := report
-	incomplete.Artifacts = incomplete.Artifacts[:4]
+	incomplete.Artifacts = incomplete.Artifacts[:3]
 	if _, err := EvaluatePolicy(incomplete, []VulnerabilityException{exception}, now, true); err == nil {
 		t.Fatal("accepted incomplete scan")
 	}

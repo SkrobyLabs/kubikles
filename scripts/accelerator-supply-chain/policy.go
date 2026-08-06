@@ -13,7 +13,6 @@ type Artifact string
 
 const (
 	ArtifactImageAMD64 Artifact = "image-linux-amd64"
-	ArtifactImageARM64 Artifact = "image-linux-arm64"
 	ArtifactChart      Artifact = "chart"
 	ArtifactSourceGo   Artifact = "source-go"
 	ArtifactSourceNPM  Artifact = "source-npm"
@@ -90,7 +89,7 @@ func EvaluatePolicy(report ScanReport, exceptions []VulnerabilityException, now 
 	if err != nil || dbTime.After(now.Add(time.Minute)) || requireFreshDB && now.Sub(dbTime) > 24*time.Hour {
 		return PolicyResult{}, errors.New("vulnerability database invalid")
 	}
-	wantArtifacts := []Artifact{ArtifactImageAMD64, ArtifactImageARM64, ArtifactChart, ArtifactSourceGo, ArtifactSourceNPM}
+	wantArtifacts := []Artifact{ArtifactImageAMD64, ArtifactChart, ArtifactSourceGo, ArtifactSourceNPM}
 	if len(report.Artifacts) != len(wantArtifacts) {
 		return PolicyResult{}, errors.New("vulnerability coverage incomplete")
 	}
@@ -154,7 +153,7 @@ func EvaluatePolicy(report ScanReport, exceptions []VulnerabilityException, now 
 
 func validArtifact(value Artifact) bool {
 	switch value {
-	case ArtifactImageAMD64, ArtifactImageARM64, ArtifactChart, ArtifactSourceGo, ArtifactSourceNPM:
+	case ArtifactImageAMD64, ArtifactChart, ArtifactSourceGo, ArtifactSourceNPM:
 		return true
 	default:
 		return false

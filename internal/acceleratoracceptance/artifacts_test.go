@@ -19,7 +19,7 @@ func exactArtifactFixture(t *testing.T) ArtifactFixture {
 		BuildVersion:  BuildIdentity,
 		Source:        artifactSource{Repository: "https://github.com/SkrobyLabs/kubikles", Commit: strings.Repeat("c", 40), GitTag: BuildIdentity},
 		Compatibility: artifactCompatibility{Mode: "exact-build-version", DesktopBuildVersion: BuildIdentity, AcceleratorBuildVersion: BuildIdentity},
-		Image:         artifactImage{Repository: "ghcr.io/skrobylabs/kubikles-accelerator", Digest: digest('a'), Reference: "ghcr.io/skrobylabs/kubikles-accelerator@" + digest('a'), Platforms: []artifactPlatform{{OS: "linux", Architecture: "amd64", ManifestDigest: digest('b')}, {OS: "linux", Architecture: "arm64", ManifestDigest: digest('c')}}},
+		Image:         artifactImage{Repository: "ghcr.io/skrobylabs/kubikles-accelerator", Digest: digest('a'), Reference: "ghcr.io/skrobylabs/kubikles-accelerator@" + digest('a'), Platforms: []artifactPlatform{{OS: "linux", Architecture: "amd64", ManifestDigest: digest('b')}}},
 		Chart:         artifactChart{Repository: "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator", Digest: digest('d'), Reference: "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator@" + digest('d'), Version: "0.0.0", AppVersion: BuildIdentity},
 	}
 	descriptorBytes, err := json.Marshal(descriptor)
@@ -29,7 +29,7 @@ func exactArtifactFixture(t *testing.T) ArtifactFixture {
 	descriptorBytes = append(descriptorBytes, '\n')
 	sum := sha256.Sum256(descriptorBytes)
 	checksum := []byte(hex.EncodeToString(sum[:]) + "  kubikles-accelerator-release-v0.0.0.json\n")
-	evidence, err := json.Marshal(artifactImageEvidence{ImageDigest: digest('a'), Platforms: descriptor.Image.Platforms, Inspections: []artifactInspection{{Architecture: "amd64", BinaryBuildVersion: BuildIdentity, ImageBuildVersion: BuildIdentity}, {Architecture: "arm64", BinaryBuildVersion: BuildIdentity, ImageBuildVersion: BuildIdentity}}})
+	evidence, err := json.Marshal(artifactImageEvidence{ImageDigest: digest('a'), Platforms: descriptor.Image.Platforms, Inspections: []artifactInspection{{Architecture: "amd64", BinaryBuildVersion: BuildIdentity, ImageBuildVersion: BuildIdentity}}})
 	if err != nil {
 		t.Fatal("marshal evidence fixture")
 	}
@@ -37,7 +37,7 @@ func exactArtifactFixture(t *testing.T) ArtifactFixture {
 		Descriptor: descriptorBytes, Checksum: checksum, ImageEvidence: append(evidence, '\n'),
 		RegistryImageDigest: digest('a'), RegistryChartDigest: digest('d'),
 		ChartVersion: "0.0.0", ChartAppVersion: BuildIdentity,
-		RuntimeBuildVersion: BuildIdentity, HostArchitecture: "arm64", SelectedManifestDigest: digest('c'),
+		RuntimeBuildVersion: BuildIdentity, HostArchitecture: "amd64", SelectedManifestDigest: digest('b'),
 	}
 }
 
@@ -87,7 +87,7 @@ func TestAcceptanceExactLocalReleaseFixture(t *testing.T) {
 		}},
 		{"checksum", func(f *ArtifactFixture) { f.Checksum[0] = '0' }},
 		{"missing platform", func(f *ArtifactFixture) {
-			f.ImageEvidence = []byte(strings.Replace(string(f.ImageEvidence), `,{"os":"linux","architecture":"arm64","manifestDigest":"sha256:`+strings.Repeat("c", 64)+`"}`, "", 1))
+			f.ImageEvidence = []byte(strings.Replace(string(f.ImageEvidence), `[{"os":"linux","architecture":"amd64","manifestDigest":"sha256:`+strings.Repeat("b", 64)+`"}]`, `[]`, 1))
 		}},
 		{"extra platform", func(f *ArtifactFixture) {
 			f.ImageEvidence = []byte(strings.Replace(string(f.ImageEvidence), `]`, `,{"os":"linux","architecture":"s390x","manifestDigest":"sha256:`+strings.Repeat("e", 64)+`"}]`, 1))

@@ -56,7 +56,7 @@ mkdir -m 700 -p "$source_root"
 git -C "$root" archive "$commit" | tar -x -C "$source_root" || fail source-archive
 (cd "$source_root/frontend" && npm ci --offline --no-audit --no-fund && test -s ../build/appicon.svg && rm -f src/assets/images/appicon.svg && cp ../build/appicon.svg src/assets/images/appicon.svg && test -s src/assets/images/appicon.svg && BUILD_VERSION=v0.0.0 npm run build) >"$artifact_root/frontend-build.log" 2>&1 || fail offline-frontend-build
 ldflags="-s -w -buildid= -X main.BuildVersion=v0.0.0 -X main.GitCommit=$commit -X main.GitDirty=false -X main.acceleratorBuildIdentity=kubikles-accelerator-build-identity:v0.0.0|$commit|false"
-for architecture in amd64 arm64; do
+for architecture in amd64; do
   binary="$work/$architecture/kubikles-accelerator"
   mkdir -m 700 -p "$(dirname "$binary")"
   (cd "$source_root" && GOTOOLCHAIN=go1.25.12 GOPROXY=off SOURCE_DATE_EPOCH="$epoch" CGO_ENABLED=0 GOOS=linux GOARCH="$architecture" \
@@ -69,7 +69,7 @@ cleanup_directory offline-source "$source_root" || fail source-cleanup
 base_id="$(docker image inspect --format '{{.Id}}' "$distroless")" || fail distroless-inspection
 [[ "$base_id" =~ ^sha256:[0-9a-f]{64}$ ]] || fail distroless-identity
 base_architecture="$(docker image inspect --format '{{.Architecture}}' "$distroless")" || fail distroless-inspection
-case "$base_architecture" in amd64|arm64) ;; *) fail distroless-identity;; esac
+[ "$base_architecture" = amd64 ] || fail distroless-identity
 docker image tag "$distroless" "$local_base" || fail distroless-alias
 [ "$(docker image inspect --format '{{.Id}}' "$local_base")" = "$base_id" ] || fail distroless-alias
 docker image push "$local_base" >"$artifact_root/distroless-mirror.log" 2>&1 || fail distroless-mirror
@@ -78,7 +78,7 @@ base_digest="$(oras resolve --plain-http "$client_base")" || fail distroless-mir
 
 (
   cd "$root"
-  for architecture in amd64 arm64; do
+  for architecture in amd64; do
     context="$work/$architecture"
     cat >"$context/Dockerfile" <<EOF
 FROM --platform=linux/$base_architecture $daemon_registry/skrobylabs/a60a-distroless@$base_digest
@@ -93,7 +93,7 @@ EOF
       --build-arg BUILD_VERSION=v0.0.0 --build-arg "GIT_COMMIT=$commit" \
       --output "type=registry,name=$daemon_build_repository:v0.0.0-$architecture,registry.insecure=true,oci-mediatypes=true,rewrite-timestamp=true" "$context" || exit 1
   done
-  oras manifest index create --plain-http "$build_ref" v0.0.0-amd64 v0.0.0-arm64 || exit 1
+  oras manifest index create --plain-http "$build_ref" v0.0.0-amd64 || exit 1
   oras cp --from-plain-http --to-oci-layout "$build_ref" "$layout:v0.0.0" || exit 1
   go run ./internal/acceleratoracceptance/cmd/accelerator-e2e-oci "$layout" || exit 1
 ) >"$artifact_root/build.log" 2>&1 || fail offline-build
@@ -121,7 +121,7 @@ chart_digest="$(cd "$root" && go run ./scripts/accelerator-release field "$artif
 [ "$(oras resolve --plain-http "$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator:v0.0.0")" = "$image_digest" ] || fail image-readback
 [ "$(oras resolve --plain-http "$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/helm/kubikles-accelerator:0.0.0")" = "$chart_digest" ] || fail chart-readback
 host_arch="$(go env GOARCH)"
-case "$host_arch" in amd64|arm64) ;; *) fail host-architecture;; esac
+[ "$host_arch" = amd64 ] || fail host-architecture
 selected_digest="$(jq -r --arg arch "$host_arch" '.platforms[] | select(.architecture == $arch and .os == "linux") | .manifestDigest' "$artifact_root/acceptance-image-evidence.json")"
 [[ "$selected_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail selected-manifest
 jq -n --arg image "$image_digest" --arg chart "$chart_digest" --arg host "$host_arch" --arg selected "$selected_digest" \

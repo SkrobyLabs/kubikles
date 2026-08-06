@@ -34,7 +34,7 @@ func TestToolchainAndReleaseIdentityContract(t *testing.T) {
 		}
 	}
 	assets, err := StableAssetNames("v1.4.0")
-	if err != nil || len(assets) != 4 || assets[0] != "kubikles-accelerator-image-linux-amd64-v1.4.0.spdx.json" {
+	if err != nil || len(assets) != 3 || assets[0] != "kubikles-accelerator-image-linux-amd64-v1.4.0.spdx.json" {
 		t.Fatal("stable assets")
 	}
 	data, _ := os.ReadFile(filepath.Join(root, "security", "accelerator-toolchain.json"))

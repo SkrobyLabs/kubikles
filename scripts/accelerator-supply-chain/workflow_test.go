@@ -45,7 +45,7 @@ func TestWorkflowEventPermissionAuthorityMatrix(t *testing.T) {
 	if strings.Count(string(release), "id-token: write") != 1 || strings.Count(string(release), "attestations: write") != 1 || strings.Count(string(release), "artifact-metadata: write") != 1 {
 		t.Fatal("release OIDC authority is not exclusive")
 	}
-	if !strings.Contains(string(build), "if: inputs.accelerator_supply_chain") || !strings.Contains(string(release), "accelerator_supply_chain: false") {
+	if !strings.Contains(string(build), "if: ${{ inputs.accelerator_supply_chain == true }}") || !strings.Contains(string(release), "accelerator_supply_chain: false") {
 		t.Fatal("release repeats reusable Accelerator supply-chain preparation")
 	}
 }

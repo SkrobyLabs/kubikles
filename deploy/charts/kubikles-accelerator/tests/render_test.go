@@ -389,7 +389,7 @@ func TestRenderForbidsLifecycleSecurityAndReferenceEscapes(t *testing.T) {
 	spec := nested(job, "spec").(map[string]any)
 	pod := nested(job, "spec", "template", "spec").(map[string]any)
 	container := nested(job, "spec", "template", "spec", "containers").([]any)[0].(map[string]any)
-	if len(spec) != 5 || len(pod) != 7 || len(container) != 7 || len(nested(pod, "securityContext").(map[string]any)) != 4 || len(nested(container, "securityContext").(map[string]any)) != 3 {
+	if len(spec) != 5 || len(pod) != 8 || len(container) != 7 || len(nested(pod, "securityContext").(map[string]any)) != 4 || len(nested(container, "securityContext").(map[string]any)) != 3 {
 		t.Fatal("Job, Pod, or container contains an unapproved field")
 	}
 	for _, key := range []string{"activeDeadlineSeconds", "selector"} {
@@ -397,7 +397,7 @@ func TestRenderForbidsLifecycleSecurityAndReferenceEscapes(t *testing.T) {
 			t.Fatalf("forbidden Job field %s", key)
 		}
 	}
-	for _, key := range []string{"hostNetwork", "hostPID", "hostIPC", "hostname", "subdomain", "nodeName", "nodeSelector", "affinity", "tolerations", "imagePullSecrets", "runtimeClassName", "priorityClassName"} {
+	for _, key := range []string{"hostNetwork", "hostPID", "hostIPC", "hostname", "subdomain", "nodeName", "affinity", "tolerations", "imagePullSecrets", "runtimeClassName", "priorityClassName"} {
 		if pod[key] != nil {
 			t.Fatalf("forbidden Pod field %s", key)
 		}
@@ -409,6 +409,9 @@ func TestRenderForbidsLifecycleSecurityAndReferenceEscapes(t *testing.T) {
 	}
 	if nested(container, "securityContext", "privileged") != nil || nested(container, "securityContext", "procMount") != nil || nested(pod, "securityContext", "fsGroup") != nil || nested(pod, "securityContext", "supplementalGroups") != nil {
 		t.Fatal("forbidden security escape rendered")
+	}
+	if nested(pod, "nodeSelector", "kubernetes.io/arch") != "amd64" {
+		t.Fatal("Accelerator Pod is not restricted to the published architecture")
 	}
 	if nested(job, "metadata", "name") != "release-kubikles-accelerator" || pod["serviceAccountName"] != "release-kubikles-accelerator" || nested(find(t, result, "ServiceAccount"), "metadata", "name") != "release-kubikles-accelerator" || nested(find(t, result, "Secret"), "metadata", "name") != "release-kubikles-accelerator-verifier" {
 		t.Fatal("namespaced resource names are not exact")

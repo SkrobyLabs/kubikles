@@ -178,9 +178,8 @@ func NewDescriptor(e Evidence) (Descriptor, error) {
 		return Descriptor{}, errors.New("release evidence has invalid commit or digest identity")
 	}
 	platforms := append([]Platform(nil), e.Platforms...)
-	sort.Slice(platforms, func(i, j int) bool { return platforms[i].Architecture < platforms[j].Architecture })
-	if len(platforms) != 2 || platforms[0].OS != "linux" || platforms[0].Architecture != "amd64" || platforms[1].OS != "linux" || platforms[1].Architecture != "arm64" || platforms[0].ManifestDigest == platforms[1].ManifestDigest {
-		return Descriptor{}, errors.New("release evidence must contain exactly linux/amd64 and linux/arm64")
+	if len(platforms) != 1 || platforms[0].OS != "linux" || platforms[0].Architecture != "amd64" {
+		return Descriptor{}, errors.New("release evidence must contain exactly linux/amd64")
 	}
 	for _, p := range platforms {
 		if !digestRE.MatchString(p.ManifestDigest) {
@@ -216,16 +215,13 @@ func ValidateDescriptor(d Descriptor) error {
 	if d.Chart.Repository != chartRepository || !digestRE.MatchString(d.Chart.Digest) || d.Chart.Reference != d.Chart.Repository+"@"+d.Chart.Digest || d.Chart.Version != v.ChartVersion || d.Chart.AppVersion != d.BuildVersion {
 		return errors.New("descriptor chart reference or version is inconsistent")
 	}
-	if len(d.Image.Platforms) != 2 || d.Image.Platforms[0].OS != "linux" || d.Image.Platforms[0].Architecture != "amd64" || d.Image.Platforms[1].OS != "linux" || d.Image.Platforms[1].Architecture != "arm64" {
+	if len(d.Image.Platforms) != 1 || d.Image.Platforms[0].OS != "linux" || d.Image.Platforms[0].Architecture != "amd64" {
 		return errors.New("descriptor platform set or order is invalid")
 	}
 	for _, p := range d.Image.Platforms {
 		if !digestRE.MatchString(p.ManifestDigest) {
 			return errors.New("descriptor platform digest is invalid")
 		}
-	}
-	if d.Image.Platforms[0].ManifestDigest == d.Image.Platforms[1].ManifestDigest {
-		return errors.New("descriptor platform manifests must be distinct")
 	}
 	return nil
 }
@@ -475,7 +471,7 @@ func validateRenderedChart(path, version, appVersion string) error {
 	spec, _ := chartNested(job, "spec").(map[string]any)
 	pod, _ := chartNested(job, "spec", "template", "spec").(map[string]any)
 	containers, _ := pod["containers"].([]any)
-	if len(spec) != 5 || len(pod) != 7 || len(containers) != 1 || spec["completions"] != float64(1) || spec["parallelism"] != float64(1) || spec["backoffLimit"] != float64(0) || spec["ttlSecondsAfterFinished"] != float64(3600) || pod["restartPolicy"] != "Never" || pod["serviceAccountName"] != "release-kubikles-accelerator" || pod["automountServiceAccountToken"] != false {
+	if len(spec) != 5 || len(pod) != 8 || len(containers) != 1 || spec["completions"] != float64(1) || spec["parallelism"] != float64(1) || spec["backoffLimit"] != float64(0) || spec["ttlSecondsAfterFinished"] != float64(3600) || pod["restartPolicy"] != "Never" || pod["serviceAccountName"] != "release-kubikles-accelerator" || pod["automountServiceAccountToken"] != false || chartNested(pod, "nodeSelector", "kubernetes.io/arch") != "amd64" {
 		return errors.New("packaged Accelerator Job lifecycle contract differs")
 	}
 	container, _ := containers[0].(map[string]any)
@@ -718,8 +714,8 @@ func InspectOCIIndex(layout, version, commit string) (string, []Platform, error)
 	if json.Unmarshal(ib, &index) != nil {
 		return "", nil, errors.New("decode image index")
 	}
-	if index.SchemaVersion != 2 || len(index.Manifests) != 2 {
-		return "", nil, errors.New("image index must contain exactly two manifests")
+	if index.SchemaVersion != 2 || len(index.Manifests) != 1 {
+		return "", nil, errors.New("image index must contain exactly one manifest")
 	}
 	// ORAS digest copies catalog the selected index plus its copied child
 	// manifests in index.json. Accept only that exact expansion; no unrelated
@@ -741,9 +737,9 @@ func InspectOCIIndex(layout, version, commit string) (string, []Platform, error)
 			}
 		}
 	}
-	platforms := make([]Platform, 0, 2)
+	platforms := make([]Platform, 0, 1)
 	for _, d := range index.Manifests {
-		if d.Platform == nil || d.Platform.OS != "linux" || (d.Platform.Architecture != "amd64" && d.Platform.Architecture != "arm64") || d.MediaType != ociManifestMediaType {
+		if d.Platform == nil || d.Platform.OS != "linux" || d.Platform.Architecture != "amd64" || d.MediaType != ociManifestMediaType {
 			return "", nil, errors.New("unexpected image platform")
 		}
 		mb, err := validateDescriptorBlob(layout, d, ociManifestMediaType)
@@ -796,8 +792,7 @@ func InspectOCIIndex(layout, version, commit string) (string, []Platform, error)
 		}
 		platforms = append(platforms, Platform{OS: "linux", Architecture: d.Platform.Architecture, ManifestDigest: d.Digest})
 	}
-	sort.Slice(platforms, func(i, j int) bool { return platforms[i].Architecture < platforms[j].Architecture })
-	if platforms[0].Architecture != "amd64" || platforms[1].Architecture != "arm64" {
+	if len(platforms) != 1 || platforms[0].Architecture != "amd64" {
 		return "", nil, errors.New("image platform cardinality mismatch")
 	}
 	return indexDigest, platforms, nil
@@ -1085,7 +1080,6 @@ func VerifyReleaseAssetNames(buildVersion string, names []string) error {
 		"kubikles-accelerator-release-" + buildVersion + ".json",
 		"kubikles-accelerator-release-" + buildVersion + ".json.sha256",
 		"kubikles-accelerator-image-linux-amd64-" + buildVersion + ".spdx.json",
-		"kubikles-accelerator-image-linux-arm64-" + buildVersion + ".spdx.json",
 		"kubikles-accelerator-chart-" + buildVersion + ".spdx.json",
 		"kubikles-accelerator-attestations-" + buildVersion + ".jsonl",
 	}

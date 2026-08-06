@@ -216,17 +216,17 @@ func validArtifactDescriptor(descriptor artifactDescriptor) bool {
 }
 
 func validArtifactPlatforms(platforms []artifactPlatform) bool {
-	if len(platforms) != 2 || platforms[0].OS != "linux" || platforms[0].Architecture != "amd64" || platforms[1].OS != "linux" || platforms[1].Architecture != "arm64" {
+	if len(platforms) != 1 || platforms[0].OS != "linux" || platforms[0].Architecture != "amd64" {
 		return false
 	}
-	return artifactDigestPattern.MatchString(platforms[0].ManifestDigest) && artifactDigestPattern.MatchString(platforms[1].ManifestDigest) && platforms[0].ManifestDigest != platforms[1].ManifestDigest
+	return artifactDigestPattern.MatchString(platforms[0].ManifestDigest)
 }
 
 func validArtifactEvidence(evidence artifactImageEvidence) bool {
-	if !artifactDigestPattern.MatchString(evidence.ImageDigest) || !validArtifactPlatforms(evidence.Platforms) || len(evidence.Inspections) != 2 {
+	if !artifactDigestPattern.MatchString(evidence.ImageDigest) || !validArtifactPlatforms(evidence.Platforms) || len(evidence.Inspections) != 1 {
 		return false
 	}
-	for index, architecture := range []string{"amd64", "arm64"} {
+	for index, architecture := range []string{"amd64"} {
 		inspection := evidence.Inspections[index]
 		if inspection.Architecture != architecture || inspection.BinaryBuildVersion != BuildIdentity || inspection.ImageBuildVersion != BuildIdentity {
 			return false
