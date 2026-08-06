@@ -40,7 +40,7 @@ func TestAcceleratorAcceptanceKind(t *testing.T) {
 		if milliseconds < 1 {
 			milliseconds = 1
 		}
-		if index < 13 || index >= len(contract.Cases) || report.RecordPass(contract.Cases[index], milliseconds) != nil {
+		if index < 12 || index >= len(contract.Cases) || report.RecordPass(contract.Cases[index], milliseconds) != nil {
 			allPassed = false
 			t.Error("accelerator acceptance composed report failed")
 		}
@@ -52,14 +52,14 @@ func TestAcceleratorAcceptanceKind(t *testing.T) {
 		routingOnce.Do(func() { routing = runAcceleratorIntegratedRoutingKind(t) })
 		return routing
 	}
-	record(13, "IntegratedHappyPath", func(t *testing.T) {
+	record(12, "IntegratedHappyPath", func(t *testing.T) {
 		routing := ensureRouting(t)
 		if !routing.integratedHappy || !routing.sixOperations || !routing.valueFreeBoundaries {
 			t.Fatal("accelerator acceptance integrated proof incomplete")
 		}
 	}, nil)
 
-	record(14, "VersionAndArtifactMismatch", func(t *testing.T) {
+	record(13, "VersionAndArtifactMismatch", func(t *testing.T) {
 		routing := ensureRouting(t)
 		fixture, err := acceleratoracceptance.LoadArtifactFixture(os.Getenv("ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT"))
 		if err != nil || acceleratoracceptance.ValidateArtifactFixture(fixture) != nil {
@@ -74,28 +74,28 @@ func TestAcceleratorAcceptanceKind(t *testing.T) {
 		}
 	}, nil)
 
-	record(15, "TransportResumeAndRecreate", func(t *testing.T) {
+	record(14, "TransportResumeAndRecreate", func(t *testing.T) {
 		routing := ensureRouting(t)
 		if !routing.immediateDirect || !routing.resumedHigherSource || !routing.staleSourceRejected || routing.mismatchAttempts != 2 || !routing.mismatchNoThird {
 			t.Fatal("accelerator acceptance transport recovery proof incomplete")
 		}
 	}, nil)
 
-	record(16, "RealTwoMinuteAuthenticatedClientGrace", func(t *testing.T) {
+	record(15, "RealTwoMinuteAuthenticatedClientGrace", func(t *testing.T) {
 		routing := ensureRouting(t)
 		if routing.elapsed < 119*time.Second || routing.elapsed > 126*time.Second || !routing.reconnectCancelled || !routing.singleExpiry {
 			t.Fatal("accelerator acceptance Integrated grace proof incomplete")
 		}
 	}, nil)
 
-	record(17, "SecurityPrivacyBackpressure", func(t *testing.T) {
+	record(16, "SecurityPrivacyBackpressure", func(t *testing.T) {
 		routing := ensureRouting(t)
 		if !routing.loopback || !routing.privacy || !routing.rbac {
 			t.Fatal("accelerator acceptance security proof incomplete")
 		}
 	}, nil)
 
-	record(18, "CleanupSweepIsolation", func(t *testing.T) {
+	record(17, "CleanupSweepIsolation", func(t *testing.T) {
 		routing := ensureRouting(t)
 		if !routing.ownedCleanup || !routing.sentinel || !routing.sweep {
 			t.Fatal("accelerator acceptance cleanup proof incomplete")
@@ -120,7 +120,7 @@ func loadAcceptanceReportPrefix(t *testing.T) (acceleratoracceptance.Contract, a
 	}
 	report, parseErr := acceleratoracceptance.ParseReport(progress)
 	_ = progress.Close()
-	if parseErr != nil || report.SchemaVersion != acceleratoracceptance.ReportSchemaVersion || len(report.Cases) != 13 || len(contract.Cases) != 19 {
+	if parseErr != nil || report.SchemaVersion != acceleratoracceptance.ReportSchemaVersion || len(report.Cases) != 12 || len(contract.Cases) != 18 {
 		t.Fatal("accelerator acceptance focused report invalid")
 	}
 	for index, result := range report.Cases {

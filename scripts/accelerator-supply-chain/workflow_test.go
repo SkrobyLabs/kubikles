@@ -25,6 +25,7 @@ func TestWorkflowEventPermissionAuthorityMatrix(t *testing.T) {
 	pull, _ := os.ReadFile(filepath.Join(root, ".github", "workflows", "pull-request.yml"))
 	main, _ := os.ReadFile(filepath.Join(root, ".github", "workflows", "main.yml"))
 	release, _ := os.ReadFile(filepath.Join(root, ".github", "workflows", "release.yml"))
+	build, _ := os.ReadFile(filepath.Join(root, ".github", "workflows", "build.yml"))
 	for _, text := range []string{string(pull), string(main)} {
 		for _, authority := range []string{"packages: write", "contents: write", "id-token: write", "attestations: write", "artifact-metadata: write", "docker/login-action"} {
 			if strings.Contains(text, authority) {
@@ -43,5 +44,8 @@ func TestWorkflowEventPermissionAuthorityMatrix(t *testing.T) {
 	}
 	if strings.Count(string(release), "id-token: write") != 1 || strings.Count(string(release), "attestations: write") != 1 || strings.Count(string(release), "artifact-metadata: write") != 1 {
 		t.Fatal("release OIDC authority is not exclusive")
+	}
+	if !strings.Contains(string(build), "if: inputs.accelerator_supply_chain") || !strings.Contains(string(release), "accelerator_supply_chain: false") {
+		t.Fatal("release repeats reusable Accelerator supply-chain preparation")
 	}
 }

@@ -82,7 +82,6 @@ var expectedOwners = []expectedOwner{
 	{"A60A-010-RESUME", OwnerMake, "test-accelerator-desktop-resume-kind"},
 	{"A60A-011-DISPOSAL", OwnerMake, "test-accelerator-desktop-disposal-kind"},
 	{"A60A-012-LIFECYCLE", OwnerMake, "test-accelerator-desktop-lifecycle-kind"},
-	{"A60A-015-INTEGRATED-ROUTING", OwnerMake, "test-accelerator-integrated-routing-kind"},
 	{"A60A-016-INTEGRATED-HAPPY", OwnerGo, "TestAcceleratorAcceptanceKind/IntegratedHappyPath"},
 	{"A60A-017-MISMATCH", OwnerGo, "TestAcceleratorAcceptanceKind/VersionAndArtifactMismatch"},
 	{"A60A-018-TRANSPORT-RESUME", OwnerGo, "TestAcceleratorAcceptanceKind/TransportResumeAndRecreate"},

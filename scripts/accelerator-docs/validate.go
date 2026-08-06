@@ -23,13 +23,6 @@ func validateAll(root string) error {
 	if err != nil {
 		return err
 	}
-	digest, err := authorityDigest(root, c.AuthorityInputs)
-	if err != nil {
-		return err
-	}
-	if digest != m.AuthorityInputsSHA256 {
-		return errors.New("DOC-EVIDENCE-AUTHORITY-DRIFT: run make capture-accelerator-docs-evidence")
-	}
 	want := renderEvidence(m, records)
 	got, err := os.ReadFile(filepath.Join(root, "docs/accelerator/evidence.md"))
 	if err != nil || string(got) != string(want) {

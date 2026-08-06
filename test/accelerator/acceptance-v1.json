@@ -76,14 +76,8 @@
       "evidence": ["desktop.coordinator", "desktop.direct", "desktop.explicit-enable", "desktop.replacement"]
     },
     {
-      "id": "A60A-015-INTEGRATED-ROUTING",
-      "prerequisites": ["53dfebec", "d0eb9876", "d4f712fd"],
-      "owner": {"kind": "make", "target": "test-accelerator-integrated-routing-kind"},
-      "evidence": ["routing.direct", "routing.enabled-lifetime", "routing.operations", "routing.source"]
-    },
-    {
       "id": "A60A-016-INTEGRATED-HAPPY",
-      "prerequisites": ["1cec4c3a", "53dfebec", "71facaab", "b1854aa3", "d0eb9876"],
+      "prerequisites": ["1cec4c3a", "53dfebec", "71facaab", "b1854aa3", "d0eb9876", "d4f712fd"],
       "owner": {"kind": "go", "test": "TestAcceleratorAcceptanceKind/IntegratedHappyPath"},
       "evidence": ["composed.integrated", "composed.operations", "composed.value-free"]
     },

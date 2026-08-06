@@ -11,6 +11,10 @@ on:
         description: Exact Kubikles build identity
         type: string
         default: dev
+      accelerator_supply_chain:
+        description: Build, scan, and validate local Accelerator release inputs
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -75,6 +79,7 @@ jobs:
         run: make test-accelerator-release-contract
 
   accelerator-supply-chain:
+    if: inputs.accelerator_supply_chain
     runs-on: ubuntu-24.04
     permissions:
       contents: read
