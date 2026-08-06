@@ -29,8 +29,8 @@ type creatorCredential struct {
 	changed   chan struct{}
 }
 
-func (c creatorCredential) String() string             { return "<redacted>" }
-func (c creatorCredential) Format(s fmt.State, _ rune) { _, _ = io.WriteString(s, "<redacted>") }
+func (c *creatorCredential) String() string             { return "<redacted>" }
+func (c *creatorCredential) Format(s fmt.State, _ rune) { _, _ = io.WriteString(s, "<redacted>") }
 func generateCreatorCredential(entropy io.Reader) (*creatorCredential, error) {
 	var tokenBytes [32]byte
 	if _, err := io.ReadFull(entropy, tokenBytes[:]); err != nil {

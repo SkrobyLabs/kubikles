@@ -261,10 +261,9 @@ func TestHealthHandlers(t *testing.T) {
 	}
 
 	blocked := newAcceleratorTestServer(t, &recordingMethodCaller{}, ReadinessFunc(func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }), DenyProtectedRoutes)
-	request := httptest.NewRequest(http.MethodGet, "/readyz", nil).WithContext(func() context.Context {
-		ctx, _ := context.WithTimeout(context.Background(), 20*time.Millisecond)
-		return ctx
-	}())
+	requestContext, cancelRequest := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancelRequest()
+	request := httptest.NewRequest(http.MethodGet, "/readyz", nil).WithContext(requestContext)
 	request.Host = "localhost"
 	response = httptest.NewRecorder()
 	blocked.Handler().ServeHTTP(response, request)

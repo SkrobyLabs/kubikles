@@ -276,7 +276,7 @@ func assertAcceleratorOrdinaryServicesAbsent(t *testing.T, app *App) {
 		t.Fatalf("ordinary state initialized in Accelerator mode: %#v", app)
 	}
 	if app.embeddedBrowser.session != nil || app.embeddedBrowser.portFwdID != "" {
-		t.Fatalf("embedded browser initialized in Accelerator mode: %#v", app.embeddedBrowser)
+		t.Fatalf("embedded browser initialized in Accelerator mode: session=%#v portForwardID=%q", app.embeddedBrowser.session, app.embeddedBrowser.portFwdID)
 	}
 }
 

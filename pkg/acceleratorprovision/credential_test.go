@@ -188,7 +188,7 @@ func TestCredentialAndHandleFormattingRedacts(t *testing.T) {
 		"w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM",
 		"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
 	}
-	for _, value := range []any{credential, *credential, workload, *workload, result} {
+	for _, value := range []any{credential, workload, *workload, result} {
 		for _, verb := range []string{"%v", "%+v", "%#v", "%s", "%q", "%x"} {
 			assertNoCredentialCorpus(t, fmt.Sprintf(verb, value), secrets)
 		}

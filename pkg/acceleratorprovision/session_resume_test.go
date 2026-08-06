@@ -99,7 +99,7 @@ func TestResumeRequiresExactEndedSessionAndWorkload(t *testing.T) {
 		return nil, &connectAttemptFailure{phase: attemptInfo, cause: protocolAttemptError{}}
 	}
 
-	copiedSession := *session
+	copiedSession := &ConnectedSession{self: session}
 	copiedWorkload := *workload
 	differentWorkload := connectorWorkload(t)
 	mutatedSession, mutatedWorkload := resumableSessionFixture(t, clock)
@@ -112,7 +112,7 @@ func TestResumeRequiresExactEndedSessionAndWorkload(t *testing.T) {
 	for name, request := range map[string]ResumeRequest{
 		"nil prior":       {},
 		"nil workload":    {Prior: session},
-		"copied session":  {Prior: &copiedSession, Workload: workload},
+		"copied session":  {Prior: copiedSession, Workload: workload},
 		"copied workload": {Prior: session, Workload: &copiedWorkload},
 		"different":       {Prior: session, Workload: differentWorkload},
 		"mutated":         {Prior: mutatedSession, Workload: mutatedWorkload},
