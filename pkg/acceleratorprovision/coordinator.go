@@ -35,10 +35,11 @@ type Coordinator struct {
 	disposalMu sync.Mutex
 	disposals  map[*ProvisionedWorkload]*coordinatorDisposal
 
-	// terminalCleanupObserver is populated only by the disposable Kind harness.
-	// It observes a completed drain disposal; it never participates in runtime
-	// lifecycle decisions.
-	terminalCleanupObserver func()
+	// terminalCleanup observers are populated only by the disposable Kind
+	// harness. They observe the start and completion of a drain disposal and
+	// never participate in runtime lifecycle decisions.
+	terminalCleanupStartObserver func()
+	terminalCleanupObserver      func()
 }
 
 type coordinatorDisposal struct {
@@ -924,8 +925,12 @@ func (c *Coordinator) coordinateDisposal(slot *contextSlot, workload *Provisione
 	operation := newCoordinatorDisposal(drain)
 	c.registerDisposalOwnerLocked(operation, slot, ownerEpoch)
 	c.disposals[workload] = operation
+	terminalCleanupStartObserver := c.terminalCleanupStartObserver
 	c.disposalMu.Unlock()
 	if drain {
+		if terminalCleanupStartObserver != nil {
+			terminalCleanupStartObserver()
+		}
 		_ = c.disposer.DrainAndDispose(context.Background(), workload)
 	} else {
 		_ = c.disposer.DisposeNow(context.Background(), workload)

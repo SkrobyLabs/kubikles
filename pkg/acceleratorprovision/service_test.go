@@ -871,7 +871,7 @@ func TestKindHarnessIntegratedRoutingTimeoutBudgetsAreExplicit(t *testing.T) {
 			t.Fatalf("integrated routing source retained unbounded API call %q", unbounded)
 		}
 	}
-	if !strings.Contains(string(harnessSource), "go_test_timeout=34m") {
+	if !strings.Contains(string(harnessSource), "go_test_timeout=36m") {
 		t.Fatal("integrated routing outer timeout does not cover its sequential bounded phases")
 	}
 	privacy := strings.Index(string(harnessSource), `captured_output_sensitive "$tmp/go-test" 1`)

@@ -24,6 +24,7 @@ type integratedRoutingKindResolver struct {
 type IntegratedRoutingKindCoordinatorProbe struct {
 	coordinator                   *Coordinator
 	provisions                    atomic.Int32
+	terminalCleanupStarts         atomic.Int32
 	terminalCleanups              atomic.Int32
 	provisionAvailable            atomic.Bool
 	provisionUnavailable          atomic.Bool
@@ -41,6 +42,15 @@ type IntegratedRoutingKindCoordinatorProbe struct {
 	connectVersionMismatch        atomic.Bool
 	connectAuthoritative          atomic.Bool
 	connectCancelled              atomic.Bool
+}
+
+// TerminalCleanupStartCount reports terminal drain disposals that crossed the
+// post-grace disposal boundary in the Kind-only harness.
+func (p *IntegratedRoutingKindCoordinatorProbe) TerminalCleanupStartCount() int {
+	if p == nil {
+		return 0
+	}
+	return int(p.terminalCleanupStarts.Load())
 }
 
 // IntegratedRoutingKindActiveWorkload is the exact, redacted identity needed
@@ -243,6 +253,7 @@ func NewIntegratedRoutingKindCoordinator(
 	probe := &IntegratedRoutingKindCoordinatorProbe{}
 	coordinator := newCoordinator(desktopContexts{client: client}, integratedRoutingKindResolver{resolution: resolution}, integratedRoutingKindProvisioner{delegate: provisioner, probe: probe}, integratedRoutingKindConnector{delegate: connector, probe: probe}, reconnector, disposer, processResumeClock{})
 	probe.coordinator = coordinator
+	coordinator.terminalCleanupStartObserver = func() { probe.terminalCleanupStarts.Add(1) }
 	coordinator.terminalCleanupObserver = func() { probe.terminalCleanups.Add(1) }
 	return coordinator, probe
 }

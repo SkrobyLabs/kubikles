@@ -69,6 +69,7 @@ const (
 	integratedRoutingKindResumeTimeout      = 90 * time.Second
 	integratedRoutingKindMismatchTimeout    = 8 * time.Minute
 	integratedRoutingKindMismatchSettle     = 2 * time.Second
+	integratedRoutingKindZeroClientGrace    = 2 * time.Minute
 
 	// The canceled List's 60s allocation dominates its 5s CancelListRequest.
 	// Stale-token calls fail at the router before opening a remote operation.
@@ -92,6 +93,7 @@ const (
 		integratedRoutingKindMismatchSettle +
 		integratedRoutingKindHelmAssertionTimeout +
 		integratedRoutingKindK8sAssertionTimeout +
+		integratedRoutingKindZeroClientGrace +
 		integratedRoutingKindCleanupTimeout +
 		integratedRoutingKindFixtureCleanupTimeout
 	// The latest proof-bearing fallback is the resumed Data read. A missing
@@ -109,9 +111,10 @@ const (
 		integratedRoutingKindWatchMutationTimeout +
 		integratedRoutingKindDataTotalTimeout +
 		acceleratorprovision.ShutdownWaitTimeout +
+		integratedRoutingKindZeroClientGrace +
 		integratedRoutingKindCleanupTimeout +
 		integratedRoutingKindFixtureCleanupTimeout
-	integratedRoutingKindGoTestTimeout = 34 * time.Minute
+	integratedRoutingKindGoTestTimeout = 36 * time.Minute
 )
 
 type integratedRoutingKindDiagnosticCode string
@@ -858,10 +861,11 @@ func runAcceleratorIntegratedRoutingKind(t *testing.T) integratedRoutingKindAcce
 	}
 	cleanupStarted := time.Now()
 	app.ReleaseIntegratedSecretReads()
-	cleanupElapsed := waitIntegratedOwnedCleanup(t, helmClient, snapshot, coordinatorProbe, activeWorkload, sentinel, malformed, cleanupStarted)
-	if cleanupElapsed < 119*time.Second || cleanupElapsed > 126*time.Second {
+	graceElapsed := waitIntegratedTerminalCleanupStart(t, coordinatorProbe, cleanupStarted)
+	if graceElapsed < 119*time.Second || graceElapsed > 126*time.Second {
 		t.Fatal("integrated routing terminal cleanup grace outside boundary")
 	}
+	waitIntegratedOwnedCleanup(t, helmClient, snapshot, coordinatorProbe, activeWorkload, sentinel, malformed)
 	if coordinatorProbe.ProvisionAttempts() != 1 {
 		t.Fatal("integrated routing terminal cleanup created another workload")
 	}
@@ -931,7 +935,7 @@ func runAcceleratorIntegratedRoutingKind(t *testing.T) integratedRoutingKindAcce
 		integratedHappy: true, sixOperations: true, valueFreeBoundaries: true,
 		immediateDirect: true, resumedHigherSource: true, staleSourceRejected: true,
 		mismatchDirect: true, mismatchAttempts: mismatchProbe.ProvisionAttempts(), mismatchNoThird: true,
-		elapsed: cleanupElapsed, reconnectCancelled: healthyProbe.ProvisionAttempts() == 1, singleExpiry: healthyProbe.TerminalCleanupCount() == 1,
+		elapsed: graceElapsed, reconnectCancelled: healthyProbe.ProvisionAttempts() == 1, singleExpiry: healthyProbe.TerminalCleanupCount() == 1,
 		loopback: true, privacy: true, rbac: true, ownedCleanup: true, sentinel: true, sweep: true,
 	}
 }
@@ -1201,12 +1205,28 @@ func waitIntegratedRoutingKindMismatch(t *testing.T, coordinator *acceleratorpro
 // the exact workload that served the Integrated session. It deliberately
 // avoids the workload's private connection material and accepts no broad
 // namespace cleanup as evidence.
-func waitIntegratedOwnedCleanup(t *testing.T, helmClient *helm.Client, snapshot *k8s.AcceleratorContextSnapshot, probe *acceleratorprovision.IntegratedRoutingKindCoordinatorProbe, workload acceleratorprovision.IntegratedRoutingKindActiveWorkload, sentinel, malformed string, started time.Time) time.Duration {
+func waitIntegratedTerminalCleanupStart(t *testing.T, probe *acceleratorprovision.IntegratedRoutingKindCoordinatorProbe, started time.Time) time.Duration {
 	t.Helper()
-	if helmClient == nil || snapshot == nil || probe == nil || started.IsZero() || workload.ReleaseNamespace == "" || workload.ReleaseName == "" || workload.JobName == "" || workload.JobUID == "" || workload.PodName == "" || workload.PodUID == "" {
+	deadline := started.Add(126 * time.Second)
+	for time.Now().Before(deadline) {
+		if probe != nil && probe.TerminalCleanupStartCount() == 1 {
+			return time.Since(started)
+		}
+		if probe != nil && probe.TerminalCleanupStartCount() > 1 {
+			t.Fatal("integrated routing observed more than one terminal cleanup start")
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatal("integrated routing terminal cleanup grace did not expire")
+	return 0
+}
+
+func waitIntegratedOwnedCleanup(t *testing.T, helmClient *helm.Client, snapshot *k8s.AcceleratorContextSnapshot, probe *acceleratorprovision.IntegratedRoutingKindCoordinatorProbe, workload acceleratorprovision.IntegratedRoutingKindActiveWorkload, sentinel, malformed string) {
+	t.Helper()
+	if helmClient == nil || snapshot == nil || probe == nil || workload.ReleaseNamespace == "" || workload.ReleaseName == "" || workload.JobName == "" || workload.JobUID == "" || workload.PodName == "" || workload.PodUID == "" {
 		t.Fatal("integrated routing owned cleanup observation unavailable")
 	}
-	deadline := started.Add(integratedRoutingKindCleanupTimeout)
+	deadline := time.Now().Add(integratedRoutingKindCleanupTimeout)
 	for time.Now().Before(deadline) {
 		ctx, cancel := context.WithTimeout(context.Background(), integratedRoutingKindK8sAssertionTimeout)
 		releases, releaseErr := helmClient.ListReleasesForAcceleratorProvisionKind(ctx, snapshot.RESTConfig(), workload.ReleaseNamespace)
@@ -1247,12 +1267,11 @@ func waitIntegratedOwnedCleanup(t *testing.T, helmClient *helm.Client, snapshot 
 			t.Fatal("integrated routing observed more than one terminal cleanup")
 		}
 		if !releasePresent && !jobPresent && !podPresent && probe.TerminalCleanupCount() == 1 {
-			return time.Since(started)
+			return
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
 	t.Fatal("integrated routing owned cleanup did not complete")
-	return 0
 }
 
 func assertIntegratedRoutingKindFinalCleanup(t *testing.T, helmClient *helm.Client, snapshot *k8s.AcceleratorContextSnapshot, sentinel, malformed string) {

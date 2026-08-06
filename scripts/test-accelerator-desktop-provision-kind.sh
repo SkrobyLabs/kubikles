@@ -322,9 +322,9 @@ if [[ "${ACCELERATOR_DISPOSAL_KIND:-0}" == "1" || "${ACCELERATOR_LIFECYCLE_KIND:
   go_test_timeout=9m
 fi
 if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" ]]; then
-  # The test source machine-checks a 33m17s sequential inner bound. This is
-  # the smallest whole-minute timeout above it and leaves a 43s margin.
-  go_test_timeout=34m
+  # The test source keeps the exact two-minute grace separate from the bounded
+  # post-grace resource cleanup, so the outer limit covers both phases.
+  go_test_timeout=36m
   go_test_package=.
   go_test_run='^TestAcceleratorIntegratedRoutingKind$'
   go_test_output=-json
