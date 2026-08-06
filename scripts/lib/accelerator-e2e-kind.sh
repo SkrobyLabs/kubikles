@@ -87,6 +87,31 @@ accelerator_e2e_prepare_child_kubeconfig() {
   KUBECONFIG="$destination" kubectl config set-context "$context" --namespace="$namespace" >/dev/null 2>&1 || return 1
 }
 
+accelerator_e2e_select_registry_host() {
+  local port="${1-}" configured="${ACCELERATOR_PROVISION_REGISTRY_HOST-}" host
+  local -a candidates
+  [ "$#" -eq 1 ] || return 1
+  [[ "$port" =~ ^[1-9][0-9]{0,4}$ ]] && [ "$((10#$port))" -le 65535 ] || return 1
+  if [ -n "$configured" ]; then
+    case "$configured" in 127.0.0.1|host.docker.internal) ;; *) return 1;; esac
+    candidates=("$configured")
+  else
+    # Native Linux exposes loopback-published ports on the host, while a
+    # mounted Docker Desktop socket exposes them through its VM gateway.
+    candidates=(127.0.0.1 host.docker.internal)
+  fi
+  for _ in $(seq 1 100); do
+    for host in "${candidates[@]}"; do
+      if curl --noproxy '*' --fail --silent --show-error "http://$host:$port/v2/" >/dev/null 2>&1; then
+        printf '%s\n' "$host"
+        return 0
+      fi
+    done
+    sleep 0.1
+  done
+  return 1
+}
+
 accelerator_e2e_create_owned_fixture() {
   local state="${1-}" root="${2-}" nonce cluster registry_container registry_port registry_host registry_endpoint tmp kubeconfig node api_server kube_cluster
   [ "$#" -eq 2 ] && [ -d "$state" ] && [ -d "$root" ] || return 1
@@ -106,15 +131,8 @@ accelerator_e2e_create_owned_fixture() {
   docker run --detach --rm --name "$registry_container" --publish 127.0.0.1:0:5000 registry:2.8.3 >"$tmp/registry-id" 2>"$tmp/registry-start" || return 1
   registry_port="$(docker inspect "$registry_container" --format '{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostPort}}')" || return 1
   [[ "$registry_port" =~ ^[1-9][0-9]{0,4}$ ]] && [ "$((10#$registry_port))" -le 65535 ] || return 1
-  registry_host="${ACCELERATOR_PROVISION_REGISTRY_HOST:-host.docker.internal}"
-  case "$registry_host" in 127.0.0.1|host.docker.internal) ;; *) return 1;; esac
+  registry_host="$(accelerator_e2e_select_registry_host "$registry_port")" || return 1
   registry_endpoint="$registry_host:$registry_port"
-  local ready=false
-  for _ in $(seq 1 100); do
-    if curl --noproxy '*' --fail --silent --show-error "http://$registry_endpoint/v2/" >/dev/null 2>&1; then ready=true; break; fi
-    sleep 0.1
-  done
-  [ "$ready" = true ] || return 1
   cat >"$tmp/kind.yaml" <<EOF
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -140,7 +158,7 @@ EOF
   registry_port="$(docker inspect "$registry_container" --format '{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostPort}}')" || return 1
   [[ "$registry_port" =~ ^[1-9][0-9]{0,4}$ ]] && [ "$((10#$registry_port))" -le 65535 ] || return 1
   registry_endpoint="$registry_host:$registry_port"
-  ready=false
+  local ready=false
   for _ in $(seq 1 100); do
     if curl --noproxy '*' --fail --silent --show-error "http://$registry_endpoint/v2/" >/dev/null 2>&1; then
       ready=true

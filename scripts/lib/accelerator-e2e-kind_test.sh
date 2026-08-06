@@ -68,10 +68,24 @@ EOF
 cat >"$tmp/bin/curl" <<'EOF'
 #!/usr/bin/env bash
 printf 'curl %s\n' "$*" >>"$FAKE_LOG"
+if [ "${FAKE_CURL_HOST_DOCKER_ONLY:-0}" = 1 ] && [[ "$*" = *'http://127.0.0.1:'* ]]; then exit 1; fi
 exit 0
 EOF
 chmod 700 "$tmp/bin/"*
 export FAKE_LOG="$tmp/fake.log"
+unset ACCELERATOR_PROVISION_REGISTRY_HOST
+[ "$(PATH="$tmp/bin:$PATH" accelerator_e2e_select_registry_host 49152)" = 127.0.0.1 ] || fail loopback-registry-selection
+FAKE_CURL_HOST_DOCKER_ONLY=1
+export FAKE_CURL_HOST_DOCKER_ONLY
+[ "$(PATH="$tmp/bin:$PATH" accelerator_e2e_select_registry_host 49152)" = host.docker.internal ] || fail docker-desktop-registry-selection
+unset FAKE_CURL_HOST_DOCKER_ONLY
+ACCELERATOR_PROVISION_REGISTRY_HOST=host.docker.internal
+export ACCELERATOR_PROVISION_REGISTRY_HOST
+[ "$(PATH="$tmp/bin:$PATH" accelerator_e2e_select_registry_host 49152)" = host.docker.internal ] || fail explicit-registry-selection
+ACCELERATOR_PROVISION_REGISTRY_HOST=unsafe.example
+export ACCELERATOR_PROVISION_REGISTRY_HOST
+if PATH="$tmp/bin:$PATH" accelerator_e2e_select_registry_host 49152 >/dev/null 2>&1; then fail unsafe-registry-host-accepted; fi
+unset ACCELERATOR_PROVISION_REGISTRY_HOST
 PATH="$tmp/bin:$PATH" accelerator_e2e_validate_reused_fixture || fail reuse-validation
 PATH="$tmp/bin:$PATH" accelerator_e2e_audit_case_cleanup kubikles-a60a-sentinel || fail cleanup-audit
 PATH="$tmp/bin:$PATH" accelerator_e2e_delete_case_cluster_scope kubikles-a60a-001 || fail cluster-scope-cleanup
