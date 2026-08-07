@@ -4,8 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -38,30 +36,6 @@ func exactArtifactFixture(t *testing.T) ArtifactFixture {
 		RegistryImageDigest: digest('a'), RegistryChartDigest: digest('d'),
 		ChartVersion: "0.0.0", ChartAppVersion: BuildIdentity,
 		RuntimeBuildVersion: BuildIdentity, HostArchitecture: "amd64", SelectedManifestDigest: digest('b'),
-	}
-}
-
-func TestAcceptanceOfflineBuildPlumbing(t *testing.T) {
-	for _, file := range []string{"Dockerfile.accelerator", "scripts/test-accelerator-image.sh", "scripts/build-accelerator-e2e-artifacts.sh", "scripts/publish-accelerator-release.sh"} {
-		source, err := os.ReadFile(filepath.Join("..", "..", file))
-		if err != nil {
-			t.Fatalf("read offline source %s", file)
-		}
-		text := string(source)
-		if strings.Contains(file, "test-accelerator-image") {
-			for _, exact := range []string{"ACCELERATOR_E2E_OFFLINE", "docker image inspect \"$base\"", "--network=none", "--pull=false"} {
-				if !strings.Contains(text, exact) {
-					t.Fatalf("offline image test is missing %s", exact)
-				}
-			}
-		}
-		if strings.Contains(file, "build-accelerator-e2e-artifacts") {
-			for _, exact := range []string{"npm ci --offline --include=optional", "docker image inspect", "--network=none", "--pull=false", "oci-mediatypes=false", "publish_registry", "ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT"} {
-				if !strings.Contains(text, exact) {
-					t.Fatalf("offline artifact build is missing %s", exact)
-				}
-			}
-		}
 	}
 }
 

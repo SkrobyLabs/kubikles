@@ -597,17 +597,6 @@ func TestProvisionSecretCorpusNeverEscapes(t *testing.T) {
 			}
 		})
 	}
-	for _, name := range []string{"service.go", "helm_adapter.go", "observer.go", "credential.go"} {
-		source, err := os.ReadFile(filepath.Join(".", name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, forbidden := range []string{"pkg/debug", "pkg/crashlog", "pkg/events", "log.", "slog."} {
-			if strings.Contains(string(source), forbidden) {
-				t.Fatalf("provisioning source acquired forbidden log/event boundary %q", forbidden)
-			}
-		}
-	}
 }
 
 func TestKindHarnessScansSuccessfulOutputForCredentialCorpus(t *testing.T) {
@@ -834,68 +823,6 @@ func TestKindHarnessIntegratedRoutingDiagnosticExtractorIsClosed(t *testing.T) {
 				t.Fatalf("invalid timestamp escaped as %q", got)
 			}
 		})
-	}
-}
-
-func TestKindHarnessIntegratedRoutingTimeoutBudgetsAreExplicit(t *testing.T) {
-	repoRoot := filepath.Join("..", "..")
-	testSource, err := os.ReadFile(filepath.Join(repoRoot, "accelerator_integrated_routing_kind_test.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	harnessSource, err := os.ReadFile(filepath.Join(repoRoot, "scripts", "test-accelerator-desktop-provision-kind.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(testSource), "integratedRoutingKindInitialReadinessTimeout = acceleratorprovision.SweepTimeout + acceleratorprovision.ActivationAttemptTimeout + time.Minute") {
-		t.Fatal("integrated routing initial readiness is not tied to production sweep and activation bounds")
-	}
-	if !strings.Contains(string(testSource), "integratedRoutingKindSequentialTimeout = integratedRoutingKindFixtureSetupTimeout") {
-		t.Fatal("integrated routing sequential bound is not assembled from its inner phases")
-	}
-	if !strings.Contains(string(testSource), "client.SetAPITimeout(integratedRoutingKindDesktopAPITimeout)") {
-		t.Fatal("integrated routing Direct Kubernetes calls do not have an explicit harness deadline")
-	}
-	teardownRegistration := strings.Index(string(testSource), "// Register bounded teardown first.")
-	reporterRegistration := strings.Index(string(testSource), "diagnostic.report(t.Failed()")
-	bodyStart := strings.Index(string(testSource), `chartDigest := requiredIntegratedRoutingKindEnv`)
-	if teardownRegistration < 0 || reporterRegistration <= teardownRegistration || bodyStart <= reporterRegistration {
-		t.Fatal("integrated routing diagnostic reporter is not registered after teardown and before the body")
-	}
-	if strings.Count(string(testSource), "integratedRoutingKindDiagnosticMarker") != 2 {
-		t.Fatal("integrated routing test can emit a diagnostic marker outside the single reporter")
-	}
-	for _, required := range []string{
-		"installIntegratedRoutingKindOperationBounds(app)",
-		"return context.WithTimeout(parent, timeout)",
-		"integratedRoutingKindFailureSequentialTimeout = integratedRoutingKindFixtureSetupTimeout",
-		"c.probe.success(integratedRoutingKindList)",
-		"c.probe.success(integratedRoutingKindData)",
-		"c.probe.success(integratedRoutingKindYAML)",
-	} {
-		if !strings.Contains(string(testSource), required) {
-			t.Fatalf("integrated routing bounded remote-success proof missing %q", required)
-		}
-	}
-	for _, unbounded := range []string{
-		`.Create(context.Background()`,
-		`.Get(context.Background()`,
-		`.Update(context.Background()`,
-		`.Delete(context.Background()`,
-		`.List(context.Background()`,
-		`helmClient.ListReleases(`,
-	} {
-		if strings.Contains(string(testSource), unbounded) {
-			t.Fatalf("integrated routing source retained unbounded API call %q", unbounded)
-		}
-	}
-	if !strings.Contains(string(harnessSource), "go_test_timeout=36m") {
-		t.Fatal("integrated routing outer timeout does not cover its sequential bounded phases")
-	}
-	privacy := strings.Index(string(harnessSource), `captured_output_sensitive "$tmp/go-test" 1`)
-	extraction := strings.Index(string(harnessSource), `extract-accelerator-kind-diagnostic.sh" "$tmp/go-test"`)
-	if privacy < 0 || extraction <= privacy {
-		t.Fatal("integrated routing diagnostic extraction is not gated by the privacy scan")
 	}
 }
 

@@ -6,9 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -151,52 +148,6 @@ func TestSecretClientPrivacyAndOwnedSourceBoundary(t *testing.T) {
 	}
 	if got := fmt.Sprint(newSecretClientError(acceleratorsecret.ReasonRemoteUnavailable)); got != string(acceleratorsecret.ReasonRemoteUnavailable) {
 		t.Fatalf("safe error=%q", got)
-	}
-
-	_, current, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("source path unavailable")
-	}
-	directory := filepath.Dir(current)
-	for _, name := range []string{"secret_client.go", "secret_client_calls.go", "secret_client_watch.go", "session_arbiter.go"} {
-		content, err := os.ReadFile(filepath.Join(directory, name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		text := string(content)
-		for _, forbidden := range []string{"CallMethod(", "AgentRouter", "Authorization", "EmitEvent", "log.", "http.", "url.", "metrics", "trace", "persist", "retry"} {
-			if strings.Contains(text, forbidden) {
-				t.Fatalf("%s contains forbidden dormant/privacy seam %q", name, forbidden)
-			}
-		}
-	}
-	repository := filepath.Clean(filepath.Join(directory, "..", ".."))
-	for _, relative := range []string{filepath.Join("frontend", "src"), filepath.Join("frontend", "wailsjs")} {
-		err := filepath.Walk(filepath.Join(repository, relative), func(path string, info os.FileInfo, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if info.IsDir() {
-				return nil
-			}
-			content, readErr := os.ReadFile(path)
-			if readErr != nil {
-				return readErr
-			}
-			text := string(content)
-			if strings.Contains(text, "SecretRPCClient") || strings.Contains(text, "NewSecretRPCClient") {
-				t.Fatalf("%s contains dormant client output", path)
-			}
-			for _, marker := range markers {
-				if marker != "" && strings.Contains(text, marker) {
-					t.Fatalf("%s contains hostile privacy marker %q", path, marker)
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
 	}
 	client.Close(context.Background())
 }

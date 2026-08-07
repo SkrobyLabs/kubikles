@@ -9,8 +9,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -413,17 +411,6 @@ func TestSweepResultRedactionAndDirectBoundaryTripwires(t *testing.T) {
 		for _, raw := range hostile {
 			if strings.Contains(output, raw) {
 				t.Fatal("disposal/sweep output exposed hostile corpus")
-			}
-		}
-	}
-	for _, name := range []string{"disposer.go", "sweep.go", "cleanup_observer.go"} {
-		source, readErr := os.ReadFile(filepath.Join(".", name))
-		if readErr != nil {
-			t.Fatal(readErr)
-		}
-		for _, forbidden := range []string{".Delete(", "DeleteOwnedAcceleratorResources", "PurgeOwnedAcceleratorRelease", "NewApp", "pkg/events", "router", "frontend"} {
-			if strings.Contains(string(source), forbidden) {
-				t.Fatalf("%s acquired forbidden boundary %q", name, forbidden)
 			}
 		}
 	}

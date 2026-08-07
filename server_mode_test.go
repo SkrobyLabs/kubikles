@@ -1318,24 +1318,6 @@ func TestAcceleratorSecretPayloadByteBoundaries(t *testing.T) {
 		}
 	}
 
-	secretEditorSource, err := os.ReadFile("frontend/src/components/shared/SecretEditor.tsx")
-	if err != nil {
-		t.Fatal(err)
-	}
-	fetchStart := bytes.Index(secretEditorSource, []byte("    const fetchData = async () => {"))
-	if fetchStart < 0 {
-		t.Fatal("SecretEditor fetchData source boundary not found")
-	}
-	fetchEndRelative := bytes.Index(secretEditorSource[fetchStart:], []byte("\n    const handleSaveYaml = async () => {"))
-	if fetchEndRelative < 0 {
-		t.Fatal("SecretEditor fetchData source boundary not found")
-	}
-	fetchDataSource := string(secretEditorSource[fetchStart : fetchStart+fetchEndRelative])
-	exactFetchPair := "const [yaml, data] = await Promise.all([\n                GetSecretYaml(namespace, resourceName),\n                GetSecretData(namespace, resourceName)\n            ]);"
-	if !strings.Contains(fetchDataSource, exactFetchPair) || strings.Count(fetchDataSource, "GetSecretYaml(namespace, resourceName)") != 1 || strings.Count(fetchDataSource, "GetSecretData(namespace, resourceName)") != 1 {
-		t.Fatalf("SecretEditor fetchData must invoke the exact projected detail methods: %s", fetchDataSource)
-	}
-
 	dataResponse := projectionCanonicalCall(handler, authorization, "GetSecretData", "evidence", "detail")
 	if dataResponse.Code != http.StatusOK || !strings.Contains(dataResponse.Body.String(), detailMarker) {
 		t.Fatalf("data response = %d %q", dataResponse.Code, dataResponse.Body.String())

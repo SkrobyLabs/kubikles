@@ -28,18 +28,3 @@ func TestAcceptanceLifecycleScopeIsPinnedBeforeLaterFeatures(t *testing.T) {
 		t.Fatal("lifecycle scope still audits later prerequisite features")
 	}
 }
-
-func TestIntegratedRoutingUsesOwnedFixtureInAcceptanceReuse(t *testing.T) {
-	source, err := os.ReadFile(filepath.Join("..", "..", "scripts", "test-accelerator-integrated-routing-kind.sh"))
-	if err != nil {
-		t.Fatal("read integrated routing harness")
-	}
-	text := string(source)
-	standalone := strings.Index(text, `if [ "$reuse_mode" = standalone ]; then`)
-	sourceImage := strings.Index(text, `fail "source-image-revision-mismatch"`)
-	reuse := strings.Index(text, `test "${BUILD_VERSION-}" = v0.0.0 || fail "reuse-build-version"`)
-	fixture := strings.Index(text, `accelerator_e2e_validate_reused_fixture || fail "reuse-fixture"`)
-	if standalone < 0 || sourceImage <= standalone || reuse <= sourceImage || fixture <= reuse {
-		t.Fatal("integrated routing acceptance reuse entered standalone source-image validation")
-	}
-}

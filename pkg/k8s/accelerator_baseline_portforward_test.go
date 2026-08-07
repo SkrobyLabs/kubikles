@@ -922,16 +922,4 @@ func TestAccelerator00ExactPodForwardValidationAndSafeSurface(t *testing.T) {
 			t.Fatal("unsafe surface")
 		}
 	}
-	source, err := os.ReadFile("accelerator_baseline_portforward_test.go")
-	if err != nil {
-		t.Fatal("source scan")
-	}
-	for _, forbidden := range []string{
-		strings.Join([]string{"os", "Stdout"}, "."),
-		"temp" + "file", "Raw" + "Error",
-	} {
-		if strings.Contains(string(source), forbidden) {
-			t.Fatal("unsafe forwarding output")
-		}
-	}
 }

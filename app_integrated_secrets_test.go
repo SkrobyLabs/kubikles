@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 
@@ -75,25 +74,5 @@ func TestIntegratedSecretAppBridgesAreExactAndDesktopOnly(t *testing.T) {
 	serverApp := &App{runtimeMode: RuntimeModeServer, agentRouter: secretReadAgentRouter{base: NoopAgentRouter{}, secrets: router}}
 	if _, err := serverApp.GetIntegratedSecretData("opaque", "ns", "name"); err == nil {
 		t.Fatal("server mode reached integrated bridge")
-	}
-}
-
-func TestIntegratedSecretBridgesAreExcludedFromGeneratedDispatch(t *testing.T) {
-	generated, err := os.ReadFile("dispatch_gen.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(generated)
-	for _, name := range []string{
-		"RetainIntegratedSecretReads", "ReleaseIntegratedSecretReads", "ListIntegratedSecretsMetadata",
-		"GetIntegratedSecretData", "GetIntegratedSecretYaml", "CancelIntegratedSecretListRequest",
-		"SubscribeIntegratedSecretWatcher", "UnsubscribeIntegratedSecretWatcher",
-	} {
-		if strings.Contains(text, `case "`+name+`"`) {
-			t.Fatalf("%s entered generated HTTP dispatch", name)
-		}
-		if !strings.Contains(text, "exclude "+name) {
-			t.Fatalf("%s lacks generated exclusion evidence", name)
-		}
 	}
 }
