@@ -340,7 +340,7 @@ jobs:
 
   release:
     name: Create GitHub release
-    needs: [preflight, build, release-acceptance, accelerator-prepare, accelerator-publish, accelerator-attest]
+    needs: [preflight, build, accelerator-attest]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

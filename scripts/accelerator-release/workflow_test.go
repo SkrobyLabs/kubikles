@@ -58,6 +58,9 @@ func TestWorkflowReleaseContract(t *testing.T) {
 			t.Errorf("workflow contains forbidden policy %q", forbidden)
 		}
 	}
+	if !strings.Contains(release, "needs: [preflight, build, accelerator-attest]") {
+		t.Fatal("final release job does not use the minimal dependency join")
+	}
 	installHelm := strings.Index(build, "- name: Install Helm")
 	contractTests := strings.Index(build, "make test-accelerator-release-contract")
 	if installHelm < 0 || contractTests < 0 || installHelm > contractTests {
