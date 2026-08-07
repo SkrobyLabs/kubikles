@@ -8,11 +8,11 @@ on:
         type: boolean
         default: false
       build_version:
-        description: Exact Kubikles build identity
+        description: Kubikles build version
         type: string
         default: dev
       accelerator_supply_chain:
-        description: Build, scan, and validate local Accelerator release inputs
+        description: Build and scan Accelerator release artifacts
         type: boolean
         default: true
 
@@ -61,7 +61,7 @@ jobs:
       - name: Go vet
         run: go vet -tags "helm webkit2_41" ./...
 
-      - name: Install checksum-pinned Helm for release contracts
+      - name: Install Helm
         shell: bash
         run: |
           set -euo pipefail
@@ -75,40 +75,45 @@ jobs:
           [ "$("$helm_tools/helm" version --short)" = 'v3.21.3+g1ad6e68' ]
           printf '%s\n' "$helm_tools" >> "$GITHUB_PATH"
 
-      - name: Accelerator release contracts
+      - name: Test Accelerator release tooling
         run: make test-accelerator-release-contract
 
   accelerator-supply-chain:
+    name: Build and scan Accelerator
     if: ${{ inputs.accelerator_supply_chain == true }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: ${{ env.GO_VERSION }}
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - id: buildx
+      - name: Set up Docker Buildx
+        id: buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
         with:
           version: v0.36.0
           driver-opts: image=moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
-      - name: Install exact Accelerator release and security tools
+      - name: Install Accelerator release tools
         run: ./scripts/install-accelerator-release-tools.sh "$RUNNER_TEMP/accelerator-tools"
-      - name: Cache exact BuildKit image
+      - name: Pull BuildKit image
         run: docker pull moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
-      - name: Prepare fresh Trivy database
+      - name: Download vulnerability database
         run: |
           export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
           trivy image --cache-dir "$RUNNER_TEMP/trivy-cache" --download-db-only --no-progress
-      - name: Build linux/amd64 Accelerator release inputs
+      - name: Build Accelerator release artifacts (linux/amd64)
         env:
           ACCELERATOR_BUILDER: ${{ steps.buildx.outputs.name }}
           BUILD_VERSION: ${{ inputs.build_version }}
@@ -118,7 +123,7 @@ jobs:
           source_commit="$(git rev-parse HEAD)"
           source_epoch="$(git show -s --format=%ct "$source_commit")"
           SOURCE_COMMIT="$source_commit" SOURCE_DATE_EPOCH="$source_epoch" ./scripts/publish-accelerator-release.sh prepare
-      - name: Scan and validate linux/amd64 Accelerator release inputs
+      - name: Scan Accelerator release artifacts
         env:
           TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
           ACCELERATOR_PREPARED_ROOT: ${{ runner.temp }}/accelerator-prepared

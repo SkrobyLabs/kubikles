@@ -1,4 +1,4 @@
-name: Main Accelerator acceptance
+name: Accelerator CI
 
 on:
   push:
@@ -14,30 +14,35 @@ permissions:
 
 jobs:
   accelerator-main:
+    name: Test and build Accelerator
     if: github.repository == 'SkrobyLabs/kubikles' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: 1.25.12
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.23.2
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - id: buildx
+      - name: Set up Docker Buildx
+        id: buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
         with:
           version: v0.36.0
           driver-opts: |
             image=moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
             network=host
-      - name: Install exact Accelerator tools
+      - name: Install Accelerator test tools
         shell: bash
         run: |
           set -euo pipefail
@@ -49,7 +54,7 @@ jobs:
           printf '%s  %s\n' ebbd080e7c2e275093b55915722043257eb24004363e20acb3c4d71919f88336 "$tools/kubectl" | sha256sum --check --status
           chmod 0755 "$tools/kind" "$tools/kubectl"
           printf '%s\n' "$tools" >> "$GITHUB_PATH"
-      - name: Cache exact E2E prerequisite images
+      - name: Pull Accelerator test images
         run: |
           docker pull moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
           docker pull kindest/node:v1.32.2
@@ -59,15 +64,15 @@ jobs:
           docker pull golang:1.25.12-bookworm@sha256:ea341baa9bd5ba6784f6d7161ace70544349a6242d54d34a0fbfd2c4d51c9d58
           docker pull gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35
           docker pull curlimages/curl:8.17.0@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40
-      - name: Cache exact Go dependencies
+      - name: Download Go modules
         run: go mod download
-      - name: Cache exact frontend dependencies
+      - name: Install frontend dependencies
         run: cd frontend && npm ci --ignore-scripts --include=optional --no-audit --no-fund
-      - name: Run canonical functional and security acceptance
+      - name: Run Accelerator end-to-end tests
         run: make test-accelerator-e2e
-      - name: Prepare fresh Trivy database
+      - name: Download vulnerability database
         run: trivy image --cache-dir "$RUNNER_TEMP/trivy-cache" --download-db-only --no-progress
-      - name: Build linux/amd64 Accelerator release inputs
+      - name: Build Accelerator release artifacts (linux/amd64)
         env:
           ACCELERATOR_BUILDER: ${{ steps.buildx.outputs.name }}
           BUILD_VERSION: v0.0.0
@@ -76,7 +81,7 @@ jobs:
           source_commit="$(git rev-parse HEAD)"
           source_epoch="$(git show -s --format=%ct "$source_commit")"
           SOURCE_COMMIT="$source_commit" SOURCE_DATE_EPOCH="$source_epoch" ./scripts/publish-accelerator-release.sh prepare
-      - name: Scan and validate linux/amd64 Accelerator release inputs
+      - name: Scan Accelerator release artifacts
         env:
           TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
           ACCELERATOR_PREPARED_ROOT: ${{ runner.temp }}/accelerator-prepared

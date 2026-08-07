@@ -46,7 +46,7 @@ func TestWorkflowReleaseContract(t *testing.T) {
 		"Docker Buildx must be exactly v0.36.0", "helm-v3.21.3", "oras_1.3.3", "gh_2.97.0",
 		"kubikles-accelerator-release-$BUILD_VERSION.json", "make verify-accelerator-release-ghcr",
 		"verify-release-assets", "GitHub Release could not be classified authoritatively",
-		"Install checksum-pinned Helm for release contracts", "helm-v3.21.3-linux-amd64.tar.gz",
+		"- name: Install Helm", "helm-v3.21.3-linux-amd64.tar.gz",
 		"15e041a93a590dce8100f39385cd98c84a765c9e36aeeb9e2dc6ff9e4769e2e0", `>> "$GITHUB_PATH"`,
 	} {
 		if !strings.Contains(all, required) {
@@ -58,7 +58,7 @@ func TestWorkflowReleaseContract(t *testing.T) {
 			t.Errorf("workflow contains forbidden policy %q", forbidden)
 		}
 	}
-	installHelm := strings.Index(build, "Install checksum-pinned Helm for release contracts")
+	installHelm := strings.Index(build, "- name: Install Helm")
 	contractTests := strings.Index(build, "make test-accelerator-release-contract")
 	if installHelm < 0 || contractTests < 0 || installHelm > contractTests {
 		t.Fatal("read-only build workflow does not install pinned Helm before release contracts")
