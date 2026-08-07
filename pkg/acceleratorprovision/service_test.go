@@ -640,6 +640,24 @@ func TestKindHarnessScansSuccessfulOutputForCredentialCorpus(t *testing.T) {
 	}
 }
 
+func TestKindHarnessPreservesWarmedModuleCacheWithIsolatedHome(t *testing.T) {
+	sourceBytes, err := os.ReadFile(filepath.Join("..", "..", "scripts", "test-accelerator-desktop-provision-kind.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(sourceBytes)
+	cacheRead := strings.Index(source, `go_module_cache="$(go env GOMODCACHE 2>/dev/null)"`)
+	cacheValidation := strings.Index(source, `[[ "$go_module_cache" = /* && -d "$go_module_cache" ]] || fail "go-module-cache"`)
+	cacheHandoff := strings.Index(source, `"GOMODCACHE=$go_module_cache"`)
+	isolatedTest := strings.Index(source, `HOME="$test_home" KUBECONFIG="$kubeconfig"`)
+	if cacheRead < 0 || cacheValidation < 0 || cacheHandoff < 0 || isolatedTest < 0 {
+		t.Fatal("Kind harness does not preserve its pre-warmed Go module cache across the isolated HOME boundary")
+	}
+	if !(cacheRead < cacheValidation && cacheValidation < cacheHandoff && cacheHandoff < isolatedTest) {
+		t.Fatalf("Go module cache handoff ordering read=%d validation=%d handoff=%d isolated-test=%d", cacheRead, cacheValidation, cacheHandoff, isolatedTest)
+	}
+}
+
 func TestKindHarnessIntegratedRoutingDiagnosticExtractorIsClosed(t *testing.T) {
 	helper := filepath.Join("..", "..", "scripts", "extract-accelerator-kind-diagnostic.sh")
 	harnessBytes, err := os.ReadFile(filepath.Join("..", "..", "scripts", "test-accelerator-desktop-provision-kind.sh"))

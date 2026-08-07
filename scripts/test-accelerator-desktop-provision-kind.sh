@@ -316,7 +316,9 @@ go_test_output=-v
 go_test_tags=helm,accelerator_provision_kind
 go_test_environment=()
 if [ "${ACCELERATOR_E2E_OFFLINE:-0}" = 1 ]; then
-  go_test_environment=(GOTOOLCHAIN=go1.25.12 GOPROXY=off GOSUMDB=off)
+  go_module_cache="$(go env GOMODCACHE 2>/dev/null)" || fail "go-module-cache"
+  [[ "$go_module_cache" = /* && -d "$go_module_cache" ]] || fail "go-module-cache"
+  go_test_environment=(GOTOOLCHAIN=go1.25.12 GOPROXY=off GOSUMDB=off "GOMODCACHE=$go_module_cache")
 fi
 if [[ "${ACCELERATOR_DISPOSAL_KIND:-0}" == "1" || "${ACCELERATOR_LIFECYCLE_KIND:-0}" == "1" ]]; then
   go_test_timeout=9m
