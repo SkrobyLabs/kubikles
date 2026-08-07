@@ -64,6 +64,36 @@ func TestAcceptanceContractExactCaseSet(t *testing.T) {
 	}
 }
 
+func TestAcceptanceFocusedWaveDefinitionClosed(t *testing.T) {
+	contract, err := LoadContract(acceptanceContractPath())
+	if err != nil {
+		t.Fatal("load contract")
+	}
+	if err := validateFocusedWaves(contract); err != nil {
+		t.Fatal("checked-in focused waves invalid")
+	}
+	seen := map[string]bool{}
+	for _, wave := range focusedWaves {
+		if len(wave) < 1 || len(wave) > focusedConcurrency {
+			t.Fatal("focused wave width escaped fixed cap")
+		}
+		for _, id := range wave {
+			if seen[id] {
+				t.Fatal("focused owner repeated")
+			}
+			seen[id] = true
+		}
+	}
+	if len(seen) != 12 {
+		t.Fatal("focused waves did not cover every focused owner")
+	}
+	for _, testCase := range contract.Cases {
+		if testCase.Owner.Kind == OwnerGo && seen[testCase.ID] {
+			t.Fatal("composed owner entered focused waves")
+		}
+	}
+}
+
 func TestAcceptanceContractRejectsClosedContractMutations(t *testing.T) {
 	original, err := LoadContract(acceptanceContractPath())
 	if err != nil {

@@ -90,6 +90,19 @@ var expectedOwners = []expectedOwner{
 	{"A60A-022-CLEANUP-ISOLATION", OwnerGo, "TestAcceleratorAcceptanceKind/CleanupSweepIsolation"},
 }
 
+// focusedWaves is deliberately closed: adding a focused owner requires an
+// explicit review of its isolation properties before it can run concurrently.
+var focusedWaves = [][]string{
+	{"A60A-001-BASELINE", "A60A-002-BINARY"},
+	{"A60A-003-IMAGE", "A60A-004-CHART"},
+	{"A60A-005-CHART-KIND", "A60A-006-RELEASE-CONTRACT"},
+	{"A60A-007-LOCAL-PUBLICATION", "A60A-008-PROVISION"},
+	{"A60A-009-CONNECT", "A60A-010-RESUME"},
+	{"A60A-011-DISPOSAL", "A60A-012-LIFECYCLE"},
+}
+
+const focusedConcurrency = 2
+
 var requiredPrerequisites = map[string]struct{}{
 	"020e8648": {}, "1cec4c3a": {}, "1ff2446c": {}, "2289380c": {},
 	"2d45b95b": {}, "2e710408": {}, "44ea1f82": {}, "53dfebec": {}, "63140918": {},
@@ -194,6 +207,37 @@ func ValidateContract(contract Contract) error {
 		}
 	}
 	if len(seenPrerequisites) != len(requiredPrerequisites) {
+		return errInvalidContract
+	}
+	return validateFocusedWaves(contract)
+}
+
+func validateFocusedWaves(contract Contract) error {
+	known := make(map[string]OwnerKind, len(contract.Cases))
+	focused := 0
+	for _, testCase := range contract.Cases {
+		known[testCase.ID] = testCase.Owner.Kind
+		if testCase.Owner.Kind != OwnerGo {
+			focused++
+		}
+	}
+	seen := make(map[string]struct{}, focused)
+	for _, wave := range focusedWaves {
+		if len(wave) == 0 || len(wave) > focusedConcurrency {
+			return errInvalidContract
+		}
+		for _, id := range wave {
+			kind, ok := known[id]
+			if !ok || kind == OwnerGo {
+				return errInvalidContract
+			}
+			if _, duplicate := seen[id]; duplicate {
+				return errInvalidContract
+			}
+			seen[id] = struct{}{}
+		}
+	}
+	if len(seen) != focused {
 		return errInvalidContract
 	}
 	return nil

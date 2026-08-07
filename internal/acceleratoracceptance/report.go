@@ -50,6 +50,39 @@ type EvidenceResult struct {
 	Count  uint64 `json:"count"`
 }
 
+// TimingSummary is intentionally value-free operational evidence. It contains
+// only fixed phase names, checked-in IDs, integer durations, and the fixed cap.
+type TimingSummary struct {
+	FixtureMS    int64        `json:"fixtureMs"`
+	ArtifactMS   int64        `json:"artifactMs"`
+	FocusedMS    int64        `json:"focusedMs"`
+	ComposedMS   int64        `json:"composedMs"`
+	ValidationMS int64        `json:"validationMs"`
+	TotalMS      int64        `json:"totalMs"`
+	Concurrency  int          `json:"concurrency"`
+	Cases        []CaseTiming `json:"cases"`
+}
+
+type CaseTiming struct {
+	ID         string `json:"id"`
+	DurationMS int64  `json:"durationMs"`
+}
+
+func MarshalTimingSummary(contract Contract, report Report, fixtureMS, artifactMS, focusedMS, composedMS, validationMS, totalMS int64) ([]byte, error) {
+	if ValidateReport(contract, report) != nil || fixtureMS < 0 || artifactMS < 0 || focusedMS < 0 || composedMS < 0 || validationMS < 0 || totalMS < 0 {
+		return nil, errInvalidReport
+	}
+	summary := TimingSummary{FixtureMS: fixtureMS, ArtifactMS: artifactMS, FocusedMS: focusedMS, ComposedMS: composedMS, ValidationMS: validationMS, TotalMS: totalMS, Concurrency: focusedConcurrency, Cases: make([]CaseTiming, 0, len(report.Cases))}
+	for _, result := range report.Cases {
+		summary.Cases = append(summary.Cases, CaseTiming{ID: result.ID, DurationMS: result.DurationMS})
+	}
+	encoded, err := json.Marshal(summary)
+	if err != nil {
+		return nil, errInvalidReport
+	}
+	return append(encoded, '\n'), nil
+}
+
 func NewReport() Report {
 	return Report{SchemaVersion: ReportSchemaVersion}
 }

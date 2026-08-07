@@ -4,8 +4,10 @@ umask 077
 export LC_ALL=C
 
 fail() { echo "accelerator-e2e: $1" >&2; exit 1; }
+milliseconds() { date +%s%3N; }
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$root/scripts/lib/accelerator-e2e-kind.sh"
+total_started="$(milliseconds)"
 
 [ -z "${KUBIKLES_ACCELERATOR_E2E_ACTIVE-}" ] || fail recursive-invocation
 accelerator_e2e_preflight "$root" || fail preflight
@@ -57,7 +59,9 @@ export HTTP_PROXY="http://$tripwire_address" HTTPS_PROXY="http://$tripwire_addre
 export http_proxy="$HTTP_PROXY" https_proxy="$HTTPS_PROXY" all_proxy="$ALL_PROXY"
 export NO_PROXY="127.0.0.1,localhost,host.docker.internal"
 export no_proxy="$NO_PROXY"
+fixture_finished="$(milliseconds)"
 "$root/scripts/build-accelerator-e2e-artifacts.sh" || fail artifact-fixture
+artifact_finished="$(milliseconds)"
 test "$(jq -r . "$fixture_root/tripwire-count.json")" = 0 || fail external-network
 artifact_metadata="$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/acceptance-artifact-metadata.json"
 ACCELERATOR_IMAGE_DIGEST="$(jq -er '.registryImageDigest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' "$artifact_metadata")" || fail artifact-metadata
@@ -72,13 +76,22 @@ export ACCELERATOR_ACCEPTANCE_TARGET_TIMEOUT_SECONDS=3600
 
 go build -o "$fixture_root/accelerator-e2e-runner" ./internal/acceleratoracceptance/cmd/accelerator-e2e-runner || fail runner-build
 "$fixture_root/accelerator-e2e-runner" || fail focused-cases
+focused_finished="$(milliseconds)"
 test "$(jq -r . "$fixture_root/tripwire-count.json")" = 0 || fail external-network
 
 export KUBIKLES_ACCELERATOR_E2E_NAMESPACE="kubikles-a60a-composed-${RANDOM}"
 ACCELERATOR_ACCEPTANCE_COMPOSED_KIND=1 "$root/scripts/test-accelerator-desktop-provision-kind.sh" || fail composed-cases
+composed_finished="$(milliseconds)"
 accelerator_e2e_audit_case_cleanup kubikles-a60a-sentinel || fail composed-cleanup
 test -s "$ACCELERATOR_ACCEPTANCE_FINAL_REPORT" || fail composed-report-missing
 test "$(stat -c '%a' "$ACCELERATOR_ACCEPTANCE_FINAL_REPORT" 2>/dev/null || stat -f '%Lp' "$ACCELERATOR_ACCEPTANCE_FINAL_REPORT" 2>/dev/null)" = 600 || fail composed-report-mode
+validation_started="$(milliseconds)"
+export ACCELERATOR_ACCEPTANCE_FIXTURE_MS="$((fixture_finished - total_started))"
+export ACCELERATOR_ACCEPTANCE_ARTIFACT_MS="$((artifact_finished - fixture_finished))"
+export ACCELERATOR_ACCEPTANCE_FOCUSED_MS="$((focused_finished - artifact_finished))"
+export ACCELERATOR_ACCEPTANCE_COMPOSED_MS="$((composed_finished - focused_finished))"
+export ACCELERATOR_ACCEPTANCE_VALIDATION_MS="$((milliseconds - validation_started))"
+export ACCELERATOR_ACCEPTANCE_TOTAL_MS="$((milliseconds - total_started))"
 "$fixture_root/accelerator-e2e-runner" validate-report || fail composed-report-invalid
 test "$(jq -r . "$fixture_root/tripwire-count.json")" = 0 || fail external-network
 echo 'accelerator-e2e: passed' >&2

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 
 	"kubikles/internal/acceleratoracceptance"
@@ -20,6 +21,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "validate-report" {
+		validationStarted := time.Now()
 		contract, err := acceleratoracceptance.LoadContract(os.Getenv("ACCELERATOR_ACCEPTANCE_CONTRACT"))
 		if err != nil {
 			return fmt.Errorf("contract")
@@ -33,6 +35,21 @@ func run() error {
 		if parseErr != nil || closeErr != nil || acceleratoracceptance.ValidateReport(contract, report) != nil {
 			return fmt.Errorf("report")
 		}
+		values := make([]int64, 0, 6)
+		for _, key := range []string{"ACCELERATOR_ACCEPTANCE_FIXTURE_MS", "ACCELERATOR_ACCEPTANCE_ARTIFACT_MS", "ACCELERATOR_ACCEPTANCE_FOCUSED_MS", "ACCELERATOR_ACCEPTANCE_COMPOSED_MS", "ACCELERATOR_ACCEPTANCE_VALIDATION_MS", "ACCELERATOR_ACCEPTANCE_TOTAL_MS"} {
+			value, conversionErr := strconv.ParseInt(os.Getenv(key), 10, 64)
+			if conversionErr != nil || value < 0 || strings.TrimSpace(os.Getenv(key)) == "" {
+				return fmt.Errorf("timing")
+			}
+			values = append(values, value)
+		}
+		values[4] = time.Since(validationStarted).Milliseconds()
+		values[5] += values[4]
+		summary, summaryErr := acceleratoracceptance.MarshalTimingSummary(contract, report, values[0], values[1], values[2], values[3], values[4], values[5])
+		if summaryErr != nil {
+			return fmt.Errorf("timing")
+		}
+		fmt.Fprint(os.Stderr, "accelerator-e2e: timing "+string(summary))
 		return nil
 	}
 	if len(os.Args) != 1 {
