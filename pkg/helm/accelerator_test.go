@@ -574,6 +574,7 @@ func newAcceleratorSweepTestFixture(t *testing.T) *acceleratorSweepTestFixture {
 	runNonRoot, allowEscalation, readOnly := true, false, true
 	podSpec := corev1.PodSpec{
 		ServiceAccountName: names["ServiceAccount"], AutomountServiceAccountToken: &automount, RestartPolicy: corev1.RestartPolicyNever, TerminationGracePeriodSeconds: &grace,
+		NodeSelector:    map[string]string{"kubernetes.io/arch": "amd64"},
 		SecurityContext: &corev1.PodSecurityContext{RunAsNonRoot: &runNonRoot, RunAsUser: &user, RunAsGroup: &user, SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}},
 		Containers: []corev1.Container{{Name: "accelerator", Image: prepared.request.ImageRepository + "@" + prepared.request.ImageDigest, ImagePullPolicy: corev1.PullIfNotPresent,
 			Env:             []corev1.EnvVar{{Name: "KUBIKLES_ACCELERATOR_CREATOR_VERIFIER", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: names["Secret"]}, Key: "creatorVerifier"}}}},
@@ -678,6 +679,9 @@ func TestOwnedFinalLiveProofRejectsChartControlledMutationBeforeRun(t *testing.T
 		"host network":      func(f *acceleratorSweepTestFixture) { f.job.Spec.Template.Spec.HostNetwork = true },
 		"Job template node name": func(f *acceleratorSweepTestFixture) {
 			f.job.Spec.Template.Spec.NodeName = "kind-control-plane"
+		},
+		"Job template node selector": func(f *acceleratorSweepTestFixture) {
+			f.job.Spec.Template.Spec.NodeSelector["kubernetes.io/arch"] = "arm64"
 		},
 		"Job template priority": func(f *acceleratorSweepTestFixture) {
 			priority := int32(0)
