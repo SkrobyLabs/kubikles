@@ -3,7 +3,6 @@
 package main
 
 import (
-	"embed"
 	"flag"
 	"os"
 	"path/filepath"
@@ -13,9 +12,6 @@ import (
 	"kubikles/pkg/crashlog"
 	"kubikles/pkg/mcp"
 )
-
-//go:embed all:frontend/dist
-var assets embed.FS
 
 var (
 	serverMode = flag.Bool("server", false, "Run in server mode (HTTP/WebSocket) instead of desktop app")

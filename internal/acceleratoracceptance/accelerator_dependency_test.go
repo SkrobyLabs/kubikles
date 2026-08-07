@@ -25,13 +25,15 @@ func TestAcceptanceAcceleratorDependencyClosure(t *testing.T) {
 	}
 	root := filepath.Join("..", "..")
 	tests := []struct {
-		name, tags, selected string
-		excluded             []string
-		wantDesktopDeps      bool
+		name, tags         string
+		required, excluded []string
+		wantDesktopDeps    bool
+		requireNoError     bool
 	}{
-		{"Accelerator", "headless accelerator", "", []string{"accelerator_dispose_desktop.go", "accelerator_dispose_desktop_stub.go"}, false},
-		{"ordinary headless without Helm tag", "headless", "accelerator_dispose_desktop_stub.go", []string{"accelerator_dispose_desktop.go"}, true},
-		{"desktop with Helm tag", "helm", "accelerator_dispose_desktop.go", []string{"accelerator_dispose_desktop_stub.go"}, true},
+		{"Accelerator", "headless accelerator", nil, []string{"accelerator_dispose_desktop.go", "accelerator_dispose_desktop_stub.go"}, false, false},
+		{"ordinary headless without Helm tag", "headless", []string{"accelerator_dispose_desktop_stub.go"}, []string{"accelerator_dispose_desktop.go"}, true, false},
+		{"desktop with Helm tag", "helm", []string{"accelerator_dispose_desktop.go", "desktop_assets.go"}, []string{"accelerator_dispose_desktop_stub.go", "desktop_assets_accelerator_e2e.go"}, true, false},
+		{"composed desktop acceptance", "helm accelerator_provision_kind accelerator_e2e", []string{"accelerator_dispose_desktop.go", "desktop_assets_accelerator_e2e.go"}, []string{"accelerator_dispose_desktop_stub.go", "desktop_assets.go"}, true, true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -43,11 +45,13 @@ func TestAcceptanceAcceleratorDependencyClosure(t *testing.T) {
 				t.Fatal("go list dependency closure")
 			}
 			var result goListResult
-			if json.Unmarshal(output, &result) != nil || result.Error != nil && !strings.Contains(result.Error.Err, "frontend/dist") {
+			if json.Unmarshal(output, &result) != nil || result.Error != nil && (test.requireNoError || !strings.Contains(result.Error.Err, "frontend/dist")) {
 				t.Fatal("go list returned an unexpected package error")
 			}
-			if test.selected != "" && !contains(result.GoFiles, test.selected) {
-				t.Fatalf("selected files omit %s", test.selected)
+			for _, required := range test.required {
+				if !contains(result.GoFiles, required) {
+					t.Fatalf("selected files omit %s", required)
+				}
 			}
 			for _, excluded := range test.excluded {
 				if contains(result.GoFiles, excluded) {
