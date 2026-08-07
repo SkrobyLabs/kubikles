@@ -34,6 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type kindRegistryTransport struct {
@@ -796,13 +797,21 @@ func exerciseConnectorKind(t *testing.T, ctx context.Context, client *k8s.Client
 	if err = snapshot.Clientset().CoreV1().Pods(replacementWorkload.ReleaseNamespace).Delete(ctx, replacementWorkload.Pod.Name, metav1.DeleteOptions{GracePeriodSeconds: &zero}); err != nil {
 		t.Fatal("delete exact Pod for replacement fence")
 	}
-	deadline := time.Now().Add(30 * time.Second)
-	for time.Now().Before(deadline) {
-		_, getErr := snapshot.Clientset().CoreV1().Pods(replacementWorkload.ReleaseNamespace).Get(ctx, replacementWorkload.Pod.Name, metav1.GetOptions{})
+	pods := snapshot.Clientset().CoreV1().Pods(replacementWorkload.ReleaseNamespace)
+	deletionState := "present"
+	err = wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 30*time.Second, true, func(ctx context.Context) (bool, error) {
+		_, getErr := pods.Get(ctx, replacementWorkload.Pod.Name, metav1.GetOptions{})
 		if apierrors.IsNotFound(getErr) {
-			break
+			deletionState = "deleted"
+			return true, nil
 		}
-		time.Sleep(100 * time.Millisecond)
+		if getErr != nil {
+			deletionState = "read-unavailable"
+		}
+		return false, nil
+	})
+	if err != nil {
+		t.Fatalf("original Pod deletion did not complete (state=%s)", deletionState)
 	}
 	replacement := originalPod.DeepCopy()
 	replacement.ResourceVersion = ""
@@ -815,27 +824,81 @@ func exerciseConnectorKind(t *testing.T, ctx context.Context, client *k8s.Client
 	replacement.GenerateName = ""
 	replacement.Status = corev1.PodStatus{}
 	replacement.Spec.NodeName = ""
-	replacement, err = snapshot.Clientset().CoreV1().Pods(replacementWorkload.ReleaseNamespace).Create(ctx, replacement, metav1.CreateOptions{})
+	replacement, err = pods.Create(ctx, replacement, metav1.CreateOptions{})
 	if err != nil || replacement.Name != replacementWorkload.Pod.Name || string(replacement.UID) == replacementWorkload.Pod.UID {
 		t.Fatal("same-name replacement Pod fixture failed")
 	}
-	readyReplacement := false
-	for time.Now().Before(deadline) {
-		current, getErr := snapshot.Clientset().CoreV1().Pods(replacementWorkload.ReleaseNamespace).Get(ctx, replacementWorkload.Pod.Name, metav1.GetOptions{})
-		if getErr == nil && current.Status.Phase == corev1.PodRunning && len(current.Status.ContainerStatuses) == 1 && current.Status.ContainerStatuses[0].Ready {
-			readyReplacement = true
-			break
+	readinessState := "not-observed"
+	err = wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 90*time.Second, true, func(ctx context.Context) (bool, error) {
+		current, getErr := pods.Get(ctx, replacementWorkload.Pod.Name, metav1.GetOptions{})
+		if apierrors.IsNotFound(getErr) {
+			readinessState = "not-found"
+			return false, nil
 		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	if !readyReplacement {
-		t.Fatal("replacement Pod did not become Running and Ready")
+		if getErr != nil {
+			readinessState = "read-unavailable"
+			return false, nil
+		}
+		ready, state := replacementPodReadiness(current)
+		readinessState = state
+		return ready, nil
+	})
+	if err != nil {
+		t.Fatalf("replacement Pod did not become Running and Ready (state=%s)", readinessState)
 	}
 	replacementConnector := NewConnector(kindBuildVersion())
 	replacementConnector.observeEndpoint = func(string) { t.Fatal("replacement reached tunnel/authentication") }
 	replacementResult := replacementConnector.Connect(ctx, replacementWorkload)
 	if replacementResult.Availability != Unavailable || replacementResult.Session != nil || (replacementResult.Reason != WorkloadUnavailable && replacementResult.Reason != WorkloadChanged) {
 		t.Fatal("connector followed a replacement Pod")
+	}
+}
+
+func replacementPodReadiness(pod *corev1.Pod) (bool, string) {
+	if pod == nil {
+		return false, "not-observed"
+	}
+	if pod.Status.Phase != corev1.PodRunning {
+		switch pod.Status.Phase {
+		case corev1.PodPending:
+			return false, "pending"
+		case corev1.PodSucceeded:
+			return false, "succeeded"
+		case corev1.PodFailed:
+			return false, "failed"
+		default:
+			return false, "phase-unknown"
+		}
+	}
+	if len(pod.Status.ContainerStatuses) != 1 {
+		return false, "container-status-count"
+	}
+	if !pod.Status.ContainerStatuses[0].Ready {
+		return false, "container-not-ready"
+	}
+	return true, "ready"
+}
+
+func TestReplacementPodReadiness(t *testing.T) {
+	tests := []struct {
+		name      string
+		pod       *corev1.Pod
+		wantReady bool
+		wantState string
+	}{
+		{name: "not observed", wantState: "not-observed"},
+		{name: "pending", pod: &corev1.Pod{Status: corev1.PodStatus{Phase: corev1.PodPending}}, wantState: "pending"},
+		{name: "missing container status", pod: &corev1.Pod{Status: corev1.PodStatus{Phase: corev1.PodRunning}}, wantState: "container-status-count"},
+		{name: "container not ready", pod: &corev1.Pod{Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{{Ready: false}}}}, wantState: "container-not-ready"},
+		{name: "ready", pod: &corev1.Pod{Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{{Ready: true}}}}, wantReady: true, wantState: "ready"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ready, state := replacementPodReadiness(test.pod)
+			if ready != test.wantReady || state != test.wantState {
+				t.Fatalf("readiness=%t state=%s", ready, state)
+			}
+		})
 	}
 }
 
