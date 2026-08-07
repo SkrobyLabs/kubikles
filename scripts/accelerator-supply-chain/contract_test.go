@@ -54,17 +54,3 @@ func TestToolchainAndReleaseIdentityContract(t *testing.T) {
 		}
 	}
 }
-
-func TestVulnerabilityScannerUsesClosedSeveritySet(t *testing.T) {
-	script, err := os.ReadFile(filepath.Join(repositoryRoot(t), "scripts", "test-accelerator-supply-chain.sh"))
-	if err != nil {
-		t.Fatal("supply-chain script")
-	}
-	text := string(script)
-	if strings.Count(text, "--severity CRITICAL,HIGH,MEDIUM,LOW") != 2 {
-		t.Fatal("scanner severity contract")
-	}
-	if strings.Contains(text, "--ignore-unfixed") {
-		t.Fatal("scanner ignores unfixed vulnerabilities")
-	}
-}

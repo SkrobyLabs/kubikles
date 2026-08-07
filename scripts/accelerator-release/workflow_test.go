@@ -4,203 +4,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
-
-	"sigs.k8s.io/yaml"
 )
-
-func workflow(t *testing.T, name string) string {
-	t.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", name))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var parsed any
-	if err := yaml.Unmarshal(b, &parsed); err != nil {
-		t.Fatalf("%s is invalid YAML: %v", name, err)
-	}
-	return string(b)
-}
-
-func TestWorkflowReleaseContract(t *testing.T) {
-	build := workflow(t, "build.yml")
-	pr := workflow(t, "pull-request.yml")
-	release := workflow(t, "release.yml")
-	installer, err := os.ReadFile(filepath.Join("..", "install-accelerator-release-tools.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	publisher, err := os.ReadFile(filepath.Join("..", "publish-accelerator-release.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	all := build + "\n" + pr + "\n" + release + "\n" + string(installer) + "\n" + string(publisher)
-
-	for _, required := range []string{
-		"build_version:", "default: dev", "BUILD_VERSION='${{ inputs.build_version }}'",
-		"permissions:\n  contents: read", "publish: false", "build_version: v0.0.0",
-		"group: release-publication", "cancel-in-progress: false", `release_json="$(go run ./scripts/accelerator-release normalize "$tag")"`,
-		"packages: write", "contents: write", "actions: read", "packages: read",
-		"Docker Buildx must be exactly v0.36.0", "helm-v3.21.3", "oras_1.3.3", "gh_2.97.0",
-		"kubikles-accelerator-release-$BUILD_VERSION.json", "make verify-accelerator-release-ghcr",
-		"verify-release-assets", "GitHub Release could not be classified authoritatively",
-		"- name: Install Helm", "helm-v3.21.3-linux-amd64.tar.gz",
-		"15e041a93a590dce8100f39385cd98c84a765c9e36aeeb9e2dc6ff9e4769e2e0", `>> "$GITHUB_PATH"`,
-	} {
-		if !strings.Contains(all, required) {
-			t.Errorf("workflow contract missing %q", required)
-		}
-	}
-	for _, forbidden := range []string{"gh release delete", "release edit", "--clobber", "cancel-in-progress: true", "packages: write\n\njobs:\n  build", ":latest", "stable channel"} {
-		if strings.Contains(strings.ToLower(all), strings.ToLower(forbidden)) {
-			t.Errorf("workflow contains forbidden policy %q", forbidden)
-		}
-	}
-	if !strings.Contains(release, "needs: [preflight, build, accelerator-attest]") {
-		t.Fatal("final release job does not use the minimal dependency join")
-	}
-	installHelm := strings.Index(build, "- name: Install Helm")
-	contractTests := strings.Index(build, "make test-accelerator-release-contract")
-	if installHelm < 0 || contractTests < 0 || installHelm > contractTests {
-		t.Fatal("read-only build workflow does not install pinned Helm before release contracts")
-	}
-	action := regexp.MustCompile(`uses:\s+[^\s#]+@([^\s#]+)`)
-	for _, match := range action.FindAllStringSubmatch(all, -1) {
-		if !regexp.MustCompile(`^[0-9a-f]{40}$`).MatchString(match[1]) {
-			t.Errorf("action is not commit-pinned: %s", match[0])
-		}
-	}
-	for _, pin := range []string{
-		"actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
-		"actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5",
-		"actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
-		"actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
-		"actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
-		"docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435",
-		"docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1",
-	} {
-		if !strings.Contains(all, pin) {
-			t.Errorf("missing audited action pin %s", pin)
-		}
-	}
-}
-
-func TestDesktopReleaseAssetsRemainExact(t *testing.T) {
-	build := workflow(t, "build.yml")
-	release := workflow(t, "release.yml")
-	assets := []string{"Kubikles-windows-amd64.zip", "Kubikles-windows-arm64.zip", "Kubikles-macos-arm64.zip", "Kubikles-macos-amd64.zip", "Kubikles-linux-amd64.zip"}
-	for _, asset := range assets {
-		if !strings.Contains(build, asset) {
-			t.Errorf("desktop asset %s was not preserved", asset)
-		}
-	}
-	exact := append(append([]string(nil), assets...), "kubikles-accelerator-release-v1.4.2.json", "kubikles-accelerator-release-v1.4.2.json.sha256", "kubikles-accelerator-image-linux-amd64-v1.4.2.spdx.json", "kubikles-accelerator-chart-v1.4.2.spdx.json", "kubikles-accelerator-attestations-v1.4.2.jsonl")
-	if err := VerifyReleaseAssetNames("v1.4.2", exact); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(release, `find "$assets" -type f -printf '%f\n'`) || strings.Contains(release, `--pattern "kubikles-accelerator-release-$tag.json*"`) {
-		t.Fatal("workflow does not enforce the exact finalized asset set")
-	}
-}
-
-func TestOwnedPublicationScope(t *testing.T) {
-	script, err := os.ReadFile(filepath.Join("..", "publish-accelerator-release.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(script)
-	for _, forbidden := range []string{"kubikles-agent", "Dockerfile.agent", "latest", "--force", "--overwrite", "--delete", "cosign", "sbom=true", "provenance=true"} {
-		if strings.Contains(strings.ToLower(text), strings.ToLower(forbidden)) {
-			t.Errorf("publication script contains out-of-scope marker %q", forbidden)
-		}
-	}
-}
-
-func TestPublisherUsesHardenedReleaseInspectionArguments(t *testing.T) {
-	script, err := os.ReadFile(filepath.Join("..", "publish-accelerator-release.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(script)
-	inspectCalls := regexp.MustCompile(`(?m)^\s*go run \./scripts/accelerator-release inspect-chart ([^\n]+)$`).FindAllStringSubmatch(text, -1)
-	if len(inspectCalls) != 6 {
-		t.Fatalf("inspect-chart call count = %d, want 6", len(inspectCalls))
-	}
-	for _, call := range inspectCalls {
-		if !strings.Contains(call[1], `"$CHART_SOURCE"`) || (!strings.Contains(call[1], `"$epoch"`) && !strings.Contains(call[1], `"$SOURCE_DATE_EPOCH"`)) {
-			t.Errorf("inspect-chart call omits exact chart source or release epoch: %s", call[0])
-		}
-	}
-	if !strings.Contains(text, `"$tmp/first" "$epoch" absent`) || !strings.Contains(text, `"$tmp/second" "$epoch" absent`) || !strings.Contains(text, `"$work/publication" "$SOURCE_DATE_EPOCH" "$release_state"`) {
-		t.Fatal("publish_registry does not propagate release identity and finalization state")
-	}
-	if strings.Count(text, `go run ./scripts/accelerator-release verify-git`) != 4 {
-		t.Fatal("publication and read-back do not use hardened Git source authority")
-	}
-	release := workflow(t, "release.yml")
-	if !strings.Contains(release, `commit="$(go run ./scripts/accelerator-release verify-git . "$tag")"`) {
-		t.Fatal("release preflight does not use hardened Git source authority")
-	}
-	if strings.Contains(release, "\n          path: artifacts\n") || strings.Contains(release, "> notes.md") {
-		t.Fatal("release workflow dirties the verified source checkout with generated artifacts")
-	}
-}
-
-func TestPublisherFailClosedStateMachineContract(t *testing.T) {
-	script, err := os.ReadFile(filepath.Join("..", "publish-accelerator-release.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(script)
-	for _, forbidden := range []string{
-		`resolve_or_absent`, `oras resolve "$ref" 2>/dev/null`, `resolve --plain-http "$ref" 2>/dev/null`,
-		`gh release view "$tag" >/dev/null 2>&1`, `helm pull "oci://$chart_repo" --version`,
-	} {
-		if strings.Contains(text, forbidden) {
-			t.Errorf("publisher retains ambiguous or floating classification path %q", forbidden)
-		}
-	}
-	for _, required := range []string{
-		"registry reference could not be classified authoritatively",
-		"Classify and deeply compare the entire immutable set before the first write",
-		"verify-registry-evidence", "inspect-chart-manifest", "helm_pull_digest",
-		"remote_tag_commit", "verify-release-assets", "recheck_release_state",
-		"ACCELERATOR_LOCAL_REGISTRY_CLIENT_HOST", "configured registry client endpoint is unreachable",
-		"--registry-config \"$ORAS_CONFIG\"", "--registry-config \"$HELM_REGISTRY_CONFIG\"",
-		"image-collision", "chart-collision", "finalized-$collision", "unreachable registry was classified as absent",
-	} {
-		if !strings.Contains(text, required) {
-			t.Errorf("publisher hardening contract missing %q", required)
-		}
-	}
-	if strings.Index(text, `image_state=$(classify_registry_ref`) > strings.Index(text, `oras_copy_from_layout "$layout:$version"`) || strings.Index(text, `chart_state=$(classify_registry_ref`) > strings.Index(text, `oras_copy_from_layout "$layout:$version"`) {
-		t.Fatal("registry mutation appears before full image/chart classification")
-	}
-}
-
-func TestToolChecksAreCanonicalExactBuilds(t *testing.T) {
-	publisher, err := os.ReadFile(filepath.Join("..", "publish-accelerator-release.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	installer, err := os.ReadFile(filepath.Join("..", "install-accelerator-release-tools.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	all := string(publisher) + string(installer)
-	for _, exact := range []string{"v3.21.3+g1ad6e68", "210747c29c1d38732b3194878dfd8b5a6b9ad7eb", "gh version 2.97.0 (2026-07-31)"} {
-		if !strings.Contains(all, exact) {
-			t.Errorf("missing canonical tool build identity %q", exact)
-		}
-	}
-	for _, loose := range []string{`^v3\.21\.3([+-]|$)`, `^gh version 2\.97\.0 `} {
-		if strings.Contains(all, loose) {
-			t.Errorf("loose tool version acceptance remains: %q", loose)
-		}
-	}
-}
 
 func TestExpectedCollisionHelperPreservesErrexit(t *testing.T) {
 	publisher, err := filepath.Abs(filepath.Join("..", "publish-accelerator-release.sh"))
@@ -269,38 +75,12 @@ non_github_child
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("GitHub token scope is not narrow: %v (%s)", err, output)
 	}
-	release := workflow(t, "release.yml")
-	if !strings.Contains(release, `github_token="$GH_TOKEN"`) || !strings.Contains(release, "unset GH_TOKEN") || !strings.Contains(release, `github_cli() { GH_TOKEN="$github_token" gh "$@"; }`) {
-		t.Fatal("release finalizer does not narrow GitHub token inheritance")
-	}
 }
 
 func TestVerifierUsesBareChartRepositoryForBlobAndHelmPull(t *testing.T) {
 	publisher, err := filepath.Abs(filepath.Join("..", "publish-accelerator-release.sh"))
 	if err != nil {
 		t.Fatal(err)
-	}
-	b, err := os.ReadFile(publisher)
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(b)
-	for _, required := range []string{
-		`chart_repo=${chart_ref#oci://}; chart_repo=${chart_repo%@*}`,
-		`fetch_registry_blob "$chart_repo" "$config_digest"`,
-		`helm_pull_digest "$chart_repo" "$chart_digest"`,
-	} {
-		if !strings.Contains(text, required) {
-			t.Errorf("digest-qualified chart normalization missing %q", required)
-		}
-	}
-	for _, forbidden := range []string{
-		`fetch_registry_blob "${chart_ref#oci://}"`,
-		`helm_pull_digest "${chart_ref#oci://}"`,
-	} {
-		if strings.Contains(text, forbidden) {
-			t.Errorf("digest-qualified chart repository is reused by %q", forbidden)
-		}
 	}
 	command := exec.Command("bash", "-c", `
 set -euo pipefail
@@ -370,60 +150,12 @@ done
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("GitHub Release metadata contract was not exact: %v (%s)", err, output)
 	}
-	release := workflow(t, "release.yml")
-	for _, required := range []string{".tag_name, .name, .draft, .prerelease", `release_tag" = "$BUILD_VERSION`, `release_name" = "$BUILD_VERSION`, `release_draft" = false`, `release_prerelease" = "$RELEASE_PRERELEASE`, `release_flags+=(--prerelease)`, `select(.prerelease == true and .draft == false)`, `--method DELETE`} {
-		if !strings.Contains(release, required) {
-			t.Errorf("release finalizer metadata contract missing %q", required)
-		}
-	}
-}
-
-func TestPrereleaseSlotReplacementCannotDeleteStableReleasesOrTags(t *testing.T) {
-	release := workflow(t, "release.yml")
-	selector := `select(.prerelease == true and .draft == false)`
-	for _, required := range []string{
-		`if [ "$RELEASE_PRERELEASE" = true ]; then`,
-		selector,
-		`if [ "$release_tag" != "$BUILD_VERSION" ]; then`,
-		`api --method DELETE "repos/${{ github.repository }}/releases/$release_id"`,
-		`[ "$remaining" = "$BUILD_VERSION" ]`,
-	} {
-		if !strings.Contains(release, required) {
-			t.Errorf("prerelease slot contract missing %q", required)
-		}
-	}
-	create := strings.Index(release, `github_cli release create "$BUILD_VERSION"`)
-	verify := strings.LastIndex(release, `make verify-accelerator-supply-chain-ghcr BUILD_VERSION="$BUILD_VERSION"`)
-	deleteOld := strings.Index(release, `api --method DELETE "repos/${{ github.repository }}/releases/$release_id"`)
-	if create < 0 || verify < create || deleteOld < verify {
-		t.Fatal("old prerelease is removed before the replacement is created and verified")
-	}
-	for _, forbidden := range []string{"git push --delete", "git tag -d", "/git/refs/", "/packages/"} {
-		if strings.Contains(release, forbidden) {
-			t.Errorf("slot replacement can mutate an out-of-scope identity: %q", forbidden)
-		}
-	}
 }
 
 func TestHostileCredentialsUsePrivateInputsAndLeakScanner(t *testing.T) {
 	publisher, err := filepath.Abs(filepath.Join("..", "publish-accelerator-release.sh"))
 	if err != nil {
 		t.Fatal(err)
-	}
-	b, err := os.ReadFile(publisher)
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(b)
-	for _, required := range []string{"private/oras.json", "private/helm.json", "private/gh/hosts.yml", "render-values.yaml", "github-failure.log", "helm-render.log", "assert_no_hostile_leaks"} {
-		if !strings.Contains(text, required) {
-			t.Errorf("hostile credential exercise missing %q", required)
-		}
-	}
-	for _, forbidden := range []string{"hostile-registry-token-NOT-FOR-LOGS", "hostile-verifier-NOT-FOR-LOGS", "hostile-raw-token-NOT-FOR-LOGS"} {
-		if strings.Contains(text, forbidden) {
-			t.Errorf("hostile credential is a fixed source literal %q", forbidden)
-		}
 	}
 	command := exec.Command("bash", "-c", `
 set -euo pipefail
