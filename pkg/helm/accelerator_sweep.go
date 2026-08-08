@@ -312,7 +312,7 @@ func decodeSweepValues(values map[string]interface{}, namespace, name string) (A
 	accelerator, aok := values["accelerator"].(map[string]interface{})
 	auth, authOK := values["auth"].(map[string]interface{})
 	image, imageOK := values["image"].(map[string]interface{})
-	if !aok || !authOK || !imageOK || len(accelerator) != 1 || len(auth) != 1 || len(image) != 3 {
+	if !aok || !authOK || !imageOK || len(accelerator) != 1 || len(auth) != 1 || len(image) != 4 {
 		return AcceleratorReleaseRequest{}, nil, false
 	}
 	session, sok := accelerator["workloadSessionId"].(string)
@@ -320,7 +320,8 @@ func decodeSweepValues(values map[string]interface{}, namespace, name string) (A
 	repository, rok := image["repository"].(string)
 	digest, dok := image["digest"].(string)
 	version, versionOK := image["version"].(string)
-	if !sok || !vok || !rok || !dok || !versionOK || !acceleratorSweepNameRE.MatchString("kubikles-accelerator-"+session) || repository != acceleratorImageRepository || !acceleratorDigest.MatchString(digest) || !acceleratorVersion.MatchString(version) || !acceleratorVerifier.MatchString(verifier) {
+	architecture, architectureOK := image["architecture"].(string)
+	if !sok || !vok || !rok || !dok || !versionOK || !architectureOK || architecture != acceleratorRuntimeArchitecture() || !acceleratorSweepNameRE.MatchString("kubikles-accelerator-"+session) || repository != acceleratorImageRepository || !acceleratorDigest.MatchString(digest) || !acceleratorVersion.MatchString(version) || !acceleratorVerifier.MatchString(verifier) {
 		return AcceleratorReleaseRequest{}, nil, false
 	}
 	return AcceleratorReleaseRequest{BuildVersion: version, ImageRepository: repository, ImageDigest: digest, WorkloadSession: session, ReleaseName: name, ReleaseNamespace: namespace}, []byte(verifier), true
@@ -428,7 +429,7 @@ func acceleratorExpectedPodSpec(request AcceleratorReleaseRequest, names map[str
 	runNonRoot, allowEscalation, readOnly := true, false, true
 	return corev1.PodSpec{
 		ServiceAccountName: names["ServiceAccount"], AutomountServiceAccountToken: &automount, RestartPolicy: corev1.RestartPolicyNever, TerminationGracePeriodSeconds: &grace,
-		NodeSelector:    map[string]string{"kubernetes.io/arch": "amd64"},
+		NodeSelector:    map[string]string{"kubernetes.io/arch": acceleratorRuntimeArchitecture()},
 		SecurityContext: &corev1.PodSecurityContext{RunAsNonRoot: &runNonRoot, RunAsUser: &user, RunAsGroup: &user, SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}},
 		Containers: []corev1.Container{{Name: "accelerator", Image: request.ImageRepository + "@" + request.ImageDigest, ImagePullPolicy: corev1.PullIfNotPresent,
 			Env:             []corev1.EnvVar{{Name: "KUBIKLES_ACCELERATOR_CREATOR_VERIFIER", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: names["Secret"]}, Key: "creatorVerifier"}}}},

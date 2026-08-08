@@ -240,10 +240,11 @@ accelerator_chart_kind_write_config "$kind_config" "$api_server_address" || fail
 [[ "$ACCELERATOR_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "ACCELERATOR_IMAGE_DIGEST must be sha256:<64 lowercase hex>"
 image="$ACCELERATOR_IMAGE_REPOSITORY@$ACCELERATOR_IMAGE_DIGEST"
 if [ "$reuse_mode" = reuse ]; then
+  execution_architecture="$(accelerator_e2e_execution_architecture)" || fail "reuse-execution-architecture"
   [ "$ACCELERATOR_IMAGE_REPOSITORY" = "$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator" ] || fail "reuse-image-repository"
   oras manifest fetch --plain-http --output "$tmp/image-index.json" "$image" 2>"$tmp/image-index.stderr" || fail "reuse-image-index"
   [ "sha256:$(sha256sum "$tmp/image-index.json" | cut -d ' ' -f 1)" = "$ACCELERATOR_IMAGE_DIGEST" ] || fail "reuse-image-index-digest"
-  jq -e --arg digest "$ACCELERATOR_IMAGE_DIGEST" '(.schemaVersion == 2) and ([.manifests[].platform | .os + "/" + .architecture] | sort) == ["linux/amd64"]' "$tmp/image-index.json" >/dev/null || fail "reuse-image-platforms"
+  jq -e --arg execution "$execution_architecture" '(.schemaVersion == 2) and ([.manifests[].platform | .os + "/" + .architecture] | sort) == ["linux/" + $execution]' "$tmp/image-index.json" >/dev/null || fail "reuse-image-platforms"
 else
   docker image inspect "$image" >"$tmp/image-inspect" 2>&1 || fail "immutable local image $image is unavailable; build/load the completed Accelerator image by digest"
   [ "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$ACCELERATOR_IMAGE_VERSION" ] || fail "image BuildVersion label mismatch"
@@ -256,7 +257,8 @@ if [ "$reuse_mode" = standalone ]; then
   grep -Fx "$cluster" "$tmp/kind-before-create" >/dev/null && fail "generated-cluster-name-already-exists"
   cluster_absent_at_start=true
 fi
-jq -n --arg repository "$ACCELERATOR_IMAGE_REPOSITORY" --arg digest "$ACCELERATOR_IMAGE_DIGEST" --arg version "$ACCELERATOR_IMAGE_VERSION" --arg verifier "$creator_verifier" '{image:{repository:$repository,digest:$digest,version:$version},accelerator:{workloadSessionId:"smoke-session-1"},auth:{creatorVerifier:$verifier}}' >"$tmp/values.yaml"
+execution_architecture="$(accelerator_e2e_execution_architecture)" || fail "execution-architecture"
+jq -n --arg repository "$ACCELERATOR_IMAGE_REPOSITORY" --arg digest "$ACCELERATOR_IMAGE_DIGEST" --arg version "$ACCELERATOR_IMAGE_VERSION" --arg architecture "$execution_architecture" --arg verifier "$creator_verifier" '{image:{repository:$repository,digest:$digest,version:$version,architecture:$architecture},accelerator:{workloadSessionId:"smoke-session-1"},auth:{creatorVerifier:$verifier}}' >"$tmp/values.yaml"
 if [ "$reuse_mode" = standalone ]; then
   cluster_create_attempted=true
   kind create cluster --name "$cluster" --config "$kind_config" --kubeconfig "$kubeconfig" >"$tmp/kind-create" 2>&1 || fail "kind-create"
@@ -296,6 +298,37 @@ for verb in create update patch delete deletecollection; do accelerator_chart_ki
 KUBECONFIG="$kubeconfig" helm upgrade --install "$release" "$root/deploy/charts/kubikles-accelerator" -n "$namespace" -f "$tmp/values.yaml" --wait >"$tmp/install" 2>&1 || fail "helm-install"
 release_installed=true
 rm -f "$tmp/values.yaml"
+pod_deadline=$((SECONDS + 30))
+while [ "$SECONDS" -lt "$pod_deadline" ]; do
+  if ! pod="$(KUBECONFIG="$kubeconfig" kubectl -n "$namespace" get pod -l job-name="$job" -o jsonpath='{.items[0].metadata.name}' 2>"$tmp/pod-query")"; then
+    pod=""
+  fi
+  [ -n "$pod" ] && break
+  sleep 0.1
+done
+[ -n "$pod" ] || fail "missing-job-pod"
+KUBECONFIG="$kubeconfig" kubectl -n "$namespace" wait --for=condition=Ready "pod/$pod" --timeout=90s >"$tmp/pod-ready" 2>&1 || fail "pod-start"
+# Exercise the short-lived zero-client server before the structural RBAC and
+# admission checks. Those checks remain valid after the Job completes, while
+# delaying this proof behind them can consume the entire configured grace.
+raw_token='AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8'
+KUBECONFIG="$kubeconfig" kubectl -n "$namespace" port-forward "pod/$pod" :8080 >"$tmp/port-forward" 2>&1 & port_forward_pid=$!
+for _ in $(seq 1 100); do
+  kill -0 "$port_forward_pid" >/dev/null 2>&1 || fail "port-forward-exited"
+  port="$(sed -nE 's/^Forwarding from 127\.0\.0\.1:([0-9]+) -> 8080$/\1/p' "$tmp/port-forward" | head -n 1)"
+  [ -n "${port:-}" ] && break
+  sleep 0.1
+done
+[ -n "${port:-}" ] || fail "port-forward-did-not-bind"
+endpoint="http://127.0.0.1:$port/api/accelerator-info"
+status="$(curl --silent --show-error --connect-timeout 2 --max-time 5 -o "$tmp/missing" -w '%{http_code}' "$endpoint" 2>"$tmp/curl-missing" || true)"
+[ "$status" = 401 ] || fail "missing-auth-status-$status"
+status="$(curl --silent --show-error --connect-timeout 2 --max-time 5 -H 'Authorization: Bearer wrong' -o "$tmp/wrong" -w '%{http_code}' "$endpoint" 2>"$tmp/curl-wrong" || true)"
+[ "$status" = 401 ] || fail "wrong-auth-status-$status"
+status="$(printf '%s\n' "Authorization: Bearer $raw_token" | curl --silent --show-error --connect-timeout 2 --max-time 5 -H @- -o "$tmp/info" -w '%{http_code}' "$endpoint" 2>"$tmp/curl-valid" || true)"
+[ "$status" = 200 ] || fail "valid-auth-status-$status"
+jq -e --arg version "$ACCELERATOR_IMAGE_VERSION" 'keys == ["build","capabilities","capabilityDiagnostics","instanceId","runtime"] and .runtime == "accelerator" and (.build | keys == ["buildVersion","commit","dirty"] and .buildVersion == $version and (.commit | type == "string") and (.dirty | type == "boolean")) and (.instanceId | type == "string" and length > 0) and .capabilities == ["secrets.list","secrets.detail","secrets.watch"] and (.capabilityDiagnostics | type == "array")' "$tmp/info" >/dev/null || fail "accelerator-info-contract"
+kill "$port_forward_pid" >/dev/null 2>&1 || fail "port-forward-stop"; wait "$port_forward_pid" >/dev/null 2>&1 || true; port_forward_pid=""
 KUBECONFIG="$kubeconfig" kubectl -n "$namespace" get job "$job" -o json >"$tmp/live-job.json" || fail "read-live-job-json"
 jq -e '(.spec.completions == 1) and (.spec.parallelism == 1) and (.spec.backoffLimit == 0) and (.spec.ttlSecondsAfterFinished == 3600) and ((.spec | has("activeDeadlineSeconds")) | not)' "$tmp/live-job.json" >/dev/null || fail "live-job-lifecycle-is-not-exact"
 KUBECONFIG="$kubeconfig" kubectl -n "$namespace" get serviceaccount "$job" -o json >"$tmp/serviceaccount.json" || fail "read-serviceaccount-json"
@@ -317,16 +350,6 @@ binding="$(KUBECONFIG="$kubeconfig" kubectl get clusterrolebinding -l "app.kuber
 [ -n "$binding" ] || fail "missing-clusterrolebinding"
 KUBECONFIG="$kubeconfig" kubectl get clusterrolebinding "$binding" -o json >"$tmp/binding.json" || fail "read-binding-json"
 jq -e --arg role "$role" --arg namespace "$namespace" --arg job "$job" '.roleRef == {apiGroup:"rbac.authorization.k8s.io",kind:"ClusterRole",name:$role} and .subjects == [{kind:"ServiceAccount",name:$job,namespace:$namespace}]' "$tmp/binding.json" >/dev/null || fail "binding-is-not-exact-serviceaccount-role"
-pod_deadline=$((SECONDS + 30))
-while [ "$SECONDS" -lt "$pod_deadline" ]; do
-  if ! pod="$(KUBECONFIG="$kubeconfig" kubectl -n "$namespace" get pod -l job-name="$job" -o jsonpath='{.items[0].metadata.name}' 2>"$tmp/pod-query")"; then
-    pod=""
-  fi
-  [ -n "$pod" ] && break
-  sleep 1
-done
-[ -n "$pod" ] || fail "missing-job-pod"
-KUBECONFIG="$kubeconfig" kubectl -n "$namespace" wait --for=condition=Ready "pod/$pod" --timeout=90s >"$tmp/pod-ready" 2>&1 || fail "pod-start"
 KUBECONFIG="$kubeconfig" kubectl -n "$namespace" get pod "$pod" -o json >"$tmp/pod.json" || fail "read-pod-json"
 jq -e --arg job "$job" '(.spec.restartPolicy == "Never") and (.spec.automountServiceAccountToken == false) and (.spec.serviceAccountName == $job) and (.spec.securityContext == {runAsNonRoot:true,runAsUser:65532,runAsGroup:65532,seccompProfile:{type:"RuntimeDefault"}}) and (.spec.initContainers | not) and (.spec.containers | length == 1) and (.spec.volumes | length == 1)' "$tmp/pod.json" >/dev/null || fail "pod-hardening-baseline"
 # Preserve the admitted object for the canonical API-defaulted check while reusing the render-shape assertion for every other fixed field.
@@ -335,25 +358,6 @@ jq 'del(.spec.volumes[0].projected.sources[2].downwardAPI.items[0].fieldRef.apiV
 jq -e --arg image "$image" --arg verifier "${job}-verifier" '(.spec.containers[0].name == "accelerator") and (.spec.containers[0].image == $image) and (.spec.containers[0].imagePullPolicy == "IfNotPresent") and (.spec.containers[0].securityContext == {allowPrivilegeEscalation:false,readOnlyRootFilesystem:true,capabilities:{drop:["ALL"]}}) and (.spec.containers[0].resources == {requests:{cpu:"100m",memory:"128Mi"},limits:{cpu:"1",memory:"512Mi"}}) and (.spec.containers[0].env == [{name:"KUBIKLES_ACCELERATOR_CREATOR_VERIFIER",valueFrom:{secretKeyRef:{name:$verifier,key:"creatorVerifier"}}}]) and (.spec.containers[0].volumeMounts == [{name:"serviceaccount",mountPath:"/var/run/secrets/kubernetes.io/serviceaccount",readOnly:true}]) and (.spec.volumes == [{name:"serviceaccount",projected:{defaultMode:292,sources:[{serviceAccountToken:{path:"token",expirationSeconds:3600}},{configMap:{name:"kube-root-ca.crt",items:[{key:"ca.crt",path:"ca.crt"}]}},{downwardAPI:{items:[{path:"namespace",fieldRef:{fieldPath:"metadata.namespace"}}]}}]}}])' "$tmp/pod.json" >/dev/null || fail "pod-container-identity-projection-or-credentials"
 accelerator_chart_kind_pod_projection_is_exact "$tmp/admitted-pod.json" "$image" "${job}-verifier" || fail "admitted-pod-projection-is-not-canonical"
 mv "$tmp/admitted-pod.json" "$tmp/pod.json"
-# The raw token remains local, is never passed to Helm/Kubernetes, and is sent as an HTTP header from stdin.
-raw_token='AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8'
-KUBECONFIG="$kubeconfig" kubectl -n "$namespace" port-forward "pod/$pod" :8080 >"$tmp/port-forward" 2>&1 & port_forward_pid=$!
-for _ in $(seq 1 30); do
-  kill -0 "$port_forward_pid" >/dev/null 2>&1 || fail "port-forward-exited"
-  port="$(sed -nE 's/^Forwarding from 127\.0\.0\.1:([0-9]+) -> 8080$/\1/p' "$tmp/port-forward" | head -n 1)"
-  [ -n "${port:-}" ] && break
-  sleep 1
-done
-[ -n "${port:-}" ] || fail "port-forward-did-not-bind"
-endpoint="http://127.0.0.1:$port/api/accelerator-info"
-status="$(curl --silent --show-error --connect-timeout 2 --max-time 5 -o "$tmp/missing" -w '%{http_code}' "$endpoint" 2>"$tmp/curl-missing" || true)"
-[ "$status" = 401 ] || fail "missing-auth-status-$status"
-status="$(curl --silent --show-error --connect-timeout 2 --max-time 5 -H 'Authorization: Bearer wrong' -o "$tmp/wrong" -w '%{http_code}' "$endpoint" 2>"$tmp/curl-wrong" || true)"
-[ "$status" = 401 ] || fail "wrong-auth-status-$status"
-status="$(printf '%s\n' "Authorization: Bearer $raw_token" | curl --silent --show-error --connect-timeout 2 --max-time 5 -H @- -o "$tmp/info" -w '%{http_code}' "$endpoint" 2>"$tmp/curl-valid" || true)"
-[ "$status" = 200 ] || fail "valid-auth-status-$status"
-jq -e --arg version "$ACCELERATOR_IMAGE_VERSION" 'keys == ["build","capabilities","capabilityDiagnostics","instanceId","runtime"] and .runtime == "accelerator" and (.build | keys == ["buildVersion","commit","dirty"] and .buildVersion == $version and (.commit | type == "string") and (.dirty | type == "boolean")) and (.instanceId | type == "string" and length > 0) and .capabilities == ["secrets.list","secrets.detail","secrets.watch"] and (.capabilityDiagnostics | type == "array")' "$tmp/info" >/dev/null || fail "accelerator-info-contract"
-kill "$port_forward_pid" >/dev/null 2>&1 || fail "port-forward-stop"; wait "$port_forward_pid" >/dev/null 2>&1 || true; port_forward_pid=""
 KUBECONFIG="$kubeconfig" kubectl -n "$namespace" wait --for=condition=complete "job/$job" --timeout=150s >"$tmp/job-complete" 2>&1 || fail "natural-job-completion"
 KUBECONFIG="$kubeconfig" kubectl -n "$namespace" get job "$job" -o json >"$tmp/job.json" || fail "read-completed-job"
 jq -e '.status.succeeded == 1 and .status.failed != 1' "$tmp/job.json" >/dev/null || fail "job-did-not-succeed"

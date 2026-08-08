@@ -2,6 +2,7 @@ image:
   repository: ""
   digest: ""
   version: ""
+  architecture: amd64
 accelerator:
   workloadSessionId: ""
 auth:

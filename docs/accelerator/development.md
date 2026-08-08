@@ -38,4 +38,6 @@ make test-accelerator-supply-chain
 make test-accelerator-docs
 ```
 
+`make test-accelerator-e2e` selects its private execution architecture from the Docker daemon. Set `KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE=amd64` or `arm64` to force it; the cached `kindest/node:v1.32.2` platform must match. This affects only the disposable Kind node and tagged acceptance runtime. The production chart, descriptor, publication, and release image remain exactly `linux/amd64`. Main and release CI explicitly force amd64 so the full 18-case gate runs once rather than as an architecture matrix.
+
 [Architecture](architecture.md) · [Security](security.md) · [Back to overview](../features/accelerator.md)

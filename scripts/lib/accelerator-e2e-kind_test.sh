@@ -10,10 +10,13 @@ fail() { echo "accelerator-e2e-kind-test: $1" >&2; exit 1; }
 clear_reuse() {
   unset KUBIKLES_ACCELERATOR_E2E_REUSE KUBIKLES_ACCELERATOR_E2E_KIND_NAME \
     KUBIKLES_ACCELERATOR_E2E_KUBECONFIG KUBIKLES_ACCELERATOR_E2E_NAMESPACE \
-    KUBIKLES_ACCELERATOR_E2E_REGISTRY
+    KUBIKLES_ACCELERATOR_E2E_REGISTRY KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE
 }
 
 clear_reuse
+[ "$(accelerator_e2e_normalize_architecture x86_64)" = amd64 ] || fail normalize-x86
+[ "$(accelerator_e2e_normalize_architecture aarch64)" = arm64 ] || fail normalize-arm
+if accelerator_e2e_normalize_architecture s390x >/dev/null 2>&1; then fail unsupported-architecture-accepted; fi
 [ "$(accelerator_e2e_reuse_mode)" = standalone ] || fail standalone-mode
 KUBIKLES_ACCELERATOR_E2E_REUSE=1
 if accelerator_e2e_reuse_mode >/dev/null 2>&1; then fail partial-reuse-accepted; fi
@@ -27,6 +30,7 @@ export KUBIKLES_ACCELERATOR_E2E_KIND_NAME=kubikles-a60a-test
 export KUBIKLES_ACCELERATOR_E2E_KUBECONFIG="$tmp/kubeconfig"
 export KUBIKLES_ACCELERATOR_E2E_NAMESPACE=kubikles-a60a-001
 export KUBIKLES_ACCELERATOR_E2E_REGISTRY=127.0.0.1:49152
+export KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE=arm64
 [ "$(accelerator_e2e_reuse_mode)" = reuse ] || fail reuse-mode
 
 for invalid in '../escape' 'UPPER' 'a_b' ''; do
@@ -50,6 +54,10 @@ cat >"$tmp/bin/docker" <<'EOF'
 #!/usr/bin/env bash
 printf 'docker %s\n' "$*" >>"$FAKE_LOG"
 case "$1:$2" in 'container:inspect') exit 1;; esac
+case "$1:$2" in
+  'info:--format') printf 'aarch64\n' ;;
+  'image:inspect') if [[ "$*" = *'kindest/node:v1.32.2'*'--format'* ]]; then printf 'arm64\n'; fi ;;
+esac
 exit 0
 EOF
 cat >"$tmp/bin/kubectl" <<'EOF'
@@ -58,6 +66,7 @@ printf 'kubectl %s\n' "$*" >>"$FAKE_LOG"
 case "$*" in
   'config current-context') printf 'kind-kubikles-a60a-test\n' ;;
   *'get --raw=/readyz'*) printf 'ok\n' ;;
+  *'get nodes -o json'*) printf '{"apiVersion":"v1","kind":"List","items":[{"metadata":{"name":"kubikles-a60a-test-control-plane","labels":{"kubernetes.io/arch":"arm64"}},"status":{"nodeInfo":{"architecture":"arm64"}}}]}\n' ;;
   *'get clusterroles,clusterrolebindings -l app.kubernetes.io/name=kubikles-accelerator,app.kubernetes.io/component=accelerator,app.kubernetes.io/part-of=kubikles,app.kubernetes.io/managed-by=Helm -o json'*) printf '{"items":[]}\n' ;;
   *'get clusterrolebindings -l app.kubernetes.io/name=kubikles-accelerator,app.kubernetes.io/component=accelerator,app.kubernetes.io/part-of=kubikles,app.kubernetes.io/managed-by=Helm -o json'*) printf '{"apiVersion":"v1","kind":"List","items":[{"metadata":{"name":"owned-binding","annotations":{"meta.helm.sh/release-namespace":"kubikles-a60a-001","meta.helm.sh/release-name":"kubikles-accelerator-0123456789abcdef0123456789abcdef"}}},{"metadata":{"name":"foreign-binding","annotations":{"meta.helm.sh/release-namespace":"foreign","meta.helm.sh/release-name":"kubikles-accelerator-0123456789abcdef0123456789abcdef"}}}]}\n' ;;
   *'get clusterroles -l app.kubernetes.io/name=kubikles-accelerator,app.kubernetes.io/component=accelerator,app.kubernetes.io/part-of=kubikles,app.kubernetes.io/managed-by=Helm -o json'*) printf '{"apiVersion":"v1","kind":"List","items":[{"metadata":{"name":"owned-role","annotations":{"meta.helm.sh/release-namespace":"kubikles-a60a-001","meta.helm.sh/release-name":"kubikles-accelerator-0123456789abcdef0123456789abcdef"}}},{"metadata":{"name":"foreign-role","annotations":{"meta.helm.sh/release-namespace":"foreign","meta.helm.sh/release-name":"kubikles-accelerator-0123456789abcdef0123456789abcdef"}}}]}\n' ;;
@@ -73,6 +82,17 @@ exit 0
 EOF
 chmod 700 "$tmp/bin/"*
 export FAKE_LOG="$tmp/fake.log"
+[ "$(PATH="$tmp/bin:$PATH" accelerator_e2e_execution_architecture)" = arm64 ] || fail forced-execution-architecture
+KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE=amd64
+export KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE
+[ "$(PATH="$tmp/bin:$PATH" accelerator_e2e_execution_architecture)" = amd64 ] || fail forced-amd64-architecture
+KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE=invalid
+export KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE
+if PATH="$tmp/bin:$PATH" accelerator_e2e_execution_architecture >/dev/null 2>&1; then fail invalid-forced-architecture-accepted; fi
+unset KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE
+[ "$(PATH="$tmp/bin:$PATH" accelerator_e2e_execution_architecture)" = arm64 ] || fail daemon-execution-architecture
+export KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE=arm64
+[ "$(PATH="$tmp/bin:$PATH" accelerator_e2e_kind_image_architecture)" = arm64 ] || fail kind-image-architecture
 unset ACCELERATOR_PROVISION_REGISTRY_HOST
 [ "$(PATH="$tmp/bin:$PATH" accelerator_e2e_select_registry_host 49152)" = 127.0.0.1 ] || fail loopback-registry-selection
 FAKE_CURL_HOST_DOCKER_ONLY=1

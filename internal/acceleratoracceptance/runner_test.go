@@ -120,7 +120,9 @@ func TestAcceptanceFocusedRunnerUsesClosedTwoWideWaves(t *testing.T) {
 	}
 	executor := &overlappingExecutor{delay: 15 * time.Millisecond}
 	runner := newTestRunner(executor, &recordingAuditor{})
-	runner.Timeout = 250 * time.Millisecond
+	// This assertion measures overlap, not the scheduler's ability to wake a
+	// timer inside a five-millisecond margin on an emulated development host.
+	runner.Timeout = 200 * time.Millisecond
 	report := NewReport()
 	if err := runner.RunFocused(context.Background(), contract, &report); err != nil {
 		t.Fatal("focused run")
@@ -169,6 +171,7 @@ func runnerEnvironment() []string {
 		"KUBIKLES_ACCELERATOR_E2E_KUBECONFIG=/private/kubeconfig",
 		"KUBIKLES_ACCELERATOR_E2E_NAMESPACE=owned-case",
 		"KUBIKLES_ACCELERATOR_E2E_REGISTRY=127.0.0.1:5000",
+		"KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE=arm64",
 		"ACCELERATOR_E2E_OFFLINE=1",
 		"ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT=/private/artifacts",
 		"ACCELERATOR_IMAGE_REPOSITORY=127.0.0.1:5000/skrobylabs/kubikles-accelerator",

@@ -81,7 +81,7 @@ func TestAcceleratorAcceptanceKind(t *testing.T) {
 		}
 	}, nil)
 
-	record(15, "RealTwoMinuteAuthenticatedClientGrace", func(t *testing.T) {
+	record(15, "ConfiguredAuthenticatedClientGrace", func(t *testing.T) {
 		routing := ensureRouting(t)
 		lowerGrace, upperGrace := integratedRoutingKindGraceBounds()
 		if routing.elapsed < lowerGrace || routing.elapsed > upperGrace || !routing.reconnectCancelled || !routing.singleExpiry {

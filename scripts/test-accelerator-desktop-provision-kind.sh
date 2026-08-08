@@ -59,6 +59,11 @@ if [ "$reuse_mode" = standalone ]; then
   validate_standalone_source_image
 else
   accelerator_e2e_validate_reused_fixture || fail "reuse-fixture"
+  shared_fixture="${ACCELERATOR_ACCEPTANCE_SHARED_FIXTURE-}"
+  shared_fixture_validator="${ACCELERATOR_ACCEPTANCE_SHARED_FIXTURE_VALIDATOR-}"
+  [[ "$shared_fixture" = /* && "$shared_fixture_validator" = /* && -x "$shared_fixture_validator" ]] || fail "reuse-shared-fixture"
+  "$shared_fixture_validator" "$shared_fixture" || fail "reuse-shared-fixture"
+  [ "$(jq -er '.executionArchitecture | select(. == "amd64" or . == "arm64")' "$shared_fixture")" = "${KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE-}" ] || fail "reuse-execution-architecture"
 fi
 docker image inspect kindest/node:v1.32.2 >/dev/null 2>&1 || fail "missing-kindest-node-v1.32.2"
 docker image inspect registry:2.8.3 >/dev/null 2>&1 || fail "missing-registry-v2.8.3"
@@ -198,24 +203,14 @@ registry_tls_url="https://$chart_registry"
 registry_ca="$tmp/chart-registry-certs/cert.pem"
 else
   registry="$KUBIKLES_ACCELERATOR_E2E_REGISTRY"
-  if [ "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" = 1 ]; then
-    acceptance_image_ref="$registry/skrobylabs/kubikles-accelerator:v0.0.0-acceptance-build"
-    [[ "${ACCELERATOR_IMAGE_DIGEST-}" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "reuse-acceptance-image-digest"
-    resolved_acceptance_digest="$(oras resolve --plain-http "$acceptance_image_ref" 2>"$tmp/image-resolve-error")" || fail "reuse-acceptance-image-resolve"
-    test "$resolved_acceptance_digest" = "$ACCELERATOR_IMAGE_DIGEST" || fail "reuse-acceptance-image-digest"
-    image_digest="$resolved_acceptance_digest"
-  else
-    image_client_ref="$registry/skrobylabs/kubikles-accelerator:$build_version"
-    image_digest="$(oras resolve --plain-http "$image_client_ref" 2>"$tmp/image-resolve-error")" || fail "reuse-image-resolve"
-    [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "reuse-image-digest"
-  fi
+  image_digest="$(jq -er '.acceptanceImageDigest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' "$shared_fixture")" || fail "reuse-image-digest"
+  [ "$image_digest" = "${ACCELERATOR_IMAGE_DIGEST-}" ] || fail "reuse-image-digest"
   chart_registry="$registry"
-  chart_ref="$chart_registry/skrobylabs/helm/kubikles-accelerator:0.0.0"
-  chart_digest="$(oras resolve --plain-http "$chart_ref" 2>"$tmp/chart-resolve-error")" || fail "reuse-chart-resolve"
-  [[ "$chart_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "reuse-chart-digest"
-  helm pull "oci://$chart_registry/skrobylabs/helm/kubikles-accelerator" --version 0.0.0 --plain-http --destination "$tmp" >"$tmp/chart-pull" 2>&1 || fail "reuse-chart-pull"
-  chart_archive="$tmp/kubikles-accelerator-0.0.0.tgz"
+  chart_digest="$(jq -er '.chartDigest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' "$shared_fixture")" || fail "reuse-chart-digest"
+  chart_archive="$(jq -er '.chartArchive | select(type == "string" and startswith("/"))' "$shared_fixture")" || fail "reuse-chart-archive"
   test -s "$chart_archive" || fail "reuse-chart-archive"
+  shared_test_binary="$(jq -er '.desktopTestBinary | select(type == "string" and startswith("/"))' "$shared_fixture")" || fail "reuse-test-binary"
+  test -x "$shared_test_binary" || fail "reuse-test-binary"
   registry_tls_url="http://$chart_registry"
   registry_ca=""
 fi
@@ -367,6 +362,10 @@ if [[ "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" == "1" ]]; then
   go_test_output=-json
   go_test_tags=helm,accelerator_provision_kind,accelerator_e2e
 fi
+test_command=(go test "$go_test_output" -tags="$go_test_tags" -count=1 -timeout="$go_test_timeout" "$go_test_package" -run "$go_test_run")
+if [ "$reuse_mode" = reuse ] && [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" != 1 && "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" != 1 ]]; then
+  test_command=("$shared_test_binary" -test.v -test.count=1 -test.timeout="$go_test_timeout" -test.run="$go_test_run")
+fi
 (cd "$root" && env "${go_test_environment[@]}" HOME="$test_home" KUBECONFIG="$kubeconfig" \
   ACCELERATOR_PROVISION_KIND_CHART="$chart_archive" \
   ACCELERATOR_PROVISION_KIND_CHART_DIGEST="$chart_digest" \
@@ -376,7 +375,7 @@ fi
   ACCELERATOR_PROVISION_KIND_IMAGE_DIGEST="$image_digest" \
   ACCELERATOR_PROVISION_KIND_SENTINEL="$sentinel" \
   ACCELERATOR_PROVISION_KIND_MALFORMED="$malformed" \
-  go test "$go_test_output" -tags="$go_test_tags" -count=1 -timeout="$go_test_timeout" "$go_test_package" -run "$go_test_run") >"$tmp/go-test" 2>&1 || {
+  "${test_command[@]}") >"$tmp/go-test" 2>&1 || {
   if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" || "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" == "1" ]]; then
     captured_output_sensitive "$tmp/go-test" 1 && fail "go-service-output-sensitive"
   fi

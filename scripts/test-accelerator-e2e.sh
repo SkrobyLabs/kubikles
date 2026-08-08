@@ -3,13 +3,30 @@ set -euo pipefail
 umask 077
 export LC_ALL=C
 
-fail() { echo "accelerator-e2e: $1" >&2; exit 1; }
 milliseconds() { date +%s%3N; }
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$root/scripts/lib/accelerator-e2e-kind.sh"
 total_started="$(milliseconds)"
+timing_phase=fixture
+timing_failure_emitted=false
+emit_timing_failure() {
+  [ "$timing_failure_emitted" = false ] || return 0
+  timing_failure_emitted=true
+  local now total fixture=0 artifact=0 focused=0 composed=0 validation=0 cleanup=0
+  now="$(milliseconds)"; total="$((now - total_started))"
+  case "$timing_phase" in
+    fixture) fixture="$total" ;; artifact) artifact="$total" ;; focused) focused="$total" ;;
+    composed) composed="$total" ;; validation) validation="$total" ;; cleanup) cleanup="$total" ;;
+  esac
+  # This is intentionally a fixed JSON schema; it never copies the failure
+  # detail, shell command, environment, path, or raw child output.
+  printf '{"schemaVersion":1,"fixtureMs":%s,"artifactMs":%s,"focusedMs":%s,"composedMs":%s,"validationMs":%s,"cleanupMs":%s,"completedTotalMs":%s,"lastActivePhase":"%s","focusedCase":"","focusedSubphase":"none","composedCase":"","composedStage":"none","failureCode":"command"}\n' "$fixture" "$artifact" "$focused" "$composed" "$validation" "$cleanup" "$total" "$timing_phase" >&2
+}
+fail() { emit_timing_failure; echo "accelerator-e2e: $1" >&2; exit 1; }
 
 [ -z "${KUBIKLES_ACCELERATOR_E2E_ACTIVE-}" ] || fail recursive-invocation
+execution_architecture="$(accelerator_e2e_execution_architecture)" || fail execution-architecture
+export KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE="$execution_architecture"
 export KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS="${KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS:-5}"
 [[ "$KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS" =~ ^([1-9]|[12][0-9]|30)$ ]] || fail reconnect-grace
 accelerator_e2e_preflight "$root" || fail preflight
@@ -62,13 +79,31 @@ export http_proxy="$HTTP_PROXY" https_proxy="$HTTPS_PROXY" all_proxy="$ALL_PROXY
 export NO_PROXY="127.0.0.1,localhost,host.docker.internal"
 export no_proxy="$NO_PROXY"
 fixture_finished="$(milliseconds)"
+timing_phase=artifact
 "$root/scripts/build-accelerator-e2e-artifacts.sh" || fail artifact-fixture
+# Focused desktop owners receive an immutable manifest and one compiled test
+# binary.  They still allocate their own namespace, HOME, kubeconfig copy and
+# cleanup state; none of those mutable values are shared here.
+go build -o "$fixture_root/accelerator-e2e-shared-fixture" ./internal/acceleratoracceptance/cmd/accelerator-e2e-shared-fixture || fail shared-fixture-helper-build
+go test -c -tags=helm,accelerator_provision_kind,accelerator_e2e -o "$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/desktop-kind.test" ./pkg/acceleratorprovision || fail desktop-test-build
+chmod 700 "$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/desktop-kind.test"
+chart_archive="$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/kubikles-accelerator-0.0.0.tgz"
+test -s "$chart_archive" || fail shared-chart
+chart_hash="$(sha256sum "$chart_archive" | cut -d ' ' -f1)"
+desktop_hash="$(sha256sum "$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/desktop-kind.test" | cut -d ' ' -f1)"
+artifact_metadata="$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/acceptance-artifact-metadata.json"
+jq -n --arg root "$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT" --arg execution "$execution_architecture" --arg chart "$chart_archive" --arg chart_hash "$chart_hash" --arg test_binary "$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/desktop-kind.test" --arg test_hash "$desktop_hash" --arg production "$(jq -er .registryImageDigest "$artifact_metadata")" --arg acceptance "$(jq -er .acceptanceImageDigest "$artifact_metadata")" --arg chart_digest "$(jq -er .registryChartDigest "$artifact_metadata")" --argjson grace "$KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS" \
+  '{buildVersion:"v0.0.0",executionArchitecture:$execution,reconnectGraceSeconds:$grace,artifactRoot:$root,productionImageDigest:$production,acceptanceImageDigest:$acceptance,chartDigest:$chart_digest,chartArchive:$chart,chartArchiveSha256:$chart_hash,desktopTestBinary:$test_binary,desktopTestBinarySha256:$test_hash}' >"$fixture_root/shared-fixture.json"
+chmod 600 "$fixture_root/shared-fixture.json"
+"$fixture_root/accelerator-e2e-shared-fixture" "$fixture_root/shared-fixture.json" || fail shared-fixture
+export ACCELERATOR_ACCEPTANCE_SHARED_FIXTURE="$fixture_root/shared-fixture.json"
+export ACCELERATOR_ACCEPTANCE_SHARED_FIXTURE_VALIDATOR="$fixture_root/accelerator-e2e-shared-fixture"
 artifact_finished="$(milliseconds)"
 test "$(jq -r . "$fixture_root/tripwire-count.json")" = 0 || fail external-network
-artifact_metadata="$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/acceptance-artifact-metadata.json"
 ACCELERATOR_IMAGE_DIGEST="$(jq -er '.acceptanceImageDigest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' "$artifact_metadata")" || fail artifact-metadata
 test "$(jq -er '.registryImageDigest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' "$artifact_metadata")" != "$ACCELERATOR_IMAGE_DIGEST" || fail artifact-metadata
-test "$(jq -er '.reconnectGraceSeconds | select(type == "number")' "$artifact_metadata")" = "$KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS" || fail artifact-metadata
+test "$(jq -er --argjson grace "$KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS" '.reconnectGraceSeconds | select(type == "number" and . == $grace)' "$artifact_metadata")" = "$KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS" || fail artifact-metadata
+test "$(jq -er --arg execution "$execution_architecture" '.executionArchitecture | select(. == $execution)' "$artifact_metadata")" = "$execution_architecture" || fail artifact-metadata
 ACCELERATOR_IMAGE_VERSION="$(jq -er '.runtimeBuildVersion | select(. == "v0.0.0")' "$artifact_metadata")" || fail artifact-metadata
 export ACCELERATOR_IMAGE_REPOSITORY="$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator"
 export ACCELERATOR_IMAGE_DIGEST ACCELERATOR_IMAGE_VERSION
@@ -81,11 +116,13 @@ export ACCELERATOR_ACCEPTANCE_TARGET_TIMEOUT_SECONDS=3600
 go build -o "$fixture_root/accelerator-e2e-runner" ./internal/acceleratoracceptance/cmd/accelerator-e2e-runner || fail runner-build
 "$fixture_root/accelerator-e2e-runner" || fail focused-cases
 focused_finished="$(milliseconds)"
+timing_phase=composed
 test "$(jq -r . "$fixture_root/tripwire-count.json")" = 0 || fail external-network
 
 export KUBIKLES_ACCELERATOR_E2E_NAMESPACE="kubikles-a60a-composed-${RANDOM}"
 ACCELERATOR_ACCEPTANCE_COMPOSED_KIND=1 "$root/scripts/test-accelerator-desktop-provision-kind.sh" || fail composed-cases
 composed_finished="$(milliseconds)"
+timing_phase=validation
 accelerator_e2e_audit_case_cleanup kubikles-a60a-sentinel || fail composed-cleanup
 test -s "$ACCELERATOR_ACCEPTANCE_FINAL_REPORT" || fail composed-report-missing
 test "$(stat -c '%a' "$ACCELERATOR_ACCEPTANCE_FINAL_REPORT" 2>/dev/null || stat -f '%Lp' "$ACCELERATOR_ACCEPTANCE_FINAL_REPORT" 2>/dev/null)" = 600 || fail composed-report-mode

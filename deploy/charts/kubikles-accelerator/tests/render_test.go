@@ -418,6 +418,15 @@ func TestRenderForbidsLifecycleSecurityAndReferenceEscapes(t *testing.T) {
 	}
 }
 
+func TestRenderAllowsOnlyClosedArchitectureOverrides(t *testing.T) {
+	armValues := strings.Replace(values(""), "  version: v1.2.3\n", "  version: v1.2.3\n  architecture: arm64\n", 1)
+	job := find(t, objects(t, render(t, "release", "test-ns", armValues)), "Job")
+	if nested(job, "spec", "template", "spec", "nodeSelector", "kubernetes.io/arch") != "arm64" {
+		t.Fatal("arm64 architecture override was not rendered")
+	}
+	lint(t, strings.Replace(armValues, "architecture: arm64", "architecture: s390x", 1), false)
+}
+
 func TestRenderEscapesValuesAndPreservesWorkloadIDBounds(t *testing.T) {
 	manifest := string(render(t, "release", "test-ns", strings.Replace(values(""), "version: v1.2.3", "version: 'v1: quoted'", 1)))
 	if !strings.Contains(manifest, `kubikles.io/build-version: "v1: quoted"`) {

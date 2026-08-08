@@ -28,3 +28,16 @@ func TestAcceptanceLifecycleScopeIsPinnedBeforeLaterFeatures(t *testing.T) {
 		t.Fatal("lifecycle scope still audits later prerequisite features")
 	}
 }
+
+func TestAcceptanceRemoteWorkflowsForceCanonicalAMD64Once(t *testing.T) {
+	for _, workflow := range []string{"main.yml", "release.yml"} {
+		source, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", workflow))
+		if err != nil {
+			t.Fatal("read Accelerator workflow")
+		}
+		text := string(source)
+		if strings.Count(text, "run: make test-accelerator-e2e") != 1 || strings.Count(text, "KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE: amd64") != 1 {
+			t.Fatalf("%s does not run one explicitly amd64 canonical acceptance gate", workflow)
+		}
+	}
+}

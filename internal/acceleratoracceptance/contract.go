@@ -85,7 +85,7 @@ var expectedOwners = []expectedOwner{
 	{"A60A-016-INTEGRATED-HAPPY", OwnerGo, "TestAcceleratorAcceptanceKind/IntegratedHappyPath"},
 	{"A60A-017-MISMATCH", OwnerGo, "TestAcceleratorAcceptanceKind/VersionAndArtifactMismatch"},
 	{"A60A-018-TRANSPORT-RESUME", OwnerGo, "TestAcceleratorAcceptanceKind/TransportResumeAndRecreate"},
-	{"A60A-020-REAL-GRACE", OwnerGo, "TestAcceleratorAcceptanceKind/RealTwoMinuteAuthenticatedClientGrace"},
+	{"A60A-020-REAL-GRACE", OwnerGo, "TestAcceleratorAcceptanceKind/ConfiguredAuthenticatedClientGrace"},
 	{"A60A-021-SECURITY-PRIVACY", OwnerGo, "TestAcceleratorAcceptanceKind/SecurityPrivacyBackpressure"},
 	{"A60A-022-CLEANUP-ISOLATION", OwnerGo, "TestAcceleratorAcceptanceKind/CleanupSweepIsolation"},
 }

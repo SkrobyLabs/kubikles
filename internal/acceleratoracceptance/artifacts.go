@@ -22,6 +22,7 @@ type ArtifactFixture struct {
 	Descriptor             []byte
 	Checksum               []byte
 	ImageEvidence          []byte
+	AcceptanceImageIndex   []byte
 	RegistryImageDigest    string
 	AcceptanceImageDigest  string
 	ReconnectGraceSeconds  int
@@ -29,7 +30,8 @@ type ArtifactFixture struct {
 	ChartVersion           string
 	ChartAppVersion        string
 	RuntimeBuildVersion    string
-	HostArchitecture       string
+	ReleaseArchitecture    string
+	ExecutionArchitecture  string
 	SelectedManifestDigest string
 }
 
@@ -56,6 +58,10 @@ func LoadArtifactFixture(root string) (ArtifactFixture, error) {
 	if err != nil {
 		return ArtifactFixture{}, err
 	}
+	acceptanceIndex, err := read("acceptance-image-index.json")
+	if err != nil {
+		return ArtifactFixture{}, err
+	}
 	metadataBytes, err := read("acceptance-artifact-metadata.json")
 	if err != nil {
 		return ArtifactFixture{}, err
@@ -68,18 +74,20 @@ func LoadArtifactFixture(root string) (ArtifactFixture, error) {
 		ChartVersion           string `json:"chartVersion"`
 		ChartAppVersion        string `json:"chartAppVersion"`
 		RuntimeBuildVersion    string `json:"runtimeBuildVersion"`
-		HostArchitecture       string `json:"hostArchitecture"`
+		ReleaseArchitecture    string `json:"releaseArchitecture"`
+		ExecutionArchitecture  string `json:"executionArchitecture"`
 		SelectedManifestDigest string `json:"selectedManifestDigest"`
 	}
 	if decodeArtifactJSON(metadataBytes, &metadata) != nil {
 		return ArtifactFixture{}, errors.New("artifact fixture invalid")
 	}
 	fixture := ArtifactFixture{
-		Descriptor: descriptor, Checksum: checksum, ImageEvidence: evidence,
+		Descriptor: descriptor, Checksum: checksum, ImageEvidence: evidence, AcceptanceImageIndex: acceptanceIndex,
 		RegistryImageDigest: metadata.RegistryImageDigest, RegistryChartDigest: metadata.RegistryChartDigest,
 		AcceptanceImageDigest: metadata.AcceptanceImageDigest, ReconnectGraceSeconds: metadata.ReconnectGraceSeconds,
 		ChartVersion: metadata.ChartVersion, ChartAppVersion: metadata.ChartAppVersion,
-		RuntimeBuildVersion: metadata.RuntimeBuildVersion, HostArchitecture: metadata.HostArchitecture,
+		RuntimeBuildVersion: metadata.RuntimeBuildVersion, ReleaseArchitecture: metadata.ReleaseArchitecture,
+		ExecutionArchitecture:  metadata.ExecutionArchitecture,
 		SelectedManifestDigest: metadata.SelectedManifestDigest,
 	}
 	if ValidateArtifactFixture(fixture) != nil {
@@ -143,8 +151,21 @@ type artifactInspection struct {
 	ImageBuildVersion  string `json:"imageBuildVersion"`
 }
 
+type artifactAcceptanceImageIndex struct {
+	SchemaVersion int                               `json:"schemaVersion"`
+	MediaType     string                            `json:"mediaType"`
+	Manifests     []artifactAcceptanceImageManifest `json:"manifests"`
+}
+
+type artifactAcceptanceImageManifest struct {
+	MediaType string           `json:"mediaType"`
+	Digest    string           `json:"digest"`
+	Size      int64            `json:"size"`
+	Platform  artifactPlatform `json:"platform"`
+}
+
 func ValidateArtifactFixture(fixture ArtifactFixture) error {
-	if len(fixture.Descriptor) == 0 || len(fixture.Checksum) == 0 || len(fixture.ImageEvidence) == 0 {
+	if len(fixture.Descriptor) == 0 || len(fixture.Checksum) == 0 || len(fixture.ImageEvidence) == 0 || len(fixture.AcceptanceImageIndex) == 0 {
 		return errors.New("artifact fixture invalid")
 	}
 	var descriptor artifactDescriptor
@@ -158,15 +179,20 @@ func ValidateArtifactFixture(fixture ArtifactFixture) error {
 	if !validArtifactDescriptor(descriptor) || !validArtifactEvidence(evidence) {
 		return errors.New("artifact fixture invalid")
 	}
+	var acceptanceIndex artifactAcceptanceImageIndex
+	if decodeArtifactJSON(fixture.AcceptanceImageIndex, &acceptanceIndex) != nil || !validAcceptanceImageIndex(acceptanceIndex, fixture.ExecutionArchitecture) {
+		return errors.New("artifact fixture invalid")
+	}
 	sum := sha256.Sum256(fixture.Descriptor)
 	wantChecksum := hex.EncodeToString(sum[:]) + "  kubikles-accelerator-release-v0.0.0.json\n"
 	if string(fixture.Checksum) != wantChecksum {
 		return errors.New("artifact fixture invalid")
 	}
-	if fixture.RegistryImageDigest != descriptor.Image.Digest || fixture.RegistryChartDigest != descriptor.Chart.Digest || fixture.RegistryImageDigest == fixture.RegistryChartDigest || fixture.AcceptanceImageDigest == fixture.RegistryImageDigest || !artifactDigestPattern.MatchString(fixture.AcceptanceImageDigest) || fixture.ReconnectGraceSeconds < 1 || fixture.ReconnectGraceSeconds > 30 || evidence.ImageDigest != descriptor.Image.Digest {
+	acceptanceSum := sha256.Sum256(fixture.AcceptanceImageIndex)
+	if fixture.RegistryImageDigest != descriptor.Image.Digest || fixture.RegistryChartDigest != descriptor.Chart.Digest || fixture.RegistryImageDigest == fixture.RegistryChartDigest || fixture.AcceptanceImageDigest == fixture.RegistryImageDigest || fixture.AcceptanceImageDigest != "sha256:"+hex.EncodeToString(acceptanceSum[:]) || fixture.ReconnectGraceSeconds < 1 || fixture.ReconnectGraceSeconds > 30 || evidence.ImageDigest != descriptor.Image.Digest {
 		return errors.New("artifact fixture invalid")
 	}
-	if fixture.ChartVersion != descriptor.Chart.Version || fixture.ChartAppVersion != descriptor.Chart.AppVersion || fixture.RuntimeBuildVersion != BuildIdentity {
+	if fixture.ChartVersion != descriptor.Chart.Version || fixture.ChartAppVersion != descriptor.Chart.AppVersion || fixture.RuntimeBuildVersion != BuildIdentity || fixture.ReleaseArchitecture != "amd64" || !validExecutionArchitecture(fixture.ExecutionArchitecture) {
 		return errors.New("artifact fixture invalid")
 	}
 	selected := ""
@@ -174,7 +200,7 @@ func ValidateArtifactFixture(fixture ArtifactFixture) error {
 		if platform != evidence.Platforms[index] {
 			return errors.New("artifact fixture invalid")
 		}
-		if platform.Architecture == fixture.HostArchitecture {
+		if platform.Architecture == fixture.ReleaseArchitecture {
 			selected = platform.ManifestDigest
 		}
 	}
@@ -182,6 +208,18 @@ func ValidateArtifactFixture(fixture ArtifactFixture) error {
 		return errors.New("artifact fixture invalid")
 	}
 	return nil
+}
+
+func validExecutionArchitecture(value string) bool {
+	return value == "amd64" || value == "arm64"
+}
+
+func validAcceptanceImageIndex(index artifactAcceptanceImageIndex, executionArchitecture string) bool {
+	if index.SchemaVersion != 2 || index.MediaType != "application/vnd.oci.image.index.v1+json" || !validExecutionArchitecture(executionArchitecture) || len(index.Manifests) != 1 {
+		return false
+	}
+	manifest := index.Manifests[0]
+	return manifest.MediaType == "application/vnd.docker.distribution.manifest.v2+json" && artifactDigestPattern.MatchString(manifest.Digest) && manifest.Size > 0 && manifest.Platform.OS == "linux" && manifest.Platform.Architecture == executionArchitecture && manifest.Platform.ManifestDigest == ""
 }
 
 func decodeArtifactJSON(data []byte, target any) error {

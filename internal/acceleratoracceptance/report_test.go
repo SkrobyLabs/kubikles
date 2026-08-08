@@ -106,3 +106,24 @@ func TestAcceptanceReportRejectsUnknownAndUnsafeJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestTimingSnapshotIsFixedShapeAndValueFree(t *testing.T) {
+	snapshot := TimingSnapshot{SchemaVersion: ReportSchemaVersion, FixtureMS: 1, ArtifactMS: 2, FocusedMS: 3, ComposedMS: 4, ValidationMS: 5, CleanupMS: 6, CompletedTotalMS: 21, LastActivePhase: TimingFocused, FocusedCase: "A60A-008-PROVISION", FocusedSubphase: TimingSubphaseAudit, ComposedStage: ComposedStageNone, FailureCode: FailureAudit}
+	encoded, err := MarshalTimingSnapshot(snapshot)
+	if err != nil {
+		t.Fatal("fixed timing snapshot rejected")
+	}
+	for _, unsafe := range []string{"Bearer ", "/secret/", "argv", "raw-error", "kubeconfig"} {
+		if strings.Contains(string(encoded), unsafe) {
+			t.Fatal("unsafe value rendered")
+		}
+	}
+	snapshot.FocusedCase = "Bearer registry-secret-T11"
+	if _, err := MarshalTimingSnapshot(snapshot); err == nil {
+		t.Fatal("unsafe case value accepted")
+	}
+	snapshot = TimingSnapshot{SchemaVersion: ReportSchemaVersion, LastActivePhase: TimingComplete, FocusedSubphase: TimingSubphaseNone, ComposedStage: ComposedStageNone, FailureCode: FailureCommand}
+	if _, err := MarshalTimingSnapshot(snapshot); err == nil {
+		t.Fatal("failed complete timing accepted")
+	}
+}

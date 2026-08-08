@@ -192,6 +192,7 @@ var runnerRequiredEnvironment = map[string]string{
 	"KUBIKLES_ACCELERATOR_E2E_KUBECONFIG":              "",
 	"KUBIKLES_ACCELERATOR_E2E_NAMESPACE":               "",
 	"KUBIKLES_ACCELERATOR_E2E_REGISTRY":                "",
+	"KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE":  "",
 	"ACCELERATOR_E2E_OFFLINE":                          "1",
 	"ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT":             "",
 	"ACCELERATOR_IMAGE_REPOSITORY":                     "",
@@ -223,6 +224,9 @@ func validRunnerEnvironment(environment []string) bool {
 	}
 	grace, err := strconv.Atoi(values["KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS"])
 	if err != nil || grace < 1 || grace > 30 || values["KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS"] != strconv.Itoa(grace) {
+		return false
+	}
+	if !validExecutionArchitecture(values["KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE"]) {
 		return false
 	}
 	return true

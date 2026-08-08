@@ -285,7 +285,7 @@ func TestRenderAcceleratorReleaseExact(t *testing.T) {
 	if failure != AcceleratorOK || prepared == nil || prepared.JobName() == "" || len(prepared.ResourceIdentities()) != 5 || len(prepared.renderHash) != 64 {
 		t.Fatalf("prepare failure=%s prepared=%#v", failure, prepared)
 	}
-	if got := countLeaves(prepared.values); got != 5 {
+	if got := countLeaves(prepared.values); got != 6 {
 		t.Fatalf("values leaves=%d", got)
 	}
 	if strings.Contains(prepared.manifest, request.CreatorVerifier) || strings.Count(prepared.manifest, "dzJnTHJYTk5JTEdETG1SRHl6bTJzQW12UnNkdV9mYlFwem1yeVBLLWhsTQ==") != 1 {
@@ -304,7 +304,7 @@ func TestRenderAcceleratorReleaseExact(t *testing.T) {
 			return strings.Replace(manifest, request.ImageDigest, "sha256:"+strings.Repeat("e", 64), 1)
 		},
 		"architecture": func(manifest string) string {
-			return strings.Replace(manifest, "kubernetes.io/arch: amd64", "kubernetes.io/arch: arm64", 1)
+			return strings.Replace(manifest, "kubernetes.io/arch: \"amd64\"", "kubernetes.io/arch: \"arm64\"", 1)
 		},
 		"secret ref": func(manifest string) string {
 			return strings.Replace(manifest, prepared.verifierName, "wrong-verifier", 1)

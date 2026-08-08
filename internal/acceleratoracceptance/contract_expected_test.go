@@ -42,7 +42,7 @@ func TestAcceptanceContractExactCaseSet(t *testing.T) {
 		{"A60A-016-INTEGRATED-HAPPY", "1cec4c3a,53dfebec,71facaab,b1854aa3,d0eb9876,d4f712fd", OwnerGo, "TestAcceleratorAcceptanceKind/IntegratedHappyPath", "composed.integrated,composed.operations,composed.value-free"},
 		{"A60A-017-MISMATCH", "020e8648,1cec4c3a,66f24342,70e5466d,71facaab,b1854aa3", OwnerGo, "TestAcceleratorAcceptanceKind/VersionAndArtifactMismatch", "mismatch.direct,mismatch.literal,mismatch.one-replacement"},
 		{"A60A-018-TRANSPORT-RESUME", "020e8648,ac978c3f,b1854aa3,d0eb9876", OwnerGo, "TestAcceleratorAcceptanceKind/TransportResumeAndRecreate", "recovery.direct,recovery.resume,recovery.stale-fence"},
-		{"A60A-020-REAL-GRACE", "8ebf3759,b1854aa3", OwnerGo, "TestAcceleratorAcceptanceKind/RealTwoMinuteAuthenticatedClientGrace", "grace.cancelled,grace.elapsed,grace.single-expiry"},
+		{"A60A-020-REAL-GRACE", "8ebf3759,b1854aa3", OwnerGo, "TestAcceleratorAcceptanceKind/ConfiguredAuthenticatedClientGrace", "grace.cancelled,grace.elapsed,grace.single-expiry"},
 		{"A60A-021-SECURITY-PRIVACY", "2d45b95b,44ea1f82,a02bce49,d0eb9876", OwnerGo, "TestAcceleratorAcceptanceKind/SecurityPrivacyBackpressure", "security.loopback,security.privacy,security.rbac"},
 		{"A60A-022-CLEANUP-ISOLATION", "70e5466d,b1854aa3", OwnerGo, "TestAcceleratorAcceptanceKind/CleanupSweepIsolation", "cleanup.owned,cleanup.sentinel,cleanup.sweep"},
 	}

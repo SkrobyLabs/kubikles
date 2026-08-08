@@ -35,6 +35,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
@@ -325,30 +326,19 @@ func exerciseKindCrashTTLSweep(t *testing.T, service *Service, helmClient *helm.
 	if err != nil {
 		t.Fatal("crash fixture snapshot")
 	}
-	deadline := time.Now().Add(3 * time.Minute)
-	for {
-		job, getErr := snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Get(context.Background(), orphan.Job.Name, metav1.GetOptions{})
-		if getErr != nil || string(job.UID) != orphan.Job.UID {
-			t.Fatal("crash fixture exact Job disappeared")
-		}
-		complete := false
-		for _, condition := range job.Status.Conditions {
-			complete = complete || ((condition.Type == batchv1.JobComplete || condition.Type == batchv1.JobFailed) && condition.Status == corev1.ConditionTrue)
-		}
-		if complete {
-			one := int32(1)
-			job.Spec.TTLSecondsAfterFinished = &one
-			if _, err = snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Update(context.Background(), job, metav1.UpdateOptions{}); err != nil {
-				t.Fatal("crash fixture TTL patch")
-			}
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("crash fixture Job did not exit through server grace")
-		}
-		time.Sleep(time.Second)
+	// This is an inert crash/TTL fixture, not the representative live grace
+	// proof. Delete only the exact recorded workload identities so it cannot
+	// spend the reconnect grace manufacturing a completed Job.
+	zero := int64(0)
+	jobUID := types.UID(orphan.Job.UID)
+	podUID := types.UID(orphan.Pod.UID)
+	if err = snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Delete(context.Background(), orphan.Job.Name, metav1.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &jobUID}, PropagationPolicy: func() *metav1.DeletionPropagation { policy := metav1.DeletePropagationBackground; return &policy }()}); err != nil && !apierrors.IsNotFound(err) {
+		t.Fatal("crash fixture exact Job teardown")
 	}
-	deadline = time.Now().Add(45 * time.Second)
+	if err = snapshot.Clientset().CoreV1().Pods(orphan.ReleaseNamespace).Delete(context.Background(), orphan.Pod.Name, metav1.DeleteOptions{GracePeriodSeconds: &zero, Preconditions: &metav1.Preconditions{UID: &podUID}}); err != nil && !apierrors.IsNotFound(err) {
+		t.Fatal("crash fixture exact Pod teardown")
+	}
+	deadline := time.Now().Add(45 * time.Second)
 	for {
 		_, jobErr := snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Get(context.Background(), orphan.Job.Name, metav1.GetOptions{})
 		_, podErr := snapshot.Clientset().CoreV1().Pods(orphan.ReleaseNamespace).Get(context.Background(), orphan.Pod.Name, metav1.GetOptions{})
@@ -603,33 +593,22 @@ func exerciseDisposalKind(t *testing.T, service *Service, helmClient *helm.Clien
 	if err != nil {
 		t.Fatal("orphan snapshot")
 	}
-	deadline := time.Now().Add(3 * time.Minute)
-	for {
-		job, getErr := snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Get(context.Background(), orphan.Job.Name, metav1.GetOptions{})
-		if getErr != nil {
-			t.Fatal("orphan job disappeared before TTL patch")
-		}
-		complete := false
-		for _, condition := range job.Status.Conditions {
-			complete = complete || condition.Type == batchv1.JobComplete && condition.Status == corev1.ConditionTrue
-		}
-		if complete {
-			if job.Spec.TTLSecondsAfterFinished == nil || *job.Spec.TTLSecondsAfterFinished != 3600 {
-				t.Fatal("chart TTL contract changed")
-			}
-			one := int32(1)
-			job.Spec.TTLSecondsAfterFinished = &one
-			if _, err = snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Update(context.Background(), job, metav1.UpdateOptions{}); err != nil {
-				t.Fatal("test-only TTL patch")
-			}
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("orphan job did not complete")
-		}
-		time.Sleep(time.Second)
+	job, err := snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Get(context.Background(), orphan.Job.Name, metav1.GetOptions{})
+	if err != nil || string(job.UID) != orphan.Job.UID || job.Spec.TTLSecondsAfterFinished == nil || *job.Spec.TTLSecondsAfterFinished != 3600 {
+		t.Fatal("orphan fixture TTL contract")
 	}
-	deadline = time.Now().Add(45 * time.Second)
+	// Disposal needs an inert release for its sweep assertion, not a natural
+	// grace expiry. UID fences ensure this fixture cannot remove a replacement.
+	zero := int64(0)
+	jobUID := job.UID
+	podUID := types.UID(orphan.Pod.UID)
+	if err = snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Delete(context.Background(), orphan.Job.Name, metav1.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &jobUID}, PropagationPolicy: func() *metav1.DeletionPropagation { policy := metav1.DeletePropagationBackground; return &policy }()}); err != nil && !apierrors.IsNotFound(err) {
+		t.Fatal("orphan fixture exact Job teardown")
+	}
+	if err = snapshot.Clientset().CoreV1().Pods(orphan.ReleaseNamespace).Delete(context.Background(), orphan.Pod.Name, metav1.DeleteOptions{GracePeriodSeconds: &zero, Preconditions: &metav1.Preconditions{UID: &podUID}}); err != nil && !apierrors.IsNotFound(err) {
+		t.Fatal("orphan fixture exact Pod teardown")
+	}
+	deadline := time.Now().Add(45 * time.Second)
 	for {
 		_, jobErr := snapshot.Clientset().BatchV1().Jobs(orphan.ReleaseNamespace).Get(context.Background(), orphan.Job.Name, metav1.GetOptions{})
 		_, podErr := snapshot.Clientset().CoreV1().Pods(orphan.ReleaseNamespace).Get(context.Background(), orphan.Pod.Name, metav1.GetOptions{})

@@ -50,11 +50,7 @@ elif kind get clusters 2>/dev/null | grep -Fx "$cluster" >/dev/null; then
   stage ownership-collision
 fi
 if docker image inspect "$image" >"$tmp/image-collision" 2>&1; then stage ownership-collision; fi
-case "$(docker info --format '{{.Architecture}}' 2>"$tmp/architecture")" in
-  amd64|x86_64) arch=amd64 ;;
-  arm64|aarch64) arch=arm64 ;;
-  *) stage unsupported-architecture ;;
-esac
+arch="$(accelerator_e2e_execution_architecture 2>"$tmp/architecture")" || stage unsupported-architecture
 GOOS=linux GOARCH="$arch" CGO_ENABLED=0 go build -o "$tmp/accelerator00-echo" "$root/testdata/accelerator00/echo" >"$tmp/build" 2>&1 || stage build
 image_owned=1
 docker build -t "$image" -f "$root/testdata/accelerator00/Dockerfile" "$tmp" >"$tmp/image" 2>&1 || stage image-build

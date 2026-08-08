@@ -3,6 +3,32 @@
 # Shared, test-only ownership helpers for Accelerator 60A. Callers retain
 # set -e/-u policy and provide their own fixed failure classification.
 
+accelerator_e2e_normalize_architecture() {
+  [ "$#" -eq 1 ] || return 1
+  case "$1" in
+    amd64|x86_64) printf '%s\n' amd64 ;;
+    arm64|aarch64) printf '%s\n' arm64 ;;
+    *) return 1 ;;
+  esac
+}
+
+accelerator_e2e_execution_architecture() {
+  [ "$#" -eq 0 ] || return 1
+  if [ -n "${KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE-}" ]; then
+    case "$KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE" in
+      amd64|arm64) printf '%s\n' "$KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE" ;;
+      *) return 1 ;;
+    esac
+    return
+  fi
+  accelerator_e2e_normalize_architecture "$(docker info --format '{{.Architecture}}' 2>/dev/null)"
+}
+
+accelerator_e2e_kind_image_architecture() {
+  [ "$#" -eq 0 ] || return 1
+  accelerator_e2e_normalize_architecture "$(docker image inspect kindest/node:v1.32.2 --format '{{.Architecture}}' 2>/dev/null)"
+}
+
 accelerator_e2e_reuse_mode() {
   local key present=0
   for key in \
@@ -42,14 +68,14 @@ accelerator_e2e_allocate_case_namespace() {
 }
 
 accelerator_e2e_preflight() {
-  local root tool go_version node_version npm_version kubectl_version
+  local root tool go_version node_version npm_version kubectl_version execution_architecture
   root="${1-}"
   [ "$#" -eq 1 ] && [ -d "$root" ] || return 1
   for tool in go node npm docker helm oras kind kubectl curl jq git; do
     command -v "$tool" >/dev/null 2>&1 || return 1
   done
   go_version="$(go version 2>/dev/null)"
-  [[ "$go_version" =~ ^go\ version\ go1\.25\.12\ linux/amd64$ ]] || return 1
+  [[ "$go_version" =~ ^go\ version\ go1\.25\.12\ linux/(amd64|arm64)$ ]] || return 1
   node_version="$(node --version 2>/dev/null)"; [ "$node_version" = v22.23.2 ] || return 1
   npm_version="$(npm --version 2>/dev/null)"; [ "$npm_version" = 10.9.8 ] || return 1
   docker info >/dev/null 2>&1 || return 1
@@ -60,10 +86,23 @@ accelerator_e2e_preflight() {
   kind version 2>/dev/null | grep -F 'kind v0.32.0 ' >/dev/null || return 1
   kubectl_version="$(kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion')"
   [ "$kubectl_version" = v1.36.3 ] || return 1
-  docker image inspect kindest/node:v1.32.2 >/dev/null 2>&1 || return 1
+  execution_architecture="$(accelerator_e2e_execution_architecture)" || return 1
+  [ "$(accelerator_e2e_kind_image_architecture)" = "$execution_architecture" ] || return 1
   docker image inspect registry:2.8.3 >/dev/null 2>&1 || return 1
   [ -x "$root/scripts/publish-accelerator-release.sh" ] || return 1
   [ -d "$root/scripts/cmd/inspect-accelerator-binary" ] || return 1
+}
+
+accelerator_e2e_validate_execution_node() {
+  local execution_architecture nodes
+  [ "$#" -eq 0 ] && [ "$(accelerator_e2e_reuse_mode)" = reuse ] || return 1
+  execution_architecture="$(accelerator_e2e_execution_architecture)" || return 1
+  nodes="$(KUBECONFIG="$KUBIKLES_ACCELERATOR_E2E_KUBECONFIG" kubectl get nodes -o json 2>/dev/null)" || return 1
+  jq -e --arg execution "$execution_architecture" '
+    .apiVersion == "v1" and .kind == "List" and (.items | length) == 1 and
+    .items[0].status.nodeInfo.architecture == $execution and
+    .items[0].metadata.labels["kubernetes.io/arch"] == $execution
+  ' <<<"$nodes" >/dev/null
 }
 
 accelerator_e2e_validate_reused_fixture() {
@@ -73,6 +112,7 @@ accelerator_e2e_validate_reused_fixture() {
   current="$(KUBECONFIG="$KUBIKLES_ACCELERATOR_E2E_KUBECONFIG" kubectl config current-context 2>/dev/null)" || return 1
   [ -n "$current" ] || return 1
   KUBECONFIG="$KUBIKLES_ACCELERATOR_E2E_KUBECONFIG" kubectl --request-timeout=2s get --raw=/readyz 2>/dev/null | grep -Fx ok >/dev/null || return 1
+  accelerator_e2e_validate_execution_node || return 1
   curl --noproxy '*' --fail --silent --show-error "http://$KUBIKLES_ACCELERATOR_E2E_REGISTRY/v2/" >/dev/null 2>&1 || return 1
 }
 
@@ -113,9 +153,11 @@ accelerator_e2e_select_registry_host() {
 }
 
 accelerator_e2e_create_owned_fixture() {
-  local state="${1-}" root="${2-}" nonce cluster registry_container registry_port registry_host registry_endpoint tmp kubeconfig node api_server kube_cluster
+  local state="${1-}" root="${2-}" nonce cluster registry_container registry_port registry_host registry_endpoint tmp kubeconfig node api_server kube_cluster execution_architecture
   [ "$#" -eq 2 ] && [ -d "$state" ] && [ -d "$root" ] || return 1
   [ ! -e "$state/cluster-owned" ] && [ ! -e "$state/registry-owned" ] || return 1
+  execution_architecture="$(accelerator_e2e_execution_architecture)" || return 1
+  [ "$(accelerator_e2e_kind_image_architecture)" = "$execution_architecture" ] || return 1
   nonce="$$-$RANDOM-$RANDOM"
   cluster="kubikles-a60a-$nonce"
   registry_container="${cluster}-registry"

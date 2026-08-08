@@ -96,7 +96,7 @@
     {
       "id": "A60A-020-REAL-GRACE",
       "prerequisites": ["8ebf3759", "b1854aa3"],
-      "owner": {"kind": "go", "test": "TestAcceleratorAcceptanceKind/RealTwoMinuteAuthenticatedClientGrace"},
+      "owner": {"kind": "go", "test": "TestAcceleratorAcceptanceKind/ConfiguredAuthenticatedClientGrace"},
       "evidence": ["grace.cancelled", "grace.elapsed", "grace.single-expiry"]
     },
     {

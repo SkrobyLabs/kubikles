@@ -68,6 +68,111 @@ type CaseTiming struct {
 	DurationMS int64  `json:"durationMs"`
 }
 
+// TimingSnapshot is the failure-safe counterpart to the all-pass report. Its
+// closed fields make it safe to persist while a command or cleanup is failing:
+// callers cannot attach argv, paths, environment values, Kubernetes values or
+// raw child errors.
+type TimingSnapshot struct {
+	SchemaVersion    int            `json:"schemaVersion"`
+	FixtureMS        int64          `json:"fixtureMs"`
+	ArtifactMS       int64          `json:"artifactMs"`
+	FocusedMS        int64          `json:"focusedMs"`
+	ComposedMS       int64          `json:"composedMs"`
+	ValidationMS     int64          `json:"validationMs"`
+	CleanupMS        int64          `json:"cleanupMs"`
+	CompletedTotalMS int64          `json:"completedTotalMs"`
+	LastActivePhase  TimingPhase    `json:"lastActivePhase"`
+	FocusedCase      string         `json:"focusedCase"`
+	FocusedSubphase  TimingSubphase `json:"focusedSubphase"`
+	ComposedCase     string         `json:"composedCase"`
+	ComposedStage    ComposedStage  `json:"composedStage"`
+	FailureCode      FailureCode    `json:"failureCode"`
+}
+
+type TimingPhase string
+
+const (
+	TimingFixture    TimingPhase = "fixture"
+	TimingArtifact   TimingPhase = "artifact"
+	TimingFocused    TimingPhase = "focused"
+	TimingComposed   TimingPhase = "composed"
+	TimingValidation TimingPhase = "validation"
+	TimingCleanup    TimingPhase = "cleanup"
+	TimingComplete   TimingPhase = "complete"
+)
+
+type TimingSubphase string
+
+const (
+	TimingSubphaseNone    TimingSubphase = "none"
+	TimingSubphaseCommand TimingSubphase = "command"
+	TimingSubphaseAudit   TimingSubphase = "audit"
+	TimingSubphaseCleanup TimingSubphase = "cleanup"
+)
+
+type ComposedStage string
+
+const (
+	ComposedStageNone       ComposedStage = "none"
+	ComposedStageSubtest    ComposedStage = "subtest"
+	ComposedStageDiagnostic ComposedStage = "diagnostic"
+)
+
+func MarshalTimingSnapshot(snapshot TimingSnapshot) ([]byte, error) {
+	if !validTimingSnapshot(snapshot) {
+		return nil, errInvalidReport
+	}
+	encoded, err := json.Marshal(snapshot)
+	if err != nil {
+		return nil, errInvalidReport
+	}
+	return append(encoded, '\n'), nil
+}
+
+func validTimingSnapshot(snapshot TimingSnapshot) bool {
+	if snapshot.SchemaVersion != ReportSchemaVersion || snapshot.FixtureMS < 0 || snapshot.ArtifactMS < 0 || snapshot.FocusedMS < 0 || snapshot.ComposedMS < 0 || snapshot.ValidationMS < 0 || snapshot.CleanupMS < 0 || snapshot.CompletedTotalMS < 0 {
+		return false
+	}
+	switch snapshot.LastActivePhase {
+	case TimingFixture, TimingArtifact, TimingFocused, TimingComposed, TimingValidation, TimingCleanup, TimingComplete:
+	default:
+		return false
+	}
+	switch snapshot.FocusedSubphase {
+	case TimingSubphaseNone, TimingSubphaseCommand, TimingSubphaseAudit, TimingSubphaseCleanup:
+	default:
+		return false
+	}
+	switch snapshot.ComposedStage {
+	case ComposedStageNone, ComposedStageSubtest, ComposedStageDiagnostic:
+	default:
+		return false
+	}
+	if snapshot.FailureCode != FailureNone {
+		switch snapshot.FailureCode {
+		case FailureContract, FailurePreflight, FailureCommand, FailureAudit, FailureTimeout, FailureSignal, FailureResidue, FailureReport:
+		default:
+			return false
+		}
+	}
+	if snapshot.FocusedCase != "" && !idPattern.MatchString(snapshot.FocusedCase) {
+		return false
+	}
+	if snapshot.ComposedCase != "" && !idPattern.MatchString(snapshot.ComposedCase) {
+		return false
+	}
+	if snapshot.LastActivePhase != TimingFocused && (snapshot.FocusedCase != "" || snapshot.FocusedSubphase != TimingSubphaseNone) {
+		return false
+	}
+	if snapshot.LastActivePhase != TimingComposed && (snapshot.ComposedCase != "" || snapshot.ComposedStage != ComposedStageNone) {
+		return false
+	}
+	if snapshot.LastActivePhase == TimingComplete && snapshot.FailureCode != FailureNone {
+		return false
+	}
+	return true
+}
+
 func MarshalTimingSummary(contract Contract, report Report, fixtureMS, artifactMS, focusedMS, composedMS, validationMS, totalMS int64) ([]byte, error) {
 	if ValidateReport(contract, report) != nil || fixtureMS < 0 || artifactMS < 0 || focusedMS < 0 || composedMS < 0 || validationMS < 0 || totalMS < 0 {
 		return nil, errInvalidReport

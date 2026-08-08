@@ -67,7 +67,7 @@ const (
 	acceleratorChartRepository = "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator@"
 	acceleratorImageRepository = "ghcr.io/skrobylabs/kubikles-accelerator"
 	acceleratorRegistryTimeout = 60 * time.Second
-	acceleratorSchemaSHA256    = "aacdd3d4849c6d2c1952a9f705445c3c3d0a1b57a31dc52e322e52bc4761851f"
+	acceleratorSchemaSHA256    = "b691487ad7e02cd5de5a98cc83436988253f8260a18429216cd15f30f1d97a47"
 )
 
 type AcceleratorChartRequest struct{ Reference, Digest, BuildVersion string }
@@ -253,7 +253,7 @@ func prepareAcceleratorRelease(loaded *chart.Chart, request AcceleratorReleaseRe
 
 func acceleratorValues(request AcceleratorReleaseRequest) map[string]interface{} {
 	return map[string]interface{}{
-		"image":       map[string]interface{}{"repository": request.ImageRepository, "digest": request.ImageDigest, "version": request.BuildVersion},
+		"image":       map[string]interface{}{"repository": request.ImageRepository, "digest": request.ImageDigest, "version": request.BuildVersion, "architecture": acceleratorRuntimeArchitecture()},
 		"accelerator": map[string]interface{}{"workloadSessionId": request.WorkloadSession},
 		"auth":        map[string]interface{}{"creatorVerifier": request.CreatorVerifier},
 	}
@@ -413,7 +413,7 @@ func validateAcceleratorJob(job *unstructured.Unstructured, request AcceleratorR
 	templateAnnotations, _, _ := unstructured.NestedStringMap(object, "spec", "template", "metadata", "annotations")
 	nodeSelector, nodeSelectorFound, _ := unstructured.NestedStringMap(object, "spec", "template", "spec", "nodeSelector")
 	containers, found, _ := unstructured.NestedSlice(object, "spec", "template", "spec", "containers")
-	if !found || len(containers) != 1 || !equalStringMap(templateLabels, wantTemplateLabels) || !equalStringMap(templateAnnotations, map[string]string{"kubikles.io/build-version": request.BuildVersion}) || !nodeSelectorFound || !equalStringMap(nodeSelector, map[string]string{"kubernetes.io/arch": "amd64"}) || nestedString(object, "spec", "template", "spec", "serviceAccountName") != baseName ||
+	if !found || len(containers) != 1 || !equalStringMap(templateLabels, wantTemplateLabels) || !equalStringMap(templateAnnotations, map[string]string{"kubikles.io/build-version": request.BuildVersion}) || !nodeSelectorFound || !equalStringMap(nodeSelector, map[string]string{"kubernetes.io/arch": acceleratorRuntimeArchitecture()}) || nestedString(object, "spec", "template", "spec", "serviceAccountName") != baseName ||
 		!nestedInt64Equals(object, 1, "spec", "completions") || !nestedInt64Equals(object, 1, "spec", "parallelism") || !nestedInt64Equals(object, 0, "spec", "backoffLimit") || !nestedInt64Equals(object, 3600, "spec", "ttlSecondsAfterFinished") ||
 		!nestedBoolEquals(object, false, "spec", "template", "spec", "automountServiceAccountToken") || nestedString(object, "spec", "template", "spec", "restartPolicy") != "Never" || !nestedInt64Equals(object, 30, "spec", "template", "spec", "terminationGracePeriodSeconds") ||
 		!validPodSecurityContext(object) || !validProjectedServiceAccountVolume(object) {

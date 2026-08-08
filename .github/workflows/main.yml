@@ -69,6 +69,8 @@ jobs:
       - name: Install frontend dependencies
         run: cd frontend && npm ci --ignore-scripts --include=optional --no-audit --no-fund
       - name: Run Accelerator end-to-end tests
+        env:
+          KUBIKLES_ACCELERATOR_E2E_EXECUTION_ARCHITECTURE: amd64
         run: make test-accelerator-e2e
       - name: Download vulnerability database
         run: trivy image --cache-dir "$RUNNER_TEMP/trivy-cache" --download-db-only --no-progress

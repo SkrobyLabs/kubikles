@@ -647,24 +647,20 @@ func TestKindHarnessPreservesWarmedModuleCacheWithIsolatedHome(t *testing.T) {
 	}
 }
 
-func TestKindHarnessComposedRunSelectsAcceptanceRuntime(t *testing.T) {
+func TestKindHarnessReuseSelectsAcceptanceRuntime(t *testing.T) {
 	sourceBytes, err := os.ReadFile(filepath.Join("..", "..", "scripts", "test-accelerator-desktop-provision-kind.sh"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	source := string(sourceBytes)
-	composedBranch := strings.Index(source, `if [ "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" = 1 ]; then`)
-	acceptanceReference := strings.Index(source, `acceptance_image_ref="$registry/skrobylabs/kubikles-accelerator:v0.0.0-acceptance-build"`)
-	digestValidation := strings.Index(source, `[[ "${ACCELERATOR_IMAGE_DIGEST-}" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "reuse-acceptance-image-digest"`)
-	digestResolution := strings.Index(source, `resolved_acceptance_digest="$(oras resolve --plain-http "$acceptance_image_ref" 2>"$tmp/image-resolve-error")" || fail "reuse-acceptance-image-resolve"`)
-	digestBinding := strings.Index(source, `test "$resolved_acceptance_digest" = "$ACCELERATOR_IMAGE_DIGEST" || fail "reuse-acceptance-image-digest"`)
-	digestSelection := strings.Index(source, `image_digest="$resolved_acceptance_digest"`)
-	productionReference := strings.Index(source, `image_client_ref="$registry/skrobylabs/kubikles-accelerator:$build_version"`)
-	if composedBranch < 0 || acceptanceReference < 0 || digestValidation < 0 || digestResolution < 0 || digestBinding < 0 || digestSelection < 0 || productionReference < 0 {
-		t.Fatal("Kind harness does not bind composed acceptance to its tagged runtime digest")
+	fixtureValidation := strings.Index(source, `"$shared_fixture_validator" "$shared_fixture" || fail "reuse-shared-fixture"`)
+	digestSelection := strings.Index(source, `image_digest="$(jq -er '.acceptanceImageDigest`)
+	digestBinding := strings.Index(source, `[ "$image_digest" = "${ACCELERATOR_IMAGE_DIGEST-}" ] || fail "reuse-image-digest"`)
+	if fixtureValidation < 0 || digestSelection < 0 || digestBinding < 0 {
+		t.Fatal("Kind harness does not bind reuse cases to the validated acceptance runtime digest")
 	}
-	if !(composedBranch < acceptanceReference && acceptanceReference < digestValidation && digestValidation < digestResolution && digestResolution < digestBinding && digestBinding < digestSelection && digestSelection < productionReference) {
-		t.Fatalf("composed acceptance image ordering branch=%d reference=%d validation=%d resolution=%d binding=%d selection=%d production=%d", composedBranch, acceptanceReference, digestValidation, digestResolution, digestBinding, digestSelection, productionReference)
+	if !(fixtureValidation < digestSelection && digestSelection < digestBinding) {
+		t.Fatalf("reuse acceptance image ordering validation=%d selection=%d binding=%d", fixtureValidation, digestSelection, digestBinding)
 	}
 }
 
