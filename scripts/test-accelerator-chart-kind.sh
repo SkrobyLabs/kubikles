@@ -364,7 +364,11 @@ finished_time="$(jq -r '.status.containerStatuses[0].state.terminated.finishedAt
 finished_seconds="$(accelerator_chart_kind_utc_seconds "$finished_time")" || fail "malformed-container-finished-time"
 listener_started_seconds="$(accelerator_chart_kind_listener_started_seconds "$tmp/accelerator.log")" || fail "missing-malformed-or-ambiguous-listener-log-record"
 elapsed_from_listener="$(( finished_seconds - listener_started_seconds ))"
-[ "$elapsed_from_listener" -ge 115 ] && [ "$elapsed_from_listener" -le 125 ] || fail "natural-exit-after-listener-ready-not-consistent-with-exact-120-second-grace"
+grace_seconds="${KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS-120}"
+[[ "$grace_seconds" =~ ^([1-9]|[12][0-9]|30|120)$ ]] || fail "reconnect-grace"
+lower_grace="$((grace_seconds - 2))"
+upper_grace="$((grace_seconds + 5))"
+[ "$elapsed_from_listener" -ge "$lower_grace" ] && [ "$elapsed_from_listener" -le "$upper_grace" ] || fail "natural-exit-after-listener-ready-not-consistent-with-configured-grace"
 KUBECONFIG="$kubeconfig" kubectl -n "$namespace" patch job "$job" --type merge -p '{"spec":{"ttlSecondsAfterFinished":1}}' >"$tmp/ttl-patch" 2>&1 || fail "ttl-patch"
 job_gone=false; pod_gone=false
 for _ in $(seq 1 45); do

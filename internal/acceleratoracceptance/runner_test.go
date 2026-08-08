@@ -178,6 +178,7 @@ func runnerEnvironment() []string {
 		"ACCELERATOR_IMAGE_REPOSITORY=127.0.0.1:5000/skrobylabs/kubikles-accelerator",
 		"ACCELERATOR_IMAGE_DIGEST=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"ACCELERATOR_IMAGE_VERSION=v0.0.0",
+		"KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS=5",
 	}
 }
 

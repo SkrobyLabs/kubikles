@@ -10,6 +10,8 @@ source "$root/scripts/lib/accelerator-e2e-kind.sh"
 total_started="$(milliseconds)"
 
 [ -z "${KUBIKLES_ACCELERATOR_E2E_ACTIVE-}" ] || fail recursive-invocation
+export KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS="${KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS:-5}"
+[[ "$KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS" =~ ^([1-9]|[12][0-9]|30)$ ]] || fail reconnect-grace
 accelerator_e2e_preflight "$root" || fail preflight
 
 fixture_root=""
@@ -64,7 +66,9 @@ fixture_finished="$(milliseconds)"
 artifact_finished="$(milliseconds)"
 test "$(jq -r . "$fixture_root/tripwire-count.json")" = 0 || fail external-network
 artifact_metadata="$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/acceptance-artifact-metadata.json"
-ACCELERATOR_IMAGE_DIGEST="$(jq -er '.registryImageDigest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' "$artifact_metadata")" || fail artifact-metadata
+ACCELERATOR_IMAGE_DIGEST="$(jq -er '.acceptanceImageDigest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' "$artifact_metadata")" || fail artifact-metadata
+test "$(jq -er '.registryImageDigest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' "$artifact_metadata")" != "$ACCELERATOR_IMAGE_DIGEST" || fail artifact-metadata
+test "$(jq -er '.reconnectGraceSeconds | select(type == "number" and . == 5)' "$artifact_metadata")" = 5 || fail artifact-metadata
 ACCELERATOR_IMAGE_VERSION="$(jq -er '.runtimeBuildVersion | select(. == "v0.0.0")' "$artifact_metadata")" || fail artifact-metadata
 export ACCELERATOR_IMAGE_REPOSITORY="$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator"
 export ACCELERATOR_IMAGE_DIGEST ACCELERATOR_IMAGE_VERSION

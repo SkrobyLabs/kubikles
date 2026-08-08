@@ -130,7 +130,7 @@ func (c *AcceleratorIdleCoordinator) startGraceLocked() {
 	c.cancelGraceLocked()
 	c.epoch++
 	record := &acceleratorIdleTimerRecord{
-		timer: c.clock.NewTimer(agent.AcceleratorIdleReconnectGrace), epoch: c.epoch,
+		timer: c.clock.NewTimer(agent.EffectiveAcceleratorIdleReconnectGrace()), epoch: c.epoch,
 		cancel: make(chan struct{}), waiterDone: make(chan struct{}),
 	}
 	c.timer = record

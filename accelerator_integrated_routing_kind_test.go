@@ -24,6 +24,7 @@ import (
 	"kubikles/pkg/acceleratorprovision"
 	"kubikles/pkg/acceleratorrelease"
 	"kubikles/pkg/acceleratorsecret"
+	"kubikles/pkg/agent"
 	"kubikles/pkg/events"
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
@@ -1207,7 +1208,7 @@ func waitIntegratedRoutingKindMismatch(t *testing.T, coordinator *acceleratorpro
 // namespace cleanup as evidence.
 func waitIntegratedTerminalCleanupStart(t *testing.T, probe *acceleratorprovision.IntegratedRoutingKindCoordinatorProbe, started time.Time) time.Duration {
 	t.Helper()
-	deadline := started.Add(126 * time.Second)
+	deadline := started.Add(agent.EffectiveAcceleratorIdleReconnectGrace() + 6*time.Second)
 	for time.Now().Before(deadline) {
 		if probe != nil && probe.TerminalCleanupStartCount() == 1 {
 			return time.Since(started)

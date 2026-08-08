@@ -11,6 +11,7 @@ source "$root/scripts/publish-accelerator-release.sh"
 [ "$(accelerator_e2e_reuse_mode)" = reuse ] || fail reuse-boundary
 [ "${BUILD_VERSION-}" = v0.0.0 ] || fail build-version
 [ "${ACCELERATOR_E2E_OFFLINE-}" = 1 ] || fail offline-mode
+[[ "${KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS-}" =~ ^([1-9]|[12][0-9]|30)$ ]] || fail reconnect-grace
 artifact_root="${ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT-}"
 [[ "$artifact_root" = /* ]] || fail artifact-root
 [ -d "$artifact_root" ] || fail artifact-root
@@ -36,6 +37,7 @@ chart_layout="$artifact_root/chart-layout"
 publication="$artifact_root/publication"
 build_repository="$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator"
 build_ref="$build_repository:v0.0.0-build"
+acceptance_build_ref="$build_repository:v0.0.0-acceptance-build"
 registry_port="${KUBIKLES_ACCELERATOR_E2E_REGISTRY##*:}"
 [[ "$registry_port" =~ ^[1-9][0-9]{0,4}$ ]] && [ "$((10#$registry_port))" -le 65535 ] || fail registry-port
 daemon_registry="127.0.0.1:$registry_port"
@@ -64,6 +66,13 @@ for architecture in amd64; do
   touch -d "@$epoch" "$binary"
   (cd "$root" && go run ./scripts/cmd/inspect-accelerator-binary "$binary" "$architecture" v0.0.0 "$commit" false) || fail binary-inspection
 done
+# The acceptance runtime is deliberately a second binary and image. The
+# release descriptor above remains evidence for the untagged production image.
+acceptance_binary="$work/acceptance/amd64/kubikles-accelerator"
+mkdir -m 700 -p "$(dirname "$acceptance_binary")"
+(cd "$source_root" && GOTOOLCHAIN=go1.25.12 GOPROXY=off SOURCE_DATE_EPOCH="$epoch" CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+  go build -trimpath -buildvcs=false -tags 'headless accelerator accelerator_e2e' -ldflags "$ldflags" -o "$acceptance_binary" .) >"$artifact_root/go-build-acceptance-amd64.log" 2>&1 || fail offline-go-build
+touch -d "@$epoch" "$acceptance_binary"
 cleanup_directory offline-source "$source_root" || fail source-cleanup
 
 base_id="$(docker image inspect --format '{{.Id}}' "$distroless")" || fail distroless-inspection
@@ -94,6 +103,21 @@ EOF
       --output "type=registry,name=$daemon_build_repository:v0.0.0-$architecture,registry.insecure=true,oci-mediatypes=false,rewrite-timestamp=true" "$context" || exit 1
   done
   oras manifest index create --plain-http "$build_ref" v0.0.0-amd64 || exit 1
+  acceptance_context="$work/acceptance/amd64"
+  cat >"$acceptance_context/Dockerfile" <<EOF
+FROM --platform=linux/$base_architecture $daemon_registry/skrobylabs/a60a-distroless@$base_digest
+ARG BUILD_VERSION
+ARG GIT_COMMIT
+LABEL org.opencontainers.image.title="kubikles-accelerator-acceptance" org.opencontainers.image.version="\$BUILD_VERSION" org.opencontainers.image.revision="\$GIT_COMMIT"
+ENV KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS=$KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS
+COPY --chown=65532:65532 kubikles-accelerator /kubikles-accelerator
+USER 65532:65532
+ENTRYPOINT ["/kubikles-accelerator"]
+EOF
+  SOURCE_DATE_EPOCH="$epoch" docker buildx build --network=none --pull=false --file "$acceptance_context/Dockerfile" --platform linux/amd64 --provenance=false --sbom=false \
+    --build-arg BUILD_VERSION=v0.0.0 --build-arg "GIT_COMMIT=$commit" \
+    --output "type=registry,name=$daemon_build_repository:v0.0.0-acceptance-amd64,registry.insecure=true,oci-mediatypes=false,rewrite-timestamp=true" "$acceptance_context" || exit 1
+  oras manifest index create --plain-http "$acceptance_build_ref" v0.0.0-acceptance-amd64 || exit 1
   oras cp --from-plain-http --to-oci-layout "$build_ref" "$layout:v0.0.0" || exit 1
   go run ./internal/acceleratoracceptance/cmd/accelerator-e2e-oci "$layout" || exit 1
 ) >"$artifact_root/build.log" 2>&1 || fail offline-build
@@ -117,15 +141,17 @@ jq --arg version v0.0.0 '. + {inspections: [.platforms[] | {architecture:.archit
 chmod 600 "$artifact_root/acceptance-image-evidence.json"
 
 image_digest="$(cd "$root" && go run ./scripts/accelerator-release field "$artifact_root/kubikles-accelerator-release-v0.0.0.json" image-digest)"
+acceptance_image_digest="$(oras resolve --plain-http "$acceptance_build_ref")"
 chart_digest="$(cd "$root" && go run ./scripts/accelerator-release field "$artifact_root/kubikles-accelerator-release-v0.0.0.json" chart-digest)"
 [ "$(oras resolve --plain-http "$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator:v0.0.0")" = "$image_digest" ] || fail image-readback
+[ "$acceptance_image_digest" != "$image_digest" ] || fail acceptance-image-not-distinct
 [ "$(oras resolve --plain-http "$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/helm/kubikles-accelerator:0.0.0")" = "$chart_digest" ] || fail chart-readback
 host_arch="$(go env GOARCH)"
 [ "$host_arch" = amd64 ] || fail host-architecture
 selected_digest="$(jq -r --arg arch "$host_arch" '.platforms[] | select(.architecture == $arch and .os == "linux") | .manifestDigest' "$artifact_root/acceptance-image-evidence.json")"
 [[ "$selected_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail selected-manifest
-jq -n --arg image "$image_digest" --arg chart "$chart_digest" --arg host "$host_arch" --arg selected "$selected_digest" \
-  '{registryImageDigest:$image,registryChartDigest:$chart,chartVersion:"0.0.0",chartAppVersion:"v0.0.0",runtimeBuildVersion:"v0.0.0",hostArchitecture:$host,selectedManifestDigest:$selected}' >"$artifact_root/acceptance-artifact-metadata.json"
+jq -n --arg image "$image_digest" --arg acceptance "$acceptance_image_digest" --arg chart "$chart_digest" --arg host "$host_arch" --arg selected "$selected_digest" --argjson grace "$KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS" \
+  '{registryImageDigest:$image,acceptanceImageDigest:$acceptance,registryChartDigest:$chart,chartVersion:"0.0.0",chartAppVersion:"v0.0.0",runtimeBuildVersion:"v0.0.0",hostArchitecture:$host,selectedManifestDigest:$selected,reconnectGraceSeconds:$grace}' >"$artifact_root/acceptance-artifact-metadata.json"
 chmod 600 "$artifact_root/acceptance-artifact-metadata.json"
 find "$artifact_root" -type d -exec chmod 700 {} +
 find "$artifact_root" -type f -exec chmod 600 {} +

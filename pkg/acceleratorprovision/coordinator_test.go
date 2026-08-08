@@ -745,7 +745,7 @@ func TestOnlyCoordinatorIdleReleaseIsResumable(t *testing.T) {
 	workload := coordinatorWorkload(t)
 	session, _ := coordinatorSession(workload, clock, 1)
 	release := session.releaseForIdle(context.Background())
-	if release == nil || release.deadline != clock.Now().Add(agent.AcceleratorIdleReconnectGrace) {
+	if release == nil || release.deadline != clock.Now().Add(agent.EffectiveAcceleratorIdleReconnectGrace()) {
 		t.Fatal("idle release omitted authoritative deadline")
 	}
 	if _, _, reason := session.claimResume(workload); reason != ResumeSessionIneligible {

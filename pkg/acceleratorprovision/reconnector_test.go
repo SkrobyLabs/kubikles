@@ -61,7 +61,7 @@ func TestResumeDeterministicScheduleAndSingleOwner(t *testing.T) {
 func TestResumeGraceDeadlineAndCancellation(t *testing.T) {
 	clock := &fakeResumeClock{now: time.Date(2026, 8, 2, 18, 0, 0, 0, time.UTC)}
 	session, workload := resumableSessionFixture(t, clock)
-	clock.advance(agent.AcceleratorIdleReconnectGrace)
+	clock.advance(agent.EffectiveAcceleratorIdleReconnectGrace())
 	reconnector := NewReconnector("v1.2.3")
 	reconnector.attempt = func(context.Context, connectorLease, connectionExpectation) (*ConnectedSession, *connectAttemptFailure) {
 		t.Fatal("attempt started at deadline")

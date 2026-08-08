@@ -170,7 +170,7 @@ func (s *ConnectedSession) transportReconnectDeadline() (time.Time, bool) {
 	if s.disconnect == nil || (s.disconnect.reason != SessionPeerClosed && s.disconnect.reason != SessionTunnelClosed) {
 		return time.Time{}, false
 	}
-	return s.disconnect.at.Add(agent.AcceleratorIdleReconnectGrace), true
+	return s.disconnect.at.Add(agent.EffectiveAcceleratorIdleReconnectGrace()), true
 }
 
 func (s *ConnectedSession) EndReason() SessionEndReason {
@@ -195,7 +195,7 @@ func (s *ConnectedSession) beginTerminationWithIdle(reason SessionEndReason, nor
 		s.mu.Lock()
 		s.reason = reason
 		if idle != nil {
-			idle.deadline = disconnectedAt.Add(agent.AcceleratorIdleReconnectGrace)
+			idle.deadline = disconnectedAt.Add(agent.EffectiveAcceleratorIdleReconnectGrace())
 			s.idleToken = idle
 		}
 		s.disconnect = &disconnectRecord{at: disconnectedAt, reason: reason, workloadNonce: s.receipt, instanceID: s.identity.InstanceID, sessionID: s.identity.SessionID, generation: s.identity.Generation, idleToken: idle}

@@ -144,7 +144,7 @@ func (r *Reconnector) resume(ctx context.Context, request ResumeRequest, idle *c
 	if clock == nil {
 		return unavailableResume(ResumeInvalid)
 	}
-	deadline := record.at.Add(agent.AcceleratorIdleReconnectGrace)
+	deadline := record.at.Add(agent.EffectiveAcceleratorIdleReconnectGrace())
 	op, cancel := context.WithCancel(opLifecycle)
 	watchDone := make(chan struct{})
 	go func() {

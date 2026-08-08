@@ -98,6 +98,7 @@ func run() error {
 		"ACCELERATOR_IMAGE_REPOSITORY=" + os.Getenv("ACCELERATOR_IMAGE_REPOSITORY"),
 		"ACCELERATOR_IMAGE_DIGEST=" + os.Getenv("ACCELERATOR_IMAGE_DIGEST"),
 		"ACCELERATOR_IMAGE_VERSION=" + os.Getenv("ACCELERATOR_IMAGE_VERSION"),
+		"KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS=" + os.Getenv("KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS"),
 	}
 	auditor := acceleratoracceptance.FixtureAuditor{
 		KindPath: kindPath, KubectlPath: kubectlPath, CurlPath: curlPath,

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -185,17 +186,18 @@ func normalizeFailure(code, fallback FailureCode) FailureCode {
 }
 
 var runnerRequiredEnvironment = map[string]string{
-	"BUILD_VERSION":                        BuildIdentity,
-	"KUBIKLES_ACCELERATOR_E2E_REUSE":       "1",
-	"KUBIKLES_ACCELERATOR_E2E_KIND_NAME":   "",
-	"KUBIKLES_ACCELERATOR_E2E_KUBECONFIG":  "",
-	"KUBIKLES_ACCELERATOR_E2E_NAMESPACE":   "",
-	"KUBIKLES_ACCELERATOR_E2E_REGISTRY":    "",
-	"ACCELERATOR_E2E_OFFLINE":              "1",
-	"ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT": "",
-	"ACCELERATOR_IMAGE_REPOSITORY":         "",
-	"ACCELERATOR_IMAGE_DIGEST":             "",
-	"ACCELERATOR_IMAGE_VERSION":            BuildIdentity,
+	"BUILD_VERSION":                                    BuildIdentity,
+	"KUBIKLES_ACCELERATOR_E2E_REUSE":                   "1",
+	"KUBIKLES_ACCELERATOR_E2E_KIND_NAME":               "",
+	"KUBIKLES_ACCELERATOR_E2E_KUBECONFIG":              "",
+	"KUBIKLES_ACCELERATOR_E2E_NAMESPACE":               "",
+	"KUBIKLES_ACCELERATOR_E2E_REGISTRY":                "",
+	"ACCELERATOR_E2E_OFFLINE":                          "1",
+	"ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT":             "",
+	"ACCELERATOR_IMAGE_REPOSITORY":                     "",
+	"ACCELERATOR_IMAGE_DIGEST":                         "",
+	"ACCELERATOR_IMAGE_VERSION":                        BuildIdentity,
+	"KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS": "",
 }
 
 func validRunnerEnvironment(environment []string) bool {
@@ -218,6 +220,10 @@ func validRunnerEnvironment(environment []string) bool {
 		if !present || value == "" || (exact != "" && value != exact) {
 			return false
 		}
+	}
+	grace, err := strconv.Atoi(values["KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS"])
+	if err != nil || grace < 1 || grace > 30 || values["KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS"] != strconv.Itoa(grace) {
+		return false
 	}
 	return true
 }

@@ -67,7 +67,7 @@ func TestDisconnectRecordIsFirstSocketNonCurrentTransition(t *testing.T) {
 	session.mu.RLock()
 	record := *session.disconnect
 	session.mu.RUnlock()
-	if record.at != base || record.reason != SessionPeerClosed || record.at.Add(agent.AcceleratorIdleReconnectGrace) != base.Add(2*time.Minute) || agent.AcceleratorIdleReconnectGrace != 2*time.Minute {
+	if record.at != base || record.reason != SessionPeerClosed || record.at.Add(agent.EffectiveAcceleratorIdleReconnectGrace()) != base.Add(agent.EffectiveAcceleratorIdleReconnectGrace()) || agent.AcceleratorIdleReconnectGrace != 2*time.Minute {
 		t.Fatalf("disconnect authority mismatch: %#v", record)
 	}
 	clock.advance(time.Hour)

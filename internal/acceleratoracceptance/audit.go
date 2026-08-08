@@ -61,8 +61,11 @@ func (a FixtureAuditor) Audit(ctx context.Context, _ Case, namespace string) Fai
 	return FailureNone
 }
 
-func acceleratorClusterScopeReleased(encoded []byte, namespace string) bool {
+func acceleratorClusterScopeReleased(encoded []byte, namespace string, releaseName ...string) bool {
 	if namespace == "" {
+		return false
+	}
+	if len(releaseName) > 1 || (len(releaseName) == 1 && releaseName[0] == "") {
 		return false
 	}
 	var list struct {
@@ -78,7 +81,10 @@ func acceleratorClusterScopeReleased(encoded []byte, namespace string) bool {
 		return false
 	}
 	for _, item := range list.Items {
-		if item.Metadata.Annotations["meta.helm.sh/release-namespace"] == namespace {
+		if item.Metadata.Annotations["meta.helm.sh/release-namespace"] != namespace {
+			continue
+		}
+		if len(releaseName) == 0 || item.Metadata.Annotations["meta.helm.sh/release-name"] == releaseName[0] {
 			return false
 		}
 	}

@@ -23,6 +23,8 @@ type ArtifactFixture struct {
 	Checksum               []byte
 	ImageEvidence          []byte
 	RegistryImageDigest    string
+	AcceptanceImageDigest  string
+	ReconnectGraceSeconds  int
 	RegistryChartDigest    string
 	ChartVersion           string
 	ChartAppVersion        string
@@ -60,6 +62,8 @@ func LoadArtifactFixture(root string) (ArtifactFixture, error) {
 	}
 	var metadata struct {
 		RegistryImageDigest    string `json:"registryImageDigest"`
+		AcceptanceImageDigest  string `json:"acceptanceImageDigest"`
+		ReconnectGraceSeconds  int    `json:"reconnectGraceSeconds"`
 		RegistryChartDigest    string `json:"registryChartDigest"`
 		ChartVersion           string `json:"chartVersion"`
 		ChartAppVersion        string `json:"chartAppVersion"`
@@ -73,6 +77,7 @@ func LoadArtifactFixture(root string) (ArtifactFixture, error) {
 	fixture := ArtifactFixture{
 		Descriptor: descriptor, Checksum: checksum, ImageEvidence: evidence,
 		RegistryImageDigest: metadata.RegistryImageDigest, RegistryChartDigest: metadata.RegistryChartDigest,
+		AcceptanceImageDigest: metadata.AcceptanceImageDigest, ReconnectGraceSeconds: metadata.ReconnectGraceSeconds,
 		ChartVersion: metadata.ChartVersion, ChartAppVersion: metadata.ChartAppVersion,
 		RuntimeBuildVersion: metadata.RuntimeBuildVersion, HostArchitecture: metadata.HostArchitecture,
 		SelectedManifestDigest: metadata.SelectedManifestDigest,
@@ -158,7 +163,7 @@ func ValidateArtifactFixture(fixture ArtifactFixture) error {
 	if string(fixture.Checksum) != wantChecksum {
 		return errors.New("artifact fixture invalid")
 	}
-	if fixture.RegistryImageDigest != descriptor.Image.Digest || fixture.RegistryChartDigest != descriptor.Chart.Digest || fixture.RegistryImageDigest == fixture.RegistryChartDigest || evidence.ImageDigest != descriptor.Image.Digest {
+	if fixture.RegistryImageDigest != descriptor.Image.Digest || fixture.RegistryChartDigest != descriptor.Chart.Digest || fixture.RegistryImageDigest == fixture.RegistryChartDigest || fixture.AcceptanceImageDigest == fixture.RegistryImageDigest || !artifactDigestPattern.MatchString(fixture.AcceptanceImageDigest) || fixture.ReconnectGraceSeconds < 1 || fixture.ReconnectGraceSeconds > 30 || evidence.ImageDigest != descriptor.Image.Digest {
 		return errors.New("artifact fixture invalid")
 	}
 	if fixture.ChartVersion != descriptor.Chart.Version || fixture.ChartAppVersion != descriptor.Chart.AppVersion || fixture.RuntimeBuildVersion != BuildIdentity {

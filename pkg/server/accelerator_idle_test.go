@@ -200,7 +200,7 @@ func TestAcceleratorIdleCoordinatorReadyAndCurrentSessions(t *testing.T) {
 	}
 	c.SessionDisconnected(idleSnapshot("creator", 1))
 	timers, durations := clock.snapshot()
-	if len(timers) != 1 || durations[0] != agent.AcceleratorIdleReconnectGrace {
+	if len(timers) != 1 || durations[0] != agent.EffectiveAcceleratorIdleReconnectGrace() {
 		t.Fatalf("last disconnect timers/durations = %d/%v", len(timers), durations)
 	}
 	c.SessionConnected(idleSnapshot("creator", 2))
@@ -298,7 +298,7 @@ func TestAcceleratorIdleCoordinatorExactGraceAndTimerEpoch(t *testing.T) {
 		t.Fatal("ready did not install timer record")
 	}
 	timers, durations := clock.snapshot()
-	if len(timers) != 1 || len(durations) != 1 || durations[0] != agent.AcceleratorIdleReconnectGrace {
+	if len(timers) != 1 || len(durations) != 1 || durations[0] != agent.EffectiveAcceleratorIdleReconnectGrace() {
 		t.Fatalf("timer duration = %v", durations)
 	}
 	if agent.AcceleratorIdleReconnectGrace != 2*time.Minute {

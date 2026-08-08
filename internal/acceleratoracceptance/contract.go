@@ -97,11 +97,25 @@ var focusedWaves = [][]string{
 	{"A60A-003-IMAGE", "A60A-004-CHART"},
 	{"A60A-005-CHART-KIND", "A60A-006-RELEASE-CONTRACT"},
 	{"A60A-007-LOCAL-PUBLICATION", "A60A-008-PROVISION"},
-	{"A60A-009-CONNECT", "A60A-010-RESUME"},
-	{"A60A-011-DISPOSAL", "A60A-012-LIFECYCLE"},
+	{"A60A-009-CONNECT"},
+	{"A60A-010-RESUME"},
+	{"A60A-011-DISPOSAL"},
+	{"A60A-012-LIFECYCLE"},
 }
 
 const focusedConcurrency = 2
+
+// focusedClusterMutating is closed alongside focusedWaves. A mutable Kind
+// cluster has cluster-scoped Helm RBAC, so no wave may have two owners here.
+var focusedClusterMutating = map[string]bool{
+	"A60A-001-BASELINE":   true,
+	"A60A-005-CHART-KIND": true,
+	"A60A-008-PROVISION":  true,
+	"A60A-009-CONNECT":    true,
+	"A60A-010-RESUME":     true,
+	"A60A-011-DISPOSAL":   true,
+	"A60A-012-LIFECYCLE":  true,
+}
 
 var requiredPrerequisites = map[string]struct{}{
 	"020e8648": {}, "1cec4c3a": {}, "1ff2446c": {}, "2289380c": {},
@@ -226,6 +240,7 @@ func validateFocusedWaves(contract Contract) error {
 		if len(wave) == 0 || len(wave) > focusedConcurrency {
 			return errInvalidContract
 		}
+		mutating := 0
 		for _, id := range wave {
 			kind, ok := known[id]
 			if !ok || kind == OwnerGo {
@@ -235,6 +250,12 @@ func validateFocusedWaves(contract Contract) error {
 				return errInvalidContract
 			}
 			seen[id] = struct{}{}
+			if focusedClusterMutating[id] {
+				mutating++
+			}
+		}
+		if mutating > 1 {
+			return errInvalidContract
 		}
 	}
 	if len(seen) != focused {

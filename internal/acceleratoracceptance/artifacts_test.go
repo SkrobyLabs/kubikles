@@ -33,7 +33,7 @@ func exactArtifactFixture(t *testing.T) ArtifactFixture {
 	}
 	return ArtifactFixture{
 		Descriptor: descriptorBytes, Checksum: checksum, ImageEvidence: append(evidence, '\n'),
-		RegistryImageDigest: digest('a'), RegistryChartDigest: digest('d'),
+		RegistryImageDigest: digest('a'), AcceptanceImageDigest: digest('e'), RegistryChartDigest: digest('d'), ReconnectGraceSeconds: 5,
 		ChartVersion: "0.0.0", ChartAppVersion: BuildIdentity,
 		RuntimeBuildVersion: BuildIdentity, HostArchitecture: "amd64", SelectedManifestDigest: digest('b'),
 	}
