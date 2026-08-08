@@ -647,6 +647,65 @@ func TestKindHarnessPreservesWarmedModuleCacheWithIsolatedHome(t *testing.T) {
 	}
 }
 
+func TestKindHarnessComposedRunSelectsAcceptanceRuntime(t *testing.T) {
+	sourceBytes, err := os.ReadFile(filepath.Join("..", "..", "scripts", "test-accelerator-desktop-provision-kind.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(sourceBytes)
+	composedBranch := strings.Index(source, `if [ "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" = 1 ]; then`)
+	acceptanceReference := strings.Index(source, `acceptance_image_ref="$registry/skrobylabs/kubikles-accelerator:v0.0.0-acceptance-build"`)
+	digestValidation := strings.Index(source, `[[ "${ACCELERATOR_IMAGE_DIGEST-}" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "reuse-acceptance-image-digest"`)
+	digestResolution := strings.Index(source, `resolved_acceptance_digest="$(oras resolve --plain-http "$acceptance_image_ref" 2>"$tmp/image-resolve-error")" || fail "reuse-acceptance-image-resolve"`)
+	digestBinding := strings.Index(source, `test "$resolved_acceptance_digest" = "$ACCELERATOR_IMAGE_DIGEST" || fail "reuse-acceptance-image-digest"`)
+	digestSelection := strings.Index(source, `image_digest="$resolved_acceptance_digest"`)
+	productionReference := strings.Index(source, `image_client_ref="$registry/skrobylabs/kubikles-accelerator:$build_version"`)
+	if composedBranch < 0 || acceptanceReference < 0 || digestValidation < 0 || digestResolution < 0 || digestBinding < 0 || digestSelection < 0 || productionReference < 0 {
+		t.Fatal("Kind harness does not bind composed acceptance to its tagged runtime digest")
+	}
+	if !(composedBranch < acceptanceReference && acceptanceReference < digestValidation && digestValidation < digestResolution && digestResolution < digestBinding && digestBinding < digestSelection && digestSelection < productionReference) {
+		t.Fatalf("composed acceptance image ordering branch=%d reference=%d validation=%d resolution=%d binding=%d selection=%d production=%d", composedBranch, acceptanceReference, digestValidation, digestResolution, digestBinding, digestSelection, productionReference)
+	}
+}
+
+func TestKindHarnessPublishesVersionMismatchChartFixture(t *testing.T) {
+	sourceBytes, err := os.ReadFile(filepath.Join("..", "..", "scripts", "test-accelerator-desktop-provision-kind.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(sourceBytes)
+	fixtureBranch := strings.Index(source, `if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" || "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" == "1" ]]; then`)
+	packageChart := strings.Index(source, `--app-version "$mismatch_build_version"`)
+	pushChart := strings.Index(source, `helm push "$mismatch_chart_archive"`)
+	resolveDigest := strings.Index(source, `mismatch_chart_digest="$(oras resolve`)
+	digestValidation := strings.Index(source, `[[ "$mismatch_chart_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "mismatch-chart-digest"`)
+	digestHandoff := strings.Index(source, `ACCELERATOR_PROVISION_KIND_MISMATCH_CHART_DIGEST="$mismatch_chart_digest"`)
+	if fixtureBranch < 0 || packageChart < 0 || pushChart < 0 || resolveDigest < 0 || digestValidation < 0 || digestHandoff < 0 {
+		t.Fatal("Kind harness does not publish and bind a version-mismatch chart fixture")
+	}
+	if !(fixtureBranch < packageChart && packageChart < pushChart && pushChart < resolveDigest && resolveDigest < digestValidation && digestValidation < digestHandoff) {
+		t.Fatalf("mismatch chart fixture ordering branch=%d package=%d push=%d resolve=%d validation=%d handoff=%d", fixtureBranch, packageChart, pushChart, resolveDigest, digestValidation, digestHandoff)
+	}
+}
+
+func TestAcceptanceHarnessHandsValidationRunnerNumericTimingInputs(t *testing.T) {
+	sourceBytes, err := os.ReadFile(filepath.Join("..", "..", "scripts", "test-accelerator-e2e.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(sourceBytes)
+	validationStart := strings.Index(source, `validation_started="$(milliseconds)"`)
+	validationSeed := strings.Index(source, `export ACCELERATOR_ACCEPTANCE_VALIDATION_MS=0`)
+	totalSeed := strings.Index(source, `export ACCELERATOR_ACCEPTANCE_TOTAL_MS="$((validation_started - total_started))"`)
+	validator := strings.Index(source, `"$fixture_root/accelerator-e2e-runner" validate-report`)
+	if validationStart < 0 || validationSeed < 0 || totalSeed < 0 || validator < 0 || !(validationStart < validationSeed && validationSeed < totalSeed && totalSeed < validator) {
+		t.Fatalf("acceptance validation timing handoff start=%d validation=%d total=%d validator=%d", validationStart, validationSeed, totalSeed, validator)
+	}
+	if strings.Contains(source, `$((milliseconds -`) {
+		t.Fatal("acceptance harness treats the milliseconds function as an unset arithmetic variable")
+	}
+}
+
 func TestKindHarnessIntegratedRoutingDiagnosticExtractorIsClosed(t *testing.T) {
 	helper := filepath.Join("..", "..", "scripts", "extract-accelerator-kind-diagnostic.sh")
 	harnessBytes, err := os.ReadFile(filepath.Join("..", "..", "scripts", "test-accelerator-desktop-provision-kind.sh"))

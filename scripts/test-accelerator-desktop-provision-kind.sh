@@ -198,9 +198,17 @@ registry_tls_url="https://$chart_registry"
 registry_ca="$tmp/chart-registry-certs/cert.pem"
 else
   registry="$KUBIKLES_ACCELERATOR_E2E_REGISTRY"
-  image_client_ref="$registry/skrobylabs/kubikles-accelerator:$build_version"
-  image_digest="$(oras resolve --plain-http "$image_client_ref" 2>"$tmp/image-resolve-error")" || fail "reuse-image-resolve"
-  [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "reuse-image-digest"
+  if [ "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" = 1 ]; then
+    acceptance_image_ref="$registry/skrobylabs/kubikles-accelerator:v0.0.0-acceptance-build"
+    [[ "${ACCELERATOR_IMAGE_DIGEST-}" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "reuse-acceptance-image-digest"
+    resolved_acceptance_digest="$(oras resolve --plain-http "$acceptance_image_ref" 2>"$tmp/image-resolve-error")" || fail "reuse-acceptance-image-resolve"
+    test "$resolved_acceptance_digest" = "$ACCELERATOR_IMAGE_DIGEST" || fail "reuse-acceptance-image-digest"
+    image_digest="$resolved_acceptance_digest"
+  else
+    image_client_ref="$registry/skrobylabs/kubikles-accelerator:$build_version"
+    image_digest="$(oras resolve --plain-http "$image_client_ref" 2>"$tmp/image-resolve-error")" || fail "reuse-image-resolve"
+    [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "reuse-image-digest"
+  fi
   chart_registry="$registry"
   chart_ref="$chart_registry/skrobylabs/helm/kubikles-accelerator:0.0.0"
   chart_digest="$(oras resolve --plain-http "$chart_ref" 2>"$tmp/chart-resolve-error")" || fail "reuse-chart-resolve"
@@ -210,6 +218,27 @@ else
   test -s "$chart_archive" || fail "reuse-chart-archive"
   registry_tls_url="http://$chart_registry"
   registry_ca=""
+fi
+
+mismatch_chart_digest=""
+if [[ "${ACCELERATOR_INTEGRATED_ROUTING_KIND:-0}" == "1" || "${ACCELERATOR_ACCEPTANCE_COMPOSED_KIND:-0}" == "1" ]]; then
+  mismatch_build_version=v1.2.4
+  if [ "$build_version" = v0.0.0 ]; then
+    mismatch_build_version=v0.0.1
+  fi
+  mismatch_chart_version="${mismatch_build_version#v}"
+  helm package "$root/deploy/charts/kubikles-accelerator" --version "$mismatch_chart_version" --app-version "$mismatch_build_version" --destination "$tmp" >"$tmp/mismatch-chart-package" 2>&1 || fail "mismatch-chart-package"
+  mismatch_chart_archive="$tmp/kubikles-accelerator-$mismatch_chart_version.tgz"
+  test -s "$mismatch_chart_archive" || fail "mismatch-chart-archive"
+  mismatch_chart_ref="$chart_registry/skrobylabs/helm/kubikles-accelerator:$mismatch_chart_version"
+  if [ "$reuse_mode" = reuse ]; then
+    helm push "$mismatch_chart_archive" "oci://$chart_registry/skrobylabs/helm" --plain-http >"$tmp/mismatch-chart-push" 2>&1 || fail "mismatch-chart-push"
+    mismatch_chart_digest="$(oras resolve --plain-http "$mismatch_chart_ref" 2>"$tmp/mismatch-chart-resolve-error")" || fail "mismatch-chart-resolve"
+  else
+    helm push "$mismatch_chart_archive" "oci://$chart_registry/skrobylabs/helm" --insecure-skip-tls-verify >"$tmp/mismatch-chart-push" 2>&1 || fail "mismatch-chart-push"
+    mismatch_chart_digest="$(oras resolve --insecure "$mismatch_chart_ref" 2>"$tmp/mismatch-chart-resolve-error")" || fail "mismatch-chart-resolve"
+  fi
+  [[ "$mismatch_chart_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "mismatch-chart-digest"
 fi
 
 if [ "$reuse_mode" = standalone ]; then
@@ -341,6 +370,7 @@ fi
 (cd "$root" && env "${go_test_environment[@]}" HOME="$test_home" KUBECONFIG="$kubeconfig" \
   ACCELERATOR_PROVISION_KIND_CHART="$chart_archive" \
   ACCELERATOR_PROVISION_KIND_CHART_DIGEST="$chart_digest" \
+  ACCELERATOR_PROVISION_KIND_MISMATCH_CHART_DIGEST="$mismatch_chart_digest" \
   ACCELERATOR_PROVISION_KIND_REGISTRY_TLS_URL="$registry_tls_url" \
   ACCELERATOR_PROVISION_KIND_REGISTRY_CA="$registry_ca" \
   ACCELERATOR_PROVISION_KIND_IMAGE_DIGEST="$image_digest" \

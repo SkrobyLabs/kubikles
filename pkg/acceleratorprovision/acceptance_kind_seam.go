@@ -359,6 +359,9 @@ func acceptanceRunMismatchCoordinator(mismatchVersion string, runtimes []string)
 	if !demand.Accepted || demand.Lease == nil {
 		return false, errors.New("acceptance mismatch coordinator failed")
 	}
+	// Demand proves that Secret reads remain Direct; only the connection owner
+	// may authorize the two mismatch provisioning attempts exercised below.
+	coordinator.Enable("acceptance", "")
 	deadline := time.Now().Add(15 * time.Second)
 	wantAccepted := runtimes[1] == "build-N"
 	for time.Now().Before(deadline) {

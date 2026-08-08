@@ -559,6 +559,8 @@ func runAcceleratorIntegratedRoutingKind(t *testing.T) integratedRoutingKindAcce
 	diagnostic.set(integratedRoutingKindStageSetup)
 	chartDigest := requiredIntegratedRoutingKindEnv(t, "ACCELERATOR_PROVISION_KIND_CHART_DIGEST")
 	diagnostic.set(integratedRoutingKindStageSetup)
+	mismatchChartDigest := requiredIntegratedRoutingKindEnv(t, "ACCELERATOR_PROVISION_KIND_MISMATCH_CHART_DIGEST")
+	diagnostic.set(integratedRoutingKindStageSetup)
 	imageDigest := requiredIntegratedRoutingKindEnv(t, "ACCELERATOR_PROVISION_KIND_IMAGE_DIGEST")
 	diagnostic.set(integratedRoutingKindStageSetup)
 	sentinel := requiredIntegratedRoutingKindEnv(t, "ACCELERATOR_PROVISION_KIND_SENTINEL")
@@ -894,7 +896,7 @@ func runAcceleratorIntegratedRoutingKind(t *testing.T) integratedRoutingKindAcce
 	if stableBuildVersion == "v0.0.0" {
 		mismatchBuildVersion = "v0.0.1"
 	}
-	resolution = integratedRoutingKindResolution(mismatchBuildVersion, chartDigest, imageDigest)
+	resolution = integratedRoutingKindResolution(mismatchBuildVersion, mismatchChartDigest, imageDigest)
 	desktopAcceleratorSecretClientFactory = func(lease *acceleratorprovision.SessionLease) (acceleratorprovision.SecretRPCClient, error) {
 		mismatchClientConstructions.Add(1)
 		return acceleratorprovision.NewSecretRPCClient(lease)
@@ -919,6 +921,9 @@ func runAcceleratorIntegratedRoutingKind(t *testing.T) integratedRoutingKindAcce
 	}
 	diagnostic.set(integratedRoutingKindStageMismatch)
 	assertIntegratedRoutingKindOriginProof(t, originProbe, expectedOrigin, "integrated routing mismatch Direct origin proof failed")
+	// Mismatch recovery is connection-owned just like the healthy path. Browser
+	// demand alone must remain Direct until its owner explicitly enables it.
+	mismatchCoordinator.Enable(contextName, "")
 	diagnostic.set(integratedRoutingKindStageMismatch)
 	waitIntegratedRoutingKindMismatch(t, mismatchCoordinator, mismatchProbe, contextName, integratedRoutingKindMismatchTimeout)
 	select {

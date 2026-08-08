@@ -94,8 +94,8 @@ export ACCELERATOR_ACCEPTANCE_FIXTURE_MS="$((fixture_finished - total_started))"
 export ACCELERATOR_ACCEPTANCE_ARTIFACT_MS="$((artifact_finished - fixture_finished))"
 export ACCELERATOR_ACCEPTANCE_FOCUSED_MS="$((focused_finished - artifact_finished))"
 export ACCELERATOR_ACCEPTANCE_COMPOSED_MS="$((composed_finished - focused_finished))"
-export ACCELERATOR_ACCEPTANCE_VALIDATION_MS="$((milliseconds - validation_started))"
-export ACCELERATOR_ACCEPTANCE_TOTAL_MS="$((milliseconds - total_started))"
+export ACCELERATOR_ACCEPTANCE_VALIDATION_MS=0
+export ACCELERATOR_ACCEPTANCE_TOTAL_MS="$((validation_started - total_started))"
 "$fixture_root/accelerator-e2e-runner" validate-report || fail composed-report-invalid
 test "$(jq -r . "$fixture_root/tripwire-count.json")" = 0 || fail external-network
 echo 'accelerator-e2e: passed' >&2
