@@ -259,6 +259,16 @@ oras_copy_to_layout() {
   fi
 }
 
+wrap_single_platform_oci_layout() {
+  local layout=$1 tag=$2 descriptor manifest_digest wrapped
+  descriptor=$(oras manifest fetch --oci-layout --format go-template --template '{{ .mediaType }} {{ .digest }}' "$layout:$tag") || fail "built image manifest is unavailable"
+  [[ "$descriptor" =~ ^application/vnd\.oci\.image\.manifest\.v1\+json\ (sha256:[0-9a-f]{64})$ ]] || fail "built OCI layout root is not one image manifest"
+  manifest_digest=${BASH_REMATCH[1]}
+  oras manifest index create --oci-layout "$layout:$tag" "$manifest_digest" >/dev/null || fail "built image index could not be created"
+  wrapped=$(oras manifest fetch --oci-layout --format go-template --template '{{ .mediaType }} {{ .digest }}' "$layout:$tag") || fail "built image index is unavailable"
+  [[ "$wrapped" =~ ^application/vnd\.oci\.image\.index\.v1\+json\ sha256:[0-9a-f]{64}$ ]] || fail "built OCI layout root is not one image index"
+}
+
 fetch_chart_manifest() {
   local ref=$1 plain=$2 destination=$3
   if [ "$plain" = true ]; then
@@ -618,6 +628,7 @@ local_test() {
     fi
     builder_args=(--builder "$RUN_BUILDER")
     SOURCE_DATE_EPOCH="$epoch" docker buildx build "${builder_args[@]}" "${offline_build_flags[@]}" --file Dockerfile.accelerator --platform linux/amd64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$version" --build-arg "GIT_COMMIT=$commit" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$epoch" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=$registry/kubikles-accelerator:$version" "${cache_args[@]}" .
+    wrap_single_platform_oci_layout "$layout" "$version"
     go run ./scripts/accelerator-release package-chart "$CHART_SOURCE" "$package" "$chart_version" "$version" "$epoch"
     go run ./scripts/accelerator-release package-chart-oci "$package" "$CHART_SOURCE" "$chart_layout" "$chart_version" "$version" "$epoch" >/dev/null
   fi
@@ -748,6 +759,7 @@ publish_ghcr() {
   mkdir -p "$ACCELERATOR_RELEASE_OUTPUT"; chmod 700 "$ACCELERATOR_RELEASE_OUTPUT"
   layout="$work/image-layout"; package="$work/kubikles-accelerator-$chart_version.tgz"; chart_layout="$work/chart-layout"; mkdir -p "$layout"
   SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build --file Dockerfile.accelerator --platform linux/amd64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$BUILD_VERSION" --build-arg "GIT_COMMIT=$SOURCE_COMMIT" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=ghcr.io/skrobylabs/kubikles-accelerator:$BUILD_VERSION" .
+  wrap_single_platform_oci_layout "$layout" "$BUILD_VERSION"
   go run ./scripts/accelerator-release package-chart "$CHART_SOURCE" "$package" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH"
   go run ./scripts/accelerator-release package-chart-oci "$package" "$CHART_SOURCE" "$chart_layout" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH" >/dev/null
   PUBLICATION_AUTHORITY=github publish_registry ghcr.io/skrobylabs false "$layout" "$package" "$chart_layout" "$BUILD_VERSION" "$chart_version" "$SOURCE_COMMIT" "$work/publication" "$SOURCE_DATE_EPOCH" "$release_state" "$work/release-state"
@@ -779,6 +791,7 @@ prepare_release() {
   chart_layout="$ACCELERATOR_PREPARED_OUTPUT/chart-layout"
   mkdir -m 0700 "$layout"
   SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build --builder "$builder" --file Dockerfile.accelerator --platform linux/amd64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$BUILD_VERSION" --build-arg "GIT_COMMIT=$SOURCE_COMMIT" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=ghcr.io/skrobylabs/kubikles-accelerator:$BUILD_VERSION" .
+  wrap_single_platform_oci_layout "$layout" "$BUILD_VERSION"
   go run ./scripts/accelerator-release package-chart "$CHART_SOURCE" "$package" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH"
   chart_digest=$(go run ./scripts/accelerator-release package-chart-oci "$package" "$CHART_SOURCE" "$chart_layout" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH")
   [[ "$chart_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "prepared chart digest is invalid"
