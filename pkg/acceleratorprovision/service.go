@@ -157,7 +157,7 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	release := request.Resolution.Release
 	attempt := chartAttempt{
 		ReleaseName: credential.releaseName(), Namespace: snapshot.Namespace(), Session: credential.session,
-		BuildVersion: release.BuildVersion, ImageRepository: imageRepository,
+		BuildVersion: release.BuildVersion, ImageRepository: acceleratorWorkloadImageRepository(),
 		ImageDigest:    strings.TrimPrefix(release.ImageReference, imageRepository+"@"),
 		ChartReference: release.ChartReference,
 		ChartDigest:    strings.TrimPrefix(release.ChartReference, chartRepository+"@"), Verifier: credential.verifier,

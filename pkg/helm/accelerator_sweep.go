@@ -321,7 +321,7 @@ func decodeSweepValues(values map[string]interface{}, namespace, name string) (A
 	digest, dok := image["digest"].(string)
 	version, versionOK := image["version"].(string)
 	architecture, architectureOK := image["architecture"].(string)
-	if !sok || !vok || !rok || !dok || !versionOK || !architectureOK || architecture != acceleratorRuntimeArchitecture() || !acceleratorSweepNameRE.MatchString("kubikles-accelerator-"+session) || repository != acceleratorImageRepository || !acceleratorDigest.MatchString(digest) || !acceleratorVersion.MatchString(version) || !acceleratorVerifier.MatchString(verifier) {
+	if !sok || !vok || !rok || !dok || !versionOK || !architectureOK || architecture != acceleratorRuntimeArchitecture() || !acceleratorSweepNameRE.MatchString("kubikles-accelerator-"+session) || repository != acceleratorRuntimeImageRepository() || !acceleratorDigest.MatchString(digest) || !acceleratorVersion.MatchString(version) || !acceleratorVerifier.MatchString(verifier) {
 		return AcceleratorReleaseRequest{}, nil, false
 	}
 	return AcceleratorReleaseRequest{BuildVersion: version, ImageRepository: repository, ImageDigest: digest, WorkloadSession: session, ReleaseName: name, ReleaseNamespace: namespace}, []byte(verifier), true

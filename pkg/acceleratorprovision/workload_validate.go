@@ -52,7 +52,7 @@ func validExactJob(j *batchv1.Job, w *ProvisionedWorkload) bool {
 		j.Annotations["kubikles.io/build-version"] != w.BuildVersion || j.Labels["kubikles.io/workload-session-id"] != w.WorkloadSessionID ||
 		j.Labels["app.kubernetes.io/instance"] != w.ReleaseName || j.Labels["app.kubernetes.io/managed-by"] != "Helm" ||
 		j.Spec.Template.Annotations["kubikles.io/build-version"] != w.BuildVersion || j.Spec.Template.Labels["kubikles.io/workload-session-id"] != w.WorkloadSessionID ||
-		len(j.Spec.Template.Spec.InitContainers) != 0 || len(j.Spec.Template.Spec.EphemeralContainers) != 0 || len(j.Spec.Template.Spec.Containers) != 1 || j.Spec.Template.Spec.Containers[0].Image != imageRepository+"@"+w.ImageDigest ||
+		len(j.Spec.Template.Spec.InitContainers) != 0 || len(j.Spec.Template.Spec.EphemeralContainers) != 0 || len(j.Spec.Template.Spec.Containers) != 1 || j.Spec.Template.Spec.Containers[0].Image != acceleratorWorkloadImageRepository()+"@"+w.ImageDigest ||
 		j.Status.CompletionTime != nil || j.Status.Failed != 0 || j.Status.Succeeded != 0 {
 		return false
 	}
@@ -78,5 +78,5 @@ func validExactPod(p *corev1.Pod, w *ProvisionedWorkload) bool {
 		}
 	}
 	st := p.Status.ContainerStatuses[0]
-	return controllers == 1 && owned && st.Name == p.Spec.Containers[0].Name && st.State.Running != nil && st.Ready && p.Spec.Containers[0].Image == imageRepository+"@"+w.ImageDigest
+	return controllers == 1 && owned && st.Name == p.Spec.Containers[0].Name && st.State.Running != nil && st.Ready && p.Spec.Containers[0].Image == acceleratorWorkloadImageRepository()+"@"+w.ImageDigest
 }

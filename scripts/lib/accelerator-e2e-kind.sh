@@ -127,6 +127,16 @@ accelerator_e2e_prepare_child_kubeconfig() {
   KUBECONFIG="$destination" kubectl config set-context "$context" --namespace="$namespace" >/dev/null 2>&1 || return 1
 }
 
+accelerator_e2e_preload_acceptance_image() {
+  local digest="${1-}" source_ref node
+  [ "$#" -eq 1 ] && [ "$(accelerator_e2e_reuse_mode)" = reuse ] || return 1
+  [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || return 1
+  source_ref="$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator@$digest"
+  node="$KUBIKLES_ACCELERATOR_E2E_KIND_NAME-control-plane"
+  docker exec "$node" crictl pull "$source_ref" >/dev/null 2>&1 || return 1
+  docker exec "$node" crictl inspecti "$source_ref" >/dev/null 2>&1
+}
+
 accelerator_e2e_select_registry_host() {
   local port="${1-}" configured="${ACCELERATOR_PROVISION_REGISTRY_HOST-}" host
   local -a candidates

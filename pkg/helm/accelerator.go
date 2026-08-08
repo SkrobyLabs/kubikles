@@ -182,7 +182,7 @@ func exactAcceleratorSchema(schema []byte) bool {
 
 func validAcceleratorReleaseRequest(request AcceleratorReleaseRequest) bool {
 	return validAcceleratorChartRequest(AcceleratorChartRequest{request.ChartReference, request.ChartDigest, request.BuildVersion}) &&
-		request.ImageRepository == acceleratorImageRepository && acceleratorDigest.MatchString(request.ImageDigest) &&
+		request.ImageRepository == acceleratorRuntimeImageRepository() && acceleratorDigest.MatchString(request.ImageDigest) &&
 		acceleratorSession.MatchString(request.WorkloadSession) && acceleratorVerifier.MatchString(request.CreatorVerifier) &&
 		request.ReleaseName == "kubikles-accelerator-"+request.WorkloadSession && request.ReleaseNamespace != ""
 }

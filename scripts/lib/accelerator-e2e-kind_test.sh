@@ -107,6 +107,12 @@ export ACCELERATOR_PROVISION_REGISTRY_HOST
 if PATH="$tmp/bin:$PATH" accelerator_e2e_select_registry_host 49152 >/dev/null 2>&1; then fail unsafe-registry-host-accepted; fi
 unset ACCELERATOR_PROVISION_REGISTRY_HOST
 PATH="$tmp/bin:$PATH" accelerator_e2e_validate_reused_fixture || fail reuse-validation
+acceptance_digest="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+PATH="$tmp/bin:$PATH" accelerator_e2e_preload_acceptance_image "$acceptance_digest" || fail acceptance-image-preload
+grep -Fx "docker exec kubikles-a60a-test-control-plane crictl pull 127.0.0.1:49152/skrobylabs/kubikles-accelerator@$acceptance_digest" "$FAKE_LOG" >/dev/null || fail acceptance-image-source-pull
+grep -Fx "docker exec kubikles-a60a-test-control-plane crictl inspecti 127.0.0.1:49152/skrobylabs/kubikles-accelerator@$acceptance_digest" "$FAKE_LOG" >/dev/null || fail acceptance-image-inspection
+if grep -F 'ghcr.io/skrobylabs/kubikles-accelerator@' "$FAKE_LOG" >/dev/null; then fail acceptance-image-production-reference; fi
+if PATH="$tmp/bin:$PATH" accelerator_e2e_preload_acceptance_image sha256:unsafe >/dev/null 2>&1; then fail invalid-acceptance-digest-accepted; fi
 PATH="$tmp/bin:$PATH" accelerator_e2e_audit_case_cleanup kubikles-a60a-sentinel || fail cleanup-audit
 PATH="$tmp/bin:$PATH" accelerator_e2e_delete_case_cluster_scope kubikles-a60a-001 || fail cluster-scope-cleanup
 grep -Fx 'kubectl delete clusterrolebindings owned-binding --wait=true --timeout=30s' "$FAKE_LOG" >/dev/null || fail owned-binding-cleanup

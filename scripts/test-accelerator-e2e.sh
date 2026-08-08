@@ -98,7 +98,6 @@ chmod 600 "$fixture_root/shared-fixture.json"
 "$fixture_root/accelerator-e2e-shared-fixture" "$fixture_root/shared-fixture.json" || fail shared-fixture
 export ACCELERATOR_ACCEPTANCE_SHARED_FIXTURE="$fixture_root/shared-fixture.json"
 export ACCELERATOR_ACCEPTANCE_SHARED_FIXTURE_VALIDATOR="$fixture_root/accelerator-e2e-shared-fixture"
-artifact_finished="$(milliseconds)"
 test "$(jq -r . "$fixture_root/tripwire-count.json")" = 0 || fail external-network
 ACCELERATOR_IMAGE_DIGEST="$(jq -er '.acceptanceImageDigest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' "$artifact_metadata")" || fail artifact-metadata
 test "$(jq -er '.registryImageDigest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' "$artifact_metadata")" != "$ACCELERATOR_IMAGE_DIGEST" || fail artifact-metadata
@@ -107,6 +106,8 @@ test "$(jq -er --arg execution "$execution_architecture" '.executionArchitecture
 ACCELERATOR_IMAGE_VERSION="$(jq -er '.runtimeBuildVersion | select(. == "v0.0.0")' "$artifact_metadata")" || fail artifact-metadata
 export ACCELERATOR_IMAGE_REPOSITORY="$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator"
 export ACCELERATOR_IMAGE_DIGEST ACCELERATOR_IMAGE_VERSION
+accelerator_e2e_preload_acceptance_image "$ACCELERATOR_IMAGE_DIGEST" || fail acceptance-image-preload
+artifact_finished="$(milliseconds)"
 export ACCELERATOR_ACCEPTANCE_ROOT="$root"
 export ACCELERATOR_ACCEPTANCE_CONTRACT="$root/test/accelerator/acceptance-v1.json"
 export ACCELERATOR_ACCEPTANCE_PROGRESS_REPORT="$fixture_root/focused-report.json"
