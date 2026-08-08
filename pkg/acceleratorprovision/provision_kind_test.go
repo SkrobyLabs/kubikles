@@ -32,9 +32,12 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	k8sfake "k8s.io/client-go/kubernetes/fake"
 )
 
 type kindRegistryTransport struct {
@@ -947,13 +950,7 @@ func assertFailedKindObjectsGone(t *testing.T, ctx context.Context, client *k8s.
 		baseName = baseName[:63]
 	}
 	baseName = strings.TrimSuffix(baseName, "-")
-	clusterBase := strings.ToLower(strings.ReplaceAll(namespace+"-"+releaseName+"-accelerator", "_", "-"))
-	if len(clusterBase) > 54 {
-		clusterBase = clusterBase[:54]
-	}
-	clusterBase = strings.TrimSuffix(clusterBase, "-")
-	digest := sha256.Sum256([]byte(namespace + "/" + releaseName))
-	clusterName := clusterBase + "-" + hex.EncodeToString(digest[:])[:8]
+	clusterName := kindClusterResourceName(namespace, releaseName)
 	selector := "app.kubernetes.io/instance=" + releaseName
 
 	if _, err := snapshot.Clientset().BatchV1().Jobs(namespace).Get(ctx, baseName, metav1.GetOptions{}); !apierrors.IsNotFound(err) {
@@ -1024,6 +1021,45 @@ func kindNamespace() string {
 	return "default"
 }
 
+func kindClusterResourceName(namespace, releaseName string) string {
+	base := strings.ToLower(strings.ReplaceAll(namespace+"-"+releaseName+"-accelerator", "_", "-"))
+	if len(base) > 54 {
+		base = base[:54]
+	}
+	base = strings.TrimSuffix(base, "-")
+	digest := sha256.Sum256([]byte(namespace + "/" + releaseName))
+	return base + "-" + hex.EncodeToString(digest[:])[:8]
+}
+
+func kindClusterReleaseObjectsMatch(ctx context.Context, client kubernetes.Interface, workload *ProvisionedWorkload) bool {
+	if client == nil || workload == nil {
+		return false
+	}
+	clusterName := kindClusterResourceName(workload.ReleaseNamespace, workload.ReleaseName)
+	role, err := client.RbacV1().ClusterRoles().Get(ctx, clusterName, metav1.GetOptions{})
+	if err != nil || role.Labels["app.kubernetes.io/instance"] != workload.ReleaseName {
+		return false
+	}
+	binding, err := client.RbacV1().ClusterRoleBindings().Get(ctx, clusterName, metav1.GetOptions{})
+	return err == nil && binding.Labels["app.kubernetes.io/instance"] == workload.ReleaseName && binding.RoleRef.Name == clusterName
+}
+
+func TestKindClusterReleaseObjectsMatchIgnoresPeerNamespaceLabelCollision(t *testing.T) {
+	workload := &ProvisionedWorkload{ReleaseNamespace: "a60a-connect", ReleaseName: "kubikles-accelerator-session"}
+	targetName := kindClusterResourceName(workload.ReleaseNamespace, workload.ReleaseName)
+	peerName := kindClusterResourceName("a60a-resume", workload.ReleaseName)
+	labels := map[string]string{"app.kubernetes.io/instance": workload.ReleaseName}
+	client := k8sfake.NewSimpleClientset(
+		&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: targetName, Labels: labels}},
+		&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: peerName, Labels: labels}},
+		&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: targetName, Labels: labels}, RoleRef: rbacv1.RoleRef{Name: targetName}},
+		&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: peerName, Labels: labels}, RoleRef: rbacv1.RoleRef{Name: peerName}},
+	)
+	if targetName == peerName || len(targetName) > 63 || len(peerName) > 63 || !kindClusterReleaseObjectsMatch(context.Background(), client, workload) {
+		t.Fatal("cluster-scoped release identity is not namespace-isolated")
+	}
+}
+
 func assertKindReleaseObjects(t *testing.T, ctx context.Context, client *k8s.Client, workload *ProvisionedWorkload) {
 	t.Helper()
 	snapshot, err := client.SnapshotCurrentContext(workload.ContextName)
@@ -1043,12 +1079,7 @@ func assertKindReleaseObjects(t *testing.T, ctx context.Context, client *k8s.Cli
 	if err != nil || len(secrets.Items) != 1 || secrets.Items[0].Immutable == nil || !*secrets.Items[0].Immutable {
 		t.Fatal("exact immutable verifier Secret mismatch")
 	}
-	roles, err := snapshot.Clientset().RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{LabelSelector: selector})
-	if err != nil || len(roles.Items) != 1 {
-		t.Fatal("exact ClusterRole set mismatch")
-	}
-	bindings, err := snapshot.Clientset().RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{LabelSelector: selector})
-	if err != nil || len(bindings.Items) != 1 {
-		t.Fatal("exact ClusterRoleBinding set mismatch")
+	if !kindClusterReleaseObjectsMatch(ctx, snapshot.Clientset(), workload) {
+		t.Fatal("exact cluster-scoped RBAC identity mismatch")
 	}
 }

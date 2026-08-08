@@ -68,11 +68,12 @@ for architecture in amd64; do
 done
 # The acceptance runtime is deliberately a second binary and image. The
 # release descriptor above remains evidence for the untagged production image.
-acceptance_binary="$work/acceptance/amd64/kubikles-accelerator"
+acceptance_binary="$work/acceptance/amd64/kubikles-accelerator-acceptance"
 mkdir -m 700 -p "$(dirname "$acceptance_binary")"
 (cd "$source_root" && GOTOOLCHAIN=go1.25.12 GOPROXY=off SOURCE_DATE_EPOCH="$epoch" CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
   go build -trimpath -buildvcs=false -tags 'headless accelerator accelerator_e2e' -ldflags "$ldflags" -o "$acceptance_binary" .) >"$artifact_root/go-build-acceptance-amd64.log" 2>&1 || fail offline-go-build
 touch -d "@$epoch" "$acceptance_binary"
+go version -m "$acceptance_binary" | grep -F $'\tbuild\t-tags=headless,accelerator,accelerator_e2e' >/dev/null || fail acceptance-build-tags
 cleanup_directory offline-source "$source_root" || fail source-cleanup
 
 base_id="$(docker image inspect --format '{{.Id}}' "$distroless")" || fail distroless-inspection
@@ -110,7 +111,7 @@ ARG BUILD_VERSION
 ARG GIT_COMMIT
 LABEL org.opencontainers.image.title="kubikles-accelerator-acceptance" org.opencontainers.image.version="\$BUILD_VERSION" org.opencontainers.image.revision="\$GIT_COMMIT"
 ENV KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS=$KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS
-COPY --chown=65532:65532 kubikles-accelerator /kubikles-accelerator
+COPY --chown=65532:65532 kubikles-accelerator-acceptance /kubikles-accelerator
 USER 65532:65532
 ENTRYPOINT ["/kubikles-accelerator"]
 EOF

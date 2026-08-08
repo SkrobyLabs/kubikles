@@ -68,7 +68,7 @@ test "$(jq -r . "$fixture_root/tripwire-count.json")" = 0 || fail external-netwo
 artifact_metadata="$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT/acceptance-artifact-metadata.json"
 ACCELERATOR_IMAGE_DIGEST="$(jq -er '.acceptanceImageDigest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' "$artifact_metadata")" || fail artifact-metadata
 test "$(jq -er '.registryImageDigest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' "$artifact_metadata")" != "$ACCELERATOR_IMAGE_DIGEST" || fail artifact-metadata
-test "$(jq -er '.reconnectGraceSeconds | select(type == "number" and . == 5)' "$artifact_metadata")" = 5 || fail artifact-metadata
+test "$(jq -er '.reconnectGraceSeconds | select(type == "number")' "$artifact_metadata")" = "$KUBIKLES_ACCELERATOR_E2E_RECONNECT_GRACE_SECONDS" || fail artifact-metadata
 ACCELERATOR_IMAGE_VERSION="$(jq -er '.runtimeBuildVersion | select(. == "v0.0.0")' "$artifact_metadata")" || fail artifact-metadata
 export ACCELERATOR_IMAGE_REPOSITORY="$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator"
 export ACCELERATOR_IMAGE_DIGEST ACCELERATOR_IMAGE_VERSION

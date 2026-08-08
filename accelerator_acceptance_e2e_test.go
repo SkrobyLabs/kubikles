@@ -83,8 +83,9 @@ func TestAcceleratorAcceptanceKind(t *testing.T) {
 
 	record(15, "RealTwoMinuteAuthenticatedClientGrace", func(t *testing.T) {
 		routing := ensureRouting(t)
-		if routing.elapsed < 119*time.Second || routing.elapsed > 126*time.Second || !routing.reconnectCancelled || !routing.singleExpiry {
-			t.Fatal("accelerator acceptance Integrated grace proof incomplete")
+		lowerGrace, upperGrace := integratedRoutingKindGraceBounds()
+		if routing.elapsed < lowerGrace || routing.elapsed > upperGrace || !routing.reconnectCancelled || !routing.singleExpiry {
+			t.Fatal("accelerator acceptance configured authenticated client grace proof incomplete")
 		}
 	}, nil)
 

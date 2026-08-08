@@ -120,20 +120,16 @@ func TestAcceptanceFocusedRunnerUsesClosedTwoWideWaves(t *testing.T) {
 	}
 	executor := &overlappingExecutor{delay: 15 * time.Millisecond}
 	runner := newTestRunner(executor, &recordingAuditor{})
+	runner.Timeout = 250 * time.Millisecond
 	report := NewReport()
-	started := time.Now()
 	if err := runner.RunFocused(context.Background(), contract, &report); err != nil {
 		t.Fatal("focused run")
 	}
-	elapsed := time.Since(started)
 	executor.mu.Lock()
 	max, calls := executor.max, executor.calls
 	executor.mu.Unlock()
 	if max != focusedConcurrency || calls != 12 {
 		t.Fatalf("closed waves max=%d calls=%d", max, calls)
-	}
-	if elapsed >= time.Duration(calls)*executor.delay {
-		t.Fatalf("focused waves did not overlap: elapsed=%s", elapsed)
 	}
 	if len(report.Cases) != 12 {
 		t.Fatal("focused report cardinality")

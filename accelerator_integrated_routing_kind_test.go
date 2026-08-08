@@ -860,18 +860,32 @@ func runAcceleratorIntegratedRoutingKind(t *testing.T) integratedRoutingKindAcce
 	if !active {
 		t.Fatal("integrated routing active workload identity unavailable")
 	}
-	cleanupStarted := time.Now()
 	app.ReleaseIntegratedSecretReads()
-	graceElapsed := waitIntegratedTerminalCleanupStart(t, coordinatorProbe, cleanupStarted)
-	if graceElapsed < 119*time.Second || graceElapsed > 126*time.Second {
-		t.Fatal("integrated routing terminal cleanup grace outside boundary")
+	if retained := coordinator.Snapshot(contextName); retained.State != acceleratorprovision.CoordinatorActive || !retained.Enabled || retained.DemandCount != 0 || !retained.Available {
+		t.Fatal("integrated routing enabled workload did not retain its zero-demand session")
 	}
-	waitIntegratedOwnedCleanup(t, helmClient, snapshot, coordinatorProbe, activeWorkload, sentinel, malformed)
+	// Model an ungraceful desktop exit without invoking Disable & Remove. The
+	// connection-owned workload must remain in place while its acceptance
+	// runtime observes the real final-authenticated-client reconnect grace.
+	graceStarted := time.Now()
+	app.lifecycle.Quiesce(context.Background())
+	stopCtx, stopCancel := context.WithTimeout(context.Background(), acceleratorprovision.ShutdownWaitTimeout)
+	app.lifecycle.StopProducers(stopCtx)
+	stopCancel()
+	graceElapsed := waitIntegratedAuthenticatedClientGraceExpiry(t, snapshot, activeWorkload, graceStarted)
+	lowerGrace, upperGrace := integratedRoutingKindGraceBounds()
+	if graceElapsed < lowerGrace || graceElapsed > upperGrace {
+		t.Fatal("integrated routing authenticated client grace outside boundary")
+	}
 	if coordinatorProbe.ProvisionAttempts() != 1 {
-		t.Fatal("integrated routing terminal cleanup created another workload")
+		t.Fatal("integrated routing authenticated client grace created another workload")
 	}
 	app.lifecycle.Close(context.Background())
 	healthyClosed = true
+	waitIntegratedOwnedCleanup(t, helmClient, snapshot, coordinatorProbe, activeWorkload, sentinel, malformed)
+	if coordinatorProbe.TerminalCleanupStartCount() != 0 || coordinatorProbe.TerminalCleanupCount() != 0 {
+		t.Fatal("integrated routing desktop exit used the obsolete demand-owned cleanup path")
+	}
 	healthyProbe := coordinatorProbe
 
 	mismatchReady := make(chan SecretReadSourceToken, 1)
@@ -936,7 +950,7 @@ func runAcceleratorIntegratedRoutingKind(t *testing.T) integratedRoutingKindAcce
 		integratedHappy: true, sixOperations: true, valueFreeBoundaries: true,
 		immediateDirect: true, resumedHigherSource: true, staleSourceRejected: true,
 		mismatchDirect: true, mismatchAttempts: mismatchProbe.ProvisionAttempts(), mismatchNoThird: true,
-		elapsed: graceElapsed, reconnectCancelled: healthyProbe.ProvisionAttempts() == 1, singleExpiry: healthyProbe.TerminalCleanupCount() == 1,
+		elapsed: graceElapsed, reconnectCancelled: healthyProbe.ProvisionAttempts() == 1 && clientConstructions.Load() == 2, singleExpiry: true,
 		loopback: true, privacy: true, rbac: true, ownedCleanup: true, sentinel: true, sweep: true,
 	}
 }
@@ -1202,26 +1216,55 @@ func waitIntegratedRoutingKindMismatch(t *testing.T, coordinator *acceleratorpro
 	t.Fatal("integrated routing mismatch did not settle")
 }
 
+func integratedRoutingKindGraceBounds() (time.Duration, time.Duration) {
+	grace := agent.EffectiveAcceleratorIdleReconnectGrace()
+	lower := grace - 2*time.Second
+	if lower < 0 {
+		lower = 0
+	}
+	return lower, grace + 6*time.Second
+}
+
+// waitIntegratedAuthenticatedClientGraceExpiry observes the exact retained
+// Pod rather than coordinator cleanup. A connection-owned Accelerator is not
+// demand-owned: after a desktop crash its runtime exits on the authenticated
+// client grace, and a later desktop cleanup removes the owned release.
+func waitIntegratedAuthenticatedClientGraceExpiry(t *testing.T, snapshot *k8s.AcceleratorContextSnapshot, workload acceleratorprovision.IntegratedRoutingKindActiveWorkload, started time.Time) time.Duration {
+	t.Helper()
+	if snapshot == nil || started.IsZero() || workload.ReleaseNamespace == "" || workload.PodName == "" || workload.PodUID == "" {
+		t.Fatal("integrated routing authenticated client grace observation unavailable")
+	}
+	_, upper := integratedRoutingKindGraceBounds()
+	deadline := started.Add(upper)
+	for time.Now().Before(deadline) {
+		ctx, cancel := context.WithTimeout(context.Background(), integratedRoutingKindK8sAssertionTimeout)
+		pod, err := snapshot.Clientset().CoreV1().Pods(workload.ReleaseNamespace).Get(ctx, workload.PodName, metav1.GetOptions{})
+		cancel()
+		if err != nil {
+			t.Fatal("integrated routing authenticated client grace Pod observation failed")
+		}
+		if string(pod.UID) != workload.PodUID {
+			t.Fatal("integrated routing authenticated client grace Pod identity changed")
+		}
+		if pod.Status.Phase == corev1.PodFailed {
+			t.Fatal("integrated routing acceptance runtime failed during authenticated client grace")
+		}
+		if pod.Status.Phase == corev1.PodSucceeded {
+			if len(pod.Status.ContainerStatuses) != 1 || pod.Status.ContainerStatuses[0].RestartCount != 0 || pod.Status.ContainerStatuses[0].State.Terminated == nil || pod.Status.ContainerStatuses[0].State.Terminated.ExitCode != 0 {
+				t.Fatal("integrated routing acceptance runtime expiry was not a single clean exit")
+			}
+			return time.Since(started)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatal("integrated routing authenticated client grace did not expire")
+	return 0
+}
+
 // waitIntegratedOwnedCleanup observes only Helm and Kubernetes metadata for
 // the exact workload that served the Integrated session. It deliberately
 // avoids the workload's private connection material and accepts no broad
 // namespace cleanup as evidence.
-func waitIntegratedTerminalCleanupStart(t *testing.T, probe *acceleratorprovision.IntegratedRoutingKindCoordinatorProbe, started time.Time) time.Duration {
-	t.Helper()
-	deadline := started.Add(agent.EffectiveAcceleratorIdleReconnectGrace() + 6*time.Second)
-	for time.Now().Before(deadline) {
-		if probe != nil && probe.TerminalCleanupStartCount() == 1 {
-			return time.Since(started)
-		}
-		if probe != nil && probe.TerminalCleanupStartCount() > 1 {
-			t.Fatal("integrated routing observed more than one terminal cleanup start")
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	t.Fatal("integrated routing terminal cleanup grace did not expire")
-	return 0
-}
-
 func waitIntegratedOwnedCleanup(t *testing.T, helmClient *helm.Client, snapshot *k8s.AcceleratorContextSnapshot, probe *acceleratorprovision.IntegratedRoutingKindCoordinatorProbe, workload acceleratorprovision.IntegratedRoutingKindActiveWorkload, sentinel, malformed string) {
 	t.Helper()
 	if helmClient == nil || snapshot == nil || probe == nil || workload.ReleaseNamespace == "" || workload.ReleaseName == "" || workload.JobName == "" || workload.JobUID == "" || workload.PodName == "" || workload.PodUID == "" {
@@ -1264,10 +1307,10 @@ func waitIntegratedOwnedCleanup(t *testing.T, helmClient *helm.Client, snapshot 
 		if podPresent && string(pod.UID) != workload.PodUID {
 			t.Fatal("integrated routing owned cleanup Pod identity changed")
 		}
-		if probe.TerminalCleanupCount() > 1 {
-			t.Fatal("integrated routing observed more than one terminal cleanup")
+		if probe.TerminalCleanupStartCount() != 0 || probe.TerminalCleanupCount() != 0 {
+			t.Fatal("integrated routing desktop cleanup used the obsolete demand-owned cleanup path")
 		}
-		if !releasePresent && !jobPresent && !podPresent && probe.TerminalCleanupCount() == 1 {
+		if !releasePresent && !jobPresent && !podPresent {
 			return
 		}
 		time.Sleep(200 * time.Millisecond)
