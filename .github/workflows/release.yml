@@ -58,7 +58,6 @@ jobs:
     with:
       publish: true
       build_version: ${{ needs.preflight.outputs.build_version }}
-      accelerator_supply_chain: false
 
   release-acceptance:
     name: Test Accelerator
