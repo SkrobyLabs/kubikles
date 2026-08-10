@@ -842,6 +842,10 @@ export function ListHPAs(arg1, arg2) {
   return window['go']['main']['App']['ListHPAs'](arg1, arg2);
 }
 
+export function ListHelmReleaseMetadata(arg1, arg2) {
+  return window['go']['main']['App']['ListHelmReleaseMetadata'](arg1, arg2);
+}
+
 export function ListHelmReleases(arg1) {
   return window['go']['main']['App']['ListHelmReleases'](arg1);
 }
@@ -856,6 +860,10 @@ export function ListIngressClasses(arg1) {
 
 export function ListIngresses(arg1, arg2) {
   return window['go']['main']['App']['ListIngresses'](arg1, arg2);
+}
+
+export function ListIntegratedHelmReleaseMetadata(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ListIntegratedHelmReleaseMetadata'](arg1, arg2, arg3);
 }
 
 export function ListIntegratedSecretsMetadata(arg1, arg2, arg3, arg4) {

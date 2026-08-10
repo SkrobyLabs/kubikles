@@ -8,6 +8,8 @@ const bridge = vi.hoisted(() => ({
   GetSecretData: vi.fn(),
   GetSecretYaml: vi.fn(),
   ListAcceleratorSecretsMetadata: vi.fn(),
+  ListHelmReleaseMetadata: vi.fn(),
+  ListIntegratedHelmReleaseMetadata: vi.fn(),
   ListIntegratedSecretsMetadata: vi.fn(),
   ListSecretsMetadata: vi.fn(),
   ReleaseIntegratedSecretReads: vi.fn(),
@@ -66,6 +68,7 @@ describe('Secret read sources', () => {
     const normal = { type: 'Opaque', data: { key: 'value' }, metadata: { name: 'one', uid: 'one', namespace: 'a', creationTimestamp: '2024-01-01T00:00:00Z' } };
     const helm = { type: 'helm.sh/release.v1', metadata: { uid: 'helm', namespace: 'a' } };
     bridge.ListSecretsMetadata.mockResolvedValue([normal, helm]);
+    bridge.ListHelmReleaseMetadata.mockResolvedValue([{ name: 'release' }]);
     bridge.SubscribeResourceWatcher.mockResolvedValue('direct:a');
     bridge.GetSecretData.mockResolvedValue([{ key: 'token' }]);
     bridge.GetSecretYaml.mockResolvedValue('yaml');
@@ -73,6 +76,8 @@ describe('Secret read sources', () => {
     await expect(directSecretReadSource.list('request-a', 'a', true)).resolves.toEqual([normal]);
     expect(bridge.ListSecretsMetadata).toHaveBeenCalledWith('request-a', 'a');
     expect(bridge.ListSecretsMetadata.mock.calls[0]).toHaveLength(2);
+    await expect(directSecretReadSource.listHelmReleaseMetadata('helm-request', 'a')).resolves.toEqual([{ name: 'release' }]);
+    expect(bridge.ListHelmReleaseMetadata).toHaveBeenCalledWith('helm-request', 'a');
     await expect(directSecretReadSource.subscribe('a', true)).resolves.toBe('direct:a');
     expect(bridge.SubscribeResourceWatcher).toHaveBeenCalledWith('secrets', 'a');
 
@@ -123,20 +128,23 @@ describe('Secret read sources', () => {
     await expect(directSecretReadSource.list('object', 'a', true)).resolves.toEqual([]);
   });
 
-  it('integrated source calls only six token-scoped bridges and projects targeted events', async () => {
+  it('integrated source calls only closed token-scoped bridges and projects targeted events', async () => {
     const token = `s.${'A'.repeat(22)}.0000000000000001`;
     const source = createIntegratedAcceleratorSecretReadSource(token);
     bridge.ListIntegratedSecretsMetadata.mockResolvedValue([{ metadata: { uid: 'one' } }]);
+    bridge.ListIntegratedHelmReleaseMetadata.mockResolvedValue([{ name: 'release' }]);
     bridge.GetIntegratedSecretData.mockResolvedValue([{ key: 'one' }]);
     bridge.GetIntegratedSecretYaml.mockResolvedValue('yaml');
     bridge.SubscribeIntegratedSecretWatcher.mockResolvedValue('spec-a');
 
     await source.list('request', 'a', true);
+    await source.listHelmReleaseMetadata('helm-request', 'a');
     await source.getSecretData('a', 'one');
     await source.getSecretYaml('a', 'one');
     await source.cancelList('request');
     await expect(source.subscribe('a', true)).resolves.toBe('spec-a');
     expect(bridge.ListIntegratedSecretsMetadata).toHaveBeenCalledWith(token, 'request', 'a', true);
+    expect(bridge.ListIntegratedHelmReleaseMetadata).toHaveBeenCalledWith(token, 'helm-request', 'a');
     expect(bridge.GetIntegratedSecretData).toHaveBeenCalledWith(token, 'a', 'one');
     expect(bridge.GetIntegratedSecretYaml).toHaveBeenCalledWith(token, 'a', 'one');
     expect(bridge.CancelIntegratedSecretListRequest).toHaveBeenCalledWith(token, 'request');

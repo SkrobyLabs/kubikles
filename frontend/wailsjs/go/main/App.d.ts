@@ -433,6 +433,8 @@ export function ListEvents(arg1:string,arg2:string):Promise<Array<v1.Event>>;
 
 export function ListHPAs(arg1:string,arg2:string):Promise<Array<v2.HorizontalPodAutoscaler>>;
 
+export function ListHelmReleaseMetadata(arg1:string,arg2:string):Promise<Array<helm.Release>>;
+
 export function ListHelmReleases(arg1:Array<string>):Promise<Array<helm.Release>>;
 
 export function ListHelmRepositories():Promise<Array<helm.Repository>>;
@@ -440,6 +442,8 @@ export function ListHelmRepositories():Promise<Array<helm.Repository>>;
 export function ListIngressClasses(arg1:string):Promise<Array<v1.IngressClass>>;
 
 export function ListIngresses(arg1:string,arg2:string):Promise<Array<v1.Ingress>>;
+
+export function ListIntegratedHelmReleaseMetadata(arg1:string,arg2:string,arg3:string):Promise<Array<helm.Release>>;
 
 export function ListIntegratedSecretsMetadata(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<Array<k8s.SecretListItem>>;
 

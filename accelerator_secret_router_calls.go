@@ -8,6 +8,7 @@ import (
 
 	"kubikles/pkg/acceleratorprovision"
 	"kubikles/pkg/acceleratorsecret"
+	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 )
 
@@ -150,6 +151,61 @@ func (r *integratedSecretRouter) ListSecretsMetadata(ctx context.Context, token 
 		return nil, ErrIntegratedSecretReadsUnavailable
 	}
 	return rows, nil
+}
+
+func (r *integratedSecretRouter) ListHelmReleaseMetadata(ctx context.Context, token SecretReadSourceToken, requestID, namespace string) ([]helm.Release, error) {
+	op, err := r.captureOperation(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	owner := &secretListRouteOwner{opID: op.id, epoch: op.epoch, token: token, kind: secretListRouteRemote, cancel: op.cancel, client: op.client}
+	r.mu.Lock()
+	if _, duplicate := r.lists[requestID]; duplicate || r.routeEpoch != op.epoch || r.token != token {
+		r.mu.Unlock()
+		r.finishOperation(op)
+		return nil, ErrIntegratedSecretReadsUnavailable
+	}
+	r.lists[requestID] = owner
+	r.mu.Unlock()
+	defer func() {
+		r.mu.Lock()
+		if r.lists[requestID] == owner {
+			delete(r.lists, requestID)
+		}
+		r.mu.Unlock()
+		r.finishOperation(op)
+	}()
+
+	remote, supported := op.client.(acceleratorprovision.HelmReleaseRPCClient)
+	if supported {
+		releases, remoteErr := remote.ListHelmReleaseMetadata(op.ctx, requestID, namespace)
+		if remoteErr == nil {
+			if !r.operationCurrent(op) {
+				return nil, ErrIntegratedSecretReadsUnavailable
+			}
+			return releases, nil
+		}
+		if secretFailurePolicy(remoteErr, op.ctx) != secretFailureFallback || !r.operationCurrent(op) || r.deps.directHelmReleaseList == nil {
+			return nil, r.fixedOperationError(op, remoteErr)
+		}
+	} else if r.deps.directHelmReleaseList == nil || !r.operationCurrent(op) {
+		return nil, ErrIntegratedSecretReadsUnavailable
+	}
+
+	r.mu.Lock()
+	current := r.lists[requestID] == owner && r.routeEpoch == op.epoch && r.token == token && op.ctx.Err() == nil
+	if current {
+		owner.kind = secretListRouteDirect
+	}
+	r.mu.Unlock()
+	if !current {
+		return nil, ErrIntegratedSecretReadsUnavailable
+	}
+	releases, directErr := r.deps.directHelmReleaseList(op.ctx, requestID, namespace)
+	if directErr != nil || !r.operationCurrent(op) {
+		return nil, ErrIntegratedSecretReadsUnavailable
+	}
+	return releases, nil
 }
 
 func (r *integratedSecretRouter) GetSecretData(ctx context.Context, token SecretReadSourceToken, namespace, name string) ([]k8s.DataEntry, error) {

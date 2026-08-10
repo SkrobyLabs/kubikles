@@ -130,3 +130,26 @@ func TestListSecretsMetadataSkipsHelmRowsWhenServerIgnoresSelector(t *testing.T)
 		t.Fatalf("progress = %#v", progress)
 	}
 }
+
+func TestListHelmReleaseSecretsUsesTypeSelectorAndDefensiveFilter(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/secrets" || r.URL.Query().Get("fieldSelector") != "type="+HelmReleaseSecretType {
+			t.Fatalf("request = %s %v", r.URL.Path, r.URL.Query())
+		}
+		list := v1.SecretList{Items: []v1.Secret{
+			{ObjectMeta: metav1.ObjectMeta{Name: "sh.helm.release.v1.app.v1", Namespace: "team"}, Type: HelmReleaseSecretType, Data: map[string][]byte{"release": []byte("encoded")}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "ordinary", Namespace: "team"}, Type: v1.SecretTypeOpaque, Data: map[string][]byte{"password": []byte("must not escape")}},
+		}}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(list)
+	}))
+	defer server.Close()
+	cs, err := kubernetes.NewForConfig(&rest.Config{Host: server.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := (&Client{clientset: cs}).ListHelmReleaseSecretsWithContext(context.Background(), "")
+	if err != nil || len(items) != 1 || items[0].Name != "sh.helm.release.v1.app.v1" || string(items[0].Data["release"]) != "encoded" {
+		t.Fatalf("items=%#v error=%v", items, err)
+	}
+}

@@ -37,6 +37,7 @@ class FakeSource implements SecretReadSource {
     this.listCalls.push(item);
     return item.deferred.promise;
   }
+  listHelmReleaseMetadata = vi.fn(async () => []);
   cancelList(id: string) { this.cancelCalls.push(id); return Promise.resolve(); }
   subscribe(namespace: string, exclude: boolean) {
     const item = { namespace, exclude, deferred: deferred<string>() };

@@ -8,6 +8,8 @@
 // kubikles:dispatch exclude GetAcceleratorStatus (app_accelerator_lifecycle.go)
 // kubikles:dispatch exclude GetIntegratedSecretData (app_integrated_secrets.go)
 // kubikles:dispatch exclude GetIntegratedSecretYaml (app_integrated_secrets.go)
+// kubikles:dispatch exclude ListAcceleratorHelmReleaseMetadata (app_helm_release_metadata_accelerator.go)
+// kubikles:dispatch exclude ListIntegratedHelmReleaseMetadata (app_integrated_secrets.go)
 // kubikles:dispatch exclude ListIntegratedSecretsMetadata (app_integrated_secrets.go)
 // kubikles:dispatch exclude ReleaseIntegratedSecretReads (app_integrated_secrets.go)
 // kubikles:dispatch exclude RetainIntegratedSecretReads (app_integrated_secrets.go)
@@ -2709,6 +2711,20 @@ func (c *AppMethodCaller) CallMethod(callContext agent.AuthenticatedCallContext,
 			return nil, err
 		}
 		r0, err := c.app.ListHPAs(p0, p1)
+		if err != nil {
+			return nil, err
+		}
+		return r0, nil
+	case "ListHelmReleaseMetadata":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[string](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		r0, err := c.app.ListHelmReleaseMetadata(p0, p1)
 		if err != nil {
 			return nil, err
 		}

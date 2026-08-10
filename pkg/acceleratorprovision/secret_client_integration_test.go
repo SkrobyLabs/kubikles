@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
+	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 	"kubikles/pkg/server"
 )
@@ -104,6 +105,8 @@ func (c *loopbackSecretCaller) CallMethod(call agent.AuthenticatedCallContext, m
 		item.Metadata.Name, item.Metadata.Namespace = "safe", "team"
 		item.Type, item.DataKeys = "Opaque", 1
 		return []acceleratorsecret.SecretListItem{item}, nil
+	case string(acceleratorsecret.OperationListHelmReleaseMetadata):
+		return []helm.Release{{Name: "release", Namespace: "team", Revision: 2, Status: "deployed"}}, nil
 	case string(acceleratorsecret.OperationGetSecretData):
 		if rawLoopbackString(args[0]) == "error" {
 			return nil, errors.New("raw-loopback-error-marker")
@@ -215,6 +218,10 @@ func TestSecretClientLoopbackAuthenticatedCreatorSession(t *testing.T) {
 	items, err := client.ListSecretsMetadata(context.Background(), "desktop-list-id", "team", true)
 	if err != nil || len(items) != 1 || items[0].Metadata.Name != "safe" || items[0].Metadata.Labels != nil {
 		t.Fatalf("loopback list=%#v err=%v", items, err)
+	}
+	releases, err := client.ListHelmReleaseMetadata(context.Background(), "desktop-helm-list-id", "team")
+	if err != nil || len(releases) != 1 || releases[0].Name != "release" || releases[0].Revision != 2 {
+		t.Fatalf("loopback Helm list=%#v err=%v", releases, err)
 	}
 	entries, err := client.GetSecretData(context.Background(), "team", "safe")
 	if err != nil || len(entries) != 1 || entries[0].Value != "loopback-detail-marker" {

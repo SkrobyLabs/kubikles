@@ -37,6 +37,16 @@ func (c *AppMethodCaller) CallMethod(call agent.AuthenticatedCallContext, method
 			return nil, e
 		}
 		return c.app.ListSecretsMetadata(p0, p1)
+	case "ListHelmReleaseMetadata":
+		p0, e := unmarshalArg[string](args, 0)
+		if e != nil {
+			return nil, e
+		}
+		p1, e := unmarshalArg[string](args, 1)
+		if e != nil {
+			return nil, e
+		}
+		return c.app.ListAcceleratorHelmReleaseMetadata(p0, p1)
 	case "GetSecretData":
 		p0, e := unmarshalArg[string](args, 0)
 		if e != nil {

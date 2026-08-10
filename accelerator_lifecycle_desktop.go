@@ -8,6 +8,7 @@ import (
 	"kubikles/pkg/acceleratorprovision"
 	"kubikles/pkg/acceleratorrelease"
 	"kubikles/pkg/acceleratorsecret"
+	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 )
 
@@ -58,6 +59,15 @@ func initializeDesktopAcceleratorLifecycle(app *App) {
 				projected[index] = acceleratorsecret.ProjectSecretListItem(item)
 			}
 			return acceleratorsecret.KubernetesSecretListItems(projected), nil
+		},
+		directHelmReleaseList: func(ctx context.Context, _ string, namespace string) ([]helm.Release, error) {
+			secrets, listErr := app.k8sClient.ListHelmReleaseSecretsWithContext(ctx, namespace)
+			if listErr != nil {
+				return nil, listErr
+			}
+			defer clearHelmReleaseSecretPayloads(secrets)
+			projected, _ := acceleratorsecret.ProjectLatestHelmReleaseSecrets(secrets)
+			return helmReleasesFromMetadata(projected), nil
 		},
 		directData:  app.acceleratorSecretData,
 		directYAML:  app.acceleratorSecretYAML,

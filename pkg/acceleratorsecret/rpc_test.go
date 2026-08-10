@@ -23,6 +23,7 @@ func TestSecretRPCOperationsExact(t *testing.T) {
 		encode    func() ([]byte, error)
 	}{
 		{OperationListSecretsMetadata, 3, 60 * time.Second, func() ([]byte, error) { return EncodeListSecretsMetadataCall(id, "request", "namespace", true) }},
+		{OperationListHelmReleaseMetadata, 2, 60 * time.Second, func() ([]byte, error) { return EncodeListHelmReleaseMetadataCall(id, "request", "namespace") }},
 		{OperationGetSecretData, 2, 30 * time.Second, func() ([]byte, error) { return EncodeGetSecretDataCall(id, "namespace", "name") }},
 		{OperationGetSecretYAML, 2, 30 * time.Second, func() ([]byte, error) { return EncodeGetSecretYAMLCall(id, "namespace", "name") }},
 		{OperationCancelListRequest, 1, 5 * time.Second, func() ([]byte, error) { return EncodeCancelListRequestCall(id, "request") }},

@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 
+	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 )
 
@@ -39,6 +40,15 @@ func (a *App) ReleaseIntegratedSecretReads() {
 //kubikles:dispatch exclude
 func (a *App) ListIntegratedSecretsMetadata(sourceToken, requestID, namespace string, excludeHelmReleases bool) ([]k8s.SecretListItem, error) {
 	return a.integratedSecretReads().ListSecretsMetadata(a.integratedSecretContext(), SecretReadSourceToken(sourceToken), requestID, namespace, excludeHelmReleases)
+}
+
+//kubikles:dispatch exclude
+func (a *App) ListIntegratedHelmReleaseMetadata(sourceToken, requestID, namespace string) ([]helm.Release, error) {
+	router, ok := a.integratedSecretReads().(HelmReleaseReadRouter)
+	if !ok {
+		return nil, ErrIntegratedSecretReadsUnavailable
+	}
+	return router.ListHelmReleaseMetadata(a.integratedSecretContext(), SecretReadSourceToken(sourceToken), requestID, namespace)
 }
 
 //kubikles:dispatch exclude

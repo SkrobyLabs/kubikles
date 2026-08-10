@@ -34,6 +34,7 @@ class HookSource implements SecretReadSource {
     this.log.push(`list:${namespace}:${id}`);
     return [{ metadata: { uid: `${this.sourceKey}:${namespace || 'all'}`, namespace, name: 'secret' }, type: 'Opaque', dataKeys: 1 }];
   };
+  listHelmReleaseMetadata = async () => [];
   cancelList = async (id: string) => { this.cancelCount += 1; this.log.push(`cancel:${id}`); };
   subscribe = async (namespace: string, exclude: boolean) => {
     this.subscribeCount += 1;

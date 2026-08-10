@@ -17,6 +17,7 @@ import (
 
 	"kubikles/pkg/acceleratorprovision"
 	"kubikles/pkg/acceleratorsecret"
+	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 )
 
@@ -38,6 +39,7 @@ type fakeRouterClient struct {
 	data             func(context.Context, string, string) ([]k8s.DataEntry, error)
 	yaml             func(context.Context, string, string) (string, error)
 	list             func(context.Context, string, string, bool) ([]k8s.SecretListItem, error)
+	helmList         func(context.Context, string, string) ([]helm.Release, error)
 	cancel           func(context.Context, string) (bool, error)
 	subscribe        func(context.Context, string, bool) (acceleratorsecret.SecretWatchSubscription, acceleratorprovision.SecretWatchLease, error)
 	unsub            func(context.Context, acceleratorsecret.SecretWatchSpecID) error
@@ -51,6 +53,12 @@ func (c *fakeRouterClient) ListSecretsMetadata(ctx context.Context, id, namespac
 		return c.list(ctx, id, namespace, exclude)
 	}
 	return []k8s.SecretListItem{{DataKeys: 1}}, nil
+}
+func (c *fakeRouterClient) ListHelmReleaseMetadata(ctx context.Context, id, namespace string) ([]helm.Release, error) {
+	if c.helmList != nil {
+		return c.helmList(ctx, id, namespace)
+	}
+	return []helm.Release{{Name: "remote-release", Namespace: namespace, Revision: 1}}, nil
 }
 func (c *fakeRouterClient) GetSecretData(ctx context.Context, namespace, name string) ([]k8s.DataEntry, error) {
 	if c.data != nil {
@@ -359,6 +367,9 @@ func routerFixtureWith(t *testing.T, demand *fakeRouterDemand, configure func(*i
 		directList: func(context.Context, string, string, bool) ([]k8s.SecretListItem, error) {
 			return []k8s.SecretListItem{{DataKeys: 2}}, nil
 		},
+		directHelmReleaseList: func(context.Context, string, string) ([]helm.Release, error) {
+			return []helm.Release{{Name: "direct-release", Revision: 1}}, nil
+		},
 		directData:  func(string, string) ([]k8s.DataEntry, error) { return []k8s.DataEntry{{Key: "direct"}}, nil },
 		directYAML:  func(string, string) (string, error) { return "direct", nil },
 		ready:       func(signal integratedSecretSourceSignal) { ready <- signal },
@@ -374,6 +385,23 @@ func routerFixtureWith(t *testing.T, demand *fakeRouterDemand, configure func(*i
 	}
 	t.Cleanup(func() { router.Close(context.Background()) })
 	return router, ready, unavailable
+}
+
+func TestIntegratedSecretRouterListsProjectedHelmMetadataRemotely(t *testing.T) {
+	client := newFakeRouterClient()
+	client.helmList = func(_ context.Context, requestID, namespace string) ([]helm.Release, error) {
+		if requestID != "helm-list" || namespace != "team" {
+			t.Fatalf("request=%q namespace=%q", requestID, namespace)
+		}
+		return []helm.Release{{Name: "example", Namespace: namespace, Revision: 4, Status: "deployed"}}, nil
+	}
+	router, ready, _ := routerFixture(t, newFakeRouterDemand(newFakeRouterSession(1, client)))
+	router.Retain(context.Background(), "ctx")
+	token := waitRouterSignal(t, ready).SourceToken
+	releases, err := router.ListHelmReleaseMetadata(context.Background(), token, "helm-list", "team")
+	if err != nil || len(releases) != 1 || releases[0].Name != "example" || releases[0].Revision != 4 {
+		t.Fatalf("releases=%#v error=%v", releases, err)
+	}
 }
 
 func TestIntegratedSecretRouterDemandToVerifiedSource(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 
 	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/debug"
+	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 )
 
@@ -26,6 +27,13 @@ type SecretRPCClient interface {
 	Done() <-chan struct{}
 	Reason() acceleratorsecret.SecretClientReason
 	Close(context.Context)
+}
+
+// HelmReleaseRPCClient is the metadata-only Helm storage projection supported
+// by current Accelerator Secret clients. It is separate from SecretRPCClient
+// so older test and fallback clients remain closed to the extension.
+type HelmReleaseRPCClient interface {
+	ListHelmReleaseMetadata(context.Context, string, string) ([]helm.Release, error)
 }
 
 type secretRPCClient struct {

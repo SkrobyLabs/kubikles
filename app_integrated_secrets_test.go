@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"kubikles/pkg/acceleratorsecret"
+	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 )
 
@@ -30,6 +31,10 @@ func (r *recordingSecretReadRouter) record(name string, token SecretReadSourceTo
 func (r *recordingSecretReadRouter) ListSecretsMetadata(_ context.Context, token SecretReadSourceToken, _, _ string, _ bool) ([]k8s.SecretListItem, error) {
 	r.record("list", token)
 	return []k8s.SecretListItem{{DataKeys: 1}}, nil
+}
+func (r *recordingSecretReadRouter) ListHelmReleaseMetadata(_ context.Context, token SecretReadSourceToken, _, _ string) ([]helm.Release, error) {
+	r.record("helm-list", token)
+	return []helm.Release{{Name: "release"}}, nil
 }
 func (r *recordingSecretReadRouter) GetSecretData(_ context.Context, token SecretReadSourceToken, _, _ string) ([]k8s.DataEntry, error) {
 	r.record("data", token)
@@ -58,12 +63,13 @@ func TestIntegratedSecretAppBridgesAreExactAndDesktopOnly(t *testing.T) {
 	app.RetainIntegratedSecretReads()
 	app.ReleaseIntegratedSecretReads()
 	_, _ = app.ListIntegratedSecretsMetadata("opaque", "request", "ns", true)
+	_, _ = app.ListIntegratedHelmReleaseMetadata("opaque", "request", "ns")
 	_, _ = app.GetIntegratedSecretData("opaque", "ns", "name")
 	_, _ = app.GetIntegratedSecretYaml("opaque", "ns", "name")
 	_, _ = app.CancelIntegratedSecretListRequest("opaque", "request")
 	_, _ = app.SubscribeIntegratedSecretWatcher("opaque", "ns", true)
 	_ = app.UnsubscribeIntegratedSecretWatcher("opaque", "spec")
-	if router.releases != 1 || strings.Join(router.calls, ",") != "list,data,yaml,cancel,subscribe,unsubscribe" {
+	if router.releases != 1 || strings.Join(router.calls, ",") != "list,helm-list,data,yaml,cancel,subscribe,unsubscribe" {
 		t.Fatalf("release/calls=%d/%v", router.releases, router.calls)
 	}
 	for _, token := range router.tokens {

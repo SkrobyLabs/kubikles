@@ -151,6 +151,40 @@ func (c *Client) ListSecretsWithContext(ctx context.Context, namespace string, o
 	return result, nil
 }
 
+// ListHelmReleaseSecretsWithContext lists Helm's storage Secrets, including
+// their encoded release payloads, in one Kubernetes request. Callers must
+// immediately project these objects and must not return the raw Secrets across
+// process or UI boundaries.
+func (c *Client) ListHelmReleaseSecretsWithContext(ctx context.Context, namespace string) ([]v1.Secret, error) {
+	cs, err := c.getClientset()
+	if err != nil {
+		return nil, err
+	}
+	items, err := paginatedList(ctx, "helm release secrets", defaultPageSize, func(ctx context.Context, opts metav1.ListOptions) ([]v1.Secret, string, *int64, error) {
+		opts.FieldSelector = "type=" + HelmReleaseSecretType
+		list, listErr := cs.CoreV1().Secrets(namespace).List(ctx, opts)
+		if listErr != nil {
+			return nil, "", nil, listErr
+		}
+		filtered := list.Items[:0]
+		for _, item := range list.Items {
+			// Some API servers ignore Secret type field selectors. Keep this
+			// boundary closed even when the server-side optimization is absent.
+			if string(item.Type) == HelmReleaseSecretType {
+				filtered = append(filtered, item)
+			}
+		}
+		return filtered, list.Continue, list.RemainingItemCount, nil
+	}, nil)
+	if err != nil {
+		if isCancelledError(err) {
+			return nil, ErrRequestCancelled
+		}
+		return nil, err
+	}
+	return items, nil
+}
+
 // ListSecretsForContext lists secrets for a specific kubeconfig context
 func (c *Client) ListSecretsForContext(contextName, namespace string) ([]v1.Secret, error) {
 	cs, err := c.getClientForContext(contextName)

@@ -58,6 +58,7 @@ func TestV1ResourceActionsExact(t *testing.T) {
 func TestV1MethodPoliciesExact(t *testing.T) {
 	want := []expectedMethodPolicy{
 		{Method: "ListSecretsMetadata", Capability: "secrets.list", Action: "core/v1/secrets:list"},
+		{Method: "ListHelmReleaseMetadata", Capability: "secrets.list", Action: "core/v1/secrets:list"},
 		{Method: "GetSecretData", Capability: "secrets.detail", Action: "core/v1/secrets:get"},
 		{Method: "GetSecretYaml", Capability: "secrets.detail", Action: "core/v1/secrets:get"},
 		{Method: "CancelListRequest", Capability: "secrets.list", Action: ""},

@@ -42,6 +42,7 @@ var v1ResourceActions = []ResourceAction{
 
 var v1MethodPolicies = []MethodPolicy{
 	{Method: "ListSecretsMetadata", Capability: CapabilitySecretsList, Action: ResourceActionCoreV1SecretsList},
+	{Method: "ListHelmReleaseMetadata", Capability: CapabilitySecretsList, Action: ResourceActionCoreV1SecretsList},
 	{Method: "GetSecretData", Capability: CapabilitySecretsDetail, Action: ResourceActionCoreV1SecretsGet},
 	{Method: "GetSecretYaml", Capability: CapabilitySecretsDetail, Action: ResourceActionCoreV1SecretsGet},
 	{Method: "CancelListRequest", Capability: CapabilitySecretsList, Action: NoKubernetesAction},

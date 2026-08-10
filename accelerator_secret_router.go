@@ -12,6 +12,7 @@ import (
 
 	"kubikles/pkg/acceleratorprovision"
 	"kubikles/pkg/acceleratorsecret"
+	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 )
 
@@ -107,16 +108,17 @@ func (l *productionSecretSessionLease) NewClient() (acceleratorprovision.SecretR
 func (l *productionSecretSessionLease) Close() { l.lease.Close() }
 
 type integratedSecretRouterDependencies struct {
-	acquire     func(context.Context, string) (secretRouterDemandLease, bool)
-	directList  func(context.Context, string, string, bool) ([]k8s.SecretListItem, error)
-	directData  func(string, string) ([]k8s.DataEntry, error)
-	directYAML  func(string, string) (string, error)
-	ready       func(integratedSecretSourceSignal)
-	unavailable func(integratedSecretSourceSignal)
-	resource    func(integratedSecretResourceSignal)
-	status      func(integratedSecretStatusSignal)
-	watchError  func(integratedSecretErrorSignal)
-	entropy     io.Reader
+	acquire               func(context.Context, string) (secretRouterDemandLease, bool)
+	directList            func(context.Context, string, string, bool) ([]k8s.SecretListItem, error)
+	directHelmReleaseList func(context.Context, string, string) ([]helm.Release, error)
+	directData            func(string, string) ([]k8s.DataEntry, error)
+	directYAML            func(string, string) (string, error)
+	ready                 func(integratedSecretSourceSignal)
+	unavailable           func(integratedSecretSourceSignal)
+	resource              func(integratedSecretResourceSignal)
+	status                func(integratedSecretStatusSignal)
+	watchError            func(integratedSecretErrorSignal)
+	entropy               io.Reader
 }
 
 type integratedSecretRouter struct {

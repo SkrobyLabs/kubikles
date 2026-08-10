@@ -5,13 +5,14 @@ import (
 	"fmt"
 
 	"kubikles/pkg/acceleratorsecret"
+	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 )
 
 type secretCallEncoder func(string) ([]byte, error)
 
 func (c *secretRPCClient) ListSecretsMetadata(ctx context.Context, requestID, namespace string, excludeHelmReleases bool) ([]k8s.SecretListItem, error) {
-	pending, err := c.startListCall(requestID, func(id, remoteID string) ([]byte, error) {
+	pending, err := c.startListCall(acceleratorsecret.OperationListSecretsMetadata, requestID, func(id, remoteID string) ([]byte, error) {
 		return acceleratorsecret.EncodeListSecretsMetadataCall(id, remoteID, namespace, excludeHelmReleases)
 	})
 	if err != nil {
@@ -29,6 +30,35 @@ func (c *secretRPCClient) ListSecretsMetadata(ctx context.Context, requestID, na
 		return nil, newSecretClientError(acceleratorsecret.ReasonProtocol)
 	}
 	return acceleratorsecret.KubernetesSecretListItems(items), nil
+}
+
+func (c *secretRPCClient) ListHelmReleaseMetadata(ctx context.Context, requestID, namespace string) ([]helm.Release, error) {
+	pending, err := c.startListCall(acceleratorsecret.OperationListHelmReleaseMetadata, requestID, func(id, remoteID string) ([]byte, error) {
+		return acceleratorsecret.EncodeListHelmReleaseMetadataCall(id, remoteID, namespace)
+	})
+	if err != nil {
+		return nil, err
+	}
+	frame, err := c.waitCall(ctx, pending)
+	if err != nil {
+		return nil, err
+	}
+	defer clear(frame.Result)
+	var projected []acceleratorsecret.HelmReleaseMetadata
+	if decodeErr := acceleratorsecret.DecodeResultValue(frame.Result, &projected); decodeErr != nil {
+		c.logProtocolFailure("decode_list_helm_release_metadata_result", map[string]interface{}{"error": decodeErr.Error(), "payloadBytes": len(frame.Result)})
+		c.terminate(acceleratorsecret.ReasonProtocol)
+		return nil, newSecretClientError(acceleratorsecret.ReasonProtocol)
+	}
+	releases := make([]helm.Release, len(projected))
+	for index, release := range projected {
+		releases[index] = helm.Release{
+			Name: release.Name, Namespace: release.Namespace, Revision: release.Revision,
+			Status: release.Status, Chart: release.Chart, ChartVersion: release.ChartVersion,
+			AppVersion: release.AppVersion, Updated: release.Updated, Description: release.Description,
+		}
+	}
+	return releases, nil
 }
 
 func (c *secretRPCClient) GetSecretData(ctx context.Context, namespace, name string) ([]k8s.DataEntry, error) {
@@ -134,7 +164,7 @@ func (c *secretRPCClient) startCall(operation acceleratorsecret.Operation, encod
 	return pending, nil
 }
 
-func (c *secretRPCClient) startListCall(callerID string, encode func(string, string) ([]byte, error)) (*secretPendingCall, error) {
+func (c *secretRPCClient) startListCall(operation acceleratorsecret.Operation, callerID string, encode func(string, string) ([]byte, error)) (*secretPendingCall, error) {
 	c.mu.Lock()
 	if !c.accepting {
 		reason := c.reason
@@ -157,7 +187,7 @@ func (c *secretRPCClient) startListCall(callerID string, encode func(string, str
 		c.mu.Unlock()
 		return nil, newSecretClientError(acceleratorsecret.ReasonProtocol)
 	}
-	pending := &secretPendingCall{id: id, operation: acceleratorsecret.OperationListSecretsMetadata, result: make(chan secretCallResult, 1), callerListID: callerID, remoteListID: remoteID}
+	pending := &secretPendingCall{id: id, operation: operation, result: make(chan secretCallResult, 1), callerListID: callerID, remoteListID: remoteID}
 	c.calls[id] = pending
 	c.lists[callerID] = pending
 	payload, err := encode(id, remoteID)

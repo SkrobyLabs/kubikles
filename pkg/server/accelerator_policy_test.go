@@ -16,6 +16,7 @@ func TestAcceleratorMethodAuthorizerExactPositiveMatrix(t *testing.T) {
 		capability agent.Capability
 	}{
 		{name: "ListSecretsMetadata", capability: agent.CapabilitySecretsList},
+		{name: "ListHelmReleaseMetadata", capability: agent.CapabilitySecretsList},
 		{name: "GetSecretData", capability: agent.CapabilitySecretsDetail},
 		{name: "GetSecretYaml", capability: agent.CapabilitySecretsDetail},
 		{name: "CancelListRequest", capability: agent.CapabilitySecretsList},
@@ -123,6 +124,7 @@ func TestAcceleratorPolicyHTTPMatrixRejectsBeforeCaller(t *testing.T) {
 		capability agent.Capability
 	}{
 		{"ListSecretsMetadata", agent.CapabilitySecretsList},
+		{"ListHelmReleaseMetadata", agent.CapabilitySecretsList},
 		{"CancelListRequest", agent.CapabilitySecretsList},
 		{"GetSecretData", agent.CapabilitySecretsDetail},
 		{"GetSecretYaml", agent.CapabilitySecretsDetail},

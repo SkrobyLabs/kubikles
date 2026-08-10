@@ -821,8 +821,10 @@ export interface K8sHelmRelease {
   revision: number;
   status: string;
   chart: string;
+  chartVersion?: string;
   appVersion: string;
   updated: string;
+  description?: string;
 }
 
 // ============================================================================

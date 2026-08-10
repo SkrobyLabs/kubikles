@@ -274,6 +274,7 @@ export function IsHelmAvailable(...args) { return AppProxy.IsHelmAvailable(...ar
 export function IsRequestCancellationEnabled(...args) { return AppProxy.IsRequestCancellationEnabled(...args); }
 export function ListCRDs(...args) { return AppProxy.ListCRDs(...args); }
 export function ListIntegratedSecretsMetadata(...args) { return AppProxy.ListIntegratedSecretsMetadata(...args); }
+export function ListIntegratedHelmReleaseMetadata(...args) { return AppProxy.ListIntegratedHelmReleaseMetadata(...args); }
 export function ListCSIDrivers(...args) { return AppProxy.ListCSIDrivers(...args); }
 export function ListCSINodes(...args) { return AppProxy.ListCSINodes(...args); }
 export function ListChartSources(...args) { return AppProxy.ListChartSources(...args); }
@@ -320,6 +321,7 @@ export function ListRoleBindings(...args) { return AppProxy.ListRoleBindings(...
 export function ListRoles(...args) { return AppProxy.ListRoles(...args); }
 export function ListSecrets(...args) { return AppProxy.ListSecrets(...args); }
 export function ListSecretsMetadata(...args) { return AppProxy.ListSecretsMetadata(...args); }
+export function ListHelmReleaseMetadata(...args) { return AppProxy.ListHelmReleaseMetadata(...args); }
 // Accelerator requests use the existing server method with its restricted third option.
 export function ListAcceleratorSecretsMetadata(...args) { return AppProxy.ListSecretsMetadata(...args); }
 export function ListServiceAccounts(...args) { return AppProxy.ListServiceAccounts(...args); }

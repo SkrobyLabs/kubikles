@@ -29,6 +29,7 @@ type Operation string
 
 const (
 	OperationListSecretsMetadata      Operation = "ListSecretsMetadata"
+	OperationListHelmReleaseMetadata  Operation = "ListHelmReleaseMetadata"
 	OperationGetSecretData            Operation = "GetSecretData"
 	OperationGetSecretYAML            Operation = "GetSecretYaml"
 	OperationCancelListRequest        Operation = "CancelListRequest"
@@ -38,6 +39,7 @@ const (
 
 var operations = []Operation{
 	OperationListSecretsMetadata,
+	OperationListHelmReleaseMetadata,
 	OperationGetSecretData,
 	OperationGetSecretYAML,
 	OperationCancelListRequest,
@@ -51,6 +53,8 @@ func OperationArity(operation Operation) (int, bool) {
 	switch operation {
 	case OperationListSecretsMetadata:
 		return 3, true
+	case OperationListHelmReleaseMetadata:
+		return 2, true
 	case OperationGetSecretData, OperationGetSecretYAML, OperationSubscribeSecretWatcher:
 		return 2, true
 	case OperationCancelListRequest, OperationUnsubscribeSecretWatcher:
@@ -62,7 +66,7 @@ func OperationArity(operation Operation) (int, bool) {
 
 func OperationTimeout(operation Operation) time.Duration {
 	switch operation {
-	case OperationListSecretsMetadata:
+	case OperationListSecretsMetadata, OperationListHelmReleaseMetadata:
 		return 60 * time.Second
 	case OperationGetSecretData, OperationGetSecretYAML:
 		return 30 * time.Second
@@ -261,6 +265,9 @@ func encodeCall(id string, operation Operation, values ...interface{}) ([]byte, 
 
 func EncodeListSecretsMetadataCall(id, requestID, namespace string, excludeHelmReleases bool) ([]byte, error) {
 	return encodeCall(id, OperationListSecretsMetadata, requestID, namespace, excludeHelmReleases)
+}
+func EncodeListHelmReleaseMetadataCall(id, requestID, namespace string) ([]byte, error) {
+	return encodeCall(id, OperationListHelmReleaseMetadata, requestID, namespace)
 }
 func EncodeGetSecretDataCall(id, namespace, name string) ([]byte, error) {
 	return encodeCall(id, OperationGetSecretData, namespace, name)

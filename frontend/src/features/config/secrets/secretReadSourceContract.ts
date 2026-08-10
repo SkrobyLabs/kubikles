@@ -27,6 +27,7 @@ export type WatcherError = {
 export interface SecretReadSource {
   sourceKey: string;
   list(requestId: string, namespace: string, excludeHelmReleases: boolean): Promise<any[]>;
+  listHelmReleaseMetadata(requestId: string, namespace: string): Promise<any[]>;
   cancelList(requestId: string): Promise<any>;
   subscribe(namespace: string, excludeHelmReleases: boolean): Promise<string>;
   unsubscribe(watcherSpecId: string): Promise<any>;

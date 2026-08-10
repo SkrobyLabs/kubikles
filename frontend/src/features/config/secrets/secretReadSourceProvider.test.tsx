@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const bridge = vi.hoisted(() => ({
   CancelIntegratedSecretListRequest: vi.fn(), CancelListRequest: vi.fn(),
   GetIntegratedSecretData: vi.fn(), GetIntegratedSecretYaml: vi.fn(), GetSecretData: vi.fn(), GetSecretYaml: vi.fn(),
-  ListAcceleratorSecretsMetadata: vi.fn(), ListIntegratedSecretsMetadata: vi.fn(), ListSecretsMetadata: vi.fn(),
+  ListAcceleratorSecretsMetadata: vi.fn(), ListHelmReleaseMetadata: vi.fn(), ListIntegratedHelmReleaseMetadata: vi.fn(), ListIntegratedSecretsMetadata: vi.fn(), ListSecretsMetadata: vi.fn(),
   ReleaseIntegratedSecretReads: vi.fn(), RetainIntegratedSecretReads: vi.fn(),
   SubscribeIntegratedSecretWatcher: vi.fn(), SubscribeResourceWatcher: vi.fn(), SubscribeSecretWatcher: vi.fn(),
   UnsubscribeIntegratedSecretWatcher: vi.fn(), UnsubscribeSecretWatcher: vi.fn(), UnsubscribeWatcher: vi.fn(),

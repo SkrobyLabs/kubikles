@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-    ListHelmReleases,
     GetHelmRelease,
     GetHelmReleaseValues,
     GetHelmReleaseAllValues,
@@ -9,8 +8,20 @@ import {
     RollbackHelmRelease
 } from 'wailsjs/go/main/App';
 import { useK8s } from '../context';
-import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 import { K8sHelmRelease } from '../types/k8s';
+import { useSecretReadSource } from '~/features/config/secrets/secretReadSource';
+import { normalizeSecretNamespaces } from '~/features/config/secrets/secretListOperations';
+import { optimizeNamespaceQuery } from './useNamespaceOptimization';
+import Logger from '~/utils/Logger';
+
+const HELM_RELEASE_SECRET_TYPE = 'helm.sh/release.v1';
+
+const releaseNamespaces = (selectedNamespaces: string[], allNamespaces: string[]) => {
+    const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
+    if (optimized === null) return [];
+    if (optimized === '') return [''];
+    return normalizeSecretNamespaces(optimized, allNamespaces);
+};
 
 interface HelmReleaseHistory {
     revision: number;
@@ -34,11 +45,7 @@ interface UseHelmReleasesResult {
     rollback: (namespace: string, name: string, revision: number) => Promise<void>;
 }
 
-/**
- * Hook for managing Helm releases.
- * Unlike K8s resources, Helm releases don't support real-time watching,
- * so we fetch on demand and when namespaces/context change.
- */
+/** Helm releases are projected in the active backend and invalidated by the shared Secret watcher. */
 export const useHelmReleases = (
     currentContext: string | null,
     selectedNamespaces: string[],
@@ -47,43 +54,119 @@ export const useHelmReleases = (
     const [releases, setReleases] = useState<K8sHelmRelease[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
-    const { namespaces: allNamespaces, lastRefresh } = useK8s();
+    const { namespaces: allNamespaces, lastRefresh, reconcileToken } = useK8s();
+    const secretSource = useSecretReadSource();
+    const namespaces = useMemo(
+        () => releaseNamespaces(selectedNamespaces, allNamespaces),
+        [JSON.stringify(selectedNamespaces), JSON.stringify(allNamespaces)],
+    );
+    const namespaceKey = JSON.stringify(namespaces);
+    const expectedWatchReady = `${secretSource.sourceKey}:${currentContext ?? ''}:${namespaceKey}`;
+    const [helmEventRevision, setHelmEventRevision] = useState(0);
+    const [manualRevision, setManualRevision] = useState(0);
+    const [watchReady, setWatchReady] = useState('');
+    const listRun = useRef(0);
+    const requestSequence = useRef(0);
 
-    // Fetch releases
-    const fetchReleases = useCallback(async (): Promise<void> => {
-        if (!currentContext || !isVisible) return;
+    useEffect(() => {
+        let active = true;
+        let watchersSettled = false;
+        let debounce: ReturnType<typeof setTimeout> | null = null;
+        const subscriptions: string[] = [];
+        const scheduleReconcile = () => {
+            if (debounce) clearTimeout(debounce);
+            debounce = setTimeout(() => {
+                debounce = null;
+                if (active) setHelmEventRevision(value => value + 1);
+            }, 150);
+        };
+
+        setWatchReady('');
+        if (!currentContext || !isVisible || namespaces.length === 0) {
+            setReleases([]);
+            setLoading(false);
+            setError(null);
+            return () => { active = false; };
+        }
+        setLoading(true);
+
+        const disposeResource = secretSource.onResource(event => {
+            if (watchersSettled && event?.resource?.type === HELM_RELEASE_SECRET_TYPE) scheduleReconcile();
+        });
+        const disposeStatus = secretSource.onStatus(event => {
+            if (watchersSettled && event?.status === 'connected') scheduleReconcile();
+        });
+        void Promise.allSettled(namespaces.map(async namespace => {
+            const watcherSpecId = await secretSource.subscribe(namespace, false);
+            if (!watcherSpecId) return;
+            if (active) subscriptions.push(watcherSpecId);
+            else await secretSource.unsubscribe(watcherSpecId);
+        })).then(results => {
+            if (!active) return;
+            watchersSettled = true;
+            const failures = results.filter(result => result.status === 'rejected').length;
+            if (failures > 0) Logger.warn('Some Helm release watchers could not be started', { failures, namespaces: namespaces.length }, 'helm');
+            setWatchReady(expectedWatchReady);
+        });
+
+        return () => {
+            active = false;
+            if (debounce) clearTimeout(debounce);
+            disposeResource();
+            disposeStatus();
+            for (const watcherSpecId of subscriptions) void secretSource.unsubscribe(watcherSpecId);
+        };
+    }, [secretSource, currentContext, namespaceKey, isVisible, expectedWatchReady]);
+
+    useEffect(() => {
+        const run = ++listRun.current;
+        let active = true;
+        const current = () => active && listRun.current === run;
+
+        if (!currentContext || !isVisible) {
+            setReleases([]);
+            setLoading(false);
+            setError(null);
+            return () => { active = false; };
+        }
+        if (watchReady !== expectedWatchReady || namespaces.length === 0) {
+            return () => { active = false; };
+        }
 
         setLoading(true);
         setError(null);
-        try {
-            const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
+        const requestIds = namespaces.map(() => `helm-releases-${++requestSequence.current}`);
+        void Promise.allSettled(namespaces.map((namespace, index) =>
+            secretSource.listHelmReleaseMetadata(requestIds[index], namespace)))
+            .then(results => {
+                if (!current()) return;
+                const failures = results.filter(result => result.status === 'rejected');
+                const listed = results.flatMap(result => result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : []);
+                listed.sort((left, right) => {
+                    const updated = new Date(right.updated).getTime() - new Date(left.updated).getTime();
+                    return updated || left.namespace.localeCompare(right.namespace) || left.name.localeCompare(right.name);
+                });
+                setReleases(listed);
+                if (failures.length > 0) {
+                    Logger.warn('Some Helm release metadata lists failed', { failures: failures.length, namespaces: namespaces.length }, 'helm');
+                    if (listed.length === 0) {
+                        const reason = failures[0].status === 'rejected' ? failures[0].reason : 'Helm release metadata is unavailable';
+                        setError(reason instanceof Error ? reason : new Error(String(reason)));
+                    }
+                }
+            })
+            .finally(() => {
+                if (current()) setLoading(false);
+            });
+        return () => {
+            active = false;
+            for (const requestId of requestIds) void secretSource.cancelList(requestId);
+        };
+    }, [secretSource, currentContext, namespaceKey, isVisible, watchReady, expectedWatchReady, helmEventRevision, manualRevision, lastRefresh, reconcileToken]);
 
-            let namespacesToQuery: string[] = [];
-            if (optimized === null) {
-                setReleases([]);
-                return;
-            } else if (optimized === '') {
-                // All namespaces - pass empty array to backend
-                namespacesToQuery = [];
-            } else {
-                namespacesToQuery = optimized;
-            }
-
-            const list = await ListHelmReleases(namespacesToQuery);
-            setReleases(list || []);
-        } catch (err: any) {
-            console.error("Failed to fetch Helm releases", err);
-            setError(err as Error);
-            setReleases([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [currentContext, selectedNamespaces, allNamespaces, isVisible]);
-
-    // Fetch on mount and when dependencies change
-    useEffect(() => {
-        fetchReleases();
-    }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh, fetchReleases]);
+    const fetchReleases = useCallback(async (): Promise<void> => {
+        setManualRevision(value => value + 1);
+    }, []);
 
     // Get release details
     const getRelease = useCallback(async (namespace: string, name: string): Promise<K8sHelmRelease> => {

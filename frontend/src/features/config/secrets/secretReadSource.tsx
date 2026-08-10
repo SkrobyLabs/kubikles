@@ -7,6 +7,8 @@ import {
   GetSecretData,
   GetSecretYaml,
   ListIntegratedSecretsMetadata,
+  ListIntegratedHelmReleaseMetadata,
+  ListHelmReleaseMetadata,
   ListSecretsMetadata,
   ReleaseIntegratedSecretReads,
   RetainIntegratedSecretReads,
@@ -188,6 +190,7 @@ function createDirectSecretReadSource(): SecretReadSource {
       const normalizedRows = Array.isArray(rows) ? rows : [];
       return excludeHelmReleases ? normalizedRows.filter((row: any) => !isHelmSecret(row)) : normalizedRows;
     },
+    listHelmReleaseMetadata: (requestId, namespace) => ListHelmReleaseMetadata(requestId, namespace),
     cancelList: requestId => CancelListRequest(requestId),
     subscribe: async (namespace, excludeHelmReleases) => {
       const watcherSpecId = await SubscribeResourceWatcher('secrets', namespace);
@@ -267,6 +270,8 @@ export function createIntegratedAcceleratorSecretReadSource(sourceToken: string)
     sourceKey: sourceToken,
     list: (requestId, namespace, excludeHelmReleases) =>
       ListIntegratedSecretsMetadata(sourceToken, requestId, namespace, excludeHelmReleases),
+    listHelmReleaseMetadata: (requestId, namespace) =>
+      ListIntegratedHelmReleaseMetadata(sourceToken, requestId, namespace),
     cancelList: requestId => CancelIntegratedSecretListRequest(sourceToken, requestId),
     subscribe: async (namespace, excludeHelmReleases) => {
       const candidate = { candidates: [] as SecretEvent[], consumers: new Set(resourceCallbacks) };
