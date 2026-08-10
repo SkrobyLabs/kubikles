@@ -632,9 +632,13 @@ type acceleratorSweepTestFixture struct {
 }
 
 func newAcceleratorSweepTestFixture(t *testing.T) *acceleratorSweepTestFixture {
+	return newAcceleratorSweepTestFixtureForRequest(t, acceleratorTestRequest())
+}
+
+func newAcceleratorSweepTestFixtureForRequest(t *testing.T, request AcceleratorReleaseRequest) *acceleratorSweepTestFixture {
 	t.Helper()
 	loaded, _ := acceleratorTestChart(t)
-	prepared, failure := prepareAcceleratorRelease(loaded, acceleratorTestRequest())
+	prepared, failure := prepareAcceleratorRelease(loaded, request)
 	if failure != AcceleratorOK {
 		t.Fatal(failure)
 	}
@@ -660,7 +664,7 @@ func newAcceleratorSweepTestFixture(t *testing.T) *acceleratorSweepTestFixture {
 		ServiceAccountName: names["ServiceAccount"], AutomountServiceAccountToken: &automount, RestartPolicy: corev1.RestartPolicyNever, TerminationGracePeriodSeconds: &grace,
 		NodeSelector:    map[string]string{"kubernetes.io/arch": "amd64"},
 		SecurityContext: &corev1.PodSecurityContext{RunAsNonRoot: &runNonRoot, RunAsUser: &user, RunAsGroup: &user, SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}},
-		Containers: []corev1.Container{{Name: "accelerator", Image: prepared.request.ImageRepository + "@" + prepared.request.ImageDigest, ImagePullPolicy: corev1.PullIfNotPresent,
+		Containers: []corev1.Container{{Name: "accelerator", Image: effectiveAcceleratorImageReference(prepared.request), ImagePullPolicy: corev1.PullIfNotPresent,
 			Env:             []corev1.EnvVar{{Name: "KUBIKLES_ACCELERATOR_CREATOR_VERIFIER", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: names["Secret"]}, Key: "creatorVerifier"}}}},
 			SecurityContext: &corev1.SecurityContext{AllowPrivilegeEscalation: &allowEscalation, ReadOnlyRootFilesystem: &readOnly, Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}},
 			Resources:       corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: apiresource.MustParse("100m"), corev1.ResourceMemory: apiresource.MustParse("128Mi")}, Limits: corev1.ResourceList{corev1.ResourceCPU: apiresource.MustParse("1"), corev1.ResourceMemory: apiresource.MustParse("512Mi")}},
@@ -688,6 +692,34 @@ func newAcceleratorSweepTestFixture(t *testing.T) *acceleratorSweepTestFixture {
 	applyKubernetes132LivePodTuple(&pod.Spec)
 	storageSecret := &corev1.Secret{ObjectMeta: metadata(acceleratorStorageName(prepared.request.ReleaseName), prepared.request.ReleaseNamespace)}
 	return &acceleratorSweepTestFixture{prepared: prepared, config: config, job: job, secret: secret, account: account, role: role, binding: binding, pod: pod, storage: storageSecret}
+}
+
+func TestCleanupAcceptsCustomBuildVersionForExplicitOverrides(t *testing.T) {
+	request := acceleratorTestRequest()
+	request.BuildVersion = "dev"
+	request.ImageReference = "registry.example.test/team/accelerator:dev"
+	request.ImageRepository = ""
+	request.ImageDigest = ""
+	request.AllowVersionMismatch = true
+	fixture := newAcceleratorSweepTestFixtureForRequest(t, request)
+
+	if candidate, status := fixture.inspect(fixture.client()); candidate == nil || status != AcceleratorSweepEligible {
+		t.Fatalf("custom override sweep status=%s candidate=%#v", status, candidate)
+	}
+	fixture.storage.ResourceVersion = "7"
+	pod := AcceleratorDeletionIdentity{Resource: AcceleratorResourceIdentity{APIVersion: "v1", Kind: "Pod", Namespace: fixture.pod.Namespace, Name: fixture.pod.Name}, UID: fixture.pod.UID}
+	if status := uninstallOwnedAcceleratorReleaseWith(context.Background(), fixture.config, fixture.client(), fixture.prepared, fixture.ownedReceipt(), pod); status != AcceleratorOwnedCleanupSucceeded {
+		t.Fatalf("custom override owned cleanup status=%s", status)
+	}
+}
+
+func TestCleanupRejectsCustomBuildVersionWithoutExplicitOverride(t *testing.T) {
+	request := acceleratorTestRequest()
+	values := acceleratorValues(request)
+	values["image"].(map[string]interface{})["version"] = "dev"
+	if _, _, ok := decodeSweepValues(values, request.ReleaseNamespace, request.ReleaseName); ok {
+		t.Fatal("custom build version accepted without explicit override")
+	}
 }
 
 func (f *acceleratorSweepTestFixture) client(objects ...runtime.Object) *k8sfake.Clientset {

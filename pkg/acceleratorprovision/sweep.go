@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"k8s.io/client-go/rest"
+	"kubikles/pkg/debug"
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 )
@@ -74,10 +75,25 @@ type acceleratorInertSweeper interface {
 	CleanupAcceleratorSweepCandidate(context.Context, *rest.Config, *helm.AcceleratorSweepCandidate) helm.AcceleratorSweepProofStatus
 }
 
-func (s *DisposalService) SweepInert(ctx context.Context, snapshot ContextSnapshot) SweepResult {
+func (s *DisposalService) SweepInert(ctx context.Context, snapshot ContextSnapshot) (result SweepResult) {
 	if s == nil || s.sweeper == nil || s.acceptSweepSnapshot == nil || ctx == nil || snapshot == nil || !s.acceptSweepSnapshot(snapshot) || snapshot.Identity() == "" || snapshot.Namespace() == "" || snapshot.RESTConfig() == nil || snapshot.Clientset() == nil {
 		return SweepResult{Status: SweepInvalidSnapshot}
 	}
+	logScope := acceleratorSweepLogScope(snapshot)
+	debug.LogHelm("Accelerator stale release sweep started", logScope)
+	defer func() {
+		details := acceleratorSweepLogScope(snapshot)
+		details["status"] = result.Status
+		details["candidateCount"] = len(result.Candidates)
+		cleaned := 0
+		for _, candidate := range result.Candidates {
+			if candidate.Status == SweepCleaned {
+				cleaned++
+			}
+		}
+		details["cleanedCount"] = cleaned
+		debug.LogHelm("Accelerator stale release sweep finished", details)
+	}()
 	op, cancel := s.withPhaseTimeout(ctx, SweepTimeout)
 	defer cancel()
 	names, ok := s.sweeper.ListAcceleratorSweepReleaseNames(op, snapshot.RESTConfig(), snapshot.Namespace())
@@ -100,7 +116,7 @@ func (s *DisposalService) SweepInert(ctx context.Context, snapshot ContextSnapsh
 			}
 		}
 	}
-	result := SweepResult{Status: SweepCompleted, Candidates: make([]SweepCandidateResult, 0, len(candidates))}
+	result = SweepResult{Status: SweepCompleted, Candidates: make([]SweepCandidateResult, 0, len(candidates))}
 	for _, name := range candidates {
 		if op.Err() != nil {
 			result.Status = SweepTimedOut
@@ -131,8 +147,31 @@ func (s *DisposalService) SweepInert(ctx context.Context, snapshot ContextSnapsh
 		}
 		releaseGate()
 		result.Candidates = append(result.Candidates, SweepCandidateResult{ReleaseName: name, Status: status})
+		details := acceleratorSweepLogScope(snapshot)
+		details["releaseName"] = name
+		details["status"] = status
+		switch status {
+		case SweepCleaned:
+			debug.LogHelm("Kubikles removed stale Accelerator release", details)
+		case SweepAlreadyGone:
+			debug.LogHelm("Accelerator stale release was already absent", details)
+		case SweepCandidateCleanupFailed:
+			debug.LogHelm("Kubikles failed to remove stale Accelerator release", details)
+		default:
+			debug.LogHelm("Accelerator stale release sweep retained candidate", details)
+		}
 	}
 	return result
+}
+
+func acceleratorSweepLogScope(snapshot ContextSnapshot) map[string]interface{} {
+	details := map[string]interface{}{"namespace": snapshot.Namespace()}
+	if named, ok := snapshot.(interface{ ContextName() string }); ok {
+		if contextName := named.ContextName(); contextName != "" {
+			details["context"] = contextName
+		}
+	}
+	return details
 }
 
 func mapSweepProof(status helm.AcceleratorSweepProofStatus) SweepCandidateStatus {

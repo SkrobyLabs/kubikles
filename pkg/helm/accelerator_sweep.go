@@ -280,7 +280,7 @@ func proveClosedAcceleratorRelease(stored *release.Release, namespace, name stri
 	if sessionMatch[1] != request.WorkloadSession {
 		return zero, "session"
 	}
-	if !acceleratorVersion.MatchString(request.BuildVersion) || (!request.AllowVersionMismatch && (stored.Chart.Metadata.Version != strings.TrimPrefix(request.BuildVersion, "v") || stored.Chart.Metadata.AppVersion != request.BuildVersion)) {
+	if !validAcceleratorStoredBuildVersion(request.BuildVersion, request.AllowVersionMismatch) || (!request.AllowVersionMismatch && (stored.Chart.Metadata.Version != strings.TrimPrefix(request.BuildVersion, "v") || stored.Chart.Metadata.AppVersion != request.BuildVersion)) {
 		return zero, "version"
 	}
 	if len(stored.Hooks) != 0 {
@@ -321,10 +321,17 @@ func decodeSweepValues(values map[string]interface{}, namespace, name string) (A
 	reference, referenceOK := image["reference"].(string)
 	version, versionOK := image["version"].(string)
 	architecture, architectureOK := image["architecture"].(string)
-	if !sok || !mismatchOK || !vok || !referenceOK || !versionOK || !architectureOK || architecture != acceleratorRuntimeArchitecture() || !acceleratorSweepNameRE.MatchString("kubikles-accelerator-"+session) || !validAcceleratorImageReference(reference) || !acceleratorVersion.MatchString(version) || !acceleratorVerifier.MatchString(verifier) {
+	if !sok || !mismatchOK || !vok || !referenceOK || !versionOK || !architectureOK || architecture != acceleratorRuntimeArchitecture() || !acceleratorSweepNameRE.MatchString("kubikles-accelerator-"+session) || !validAcceleratorImageReference(reference) || !validAcceleratorStoredBuildVersion(version, allowVersionMismatch) || !acceleratorVerifier.MatchString(verifier) {
 		return AcceleratorReleaseRequest{}, nil, false
 	}
 	return AcceleratorReleaseRequest{BuildVersion: version, ImageReference: reference, AllowVersionMismatch: allowVersionMismatch, WorkloadSession: session, ReleaseName: name, ReleaseNamespace: namespace}, []byte(verifier), true
+}
+
+// Explicit artifact overrides accept custom build identifiers during install.
+// Cleanup must apply the same rule or it can no longer prove ownership of the
+// release it just created. Built-in artifacts retain the strict semver check.
+func validAcceleratorStoredBuildVersion(version string, allowVersionMismatch bool) bool {
+	return version != "" && len(version) <= 128 && (allowVersionMismatch || acceleratorVersion.MatchString(version))
 }
 
 func acceleratorSweepJobTerminal(job *batchv1.Job) bool {

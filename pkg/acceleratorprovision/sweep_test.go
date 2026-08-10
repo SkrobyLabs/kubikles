@@ -20,6 +20,8 @@ import (
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	k8stesting "k8s.io/client-go/testing"
+	"kubikles/pkg/debug"
+	"kubikles/pkg/events"
 	"kubikles/pkg/helm"
 	localk8s "kubikles/pkg/k8s"
 )
@@ -99,6 +101,50 @@ func TestSweepEligibleCandidatesAreSequentiallyProvedAndCleaned(t *testing.T) {
 	result := service.SweepInert(context.Background(), snapshot)
 	if result.Status != SweepCompleted || len(result.Candidates) != 1 || result.Candidates[0].Status != SweepCleaned || fake.inspects != 1 || fake.uninstalls != 1 {
 		t.Fatalf("result=%#v inspect=%d uninstall=%d", result, fake.inspects, fake.uninstalls)
+	}
+}
+
+func TestSweepLogsKubiklesClusterCleanup(t *testing.T) {
+	debugEvents := make(chan map[string]interface{}, 3)
+	debug.Init(events.EmitterFunc(func(name string, data ...interface{}) {
+		if name != "debug:log" || len(data) != 1 {
+			return
+		}
+		if payload, ok := data[0].(map[string]interface{}); ok {
+			debugEvents <- payload
+		}
+	}))
+	debug.SetEnabled(true)
+	t.Cleanup(func() {
+		debug.SetEnabled(false)
+		debug.Init(&events.NoopEmitter{})
+	})
+
+	const releaseName = "kubikles-accelerator-00000000000000000000000000000001"
+	snapshot := fakeSnapshot{identity: "identity", namespace: "default", client: fakeClientset(observedJob(observerAttempt()), observedPod(observerAttempt(), observedJob(observerAttempt())))}
+	fake := &fakeInertSweeper{names: []string{releaseName}, listOK: true, proof: helm.AcceleratorSweepEligible}
+	service := &DisposalService{gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
+	if result := service.SweepInert(context.Background(), snapshot); result.Status != SweepCompleted {
+		t.Fatalf("status=%s", result.Status)
+	}
+
+	messages := make(map[string]map[string]interface{}, 3)
+	for len(messages) < 3 {
+		select {
+		case payload := <-debugEvents:
+			message, _ := payload["message"].(string)
+			messages[message], _ = payload["details"].(map[string]interface{})
+		case <-time.After(time.Second):
+			t.Fatalf("debug events=%#v", messages)
+		}
+	}
+	removed := messages["Kubikles removed stale Accelerator release"]
+	if removed["namespace"] != "default" || removed["releaseName"] != releaseName || removed["status"] != SweepCleaned {
+		t.Fatalf("removed details=%#v", removed)
+	}
+	finished := messages["Accelerator stale release sweep finished"]
+	if finished["status"] != SweepCompleted || finished["candidateCount"] != 1 || finished["cleanedCount"] != 1 {
+		t.Fatalf("finished details=%#v", finished)
 	}
 }
 
