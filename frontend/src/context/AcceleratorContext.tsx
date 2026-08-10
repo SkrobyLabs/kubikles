@@ -15,21 +15,12 @@ export function AcceleratorProvider({ children }: { children: React.ReactNode })
   const { config } = useConfig(); const { currentContext, currentNamespace } = useK8s();
   const [status, setStatus] = useState<Status>(direct);
   const sequence = useRef(0);
-  const lastLoggedDiagnostic = useRef('');
   const loggedVersionWarning = useRef('');
   const refresh = useCallback(async () => {
     if (!currentContext || typeof (window as any).go === 'undefined') { setStatus(direct); return; }
     const request = ++sequence.current;
     try { const next = await GetAcceleratorStatus(currentContext); if (request === sequence.current) setStatus(next); } catch (error) { if (request === sequence.current) setStatus(direct); Logger.error('Failed to read Accelerator deployment status', error, 'helm'); }
   }, [currentContext]);
-  useEffect(() => {
-    const latest = status.diagnostics?.[status.diagnostics.length - 1];
-    if (!latest) return;
-    const key = `${currentContext}:${latest.timestamp}:${latest.phase}:${latest.reason}:${latest.attempt ?? 0}`;
-    if (lastLoggedDiagnostic.current === key) return;
-    lastLoggedDiagnostic.current = key;
-    Logger.error('Accelerator deployment failed', { context: currentContext, ...latest }, 'helm');
-  }, [currentContext, status.diagnostics]);
   useEffect(() => {
     if (!status.versionMismatchWarning || loggedVersionWarning.current === currentContext) return;
     loggedVersionWarning.current = currentContext;

@@ -11,6 +11,8 @@ import (
 	"io"
 	"strings"
 
+	"kubikles/pkg/debug"
+
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -78,51 +80,62 @@ func acceleratorIdentity(parts ...string) string {
 // SnapshotCurrentContext resolves exactly the currently selected merged
 // kubeconfig context and creates one client from that immutable configuration.
 func (c *Client) SnapshotCurrentContext(contextName string) (*AcceleratorContextSnapshot, error) {
-	if strings.TrimSpace(contextName) == "" || strings.TrimSpace(contextName) != contextName || IsDebugClusterContext(contextName) || contextName != c.GetCurrentContext() {
+	fail := func(stage, reason string, err error) (*AcceleratorContextSnapshot, error) {
+		if err != nil {
+			reason = err.Error()
+		}
+		debug.LogHelm("Accelerator context snapshot failed", map[string]interface{}{
+			"context": contextName,
+			"stage":   stage,
+			"error":   reason,
+		})
 		return nil, ErrAcceleratorContextUnavailable
 	}
+	if strings.TrimSpace(contextName) == "" || strings.TrimSpace(contextName) != contextName || IsDebugClusterContext(contextName) || contextName != c.GetCurrentContext() {
+		return fail("validate_context", "requested context is empty, malformed, reserved, or not current", nil)
+	}
 	if c.isFixedContext() {
-		return nil, ErrAcceleratorContextUnavailable
+		return fail("validate_context", "fixed-context mode does not support Accelerator snapshots", nil)
 	}
 	loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(c.getLoadingRules(), &clientcmd.ConfigOverrides{CurrentContext: contextName})
 	raw, err := loader.RawConfig()
 	if err != nil {
-		return nil, ErrAcceleratorContextUnavailable
+		return fail("load_kubeconfig", "", err)
 	}
 	ctxCfg, ok := raw.Contexts[contextName]
 	if !ok || ctxCfg == nil {
-		return nil, ErrAcceleratorContextUnavailable
+		return fail("validate_context_entry", "requested context is missing from kubeconfig", nil)
 	}
 	cluster, ok := raw.Clusters[ctxCfg.Cluster]
 	if !ok || cluster == nil || cluster.Server == "" {
-		return nil, ErrAcceleratorContextUnavailable
+		return fail("validate_cluster", "context cluster is missing or has no server", nil)
 	}
 	if _, ok := raw.AuthInfos[ctxCfg.AuthInfo]; !ok || ctxCfg.AuthInfo == "" {
-		return nil, ErrAcceleratorContextUnavailable
+		return fail("validate_auth", "context auth info is missing", nil)
 	}
 	cfg, err := loader.ClientConfig()
 	if err != nil {
-		return nil, ErrAcceleratorContextUnavailable
+		return fail("build_client_config", "", err)
 	}
 	copy := deepCopyRESTConfig(cfg)
 	// Resolve file-backed TLS material once while the snapshot is made.  Later
 	// file changes must not change the connection or identity under a gate.
 	if err := rest.LoadTLSFiles(copy); err != nil {
-		return nil, ErrAcceleratorContextUnavailable
+		return fail("load_tls_files", "", err)
 	}
 	copy.TLSClientConfig.CAFile = ""
 	copy.TLSClientConfig.CertFile = ""
 	copy.TLSClientConfig.KeyFile = ""
 	cs, err := kubernetes.NewForConfig(copy)
 	if err != nil {
-		return nil, ErrAcceleratorContextUnavailable
+		return fail("create_kubernetes_client", "", err)
 	}
 	ns := ctxCfg.Namespace
 	if ns == "" {
 		ns = "default"
 	}
 	if len(validation.IsDNS1123Label(ns)) != 0 {
-		return nil, ErrAcceleratorContextUnavailable
+		return fail("validate_namespace", "context namespace is not a valid DNS-1123 label", nil)
 	}
 	ca := sha256.Sum256(copy.TLSClientConfig.CAData)
 	return &AcceleratorContextSnapshot{contextName: contextName, namespace: ns, restConfig: copy, clientset: cs,
