@@ -687,6 +687,23 @@ func TestTransportLossRevokesBeforeResume(t *testing.T) {
 }
 
 func TestProtocolFailureSkipsIneligibleResumeAttempt(t *testing.T) {
+	debugMessages := make(chan string, 8)
+	debug.Init(events.EmitterFunc(func(name string, data ...interface{}) {
+		if name != "debug:log" || len(data) != 1 {
+			return
+		}
+		if payload, ok := data[0].(map[string]interface{}); ok {
+			if message, ok := payload["message"].(string); ok {
+				debugMessages <- message
+			}
+		}
+	}))
+	debug.SetEnabled(true)
+	t.Cleanup(func() {
+		debug.SetEnabled(false)
+		debug.Init(&events.NoopEmitter{})
+	})
+
 	coordinator, services, clock := newCoordinatorHarness(t)
 	workload := coordinatorWorkload(t)
 	session, _ := coordinatorSession(workload, clock, 1)
@@ -706,6 +723,19 @@ func TestProtocolFailureSkipsIneligibleResumeAttempt(t *testing.T) {
 	snapshot := waitCoordinatorState(t, coordinator, CoordinatorUnavailable)
 	if services.resumeCalls.Load() != 0 || len(snapshot.Diagnostics) != 1 || snapshot.Diagnostics[0].Phase != "reconnection" || snapshot.Diagnostics[0].Reason != string(ResumeProtocolFailed) {
 		t.Fatalf("resume=%d diagnostics=%#v", services.resumeCalls.Load(), snapshot.Diagnostics)
+	}
+	seen := make(map[string]bool)
+	draining := true
+	for draining {
+		select {
+		case message := <-debugMessages:
+			seen[message] = true
+		default:
+			draining = false
+		}
+	}
+	if !seen["Accelerator reconnection starting"] || !seen["Accelerator reconnection failed"] {
+		t.Fatalf("reconnection debug messages=%#v", seen)
 	}
 	demand.Close()
 	stopCoordinator(t, coordinator)

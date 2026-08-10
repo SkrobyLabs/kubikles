@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
@@ -31,6 +32,7 @@ type acceleratorRPCConnection struct {
 	terminal   <-chan struct{}
 	sequence   acceleratorsecret.CallIDSequence
 	inflight   chan struct{}
+	logf       func(string, ...interface{})
 
 	mu        sync.Mutex
 	accepting bool
@@ -39,6 +41,10 @@ type acceleratorRPCConnection struct {
 }
 
 func (d *AcceleratorRPCDispatcher) attach(snapshot AcceleratorSessionSnapshot, sink func([]byte) bool, terminal <-chan struct{}) *acceleratorRPCConnection {
+	return d.attachWithLogger(snapshot, sink, terminal, nil)
+}
+
+func (d *AcceleratorRPCDispatcher) attachWithLogger(snapshot AcceleratorSessionSnapshot, sink func([]byte) bool, terminal <-chan struct{}, logf func(string, ...interface{})) *acceleratorRPCConnection {
 	if d == nil || d.caller == nil || d.authorizer == nil || !snapshot.CallContext.IsAuthenticated() || snapshot.Generation == 0 || sink == nil || terminal == nil {
 		return nil
 	}
@@ -47,11 +53,15 @@ func (d *AcceleratorRPCDispatcher) attach(snapshot AcceleratorSessionSnapshot, s
 		return nil
 	default:
 	}
+	if logf == nil {
+		logf = func(string, ...interface{}) {}
+	}
 	return &acceleratorRPCConnection{
 		dispatcher: d,
 		snapshot:   snapshot,
 		sink:       sink,
 		terminal:   terminal,
+		logf:       logf,
 		inflight:   make(chan struct{}, acceleratorsecret.MaxConcurrentCalls),
 		accepting:  true,
 	}
@@ -73,6 +83,7 @@ func (c *acceleratorRPCConnection) handle(payload []byte) bool {
 		return false
 	}
 	if !c.dispatcher.authorizer.Authorize(c.snapshot.CallContext, string(call.Operation)) {
+		c.logCall("rejected", call.Operation, "forbidden", 0)
 		return c.sendError(call.ID, acceleratorsecret.ReasonForbidden)
 	}
 	select {
@@ -81,6 +92,7 @@ func (c *acceleratorRPCConnection) handle(payload []byte) bool {
 		go c.dispatch(call)
 		return true
 	default:
+		c.logCall("rejected", call.Operation, "capacity", 0)
 		return c.sendError(call.ID, acceleratorsecret.ReasonCapacity)
 	}
 }
@@ -88,17 +100,40 @@ func (c *acceleratorRPCConnection) handle(payload []byte) bool {
 func (c *acceleratorRPCConnection) dispatch(call acceleratorsecret.CallFrame) {
 	defer c.workers.Done()
 	defer func() { <-c.inflight }()
+	started := time.Now()
+	c.logCall("started", call.Operation, "", 0)
 	result, err := c.dispatcher.caller.CallMethod(c.snapshot.CallContext, string(call.Operation), call.Args)
 	if err != nil {
 		_ = c.sendError(call.ID, acceleratorsecret.ReasonRemoteUnavailable)
+		c.logCall("completed", call.Operation, "remote_error", time.Since(started))
 		return
 	}
 	payload, err := acceleratorsecret.EncodeResultOK(call.ID, result)
 	if err != nil || len(payload) > acceleratorsecret.MaxCreatorResponseFrameBytes {
 		_ = c.sendError(call.ID, acceleratorsecret.ReasonRemoteUnavailable)
+		c.logCall("completed", call.Operation, "invalid_response", time.Since(started))
 		return
 	}
-	_ = c.send(payload)
+	if !c.send(payload) {
+		c.logCall("completed", call.Operation, "connection_unavailable", time.Since(started))
+		return
+	}
+	c.logCall("completed", call.Operation, "ok", time.Since(started))
+}
+
+func (c *acceleratorRPCConnection) logCall(event string, operation acceleratorsecret.Operation, outcome string, duration time.Duration) {
+	if c == nil {
+		return
+	}
+	if duration > 0 {
+		c.logf("Accelerator proxy call %s session=%q generation=%d operation=%q outcome=%q duration=%s", event, c.snapshot.CallContext.SessionID, c.snapshot.Generation, operation, outcome, duration.Round(time.Millisecond))
+		return
+	}
+	if outcome != "" {
+		c.logf("Accelerator proxy call %s session=%q generation=%d operation=%q outcome=%q", event, c.snapshot.CallContext.SessionID, c.snapshot.Generation, operation, outcome)
+		return
+	}
+	c.logf("Accelerator proxy call %s session=%q generation=%d operation=%q", event, c.snapshot.CallContext.SessionID, c.snapshot.Generation, operation)
 }
 
 func (c *acceleratorRPCConnection) sendError(id string, reason acceleratorsecret.SecretClientReason) bool {

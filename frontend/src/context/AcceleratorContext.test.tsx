@@ -4,7 +4,7 @@ import { render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AcceleratorProvider } from './AcceleratorContext';
 
-const { bridge, logger } = vi.hoisted(() => ({
+const { bridge, logger, state } = vi.hoisted(() => ({
   bridge: {
     DisableAccelerator: vi.fn(),
     EnableAccelerator: vi.fn(),
@@ -12,17 +12,25 @@ const { bridge, logger } = vi.hoisted(() => ({
     RetryAccelerator: vi.fn(),
   },
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+  state: {
+    accelerator: { enabledByDefault: false, defaultNamespace: '', connectionOverrides: [] as Array<{ contextName: string; enabled?: boolean; namespace?: string }> },
+    currentNamespace: 'default',
+  },
 }));
 
 vi.mock('~/lib/wailsjs-adapter/go/main/App', () => bridge);
-vi.mock('./ConfigContext', () => ({ useConfig: () => ({ config: { accelerator: { enabledByDefault: false, defaultNamespace: '', connectionOverrides: [] } } }) }));
-vi.mock('./K8sContext', () => ({ useK8s: () => ({ currentContext: 'selected', currentNamespace: 'default' }) }));
+vi.mock('./ConfigContext', () => ({ useConfig: () => ({ config: { accelerator: state.accelerator } }) }));
+vi.mock('./K8sContext', () => ({ useK8s: () => ({ currentContext: 'selected', currentNamespace: state.currentNamespace }) }));
 vi.mock('~/utils/Logger', () => ({ default: logger }));
 
 describe('AcceleratorProvider diagnostics', () => {
   beforeEach(() => {
     Object.defineProperty(window, 'go', { configurable: true, value: {} });
     vi.clearAllMocks();
+    state.accelerator = { enabledByDefault: false, defaultNamespace: '', connectionOverrides: [] };
+    state.currentNamespace = 'default';
+    bridge.EnableAccelerator.mockResolvedValue(undefined);
+    bridge.GetAcceleratorStatus.mockResolvedValue({ state: 'direct_only', enabled: false, namespace: '', available: false });
   });
 
   afterEach(() => {
@@ -42,5 +50,17 @@ describe('AcceleratorProvider diagnostics', () => {
     render(<AcceleratorProvider><div /></AcceleratorProvider>);
 
     await waitFor(() => expect(logger.error).toHaveBeenCalledWith('Failed to read Accelerator deployment status', expect.any(Error), 'helm'));
+  });
+
+  it('does not retarget the deployment when view namespace selection changes', async () => {
+    state.accelerator = { enabledByDefault: true, defaultNamespace: '', connectionOverrides: [] };
+    const view = render(<AcceleratorProvider><div /></AcceleratorProvider>);
+
+    await waitFor(() => expect(bridge.EnableAccelerator).toHaveBeenCalledWith('selected', '', expect.any(String)));
+    state.currentNamespace = 'other-view-namespace';
+    view.rerender(<AcceleratorProvider><div /></AcceleratorProvider>);
+
+    await waitFor(() => expect(bridge.GetAcceleratorStatus).toHaveBeenCalled());
+    expect(bridge.EnableAccelerator).toHaveBeenCalledTimes(1);
   });
 });

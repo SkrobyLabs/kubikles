@@ -2,6 +2,8 @@ package acceleratorprovision
 
 import (
 	"context"
+
+	"kubikles/pkg/debug"
 )
 
 func (c *Coordinator) startResumeLocked(s *contextSlot, idle *coordinatorIdleRelease) {
@@ -24,6 +26,14 @@ func (c *Coordinator) runResume(ctx context.Context, s *contextSlot, fence opera
 	}
 	workload, prior := s.workload, s.session
 	s.mu.Unlock()
+	debug.LogPortforward("Accelerator reconnection starting", map[string]interface{}{
+		"context":    workload.ContextName,
+		"namespace":  workload.ReleaseNamespace,
+		"pod":        workload.Pod.Name,
+		"generation": prior.Identity().Generation,
+		"endReason":  prior.EndReason(),
+		"idleResume": idle != nil,
+	})
 	request := ResumeRequest{Prior: prior, Workload: workload}
 	result := unavailableResume(ResumeInvalid)
 	eligibilityFailure := resumeEligibilityFailure(prior, idle)
@@ -47,6 +57,12 @@ func (c *Coordinator) runResume(ctx context.Context, s *contextSlot, fence opera
 		}
 	}
 	if result.Availability == Available && result.Session != nil {
+		debug.LogPortforward("Accelerator reconnection succeeded", map[string]interface{}{
+			"context":    workload.ContextName,
+			"namespace":  workload.ReleaseNamespace,
+			"pod":        workload.Pod.Name,
+			"generation": result.Session.Identity().Generation,
+		})
 		if c.publishSession(s, fence, workload, result.Session) {
 			return
 		}
@@ -57,6 +73,12 @@ func (c *Coordinator) runResume(ctx context.Context, s *contextSlot, fence opera
 	if result.Session != nil {
 		_ = result.Session.Close(context.Background())
 	}
+	debug.LogPortforward("Accelerator reconnection failed", map[string]interface{}{
+		"context":   workload.ContextName,
+		"namespace": workload.ReleaseNamespace,
+		"pod":       workload.Pod.Name,
+		"reason":    result.Reason,
+	})
 	class := classifyResumeFailure(result.Reason)
 	c.recordDiagnostic(s, fence, "reconnection", string(result.Reason), 1)
 	if !c.disposeRetained(ctx, s, fence, workload) {

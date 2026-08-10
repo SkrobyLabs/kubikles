@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"math"
 	"sync"
@@ -81,6 +82,7 @@ type acceleratorSocketConfig struct {
 	pingInterval time.Duration
 	drainTimeout time.Duration
 	now          func() time.Time
+	logf         func(string, ...interface{})
 }
 
 func defaultAcceleratorSocketConfig() acceleratorSocketConfig {
@@ -90,6 +92,7 @@ func defaultAcceleratorSocketConfig() acceleratorSocketConfig {
 		pingInterval: AcceleratorSocketPingInterval,
 		drainTimeout: AcceleratorSocketDrainTimeout,
 		now:          time.Now,
+		logf:         log.Printf,
 	}
 }
 
@@ -97,6 +100,7 @@ type acceleratorSocketClose struct {
 	code   int
 	reason string
 	drain  bool
+	cause  error
 }
 
 type acceleratorSocket struct {
@@ -124,6 +128,9 @@ type acceleratorSocket struct {
 	ready              atomic.Bool
 	observed           atomic.Bool
 	cancelled          atomic.Bool
+	terminationMu      sync.Mutex
+	terminationReason  string
+	terminationError   string
 
 	registry *AcceleratorSessionRegistry
 	snapshot AcceleratorSessionSnapshot
@@ -174,7 +181,7 @@ func newAcceleratorSocket(r *AcceleratorSessionRegistry, conn acceleratorSocketC
 		config:         r.config,
 	}
 	if dispatcher != nil {
-		s.rpc = dispatcher.attach(snapshot, s.enqueueResult, s.pumpsDone)
+		s.rpc = dispatcher.attachWithLogger(snapshot, s.enqueueResult, s.pumpsDone, r.config.logf)
 	}
 	s.queue <- &acceleratorOutboundEvent{event: Event{Type: "event", Name: "connected", Data: AcceleratorConnectedEvent{
 		SessionID: snapshot.CallContext.SessionID, InstanceID: r.instanceID,
@@ -211,6 +218,27 @@ func (s *acceleratorSocket) settleUnstartedActivation() {
 }
 func (s *acceleratorSocket) closeNetwork() {
 	s.networkOnce.Do(func() { _ = s.conn.Close() })
+}
+
+func (s *acceleratorSocket) recordTermination(reason string, err error) {
+	if reason == "" {
+		reason = "connection ended"
+	}
+	s.terminationMu.Lock()
+	if s.terminationReason == "" {
+		s.terminationReason = reason
+		var marshalErr *json.MarshalerError
+		if err != nil && !errors.As(err, &marshalErr) {
+			s.terminationError = err.Error()
+		}
+	}
+	s.terminationMu.Unlock()
+}
+
+func (s *acceleratorSocket) terminationDetails() (string, string) {
+	s.terminationMu.Lock()
+	defer s.terminationMu.Unlock()
+	return s.terminationReason, s.terminationError
 }
 
 // enqueue never performs network I/O and never waits for a writer. The first
@@ -270,6 +298,7 @@ func (s *acceleratorSocket) requestClose(close acceleratorSocketClose) {
 }
 
 func (s *acceleratorSocket) signalClose(close acceleratorSocketClose) {
+	s.recordTermination(close.reason, close.cause)
 	s.settleUnstartedActivation()
 	select {
 	case s.closeCh <- close:
@@ -299,14 +328,14 @@ func (s *acceleratorSocket) writer() {
 		return
 	}
 	connected := <-s.queue
-	if s.conn.SetWriteDeadline(s.config.now().Add(s.config.writeTimeout)) != nil {
+	if err := s.conn.SetWriteDeadline(s.config.now().Add(s.config.writeTimeout)); err != nil {
 		connected.clear()
-		s.fenceWriterFailure()
+		s.fenceWriterFailure("connected frame write deadline failed", err)
 		s.bootstrapDone <- false
 		return
 	}
-	if s.writeEvent(connected) != nil {
-		s.fenceWriterFailure()
+	if err := s.writeEvent(connected); err != nil {
+		s.fenceWriterFailure("connected frame write failed", err)
 		s.bootstrapDone <- false
 		return
 	}
@@ -329,21 +358,21 @@ func (s *acceleratorSocket) writer() {
 		case event := <-s.queue:
 			if err := s.conn.SetWriteDeadline(s.config.now().Add(s.config.writeTimeout)); err != nil {
 				event.clear()
-				s.fenceWriterFailure()
+				s.fenceWriterFailure("event write deadline failed", err)
 				return
 			}
 			if err := s.writeEvent(event); err != nil {
-				s.fenceWriterFailure()
+				s.fenceWriterFailure("event write failed", err)
 				return
 			}
 		case <-ping.C:
 			deadline := s.config.now().Add(s.config.writeTimeout)
 			if err := s.conn.SetWriteDeadline(deadline); err != nil {
-				s.fenceWriterFailure()
+				s.fenceWriterFailure("ping write deadline failed", err)
 				return
 			}
 			if err := s.conn.WriteControl(websocket.PingMessage, nil, deadline); err != nil {
-				s.fenceWriterFailure()
+				s.fenceWriterFailure("ping write failed", err)
 				return
 			}
 		}
@@ -352,7 +381,8 @@ func (s *acceleratorSocket) writer() {
 
 // fenceWriterFailure closes every producer-side admission gate before the
 // writer drains sensitive ownership or begins its bounded network close.
-func (s *acceleratorSocket) fenceWriterFailure() {
+func (s *acceleratorSocket) fenceWriterFailure(reason string, err error) {
+	s.recordTermination(reason, err)
 	s.eligible.Store(false)
 	if s.rpc != nil {
 		s.rpc.fail(errAcceleratorRPCUnavailable)
@@ -417,8 +447,8 @@ func (s *acceleratorSocket) reader() {
 	defer s.wg.Done()
 	<-s.readerStartCh
 	s.conn.SetReadLimit(AcceleratorSocketReadLimit)
-	if s.conn.SetReadDeadline(s.config.now().Add(s.config.pongTimeout)) != nil {
-		s.requestClose(acceleratorSocketClose{code: websocket.CloseGoingAway, reason: "connection closed"})
+	if err := s.conn.SetReadDeadline(s.config.now().Add(s.config.pongTimeout)); err != nil {
+		s.requestClose(acceleratorSocketClose{code: websocket.CloseGoingAway, reason: "read deadline setup failed", cause: err})
 		return
 	}
 	s.conn.SetPongHandler(func(string) error {
@@ -427,11 +457,15 @@ func (s *acceleratorSocket) reader() {
 	for {
 		messageType, payload, err := s.conn.ReadMessage()
 		if err != nil {
-			s.requestClose(acceleratorSocketClose{code: websocket.CloseGoingAway, reason: "connection closed"})
+			s.requestClose(acceleratorSocketClose{code: websocket.CloseGoingAway, reason: "connection read failed", cause: err})
 			return
 		}
 		if messageType != websocket.TextMessage || s.rpc == nil || !s.rpc.handle(payload) {
-			s.requestClose(acceleratorSocketClose{code: websocket.ClosePolicyViolation, reason: "protocol error"})
+			cause := errAcceleratorRPCProtocol
+			if s.rpc != nil && s.rpc.err() != nil {
+				cause = s.rpc.err()
+			}
+			s.requestClose(acceleratorSocketClose{code: websocket.ClosePolicyViolation, reason: "protocol error", cause: cause})
 			return
 		}
 	}
@@ -541,6 +575,9 @@ func newAcceleratorSessionRegistry(instanceID string, observer AcceleratorSessio
 	}
 	if config.now == nil {
 		config.now = time.Now
+	}
+	if config.logf == nil {
+		config.logf = func(string, ...interface{}) {}
 	}
 	done := make(chan struct{})
 	close(done)
@@ -740,6 +777,7 @@ func (r *AcceleratorSessionRegistry) finishRegistrationActivation(registration *
 		socket.requestClose(acceleratorSocketClose{code: websocket.CloseGoingAway, reason: "connection closed"})
 		return nil, false
 	}
+	r.config.logf("Accelerator connection established session=%q generation=%d resumed=%t", socket.snapshot.CallContext.SessionID, socket.snapshot.Generation, socket.snapshot.Resumed)
 	return socket, true
 }
 
@@ -791,6 +829,14 @@ func (r *AcceleratorSessionRegistry) socketFinished(socket *acceleratorSocket) {
 	}
 	r.mu.Unlock()
 	r.invokeCallbackBatch(callbackBatch)
+	if socket.observed.Load() {
+		reason, rawError := socket.terminationDetails()
+		if rawError != "" {
+			r.config.logf("Accelerator connection lost session=%q generation=%d reason=%q error=%q", socket.snapshot.CallContext.SessionID, socket.snapshot.Generation, reason, rawError)
+		} else {
+			r.config.logf("Accelerator connection lost session=%q generation=%d reason=%q", socket.snapshot.CallContext.SessionID, socket.snapshot.Generation, reason)
+		}
+	}
 	r.socketEnded()
 }
 

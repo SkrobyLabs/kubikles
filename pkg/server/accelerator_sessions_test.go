@@ -32,6 +32,23 @@ func (v *countedAcceleratorJSON) MarshalJSON() ([]byte, error) {
 	return []byte(`{"scope":"owners-only"}`), nil
 }
 
+type recordingAcceleratorLogger struct {
+	mu    sync.Mutex
+	lines []string
+}
+
+func (l *recordingAcceleratorLogger) logf(format string, values ...interface{}) {
+	l.mu.Lock()
+	l.lines = append(l.lines, fmt.Sprintf(format, values...))
+	l.mu.Unlock()
+}
+
+func (l *recordingAcceleratorLogger) text() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return strings.Join(l.lines, "\n")
+}
+
 type fakeAcceleratorRead struct {
 	messageType int
 	payload     []byte
@@ -1740,5 +1757,30 @@ func TestAcceleratorSessionGenerationOverflowFailsClosed(t *testing.T) {
 	snapshot, active, found := registry.snapshot(call.SessionID)
 	if !found || active || snapshot.Generation != 0 || record.generation != AcceleratorSocketGeneration(^uint64(0)) {
 		t.Fatalf("overflow mutated record: %+v active=%v found=%v generation=%d", snapshot, active, found, record.generation)
+	}
+}
+
+func TestAcceleratorConnectionLifecycleLogs(t *testing.T) {
+	logger := &recordingAcceleratorLogger{}
+	config := acceleratorTestConfig()
+	config.logf = logger.logf
+	registry := newAcceleratorSessionRegistry("instance", &recordingAcceleratorObserver{}, config)
+	connection := newFakeAcceleratorConn()
+	socket, ok := registry.register(acceleratorTestCall("lifecycle-log"), connection)
+	if !ok {
+		t.Fatal("connection was not registered")
+	}
+	connection.read <- fakeAcceleratorRead{err: errors.New("peer reset by desktop")}
+	waitAccelerator(t, "connection loss log", func() bool { return strings.Contains(logger.text(), "Accelerator connection lost") })
+	<-socket.pumpsDone
+
+	got := logger.text()
+	for _, marker := range []string{
+		"Accelerator connection established session=\"session-lifecycle-log\" generation=1 resumed=false",
+		"Accelerator connection lost session=\"session-lifecycle-log\" generation=1 reason=\"connection read failed\" error=\"peer reset by desktop\"",
+	} {
+		if !strings.Contains(got, marker) {
+			t.Fatalf("missing log %q in %q", marker, got)
+		}
 	}
 }

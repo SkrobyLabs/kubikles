@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -193,5 +194,32 @@ func TestCreatorRPCOutOfOrderCapacityAndGeneration(t *testing.T) {
 	}
 	if !errors.Is(old.err(), errAcceleratorRPCUnavailable) {
 		t.Fatalf("old connection error=%v", old.err())
+	}
+}
+
+func TestCreatorRPCLogsProxiedCallLifecycle(t *testing.T) {
+	logger := &recordingAcceleratorLogger{}
+	callContext := agent.AuthenticatedCallContext{PrincipalID: "creator", SessionID: "logged-session"}
+	dispatcher := NewAcceleratorRPCDispatcher(&recordingAcceleratorRPCCaller{result: "yaml"}, MethodAuthorizerFunc(func(agent.AuthenticatedCallContext, string) bool { return true }))
+	results := make(chan []byte, 1)
+	connection := dispatcher.attachWithLogger(AcceleratorSessionSnapshot{CallContext: callContext, Generation: 4}, func(payload []byte) bool {
+		results <- append([]byte(nil), payload...)
+		return true
+	}, make(chan struct{}), logger.logf)
+	id, _ := acceleratorsecret.CallID("AAAAAAAAAAAAAAAAAAAAAA", 1)
+	payload, _ := acceleratorsecret.EncodeGetSecretYAMLCall(id, "ns", "name")
+	if !connection.handle(payload) {
+		t.Fatal("proxied call was rejected")
+	}
+	select {
+	case <-results:
+	case <-time.After(time.Second):
+		t.Fatal("proxied result timed out")
+	}
+	connection.waitWorkers()
+
+	got := logger.text()
+	if !strings.Contains(got, "Accelerator proxy call started session=\"logged-session\" generation=4 operation=\"GetSecretYaml\"") || !strings.Contains(got, "Accelerator proxy call completed session=\"logged-session\" generation=4 operation=\"GetSecretYaml\" outcome=\"ok\"") {
+		t.Fatalf("proxy logs=%q", got)
 	}
 }

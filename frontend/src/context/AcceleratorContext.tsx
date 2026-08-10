@@ -12,7 +12,7 @@ const Context = createContext<Value | undefined>(undefined);
 const direct: Status = { state: 'direct_only', enabled: false, namespace: '', available: false };
 
 export function AcceleratorProvider({ children }: { children: React.ReactNode }) {
-  const { config } = useConfig(); const { currentContext, currentNamespace } = useK8s();
+  const { config } = useConfig(); const { currentContext } = useK8s();
   const [status, setStatus] = useState<Status>(direct);
   const sequence = useRef(0);
   const loggedVersionWarning = useRef('');
@@ -27,7 +27,10 @@ export function AcceleratorProvider({ children }: { children: React.ReactNode })
     Logger.warn('Accelerator connected with a version mismatch from custom artifacts', { context: currentContext }, 'helm');
   }, [currentContext, status.versionMismatchWarning]);
   useEffect(() => { void refresh(); const id = window.setInterval(() => void refresh(), 2000); return () => clearInterval(id); }, [refresh]);
-  const policy = acceleratorPolicy(config.accelerator, currentContext, currentNamespace || 'default');
+  // An empty namespace delegates to the namespace declared by the kubeconfig
+  // context. UI namespace selection is view state and must never retarget the
+  // Accelerator workload when the user navigates between views.
+  const policy = acceleratorPolicy(config.accelerator, currentContext, '');
   const deploymentOptions = useMemo(() => JSON.stringify({
     imageReference: config.accelerator.customImage?.trim() ?? '',
     chartReference: config.accelerator.customChart?.trim() ?? '',

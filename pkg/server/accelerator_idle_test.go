@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -467,5 +468,32 @@ func TestAcceleratorIdleShutdownConcurrent(t *testing.T) {
 	}
 	if clears, exits := life.counts(); clears > 1 || exits > 1 || clears != exits {
 		t.Fatalf("concurrent shutdown counts = %d/%d", clears, exits)
+	}
+}
+
+func TestAcceleratorIdleShutdownLogsScheduleCancellationAndExit(t *testing.T) {
+	clock := &idleTestClock{}
+	life := newIdleTestLifecycle()
+	logger := &recordingAcceleratorLogger{}
+	coordinator := newAcceleratorIdleCoordinator(clock, life, context.Background(), nil)
+	coordinator.logf = logger.logf
+
+	coordinator.MarkReady()
+	coordinator.SessionConnected(idleSnapshot("desktop", 1))
+	coordinator.SessionDisconnected(idleSnapshot("desktop", 1))
+	coordinator.timer.timer.(*idleTestTimer).fire()
+	waitIdleSignal(t, life.exit, "logged idle exit")
+	coordinator.Shutdown()
+
+	got := logger.text()
+	for _, marker := range []string{
+		"Accelerator idle shutdown scheduled reason=\"startup_without_connection\" grace=2m0s",
+		"Accelerator idle shutdown canceled reason=\"authenticated_connection_restored\" session=\"desktop\" generation=1",
+		"Accelerator idle shutdown scheduled reason=\"last_connection_disconnected\" grace=2m0s",
+		"Accelerator shutting down reason=\"no_authenticated_connection\" trigger=\"last_connection_disconnected\" disconnected_for=2m0s",
+	} {
+		if !strings.Contains(got, marker) {
+			t.Fatalf("missing log %q in %q", marker, got)
+		}
 	}
 }
