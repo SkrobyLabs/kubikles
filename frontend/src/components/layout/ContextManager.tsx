@@ -76,6 +76,18 @@ export default function ContextManager({ onClose, onContextsChanged, initialCont
         fetchContexts();
     }, [fetchContexts]);
 
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                onClose();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
     const handleDelete = async (name: string) => {
         setActionLoading(true);
         try {
@@ -153,6 +165,7 @@ export default function ContextManager({ onClose, onContextsChanged, initialCont
                         contextName={editingContext}
                         initialTab={initialTab}
                         onBack={() => setEditingContext(null)}
+                        onClose={onClose}
                         onSaved={() => {
                             fetchContexts();
                             onContextsChanged();
@@ -168,6 +181,7 @@ export default function ContextManager({ onClose, onContextsChanged, initialCont
                     <h2 className="text-lg font-medium text-white">Context Manager</h2>
                     <button
                         onClick={onClose}
+                        aria-label="Close context manager"
                         className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
                     >
                         <XMarkIcon className="h-5 w-5" />
@@ -225,7 +239,10 @@ export default function ContextManager({ onClose, onContextsChanged, initialCont
                                                         onChange={e => setRenameValue(e.target.value)}
                                                         onKeyDown={e => {
                                                             if (e.key === 'Enter') handleRename(ctx.name);
-                                                            if (e.key === 'Escape') setRenamingContext(null);
+                                                            if (e.key === 'Escape') {
+                                                                e.stopPropagation();
+                                                                setRenamingContext(null);
+                                                            }
                                                         }}
                                                         autoFocus
                                                         className="bg-surface-light border border-border rounded px-2 py-0.5 text-sm text-white w-full focus:outline-none focus:border-primary"

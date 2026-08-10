@@ -60,6 +60,7 @@ interface FullContextDetail {
 interface ContextEditorProps {
     contextName: string;
     onBack: () => void;
+    onClose: () => void;
     onSaved: () => void;
     onOpenAcceleratorSettings: () => void;
     initialTab?: Tab;
@@ -133,7 +134,7 @@ const TABS: { key: Tab; label: string }[] = [
     { key: 'accelerator', label: 'Accelerator' },
 ];
 
-export default function ContextEditor({ contextName, onBack, onSaved, onOpenAcceleratorSettings, initialTab }: ContextEditorProps) {
+export default function ContextEditor({ contextName, onBack, onClose, onSaved, onOpenAcceleratorSettings, initialTab }: ContextEditorProps) {
     const [detail, setDetail] = useState<FullContextDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -333,6 +334,14 @@ export default function ContextEditor({ contextName, onBack, onSaved, onOpenAcce
                     </div>
                 </div>
                 {dirty && <span className="text-xs text-yellow-500 shrink-0">Unsaved changes</span>}
+                <button
+                    onClick={onClose}
+                    aria-label="Close context editor"
+                    title="Close"
+                    className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                >
+                    <XMarkIcon className="h-5 w-5" />
+                </button>
             </div>
 
             {/* Tab bar */}
