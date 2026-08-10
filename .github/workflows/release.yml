@@ -320,12 +320,12 @@ jobs:
           set -euo pipefail
           github_token="$GH_TOKEN"; unset GH_TOKEN
           github_cli() { GH_TOKEN="$github_token" gh "$@"; }
-          old_releases="$(github_cli api --paginate --slurp "repos/${{ github.repository }}/releases?per_page=100" --jq 'add | map(select(.prerelease == true and .draft == false)) | .[] | [.id, .tag_name] | @tsv')"
+          old_releases="$(github_cli api --paginate --slurp "repos/${{ github.repository }}/releases?per_page=100" | jq -r 'add | map(select(.prerelease == true and .draft == false)) | .[] | [.id, .tag_name] | @tsv')"
           while IFS=$'\t' read -r release_id release_tag; do
             [ -n "$release_id" ] || continue
             if [ "$release_tag" != "$BUILD_VERSION" ]; then
               github_cli api --method DELETE "repos/${{ github.repository }}/releases/$release_id"
             fi
           done <<< "$old_releases"
-          remaining="$(github_cli api --paginate --slurp "repos/${{ github.repository }}/releases?per_page=100" --jq 'add | map(select(.prerelease == true and .draft == false)) | map(.tag_name) | join("\t")')"
+          remaining="$(github_cli api --paginate --slurp "repos/${{ github.repository }}/releases?per_page=100" | jq -r 'add | map(select(.prerelease == true and .draft == false)) | map(.tag_name) | join("\t")')"
           [ "$remaining" = "$BUILD_VERSION" ]
