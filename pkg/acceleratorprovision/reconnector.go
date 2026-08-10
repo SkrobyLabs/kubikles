@@ -162,6 +162,7 @@ func (r *Reconnector) resume(ctx context.Context, request ResumeRequest, idle *c
 
 	connector := *r.connector
 	connector.clock = clock
+	connector.readyClock = clock
 	attempt := r.attempt
 	if attempt == nil {
 		attempt = connector.connectExactAttempt

@@ -24,17 +24,18 @@ import (
 )
 
 const (
-	connectorTimeout      = 30 * time.Second
-	tunnelReadyTimeout    = 15 * time.Second
-	httpTimeout           = 5 * time.Second
-	websocketTimeout      = 5 * time.Second
-	connectedFrameTimeout = 10 * time.Second
-	closeTimeout          = 5 * time.Second
-	infoBodyLimit         = 16 << 10
-	policyBodyLimit       = 256
-	connectedFrameLimit   = 4 << 10
-	acceleratorReadyPoll  = 100 * time.Millisecond
-	acceleratorReadyTries = 51
+	connectorTimeout       = 30 * time.Second
+	tunnelReadyTimeout     = 15 * time.Second
+	httpTimeout            = 5 * time.Second
+	websocketTimeout       = 5 * time.Second
+	connectedFrameTimeout  = 10 * time.Second
+	closeTimeout           = 5 * time.Second
+	infoBodyLimit          = 16 << 10
+	policyBodyLimit        = 256
+	connectedFrameLimit    = 4 << 10
+	acceleratorReadyPoll   = 100 * time.Millisecond
+	acceleratorReadyTries  = 51
+	acceleratorTunnelTries = 51
 )
 
 type ConnectUnavailableReason string
@@ -315,7 +316,7 @@ func (c *Connector) connectExactAttempt(ctx context.Context, lease connectorLeas
 		return nil, workloadAttemptFailure(attemptPreValidate, validation)
 	}
 	ready, readyCancel := context.WithTimeout(sealedOp, tunnelReadyTimeout)
-	activeTunnel, err := c.startTunnel(ready, lease.snapshot, lease.receipt.releaseNamespace, lease.receipt.pod.Name)
+	activeTunnel, err, tunnelAttempts := waitForAcceleratorTunnel(ready, lease.snapshot, lease.receipt.releaseNamespace, lease.receipt.pod.Name, c.readyClock, c.startTunnel)
 	readyCancel()
 	var socket *websocket.Conn
 	var candidate *ConnectedSession
@@ -335,7 +336,13 @@ func (c *Connector) connectExactAttempt(ctx context.Context, lease connectorLeas
 		return nil, &connectAttemptFailure{phase: attemptTunnel, connectReason: ConnectCancelled, cause: op.Err()}
 	}
 	if err != nil || activeTunnel == nil || activeTunnel.Port() < 1 || activeTunnel.Port() > 65535 {
+		if tunnelAttempts > 1 {
+			debug.LogPortforward("Accelerator Pod tunnel startup failed", map[string]interface{}{"attempts": tunnelAttempts})
+		}
 		return nil, &connectAttemptFailure{phase: attemptTunnel, connectReason: TunnelUnavailable, cause: err}
+	}
+	if tunnelAttempts > 1 {
+		debug.LogPortforward("Accelerator Pod tunnel became ready", map[string]interface{}{"attempts": tunnelAttempts})
 	}
 	if op.Err() != nil {
 		return nil, &connectAttemptFailure{phase: attemptTunnel, connectReason: ConnectCancelled, cause: op.Err()}
@@ -683,6 +690,38 @@ func fetchInfo(ctx context.Context, endpoint string, authorization creatorAuthor
 }
 
 type acceleratorInfoFetcher func(context.Context, string, creatorAuthorizationLease) (server.AuthenticatedAcceleratorInfo, error)
+
+func waitForAcceleratorTunnel(ctx context.Context, source ContextSnapshot, namespace, pod string, clock resumeClock, start connectorTunnelStarter) (tunnel, error, int) {
+	if ctx == nil || source == nil || namespace == "" || pod == "" || start == nil {
+		return nil, errTunnelGenericAttempt, 0
+	}
+	if clock == nil {
+		clock = processResumeClock{}
+	}
+	for attempt := 1; attempt <= acceleratorTunnelTries; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err, attempt - 1
+		}
+		active, err := start(ctx, source, namespace, pod)
+		if active != nil || err == nil {
+			return active, err, attempt
+		}
+		if attempt == acceleratorTunnelTries || !retryableAcceleratorTunnelStartupFailure(ctx, err) {
+			return nil, err, attempt
+		}
+		if err = clock.Sleep(ctx, acceleratorReadyPoll); err != nil {
+			return nil, err, attempt
+		}
+	}
+	return nil, errTunnelGenericAttempt, acceleratorTunnelTries
+}
+
+func retryableAcceleratorTunnelStartupFailure(ctx context.Context, err error) bool {
+	if err == nil || ctx == nil || ctx.Err() != nil {
+		return false
+	}
+	return errors.Is(err, errTunnelUpgradeAttempt) || errors.Is(err, errTunnelHTTPSProxyAttempt) || errors.Is(err, errTunnelTransientAttempt)
+}
 
 func waitForAcceleratorInfo(ctx context.Context, endpoint string, authorization creatorAuthorizationLease, clock resumeClock, fetch acceleratorInfoFetcher) (server.AuthenticatedAcceleratorInfo, error, int) {
 	if ctx == nil || endpoint == "" || fetch == nil {

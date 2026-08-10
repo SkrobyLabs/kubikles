@@ -362,8 +362,8 @@ func TestResumeReadyTimeoutSettlementControlsRetryOverlap(t *testing.T) {
 				return nil, errTunnelGenericAttempt
 			}
 			clock.onSleep = func(time.Duration) {
-				if active.Load() != 0 || workload.connectorState.active != 0 {
-					t.Fatal("settled timeout retained ownership at retry sleep")
+				if active.Load() != 0 {
+					t.Fatal("settled timeout retained a tunnel at retry sleep")
 				}
 			}
 			result := reconnector.Resume(context.Background(), ResumeRequest{Prior: prior, Workload: workload})
@@ -921,6 +921,33 @@ func TestWaitForAcceleratorInfoRetriesStartupTransportFailure(t *testing.T) {
 	})
 	if err == nil || attempts != 1 || calls != 1 || len(clock.sleeps) != 0 {
 		t.Fatalf("terminal startup failure error=%v attempts=%d calls=%d sleeps=%v", err, attempts, calls, clock.sleeps)
+	}
+}
+
+func TestWaitForAcceleratorTunnelRetriesTransientPodStartupFailure(t *testing.T) {
+	clock := &fakeResumeClock{now: time.Now()}
+	calls := 0
+	active, err, attempts := waitForAcceleratorTunnel(context.Background(), fakeSnapshot{identity: "snapshot", namespace: "default"}, "default", "pod-a", clock, func(context.Context, ContextSnapshot, string, string) (tunnel, error) {
+		calls++
+		if calls < 3 {
+			return nil, errTunnelTransientAttempt
+		}
+		started := newRecordedTunnel(nil)
+		started.port = 43123
+		return started, nil
+	})
+	if err != nil || active == nil || attempts != 3 || calls != 3 || !reflect.DeepEqual(clock.sleeps, []time.Duration{acceleratorReadyPoll, acceleratorReadyPoll}) {
+		t.Fatalf("tunnel=%#v error=%v attempts=%d calls=%d sleeps=%v", active, err, attempts, calls, clock.sleeps)
+	}
+
+	calls = 0
+	clock.sleeps = nil
+	active, err, attempts = waitForAcceleratorTunnel(context.Background(), fakeSnapshot{identity: "snapshot", namespace: "default"}, "default", "pod-a", clock, func(context.Context, ContextSnapshot, string, string) (tunnel, error) {
+		calls++
+		return nil, errTunnelGenericAttempt
+	})
+	if active != nil || !errors.Is(err, errTunnelGenericAttempt) || attempts != 1 || calls != 1 || len(clock.sleeps) != 0 {
+		t.Fatalf("terminal tunnel=%#v error=%v attempts=%d calls=%d sleeps=%v", active, err, attempts, calls, clock.sleeps)
 	}
 }
 

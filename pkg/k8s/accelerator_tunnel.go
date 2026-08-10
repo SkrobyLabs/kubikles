@@ -1,7 +1,7 @@
 package k8s
 
 // This is intentionally separate from the user-facing port forward manager:
-// it has no persistence, retry, logging, or configurable address.
+// it has no persistence, retry, or configurable address.
 
 import (
 	"context"
@@ -10,8 +10,11 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"sync"
 	"time"
+
+	"kubikles/pkg/debug"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/httpstream"
@@ -63,6 +66,11 @@ func newAcceleratorTunnelFailureKind(kind AcceleratorTunnelFailureKind) error {
 func classifyAcceleratorTunnelCause(cause error) AcceleratorTunnelFailureKind {
 	if cause == nil {
 		return 0
+	}
+	// A newly Running Pod can briefly be absent from the node's port-forward
+	// runtime even though the API server already publishes it as Ready.
+	if strings.Contains(strings.ToLower(cause.Error()), "pod not found") {
+		return AcceleratorTunnelFailureTransient
 	}
 	if httpstream.IsUpgradeFailure(cause) {
 		return AcceleratorTunnelFailureUpgrade
@@ -196,11 +204,13 @@ func (t *AcceleratorPodTunnel) Wait(ctx context.Context) error {
 
 func StartAcceleratorPodTunnel(ctx context.Context, snapshot *AcceleratorContextSnapshot, namespace, pod string) (*AcceleratorPodTunnel, error) {
 	if ctx == nil || snapshot == nil || namespace == "" || pod == "" {
+		logAcceleratorPodTunnelFailure("validate_input", namespace, pod, ErrAcceleratorContextUnavailable, AcceleratorTunnelFailureGeneric)
 		return nil, ErrAcceleratorContextUnavailable
 	}
 	ctx = acceleratorSealedContext{ctx}
 	cfg := snapshot.RESTConfig()
 	if cfg == nil {
+		logAcceleratorPodTunnelFailure("load_rest_config", namespace, pod, ErrAcceleratorContextUnavailable, AcceleratorTunnelFailureGeneric)
 		return nil, ErrAcceleratorContextUnavailable
 	}
 	// Bind every SPDY/WebSocket request to the sealed operation context while
@@ -219,14 +229,17 @@ func StartAcceleratorPodTunnel(ctx context.Context, snapshot *AcceleratorContext
 	}
 	u, err := acceleratorPortForwardURL(cfg.Host, namespace, pod)
 	if err != nil {
+		logAcceleratorPodTunnelFailure("build_url", namespace, pod, err, classifyAcceleratorTunnelCause(err))
 		return nil, newAcceleratorTunnelFailure(err)
 	}
 	primary, err := portforward.NewSPDYOverWebsocketDialer(u, cfg)
 	if err != nil {
+		logAcceleratorPodTunnelFailure("create_websocket_dialer", namespace, pod, err, classifyAcceleratorTunnelCause(err))
 		return nil, newAcceleratorTunnelFailure(err)
 	}
 	rt, upgrader, err := spdy.RoundTripperFor(cfg)
 	if err != nil {
+		logAcceleratorPodTunnelFailure("create_spdy_roundtripper", namespace, pod, err, classifyAcceleratorTunnelCause(err))
 		return nil, newAcceleratorTunnelFailure(err)
 	}
 	secondary := spdy.NewDialer(upgrader, &http.Client{Transport: rt}, "POST", u)
@@ -235,6 +248,7 @@ func StartAcceleratorPodTunnel(ctx context.Context, snapshot *AcceleratorContext
 	dialer := &acceleratorTunnelCategoryDialer{next: newAcceleratorFinalDialer(primary, secondary), tunnel: tunnel}
 	pf, err := newAcceleratorPortForwarder(dialer, []string{"127.0.0.1"}, []string{"0:8080"}, stop, ready)
 	if err != nil {
+		logAcceleratorPodTunnelFailure("create_forwarder", namespace, pod, err, classifyAcceleratorTunnelCause(err))
 		return nil, newAcceleratorTunnelFailure(err)
 	}
 	var publicationMu sync.Mutex
@@ -252,6 +266,9 @@ func StartAcceleratorPodTunnel(ctx context.Context, snapshot *AcceleratorContext
 		}
 		tunnel.kind = kind
 		tunnel.mu.Unlock()
+		if forwardErr != nil {
+			logAcceleratorPodTunnelFailure("forward_ports", namespace, pod, forwardErr, kind)
+		}
 		close(done)
 		publicationMu.Unlock()
 	}()
@@ -301,6 +318,7 @@ func StartAcceleratorPodTunnel(ctx context.Context, snapshot *AcceleratorContext
 	}
 	ports, err := pf.GetPorts()
 	if err != nil || len(ports) != 1 || ports[0].Local == 0 || ports[0].Remote != 8080 {
+		logAcceleratorPodTunnelFailure("resolve_forwarded_port", namespace, pod, err, classifyAcceleratorTunnelCause(err))
 		stopForwarding()
 		waitForForwarding()
 		return nil, newAcceleratorTunnelFailure(err)
@@ -316,6 +334,34 @@ func StartAcceleratorPodTunnel(ctx context.Context, snapshot *AcceleratorContext
 	tunnel.port = int(ports[0].Local)
 	publicationMu.Unlock()
 	return tunnel, nil
+}
+
+func logAcceleratorPodTunnelFailure(stage, namespace, pod string, err error, kind AcceleratorTunnelFailureKind) {
+	details := map[string]interface{}{
+		"stage":       stage,
+		"namespace":   namespace,
+		"pod":         pod,
+		"failureKind": acceleratorTunnelFailureKindName(kind),
+	}
+	if err != nil {
+		details["error"] = err.Error()
+	}
+	debug.LogPortforward("Accelerator Pod tunnel failed", details)
+}
+
+func acceleratorTunnelFailureKindName(kind AcceleratorTunnelFailureKind) string {
+	switch kind {
+	case AcceleratorTunnelFailureUpgrade:
+		return "upgrade"
+	case AcceleratorTunnelFailureHTTPSProxy:
+		return "https_proxy"
+	case AcceleratorTunnelFailureTransient:
+		return "transient"
+	case AcceleratorTunnelFailureCleanupUnsettled:
+		return "cleanup_unsettled"
+	default:
+		return "generic"
+	}
 }
 
 func acceleratorPortForwardURL(host, namespace, pod string) (*url.URL, error) {

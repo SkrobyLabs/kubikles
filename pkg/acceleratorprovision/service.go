@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"kubikles/pkg/acceleratorrelease"
+	"kubikles/pkg/debug"
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
 )
@@ -111,12 +112,15 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 		return unavailable(ArtifactUnavailable, CleanupNotNeeded)
 	}
 	if request.ContextName == "" || strings.TrimSpace(request.ContextName) != request.ContextName {
+		logProvisionContextUnavailable(request, "validate_context_name", nil, "", nil)
 		return unavailable(ContextUnavailable, CleanupNotNeeded)
 	}
 	if request.NamespaceOverride != "" && len(validation.IsDNS1123Label(request.NamespaceOverride)) != 0 {
+		logProvisionContextUnavailable(request, "validate_namespace_override", nil, "", nil)
 		return unavailable(ContextUnavailable, CleanupNotNeeded)
 	}
 	if ctx == nil || s == nil || s.contexts == nil || s.charts == nil || s.observer == nil || s.entropy == nil {
+		logProvisionContextUnavailable(request, "validate_service", nil, "", nil)
 		return unavailable(ContextUnavailable, CleanupNotNeeded)
 	}
 	opCtx, cancel := context.WithTimeout(ctx, ProvisionTimeout)
@@ -127,6 +131,11 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	}
 	initialGateKey := releaseMutationGateKey(snapshot)
 	if err != nil || initialGateKey == "" {
+		stage := "snapshot_current_context"
+		if err == nil {
+			stage = "validate_context_snapshot"
+		}
+		logProvisionContextUnavailable(request, stage, err, s.contexts.CurrentContext(), snapshot)
 		return unavailable(ContextUnavailable, CleanupNotNeeded)
 	}
 	releaseGate := s.gates.acquire(opCtx, initialGateKey)
@@ -230,6 +239,23 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	}
 	credential = nil
 	return available(workload)
+}
+
+func logProvisionContextUnavailable(request Request, stage string, err error, currentContext string, snapshot ContextSnapshot) {
+	details := map[string]interface{}{
+		"stage":             stage,
+		"requestedContext":  request.ContextName,
+		"currentContext":    currentContext,
+		"namespaceOverride": request.NamespaceOverride,
+	}
+	if err != nil {
+		details["error"] = err.Error()
+	}
+	if snapshot != nil {
+		details["snapshotIdentityAvailable"] = snapshot.Identity() != ""
+		details["snapshotNamespace"] = snapshot.Namespace()
+	}
+	debug.LogHelm("Accelerator provisioning context unavailable", details)
 }
 
 // namespaceOverrideSnapshot changes only the release target. Credentials and

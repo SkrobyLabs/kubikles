@@ -13,6 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"kubikles/pkg/debug"
+	"kubikles/pkg/events"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
@@ -132,6 +135,49 @@ func TestAcceleratorTunnelClassifiesConstructionAndTerminalCausesOpaquely(t *tes
 			t.Fatalf("generic cause=%v", err)
 		}
 	})
+}
+
+func TestAcceleratorTunnelLogsRawTransientPodStartupFailure(t *testing.T) {
+	eventsCh := make(chan []interface{}, 1)
+	debug.Init(events.EmitterFunc(func(name string, data ...interface{}) {
+		if name == "debug:log" {
+			eventsCh <- data
+		}
+	}))
+	debug.SetEnabled(true)
+	t.Cleanup(func() {
+		debug.SetEnabled(false)
+		debug.Init(&events.NoopEmitter{})
+	})
+
+	original := newAcceleratorPortForwarder
+	t.Cleanup(func() { newAcceleratorPortForwarder = original })
+	rawErr := errors.New("unable to upgrade connection: pod not found (\"pod-a_team-a\")")
+	newAcceleratorPortForwarder = func(_ httpstream.Dialer, _ []string, _ []string, stop, ready chan struct{}) (acceleratorPortForwarder, error) {
+		return &fakeAcceleratorForwarder{mode: "error-before-ready", ready: ready, stop: stop, failure: rawErr}, nil
+	}
+	snapshot := &AcceleratorContextSnapshot{restConfig: &rest.Config{Host: "https://api.example.test", TLSClientConfig: rest.TLSClientConfig{Insecure: true}}}
+	tunnel, err := StartAcceleratorPodTunnel(context.Background(), snapshot, "team-a", "pod-a")
+	if tunnel != nil || ClassifyAcceleratorTunnelFailure(err) != AcceleratorTunnelFailureTransient {
+		t.Fatalf("tunnel=%#v error=%v class=%d", tunnel, err, ClassifyAcceleratorTunnelFailure(err))
+	}
+
+	select {
+	case data := <-eventsCh:
+		if len(data) != 1 {
+			t.Fatalf("debug event=%#v", data)
+		}
+		payload, ok := data[0].(map[string]interface{})
+		if !ok || payload["category"] != debug.CategoryPortforward || payload["message"] != "Accelerator Pod tunnel failed" {
+			t.Fatalf("debug payload=%#v", data[0])
+		}
+		details, ok := payload["details"].(map[string]interface{})
+		if !ok || details["stage"] != "forward_ports" || details["failureKind"] != "transient" || details["namespace"] != "team-a" || details["pod"] != "pod-a" || details["error"] != rawErr.Error() {
+			t.Fatalf("debug details=%#v", payload["details"])
+		}
+	case <-time.After(time.Second):
+		t.Fatal("raw tunnel failure was not emitted to Debug")
+	}
 }
 
 func TestAcceleratorTunnelPublicFailuresNeverExposeRawCause(t *testing.T) {

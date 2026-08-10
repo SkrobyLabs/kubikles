@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"kubikles/pkg/acceleratorrelease"
+	"kubikles/pkg/debug"
+	"kubikles/pkg/events"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -74,6 +76,43 @@ func (p *fakeContexts) setSnapshot(snapshot ContextSnapshot) {
 	p.mu.Lock()
 	p.snapshot = snapshot
 	p.mu.Unlock()
+}
+
+func TestProvisionContextUnavailableLogsBackendStage(t *testing.T) {
+	eventsCh := make(chan []interface{}, 1)
+	debug.Init(events.EmitterFunc(func(name string, data ...interface{}) {
+		if name == "debug:log" {
+			eventsCh <- data
+		}
+	}))
+	debug.SetEnabled(true)
+	t.Cleanup(func() {
+		debug.SetEnabled(false)
+		debug.Init(&events.NoopEmitter{})
+	})
+
+	rawErr := errors.New("kubeconfig reload failed")
+	service := New(&fakeContexts{current: "ctx", err: rawErr}, &fakeCharts{}, &fakeObserver{})
+	result := service.Provision(context.Background(), validRequest())
+	if result.Availability != Unavailable || result.Reason != ContextUnavailable {
+		t.Fatalf("result=%#v", result)
+	}
+	select {
+	case data := <-eventsCh:
+		if len(data) != 1 {
+			t.Fatalf("debug event=%#v", data)
+		}
+		payload, ok := data[0].(map[string]interface{})
+		if !ok || payload["category"] != debug.CategoryHelm || payload["message"] != "Accelerator provisioning context unavailable" {
+			t.Fatalf("debug payload=%#v", data[0])
+		}
+		details, ok := payload["details"].(map[string]interface{})
+		if !ok || details["stage"] != "snapshot_current_context" || details["requestedContext"] != "ctx" || details["currentContext"] != "ctx" || details["error"] != rawErr.Error() {
+			t.Fatalf("debug details=%#v", payload["details"])
+		}
+	case <-time.After(time.Second):
+		t.Fatal("context failure was not emitted to Debug")
+	}
 }
 
 type fakeCharts struct {
