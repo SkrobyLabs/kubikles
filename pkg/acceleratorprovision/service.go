@@ -111,6 +111,9 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	if !validRelease(request.Resolution) {
 		return unavailable(ArtifactUnavailable, CleanupNotNeeded)
 	}
+	if request.NamespaceOverride == "*" {
+		request.NamespaceOverride = ""
+	}
 	if request.ContextName == "" || strings.TrimSpace(request.ContextName) != request.ContextName {
 		logProvisionContextUnavailable(request, "validate_context_name", nil, "", nil)
 		return unavailable(ContextUnavailable, CleanupNotNeeded)

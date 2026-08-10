@@ -544,6 +544,45 @@ func TestCoordinatorRetryRedeploysActiveWorkload(t *testing.T) {
 	stopCoordinator(t, coordinator)
 }
 
+func TestCoordinatorAllNamespacesMarkerUsesContextNamespaceOnRetry(t *testing.T) {
+	coordinator, services, _ := newCoordinatorHarness(t)
+	requests := make(chan Request, 2)
+	services.provisionHook = func(_ context.Context, _ int, request Request) Result {
+		requests <- request
+		return unavailable(ContextUnavailable, CleanupNotNeeded)
+	}
+
+	coordinator.Enable("ctx", "*")
+	waitCoordinatorState(t, coordinator, CoordinatorUnavailable)
+	if first := <-requests; first.NamespaceOverride != "" {
+		t.Fatalf("initial namespace override=%q", first.NamespaceOverride)
+	}
+	if snapshot := coordinator.Snapshot("ctx"); snapshot.Namespace != "" {
+		t.Fatalf("stored namespace=%q", snapshot.Namespace)
+	}
+
+	// Retry also repairs slots written by an older client/backend combination.
+	coordinator.mu.Lock()
+	stale := coordinator.slots[coordinator.currentEpoch]
+	coordinator.mu.Unlock()
+	stale.mu.Lock()
+	stale.namespace = "*"
+	stale.mu.Unlock()
+
+	coordinator.Retry("ctx")
+	deadline := time.Now().Add(time.Second)
+	for services.provisionCalls.Load() < 2 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if services.provisionCalls.Load() != 2 {
+		t.Fatalf("provision calls=%d", services.provisionCalls.Load())
+	}
+	if retry := <-requests; retry.NamespaceOverride != "" {
+		t.Fatalf("retry namespace override=%q", retry.NamespaceOverride)
+	}
+	stopCoordinator(t, coordinator)
+}
+
 func TestCoordinatorCustomArtifactOptionsTriggerRedeploy(t *testing.T) {
 	coordinator, services, _ := newCoordinatorHarness(t)
 	options := DeploymentOptions{ImageReference: "ghcr.io/example/accelerator:test", ChartReference: "ghcr.io/example/charts/accelerator:test"}
@@ -643,6 +682,31 @@ func TestTransportLossRevokesBeforeResume(t *testing.T) {
 		t.Fatal("higher Resume generation not published")
 	}
 	lease.Close()
+	demand.Close()
+	stopCoordinator(t, coordinator)
+}
+
+func TestProtocolFailureSkipsIneligibleResumeAttempt(t *testing.T) {
+	coordinator, services, clock := newCoordinatorHarness(t)
+	workload := coordinatorWorkload(t)
+	session, _ := coordinatorSession(workload, clock, 1)
+	services.provisionHook = func(context.Context, int, Request) Result { return available(workload) }
+	services.connectHook = func(context.Context, int, *ProvisionedWorkload) ConnectResult {
+		return ConnectResult{Availability: Available, Session: session}
+	}
+	services.resumeHook = func(context.Context, int, ResumeRequest, *coordinatorIdleToken) ResumeResult {
+		t.Fatal("protocol failure attempted session resume")
+		return unavailableResume(ResumeSessionIneligible)
+	}
+
+	demand := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
+	coordinator.Enable("ctx", "kubikles-system")
+	waitCoordinatorState(t, coordinator, CoordinatorActive)
+	session.beginTermination(SessionProtocolFailed, false)
+	snapshot := waitCoordinatorState(t, coordinator, CoordinatorUnavailable)
+	if services.resumeCalls.Load() != 0 || len(snapshot.Diagnostics) != 1 || snapshot.Diagnostics[0].Phase != "reconnection" || snapshot.Diagnostics[0].Reason != string(ResumeProtocolFailed) {
+		t.Fatalf("resume=%d diagnostics=%#v", services.resumeCalls.Load(), snapshot.Diagnostics)
+	}
 	demand.Close()
 	stopCoordinator(t, coordinator)
 }

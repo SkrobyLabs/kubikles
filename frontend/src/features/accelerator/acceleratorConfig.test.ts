@@ -11,6 +11,11 @@ describe('accelerator connection policy', () => {
     const next = upsertAcceleratorOverride(settings, { contextName: 'prod', enabled: true, namespace: '' });
     expect(acceleratorPolicy(next, 'prod', 'context-ns')).toMatchObject({ enabled: true, namespace: 'context-ns', namespaceSource: 'context namespace' });
   });
+  it('treats the all-namespaces marker as context namespace inheritance', () => {
+    const inherited = { ...settings, defaultNamespace: '', connectionOverrides: [] };
+    expect(acceleratorPolicy(inherited, 'prod', '*')).toMatchObject({ namespace: '', namespaceSource: 'context namespace' });
+    expect(acceleratorPolicy({ ...inherited, connectionOverrides: [{ contextName: 'prod', namespace: '*' }] }, 'prod', 'context-ns')).toMatchObject({ namespace: 'context-ns', namespaceSource: 'context namespace' });
+  });
   it('updates only the selected context and supports rename and reset', () => {
     const saved = upsertAcceleratorOverride({ ...settings, connectionOverrides: [{ contextName: 'keep', enabled: true }] }, { contextName: 'old', namespace: 'target' });
     const renamed = renameAcceleratorOverride(saved, 'old', 'new');

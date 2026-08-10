@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
+	"kubikles/pkg/debug"
 	"kubikles/pkg/server"
 )
 
@@ -200,6 +201,15 @@ func (s *ConnectedSession) beginTerminationWithIdle(reason SessionEndReason, nor
 		}
 		s.disconnect = &disconnectRecord{at: disconnectedAt, reason: reason, workloadNonce: s.receipt, instanceID: s.identity.InstanceID, sessionID: s.identity.SessionID, generation: s.identity.Generation, idleToken: idle}
 		s.mu.Unlock()
+		if reason != SessionClosed && reason != SessionIdleReleased {
+			debug.LogPortforward("Accelerator session ended", map[string]interface{}{
+				"reason":     reason,
+				"context":    s.identity.ContextName,
+				"namespace":  s.identity.ReleaseNamespace,
+				"pod":        s.identity.Pod.Name,
+				"generation": s.identity.Generation,
+			})
+		}
 		close(s.terminalStart)
 		go s.cleanup(normal)
 	})
@@ -331,16 +341,19 @@ func (s *ConnectedSession) pump() {
 	for {
 		messageType, payload, err := s.socket.ReadMessage()
 		if err != nil {
+			debug.LogPortforward("Accelerator session transport failed", map[string]interface{}{"stage": "read_message", "error": err.Error()})
 			s.beginTermination(SessionPeerClosed, false)
 			return
 		}
 		if messageType != websocket.TextMessage || len(payload) > acceleratorsecret.MaxCreatorResponseFrameBytes {
+			debug.LogPortforward("Accelerator session protocol failed", map[string]interface{}{"stage": "validate_message", "messageType": messageType, "payloadBytes": len(payload)})
 			s.beginTermination(SessionProtocolFailed, false)
 			return
 		}
 		frame, err := acceleratorsecret.DecodeServerFrame(payload)
 		clear(payload)
 		if err != nil {
+			debug.LogPortforward("Accelerator session protocol failed", map[string]interface{}{"stage": "decode_frame", "error": err.Error()})
 			s.beginTermination(SessionProtocolFailed, false)
 			return
 		}
@@ -348,12 +361,14 @@ func (s *ConnectedSession) pump() {
 			switch frame.Event.Name {
 			case acceleratorsecret.EventResource, acceleratorsecret.EventWatcherStatus, acceleratorsecret.EventWatcherError:
 			default:
+				debug.LogPortforward("Accelerator session protocol failed", map[string]interface{}{"stage": "validate_event", "event": frame.Event.Name})
 				clearServerFrame(&frame)
 				s.beginTermination(SessionProtocolFailed, false)
 				return
 			}
 		}
 		if !s.arbiter.route(frame) {
+			debug.LogPortforward("Accelerator session protocol failed", map[string]interface{}{"stage": "route_frame"})
 			s.beginTermination(SessionProtocolFailed, false)
 			return
 		}
@@ -374,7 +389,14 @@ func (s *ConnectedSession) writePump() {
 			return
 		case payload := <-s.outbound:
 			deadline := time.Now().Add(server.AcceleratorSocketWriteTimeout)
-			if s.socket.SetWriteDeadline(deadline) != nil || s.socket.WriteMessage(websocket.TextMessage, payload) != nil {
+			if err := s.socket.SetWriteDeadline(deadline); err != nil {
+				debug.LogPortforward("Accelerator session transport failed", map[string]interface{}{"stage": "set_write_deadline", "error": err.Error()})
+				clear(payload)
+				s.beginTermination(SessionPeerClosed, false)
+				return
+			}
+			if err := s.socket.WriteMessage(websocket.TextMessage, payload); err != nil {
+				debug.LogPortforward("Accelerator session transport failed", map[string]interface{}{"stage": "write_message", "error": err.Error()})
 				clear(payload)
 				s.beginTermination(SessionPeerClosed, false)
 				return

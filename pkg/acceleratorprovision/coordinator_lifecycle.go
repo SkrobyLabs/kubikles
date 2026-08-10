@@ -26,7 +26,10 @@ func (c *Coordinator) runResume(ctx context.Context, s *contextSlot, fence opera
 	s.mu.Unlock()
 	request := ResumeRequest{Prior: prior, Workload: workload}
 	result := unavailableResume(ResumeInvalid)
-	if c.reconnector != nil {
+	eligibilityFailure := resumeEligibilityFailure(prior, idle)
+	if eligibilityFailure != "" {
+		result = unavailableResume(eligibilityFailure)
+	} else if c.reconnector != nil {
 		options := c.optionsForWorkload(workload)
 		if policy, ok := c.reconnector.(interface {
 			ResumeWithVersionPolicy(context.Context, ResumeRequest, string, bool) ResumeResult
@@ -78,6 +81,27 @@ func (c *Coordinator) runResume(ctx context.Context, s *contextSlot, fence opera
 		}
 	}
 	c.runActivation(ctx, s, fence, false, 0)
+}
+
+func resumeEligibilityFailure(prior *ConnectedSession, idle *coordinatorIdleRelease) ResumeReason {
+	if prior == nil {
+		return ResumeInvalid
+	}
+	switch prior.EndReason() {
+	case SessionPeerClosed, SessionTunnelClosed:
+		if idle == nil {
+			return ""
+		}
+	case SessionIdleReleased:
+		if idle != nil {
+			return ""
+		}
+	case SessionProtocolFailed:
+		return ResumeProtocolFailed
+	case SessionClosed:
+		return ResumeExplicitlyClosed
+	}
+	return ResumeSessionIneligible
 }
 
 func (c *Coordinator) startIdleLocked(s *contextSlot) {

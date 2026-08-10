@@ -3,11 +3,14 @@ import type { AcceleratorConnectionOverride } from '~/context/ConfigContext';
 export type AcceleratorSettings = { enabledByDefault: boolean; defaultNamespace: string; connectionOverrides: AcceleratorConnectionOverride[] };
 export function acceleratorPolicy(settings: AcceleratorSettings, contextName: string, contextNamespace = 'default') {
   const override = settings.connectionOverrides.find(item => item.contextName === contextName);
-  const namespace = override?.namespace === '' ? contextNamespace : (override?.namespace ?? settings.defaultNamespace ?? contextNamespace ?? 'default');
+  const inheritedNamespace = contextNamespace === '*' ? '' : contextNamespace;
+  const overrideNamespace = override?.namespace;
+  const usesContextNamespace = overrideNamespace === '' || overrideNamespace === '*' || (overrideNamespace === undefined && (!settings.defaultNamespace || settings.defaultNamespace === '*'));
+  const namespace = usesContextNamespace ? inheritedNamespace : (overrideNamespace ?? settings.defaultNamespace);
   return {
     enabled: override?.enabled ?? settings.enabledByDefault,
     namespace,
-    namespaceSource: override?.namespace !== undefined ? (override.namespace === '' ? 'context namespace' : 'connection override') : (settings.defaultNamespace ? 'Kubikles Settings' : 'context namespace'),
+    namespaceSource: usesContextNamespace ? 'context namespace' : (overrideNamespace !== undefined ? 'connection override' : 'Kubikles Settings'),
     override,
   };
 }

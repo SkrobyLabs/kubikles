@@ -195,7 +195,13 @@ func (c *secretRPCClient) SubscribeSecretWatcher(ctx context.Context, namespace 
 	}
 	defer clear(frame.Result)
 	var confirmed acceleratorsecret.SecretWatchSubscription
-	if acceleratorsecret.DecodeResultValue(frame.Result, &confirmed) != nil || confirmed.WatcherSpecID != subscription.WatcherSpecID {
+	decodeErr := acceleratorsecret.DecodeResultValue(frame.Result, &confirmed)
+	if decodeErr != nil || confirmed.WatcherSpecID != subscription.WatcherSpecID {
+		details := map[string]interface{}{"payloadBytes": len(frame.Result), "watcherSpecID": subscription.WatcherSpecID, "confirmedWatcherSpecID": confirmed.WatcherSpecID}
+		if decodeErr != nil {
+			details["error"] = decodeErr.Error()
+		}
+		c.logProtocolFailure("validate_subscribe_result", details)
 		c.removeSubscription(watcher)
 		watcher.terminate(acceleratorsecret.ReasonProtocol)
 		c.terminate(acceleratorsecret.ReasonProtocol)
@@ -233,6 +239,7 @@ func (c *secretRPCClient) UnsubscribeSecretWatcher(ctx context.Context, id accel
 	}
 	defer clear(frame.Result)
 	if !bytes.Equal(frame.Result, []byte("null")) {
+		c.logProtocolFailure("validate_unsubscribe_result", map[string]interface{}{"payloadBytes": len(frame.Result), "watcherSpecID": id})
 		c.terminate(acceleratorsecret.ReasonProtocol)
 		return newSecretClientError(acceleratorsecret.ReasonProtocol)
 	}
@@ -285,7 +292,8 @@ func (c *secretRPCClient) handleWatchFrame(frame acceleratorsecret.EventFrame) b
 	switch frame.Name {
 	case acceleratorsecret.EventResource:
 		var resource acceleratorsecret.SecretResourceEvent
-		if acceleratorsecret.DecodeResultValue(frame.Data, &resource) != nil {
+		if decodeErr := acceleratorsecret.DecodeResultValue(frame.Data, &resource); decodeErr != nil {
+			c.logProtocolFailure("decode_resource_event", map[string]interface{}{"error": decodeErr.Error(), "payloadBytes": len(frame.Data)})
 			return false
 		}
 		c.mu.Lock()
@@ -305,7 +313,8 @@ func (c *secretRPCClient) handleWatchFrame(frame acceleratorsecret.EventFrame) b
 		return true
 	case acceleratorsecret.EventWatcherStatus:
 		var status acceleratorsecret.SecretWatcherStatus
-		if acceleratorsecret.DecodeResultValue(frame.Data, &status) != nil {
+		if decodeErr := acceleratorsecret.DecodeResultValue(frame.Data, &status); decodeErr != nil {
+			c.logProtocolFailure("decode_watcher_status_event", map[string]interface{}{"error": decodeErr.Error(), "payloadBytes": len(frame.Data)})
 			return false
 		}
 		c.mu.Lock()
@@ -332,7 +341,8 @@ func (c *secretRPCClient) handleWatchFrame(frame acceleratorsecret.EventFrame) b
 		return true
 	case acceleratorsecret.EventWatcherError:
 		var watchError acceleratorsecret.SecretWatcherError
-		if acceleratorsecret.DecodeResultValue(frame.Data, &watchError) != nil {
+		if decodeErr := acceleratorsecret.DecodeResultValue(frame.Data, &watchError); decodeErr != nil {
+			c.logProtocolFailure("decode_watcher_error_event", map[string]interface{}{"error": decodeErr.Error(), "payloadBytes": len(frame.Data)})
 			return false
 		}
 		c.mu.Lock()
@@ -351,6 +361,7 @@ func (c *secretRPCClient) handleWatchFrame(frame acceleratorsecret.EventFrame) b
 		}
 		return true
 	default:
+		c.logProtocolFailure("validate_watch_event_name", map[string]interface{}{"event": frame.Name})
 		return false
 	}
 }

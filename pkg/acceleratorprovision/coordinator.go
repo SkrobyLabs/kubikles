@@ -178,6 +178,9 @@ func (c *Coordinator) EnableWithOptions(contextName, namespace string, options D
 	if c == nil || contextName == "" || ValidateDeploymentOptions(options) != nil {
 		return
 	}
+	if namespace == "*" {
+		namespace = ""
+	}
 	c.mu.Lock()
 	if c.closed || c.quiesced || c.switching || contextName != c.currentName {
 		c.mu.Unlock()
@@ -246,6 +249,9 @@ func (c *Coordinator) Retry(contextName string) {
 	}
 	s.mismatchLatched, s.unavailableUntil = false, time.Time{}
 	s.diagnostics = nil
+	if s.namespace == "*" {
+		s.namespace = ""
+	}
 	if s.workload != nil {
 		if s.workerCancel != nil {
 			s.workerCancel()

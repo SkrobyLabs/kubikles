@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"kubikles/pkg/acceleratorsecret"
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -81,6 +82,20 @@ func (e secretClientError) SecretClientReason() acceleratorsecret.SecretClientRe
 
 func newSecretClientError(reason acceleratorsecret.SecretClientReason) error {
 	return secretClientError{reason: reason}
+}
+
+func (c *secretRPCClient) logProtocolFailure(stage string, details map[string]interface{}) {
+	if details == nil {
+		details = make(map[string]interface{})
+	}
+	details["stage"] = stage
+	if c != nil && c.session != nil {
+		identity := c.session.Identity()
+		details["context"] = identity.ContextName
+		details["namespace"] = identity.ReleaseNamespace
+		details["pod"] = identity.Pod.Name
+	}
+	debug.LogPortforward("Accelerator secret protocol failed", details)
 }
 
 // SecretClientReasonOf exposes only the closed reason enum needed by the
@@ -227,17 +242,25 @@ func (c *secretRPCClient) handleFrame(frame acceleratorsecret.ServerFrame) bool 
 	if frame.Event != nil {
 		return c.handleWatchFrame(*frame.Event)
 	}
+	c.logProtocolFailure("validate_secret_frame", nil)
 	return false
 }
 
 func (c *secretRPCClient) handleResult(frame acceleratorsecret.ResultFrame) bool {
 	nonce, counter, ok := acceleratorsecret.ParseCallID(frame.ID)
-	if !ok || nonce != c.nonce {
+	if !ok {
+		c.logProtocolFailure("parse_result_call_id", map[string]interface{}{"callID": frame.ID})
+		return false
+	}
+	if nonce != c.nonce {
+		c.logProtocolFailure("validate_result_nonce", map[string]interface{}{"callID": frame.ID})
 		return false
 	}
 	c.mu.Lock()
 	if counter > c.callCounter {
+		expectedCounter := c.callCounter
 		c.mu.Unlock()
+		c.logProtocolFailure("validate_result_counter", map[string]interface{}{"callID": frame.ID, "counter": counter, "latestCounter": expectedCounter})
 		return false
 	}
 	pending := c.calls[frame.ID]

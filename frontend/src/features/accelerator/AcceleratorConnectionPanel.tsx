@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { CheckIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 import { useAccelerator, useConfig, useK8s, useUI } from '~/context';
 import { acceleratorPolicy, removeAcceleratorOverride, upsertAcceleratorOverride } from './acceleratorConfig';
 import { acceleratorStateLabel } from './AcceleratorStatusBadge';
@@ -22,6 +23,7 @@ const failureDescriptions: Record<string, string> = {
   tunnel_unavailable: 'Kubikles could not open a tunnel to the Accelerator Pod.',
   accelerator_unavailable: 'The Accelerator process did not become available.',
   version_mismatch: 'The Accelerator and desktop build versions do not match exactly.',
+  protocol_failed: 'The Accelerator session protocol failed. See Debug for backend details.',
 };
 const reasonText = (reason: string) => failureDescriptions[reason] ?? reason.replace(/_/g, ' ');
 
@@ -33,6 +35,7 @@ export default function AcceleratorConnectionPanel({ contextName, contextNamespa
   const [namespace, setNamespace] = useState(() => acceleratorPolicy(config.accelerator, contextName, contextNamespace || 'default').override?.namespace ?? '');
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
+  const [deploymentLogCopied, setDeploymentLogCopied] = useState(false);
   const current = contextName === currentContext;
   const policy = acceleratorPolicy(config.accelerator, contextName, contextNamespace || 'default');
   const shown = current ? status : { state: 'direct_only', enabled: policy.enabled, namespace: policy.namespace, available: false };
@@ -67,6 +70,15 @@ export default function AcceleratorConnectionPanel({ contextName, contextNamespa
   const diagnostics = ((shown as any).diagnostics ?? []) as AcceleratorDiagnostic[];
   const busy = pendingAction !== null || busyStates.has(shown.state);
   const customArtifactsActive = Boolean(config.accelerator.customImage || config.accelerator.customChart);
+  const diagnosticLine = (entry: AcceleratorDiagnostic) => `${entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '--:--:--'} ${entry.phase}: ${reasonText(entry.reason)}${entry.attempt ? ` (attempt ${entry.attempt})` : ''}`;
+  const copyDeploymentLog = async () => {
+    try {
+      await navigator.clipboard.writeText(diagnostics.map(diagnosticLine).join('\n'));
+      setDeploymentLogCopied(true);
+    } catch (error) {
+      Logger.error('Failed to copy Accelerator deployment log', error, 'ui');
+    }
+  };
   const view = (kind: 'helmreleases' | 'pods', name: string) => {
     setSelectedNamespaces([shown.namespace || policy.namespace]);
     navigateWithSearch(kind, name, true);
@@ -85,8 +97,8 @@ export default function AcceleratorConnectionPanel({ contextName, contextNamespa
     <p className="text-xs text-gray-500">Connection overrides inherit the global defaults. <button type="button" onClick={onOpenSettings} className="text-primary hover:underline">Open Settings &gt; Accelerator</button></p>
     <div>
       <label className="mb-1 block text-xs text-gray-400">Deployment namespace</label>
-      <input value={namespace} onChange={event => setNamespace(event.target.value)} placeholder={contextNamespace || 'default'} className="w-full rounded border border-border bg-surface px-2.5 py-1.5 text-sm text-white focus:border-primary focus:outline-none" />
-      <p className="mt-1 text-xs text-gray-500">Resolved: <span className="font-mono text-gray-300">{namespace || policy.namespace}</span> ({namespace === '' ? policy.namespaceSource : 'connection override'}). The namespace must already exist.</p>
+      <input value={namespace} onChange={event => setNamespace(event.target.value)} placeholder={contextNamespace && contextNamespace !== '*' ? contextNamespace : 'context namespace'} className="w-full rounded border border-border bg-surface px-2.5 py-1.5 text-sm text-white focus:border-primary focus:outline-none" />
+      <p className="mt-1 text-xs text-gray-500">Resolved: <span className="font-mono text-gray-300">{namespace || policy.namespace || 'context namespace'}</span> ({namespace === '' ? policy.namespaceSource : 'connection override'}). The namespace must already exist.</p>
     </div>
     <div className="flex flex-wrap gap-2">
       {!shown.enabled && <button disabled={busy} onClick={() => void runAction('Enable', deploy)} className="rounded bg-primary px-3 py-1.5 text-sm text-white disabled:cursor-wait disabled:opacity-50">{pendingAction === 'Enable' ? 'Starting...' : 'Enable & Deploy'}</button>}
@@ -97,7 +109,13 @@ export default function AcceleratorConnectionPanel({ contextName, contextNamespa
     </div>
     {actionError && <div role="alert" className="rounded border border-red-500/50 bg-red-950/30 p-3 text-xs text-red-200">Request failed: {actionError}</div>}
     {(shown.state === 'unavailable' || diagnostics.length > 0) && <div className="space-y-2 rounded border border-red-500/40 bg-red-950/20 p-3 text-xs">
-      <div className="font-medium text-red-200">Deployment log</div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="font-medium text-red-200">Deployment log</div>
+        {diagnostics.length > 0 && <button type="button" onClick={() => void copyDeploymentLog()} className="inline-flex items-center gap-1 rounded px-2 py-1 text-gray-400 hover:bg-white/10 hover:text-white" aria-label="Copy deployment log" title="Copy deployment log">
+          {deploymentLogCopied ? <CheckIcon className="h-3.5 w-3.5 text-green-400" /> : <ClipboardDocumentIcon className="h-3.5 w-3.5" />}
+          {deploymentLogCopied ? 'Copied' : 'Copy'}
+        </button>}
+      </div>
       {diagnostics.length === 0 ? <div className="text-gray-400">No failure details were returned. Retry the deployment; request failures will appear here and in Debug logs.</div> : diagnostics.map((entry, index) => <div key={`${entry.timestamp}-${entry.phase}-${entry.reason}-${index}`} className="font-mono text-gray-300">
         <span className="text-gray-500">{entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '--:--:--'}</span>{' '}
         <span className="text-red-300">{entry.phase}</span>: {reasonText(entry.reason)}{entry.attempt ? ` (attempt ${entry.attempt})` : ''}

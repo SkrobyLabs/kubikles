@@ -23,7 +23,8 @@ func (c *secretRPCClient) ListSecretsMetadata(ctx context.Context, requestID, na
 	}
 	defer clear(frame.Result)
 	var items []acceleratorsecret.SecretListItem
-	if acceleratorsecret.DecodeResultValue(frame.Result, &items) != nil {
+	if decodeErr := acceleratorsecret.DecodeResultValue(frame.Result, &items); decodeErr != nil {
+		c.logProtocolFailure("decode_list_secrets_result", map[string]interface{}{"error": decodeErr.Error(), "payloadBytes": len(frame.Result)})
 		c.terminate(acceleratorsecret.ReasonProtocol)
 		return nil, newSecretClientError(acceleratorsecret.ReasonProtocol)
 	}
@@ -43,7 +44,8 @@ func (c *secretRPCClient) GetSecretData(ctx context.Context, namespace, name str
 	}
 	defer clear(frame.Result)
 	var entries []k8s.DataEntry
-	if acceleratorsecret.DecodeResultValue(frame.Result, &entries) != nil {
+	if decodeErr := acceleratorsecret.DecodeResultValue(frame.Result, &entries); decodeErr != nil {
+		c.logProtocolFailure("decode_get_secret_data_result", map[string]interface{}{"error": decodeErr.Error(), "payloadBytes": len(frame.Result)})
 		c.terminate(acceleratorsecret.ReasonProtocol)
 		return nil, newSecretClientError(acceleratorsecret.ReasonProtocol)
 	}
@@ -63,7 +65,8 @@ func (c *secretRPCClient) GetSecretYaml(ctx context.Context, namespace, name str
 	}
 	defer clear(frame.Result)
 	var value string
-	if acceleratorsecret.DecodeResultValue(frame.Result, &value) != nil {
+	if decodeErr := acceleratorsecret.DecodeResultValue(frame.Result, &value); decodeErr != nil {
+		c.logProtocolFailure("decode_get_secret_yaml_result", map[string]interface{}{"error": decodeErr.Error(), "payloadBytes": len(frame.Result)})
 		c.terminate(acceleratorsecret.ReasonProtocol)
 		return "", newSecretClientError(acceleratorsecret.ReasonProtocol)
 	}
@@ -86,7 +89,8 @@ func (c *secretRPCClient) CancelListRequest(ctx context.Context, requestID strin
 		return false, err
 	}
 	var canceled bool
-	if acceleratorsecret.DecodeResultValue(frame.Result, &canceled) != nil {
+	if decodeErr := acceleratorsecret.DecodeResultValue(frame.Result, &canceled); decodeErr != nil {
+		c.logProtocolFailure("decode_cancel_list_result", map[string]interface{}{"error": decodeErr.Error(), "payloadBytes": len(frame.Result)})
 		clear(frame.Result)
 		c.terminate(acceleratorsecret.ReasonProtocol)
 		return false, newSecretClientError(acceleratorsecret.ReasonProtocol)

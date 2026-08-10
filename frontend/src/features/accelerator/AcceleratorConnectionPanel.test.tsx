@@ -7,6 +7,7 @@ import AcceleratorConnectionPanel from './AcceleratorConnectionPanel';
 const retry = vi.fn();
 const disable = vi.fn();
 const setConfig = vi.fn();
+const writeText = vi.fn();
 let acceleratorStatus: any = { state: 'direct_only', enabled: false, namespace: '', available: false };
 let acceleratorConfig: any = { enabledByDefault: false, defaultNamespace: '', customImage: '', customChart: '', connectionOverrides: [] };
 vi.mock('~/context', () => ({
@@ -23,6 +24,17 @@ describe('AcceleratorConnectionPanel', () => {
     retry.mockReset();
     disable.mockReset();
     setConfig.mockReset();
+    writeText.mockReset();
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+  });
+
+  it('copies the visible deployment failures from the error panel', async () => {
+    acceleratorStatus = { state: 'unavailable', enabled: true, namespace: 'default', available: false, diagnostics: [{ timestamp: '2026-08-05T12:00:00Z', phase: 'reconnection', reason: 'session_not_resume_eligible', attempt: 1 }] };
+    render(<AcceleratorConnectionPanel contextName="prod" contextNamespace="default" onOpenSettings={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Copy deployment log' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(writeText.mock.calls[0][0]).toContain('reconnection: session not resume eligible (attempt 1)');
+    expect(screen.getByText('Copied')).toBeTruthy();
   });
 
   it('links inheritance guidance to global Accelerator settings', () => {

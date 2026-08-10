@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"kubikles/pkg/acceleratorsecret"
+	"kubikles/pkg/debug"
 )
 
 type sessionFrameHandler func(acceleratorsecret.ServerFrame) bool
@@ -54,6 +55,7 @@ func (a *sessionFrameArbiter) attach(handler sessionFrameHandler) (func(), bool)
 		accepted := handler(pending[index])
 		clearServerFrame(&pending[index])
 		if !accepted {
+			debug.LogPortforward("Accelerator session frame routing failed", map[string]interface{}{"stage": "attach_pending_frame", "pendingIndex": index, "pendingFrames": len(pending)})
 			for remaining := index + 1; remaining < len(pending); remaining++ {
 				clearServerFrame(&pending[remaining])
 			}
@@ -89,12 +91,15 @@ func (a *sessionFrameArbiter) route(frame acceleratorsecret.ServerFrame) bool {
 	if a.closed {
 		a.mu.Unlock()
 		clearServerFrame(&frame)
+		debug.LogPortforward("Accelerator session frame routing failed", map[string]interface{}{"stage": "route_closed"})
 		return false
 	}
 	if a.handler == nil {
 		if len(a.pending) == cap(a.pending) {
+			pendingFrames := len(a.pending)
 			a.mu.Unlock()
 			clearServerFrame(&frame)
+			debug.LogPortforward("Accelerator session frame routing failed", map[string]interface{}{"stage": "pending_overflow", "pendingFrames": pendingFrames})
 			return false
 		}
 		a.pending = append(a.pending, frame)
@@ -105,6 +110,9 @@ func (a *sessionFrameArbiter) route(frame acceleratorsecret.ServerFrame) bool {
 	a.mu.Unlock()
 	accepted := handler(frame)
 	clearServerFrame(&frame)
+	if !accepted {
+		debug.LogPortforward("Accelerator session frame routing failed", map[string]interface{}{"stage": "handler_rejected"})
+	}
 	return accepted
 }
 

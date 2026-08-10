@@ -115,6 +115,20 @@ func TestProvisionContextUnavailableLogsBackendStage(t *testing.T) {
 	}
 }
 
+func TestProvisionTreatsAllNamespacesMarkerAsContextNamespace(t *testing.T) {
+	contexts := &fakeContexts{current: "ctx", snapshot: fakeSnapshot{identity: "identity", namespace: "context-ns"}}
+	charts := &fakeCharts{installOwned: true}
+	service := New(contexts, charts, &fakeObserver{})
+	service.entropy = bytes.NewReader(vectorEntropy())
+	request := validRequest()
+	request.NamespaceOverride = "*"
+
+	result := service.Provision(context.Background(), request)
+	if result.Availability != Available || result.Workload == nil || result.Workload.ReleaseNamespace != "context-ns" {
+		t.Fatalf("result=%#v", result)
+	}
+}
+
 type fakeCharts struct {
 	mu                sync.Mutex
 	calls             []string

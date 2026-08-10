@@ -13,6 +13,8 @@ import (
 	"github.com/gorilla/websocket"
 	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
+	"kubikles/pkg/debug"
+	"kubikles/pkg/events"
 	"kubikles/pkg/server"
 )
 
@@ -328,6 +330,50 @@ func TestConnectedSessionPumpFailsClosed(t *testing.T) {
 				t.Fatalf("reason=%s want=%s", session.EndReason(), test.reason)
 			}
 		})
+	}
+}
+
+func TestConnectedSessionFailureEmitsRawBackendDebugDetails(t *testing.T) {
+	eventsCh := make(chan map[string]interface{}, 4)
+	debug.Init(events.EmitterFunc(func(name string, data ...interface{}) {
+		if name != "debug:log" || len(data) != 1 {
+			return
+		}
+		if payload, ok := data[0].(map[string]interface{}); ok {
+			eventsCh <- payload
+		}
+	}))
+	debug.SetEnabled(true)
+	t.Cleanup(func() {
+		debug.SetEnabled(false)
+		debug.Init(&events.NoopEmitter{})
+	})
+
+	order := []string{}
+	socket := newRecordedSessionSocket(&order)
+	socket.messages <- socketMessage{err: errors.New("backend websocket read failed")}
+	session := sessionFixture(t, socket, newRecordedTunnel(&order))
+	select {
+	case <-session.Done():
+	case <-time.After(time.Second):
+		t.Fatal("session did not terminate")
+	}
+
+	deadline := time.After(time.Second)
+	for {
+		select {
+		case payload := <-eventsCh:
+			if payload["message"] != "Accelerator session transport failed" {
+				continue
+			}
+			details, ok := payload["details"].(map[string]interface{})
+			if !ok || details["stage"] != "read_message" || details["error"] != "backend websocket read failed" {
+				t.Fatalf("debug details=%#v", payload["details"])
+			}
+			return
+		case <-deadline:
+			t.Fatal("raw transport failure was not emitted to Debug")
+		}
 	}
 }
 
