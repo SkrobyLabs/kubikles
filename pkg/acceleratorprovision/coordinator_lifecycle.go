@@ -31,11 +31,11 @@ func (c *Coordinator) runResume(ctx context.Context, s *contextSlot, fence opera
 		if policy, ok := c.reconnector.(interface {
 			ResumeWithVersionPolicy(context.Context, ResumeRequest, string, bool) ResumeResult
 			resumeIdleWithVersionPolicy(context.Context, ResumeRequest, *coordinatorIdleToken, string, bool) ResumeResult
-		}); ok && (options.ReleaseVersion != "" || options.AllowVersionMismatch) {
+		}); ok && (options.ImageReference != "" || options.ChartReference != "") {
 			if idle != nil {
-				result = policy.resumeIdleWithVersionPolicy(ctx, request, idle.token, workload.BuildVersion, options.AllowVersionMismatch)
+				result = policy.resumeIdleWithVersionPolicy(ctx, request, idle.token, workload.BuildVersion, true)
 			} else {
-				result = policy.ResumeWithVersionPolicy(ctx, request, workload.BuildVersion, options.AllowVersionMismatch)
+				result = policy.ResumeWithVersionPolicy(ctx, request, workload.BuildVersion, true)
 			}
 		} else if idle != nil {
 			result = c.reconnector.resumeIdle(ctx, request, idle.token)

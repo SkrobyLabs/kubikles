@@ -30,8 +30,8 @@ func initializeDesktopAcceleratorLifecycle(app *App) {
 	if app.runtimeMode != RuntimeModeDesktop || app.k8sClient == nil || app.helmClient == nil {
 		return
 	}
-	resolver, err := newDesktopAcceleratorReleaseResolver()
-	if err != nil || resolver == nil {
+	resolver := newDesktopAcceleratorReleaseResolver()
+	if resolver == nil {
 		return
 	}
 	provisioner := desktopAcceleratorProvisionerFactory(app.k8sClient, app.helmClient)

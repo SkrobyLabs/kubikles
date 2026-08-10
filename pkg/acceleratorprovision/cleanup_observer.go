@@ -116,7 +116,7 @@ func drainObservationStopPriority(ctx context.Context, force <-chan struct{}) Dr
 }
 
 func classifyDrainJob(job *batchv1.Job, receipt *workloadReceipt) DrainObservationStatus {
-	if job == nil || string(job.UID) != receipt.job.UID || job.DeletionTimestamp != nil || job.Labels["kubikles.io/workload-session-id"] != receipt.workloadSessionID || job.Labels["app.kubernetes.io/instance"] != receipt.releaseName || job.Labels["app.kubernetes.io/managed-by"] != "Helm" || job.Annotations["kubikles.io/build-version"] != receipt.buildVersion || len(job.Spec.Template.Spec.Containers) != 1 || job.Spec.Template.Spec.Containers[0].Image != acceleratorWorkloadImageRepository()+"@"+receipt.imageDigest {
+	if job == nil || string(job.UID) != receipt.job.UID || job.DeletionTimestamp != nil || job.Labels["kubikles.io/workload-session-id"] != receipt.workloadSessionID || job.Labels["app.kubernetes.io/instance"] != receipt.releaseName || job.Labels["app.kubernetes.io/managed-by"] != "Helm" || job.Annotations["kubikles.io/build-version"] != receipt.buildVersion || len(job.Spec.Template.Spec.Containers) != 1 || job.Spec.Template.Spec.Containers[0].Image != effectiveReceiptImageReference(receipt) {
 		return DrainChanged
 	}
 	for _, condition := range job.Status.Conditions {

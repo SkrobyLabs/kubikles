@@ -162,6 +162,7 @@ func safeWorkloadProjection(workload *ProvisionedWorkload) *ProvisionedWorkload 
 		ContextName: workload.ContextName, ReleaseNamespace: workload.ReleaseNamespace,
 		ReleaseName: workload.ReleaseName, WorkloadSessionID: workload.WorkloadSessionID,
 		Job: workload.Job, Pod: workload.Pod, BuildVersion: workload.BuildVersion,
+		ImageReference: workload.ImageReference, ChartReference: workload.ChartReference,
 		ImageDigest: workload.ImageDigest, ChartDigest: workload.ChartDigest,
 	}
 }
@@ -607,11 +608,11 @@ func (c *Coordinator) resolve(ctx context.Context, s *contextSlot) acceleratorre
 		options = s.deploymentOptions
 		s.mu.Unlock()
 	}
-	if options.ReleaseVersion != "" || options.DescriptorURL != "" {
+	if options.ImageReference != "" || options.ChartReference != "" {
 		if resolver, ok := c.resolver.(interface {
 			ResolveOverride(context.Context, string, string) acceleratorrelease.Resolution
 		}); ok {
-			return resolver.ResolveOverride(ctx, options.ReleaseVersion, options.DescriptorURL)
+			return resolver.ResolveOverride(ctx, options.ImageReference, options.ChartReference)
 		}
 		return acceleratorrelease.Resolution{Availability: acceleratorrelease.Unavailable, Reason: acceleratorrelease.InvalidLocalBuild}
 	}
@@ -639,11 +640,11 @@ func (c *Coordinator) connect(ctx context.Context, workload *ProvisionedWorkload
 		return unavailableConnect(InvalidWorkload)
 	}
 	options := c.optionsForWorkload(workload)
-	if options.ReleaseVersion != "" || options.AllowVersionMismatch {
+	if options.ImageReference != "" || options.ChartReference != "" {
 		if connector, ok := c.connector.(interface {
 			ConnectWithVersionPolicy(context.Context, *ProvisionedWorkload, string, bool) ConnectResult
 		}); ok {
-			return connector.ConnectWithVersionPolicy(ctx, workload, workload.BuildVersion, options.AllowVersionMismatch)
+			return connector.ConnectWithVersionPolicy(ctx, workload, workload.BuildVersion, true)
 		}
 	}
 	return c.connector.Connect(ctx, workload)

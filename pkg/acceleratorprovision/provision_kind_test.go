@@ -978,9 +978,9 @@ func requiredKindEnv(t *testing.T, name string) string {
 
 func kindRequest(contextName, chartDigest, imageDigest string) Request {
 	return Request{ContextName: contextName, Resolution: acceleratorrelease.Resolution{
-		Availability: acceleratorrelease.Available, Source: acceleratorrelease.SourceNetwork,
+		Availability: acceleratorrelease.Available, Source: acceleratorrelease.SourceBuiltIn,
 		Release: acceleratorrelease.VerifiedRelease{
-			BuildVersion: kindBuildVersion(), SourceCommit: strings.Repeat("c", 40), DescriptorSHA256: strings.Repeat("d", 64),
+			BuildVersion:   kindBuildVersion(),
 			ImageReference: imageRepository + "@" + imageDigest, ChartReference: chartRepository + "@" + chartDigest,
 		},
 	}}

@@ -60,6 +60,7 @@ var errAcceleratorRenderMismatch = errors.New("accelerator live render did not m
 
 var acceleratorDigest = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 var acceleratorVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?$`)
+var acceleratorRegistryReference = regexp.MustCompile(`^[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+(?::[A-Za-z0-9_][A-Za-z0-9._-]{0,127}|@sha256:[0-9a-f]{64})$`)
 var acceleratorSession = regexp.MustCompile(`^[0-9a-f]{32}$`)
 var acceleratorVerifier = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
 
@@ -67,10 +68,13 @@ const (
 	acceleratorChartRepository = "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator@"
 	acceleratorImageRepository = "ghcr.io/skrobylabs/kubikles-accelerator"
 	acceleratorRegistryTimeout = 60 * time.Second
-	acceleratorSchemaSHA256    = "b691487ad7e02cd5de5a98cc83436988253f8260a18429216cd15f30f1d97a47"
+	acceleratorSchemaSHA256    = "ed7e27cb666c4fd24bfe45379286a4628c4165dd433f5fc8cc5d43db2f2311dc"
 )
 
-type AcceleratorChartRequest struct{ Reference, Digest, BuildVersion string }
+type AcceleratorChartRequest struct {
+	Reference, Digest, BuildVersion string
+	AllowVersionMismatch            bool
+}
 
 type acceleratorContextTransport struct {
 	ctx  context.Context
@@ -116,9 +120,14 @@ func PullAcceleratorChart(ctx context.Context, request AcceleratorChartRequest) 
 }
 
 func validAcceleratorChartRequest(request AcceleratorChartRequest) bool {
-	return acceleratorDigest.MatchString(request.Digest) &&
-		acceleratorVersion.MatchString(request.BuildVersion) &&
-		request.Reference == acceleratorChartRepository+request.Digest
+	reference := strings.TrimPrefix(request.Reference, "oci://")
+	if request.BuildVersion == "" || len(request.BuildVersion) > 128 || !acceleratorRegistryReference.MatchString(reference) {
+		return false
+	}
+	if request.Digest == "" {
+		return !strings.Contains(request.Reference, "@")
+	}
+	return acceleratorDigest.MatchString(request.Digest) && strings.HasSuffix(request.Reference, "@"+request.Digest)
 }
 
 func pullAcceleratorChart(ctx context.Context, puller acceleratorRegistryPuller, request AcceleratorChartRequest) (*chart.Chart, error) {
@@ -135,7 +144,7 @@ func pullAcceleratorChart(ctx context.Context, puller acceleratorRegistryPuller,
 		}
 		return nil, ErrAcceleratorUnavailable
 	}
-	if result == nil || result.Manifest == nil || result.Manifest.Digest != request.Digest || result.Chart == nil || result.Chart.Meta == nil || result.Config == nil {
+	if result == nil || result.Manifest == nil || (request.Digest != "" && result.Manifest.Digest != request.Digest) || result.Chart == nil || result.Chart.Meta == nil || result.Config == nil {
 		return nil, ErrAcceleratorIntegrity
 	}
 	if !exactAcceleratorManifestLayers(result.Manifest.Data) {
@@ -169,7 +178,10 @@ func loadAcceleratorArchive(data []byte, request AcceleratorChartRequest) (*char
 }
 
 func validateAcceleratorChart(loaded *chart.Chart, request AcceleratorChartRequest) (*chart.Chart, error) {
-	if !acceleratorVersion.MatchString(request.BuildVersion) || loaded == nil || loaded.Metadata == nil || loaded.Metadata.Name != "kubikles-accelerator" || loaded.Metadata.Type != "application" || loaded.Metadata.Version != strings.TrimPrefix(request.BuildVersion, "v") || loaded.Metadata.AppVersion != request.BuildVersion || !exactAcceleratorSchema(loaded.Schema) {
+	if request.BuildVersion == "" || loaded == nil || loaded.Metadata == nil || loaded.Metadata.Name != "kubikles-accelerator" || loaded.Metadata.Type != "application" || !exactAcceleratorSchema(loaded.Schema) {
+		return nil, ErrAcceleratorIntegrity
+	}
+	if !request.AllowVersionMismatch && (!acceleratorVersion.MatchString(request.BuildVersion) || loaded.Metadata.Version != strings.TrimPrefix(request.BuildVersion, "v") || loaded.Metadata.AppVersion != request.BuildVersion) {
 		return nil, ErrAcceleratorIntegrity
 	}
 	return loaded, nil
@@ -181,8 +193,8 @@ func exactAcceleratorSchema(schema []byte) bool {
 }
 
 func validAcceleratorReleaseRequest(request AcceleratorReleaseRequest) bool {
-	return validAcceleratorChartRequest(AcceleratorChartRequest{request.ChartReference, request.ChartDigest, request.BuildVersion}) &&
-		request.ImageRepository == acceleratorRuntimeImageRepository() && acceleratorDigest.MatchString(request.ImageDigest) &&
+	return validAcceleratorChartRequest(AcceleratorChartRequest{request.ChartReference, request.ChartDigest, request.BuildVersion, request.AllowVersionMismatch}) &&
+		validAcceleratorImageReference(effectiveAcceleratorImageReference(request)) &&
 		acceleratorSession.MatchString(request.WorkloadSession) && acceleratorVerifier.MatchString(request.CreatorVerifier) &&
 		request.ReleaseName == "kubikles-accelerator-"+request.WorkloadSession && request.ReleaseNamespace != ""
 }
@@ -193,7 +205,7 @@ func (c *Client) PrepareAcceleratorRelease(ctx context.Context, request Accelera
 	if !validAcceleratorReleaseRequest(request) {
 		return nil, AcceleratorIntegrity
 	}
-	loaded, err := PullAcceleratorChart(ctx, AcceleratorChartRequest{request.ChartReference, request.ChartDigest, request.BuildVersion})
+	loaded, err := PullAcceleratorChart(ctx, AcceleratorChartRequest{request.ChartReference, request.ChartDigest, request.BuildVersion, request.AllowVersionMismatch})
 	if err != nil {
 		if errors.Is(err, ErrAcceleratorIntegrity) {
 			return nil, AcceleratorIntegrity
@@ -214,7 +226,7 @@ func prepareAcceleratorRelease(loaded *chart.Chart, request AcceleratorReleaseRe
 	if !validAcceleratorReleaseRequest(request) {
 		return nil, AcceleratorIntegrity
 	}
-	if _, err := validateAcceleratorChart(loaded, AcceleratorChartRequest{request.ChartReference, request.ChartDigest, request.BuildVersion}); err != nil {
+	if _, err := validateAcceleratorChart(loaded, AcceleratorChartRequest{request.ChartReference, request.ChartDigest, request.BuildVersion, request.AllowVersionMismatch}); err != nil {
 		return nil, AcceleratorIntegrity
 	}
 	values := acceleratorValues(request)
@@ -253,10 +265,24 @@ func prepareAcceleratorRelease(loaded *chart.Chart, request AcceleratorReleaseRe
 
 func acceleratorValues(request AcceleratorReleaseRequest) map[string]interface{} {
 	return map[string]interface{}{
-		"image":       map[string]interface{}{"repository": request.ImageRepository, "digest": request.ImageDigest, "version": request.BuildVersion, "architecture": acceleratorRuntimeArchitecture()},
-		"accelerator": map[string]interface{}{"workloadSessionId": request.WorkloadSession},
+		"image":       map[string]interface{}{"reference": effectiveAcceleratorImageReference(request), "version": request.BuildVersion, "architecture": acceleratorRuntimeArchitecture()},
+		"accelerator": map[string]interface{}{"workloadSessionId": request.WorkloadSession, "allowVersionMismatch": request.AllowVersionMismatch},
 		"auth":        map[string]interface{}{"creatorVerifier": request.CreatorVerifier},
 	}
+}
+
+func effectiveAcceleratorImageReference(request AcceleratorReleaseRequest) string {
+	if request.ImageReference != "" {
+		return request.ImageReference
+	}
+	if request.ImageRepository != "" && request.ImageDigest != "" {
+		return request.ImageRepository + "@" + request.ImageDigest
+	}
+	return ""
+}
+
+func validAcceleratorImageReference(reference string) bool {
+	return len(reference) <= 512 && acceleratorRegistryReference.MatchString(reference)
 }
 
 func acceleratorFullname(releaseName string) string {
@@ -420,7 +446,7 @@ func validateAcceleratorJob(job *unstructured.Unstructured, request AcceleratorR
 		return false
 	}
 	container, ok := containers[0].(map[string]interface{})
-	if !ok || !exactMapKeys(container, "name", "image", "imagePullPolicy", "env", "securityContext", "resources", "volumeMounts") || nestedString(container, "image") != request.ImageRepository+"@"+request.ImageDigest || nestedString(container, "name") != "accelerator" || nestedString(container, "imagePullPolicy") != "IfNotPresent" || !validContainerSecurityContext(container) || !validContainerResources(container) || !validServiceAccountMount(container) {
+	if !ok || !exactMapKeys(container, "name", "image", "imagePullPolicy", "env", "securityContext", "resources", "volumeMounts") || nestedString(container, "image") != effectiveAcceleratorImageReference(request) || nestedString(container, "name") != "accelerator" || nestedString(container, "imagePullPolicy") != "IfNotPresent" || !validContainerSecurityContext(container) || !validContainerResources(container) || !validServiceAccountMount(container) {
 		return false
 	}
 	env, found, _ := unstructured.NestedSlice(container, "env")

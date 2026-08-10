@@ -488,7 +488,7 @@ func failureFromError(phase attemptPhase, reason ConnectUnavailableReason, err e
 func validWorkloadHandle(w *ProvisionedWorkload, buildVersion string) bool {
 	return w != nil && w.ContextName != "" && w.ReleaseNamespace != "" && w.ReleaseName != "" && w.WorkloadSessionID != "" &&
 		w.Job.Name != "" && w.Job.UID != "" && w.Pod.Name != "" && w.Pod.UID != "" && w.BuildVersion == buildVersion &&
-		w.ImageDigest != "" && w.ChartDigest != ""
+		effectiveWorkloadImageReference(w) != "" && effectiveWorkloadChartReference(w) != ""
 }
 
 func mapWorkload(reason UnavailableReason) ConnectUnavailableReason {

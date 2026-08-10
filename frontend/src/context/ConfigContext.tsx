@@ -71,11 +71,8 @@ export interface AcceleratorConnectionOverride {
 interface AcceleratorConfig {
     enabledByDefault: boolean;
     defaultNamespace: string;
-    development: {
-        releaseVersion: string;
-        descriptorURL: string;
-        versionPolicy: 'exact' | 'warn';
-    };
+    customImage: string;
+    customChart: string;
     connectionOverrides: AcceleratorConnectionOverride[];
 }
 
@@ -187,11 +184,8 @@ const defaultConfig: AppConfig = {
     accelerator: {
         enabledByDefault: false,
         defaultNamespace: '',
-        development: {
-            releaseVersion: '',
-            descriptorURL: '',
-            versionPolicy: 'exact'
-        },
+        customImage: '',
+        customChart: '',
         connectionOverrides: []
     }
 };
@@ -199,6 +193,11 @@ const defaultConfig: AppConfig = {
 // Migrate old config structure to new
 const migrateConfig = (config: any): AppConfig => {
     const migrated: any = { ...config };
+
+    if (migrated.accelerator?.development) {
+        const { development: _removed, ...accelerator } = migrated.accelerator;
+        migrated.accelerator = accelerator;
+    }
 
     // Migrate metrics.pollIntervalMs -> kubernetes.metricsPollIntervalMs
     if (config.metrics?.pollIntervalMs !== undefined) {

@@ -3,12 +3,7 @@ package acceleratorprovision
 import "kubikles/pkg/acceleratorrelease"
 
 func classifyReleaseFailure(reason acceleratorrelease.UnavailableReason) failureClass {
-	switch reason {
-	case acceleratorrelease.NetworkUnavailable, acceleratorrelease.CacheIO:
-		return failureTemporary
-	default:
-		return failureAuthoritative
-	}
+	return failureAuthoritative
 }
 
 func classifyProvisionFailure(reason UnavailableReason) failureClass {

@@ -4,12 +4,8 @@ export const configSchema: Record<string, any> = {
 		_meta: { label: 'Accelerator', description: 'Accelerator manages an in-cluster workload near the Kubernetes API server. It currently supports Secret reads only; Direct remains authoritative whenever Accelerator is disabled, unavailable, or fails. The cluster needs Helm-resource permissions and cluster-wide read-only Secret RBAC permissions. The deployment namespace places the Accelerator Job and its supporting resources.' },
 		enabledByDefault: { type: 'boolean', label: 'Enable Accelerator by default', default: false },
 		defaultNamespace: { type: 'string', label: 'Deployment Namespace', description: 'Places the Accelerator Job and supporting resources here. Leave blank to use the kubeconfig context namespace or default; the namespace must already exist.', default: '' },
-		development: {
-			_meta: { label: 'Development overrides', isNested: true },
-			releaseVersion: { type: 'string', label: 'Release version', description: 'Leave blank to use this desktop build version. Set an exact target such as v1.4.0 or v1.4.0-alpha.1 for local and temporary builds.', default: '', placeholder: 'Desktop build version' },
-			descriptorURL: { type: 'string', label: 'Custom descriptor URL', description: 'Optional HTTPS URL for the exact release descriptor. Its checksum is read from the same URL with .sha256 appended.', default: '', placeholder: 'https://…/kubikles-accelerator-release-v1.4.0.json' },
-			versionPolicy: { type: 'enum', label: 'Version policy', description: 'Exact match blocks a different Accelerator runtime version. Warn and continue is intended only for development and still requires the authenticated protocol and capabilities.', default: 'exact', options: [{ value: 'exact', label: 'Exact match' }, { value: 'warn', label: 'Warn and continue' }] }
-		},
+		customImage: { type: 'string', label: 'Custom image', description: 'Leave blank to use the Accelerator image matching this Kubikles build.', default: '', placeholder: 'ghcr.io/skrobylabs/kubikles-accelerator:v1.4.0-alpha.2' },
+		customChart: { type: 'string', label: 'Custom chart', description: 'Leave blank to use the Accelerator chart matching this Kubikles build. The oci:// prefix is optional.', default: '', placeholder: 'ghcr.io/skrobylabs/helm/kubikles-accelerator:1.4.0-alpha.2' },
 		connectionOverrides: { type: 'hidden', default: [] }
 	},
     app: {

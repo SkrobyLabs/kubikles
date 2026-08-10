@@ -31,10 +31,10 @@ func (a *App) EnableAccelerator(contextName, namespaceOverride, optionsJSON stri
 		decoder := json.NewDecoder(bytes.NewBufferString(optionsJSON))
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&options); err != nil {
-			return fmt.Errorf("invalid Accelerator development options")
+			return fmt.Errorf("invalid Accelerator artifact options")
 		}
 		if err := decoder.Decode(new(any)); err != io.EOF {
-			return fmt.Errorf("invalid Accelerator development options")
+			return fmt.Errorf("invalid Accelerator artifact options")
 		}
 	}
 	if err := acceleratorprovision.ValidateDeploymentOptions(options); err != nil {
@@ -49,7 +49,7 @@ func (a *App) EnableAccelerator(contextName, namespaceOverride, optionsJSON stri
 		}
 		if lifecycle, ok := a.acceleratorLifecycle.(interface{ Enable(string, string) }); ok {
 			if options != (acceleratorprovision.DeploymentOptions{}) {
-				return fmt.Errorf("Accelerator development options are unavailable")
+				return fmt.Errorf("Accelerator artifact options are unavailable")
 			}
 			lifecycle.Enable(contextName, namespaceOverride)
 		}

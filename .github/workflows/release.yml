@@ -217,7 +217,6 @@ jobs:
           SOURCE_COMMIT: ${{ needs.preflight.outputs.source_commit }}
           SOURCE_DATE_EPOCH: ${{ needs.preflight.outputs.source_epoch }}
           GH_TOKEN: ${{ github.token }}
-          ACCELERATOR_RELEASE_OUTPUT: ${{ runner.temp }}/accelerator-release
         shell: bash
         run: |
           set -euo pipefail
@@ -227,13 +226,6 @@ jobs:
           prepared="$RUNNER_TEMP/accelerator-prepared"
           go run ./scripts/accelerator-supply-chain/cmd/accelerator-supply-chain bundle-verify "$archive" "$checksum" "$prepared" "$BUILD_VERSION" "$SOURCE_COMMIT"
           ACCELERATOR_PREPARED_ROOT="$prepared" ./scripts/publish-accelerator-release.sh publish-existing
-      - name: Upload Accelerator release metadata
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: kubikles-accelerator-release
-          path: ${{ runner.temp }}/accelerator-release/*
-          retention-days: 1
-          if-no-files-found: error
 
   release:
     name: Create GitHub release
@@ -265,12 +257,9 @@ jobs:
           set -euo pipefail
           export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
           assets="$RUNNER_TEMP/release-assets"; mkdir -m 0700 "$assets"
-          find "$RUNNER_TEMP/artifacts" -type f \( -name '*.zip' -o -name 'kubikles-accelerator-release-*.json' -o -name 'kubikles-accelerator-release-*.json.sha256' -o -name '*.spdx.json' \) -exec cp {} "$assets/" \;
+          find "$RUNNER_TEMP/artifacts" -type f -name '*.zip' -exec cp {} "$assets/" \;
           find "$assets" -type f -printf '%f\n' | LC_ALL=C sort > "$RUNNER_TEMP/assets.txt"
           go run ./scripts/accelerator-release verify-release-assets "$BUILD_VERSION" "$RUNNER_TEMP/assets.txt"
-          ACCELERATOR_SUPPLY_CHAIN_ASSET_ROOT="$assets" make verify-accelerator-supply-chain-ghcr BUILD_VERSION="$BUILD_VERSION"
-          descriptor="$assets/kubikles-accelerator-release-$BUILD_VERSION.json"
-          checksum="$descriptor.sha256"
           github_token="$GH_TOKEN"; unset GH_TOKEN
           github_cli() { GH_TOKEN="$github_token" gh "$@"; }
           classify_release() {
@@ -309,7 +298,6 @@ jobs:
         run: |
           export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
           make verify-accelerator-release-ghcr BUILD_VERSION="$BUILD_VERSION"
-          make verify-accelerator-supply-chain-ghcr BUILD_VERSION="$BUILD_VERSION"
       - name: Remove older GitHub prereleases
         if: needs.preflight.outputs.prerelease == 'true'
         env:

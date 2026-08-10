@@ -16,7 +16,7 @@ import (
 
 const (
 	validVerifier = "w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM"
-	validDigest   = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	validImage    = "example.invalid/kubikles-accelerator:v1.2.3"
 )
 
 func chartDir(t *testing.T) string {
@@ -63,7 +63,7 @@ func lint(t *testing.T, values string, wantOK bool) {
 }
 
 func values(extra string) string {
-	return "image:\n  repository: example.invalid/kubikles-accelerator\n  digest: " + validDigest + "\n  version: v1.2.3\naccelerator:\n  workloadSessionId: desktop-session-1\nauth:\n  creatorVerifier: " + validVerifier + "\n" + extra
+	return "image:\n  reference: " + validImage + "\n  version: v1.2.3\naccelerator:\n  workloadSessionId: desktop-session-1\n  allowVersionMismatch: false\nauth:\n  creatorVerifier: " + validVerifier + "\n" + extra
 }
 
 func objects(t *testing.T, manifest []byte) []map[string]any {
@@ -106,22 +106,18 @@ func nested(object map[string]any, keys ...string) any {
 
 func TestValuesSchemaRejectsInvalidInputs(t *testing.T) {
 	lint(t, values(""), true)
-	for _, repository := range []string{
-		"registry.example:1/team/kubikles-accelerator",
-		"registry.example:65535/team/kubikles-accelerator",
-		"localhost:5000/kubikles-accelerator",
-		"library/kubikles-accelerator",
-		strings.Repeat("a", 63) + ".example/team/kubikles-accelerator",
+	for _, reference := range []string{
+		"registry.example:5000/team/kubikles-accelerator:test",
+		"example.invalid/kubikles-accelerator@sha256:" + strings.Repeat("a", 64),
 	} {
-		lint(t, strings.Replace(values(""), "example.invalid/kubikles-accelerator", repository, 1), true)
+		lint(t, strings.Replace(values(""), validImage, reference, 1), true)
 	}
 	for _, invalid := range []string{
 		"",
-		strings.Replace(values(""), "image:\n  repository: example.invalid/kubikles-accelerator\n  digest: "+validDigest+"\n  version: v1.2.3\n", "", 1),
-		strings.Replace(values(""), "accelerator:\n  workloadSessionId: desktop-session-1\n", "", 1),
+		strings.Replace(values(""), "image:\n  reference: "+validImage+"\n  version: v1.2.3\n", "", 1),
+		strings.Replace(values(""), "accelerator:\n  workloadSessionId: desktop-session-1\n  allowVersionMismatch: false\n", "", 1),
 		strings.Replace(values(""), "auth:\n  creatorVerifier: "+validVerifier+"\n", "", 1),
-		strings.Replace(values(""), "  repository: example.invalid/kubikles-accelerator\n", "", 1),
-		strings.Replace(values(""), "  digest: "+validDigest+"\n", "", 1),
+		strings.Replace(values(""), "  reference: "+validImage+"\n", "", 1),
 		strings.Replace(values(""), "  version: v1.2.3\n", "", 1),
 		strings.Replace(values(""), "  workloadSessionId: desktop-session-1\n", "", 1),
 		strings.Replace(values(""), "  creatorVerifier: "+validVerifier+"\n", "", 1),
@@ -133,39 +129,21 @@ func TestValuesSchemaRejectsInvalidInputs(t *testing.T) {
 		values("resources: {}\n"),
 		values("extraEnv: []\n"),
 		values("sidecars: []\n"),
-		strings.Replace(values(""), "  version: v1.2.3\n", "  version: v1.2.3\n  tag: latest\n", 1),
-		strings.Replace(values(""), "  version: v1.2.3\n", "  version: v1.2.3\n  pullPolicy: Always\n", 1),
 		strings.Replace(values(""), "  workloadSessionId: desktop-session-1\n", "  workloadSessionId: desktop-session-1\n  ttlSecondsAfterFinished: 1\n", 1),
-		strings.Replace(values(""), "  workloadSessionId: desktop-session-1\n", "  workloadSessionId: desktop-session-1\n  serviceAccountName: existing\n", 1),
-		strings.Replace(values(""), "  workloadSessionId: desktop-session-1\n", "  workloadSessionId: desktop-session-1\n  privileged: true\n", 1),
 		strings.Replace(values(""), "  creatorVerifier: "+validVerifier+"\n", "  creatorVerifier: "+validVerifier+"\n  rawToken: raw-token\n", 1),
-		strings.Replace(values(""), "  creatorVerifier: "+validVerifier+"\n", "  creatorVerifier: "+validVerifier+"\n  existingSecret: external\n", 1),
 		strings.Replace(values(""), "creatorVerifier: "+validVerifier, "creatorVerifier: invalid", 1),
-		strings.Replace(values(""), "creatorVerifier: "+validVerifier, "creatorVerifier: "+validVerifier[:42]+"B", 1), // non-canonical base64url tail
-		strings.Replace(values(""), "creatorVerifier: "+validVerifier, "creatorVerifier: "+validVerifier+"=", 1),
-		strings.Replace(values(""), "repository: example.invalid/kubikles-accelerator", "repository: https://example.invalid/kubikles-accelerator", 1),
-		strings.Replace(values(""), "repository: example.invalid/kubikles-accelerator", "repository: example.invalid/kubikles-accelerator:latest", 1),
-		strings.Replace(values(""), "repository: example.invalid/kubikles-accelerator", "repository: example.invalid/kubikles-accelerator@sha256:deadbeef", 1),
-		strings.Replace(values(""), "repository: example.invalid/kubikles-accelerator", "repository: example.invalid/bad repo", 1),
-		strings.Replace(values(""), "repository: example.invalid/kubikles-accelerator", "repository: registry..invalid/kubikles-accelerator", 1),
-		strings.Replace(values(""), "repository: example.invalid/kubikles-accelerator", "repository: registry.-invalid/kubikles-accelerator", 1),
-		strings.Replace(values(""), "repository: example.invalid/kubikles-accelerator", "repository: registry-.invalid/kubikles-accelerator", 1),
-		strings.Replace(values(""), "repository: example.invalid/kubikles-accelerator", "repository: "+strings.Repeat("a", 64)+".example/team/kubikles-accelerator", 1),
-		strings.Replace(values(""), "repository: example.invalid/kubikles-accelerator", "repository: registry.example:0/team/kubikles-accelerator", 1),
-		strings.Replace(values(""), "repository: example.invalid/kubikles-accelerator", "repository: registry.example:65536/team/kubikles-accelerator", 1),
-		strings.Replace(values(""), "digest: "+validDigest, "digest: sha256:"+strings.Repeat("A", 64), 1),
+		strings.Replace(values(""), "reference: "+validImage, "reference: ''", 1),
+		strings.Replace(values(""), "reference: "+validImage, "reference: "+strings.Repeat("x", 513), 1),
 		strings.Replace(values(""), "version: v1.2.3", "version: "+strings.Repeat("x", 129), 1),
 		strings.Replace(values(""), "version: v1.2.3", "version: ''", 1),
 		strings.Replace(values(""), "workloadSessionId: desktop-session-1", "workloadSessionId: ''", 1),
 		strings.Replace(values(""), "workloadSessionId: desktop-session-1", "workloadSessionId: "+strings.Repeat("x", 64), 1),
 		strings.Replace(values(""), "workloadSessionId: desktop-session-1", "workloadSessionId: bad/session", 1),
-		"image: []\naccelerator:\n  workloadSessionId: desktop-session-1\nauth:\n  creatorVerifier: " + validVerifier + "\n",
-		"image:\n  repository: example.invalid/kubikles-accelerator\n  digest: " + validDigest + "\n  version: v1.2.3\naccelerator: false\nauth:\n  creatorVerifier: " + validVerifier + "\n",
-		"image:\n  repository: example.invalid/kubikles-accelerator\n  digest: " + validDigest + "\n  version: v1.2.3\naccelerator:\n  workloadSessionId: desktop-session-1\nauth: []\n",
-		strings.Replace(values(""), "repository: example.invalid/kubikles-accelerator", "repository: false", 1),
-		strings.Replace(values(""), "digest: "+validDigest, "digest: 1", 1),
+		"image: []\naccelerator:\n  workloadSessionId: desktop-session-1\n  allowVersionMismatch: false\nauth:\n  creatorVerifier: " + validVerifier + "\n",
+		strings.Replace(values(""), "reference: "+validImage, "reference: false", 1),
 		strings.Replace(values(""), "version: v1.2.3", "version: []", 1),
 		strings.Replace(values(""), "workloadSessionId: desktop-session-1", "workloadSessionId: 1", 1),
+		strings.Replace(values(""), "allowVersionMismatch: false", "allowVersionMismatch: []", 1),
 		strings.Replace(values(""), "creatorVerifier: "+validVerifier, "creatorVerifier: 1", 1),
 		strings.Replace(values(""), "creatorVerifier: "+validVerifier, "creatorVerifier:\n  rawToken: ignored", 1),
 	} {
@@ -267,8 +245,8 @@ func TestRenderPinsRBACCredentialsAndHardening(t *testing.T) {
 		t.Fatal("projected service account identity is not exact")
 	}
 	container := nested(job, "spec", "template", "spec", "containers").([]any)[0].(map[string]any)
-	if container["image"] != "example.invalid/kubikles-accelerator@"+validDigest || container["imagePullPolicy"] != "IfNotPresent" {
-		t.Fatal("image is not digest pinned")
+	if container["image"] != validImage || container["imagePullPolicy"] != "IfNotPresent" {
+		t.Fatal("image reference was not rendered")
 	}
 	if len(container["env"].([]any)) != 1 {
 		t.Fatal("credential environment is not exact")

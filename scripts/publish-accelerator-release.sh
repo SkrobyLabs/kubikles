@@ -289,8 +289,6 @@ github_release_state() {
     validate_release_metadata "$version" "$metadata"
     printf '%s\n' "$response" | sed '1d' > "$destination/assets.txt"
     go run ./scripts/accelerator-release verify-release-assets "$version" "$destination/assets.txt"
-    github_cli release download "$version" --repo SkrobyLabs/kubikles --pattern "kubikles-accelerator-release-$version.json" --dir "$destination"
-    github_cli release download "$version" --repo SkrobyLabs/kubikles --pattern "kubikles-accelerator-release-$version.json.sha256" --dir "$destination"
     printf 'existing\n'
     return
   fi
@@ -324,11 +322,9 @@ write_registry_artifact() {
 }
 
 verify_finalized_release() {
-  local version=$1 descriptor=$2 directory=$3
+  local version=$1 directory=$2
   [ -f "$directory/assets.txt" ] || fail "finalized Release asset evidence is missing"
   go run ./scripts/accelerator-release verify-release-assets "$version" "$directory/assets.txt"
-  cmp "$descriptor" "$directory/$(basename "$descriptor")" >/dev/null || fail "finalized Release descriptor conflicts"
-  cmp "$descriptor.sha256" "$directory/$(basename "$descriptor.sha256")" >/dev/null || fail "finalized Release checksum conflicts"
 }
 
 recheck_release_state() {
@@ -364,14 +360,6 @@ read_back_chart() {
   go run ./scripts/accelerator-release inspect-chart "$archive" "$CHART_SOURCE" "$chart_version" "$version" "$epoch"
 }
 
-write_descriptor_from_readback() {
-  local image_evidence=$1 version=$2 commit=$3 chart_digest=$4 output=$5
-  local evidence="$output/evidence.json" descriptor="$output/kubikles-accelerator-release-$version.json"
-  go run ./scripts/accelerator-release evidence "$image_evidence" "$version" "$commit" "$chart_digest" "$evidence" "$version"
-  go run ./scripts/accelerator-release descriptor "$evidence" "$descriptor" "$descriptor.sha256"
-  go run ./scripts/accelerator-release verify-registry-evidence "$descriptor" "$image_evidence" "$chart_digest" "$version" "$commit"
-}
-
 publish_registry() {
   [ "$#" -eq 12 ] || fail "internal publication argument mismatch"
   local registry=$1 plain=$2 layout=$3 package=$4 chart_layout=$5 version=$6 chart_version=$7 commit=$8 output=$9 epoch=${10} release_state=${11} release_dir=${12}
@@ -400,8 +388,7 @@ publish_registry() {
   fi
   if [ "$release_state" = existing ]; then
     [ "$(state_kind "$image_state")" = present ] && [ "$(state_kind "$chart_state")" = present ] || fail "finalized Release refers to an incomplete registry set"
-    write_descriptor_from_readback "$output/preflight-image/evidence.json" "$version" "$commit" "$chart_digest" "$output"
-    verify_finalized_release "$version" "$output/kubikles-accelerator-release-$version.json" "$release_dir"
+    verify_finalized_release "$version" "$release_dir"
   elif [ "$release_state" != absent ]; then
     fail "invalid Release finalization state"
   fi
@@ -430,28 +417,21 @@ publish_registry() {
   fi
   [[ "$chart_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "registry returned invalid chart digest"
 
-  # Both descriptor and completion evidence come only from clean digest reads.
+  # Completion evidence comes only from clean digest reads.
   read_back_image "$image_repo" "$image_digest" "$plain" "$version" "$commit" "$output/clean-image"
   cmp "$local_image_evidence" "$output/clean-image/evidence.json" >/dev/null || fail "clean image pull evidence differs"
   read_back_chart "$chart_repo" "$chart_digest" "$plain" "$package" "$chart_version" "$version" "$epoch" "$output/clean-chart"
-  write_descriptor_from_readback "$output/clean-image/evidence.json" "$version" "$commit" "$chart_digest" "$output"
-  go run ./scripts/accelerator-release verify-descriptor "$output/kubikles-accelerator-release-$version.json" "$output/kubikles-accelerator-release-$version.json.sha256"
   if [ "$release_state" = existing ]; then
-    verify_finalized_release "$version" "$output/kubikles-accelerator-release-$version.json" "$release_dir"
+    verify_finalized_release "$version" "$release_dir"
   fi
 }
 
 write_local_asset_contract() {
-  local version=$1 directory=$2 descriptor=$3
+  local version=$1 directory=$2
   mkdir -p "$directory"; chmod 700 "$directory"
-  install -m 0600 "$descriptor" "$directory/$(basename "$descriptor")"
-  install -m 0600 "$descriptor.sha256" "$directory/$(basename "$descriptor.sha256")"
   printf '%s\n' \
     Kubikles-linux-amd64.zip Kubikles-macos-amd64.zip Kubikles-macos-arm64.zip \
-    Kubikles-windows-amd64.zip Kubikles-windows-arm64.zip \
-    "$(basename "$descriptor")" "$(basename "$descriptor.sha256")" \
-    "kubikles-accelerator-image-linux-amd64-$version.spdx.json" \
-    "kubikles-accelerator-chart-$version.spdx.json" > "$directory/assets.txt"
+    Kubikles-windows-amd64.zip Kubikles-windows-arm64.zip > "$directory/assets.txt"
 }
 
 expect_publication_failure() {
@@ -470,7 +450,7 @@ hostile_secret() {
 }
 
 exercise_hostile_credentials() {
-  local registry=$1 chart_digest=$2 version=$3 descriptor=$4 private=$5
+  local registry=$1 chart_digest=$2 version=$3 private=$4
   local registry_auth helm_auth chart_archive chart_repo="$registry/helm/kubikles-accelerator"
   mkdir -m 0700 "$private" "$private/gh" "$private/pull"
   registry_auth=$(printf 'fixture:%s' "$HOSTILE_REGISTRY_TOKEN" | base64 | tr -d '\n')
@@ -478,8 +458,8 @@ exercise_hostile_credentials() {
   printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$registry" "$registry_auth" > "$private/oras.json"
   printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$registry" "$helm_auth" > "$private/helm.json"
   printf 'example.invalid:\n    oauth_token: %s\n' "$HOSTILE_RAW_TOKEN" > "$private/gh/hosts.yml"
-  printf 'image:\n  repository: %s/kubikles-accelerator\n  digest: %s\n  version: %s\naccelerator:\n  workloadSessionId: credential-probe\nauth:\n  creatorVerifier: %s\n' \
-    "$registry" "$chart_digest" "$version" "$HOSTILE_VERIFIER" > "$private/render-values.yaml"
+  printf 'image:\n  reference: %s/kubikles-accelerator:%s\n  version: %s\naccelerator:\n  workloadSessionId: credential-probe\n  allowVersionMismatch: false\nauth:\n  creatorVerifier: %s\n' \
+    "$registry" "$version" "$version" "$HOSTILE_VERIFIER" > "$private/render-values.yaml"
   chmod 600 "$private/oras.json" "$private/helm.json" "$private/gh/hosts.yml" "$private/render-values.yaml"
 
   if ! (ORAS_CONFIG="$private/oras.json" classify_registry_ref "$chart_repo@$chart_digest" true) >"$private/oras-probe.log" 2>&1; then
@@ -495,11 +475,6 @@ exercise_hostile_credentials() {
   if GH_CONFIG_DIR="$private/gh" GH_TOKEN="$HOSTILE_RAW_TOKEN" bash -c 'test -s "$GH_CONFIG_DIR/hosts.yml" && test -n "$GH_TOKEN"; exit 23' >"$private/github-failure.log" 2>&1; then
     fail "credential-bearing GitHub failure probe unexpectedly succeeded"
   fi
-  if ! HOSTILE_REGISTRY_TOKEN="$HOSTILE_REGISTRY_TOKEN" HOSTILE_HELM_TOKEN="$HOSTILE_HELM_TOKEN" HOSTILE_VERIFIER="$HOSTILE_VERIFIER" HOSTILE_RAW_TOKEN="$HOSTILE_RAW_TOKEN" \
-    go run ./scripts/accelerator-release verify-descriptor "$descriptor" "$descriptor.sha256" >"$private/go-verifier.log" 2>&1; then
-    fail "credential-bearing descriptor verification probe failed"
-  fi
-
   cleanup_directory credential-fixture "$private" || fail "private credential fixture cleanup failed"
 }
 
@@ -508,7 +483,7 @@ assert_no_hostile_leaks() {
   for hostile in "$HOSTILE_REGISTRY_TOKEN" "$HOSTILE_HELM_TOKEN" "$HOSTILE_VERIFIER" "$HOSTILE_RAW_TOKEN"; do
     [ -n "$hostile" ] || fail "secret-safety fixture is incomplete"
     if grep -R -F "$hostile" "$root" >/dev/null 2>&1; then
-      fail "hostile secret leaked to publication logs, metadata, descriptor, or artifacts"
+      fail "hostile secret leaked to publication logs, metadata, or artifacts"
     fi
   done
 }
@@ -585,7 +560,7 @@ local_test() {
   canonical_image=$(classify_registry_ref "$registry/kubikles-accelerator:$version" true)
   canonical_chart=$(classify_registry_ref "$registry/helm/kubikles-accelerator:$chart_version" true)
   publish_registry "$registry" true "$layout" "$package" "$chart_layout" "$version" "$chart_version" "$commit" "$tmp/second" "$epoch" absent "$tmp/release-absent"
-  cmp "$tmp/first/kubikles-accelerator-release-$version.json" "$tmp/second/kubikles-accelerator-release-$version.json" >/dev/null || fail "exact rerun descriptor changed bytes"
+  cmp "$tmp/first/clean-image/evidence.json" "$tmp/second/clean-image/evidence.json" >/dev/null || fail "exact rerun image evidence changed bytes"
   [ "$(classify_registry_ref "$registry/kubikles-accelerator:$version" true)" = "$canonical_image" ] && [ "$(classify_registry_ref "$registry/helm/kubikles-accelerator:$chart_version" true)" = "$canonical_chart" ] || fail "exact rerun mutated registry state"
 
   # Matching partial sets continue by writing only the absent member.
@@ -596,7 +571,7 @@ local_test() {
   publish_registry "$registry/chart-only" true "$layout" "$package" "$chart_layout" "$version" "$chart_version" "$commit" "$tmp/chart-only" "$epoch" absent "$tmp/release-absent"
   [ "$(state_digest "$(classify_registry_ref "$registry/chart-only/helm/kubikles-accelerator:$chart_version" true)")" = "$(state_digest "$canonical_chart")" ] || fail "matching chart-only continuation changed chart evidence"
 
-  finalized="$tmp/finalized"; write_local_asset_contract "$version" "$finalized" "$tmp/first/kubikles-accelerator-release-$version.json"
+  finalized="$tmp/finalized"; write_local_asset_contract "$version" "$finalized"
   publish_registry "$registry" true "$layout" "$package" "$chart_layout" "$version" "$chart_version" "$commit" "$tmp/finalized-rerun" "$epoch" existing "$finalized"
 
   # Independent image and chart collisions use isolated repository prefixes.
@@ -611,26 +586,22 @@ local_test() {
   expect_publication_failure "conflicting chart" "$tmp/chart-collision.log" publish_registry "$registry/chart-collision" true "$layout" "$package" "$chart_layout" "$version" "$chart_version" "$commit" "$tmp/chart-collision" "$epoch" absent "$tmp/release-absent"
   [ "$(classify_registry_ref "$registry/chart-collision/kubikles-accelerator:$version" true)" = absent ] && [ "$(classify_registry_ref "$registry/chart-collision/helm/kubikles-accelerator:$chart_version" true)" = "$collision_state" ] || fail "chart collision caused a registry mutation"
 
-  # Finalized descriptor, checksum, and asset-state collisions must remain zero-write.
-  for collision in descriptor checksum assets; do
+  # A conflicting finalized asset set must remain zero-write.
+  for collision in assets; do
     cp -R "$finalized" "$tmp/finalized-$collision"
-    case $collision in
-      descriptor) printf 'x' >> "$tmp/finalized-$collision/kubikles-accelerator-release-$version.json" ;;
-      checksum) printf 'x' >> "$tmp/finalized-$collision/kubikles-accelerator-release-$version.json.sha256" ;;
-      assets) printf 'unexpected.zip\n' >> "$tmp/finalized-$collision/assets.txt" ;;
-    esac
+    printf 'unexpected.zip\n' >> "$tmp/finalized-$collision/assets.txt"
     expect_publication_failure "finalized $collision collision" "$tmp/finalized-$collision.log" publish_registry "$registry" true "$layout" "$package" "$chart_layout" "$version" "$chart_version" "$commit" "$tmp/finalized-$collision-output" "$epoch" existing "$tmp/finalized-$collision"
     [ "$(classify_registry_ref "$registry/kubikles-accelerator:$version" true)" = "$canonical_image" ] && [ "$(classify_registry_ref "$registry/helm/kubikles-accelerator:$chart_version" true)" = "$canonical_chart" ] || fail "finalized collision mutated registry state"
   done
 
   # Network/auth-like failures are never classified as absence.
   if (classify_registry_ref '127.0.0.1:1/missing:v0.0.0' true) >"$tmp/unreachable.log" 2>&1; then fail "unreachable registry was classified as absent"; fi
-  exercise_hostile_credentials "$registry" "$(state_digest "$canonical_chart")" "$version" "$tmp/first/kubikles-accelerator-release-$version.json" "$tmp/private-credential-fixture"
+  exercise_hostile_credentials "$registry" "$(state_digest "$canonical_chart")" "$version" "$tmp/private-credential-fixture"
   [ ! -e "$tmp/private-credential-fixture" ] || fail "private credential fixture remains after exercise"
   assert_no_hostile_leaks "$tmp"
   if find "$CLIENT_CONFIG_ROOT" -type f ! -perm 600 -print -quit | grep -q .; then fail "publication client config permissions are too broad"; fi
   if find "$CLIENT_CONFIG_ROOT" -type d ! -perm 700 -print -quit | grep -q .; then fail "publication client config directory permissions are too broad"; fi
-  if find "$tmp" -type f \( -name '*evidence*.json' -o -name 'kubikles-accelerator-release-*.json' -o -name '*.sha256' -o -name '*.log' -o -name '*.tgz' \) ! -perm 600 -print -quit | grep -q .; then fail "publication evidence permissions are too broad"; fi
+  if find "$tmp" -type f \( -name '*evidence*.json' -o -name '*.sha256' -o -name '*.log' -o -name '*.tgz' \) ! -perm 600 -print -quit | grep -q .; then fail "publication evidence permissions are too broad"; fi
   after_image=$(classify_registry_ref "$registry/kubikles-accelerator:$version" true); after_chart=$(classify_registry_ref "$registry/helm/kubikles-accelerator:$chart_version" true)
   [ "$after_image" = "$canonical_image" ] && [ "$after_chart" = "$canonical_chart" ] || fail "local matrix changed canonical registry evidence"
   SUCCESS_MESSAGE='accelerator publication local-test: passed'
@@ -652,25 +623,26 @@ verify_ghcr() {
   trap 'cleanup_on_signal 130' INT
   trap 'cleanup_on_signal 143' TERM
   init_client_configs
-  local tmp descriptor image_ref image_digest chart_ref chart_repo chart_digest chart_version commit remote_commit epoch chart_archive image_state chart_state release_state config_digest
+  local tmp image_ref image_repo image_digest chart_ref chart_repo chart_digest chart_version commit remote_commit epoch chart_archive image_state chart_state release_state config_digest
   MODE_TMP=$(mktemp -d "${TMPDIR:-/tmp}/kubikles-ghcr-verify.XXXXXX"); chmod 700 "$MODE_TMP"
   local tmp=$MODE_TMP
   login_ghcr
   release_state=$(github_release_state "$BUILD_VERSION" "$tmp/release")
   [ "$release_state" = existing ] || fail "matching finalized GitHub Release is required"
-  descriptor="$tmp/release/kubikles-accelerator-release-$BUILD_VERSION.json"
-  go run ./scripts/accelerator-release verify-descriptor "$descriptor" "$descriptor.sha256"
-  [ "$(go run ./scripts/accelerator-release field "$descriptor" build-version)" = "$BUILD_VERSION" ] || fail "descriptor BuildVersion differs"
-  image_ref=$(go run ./scripts/accelerator-release field "$descriptor" image-reference); image_digest=$(go run ./scripts/accelerator-release field "$descriptor" image-digest)
-  chart_ref=$(go run ./scripts/accelerator-release field "$descriptor" chart-reference); chart_digest=$(go run ./scripts/accelerator-release field "$descriptor" chart-digest); chart_version=$(go run ./scripts/accelerator-release field "$descriptor" chart-version); commit=$(go run ./scripts/accelerator-release field "$descriptor" commit)
-  chart_repo=${chart_ref#oci://}; chart_repo=${chart_repo%@*}
-  [ "$chart_ref" = "oci://$chart_repo@$chart_digest" ] || fail "descriptor chart reference is not the exact digest-qualified repository"
+  image_repo=ghcr.io/skrobylabs/kubikles-accelerator
+  chart_repo=ghcr.io/skrobylabs/helm/kubikles-accelerator
+  chart_version=${BUILD_VERSION#v}
+  image_ref="$image_repo:$BUILD_VERSION"
+  chart_ref="$chart_repo:$chart_version"
+  commit=$(go run ./scripts/accelerator-release verify-git . "$BUILD_VERSION")
   [ "$(go run ./scripts/accelerator-release verify-git . "$BUILD_VERSION" "$commit")" = "$commit" ] || fail "local release source authority differs"
-  remote_commit=$(remote_tag_commit "$BUILD_VERSION"); [ "$remote_commit" = "$commit" ] || fail "GitHub tag source commit differs from descriptor"
+  remote_commit=$(remote_tag_commit "$BUILD_VERSION"); [ "$remote_commit" = "$commit" ] || fail "GitHub tag source commit differs"
   epoch=$(git show -s --format=%ct "$commit"); [[ "$epoch" =~ ^[1-9][0-9]*$ ]] || fail "release commit epoch is invalid"
-  image_state=$(classify_registry_ref "$image_ref" false); [ "$image_state" = "present $image_digest" ] || fail "GHCR image digest read-back differs"
-  chart_state=$(classify_registry_ref "$chart_repo@$chart_digest" false); [ "$chart_state" = "present $chart_digest" ] || fail "GHCR chart digest read-back differs"
-  read_back_image "${image_ref%@*}" "$image_digest" false "$BUILD_VERSION" "$commit" "$tmp/image"
+  image_state=$(classify_registry_ref "$image_ref" false); [ "$(state_kind "$image_state")" = present ] || fail "GHCR image tag is missing"
+  image_digest=$(state_digest "$image_state")
+  chart_state=$(classify_registry_ref "$chart_ref" false); [ "$(state_kind "$chart_state")" = present ] || fail "GHCR chart tag is missing"
+  chart_digest=$(state_digest "$chart_state")
+  read_back_image "$image_repo" "$image_digest" false "$BUILD_VERSION" "$commit" "$tmp/image"
   mkdir -p "$tmp/chart/package"; fetch_chart_manifest "$chart_repo@$chart_digest" false "$tmp/chart/manifest.json"
   config_digest=$(go run ./scripts/accelerator-release chart-config-digest "$tmp/chart/manifest.json" "$chart_digest")
   fetch_registry_blob "$chart_repo" "$config_digest" false "$tmp/chart/config.json"
@@ -678,8 +650,7 @@ verify_ghcr() {
   chart_archive=$(single_chart_archive "$tmp/chart/package")
   go run ./scripts/accelerator-release inspect-chart-manifest "$tmp/chart/manifest.json" "$tmp/chart/config.json" "$chart_archive" "$CHART_SOURCE" "$chart_version" "$BUILD_VERSION" "$epoch" "$chart_digest"
   go run ./scripts/accelerator-release inspect-chart "$chart_archive" "$CHART_SOURCE" "$chart_version" "$BUILD_VERSION" "$epoch"
-  go run ./scripts/accelerator-release verify-registry-evidence "$descriptor" "$tmp/image/evidence.json" "$chart_digest" "$BUILD_VERSION" "$commit"
-  helm template release "$chart_archive" --namespace release-verification --set-string image.repository="${image_ref%@*}" --set-string image.digest="$image_digest" --set-string image.version="$BUILD_VERSION" --set-string accelerator.workloadSessionId=release-verification --set-string auth.creatorVerifier=w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM >/dev/null
+  helm template release "$chart_archive" --namespace release-verification --set-string image.reference="$image_ref" --set-string image.version="$BUILD_VERSION" --set-string accelerator.workloadSessionId=release-verification --set-string auth.creatorVerifier=w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM >/dev/null
   SUCCESS_MESSAGE="accelerator production verification: passed for $BUILD_VERSION"
 }
 
@@ -688,29 +659,24 @@ publish_ghcr() {
   [ -n "${BUILD_VERSION:-}" ] || fail "BUILD_VERSION is required"
   [ -n "${SOURCE_COMMIT:-}" ] || fail "SOURCE_COMMIT is required"
   [ -n "${SOURCE_DATE_EPOCH:-}" ] || fail "SOURCE_DATE_EPOCH is required"
-  [ -n "${ACCELERATOR_RELEASE_OUTPUT:-}" ] || fail "ACCELERATOR_RELEASE_OUTPUT is required"
   normalize "$BUILD_VERSION"
   trap cleanup_on_exit EXIT
   trap 'cleanup_on_signal 130' INT
   trap 'cleanup_on_signal 143' TERM
   init_client_configs
-  local chart_version=${BUILD_VERSION#v} layout package chart_layout work descriptor release_state remote_commit
+  local chart_version=${BUILD_VERSION#v} layout package chart_layout work release_state remote_commit
   MODE_TMP=$(mktemp -d "${RUNNER_TEMP:-/tmp}/kubikles-ghcr-publish.XXXXXX"); chmod 700 "$MODE_TMP"; work=$MODE_TMP
   login_ghcr
   [ "$(go run ./scripts/accelerator-release verify-git . "$BUILD_VERSION" "$SOURCE_COMMIT")" = "$SOURCE_COMMIT" ] || fail "release source differs"
   remote_commit=$(remote_tag_commit "$BUILD_VERSION"); [ "$remote_commit" = "$SOURCE_COMMIT" ] || fail "GitHub tag source differs from workflow preflight"
   [ "$(git show -s --format=%ct "$SOURCE_COMMIT")" = "$SOURCE_DATE_EPOCH" ] || fail "release epoch differs from verified source commit"
   release_state=$(github_release_state "$BUILD_VERSION" "$work/release-state")
-  mkdir -p "$ACCELERATOR_RELEASE_OUTPUT"; chmod 700 "$ACCELERATOR_RELEASE_OUTPUT"
   layout="$work/image-layout"; package="$work/kubikles-accelerator-$chart_version.tgz"; chart_layout="$work/chart-layout"; mkdir -p "$layout"
   SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build --file Dockerfile.accelerator --platform linux/amd64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$BUILD_VERSION" --build-arg "GIT_COMMIT=$SOURCE_COMMIT" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=ghcr.io/skrobylabs/kubikles-accelerator:$BUILD_VERSION" .
   wrap_single_platform_oci_layout "$layout" "$BUILD_VERSION"
   go run ./scripts/accelerator-release package-chart "$CHART_SOURCE" "$package" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH"
   go run ./scripts/accelerator-release package-chart-oci "$package" "$CHART_SOURCE" "$chart_layout" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH" >/dev/null
   PUBLICATION_AUTHORITY=github publish_registry ghcr.io/skrobylabs false "$layout" "$package" "$chart_layout" "$BUILD_VERSION" "$chart_version" "$SOURCE_COMMIT" "$work/publication" "$SOURCE_DATE_EPOCH" "$release_state" "$work/release-state"
-  descriptor="$work/publication/kubikles-accelerator-release-$BUILD_VERSION.json"
-  install -m 0600 "$descriptor" "$ACCELERATOR_RELEASE_OUTPUT/$(basename "$descriptor")"
-  install -m 0600 "$descriptor.sha256" "$ACCELERATOR_RELEASE_OUTPUT/$(basename "$descriptor.sha256")"
 }
 
 prepare_release() {
@@ -754,7 +720,6 @@ publish_existing_ghcr() {
   [ -n "${SOURCE_COMMIT:-}" ] || fail "SOURCE_COMMIT is required"
   [ -n "${SOURCE_DATE_EPOCH:-}" ] || fail "SOURCE_DATE_EPOCH is required"
   [ -n "${ACCELERATOR_PREPARED_ROOT:-}" ] || fail "ACCELERATOR_PREPARED_ROOT is required"
-  [ -n "${ACCELERATOR_RELEASE_OUTPUT:-}" ] || fail "ACCELERATOR_RELEASE_OUTPUT is required"
   normalize "$BUILD_VERSION"
   [ -d "$ACCELERATOR_PREPARED_ROOT/image-layout" ] && [ -d "$ACCELERATOR_PREPARED_ROOT/chart-layout" ] || fail "prepared release layout is incomplete"
   [ -f "$ACCELERATOR_PREPARED_ROOT/source.json" ] && [ -f "$ACCELERATOR_PREPARED_ROOT/image-evidence.json" ] || fail "prepared release evidence is incomplete"
@@ -765,7 +730,7 @@ publish_existing_ghcr() {
   trap 'cleanup_on_signal 130' INT
   trap 'cleanup_on_signal 143' TERM
   init_client_configs
-  local chart_version=${BUILD_VERSION#v} package layout chart_layout work descriptor release_state remote_commit
+  local chart_version=${BUILD_VERSION#v} package layout chart_layout work release_state remote_commit
   MODE_TMP=$(mktemp -d "${RUNNER_TEMP:-/tmp}/kubikles-ghcr-publish-existing.XXXXXX"); chmod 700 "$MODE_TMP"; work=$MODE_TMP
   package="$ACCELERATOR_PREPARED_ROOT/kubikles-accelerator-$chart_version.tgz"
   layout="$ACCELERATOR_PREPARED_ROOT/image-layout"
@@ -780,10 +745,6 @@ publish_existing_ghcr() {
   remote_commit=$(remote_tag_commit "$BUILD_VERSION"); [ "$remote_commit" = "$SOURCE_COMMIT" ] || fail "GitHub tag source differs from workflow preflight"
   release_state=$(github_release_state "$BUILD_VERSION" "$work/release-state")
   PUBLICATION_AUTHORITY=github publish_registry ghcr.io/skrobylabs false "$layout" "$package" "$chart_layout" "$BUILD_VERSION" "$chart_version" "$SOURCE_COMMIT" "$work/publication" "$SOURCE_DATE_EPOCH" "$release_state" "$work/release-state"
-  descriptor="$work/publication/kubikles-accelerator-release-$BUILD_VERSION.json"
-  mkdir -m 0700 "$ACCELERATOR_RELEASE_OUTPUT"
-  install -m 0600 "$descriptor" "$ACCELERATOR_RELEASE_OUTPUT/$(basename "$descriptor")"
-  install -m 0600 "$descriptor.sha256" "$ACCELERATOR_RELEASE_OUTPUT/$(basename "$descriptor.sha256")"
 }
 
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then

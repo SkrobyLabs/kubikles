@@ -130,11 +130,11 @@ func (s *coordinatorTestServices) Resolve(ctx context.Context) acceleratorreleas
 	}
 	return coordinatorResolution()
 }
-func (s *coordinatorTestServices) ResolveOverride(ctx context.Context, version, descriptorURL string) acceleratorrelease.Resolution {
+func (s *coordinatorTestServices) ResolveOverride(ctx context.Context, imageReference, chartReference string) acceleratorrelease.Resolution {
 	call := int(s.resolveCalls.Add(1))
 	s.record("resolve-override")
 	if s.resolveOverrideHook != nil {
-		return s.resolveOverrideHook(ctx, call, version, descriptorURL)
+		return s.resolveOverrideHook(ctx, call, imageReference, chartReference)
 	}
 	return acceleratorrelease.Resolution{Availability: acceleratorrelease.Unavailable, Reason: acceleratorrelease.InvalidLocalBuild}
 }
@@ -217,9 +217,9 @@ func (s *coordinatorTestServices) DrainAndDispose(_ context.Context, workload *P
 }
 
 func coordinatorResolution() acceleratorrelease.Resolution {
-	return acceleratorrelease.Resolution{Availability: acceleratorrelease.Available, Source: acceleratorrelease.SourceNetwork, Release: acceleratorrelease.VerifiedRelease{
-		BuildVersion: "v1.2.3", SourceCommit: strings.Repeat("a", 40), DescriptorSHA256: strings.Repeat("b", 64),
-		ImageReference: imageRepository + "@sha256:" + strings.Repeat("c", 64), ChartReference: chartRepository + "@sha256:" + strings.Repeat("d", 64),
+	return acceleratorrelease.Resolution{Availability: acceleratorrelease.Available, Source: acceleratorrelease.SourceBuiltIn, Release: acceleratorrelease.VerifiedRelease{
+		BuildVersion:   "v1.2.3",
+		ImageReference: imageRepository + ":v1.2.3", ChartReference: chartRepository + ":1.2.3",
 	}}
 }
 
@@ -397,16 +397,15 @@ func TestVersionMismatchRecreatesExactlyOnce(t *testing.T) {
 func TestCoordinatorTransientRetryAndExplicitRetryTimes(t *testing.T) {
 	coordinator, services, clock := newCoordinatorHarness(t)
 	var times []time.Time
-	services.resolveHook = func(context.Context, int) acceleratorrelease.Resolution {
+	workload := coordinatorWorkload(t)
+	services.provisionHook = func(context.Context, int, Request) Result {
 		times = append(times, clock.Now())
 		if len(times) <= 3 {
-			return acceleratorrelease.Resolution{Availability: acceleratorrelease.Unavailable, Reason: acceleratorrelease.NetworkUnavailable}
+			return unavailable(ChartPullFailed, CleanupNotNeeded)
 		}
-		return coordinatorResolution()
+		return available(workload)
 	}
-	workload := coordinatorWorkload(t)
 	session, _ := coordinatorSession(workload, clock, 1)
-	services.provisionHook = func(context.Context, int, Request) Result { return available(workload) }
 	services.connectHook = func(context.Context, int, *ProvisionedWorkload) ConnectResult {
 		return ConnectResult{Availability: Available, Session: session}
 	}
@@ -433,9 +432,8 @@ func TestCoordinatorTransientRetryAndExplicitRetryTimes(t *testing.T) {
 
 func TestCoordinatorFailureClassificationClosedTable(t *testing.T) {
 	release := map[acceleratorrelease.UnavailableReason]failureClass{
-		acceleratorrelease.InvalidLocalBuild: failureAuthoritative, acceleratorrelease.DescriptorMissing: failureAuthoritative,
-		acceleratorrelease.NetworkUnavailable: failureTemporary, acceleratorrelease.OnlineIntegrity: failureAuthoritative,
-		acceleratorrelease.CacheInvalid: failureAuthoritative, acceleratorrelease.CacheIO: failureTemporary,
+		acceleratorrelease.InvalidLocalBuild: failureAuthoritative,
+		acceleratorrelease.InvalidReference:  failureAuthoritative,
 	}
 	for reason, want := range release {
 		if got := classifyReleaseFailure(reason); got != want {
@@ -516,13 +514,13 @@ func TestCoordinatorRetryRedeploysActiveWorkload(t *testing.T) {
 	stopCoordinator(t, coordinator)
 }
 
-func TestCoordinatorDevelopmentOptionsResolveTargetAndTriggerRedeploy(t *testing.T) {
+func TestCoordinatorCustomArtifactOptionsTriggerRedeploy(t *testing.T) {
 	coordinator, services, _ := newCoordinatorHarness(t)
-	options := DeploymentOptions{ReleaseVersion: "v1.4.0-alpha.1", DescriptorURL: "https://artifacts.example.test/release.json", AllowVersionMismatch: true}
+	options := DeploymentOptions{ImageReference: "ghcr.io/example/accelerator:test", ChartReference: "ghcr.io/example/charts/accelerator:test"}
 	seen := make(chan DeploymentOptions, 2)
-	services.resolveOverrideHook = func(_ context.Context, _ int, version, descriptorURL string) acceleratorrelease.Resolution {
-		seen <- DeploymentOptions{ReleaseVersion: version, DescriptorURL: descriptorURL, AllowVersionMismatch: true}
-		return acceleratorrelease.Resolution{Availability: acceleratorrelease.Unavailable, Reason: acceleratorrelease.DescriptorMissing}
+	services.resolveOverrideHook = func(_ context.Context, _ int, imageReference, chartReference string) acceleratorrelease.Resolution {
+		seen <- DeploymentOptions{ImageReference: imageReference, ChartReference: chartReference}
+		return acceleratorrelease.Resolution{Availability: acceleratorrelease.Unavailable, Reason: acceleratorrelease.InvalidReference}
 	}
 
 	coordinator.EnableWithOptions("ctx", "default", options)
@@ -531,10 +529,10 @@ func TestCoordinatorDevelopmentOptionsResolveTargetAndTriggerRedeploy(t *testing
 		t.Fatalf("first options=%#v", got)
 	}
 	updated := options
-	updated.ReleaseVersion = "v1.4.0-alpha.2"
+	updated.ImageReference = "ghcr.io/example/accelerator:next"
 	coordinator.EnableWithOptions("ctx", "default", updated)
 	waitCoordinatorState(t, coordinator, CoordinatorUnavailable)
-	if got := <-seen; got.ReleaseVersion != updated.ReleaseVersion || got.DescriptorURL != updated.DescriptorURL {
+	if got := <-seen; got.ImageReference != updated.ImageReference || got.ChartReference != updated.ChartReference {
 		t.Fatalf("updated options=%#v", got)
 	}
 	if services.resolveCalls.Load() != 2 {

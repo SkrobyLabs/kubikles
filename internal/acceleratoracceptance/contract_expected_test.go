@@ -32,7 +32,7 @@ func TestAcceptanceContractExactCaseSet(t *testing.T) {
 		{"A60A-003-IMAGE", "e6c23dbd", OwnerMake, "test-accelerator-image", "artifact.image,artifact.platforms"},
 		{"A60A-004-CHART", "a02bce49", OwnerMake, "test-accelerator-chart", "chart.objects,chart.rbac,chart.version"},
 		{"A60A-005-CHART-KIND", "a02bce49", OwnerMake, "test-accelerator-chart-kind", "chart.job,chart.ttl"},
-		{"A60A-006-RELEASE-CONTRACT", "1ff2446c", OwnerMake, "test-accelerator-release-contract", "release.checksum,release.descriptor,release.immutable"},
+		{"A60A-006-RELEASE-CONTRACT", "1ff2446c", OwnerMake, "test-accelerator-release-contract", "release.assets,release.registry,release.tags"},
 		{"A60A-007-LOCAL-PUBLICATION", "1ff2446c", OwnerMake, "test-accelerator-publication-local", "release.loopback,release.readback"},
 		{"A60A-008-PROVISION", "1cec4c3a,71facaab", OwnerMake, "test-accelerator-desktop-provision-kind", "desktop.provision,desktop.resolve"},
 		{"A60A-009-CONNECT", "020e8648,2d45b95b,44ea1f82,8ebf3759,f604c5fb", OwnerMake, "test-accelerator-desktop-connector-kind", "desktop.auth,desktop.connect,desktop.tunnel"},

@@ -25,15 +25,17 @@ const (
 )
 
 type AcceleratorReleaseRequest struct {
-	ChartReference   string
-	ChartDigest      string
-	BuildVersion     string
-	ImageRepository  string
-	ImageDigest      string
-	WorkloadSession  string
-	CreatorVerifier  string
-	ReleaseName      string
-	ReleaseNamespace string
+	ChartReference       string
+	ChartDigest          string
+	BuildVersion         string
+	ImageReference       string
+	ImageRepository      string
+	ImageDigest          string
+	AllowVersionMismatch bool
+	WorkloadSession      string
+	CreatorVerifier      string
+	ReleaseName          string
+	ReleaseNamespace     string
 }
 
 // AcceleratorReleaseRequest can contain the verifier required by Helm, so it

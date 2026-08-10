@@ -1,13 +1,15 @@
-// Package acceleratorrelease resolves the immutable Accelerator release for this desktop build.
+// Package acceleratorrelease selects the image and chart used by Accelerator.
 package acceleratorrelease
 
 import (
 	"context"
-	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
-	"time"
+)
+
+const (
+	defaultImageRepository = "ghcr.io/skrobylabs/kubikles-accelerator"
+	defaultChartRepository = "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator"
 )
 
 type Availability string
@@ -21,27 +23,21 @@ type Source string
 
 const (
 	SourceNone    Source = "none"
-	SourceNetwork Source = "network"
-	SourceCache   Source = "cache"
+	SourceBuiltIn Source = "built_in"
+	SourceCustom  Source = "custom"
 )
 
 type UnavailableReason string
 
 const (
-	InvalidLocalBuild  UnavailableReason = "invalid_local_build"
-	DescriptorMissing  UnavailableReason = "descriptor_missing"
-	NetworkUnavailable UnavailableReason = "network_unavailable"
-	OnlineIntegrity    UnavailableReason = "online_integrity"
-	CacheInvalid       UnavailableReason = "cache_invalid"
-	CacheIO            UnavailableReason = "cache_io"
+	InvalidLocalBuild UnavailableReason = "invalid_local_build"
+	InvalidReference  UnavailableReason = "invalid_reference"
 )
 
 type VerifiedRelease struct {
-	BuildVersion     string `json:"buildVersion"`
-	SourceCommit     string `json:"sourceCommit"`
-	DescriptorSHA256 string `json:"descriptorSHA256"`
-	ImageReference   string `json:"imageReference"`
-	ChartReference   string `json:"chartReference"`
+	BuildVersion   string `json:"buildVersion"`
+	ImageReference string `json:"imageReference"`
+	ChartReference string `json:"chartReference"`
 }
 
 type Resolution struct {
@@ -51,145 +47,70 @@ type Resolution struct {
 	Release      VerifiedRelease   `json:"release,omitempty"`
 }
 
-var stableVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
-var releaseVersion = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?$`)
+type Resolver struct{ buildVersion string }
 
-type httpDoer interface {
-	Do(*http.Request) (*http.Response, error)
+var registryReference = regexp.MustCompile(`^[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+(?::[A-Za-z0-9_][A-Za-z0-9._-]{0,127}|@sha256:[0-9a-f]{64})$`)
+
+func New(buildVersion string) *Resolver {
+	return &Resolver{buildVersion: strings.TrimSpace(buildVersion)}
 }
 
-type Resolver struct {
-	buildVersion string
-	cacheRoot    string
-	client       httpDoer
-	cache        *releaseCache
-	now          func() time.Time
-}
-
-func New(buildVersion, cacheRoot string) *Resolver {
-	return newResolver(buildVersion, cacheRoot, newHTTPClient(), osFileOps, time.Now)
-}
-
-func newResolver(buildVersion, cacheRoot string, client httpDoer, ops fileOps, now func() time.Time) *Resolver {
-	return &Resolver{
-		buildVersion: buildVersion,
-		cacheRoot:    cacheRoot,
-		client:       client,
-		cache:        newReleaseCache(cacheRoot, ops),
-		now:          now,
+func DefaultReferences(buildVersion string) (imageReference, chartReference string, ok bool) {
+	version := strings.TrimSpace(buildVersion)
+	if version == "" || len(version) > 128 || strings.ContainsAny(version, " /:@") {
+		return "", "", false
 	}
+	imageReference = defaultImageRepository + ":" + version
+	chartVersion := strings.TrimPrefix(version, "v")
+	chartReference = defaultChartRepository + ":" + chartVersion
+	return imageReference, chartReference, true
 }
 
-func unavailable(reason UnavailableReason) Resolution {
-	return Resolution{Availability: Unavailable, Source: SourceNone, Reason: reason}
+func NormalizeImageReference(value string) (string, bool) {
+	value = strings.TrimSpace(value)
+	return value, value != "" && len(value) <= 512 && registryReference.MatchString(value)
 }
 
-func available(source Source, release VerifiedRelease) Resolution {
-	return Resolution{Availability: Available, Source: source, Release: release}
+func NormalizeChartReference(value string) (string, bool) {
+	value = strings.TrimSpace(value)
+	value = strings.TrimPrefix(value, "oci://")
+	if value == "" || len(value) > 512 || !registryReference.MatchString(value) {
+		return "", false
+	}
+	return "oci://" + value, true
 }
 
 func (r *Resolver) Resolve(ctx context.Context) Resolution {
-	if !releaseVersion.MatchString(r.buildVersion) {
-		return unavailable(InvalidLocalBuild)
+	if ctx == nil || ctx.Err() != nil || r == nil {
+		return Resolution{Availability: Unavailable, Source: SourceNone, Reason: InvalidLocalBuild}
 	}
-	descriptorURL, checksumURL, ok := assetURLs(r.buildVersion)
+	imageReference, chartReference, ok := DefaultReferences(r.buildVersion)
 	if !ok {
-		return unavailable(InvalidLocalBuild)
+		return Resolution{Availability: Unavailable, Source: SourceNone, Reason: InvalidLocalBuild}
 	}
-	checksumBytes, checksumClass := fetchAsset(ctx, r.client, checksumURL, maxChecksumBytes)
-	switch checksumClass {
-	case fetchMissing:
-		return unavailable(DescriptorMissing)
-	case fetchIntegrity:
-		return unavailable(OnlineIntegrity)
-	case fetchTransient:
-		return r.resolveFromCache()
-	}
-	checksumDigest, checksumOK := parseChecksumLine(checksumBytes, releaseAssetPrefix+r.buildVersion+".json")
-	if !checksumOK {
-		return unavailable(OnlineIntegrity)
-	}
-	descriptorBytes, descriptorFetchClass := fetchAsset(ctx, r.client, descriptorURL, maxDescriptorBytes)
-	switch descriptorFetchClass {
-	case fetchMissing:
-		return unavailable(DescriptorMissing)
-	case fetchIntegrity:
-		return unavailable(OnlineIntegrity)
-	case fetchTransient:
-		return r.resolveFromCacheDigest(checksumDigest)
-	}
-	release, descriptorClass := validateAndProject(r.buildVersion, checksumBytes, descriptorBytes)
-	if descriptorClass != descriptorValid {
-		return unavailable(OnlineIntegrity)
-	}
-	_ = r.cache.storeVerified(r.buildVersion, checksumBytes, descriptorBytes, r.now())
-	return available(SourceNetwork, release)
+	return Resolution{Availability: Available, Source: SourceBuiltIn, Release: VerifiedRelease{BuildVersion: r.buildVersion, ImageReference: imageReference, ChartReference: chartReference}}
 }
 
-// ResolveOverride resolves an explicitly selected development release. The
-// normal resolver accepts officially published stable and prerelease versions;
-// this path additionally accepts an explicit HTTPS descriptor URL and
-// deliberately bypasses the production cache for that custom location.
-func (r *Resolver) ResolveOverride(ctx context.Context, buildVersion, descriptorURL string) Resolution {
-	if r == nil || !releaseVersion.MatchString(buildVersion) {
-		return unavailable(InvalidLocalBuild)
+func (r *Resolver) ResolveOverride(ctx context.Context, imageReference, chartReference string) Resolution {
+	resolution := r.Resolve(ctx)
+	if resolution.Availability != Available {
+		return resolution
 	}
-	if descriptorURL == "" {
-		clone := *r
-		clone.buildVersion = buildVersion
-		return clone.Resolve(ctx)
-	}
-	u, err := url.Parse(descriptorURL)
-	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.Fragment != "" || strings.TrimSpace(descriptorURL) != descriptorURL {
-		return unavailable(InvalidLocalBuild)
-	}
-	checksumLocation := *u
-	checksumLocation.Path += ".sha256"
-	checksumBytes, checksumClass := fetchAsset(ctx, r.client, checksumLocation.String(), maxChecksumBytes)
-	if checksumClass == fetchMissing {
-		return unavailable(DescriptorMissing)
-	}
-	if checksumClass != fetchOK {
-		if checksumClass == fetchIntegrity {
-			return unavailable(OnlineIntegrity)
+	if imageReference != "" {
+		var ok bool
+		resolution.Release.ImageReference, ok = NormalizeImageReference(imageReference)
+		if !ok {
+			return Resolution{Availability: Unavailable, Source: SourceNone, Reason: InvalidReference}
 		}
-		return unavailable(NetworkUnavailable)
+		resolution.Source = SourceCustom
 	}
-	name := releaseAssetPrefix + buildVersion + ".json"
-	if _, ok := parseChecksumLine(checksumBytes, name); !ok {
-		return unavailable(OnlineIntegrity)
-	}
-	descriptorBytes, descriptorClass := fetchAsset(ctx, r.client, descriptorURL, maxDescriptorBytes)
-	if descriptorClass == fetchMissing {
-		return unavailable(DescriptorMissing)
-	}
-	if descriptorClass != fetchOK {
-		if descriptorClass == fetchIntegrity {
-			return unavailable(OnlineIntegrity)
+	if chartReference != "" {
+		var ok bool
+		resolution.Release.ChartReference, ok = NormalizeChartReference(chartReference)
+		if !ok {
+			return Resolution{Availability: Unavailable, Source: SourceNone, Reason: InvalidReference}
 		}
-		return unavailable(NetworkUnavailable)
+		resolution.Source = SourceCustom
 	}
-	release, class := validateAndProject(buildVersion, checksumBytes, descriptorBytes)
-	if class != descriptorValid {
-		return unavailable(OnlineIntegrity)
-	}
-	return available(SourceNetwork, release)
-}
-
-func (r *Resolver) resolveFromCache() Resolution {
-	return r.resolveFromCacheDigest("")
-}
-
-func (r *Resolver) resolveFromCacheDigest(digest string) Resolution {
-	release, state := r.cache.loadExactDigest(r.buildVersion, digest, r.now())
-	switch state {
-	case cacheOK:
-		return available(SourceCache, release)
-	case cacheBad:
-		return unavailable(CacheInvalid)
-	case cacheIO:
-		return unavailable(CacheIO)
-	default:
-		return unavailable(NetworkUnavailable)
-	}
+	return resolution
 }

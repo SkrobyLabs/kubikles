@@ -13,7 +13,10 @@ import (
 var ErrAcceleratorUnavailable = errors.New("accelerator provisioning unavailable")
 var ErrAcceleratorIntegrity = errors.New("accelerator chart integrity failed")
 
-type AcceleratorChartRequest struct{ Reference, Digest, BuildVersion string }
+type AcceleratorChartRequest struct {
+	Reference, Digest, BuildVersion string
+	AllowVersionMismatch            bool
+}
 
 func PullAcceleratorChart(context.Context, AcceleratorChartRequest) (*chart.Chart, error) {
 	return nil, ErrAcceleratorUnavailable

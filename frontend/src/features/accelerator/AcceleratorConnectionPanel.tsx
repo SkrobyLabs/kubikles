@@ -8,11 +8,7 @@ import Logger from '~/utils/Logger';
 const busyStates = new Set(['sweeping', 'resolving', 'provisioning', 'connecting', 'reconnecting', 'draining', 'disposing']);
 const failureDescriptions: Record<string, string> = {
   invalid_local_build: 'This desktop build does not have a publishable Accelerator release version.',
-  descriptor_missing: 'No Accelerator release descriptor exists for this exact desktop build.',
-  network_unavailable: 'The Accelerator release metadata could not be downloaded.',
-  online_integrity: 'The downloaded Accelerator release metadata failed integrity validation.',
-  cache_invalid: 'The cached Accelerator release metadata is invalid.',
-  cache_io: 'The Accelerator release cache could not be read.',
+  invalid_reference: 'The configured Accelerator image or chart reference is invalid.',
   chart_pull_failed: 'The Accelerator Helm chart could not be pulled.',
   chart_integrity_failed: 'The Accelerator Helm chart failed integrity validation.',
   render_failed: 'The Accelerator Helm chart could not be rendered.',
@@ -70,16 +66,15 @@ export default function AcceleratorConnectionPanel({ contextName, contextNamespa
   const workload = (shown as any).workload;
   const diagnostics = ((shown as any).diagnostics ?? []) as AcceleratorDiagnostic[];
   const busy = pendingAction !== null || busyStates.has(shown.state);
-  const development = config.accelerator.development;
-  const developmentOverrideActive = Boolean(development?.releaseVersion || development?.descriptorURL || development?.versionPolicy === 'warn');
+  const customArtifactsActive = Boolean(config.accelerator.customImage || config.accelerator.customChart);
   const view = (kind: 'helmreleases' | 'pods', name: string) => {
     setSelectedNamespaces([shown.namespace || policy.namespace]);
     navigateWithSearch(kind, name, true);
   };
   return <div className="space-y-4">
     <p className="text-xs text-gray-500">This connection owns Accelerator deployment. Secret screens only use an active session; they never start or remove one.</p>
-    {developmentOverrideActive && <div role="alert" className="rounded border border-amber-500/50 bg-amber-950/30 p-3 text-xs text-amber-200">
-      Development override active{development?.releaseVersion ? <> · target <span className="font-mono">{development.releaseVersion}</span></> : ''}{development?.descriptorURL ? ' · custom descriptor' : ''}{development?.versionPolicy === 'warn' ? ' · version mismatches allowed' : ''}.
+    {customArtifactsActive && <div role="alert" className="rounded border border-amber-500/50 bg-amber-950/30 p-3 text-xs text-amber-200">
+      Custom Accelerator artifacts active{config.accelerator.customImage ? ' · image' : ''}{config.accelerator.customChart ? ' · chart' : ''}.
     </div>}
     {(shown as any).versionMismatchWarning && <div role="status" className="rounded border border-amber-500/60 bg-amber-950/40 p-3 text-xs text-amber-100">
       Connected despite an Accelerator version mismatch. Compatibility is not guaranteed; Direct remains the fallback if the protocol fails.

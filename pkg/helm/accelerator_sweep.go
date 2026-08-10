@@ -280,7 +280,7 @@ func proveClosedAcceleratorRelease(stored *release.Release, namespace, name stri
 	if sessionMatch[1] != request.WorkloadSession {
 		return zero, "session"
 	}
-	if !acceleratorVersion.MatchString(request.BuildVersion) || stored.Chart.Metadata.Version != strings.TrimPrefix(request.BuildVersion, "v") || stored.Chart.Metadata.AppVersion != request.BuildVersion {
+	if !acceleratorVersion.MatchString(request.BuildVersion) || (!request.AllowVersionMismatch && (stored.Chart.Metadata.Version != strings.TrimPrefix(request.BuildVersion, "v") || stored.Chart.Metadata.AppVersion != request.BuildVersion)) {
 		return zero, "version"
 	}
 	if len(stored.Hooks) != 0 {
@@ -298,7 +298,7 @@ func proveClosedAcceleratorRelease(stored *release.Release, namespace, name stri
 	}
 	if expected != nil {
 		want := expected.request
-		if request.BuildVersion != want.BuildVersion || request.ImageRepository != want.ImageRepository || request.ImageDigest != want.ImageDigest || request.WorkloadSession != want.WorkloadSession || request.ReleaseName != want.ReleaseName || request.ReleaseNamespace != want.ReleaseNamespace || stored.Manifest != expected.manifest || !reflect.DeepEqual(stored.Config, expected.values) || hash != expected.renderHash {
+		if request.BuildVersion != want.BuildVersion || effectiveAcceleratorImageReference(request) != effectiveAcceleratorImageReference(want) || request.WorkloadSession != want.WorkloadSession || request.ReleaseName != want.ReleaseName || request.ReleaseNamespace != want.ReleaseNamespace || stored.Manifest != expected.manifest || !reflect.DeepEqual(stored.Config, expected.values) || hash != expected.renderHash {
 			return zero, "receipt"
 		}
 	}
@@ -312,19 +312,19 @@ func decodeSweepValues(values map[string]interface{}, namespace, name string) (A
 	accelerator, aok := values["accelerator"].(map[string]interface{})
 	auth, authOK := values["auth"].(map[string]interface{})
 	image, imageOK := values["image"].(map[string]interface{})
-	if !aok || !authOK || !imageOK || len(accelerator) != 1 || len(auth) != 1 || len(image) != 4 {
+	if !aok || !authOK || !imageOK || len(accelerator) != 2 || len(auth) != 1 || len(image) != 3 {
 		return AcceleratorReleaseRequest{}, nil, false
 	}
 	session, sok := accelerator["workloadSessionId"].(string)
+	allowVersionMismatch, mismatchOK := accelerator["allowVersionMismatch"].(bool)
 	verifier, vok := auth["creatorVerifier"].(string)
-	repository, rok := image["repository"].(string)
-	digest, dok := image["digest"].(string)
+	reference, referenceOK := image["reference"].(string)
 	version, versionOK := image["version"].(string)
 	architecture, architectureOK := image["architecture"].(string)
-	if !sok || !vok || !rok || !dok || !versionOK || !architectureOK || architecture != acceleratorRuntimeArchitecture() || !acceleratorSweepNameRE.MatchString("kubikles-accelerator-"+session) || repository != acceleratorRuntimeImageRepository() || !acceleratorDigest.MatchString(digest) || !acceleratorVersion.MatchString(version) || !acceleratorVerifier.MatchString(verifier) {
+	if !sok || !mismatchOK || !vok || !referenceOK || !versionOK || !architectureOK || architecture != acceleratorRuntimeArchitecture() || !acceleratorSweepNameRE.MatchString("kubikles-accelerator-"+session) || !validAcceleratorImageReference(reference) || !acceleratorVersion.MatchString(version) || !acceleratorVerifier.MatchString(verifier) {
 		return AcceleratorReleaseRequest{}, nil, false
 	}
-	return AcceleratorReleaseRequest{BuildVersion: version, ImageRepository: repository, ImageDigest: digest, WorkloadSession: session, ReleaseName: name, ReleaseNamespace: namespace}, []byte(verifier), true
+	return AcceleratorReleaseRequest{BuildVersion: version, ImageReference: reference, AllowVersionMismatch: allowVersionMismatch, WorkloadSession: session, ReleaseName: name, ReleaseNamespace: namespace}, []byte(verifier), true
 }
 
 func acceleratorSweepJobTerminal(job *batchv1.Job) bool {
@@ -431,7 +431,7 @@ func acceleratorExpectedPodSpec(request AcceleratorReleaseRequest, names map[str
 		ServiceAccountName: names["ServiceAccount"], AutomountServiceAccountToken: &automount, RestartPolicy: corev1.RestartPolicyNever, TerminationGracePeriodSeconds: &grace,
 		NodeSelector:    map[string]string{"kubernetes.io/arch": acceleratorRuntimeArchitecture()},
 		SecurityContext: &corev1.PodSecurityContext{RunAsNonRoot: &runNonRoot, RunAsUser: &user, RunAsGroup: &user, SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}},
-		Containers: []corev1.Container{{Name: "accelerator", Image: request.ImageRepository + "@" + request.ImageDigest, ImagePullPolicy: corev1.PullIfNotPresent,
+		Containers: []corev1.Container{{Name: "accelerator", Image: effectiveAcceleratorImageReference(request), ImagePullPolicy: corev1.PullIfNotPresent,
 			Env:             []corev1.EnvVar{{Name: "KUBIKLES_ACCELERATOR_CREATOR_VERIFIER", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: names["Secret"]}, Key: "creatorVerifier"}}}},
 			SecurityContext: &corev1.SecurityContext{AllowPrivilegeEscalation: &allowEscalation, ReadOnlyRootFilesystem: &readOnly, Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}},
 			Resources:       corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("128Mi")}, Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1"), corev1.ResourceMemory: resource.MustParse("512Mi")}},

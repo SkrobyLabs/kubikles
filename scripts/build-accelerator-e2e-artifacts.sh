@@ -68,8 +68,7 @@ for architecture in amd64; do
   touch -d "@$epoch" "$binary"
   (cd "$root" && go run ./scripts/cmd/inspect-accelerator-binary "$binary" "$architecture" v0.0.0 "$commit" false) || fail binary-inspection
 done
-# The acceptance runtime is deliberately a second binary and image. The
-# release descriptor above remains evidence for the untagged production image.
+# The acceptance runtime is deliberately a second binary and image.
 acceptance_binary="$work/acceptance/$execution_architecture/kubikles-accelerator-acceptance"
 mkdir -m 700 -p "$(dirname "$acceptance_binary")"
 (cd "$source_root" && GOTOOLCHAIN=go1.25.12 GOPROXY=off SOURCE_DATE_EPOCH="$epoch" CGO_ENABLED=0 GOOS=linux GOARCH="$execution_architecture" \
@@ -137,18 +136,15 @@ export RUNNER_TEMP="$artifact_root"
 init_client_configs
 LOCAL_SOURCE_STATE="$(cd "$root" && { git diff --binary HEAD; git diff --binary --cached HEAD; } | sha256sum | cut -d' ' -f1)"
 (cd "$root" && publish_registry "$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs" true "$layout" "$chart" "$chart_layout" v0.0.0 0.0.0 "$commit" "$publication" "$epoch" absent "$artifact_root/release-absent") || fail registry-publication
-
-install -m 600 "$publication/kubikles-accelerator-release-v0.0.0.json" "$artifact_root/kubikles-accelerator-release-v0.0.0.json"
-install -m 600 "$publication/kubikles-accelerator-release-v0.0.0.json.sha256" "$artifact_root/kubikles-accelerator-release-v0.0.0.json.sha256"
 jq --arg version v0.0.0 '. + {inspections: [.platforms[] | {architecture:.architecture,binaryBuildVersion:$version,imageBuildVersion:$version}]}' "$artifact_root/image-evidence.json" >"$artifact_root/acceptance-image-evidence.json"
 chmod 600 "$artifact_root/acceptance-image-evidence.json"
 
-image_digest="$(cd "$root" && go run ./scripts/accelerator-release field "$artifact_root/kubikles-accelerator-release-v0.0.0.json" image-digest)"
+image_digest="$(oras resolve --plain-http "$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator:v0.0.0")"
 acceptance_image_digest="$(oras resolve --plain-http "$acceptance_build_ref")"
 oras manifest fetch --plain-http --output "$artifact_root/acceptance-image-index.json" "$acceptance_build_ref" || fail acceptance-image-index
 [ "sha256:$(sha256sum "$artifact_root/acceptance-image-index.json" | cut -d ' ' -f1)" = "$acceptance_image_digest" ] || fail acceptance-image-index
 jq -e --arg execution "$execution_architecture" '(.schemaVersion == 2) and ([.manifests[].platform | .os + "/" + .architecture] | sort) == ["linux/" + $execution]' "$artifact_root/acceptance-image-index.json" >/dev/null || fail acceptance-image-platform
-chart_digest="$(cd "$root" && go run ./scripts/accelerator-release field "$artifact_root/kubikles-accelerator-release-v0.0.0.json" chart-digest)"
+chart_digest="$(oras resolve --plain-http "$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/helm/kubikles-accelerator:0.0.0")"
 [ "$(oras resolve --plain-http "$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/kubikles-accelerator:v0.0.0")" = "$image_digest" ] || fail image-readback
 [ "$acceptance_image_digest" != "$image_digest" ] || fail acceptance-image-not-distinct
 [ "$(oras resolve --plain-http "$KUBIKLES_ACCELERATOR_E2E_REGISTRY/skrobylabs/helm/kubikles-accelerator:0.0.0")" = "$chart_digest" ] || fail chart-readback

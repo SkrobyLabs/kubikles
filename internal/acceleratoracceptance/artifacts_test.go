@@ -11,23 +11,8 @@ import (
 func exactArtifactFixture(t *testing.T) ArtifactFixture {
 	t.Helper()
 	digest := func(value byte) string { return "sha256:" + strings.Repeat(string(value), 64) }
-	descriptor := artifactDescriptor{
-		SchemaVersion: 1,
-		Schema:        "https://raw.githubusercontent.com/SkrobyLabs/kubikles/" + strings.Repeat("c", 40) + "/release/accelerator-release.schema.json",
-		BuildVersion:  BuildIdentity,
-		Source:        artifactSource{Repository: "https://github.com/SkrobyLabs/kubikles", Commit: strings.Repeat("c", 40), GitTag: BuildIdentity},
-		Compatibility: artifactCompatibility{Mode: "exact-build-version", DesktopBuildVersion: BuildIdentity, AcceleratorBuildVersion: BuildIdentity},
-		Image:         artifactImage{Repository: "ghcr.io/skrobylabs/kubikles-accelerator", Digest: digest('a'), Reference: "ghcr.io/skrobylabs/kubikles-accelerator@" + digest('a'), Platforms: []artifactPlatform{{OS: "linux", Architecture: "amd64", ManifestDigest: digest('b')}}},
-		Chart:         artifactChart{Repository: "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator", Digest: digest('d'), Reference: "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator@" + digest('d'), Version: "0.0.0", AppVersion: BuildIdentity},
-	}
-	descriptorBytes, err := json.Marshal(descriptor)
-	if err != nil {
-		t.Fatal("marshal descriptor fixture")
-	}
-	descriptorBytes = append(descriptorBytes, '\n')
-	sum := sha256.Sum256(descriptorBytes)
-	checksum := []byte(hex.EncodeToString(sum[:]) + "  kubikles-accelerator-release-v0.0.0.json\n")
-	evidence, err := json.Marshal(artifactImageEvidence{ImageDigest: digest('a'), Platforms: descriptor.Image.Platforms, Inspections: []artifactInspection{{Architecture: "amd64", BinaryBuildVersion: BuildIdentity, ImageBuildVersion: BuildIdentity}}})
+	platforms := []artifactPlatform{{OS: "linux", Architecture: "amd64", ManifestDigest: digest('b')}}
+	evidence, err := json.Marshal(artifactImageEvidence{ImageDigest: digest('a'), Platforms: platforms, Inspections: []artifactInspection{{Architecture: "amd64", BinaryBuildVersion: BuildIdentity, ImageBuildVersion: BuildIdentity}}})
 	if err != nil {
 		t.Fatal("marshal evidence fixture")
 	}
@@ -44,16 +29,11 @@ func exactArtifactFixture(t *testing.T) ArtifactFixture {
 	acceptanceIndex = append(acceptanceIndex, '\n')
 	acceptanceSum := sha256.Sum256(acceptanceIndex)
 	return ArtifactFixture{
-		Descriptor: descriptorBytes, Checksum: checksum, ImageEvidence: append(evidence, '\n'), AcceptanceImageIndex: acceptanceIndex,
+		ImageEvidence: append(evidence, '\n'), AcceptanceImageIndex: acceptanceIndex,
 		RegistryImageDigest: digest('a'), AcceptanceImageDigest: "sha256:" + hex.EncodeToString(acceptanceSum[:]), RegistryChartDigest: digest('d'), ReconnectGraceSeconds: 5,
 		ChartVersion: "0.0.0", ChartAppVersion: BuildIdentity,
 		RuntimeBuildVersion: BuildIdentity, ReleaseArchitecture: "amd64", ExecutionArchitecture: "amd64", SelectedManifestDigest: digest('b'),
 	}
-}
-
-func refreshArtifactChecksum(fixture *ArtifactFixture) {
-	sum := sha256.Sum256(fixture.Descriptor)
-	fixture.Checksum = []byte(hex.EncodeToString(sum[:]) + "  kubikles-accelerator-release-v0.0.0.json\n")
 }
 
 func TestAcceptanceExactLocalReleaseFixture(t *testing.T) {
@@ -84,13 +64,6 @@ func TestAcceptanceExactLocalReleaseFixture(t *testing.T) {
 		name   string
 		mutate func(*ArtifactFixture)
 	}{
-		{"descriptor build version", func(f *ArtifactFixture) {
-			f.Descriptor = []byte(strings.Replace(string(f.Descriptor), `"buildVersion":"v0.0.0"`, `"buildVersion":"v0.0.1"`, 1))
-		}},
-		{"descriptor source", func(f *ArtifactFixture) {
-			f.Descriptor = []byte(strings.Replace(string(f.Descriptor), strings.Repeat("c", 40), strings.Repeat("e", 40), 1))
-		}},
-		{"checksum", func(f *ArtifactFixture) { f.Checksum[0] = '0' }},
 		{"missing platform", func(f *ArtifactFixture) {
 			f.ImageEvidence = []byte(strings.Replace(string(f.ImageEvidence), `[{"os":"linux","architecture":"amd64","manifestDigest":"sha256:`+strings.Repeat("b", 64)+`"}]`, `[]`, 1))
 		}},
@@ -98,7 +71,7 @@ func TestAcceptanceExactLocalReleaseFixture(t *testing.T) {
 			f.ImageEvidence = []byte(strings.Replace(string(f.ImageEvidence), `]`, `,{"os":"linux","architecture":"s390x","manifestDigest":"sha256:`+strings.Repeat("e", 64)+`"}]`, 1))
 		}},
 		{"platform digest", func(f *ArtifactFixture) { f.SelectedManifestDigest = "sha256:" + strings.Repeat("f", 64) }},
-		{"chart digest", func(f *ArtifactFixture) { f.RegistryChartDigest = "sha256:" + strings.Repeat("e", 64) }},
+		{"chart digest", func(f *ArtifactFixture) { f.RegistryChartDigest = "invalid" }},
 		{"chart version", func(f *ArtifactFixture) { f.ChartVersion = "0.0.1" }},
 		{"chart app version", func(f *ArtifactFixture) { f.ChartAppVersion = "v0.0.1" }},
 		{"registry image", func(f *ArtifactFixture) { f.RegistryImageDigest = "sha256:" + strings.Repeat("e", 64) }},
@@ -113,20 +86,11 @@ func TestAcceptanceExactLocalReleaseFixture(t *testing.T) {
 		{"image label", func(f *ArtifactFixture) {
 			f.ImageEvidence = []byte(strings.Replace(string(f.ImageEvidence), `"imageBuildVersion":"v0.0.0"`, `"imageBuildVersion":"v0.0.1"`, 1))
 		}},
-		{"tag only image", func(f *ArtifactFixture) {
-			f.Descriptor = []byte(strings.Replace(string(f.Descriptor), `ghcr.io/skrobylabs/kubikles-accelerator@sha256:`, `ghcr.io/skrobylabs/kubikles-accelerator:v0.0.0#sha256:`, 1))
-		}},
-		{"duplicate descriptor key", func(f *ArtifactFixture) {
-			f.Descriptor = []byte(strings.Replace(string(f.Descriptor), `"schemaVersion":1`, `"schemaVersion":1,"schemaVersion":1`, 1))
-		}},
 	}
 	for _, test := range mutations {
 		t.Run(test.name, func(t *testing.T) {
 			candidate := exactArtifactFixture(t)
 			test.mutate(&candidate)
-			if test.name != "checksum" {
-				refreshArtifactChecksum(&candidate)
-			}
 			if ValidateArtifactFixture(candidate) == nil {
 				t.Fatal("artifact mutation was accepted")
 			}

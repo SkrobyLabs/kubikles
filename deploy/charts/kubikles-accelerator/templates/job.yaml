@@ -34,7 +34,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: accelerator
-          image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
+          image: {{ .Values.image.reference | quote }}
           imagePullPolicy: IfNotPresent
           env:
             - name: KUBIKLES_ACCELERATOR_CREATOR_VERIFIER

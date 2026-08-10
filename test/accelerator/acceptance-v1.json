@@ -37,7 +37,7 @@
       "id": "A60A-006-RELEASE-CONTRACT",
       "prerequisites": ["1ff2446c"],
       "owner": {"kind": "make", "target": "test-accelerator-release-contract"},
-      "evidence": ["release.checksum", "release.descriptor", "release.immutable"]
+      "evidence": ["release.assets", "release.registry", "release.tags"]
     },
     {
       "id": "A60A-007-LOCAL-PUBLICATION",

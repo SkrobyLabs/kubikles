@@ -241,8 +241,8 @@ type acceptanceLiteralResolver struct{ calls atomic.Int32 }
 
 func (r *acceptanceLiteralResolver) Resolve(context.Context) acceleratorrelease.Resolution {
 	r.calls.Add(1)
-	return acceleratorrelease.Resolution{Availability: acceleratorrelease.Available, Source: acceleratorrelease.SourceNetwork, Release: acceleratorrelease.VerifiedRelease{
-		BuildVersion: "build-N", SourceCommit: strings.Repeat("c", 40), DescriptorSHA256: strings.Repeat("d", 64),
+	return acceleratorrelease.Resolution{Availability: acceleratorrelease.Available, Source: acceleratorrelease.SourceBuiltIn, Release: acceleratorrelease.VerifiedRelease{
+		BuildVersion:   "build-N",
 		ImageReference: imageRepository + "@sha256:" + strings.Repeat("a", 64),
 		ChartReference: chartRepository + "@sha256:" + strings.Repeat("b", 64),
 	}}

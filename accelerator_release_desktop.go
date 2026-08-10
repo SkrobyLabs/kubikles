@@ -2,23 +2,11 @@
 
 package main
 
-import (
-	"os"
-	"path/filepath"
+import "kubikles/pkg/acceleratorrelease"
 
-	"kubikles/pkg/acceleratorrelease"
-)
-
-var (
-	desktopUserConfigDir                     = os.UserConfigDir
-	desktopAcceleratorReleaseResolverFactory = acceleratorrelease.New
-)
+var desktopAcceleratorReleaseResolverFactory = acceleratorrelease.New
 
 // newDesktopAcceleratorReleaseResolver is deliberately dormant until lifecycle composition.
-func newDesktopAcceleratorReleaseResolver() (*acceleratorrelease.Resolver, error) {
-	root, err := desktopUserConfigDir()
-	if err != nil {
-		return nil, err
-	}
-	return desktopAcceleratorReleaseResolverFactory(BuildVersion, filepath.Join(root, "kubikles", "accelerator", "releases")), nil
+func newDesktopAcceleratorReleaseResolver() *acceleratorrelease.Resolver {
+	return desktopAcceleratorReleaseResolverFactory(BuildVersion)
 }

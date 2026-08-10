@@ -1,17 +1,13 @@
 # Makefile for Kubikles
 # Cross-platform: works on Windows (MSYS/Git Bash), macOS, and Linux
 
-.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind test-accelerator-desktop-provision-kind test-accelerator-desktop-connector-kind test-accelerator-desktop-resume-kind test-accelerator-desktop-disposal-kind test-accelerator-desktop-lifecycle-kind test-accelerator-integrated-routing-kind test-accelerator-release-contract test-accelerator-publication-local verify-accelerator-release-ghcr test-accelerator-e2e test-accelerator-supply-chain verify-accelerator-supply-chain-ghcr
+.PHONY: help dev run build build-release build-lite build-release-lite build-windows-amd64 build-windows-arm64 build-mac build-mac-arm build-linux-amd64 build-linux-arm64 build-appimage build-all install-wails install-deps setup setup-quick install-frontend nuke-frontend check-rollup install-hooks clean test test-frontend test-watch typecheck lint lint-go lint-fix fmt profile build-pgo cluster-up cluster-down cluster-status cluster-load install-kind appicon analyze-size install-gsa generate test-accelerator-00-kind build-accelerator stage-accelerator-appicon accelerator-docker-preflight build-accelerator-image test-accelerator-image test-accelerator-chart test-accelerator-chart-kind test-accelerator-desktop-provision-kind test-accelerator-desktop-connector-kind test-accelerator-desktop-resume-kind test-accelerator-desktop-disposal-kind test-accelerator-desktop-lifecycle-kind test-accelerator-integrated-routing-kind test-accelerator-release-contract test-accelerator-publication-local verify-accelerator-release-ghcr test-accelerator-e2e test-accelerator-supply-chain
 
 test-accelerator-e2e:
 	@bash scripts/test-accelerator-e2e.sh
 
 test-accelerator-supply-chain:
 	@BUILD_VERSION='$(BUILD_VERSION)' bash scripts/test-accelerator-supply-chain.sh
-
-verify-accelerator-supply-chain-ghcr:
-	@test -n "$(BUILD_VERSION)" || (echo "BUILD_VERSION=vX.Y.Z is required" >&2; exit 1)
-	@BUILD_VERSION='$(BUILD_VERSION)' bash scripts/verify-accelerator-supply-chain-ghcr.sh
 
 .DEFAULT_GOAL := help
 
@@ -109,11 +105,10 @@ help:
 	@echo "  test-accelerator-desktop-disposal-kind  Test Accelerator cleanup in Kind"
 	@echo "  test-accelerator-desktop-lifecycle-kind  Test the desktop Accelerator lifecycle in Kind"
 	@echo "  test-accelerator-integrated-routing-kind  Test integrated Secret routing in Kind"
-	@echo "  test-accelerator-release-contract  Test Accelerator release metadata and packaging"
+	@echo "  test-accelerator-release-contract  Test Accelerator registry and release packaging"
 	@echo "  test-accelerator-publication-local  Test Accelerator publishing with a local registry"
 	@echo "  test-accelerator-e2e  Run all Accelerator end-to-end tests"
 	@echo "  test-accelerator-supply-chain  Test Accelerator SBOMs, vulnerability scans, and workflows"
-	@echo "  verify-accelerator-supply-chain-ghcr  Verify published Accelerator SBOMs"
 	@echo "  verify-accelerator-release-ghcr  Verify a published Accelerator release in GHCR"
 	@echo "  typecheck          Run TypeScript type checking (tsc --noEmit)"
 	@echo ""
@@ -330,7 +325,7 @@ ifeq ($(KUBIKLES_ACCELERATOR_E2E_REUSE),1)
 build-accelerator-image: accelerator-docker-preflight build-accelerator
 	@port="$${KUBIKLES_ACCELERATOR_E2E_REGISTRY##*:}"; \
 	  case "$$port" in ''|*[!0-9]*) echo 'Accelerator acceptance registry port is invalid' >&2; exit 1;; esac; \
-	  digest="$$(go run ./scripts/accelerator-release field '$(ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT)/kubikles-accelerator-release-v0.0.0.json' image-digest)"; \
+	  digest="$$(jq -r .registryImageDigest '$(ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT)/acceptance-artifact-metadata.json')"; \
 	  source="127.0.0.1:$$port/skrobylabs/kubikles-accelerator@$$digest"; \
 	  docker pull --platform "linux/$$(go env GOARCH)" "$$source" >/dev/null; \
 	  docker image tag "$$source" '$(ACCELERATOR_IMAGE)'

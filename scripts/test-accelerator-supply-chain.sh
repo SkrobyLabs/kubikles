@@ -127,8 +127,6 @@ if [ -n "${ACCELERATOR_SUPPLY_CHAIN_OUTPUT:-}" ]; then
   mkdir -m 0700 "$ACCELERATOR_SUPPLY_CHAIN_OUTPUT"
   install -m 0600 "$bundle" "$ACCELERATOR_SUPPLY_CHAIN_OUTPUT/$(basename "$bundle")"
   install -m 0600 "$checksum" "$ACCELERATOR_SUPPLY_CHAIN_OUTPUT/$(basename "$checksum")"
-  install -m 0600 "$amd64_sbom" "$ACCELERATOR_SUPPLY_CHAIN_OUTPUT/$(basename "$amd64_sbom")"
-  install -m 0600 "$chart_sbom" "$ACCELERATOR_SUPPLY_CHAIN_OUTPUT/$(basename "$chart_sbom")"
 fi
 
  (cd "$root" && go test -race ./scripts/accelerator-supply-chain/...) || fail helper-tests

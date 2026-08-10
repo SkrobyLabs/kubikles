@@ -7,7 +7,7 @@ import ConfigSection from './ConfigSection';
 vi.mock('~/context', () => ({ useTheme: () => ({ currentTheme: null, themes: [], switchTheme: vi.fn() }) }));
 vi.mock('wailsjs/go/main/App', () => ({ GetCrashLogPath: vi.fn(), OpenCrashLogDir: vi.fn(), GetIssueRulesDir: vi.fn(), OpenIssueRulesDir: vi.fn() }));
 
-const config = { accelerator: { enabledByDefault: false, defaultNamespace: '', development: { releaseVersion: '', descriptorURL: '', versionPolicy: 'exact' }, connectionOverrides: [{ contextName: 'prod', enabled: true }] } };
+const config = { accelerator: { enabledByDefault: false, defaultNamespace: '', customImage: '', customChart: '', connectionOverrides: [{ contextName: 'prod', enabled: true }] } };
 
 describe('ConfigSection', () => {
   it('does not render hidden Accelerator storage', () => {
@@ -28,8 +28,8 @@ describe('ConfigSection', () => {
     expect(screen.getByText(/Job and its supporting resources/)).toBeTruthy();
   });
 
-  it('shows a warning when Accelerator development overrides are active', () => {
-    render(<ConfigSection section="accelerator" config={{ accelerator: { ...config.accelerator, development: { ...config.accelerator.development, versionPolicy: 'warn' } } }} onFieldChange={vi.fn()} searchResults={null} />);
-    expect(screen.getByRole('alert').textContent).toContain('development overrides are active');
+  it('shows a warning when custom Accelerator artifacts are active', () => {
+    render(<ConfigSection section="accelerator" config={{ accelerator: { ...config.accelerator, customImage: 'ghcr.io/example/accelerator:test' } }} onFieldChange={vi.fn()} searchResults={null} />);
+    expect(screen.getByRole('alert').textContent).toContain('Custom Accelerator artifacts are active');
   });
 });

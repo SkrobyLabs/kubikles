@@ -444,7 +444,7 @@ func TestProvisionOutcomeMatrix(t *testing.T) {
 		{name: "success", installOwned: true, wantAvailable: true, wantCleanup: CleanupNotNeeded},
 		{name: "successful install missing receipt job uid", installOwned: true, missingJobUID: true, wantReason: InstallFailed, wantCleanup: CleanupSucceeded},
 		{name: "artifact unavailable", mutateResolution: func(request *Request) { request.Resolution.Availability = acceleratorrelease.Unavailable }, wantReason: ArtifactUnavailable, wantCleanup: CleanupNotNeeded},
-		{name: "malformed release", mutateResolution: func(request *Request) { request.Resolution.Release.SourceCommit = strings.Repeat("X", 40) }, wantReason: ArtifactUnavailable, wantCleanup: CleanupNotNeeded},
+		{name: "malformed release", mutateResolution: func(request *Request) { request.Resolution.Release.ImageReference = "not an image" }, wantReason: ArtifactUnavailable, wantCleanup: CleanupNotNeeded},
 		{name: "context unavailable", contextErr: errors.New("secret kubeconfig path"), wantReason: ContextUnavailable, wantCleanup: CleanupNotNeeded},
 		{name: "entropy", entropy: bytes.NewReader(make([]byte, 31)), wantReason: EntropyUnavailable, wantCleanup: CleanupNotNeeded},
 		{name: "pull", prepareReason: ChartPullFailed, wantReason: ChartPullFailed, wantCleanup: CleanupNotNeeded},
@@ -1096,9 +1096,9 @@ func (r *hostileErrorReader) Read([]byte) (int, error) {
 
 func validRequest() Request {
 	return Request{ContextName: "ctx", Resolution: acceleratorrelease.Resolution{
-		Availability: acceleratorrelease.Available, Source: acceleratorrelease.SourceNetwork,
+		Availability: acceleratorrelease.Available, Source: acceleratorrelease.SourceBuiltIn,
 		Release: acceleratorrelease.VerifiedRelease{
-			BuildVersion: "v1.2.3", SourceCommit: strings.Repeat("c", 40), DescriptorSHA256: strings.Repeat("d", 64),
+			BuildVersion:   "v1.2.3",
 			ImageReference: imageRepository + "@sha256:" + strings.Repeat("a", 64), ChartReference: chartRepository + "@sha256:" + strings.Repeat("b", 64),
 		},
 	}}

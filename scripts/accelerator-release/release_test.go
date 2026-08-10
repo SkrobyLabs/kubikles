@@ -14,8 +14,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 func git(t *testing.T, repository string, args ...string) string {
@@ -120,147 +118,6 @@ func TestNormalizeReleaseTagClassifiesCanonicalPrereleases(t *testing.T) {
 	for _, tag := range []string{"v1.4.0-alpha.01", "v1.4.0+build", "v1.4.0-", "v1.4.0-alpha..1", "v1.4.0a"} {
 		if _, err := NormalizeReleaseTag(tag); err == nil {
 			t.Fatalf("accepted non-canonical release %q", tag)
-		}
-	}
-}
-
-func testEvidence() Evidence {
-	return Evidence{BuildVersion: "v1.4.2", Commit: testCommit, GitTag: "v1.4.2", ImageDigest: digestC, Platforms: []Platform{{OS: "linux", Architecture: "amd64", ManifestDigest: digestA}}, ChartDigest: digestB, ChartVersion: "1.4.2", ChartAppVersion: "v1.4.2"}
-}
-
-func TestPrereleaseDescriptorPreservesExactIdentity(t *testing.T) {
-	evidence := testEvidence()
-	evidence.BuildVersion = "v1.5.0-alpha.1"
-	evidence.GitTag = evidence.BuildVersion
-	evidence.ChartVersion = "1.5.0-alpha.1"
-	evidence.ChartAppVersion = evidence.BuildVersion
-	descriptor, err := NewDescriptor(evidence)
-	if err != nil {
-		t.Fatal(err)
-	}
-	encoded, err := CanonicalDescriptor(descriptor)
-	if err != nil {
-		t.Fatal(err)
-	}
-	decoded, err := DecodeStrictDescriptor(encoded)
-	if err != nil || decoded.BuildVersion != evidence.BuildVersion || decoded.Chart.Version != evidence.ChartVersion || decoded.Source.GitTag != evidence.GitTag {
-		t.Fatalf("prerelease descriptor identity = %#v, %v", decoded, err)
-	}
-}
-
-func TestDescriptorV1CanonicalBytes(t *testing.T) {
-	d, err := NewDescriptor(testEvidence())
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := CanonicalDescriptor(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := `{
-  "schemaVersion": 1,
-  "$schema": "https://raw.githubusercontent.com/SkrobyLabs/kubikles/0123456789abcdef0123456789abcdef01234567/release/accelerator-release.schema.json",
-  "buildVersion": "v1.4.2",
-  "source": {
-    "repository": "https://github.com/SkrobyLabs/kubikles",
-    "commit": "0123456789abcdef0123456789abcdef01234567",
-    "gitTag": "v1.4.2"
-  },
-  "compatibility": {
-    "mode": "exact-build-version",
-    "desktopBuildVersion": "v1.4.2",
-    "acceleratorBuildVersion": "v1.4.2"
-  },
-  "image": {
-    "repository": "ghcr.io/skrobylabs/kubikles-accelerator",
-    "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "reference": "ghcr.io/skrobylabs/kubikles-accelerator@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "platforms": [
-      {
-        "os": "linux",
-        "architecture": "amd64",
-        "manifestDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
-    ]
-  },
-  "chart": {
-    "repository": "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator",
-    "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "reference": "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "version": "1.4.2",
-    "appVersion": "v1.4.2"
-  }
-}
-`
-	if string(got) != want {
-		t.Fatalf("canonical descriptor mismatch\n%s", got)
-	}
-	if _, err := DecodeStrictDescriptor(got); err != nil {
-		t.Fatalf("canonical descriptor rejected: %v", err)
-	}
-	if !bytes.HasSuffix(got, []byte("\n")) || bytes.HasSuffix(got, []byte("\n\n")) {
-		t.Fatal("descriptor newline is not canonical")
-	}
-	checksum := DescriptorChecksum("kubikles-accelerator-release-v1.4.2.json", got)
-	if !strings.HasSuffix(string(checksum), "  kubikles-accelerator-release-v1.4.2.json\n") {
-		t.Fatal("checksum format mismatch")
-	}
-	unknown := append([]byte(nil), got[:len(got)-2]...)
-	unknown = append(unknown, []byte(",\"channel\":\"stable\"}\n")...)
-	if _, err := DecodeStrictDescriptor(unknown); err == nil {
-		t.Fatal("unknown descriptor field accepted")
-	}
-	duplicate := bytes.Replace(got, []byte(`"schemaVersion": 1,`), []byte(`"schemaVersion": 1, "schemaVersion": 1,`), 1)
-	if _, err := DecodeStrictDescriptor(duplicate); err == nil {
-		t.Fatal("duplicate descriptor key accepted")
-	}
-	if _, err := DecodeStrictDescriptor(bytes.Replace(got, []byte("  \"buildVersion\""), []byte(" \"buildVersion\""), 1)); err == nil {
-		t.Fatal("non-canonical descriptor bytes accepted")
-	}
-
-	compiler := jsonschema.NewCompiler()
-	schemaPath := filepath.Join("..", "..", "release", "accelerator-release.schema.json")
-	var schemaDocument any
-	if err := json.NewDecoder(mustOpen(t, schemaPath)).Decode(&schemaDocument); err != nil {
-		t.Fatal(err)
-	}
-	if err := compiler.AddResource("schema.json", schemaDocument); err != nil {
-		t.Fatal(err)
-	}
-	schema, err := compiler.Compile("schema.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var doc any
-	if json.Unmarshal(got, &doc) != nil {
-		t.Fatal("decode descriptor")
-	}
-	if err := schema.Validate(doc); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func mustOpen(t *testing.T, path string) *os.File {
-	t.Helper()
-	f, err := os.Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { f.Close() })
-	return f
-}
-
-func TestDescriptorRejectsCrossFieldDrift(t *testing.T) {
-	mutations := []func(*Evidence){
-		func(e *Evidence) { e.BuildVersion = "v1.4.3" }, func(e *Evidence) { e.Commit = "ABC" }, func(e *Evidence) { e.GitTag = "v1.4.1" }, func(e *Evidence) { e.ImageDigest = "sha256:BAD" }, func(e *Evidence) { e.ChartDigest = "" }, func(e *Evidence) { e.ChartVersion = "v1.4.2" }, func(e *Evidence) { e.ChartAppVersion = "1.4.2" }, func(e *Evidence) { e.Platforms = nil }, func(e *Evidence) {
-			e.Platforms = append(e.Platforms, Platform{OS: "linux", Architecture: "s390x", ManifestDigest: digestC})
-		}, func(e *Evidence) { e.Platforms[0].Architecture = "arm64" }, func(e *Evidence) { e.Platforms[0].ManifestDigest = "sha256:BAD" },
-	}
-	for i, mutate := range mutations {
-		e := testEvidence()
-		mutate(&e)
-		if _, err := NewDescriptor(e); err == nil {
-			t.Fatalf("mutation %d accepted", i)
 		}
 	}
 }
@@ -639,10 +496,6 @@ func TestVerifyReleaseAssetNamesExact(t *testing.T) {
 		"Kubikles-windows-amd64.zip", "Kubikles-windows-arm64.zip",
 		"Kubikles-macos-arm64.zip", "Kubikles-macos-amd64.zip",
 		"Kubikles-linux-amd64.zip",
-		"kubikles-accelerator-release-v1.4.2.json",
-		"kubikles-accelerator-release-v1.4.2.json.sha256",
-		"kubikles-accelerator-image-linux-amd64-v1.4.2.spdx.json",
-		"kubikles-accelerator-chart-v1.4.2.spdx.json",
 	}
 	if err := VerifyReleaseAssetNames("v1.4.2", names); err != nil {
 		t.Fatal(err)
@@ -659,7 +512,7 @@ func TestVerifyReleaseAssetNamesExact(t *testing.T) {
 	}
 }
 
-func TestInspectChartManifestAndRegistryEvidence(t *testing.T) {
+func TestInspectChartManifest(t *testing.T) {
 	source := filepath.Join("..", "..", "deploy", "charts", "kubikles-accelerator")
 	packagePath := filepath.Join(t.TempDir(), "kubikles-accelerator-1.4.2.tgz")
 	if err := PackageChart(source, packagePath, "1.4.2", "v1.4.2", 1700000000); err != nil {
@@ -699,33 +552,5 @@ func TestInspectChartManifestAndRegistryEvidence(t *testing.T) {
 	_ = os.WriteFile(configPath, append(configContent, '\n'), 0600)
 	if err := InspectChartManifest(manifestPath, configPath, packagePath, source, "1.4.2", "v1.4.2", 1700000000, digest); err == nil {
 		t.Fatal("accepted chart config drift")
-	}
-
-	d, err := NewDescriptor(testEvidence())
-	if err != nil {
-		t.Fatal(err)
-	}
-	descriptorBytes, _ := CanonicalDescriptor(d)
-	descriptorPath := filepath.Join(t.TempDir(), "descriptor.json")
-	imagePath := filepath.Join(t.TempDir(), "image.json")
-	if err := os.WriteFile(descriptorPath, descriptorBytes, 0600); err != nil {
-		t.Fatal(err)
-	}
-	imageBytes, _ := json.MarshalIndent(map[string]any{"imageDigest": digestC, "platforms": d.Image.Platforms}, "", "  ")
-	imageBytes = append(imageBytes, '\n')
-	if err := os.WriteFile(imagePath, imageBytes, 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := VerifyRegistryEvidence(descriptorPath, imagePath, digestB, "v1.4.2", testCommit); err != nil {
-		t.Fatal(err)
-	}
-	d.Image.Platforms[0].ManifestDigest = digestC
-	descriptorBytes, _ = json.MarshalIndent(d, "", "  ")
-	descriptorBytes = append(descriptorBytes, '\n')
-	if err := os.WriteFile(descriptorPath, descriptorBytes, 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := VerifyRegistryEvidence(descriptorPath, imagePath, digestB, "v1.4.2", testCommit); err == nil {
-		t.Fatal("accepted descriptor platform evidence drift")
 	}
 }

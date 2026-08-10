@@ -8,7 +8,7 @@ const retry = vi.fn();
 const disable = vi.fn();
 const setConfig = vi.fn();
 let acceleratorStatus: any = { state: 'direct_only', enabled: false, namespace: '', available: false };
-let acceleratorConfig: any = { enabledByDefault: false, defaultNamespace: '', development: { releaseVersion: '', descriptorURL: '', versionPolicy: 'exact' }, connectionOverrides: [] };
+let acceleratorConfig: any = { enabledByDefault: false, defaultNamespace: '', customImage: '', customChart: '', connectionOverrides: [] };
 vi.mock('~/context', () => ({
   useConfig: () => ({ config: { accelerator: acceleratorConfig }, setConfig }),
   useK8s: () => ({ currentContext: 'prod', setSelectedNamespaces: vi.fn() }),
@@ -19,7 +19,7 @@ vi.mock('~/context', () => ({
 describe('AcceleratorConnectionPanel', () => {
   beforeEach(() => {
     acceleratorStatus = { state: 'direct_only', enabled: false, namespace: '', available: false };
-    acceleratorConfig = { enabledByDefault: false, defaultNamespace: '', development: { releaseVersion: '', descriptorURL: '', versionPolicy: 'exact' }, connectionOverrides: [] };
+    acceleratorConfig = { enabledByDefault: false, defaultNamespace: '', customImage: '', customChart: '', connectionOverrides: [] };
     retry.mockReset();
     disable.mockReset();
     setConfig.mockReset();
@@ -54,13 +54,13 @@ describe('AcceleratorConnectionPanel', () => {
     confirm.mockRestore();
   });
 
-  it('keeps development release and mismatch overrides visibly marked', () => {
-    acceleratorConfig = { ...acceleratorConfig, development: { releaseVersion: 'v1.4.0-alpha.1', descriptorURL: 'https://artifacts.example.test/release.json', versionPolicy: 'warn' } };
+  it('keeps custom artifact overrides visibly marked', () => {
+    acceleratorConfig = { ...acceleratorConfig, customImage: 'ghcr.io/example/accelerator:test', customChart: 'ghcr.io/example/charts/accelerator:test' };
     acceleratorStatus = { state: 'active', enabled: true, namespace: 'default', available: true, versionMismatchWarning: true };
     render(<AcceleratorConnectionPanel contextName="prod" contextNamespace="default" onOpenSettings={vi.fn()} />);
-    expect(screen.getByRole('alert').textContent).toContain('target v1.4.0-alpha.1');
-    expect(screen.getByRole('alert').textContent).toContain('custom descriptor');
-    expect(screen.getByRole('alert').textContent).toContain('version mismatches allowed');
+    expect(screen.getByRole('alert').textContent).toContain('Custom Accelerator artifacts active');
+    expect(screen.getByRole('alert').textContent).toContain('image');
+    expect(screen.getByRole('alert').textContent).toContain('chart');
     expect(screen.getByRole('status').textContent).toContain('Connected despite an Accelerator version mismatch');
   });
 });

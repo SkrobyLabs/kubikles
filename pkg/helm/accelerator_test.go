@@ -321,9 +321,9 @@ func TestRenderAcceleratorReleaseExact(t *testing.T) {
 		})
 	}
 	badValues := request
-	badValues.ImageRepository = "example.invalid/other"
+	badValues.ImageReference = "not an image reference"
 	if prepared, failure := prepareAcceleratorRelease(loaded, badValues); prepared != nil || failure != AcceleratorIntegrity {
-		t.Fatalf("accepted caller-selected repository: %#v %s", prepared, failure)
+		t.Fatalf("accepted invalid image reference: %#v %s", prepared, failure)
 	}
 
 	t.Run("schema is the exact closed chart contract", func(t *testing.T) {
@@ -354,6 +354,24 @@ func TestRenderAcceleratorReleaseExact(t *testing.T) {
 				t.Fatal("extra field accepted")
 			}
 		})
+	}
+}
+
+func TestRenderAcceleratorReleaseWithCustomTaggedArtifacts(t *testing.T) {
+	loaded, _ := acceleratorTestChart(t)
+	loaded.Metadata.Version = "9.0.0-dev"
+	loaded.Metadata.AppVersion = "custom-build"
+	request := acceleratorTestRequest()
+	request.ChartReference = "oci://registry.example.test/charts/accelerator:dev"
+	request.ChartDigest = ""
+	request.ImageReference = "registry.example.test/team/accelerator:dev"
+	request.ImageRepository = ""
+	request.ImageDigest = ""
+	request.AllowVersionMismatch = true
+
+	prepared, failure := prepareAcceleratorRelease(loaded, request)
+	if failure != AcceleratorOK || prepared == nil || !strings.Contains(prepared.manifest, `image: "registry.example.test/team/accelerator:dev"`) {
+		t.Fatalf("custom artifact render failure=%s prepared=%#v", failure, prepared)
 	}
 }
 

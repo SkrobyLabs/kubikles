@@ -87,7 +87,6 @@ func (l orderedRootLifecycle) StopProducers(context.Context) { l.coordinator.rec
 func (l orderedRootLifecycle) Close(context.Context)         { l.coordinator.record("next-close") }
 
 func TestDesktopAcceleratorConstructionIsDormantAndModeIsolated(t *testing.T) {
-	originalConfigDir := desktopUserConfigDir
 	originalResolver := desktopAcceleratorReleaseResolverFactory
 	originalProvisioner := desktopAcceleratorProvisionerFactory
 	originalConnector := desktopAcceleratorConnectorFactory
@@ -95,7 +94,6 @@ func TestDesktopAcceleratorConstructionIsDormantAndModeIsolated(t *testing.T) {
 	originalDisposer := desktopAcceleratorDisposerFactory
 	originalCoordinator := desktopAcceleratorCoordinatorFactory
 	t.Cleanup(func() {
-		desktopUserConfigDir = originalConfigDir
 		desktopAcceleratorReleaseResolverFactory = originalResolver
 		desktopAcceleratorProvisionerFactory = originalProvisioner
 		desktopAcceleratorConnectorFactory = originalConnector
@@ -103,11 +101,10 @@ func TestDesktopAcceleratorConstructionIsDormantAndModeIsolated(t *testing.T) {
 		desktopAcceleratorDisposerFactory = originalDisposer
 		desktopAcceleratorCoordinatorFactory = originalCoordinator
 	})
-	desktopUserConfigDir = func() (string, error) { return t.TempDir(), nil }
 	calls := []string{}
-	desktopAcceleratorReleaseResolverFactory = func(version, root string) *acceleratorrelease.Resolver {
+	desktopAcceleratorReleaseResolverFactory = func(version string) *acceleratorrelease.Resolver {
 		calls = append(calls, "resolver")
-		return acceleratorrelease.New(version, root)
+		return acceleratorrelease.New(version)
 	}
 	desktopAcceleratorProvisionerFactory = func(*k8s.Client, *helm.Client) *acceleratorprovision.Service {
 		calls = append(calls, "provisioner")

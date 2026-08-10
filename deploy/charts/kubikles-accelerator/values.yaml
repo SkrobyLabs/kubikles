@@ -1,9 +1,9 @@
 image:
-  repository: ""
-  digest: ""
+  reference: ""
   version: ""
   architecture: amd64
 accelerator:
   workloadSessionId: ""
+  allowVersionMismatch: false
 auth:
   creatorVerifier: ""

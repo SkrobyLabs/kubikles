@@ -54,7 +54,7 @@ func (h *helmChartInstaller) Prepare(ctx context.Context, attempt chartAttempt, 
 	if pullChart == nil {
 		pullChart = helm.PullAcceleratorChart
 	}
-	loaded, err := pullChart(ctx, helm.AcceleratorChartRequest{Reference: request.ChartReference, Digest: request.ChartDigest, BuildVersion: request.BuildVersion})
+	loaded, err := pullChart(ctx, helm.AcceleratorChartRequest{Reference: request.ChartReference, Digest: request.ChartDigest, BuildVersion: request.BuildVersion, AllowVersionMismatch: request.AllowVersionMismatch})
 	if err != nil {
 		if err == helm.ErrAcceleratorIntegrity {
 			return nil, ChartIntegrityFailed
@@ -415,7 +415,7 @@ func jobHasSuspendedCondition(job *batchv1.Job) bool {
 func helmRequest(attempt chartAttempt) helm.AcceleratorReleaseRequest {
 	return helm.AcceleratorReleaseRequest{
 		ChartReference: attempt.ChartReference, ChartDigest: attempt.ChartDigest, BuildVersion: attempt.BuildVersion,
-		ImageRepository: attempt.ImageRepository, ImageDigest: attempt.ImageDigest, WorkloadSession: attempt.Session,
+		ImageReference: attempt.ImageReference, ImageRepository: attempt.ImageRepository, ImageDigest: attempt.ImageDigest, AllowVersionMismatch: attempt.AllowVersionMismatch, WorkloadSession: attempt.Session,
 		CreatorVerifier: attempt.Verifier, ReleaseName: attempt.ReleaseName, ReleaseNamespace: attempt.Namespace,
 	}
 }

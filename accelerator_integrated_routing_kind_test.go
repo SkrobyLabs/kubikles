@@ -628,17 +628,13 @@ func runAcceleratorIntegratedRoutingKind(t *testing.T) integratedRoutingKindAcce
 	fixtureSetupCancel()
 
 	originalBuildVersion := BuildVersion
-	originalConfigDir := desktopUserConfigDir
 	originalCoordinatorFactory := desktopAcceleratorCoordinatorFactory
 	originalClientFactory := desktopAcceleratorSecretClientFactory
 	defer func() {
 		BuildVersion = originalBuildVersion
-		desktopUserConfigDir = originalConfigDir
 		desktopAcceleratorCoordinatorFactory = originalCoordinatorFactory
 		desktopAcceleratorSecretClientFactory = originalClientFactory
 	}()
-	desktopUserConfigDir = func() (string, error) { return t.TempDir(), nil }
-
 	stableBuildVersion := os.Getenv("BUILD_VERSION")
 	if stableBuildVersion == "" {
 		stableBuildVersion = "v1.2.3"
@@ -979,8 +975,8 @@ func integratedRoutingKindSuffix(t *testing.T) string {
 }
 
 func integratedRoutingKindResolution(version, chartDigest, imageDigest string) acceleratorrelease.Resolution {
-	return acceleratorrelease.Resolution{Availability: acceleratorrelease.Available, Source: acceleratorrelease.SourceNetwork, Release: acceleratorrelease.VerifiedRelease{
-		BuildVersion: version, SourceCommit: strings.Repeat("c", 40), DescriptorSHA256: strings.Repeat("d", 64),
+	return acceleratorrelease.Resolution{Availability: acceleratorrelease.Available, Source: acceleratorrelease.SourceBuiltIn, Release: acceleratorrelease.VerifiedRelease{
+		BuildVersion:   version,
 		ImageReference: "ghcr.io/skrobylabs/kubikles-accelerator@" + imageDigest,
 		ChartReference: integratedRoutingKindChartRepository + "@" + chartDigest,
 	}}

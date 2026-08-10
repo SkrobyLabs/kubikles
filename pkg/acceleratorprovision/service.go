@@ -21,15 +21,11 @@ const (
 	ProvisionTimeout    = 3 * time.Minute
 	ContextPollInterval = 250 * time.Millisecond
 	CleanupTimeout      = 45 * time.Second
+	imageRepository     = "ghcr.io/skrobylabs/kubikles-accelerator"
+	chartRepository     = "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator"
 )
 
 var digestRE = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
-var versionRE = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?$`)
-var commitRE = regexp.MustCompile(`^[0-9a-f]{40}$`)
-var hex64RE = regexp.MustCompile(`^[0-9a-f]{64}$`)
-
-const imageRepository = "ghcr.io/skrobylabs/kubikles-accelerator"
-const chartRepository = "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator"
 
 // ContextProvider is intentionally narrower than the desktop client.
 type ContextProvider interface {
@@ -45,17 +41,19 @@ type ContextSnapshot interface {
 }
 
 type chartAttempt struct {
-	ReleaseName     string
-	Namespace       string
-	Session         string
-	BuildVersion    string
-	ImageRepository string
-	ImageDigest     string
-	ChartReference  string
-	ChartDigest     string
-	Verifier        string
-	JobName         string
-	JobUID          string
+	ReleaseName          string
+	Namespace            string
+	Session              string
+	BuildVersion         string
+	ImageReference       string
+	ImageRepository      string
+	ImageDigest          string
+	ChartReference       string
+	ChartDigest          string
+	AllowVersionMismatch bool
+	Verifier             string
+	JobName              string
+	JobUID               string
 }
 
 type preparedChart struct {
@@ -155,12 +153,14 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 		return unavailable(EntropyUnavailable, CleanupNotNeeded)
 	}
 	release := request.Resolution.Release
+	imageRepository, imageDigest := splitDigestReference(release.ImageReference)
+	_, chartDigest := splitDigestReference(release.ChartReference)
 	attempt := chartAttempt{
 		ReleaseName: credential.releaseName(), Namespace: snapshot.Namespace(), Session: credential.session,
-		BuildVersion: release.BuildVersion, ImageRepository: acceleratorWorkloadImageRepository(),
-		ImageDigest:    strings.TrimPrefix(release.ImageReference, imageRepository+"@"),
+		BuildVersion: release.BuildVersion, ImageReference: release.ImageReference, ImageRepository: imageRepository,
+		ImageDigest:    imageDigest,
 		ChartReference: release.ChartReference,
-		ChartDigest:    strings.TrimPrefix(release.ChartReference, chartRepository+"@"), Verifier: credential.verifier,
+		ChartDigest:    chartDigest, AllowVersionMismatch: request.Resolution.Source == acceleratorrelease.SourceCustom, Verifier: credential.verifier,
 	}
 	prepared, reason := s.charts.Prepare(opCtx, attempt, boundary)
 	// A phase result is not publishable until its cancellation/current-context
@@ -220,10 +220,10 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	workload := &ProvisionedWorkload{
 		ContextName: request.ContextName, ReleaseNamespace: attempt.Namespace, ReleaseName: attempt.ReleaseName,
 		WorkloadSessionID: attempt.Session, Job: job, Pod: pod, BuildVersion: attempt.BuildVersion,
-		ImageDigest: attempt.ImageDigest, ChartDigest: attempt.ChartDigest, credential: credential, snapshot: snapshot,
+		ImageReference: attempt.ImageReference, ChartReference: attempt.ChartReference, ImageDigest: attempt.ImageDigest, ChartDigest: attempt.ChartDigest, credential: credential, snapshot: snapshot,
 		connectorState: &workloadConnectorState{},
 	}
-	workload.connectorState.receipt = &workloadReceipt{contextName: workload.ContextName, releaseNamespace: workload.ReleaseNamespace, releaseName: workload.ReleaseName, workloadSessionID: workload.WorkloadSessionID, job: workload.Job, pod: workload.Pod, buildVersion: workload.BuildVersion, imageDigest: workload.ImageDigest, chartDigest: workload.ChartDigest, snapshot: snapshot, prepared: prepared, owned: owned, owner: workload}
+	workload.connectorState.receipt = &workloadReceipt{contextName: workload.ContextName, releaseNamespace: workload.ReleaseNamespace, releaseName: workload.ReleaseName, workloadSessionID: workload.WorkloadSessionID, job: workload.Job, pod: workload.Pod, buildVersion: workload.BuildVersion, imageReference: workload.ImageReference, chartReference: workload.ChartReference, imageDigest: workload.ImageDigest, chartDigest: workload.ChartDigest, snapshot: snapshot, prepared: prepared, owned: owned, owner: workload}
 	// This is the publication boundary. No cleanup path exists after this return.
 	if reason = boundary(); reason != "" {
 		return s.rollback(ctx, reason, snapshot, prepared, owned)
@@ -277,15 +277,22 @@ func checkBoundary(ctx context.Context, contexts ContextProvider, name string) U
 
 func validRelease(resolution acceleratorrelease.Resolution) bool {
 	release := resolution.Release
-	if resolution.Availability != acceleratorrelease.Available || (resolution.Source != acceleratorrelease.SourceNetwork && resolution.Source != acceleratorrelease.SourceCache) {
+	if resolution.Availability != acceleratorrelease.Available || (resolution.Source != acceleratorrelease.SourceBuiltIn && resolution.Source != acceleratorrelease.SourceCustom) {
 		return false
 	}
-	if !versionRE.MatchString(release.BuildVersion) || !commitRE.MatchString(release.SourceCommit) || !hex64RE.MatchString(release.DescriptorSHA256) {
+	if release.BuildVersion == "" || len(release.BuildVersion) > 128 {
 		return false
 	}
-	imageDigest, imageOK := strings.CutPrefix(release.ImageReference, imageRepository+"@")
-	chartDigest, chartOK := strings.CutPrefix(release.ChartReference, chartRepository+"@")
-	return imageOK && chartOK && digestRE.MatchString(imageDigest) && digestRE.MatchString(chartDigest)
+	imageReference, imageOK := acceleratorrelease.NormalizeImageReference(release.ImageReference)
+	chartReference, chartOK := acceleratorrelease.NormalizeChartReference(release.ChartReference)
+	return imageOK && chartOK && imageReference == release.ImageReference && chartReference == release.ChartReference
+}
+
+func splitDigestReference(reference string) (repository, digest string) {
+	if before, after, ok := strings.Cut(reference, "@"); ok && digestRE.MatchString(after) {
+		return strings.TrimPrefix(before, "oci://"), after
+	}
+	return "", ""
 }
 
 type gateEntry struct {

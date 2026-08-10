@@ -24,12 +24,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const (
-	sourceRepository = "https://github.com/SkrobyLabs/kubikles"
-	imageRepository  = "ghcr.io/skrobylabs/kubikles-accelerator"
-	chartRepository  = "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator"
-)
-
 var (
 	stableTagRE  = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
 	releaseTagRE = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?$`)
@@ -119,127 +113,6 @@ type Platform struct {
 	OS             string `json:"os"`
 	Architecture   string `json:"architecture"`
 	ManifestDigest string `json:"manifestDigest"`
-}
-
-type Source struct {
-	Repository string `json:"repository"`
-	Commit     string `json:"commit"`
-	GitTag     string `json:"gitTag"`
-}
-
-type Compatibility struct {
-	Mode                    string `json:"mode"`
-	DesktopBuildVersion     string `json:"desktopBuildVersion"`
-	AcceleratorBuildVersion string `json:"acceleratorBuildVersion"`
-}
-
-type Image struct {
-	Repository string     `json:"repository"`
-	Digest     string     `json:"digest"`
-	Reference  string     `json:"reference"`
-	Platforms  []Platform `json:"platforms"`
-}
-
-type Chart struct {
-	Repository string `json:"repository"`
-	Digest     string `json:"digest"`
-	Reference  string `json:"reference"`
-	Version    string `json:"version"`
-	AppVersion string `json:"appVersion"`
-}
-
-type Descriptor struct {
-	SchemaVersion int           `json:"schemaVersion"`
-	Schema        string        `json:"$schema"`
-	BuildVersion  string        `json:"buildVersion"`
-	Source        Source        `json:"source"`
-	Compatibility Compatibility `json:"compatibility"`
-	Image         Image         `json:"image"`
-	Chart         Chart         `json:"chart"`
-}
-
-type Evidence struct {
-	BuildVersion    string     `json:"buildVersion"`
-	Commit          string     `json:"commit"`
-	GitTag          string     `json:"gitTag"`
-	ImageDigest     string     `json:"imageDigest"`
-	Platforms       []Platform `json:"platforms"`
-	ChartDigest     string     `json:"chartDigest"`
-	ChartVersion    string     `json:"chartVersion"`
-	ChartAppVersion string     `json:"chartAppVersion"`
-}
-
-func NewDescriptor(e Evidence) (Descriptor, error) {
-	v, err := NormalizeReleaseTag(e.BuildVersion)
-	if err != nil || e.GitTag != e.BuildVersion || e.ChartVersion != v.ChartVersion || e.ChartAppVersion != e.BuildVersion {
-		return Descriptor{}, errors.New("release evidence has inconsistent exact version identity")
-	}
-	if !commitRE.MatchString(e.Commit) || !digestRE.MatchString(e.ImageDigest) || !digestRE.MatchString(e.ChartDigest) {
-		return Descriptor{}, errors.New("release evidence has invalid commit or digest identity")
-	}
-	platforms := append([]Platform(nil), e.Platforms...)
-	if len(platforms) != 1 || platforms[0].OS != "linux" || platforms[0].Architecture != "amd64" {
-		return Descriptor{}, errors.New("release evidence must contain exactly linux/amd64")
-	}
-	for _, p := range platforms {
-		if !digestRE.MatchString(p.ManifestDigest) {
-			return Descriptor{}, errors.New("release evidence has invalid platform digest")
-		}
-	}
-	d := Descriptor{
-		SchemaVersion: 1,
-		Schema:        "https://raw.githubusercontent.com/SkrobyLabs/kubikles/" + e.Commit + "/release/accelerator-release.schema.json",
-		BuildVersion:  e.BuildVersion,
-		Source:        Source{Repository: sourceRepository, Commit: e.Commit, GitTag: e.GitTag},
-		Compatibility: Compatibility{Mode: "exact-build-version", DesktopBuildVersion: e.BuildVersion, AcceleratorBuildVersion: e.BuildVersion},
-		Image:         Image{Repository: imageRepository, Digest: e.ImageDigest, Reference: imageRepository + "@" + e.ImageDigest, Platforms: platforms},
-		Chart:         Chart{Repository: chartRepository, Digest: e.ChartDigest, Reference: chartRepository + "@" + e.ChartDigest, Version: e.ChartVersion, AppVersion: e.ChartAppVersion},
-	}
-	return d, ValidateDescriptor(d)
-}
-
-func ValidateDescriptor(d Descriptor) error {
-	v, err := NormalizeReleaseTag(d.BuildVersion)
-	if err != nil || d.SchemaVersion != 1 || !commitRE.MatchString(d.Source.Commit) {
-		return errors.New("descriptor identity is invalid")
-	}
-	if d.Schema != "https://raw.githubusercontent.com/SkrobyLabs/kubikles/"+d.Source.Commit+"/release/accelerator-release.schema.json" || d.Source.Repository != sourceRepository || d.Source.GitTag != d.BuildVersion {
-		return errors.New("descriptor source identity is inconsistent")
-	}
-	if d.Compatibility.Mode != "exact-build-version" || d.Compatibility.DesktopBuildVersion != d.BuildVersion || d.Compatibility.AcceleratorBuildVersion != d.BuildVersion {
-		return errors.New("descriptor compatibility must be exact BuildVersion equality")
-	}
-	if d.Image.Repository != imageRepository || !digestRE.MatchString(d.Image.Digest) || d.Image.Reference != d.Image.Repository+"@"+d.Image.Digest {
-		return errors.New("descriptor image reference is not immutable")
-	}
-	if d.Chart.Repository != chartRepository || !digestRE.MatchString(d.Chart.Digest) || d.Chart.Reference != d.Chart.Repository+"@"+d.Chart.Digest || d.Chart.Version != v.ChartVersion || d.Chart.AppVersion != d.BuildVersion {
-		return errors.New("descriptor chart reference or version is inconsistent")
-	}
-	if len(d.Image.Platforms) != 1 || d.Image.Platforms[0].OS != "linux" || d.Image.Platforms[0].Architecture != "amd64" {
-		return errors.New("descriptor platform set or order is invalid")
-	}
-	for _, p := range d.Image.Platforms {
-		if !digestRE.MatchString(p.ManifestDigest) {
-			return errors.New("descriptor platform digest is invalid")
-		}
-	}
-	return nil
-}
-
-func CanonicalDescriptor(d Descriptor) ([]byte, error) {
-	if err := ValidateDescriptor(d); err != nil {
-		return nil, err
-	}
-	b, err := json.MarshalIndent(d, "", "  ")
-	if err != nil {
-		return nil, errors.New("encode descriptor")
-	}
-	return append(b, '\n'), nil
-}
-
-func DescriptorChecksum(name string, b []byte) []byte {
-	sum := sha256.Sum256(b)
-	return []byte(hex.EncodeToString(sum[:]) + "  " + filepath.Base(name) + "\n")
 }
 
 type chartMetadata struct {
@@ -858,29 +731,6 @@ func validateUniqueJSONKeys(b []byte) error {
 	return nil
 }
 
-func DecodeStrictDescriptor(b []byte) (Descriptor, error) {
-	if err := validateUniqueJSONKeys(b); err != nil {
-		return Descriptor{}, errors.New("descriptor JSON is invalid")
-	}
-	dec := json.NewDecoder(bytes.NewReader(b))
-	dec.DisallowUnknownFields()
-	var d Descriptor
-	if err := dec.Decode(&d); err != nil {
-		return d, errors.New("descriptor JSON is invalid")
-	}
-	if dec.Decode(new(any)) != io.EOF {
-		return d, errors.New("descriptor has trailing content")
-	}
-	if err := ValidateDescriptor(d); err != nil {
-		return d, err
-	}
-	canonical, err := CanonicalDescriptor(d)
-	if err != nil || !bytes.Equal(b, canonical) {
-		return d, errors.New("descriptor bytes are not canonical")
-	}
-	return d, nil
-}
-
 func writeCanonicalJSON(path string, value any) error {
 	b, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
@@ -1036,37 +886,6 @@ func InspectChartManifest(manifestPath, configPath, packagePath, source, version
 	return nil
 }
 
-func VerifyRegistryEvidence(descriptorPath, imageEvidencePath, chartDigest, buildVersion, commit string) error {
-	descriptorBytes, err := os.ReadFile(descriptorPath)
-	if err != nil {
-		return errors.New("read release descriptor")
-	}
-	d, err := DecodeStrictDescriptor(descriptorBytes)
-	if err != nil {
-		return err
-	}
-	if d.BuildVersion != buildVersion || d.Source.GitTag != buildVersion || d.Source.Commit != commit || d.Chart.Digest != chartDigest {
-		return errors.New("descriptor source, version, or chart evidence differs from registry authority")
-	}
-	var observed struct {
-		ImageDigest string     `json:"imageDigest"`
-		Platforms   []Platform `json:"platforms"`
-	}
-	b, err := os.ReadFile(imageEvidencePath)
-	if err != nil || json.Unmarshal(b, &observed) != nil {
-		return errors.New("read registry image evidence")
-	}
-	if d.Image.Digest != observed.ImageDigest || len(d.Image.Platforms) != len(observed.Platforms) {
-		return errors.New("descriptor image index evidence differs from registry authority")
-	}
-	for i := range d.Image.Platforms {
-		if d.Image.Platforms[i] != observed.Platforms[i] {
-			return errors.New("descriptor platform manifest evidence differs from registry authority")
-		}
-	}
-	return nil
-}
-
 func VerifyReleaseAssetNames(buildVersion string, names []string) error {
 	if _, err := NormalizeReleaseTag(buildVersion); err != nil {
 		return err
@@ -1077,10 +896,6 @@ func VerifyReleaseAssetNames(buildVersion string, names []string) error {
 		"Kubikles-macos-arm64.zip",
 		"Kubikles-windows-amd64.zip",
 		"Kubikles-windows-arm64.zip",
-		"kubikles-accelerator-release-" + buildVersion + ".json",
-		"kubikles-accelerator-release-" + buildVersion + ".json.sha256",
-		"kubikles-accelerator-image-linux-amd64-" + buildVersion + ".spdx.json",
-		"kubikles-accelerator-chart-" + buildVersion + ".spdx.json",
 	}
 	sort.Strings(want)
 	got := append([]string(nil), names...)

@@ -29,7 +29,7 @@ func revalidateWorkloadDetailed(ctx context.Context, w *ProvisionedWorkload, s C
 	if ctx == nil || w == nil || s == nil || s.Clientset() == nil {
 		return workloadValidationResult{reason: ContextUnavailable}
 	}
-	if s.Identity() == "" || s.Namespace() != w.ReleaseNamespace || w.ContextName == "" || w.ReleaseNamespace == "" || w.ReleaseName == "" || w.Job.Name == "" || w.Job.UID == "" || w.Pod.Name == "" || w.Pod.UID == "" || w.WorkloadSessionID == "" || w.BuildVersion == "" || w.ImageDigest == "" || w.ChartDigest == "" {
+	if s.Identity() == "" || s.Namespace() != w.ReleaseNamespace || w.ContextName == "" || w.ReleaseNamespace == "" || w.ReleaseName == "" || w.Job.Name == "" || w.Job.UID == "" || w.Pod.Name == "" || w.Pod.UID == "" || w.WorkloadSessionID == "" || w.BuildVersion == "" || effectiveWorkloadImageReference(w) == "" || effectiveWorkloadChartReference(w) == "" {
 		return workloadValidationResult{reason: ContextUnavailable}
 	}
 	job, err := s.Clientset().BatchV1().Jobs(w.ReleaseNamespace).Get(ctx, w.Job.Name, metav1.GetOptions{})
@@ -52,7 +52,7 @@ func validExactJob(j *batchv1.Job, w *ProvisionedWorkload) bool {
 		j.Annotations["kubikles.io/build-version"] != w.BuildVersion || j.Labels["kubikles.io/workload-session-id"] != w.WorkloadSessionID ||
 		j.Labels["app.kubernetes.io/instance"] != w.ReleaseName || j.Labels["app.kubernetes.io/managed-by"] != "Helm" ||
 		j.Spec.Template.Annotations["kubikles.io/build-version"] != w.BuildVersion || j.Spec.Template.Labels["kubikles.io/workload-session-id"] != w.WorkloadSessionID ||
-		len(j.Spec.Template.Spec.InitContainers) != 0 || len(j.Spec.Template.Spec.EphemeralContainers) != 0 || len(j.Spec.Template.Spec.Containers) != 1 || j.Spec.Template.Spec.Containers[0].Image != acceleratorWorkloadImageRepository()+"@"+w.ImageDigest ||
+		len(j.Spec.Template.Spec.InitContainers) != 0 || len(j.Spec.Template.Spec.EphemeralContainers) != 0 || len(j.Spec.Template.Spec.Containers) != 1 || j.Spec.Template.Spec.Containers[0].Image != effectiveWorkloadImageReference(w) ||
 		j.Status.CompletionTime != nil || j.Status.Failed != 0 || j.Status.Succeeded != 0 {
 		return false
 	}
@@ -78,5 +78,5 @@ func validExactPod(p *corev1.Pod, w *ProvisionedWorkload) bool {
 		}
 	}
 	st := p.Status.ContainerStatuses[0]
-	return controllers == 1 && owned && st.Name == p.Spec.Containers[0].Name && st.State.Running != nil && st.Ready && p.Spec.Containers[0].Image == acceleratorWorkloadImageRepository()+"@"+w.ImageDigest
+	return controllers == 1 && owned && st.Name == p.Spec.Containers[0].Name && st.State.Running != nil && st.Ready && p.Spec.Containers[0].Image == effectiveWorkloadImageReference(w)
 }

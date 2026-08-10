@@ -33,16 +33,14 @@ export function AcceleratorProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!status.versionMismatchWarning || loggedVersionWarning.current === currentContext) return;
     loggedVersionWarning.current = currentContext;
-    Logger.warn('Accelerator connected with a version mismatch under the development policy', { context: currentContext }, 'helm');
+    Logger.warn('Accelerator connected with a version mismatch from custom artifacts', { context: currentContext }, 'helm');
   }, [currentContext, status.versionMismatchWarning]);
   useEffect(() => { void refresh(); const id = window.setInterval(() => void refresh(), 2000); return () => clearInterval(id); }, [refresh]);
   const policy = acceleratorPolicy(config.accelerator, currentContext, currentNamespace || 'default');
-  const development = config.accelerator.development;
   const deploymentOptions = useMemo(() => JSON.stringify({
-    releaseVersion: development?.releaseVersion?.trim() ?? '',
-    descriptorURL: development?.descriptorURL?.trim() ?? '',
-    allowVersionMismatch: development?.versionPolicy === 'warn',
-  }), [development?.descriptorURL, development?.releaseVersion, development?.versionPolicy]);
+    imageReference: config.accelerator.customImage?.trim() ?? '',
+    chartReference: config.accelerator.customChart?.trim() ?? '',
+  }), [config.accelerator.customChart, config.accelerator.customImage]);
   useEffect(() => {
     if (policy.enabled && currentContext && typeof (window as any).go !== 'undefined') {
       void EnableAccelerator(currentContext, policy.namespace, deploymentOptions).then(refresh).catch((error: unknown) => { setStatus(direct); Logger.error('Failed to enable Accelerator', error, 'helm'); });

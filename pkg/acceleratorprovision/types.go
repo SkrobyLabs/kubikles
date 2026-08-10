@@ -65,6 +65,8 @@ type ProvisionedWorkload struct {
 	Job               ObjectIdentity `json:"job"`
 	Pod               ObjectIdentity `json:"pod"`
 	BuildVersion      string         `json:"buildVersion"`
+	ImageReference    string         `json:"imageReference"`
+	ChartReference    string         `json:"chartReference"`
 	ImageDigest       string         `json:"imageDigest"`
 	ChartDigest       string         `json:"chartDigest"`
 	credential        *creatorCredential
@@ -75,13 +77,13 @@ type ProvisionedWorkload struct {
 // workloadReceipt is deliberately private: public fields are display-only and
 // must not become authority for a later connection.
 type workloadReceipt struct {
-	contextName, releaseNamespace, releaseName, workloadSessionID string
-	job, pod                                                      ObjectIdentity
-	buildVersion, imageDigest, chartDigest                        string
-	snapshot                                                      ContextSnapshot
-	prepared                                                      *preparedChart
-	owned                                                         *ownedRelease
-	owner                                                         *ProvisionedWorkload
+	contextName, releaseNamespace, releaseName, workloadSessionID          string
+	job, pod                                                               ObjectIdentity
+	buildVersion, imageReference, chartReference, imageDigest, chartDigest string
+	snapshot                                                               ContextSnapshot
+	prepared                                                               *preparedChart
+	owned                                                                  *ownedRelease
+	owner                                                                  *ProvisionedWorkload
 }
 
 func (r *workloadReceipt) workload() *ProvisionedWorkload {
@@ -91,7 +93,7 @@ func (r *workloadReceipt) workload() *ProvisionedWorkload {
 	return &ProvisionedWorkload{
 		ContextName: r.contextName, ReleaseNamespace: r.releaseNamespace, ReleaseName: r.releaseName,
 		WorkloadSessionID: r.workloadSessionID, Job: r.job, Pod: r.pod, BuildVersion: r.buildVersion,
-		ImageDigest: r.imageDigest, ChartDigest: r.chartDigest,
+		ImageReference: r.imageReference, ChartReference: r.chartReference, ImageDigest: r.imageDigest, ChartDigest: r.chartDigest,
 	}
 }
 
@@ -251,7 +253,8 @@ func (w *ProvisionedWorkload) matchesResumeHandle(receipt *workloadReceipt) bool
 func matchesReceipt(w *ProvisionedWorkload, r *workloadReceipt) bool {
 	return w != nil && r != nil && w.ContextName == r.contextName && w.ReleaseNamespace == r.releaseNamespace &&
 		w.ReleaseName == r.releaseName && w.WorkloadSessionID == r.workloadSessionID && w.Job == r.job && w.Pod == r.pod &&
-		w.BuildVersion == r.buildVersion && w.ImageDigest == r.imageDigest && w.ChartDigest == r.chartDigest
+		w.BuildVersion == r.buildVersion && w.ImageDigest == r.imageDigest && w.ChartDigest == r.chartDigest &&
+		w.ImageReference == r.imageReference && w.ChartReference == r.chartReference
 }
 
 func (w ProvisionedWorkload) String() string { return "<accelerator workload>" }
@@ -267,10 +270,51 @@ func (w ProvisionedWorkload) MarshalJSON() ([]byte, error) {
 		Job               ObjectIdentity `json:"job"`
 		Pod               ObjectIdentity `json:"pod"`
 		BuildVersion      string         `json:"buildVersion"`
+		ImageReference    string         `json:"imageReference,omitempty"`
+		ChartReference    string         `json:"chartReference,omitempty"`
 		ImageDigest       string         `json:"imageDigest"`
 		ChartDigest       string         `json:"chartDigest"`
 	}
-	return json.Marshal(safe{w.ContextName, w.ReleaseNamespace, w.ReleaseName, w.WorkloadSessionID, w.Job, w.Pod, w.BuildVersion, w.ImageDigest, w.ChartDigest})
+	return json.Marshal(safe{w.ContextName, w.ReleaseNamespace, w.ReleaseName, w.WorkloadSessionID, w.Job, w.Pod, w.BuildVersion, w.ImageReference, w.ChartReference, w.ImageDigest, w.ChartDigest})
+}
+
+func effectiveWorkloadImageReference(w *ProvisionedWorkload) string {
+	if w == nil {
+		return ""
+	}
+	if w.ImageReference != "" {
+		return w.ImageReference
+	}
+	if w.ImageDigest != "" {
+		return acceleratorWorkloadImageRepository() + "@" + w.ImageDigest
+	}
+	return ""
+}
+
+func effectiveReceiptImageReference(r *workloadReceipt) string {
+	if r == nil {
+		return ""
+	}
+	if r.imageReference != "" {
+		return r.imageReference
+	}
+	if r.imageDigest != "" {
+		return acceleratorWorkloadImageRepository() + "@" + r.imageDigest
+	}
+	return ""
+}
+
+func effectiveWorkloadChartReference(w *ProvisionedWorkload) string {
+	if w == nil {
+		return ""
+	}
+	if w.ChartReference != "" {
+		return w.ChartReference
+	}
+	if w.ChartDigest != "" {
+		return "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator@" + w.ChartDigest
+	}
+	return ""
 }
 
 type Result struct {
