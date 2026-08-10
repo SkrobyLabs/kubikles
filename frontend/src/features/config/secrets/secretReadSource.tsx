@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   CancelIntegratedSecretListRequest,
   CancelListRequest,
@@ -317,17 +317,10 @@ export function createIntegratedAcceleratorSecretReadSource(sourceToken: string)
   };
 }
 
-type SecretReadSourceContextValue = {
-  source: SecretReadSource;
-  retain: () => () => void;
-};
-
-const noRetain = () => () => {};
-const SecretReadSourceContext = createContext<SecretReadSourceContextValue>({ source: directSecretReadSource, retain: noRetain });
+const SecretReadSourceContext = createContext<SecretReadSource>(directSecretReadSource);
 
 export function SecretReadSourceProvider({ value, children }: { value: SecretReadSource; children: React.ReactNode }) {
-  const contextValue = useMemo(() => ({ source: value, retain: noRetain }), [value]);
-  return <SecretReadSourceContext.Provider value={contextValue}>{children}</SecretReadSourceContext.Provider>;
+  return <SecretReadSourceContext.Provider value={value}>{children}</SecretReadSourceContext.Provider>;
 }
 
 type IntegratedSourceTransition = 'stable' | 'awaitingDirectCommit';
@@ -404,8 +397,12 @@ export function IntegratedSecretReadSourceProvider({ children }: { children: Rea
     };
   }, []);
 
-  const value = useMemo(() => ({ source: sourceState.source, retain }), [sourceState.source, retain]);
-  return <SecretReadSourceContext.Provider value={value}>{children}</SecretReadSourceContext.Provider>;
+  // The Accelerator session belongs to the active Kubikles context, not to a
+  // particular Secret view. Navigation may unsubscribe view-specific watchers,
+  // but only a context switch or provider shutdown releases the backend route.
+  useEffect(() => retain(), [retain]);
+
+  return <SecretReadSourceContext.Provider value={sourceState.source}>{children}</SecretReadSourceContext.Provider>;
 }
 
 export function RuntimeSecretReadSourceProvider({ children }: { children: React.ReactNode }) {
@@ -416,7 +413,5 @@ export function RuntimeSecretReadSourceProvider({ children }: { children: React.
 }
 
 export const useSecretReadSource = () => {
-  const value = useContext(SecretReadSourceContext);
-  useEffect(() => value.retain(), [value.retain]);
-  return value.source;
+  return useContext(SecretReadSourceContext);
 };

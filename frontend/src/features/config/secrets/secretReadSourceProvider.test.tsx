@@ -101,6 +101,20 @@ describe('IntegratedSecretReadSourceProvider', () => {
     await waitFor(() => expect(bridge.ReleaseIntegratedSecretReads).toHaveBeenCalledOnce());
   });
 
+  it('retains the backend route while navigating away from Secret consumers', async () => {
+    const mounted = render(<IntegratedSecretReadSourceProvider><Consumer /></IntegratedSecretReadSourceProvider>);
+    await waitFor(() => expect(bridge.RetainIntegratedSecretReads).toHaveBeenCalledOnce());
+
+    mounted.rerender(<IntegratedSecretReadSourceProvider><span>Other view</span></IntegratedSecretReadSourceProvider>);
+    expect(bridge.ReleaseIntegratedSecretReads).not.toHaveBeenCalled();
+
+    mounted.rerender(<IntegratedSecretReadSourceProvider><Consumer /></IntegratedSecretReadSourceProvider>);
+    expect(bridge.RetainIntegratedSecretReads).toHaveBeenCalledOnce();
+
+    mounted.unmount();
+    await waitFor(() => expect(bridge.ReleaseIntegratedSecretReads).toHaveBeenCalledOnce());
+  });
+
   it.each([false, true])('commits Direct before a batched replacement ready (StrictMode=%s)', async strict => {
     const storageSet = vi.spyOn(Storage.prototype, 'setItem');
     const consoleSpies = [
