@@ -40,6 +40,8 @@ export namespace acceleratorprovision {
 	    job: ObjectIdentity;
 	    pod: ObjectIdentity;
 	    buildVersion: string;
+	    imageReference: string;
+	    chartReference: string;
 	    imageDigest: string;
 	    chartDigest: string;
 	
@@ -56,6 +58,8 @@ export namespace acceleratorprovision {
 	        this.job = this.convertValues(source["job"], ObjectIdentity);
 	        this.pod = this.convertValues(source["pod"], ObjectIdentity);
 	        this.buildVersion = source["buildVersion"];
+	        this.imageReference = source["imageReference"];
+	        this.chartReference = source["chartReference"];
 	        this.imageDigest = source["imageDigest"];
 	        this.chartDigest = source["chartDigest"];
 	    }

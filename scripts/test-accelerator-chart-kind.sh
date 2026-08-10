@@ -258,7 +258,7 @@ if [ "$reuse_mode" = standalone ]; then
   cluster_absent_at_start=true
 fi
 execution_architecture="$(accelerator_e2e_execution_architecture)" || fail "execution-architecture"
-jq -n --arg repository "$ACCELERATOR_IMAGE_REPOSITORY" --arg digest "$ACCELERATOR_IMAGE_DIGEST" --arg version "$ACCELERATOR_IMAGE_VERSION" --arg architecture "$execution_architecture" --arg verifier "$creator_verifier" '{image:{repository:$repository,digest:$digest,version:$version,architecture:$architecture},accelerator:{workloadSessionId:"smoke-session-1"},auth:{creatorVerifier:$verifier}}' >"$tmp/values.yaml"
+jq -n --arg reference "$image" --arg version "$ACCELERATOR_IMAGE_VERSION" --arg architecture "$execution_architecture" --arg verifier "$creator_verifier" '{image:{reference:$reference,version:$version,architecture:$architecture},accelerator:{workloadSessionId:"smoke-session-1",allowVersionMismatch:false},auth:{creatorVerifier:$verifier}}' >"$tmp/values.yaml"
 if [ "$reuse_mode" = standalone ]; then
   cluster_create_attempted=true
   kind create cluster --name "$cluster" --config "$kind_config" --kubeconfig "$kubeconfig" >"$tmp/kind-create" 2>&1 || fail "kind-create"

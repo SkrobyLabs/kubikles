@@ -306,7 +306,7 @@ func validateRenderedChart(path, version, appVersion string) error {
 	}
 	defer os.RemoveAll(tmp)
 	valuesPath := filepath.Join(tmp, "values.yaml")
-	values := "image:\n  repository: example.invalid/kubikles-accelerator\n  digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n  version: " + appVersion + "\naccelerator:\n  workloadSessionId: release-contract\nauth:\n  creatorVerifier: w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM\n"
+	values := "image:\n  reference: example.invalid/kubikles-accelerator@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n  version: " + appVersion + "\naccelerator:\n  workloadSessionId: release-contract\n  allowVersionMismatch: false\nauth:\n  creatorVerifier: w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM\n"
 	if err := os.WriteFile(valuesPath, []byte(values), 0600); err != nil {
 		return errors.New("write chart inspection values")
 	}
