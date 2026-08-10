@@ -134,6 +134,10 @@ type coordinatorDisposer interface {
 	DrainAndDispose(context.Context, *ProvisionedWorkload) DisposalResult
 }
 
+type coordinatorAllInertSweeper interface {
+	SweepAllInert(context.Context, ContextSnapshot) SweepResult
+}
+
 type coordinatorAsyncDisposer interface {
 	startDisposeNow(context.Context, *ProvisionedWorkload) *disposalCompletion
 }

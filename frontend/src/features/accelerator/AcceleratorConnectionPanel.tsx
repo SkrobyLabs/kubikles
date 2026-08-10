@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CheckIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 import { useAccelerator, useConfig, useK8s, useUI } from '~/context';
-import { acceleratorPolicy, removeAcceleratorOverride, upsertAcceleratorOverride } from './acceleratorConfig';
+import { acceleratorPolicy, upsertAcceleratorOverride } from './acceleratorConfig';
 import { acceleratorStateLabel } from './AcceleratorStatusBadge';
 import type { AcceleratorDiagnostic } from '~/context/AcceleratorContext';
 import Logger from '~/utils/Logger';
@@ -28,10 +28,10 @@ const failureDescriptions: Record<string, string> = {
 const reasonText = (reason: string) => failureDescriptions[reason] ?? reason.replace(/_/g, ' ');
 
 export default function AcceleratorConnectionPanel({ contextName, contextNamespace, onOpenSettings }: { contextName: string; contextNamespace: string; onOpenSettings: () => void }) {
-  const { config, setConfig } = useConfig();
+  const { config, setConfig, updateConfig } = useConfig();
   const { currentContext, setSelectedNamespaces } = useK8s();
   const { navigateWithSearch } = useUI();
-  const { status, enable, retry, disable } = useAccelerator();
+  const { status, enable, retry, disable, removeAll } = useAccelerator();
   const [namespace, setNamespace] = useState(() => acceleratorPolicy(config.accelerator, contextName, contextNamespace || 'default').override?.namespace ?? '');
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
@@ -64,7 +64,19 @@ export default function AcceleratorConnectionPanel({ contextName, contextNamespa
   const remove = async () => {
     if (workload && !window.confirm('Disable Accelerator and remove its exact owned workload?')) return;
     save({ enabled: false });
-    if (current) await disable();
+    await disable(contextName);
+  };
+  const removeAllDeployments = async () => {
+    if (!window.confirm('Remove all Kubikles Accelerators from this cluster? This removes this session\'s workload and stale inactive Accelerator releases across namespaces. Other active sessions are retained.')) return;
+    updateConfig({
+      ...config,
+      accelerator: {
+        ...config.accelerator,
+        enabledByDefault: false,
+        connectionOverrides: config.accelerator.connectionOverrides.map(override => ({ ...override, enabled: false })),
+      },
+    });
+    await removeAll(contextName);
   };
   const workload = (shown as any).workload;
   const diagnostics = ((shown as any).diagnostics ?? []) as AcceleratorDiagnostic[];
@@ -104,8 +116,8 @@ export default function AcceleratorConnectionPanel({ contextName, contextNamespa
       {!shown.enabled && <button disabled={busy} onClick={() => void runAction('Enable', deploy)} className="rounded bg-primary px-3 py-1.5 text-sm text-white disabled:cursor-wait disabled:opacity-50">{pendingAction === 'Enable' ? 'Starting...' : 'Enable & Deploy'}</button>}
       {shown.enabled && shown.state !== 'unavailable' && <button disabled={busy} onClick={() => void runAction('Redeploy', retry)} className="rounded bg-primary px-3 py-1.5 text-sm text-white disabled:cursor-wait disabled:opacity-50">{pendingAction === 'Redeploy' ? 'Redeploying...' : 'Redeploy'}</button>}
       {shown.state === 'unavailable' && shown.enabled && <button disabled={pendingAction !== null} onClick={() => void runAction('Retry', retry)} className="rounded bg-primary px-3 py-1.5 text-sm text-white disabled:cursor-wait disabled:opacity-50">{pendingAction === 'Retry' ? 'Retrying...' : 'Retry'}</button>}
-      {shown.enabled && <button disabled={busy} onClick={() => void runAction('Removal', remove)} className="rounded border border-red-500/60 px-3 py-1.5 text-sm text-red-300 disabled:cursor-wait disabled:opacity-50">Disable & Remove</button>}
-      <button onClick={() => setConfig('accelerator.connectionOverrides', removeAcceleratorOverride(config.accelerator, contextName).connectionOverrides)} className="rounded px-3 py-1.5 text-sm text-gray-400 hover:text-white">Reset overrides</button>
+      {shown.enabled && <button disabled={pendingAction !== null} onClick={() => void runAction('Removal', remove)} className="rounded border border-red-500/60 px-3 py-1.5 text-sm text-red-300 disabled:cursor-wait disabled:opacity-50">{pendingAction === 'Removal' ? 'Removing...' : 'Disable & Remove'}</button>}
+      <button disabled={pendingAction !== null} onClick={() => void runAction('Remove all', removeAllDeployments)} className="rounded px-3 py-1.5 text-sm text-red-300 hover:bg-red-950/30 disabled:cursor-wait disabled:opacity-50">{pendingAction === 'Remove all' ? 'Removing all...' : 'Remove all Accelerators'}</button>
     </div>
     {actionError && <div role="alert" className="rounded border border-red-500/50 bg-red-950/30 p-3 text-xs text-red-200">Request failed: {actionError}</div>}
     {(shown.state === 'unavailable' || diagnostics.length > 0) && <div className="space-y-2 rounded border border-red-500/40 bg-red-950/20 p-3 text-xs">

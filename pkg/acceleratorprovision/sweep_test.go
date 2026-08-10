@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -34,18 +35,49 @@ type fakeInertSweeper struct {
 	proof                helm.AcceleratorSweepProofStatus
 	onInspect            func(context.Context)
 	onCleanup            func(context.Context)
+	inspectedNamespaces  []string
 }
 
 func (f *fakeInertSweeper) ListAcceleratorSweepReleaseNames(context.Context, *rest.Config, string) ([]string, bool) {
 	f.lists++
 	return append([]string(nil), f.names...), f.listOK
 }
-func (f *fakeInertSweeper) InspectAcceleratorSweepCandidate(ctx context.Context, _ *rest.Config, _, _ string) (*helm.AcceleratorSweepCandidate, helm.AcceleratorSweepProofStatus) {
+func (f *fakeInertSweeper) InspectAcceleratorSweepCandidate(ctx context.Context, _ *rest.Config, namespace, _ string) (*helm.AcceleratorSweepCandidate, helm.AcceleratorSweepProofStatus) {
 	f.inspects++
+	f.inspectedNamespaces = append(f.inspectedNamespaces, namespace)
 	if f.onInspect != nil {
 		f.onInspect(ctx)
 	}
 	return &helm.AcceleratorSweepCandidate{}, f.proof
+}
+
+func TestSweepAllInertFindsAcceleratorsAcrossNamespaces(t *testing.T) {
+	const first = "kubikles-accelerator-00000000000000000000000000000001"
+	const second = "kubikles-accelerator-00000000000000000000000000000002"
+	secret := func(namespace, releaseName, version string) *corev1.Secret {
+		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "sh.helm.release.v1." + releaseName + ".v" + version, Labels: map[string]string{"owner": "helm", "name": releaseName, "version": version}}}
+	}
+	client := k8sfake.NewSimpleClientset(
+		secret("zeta", second, "1"),
+		secret("alpha", first, "1"),
+		secret("alpha", first, "2"),
+		secret("default", "unrelated", "1"),
+	)
+	snapshot := fakeSnapshot{identity: "identity", namespace: "default", client: client}
+	fake := &fakeInertSweeper{listOK: true, proof: helm.AcceleratorSweepEligible}
+	service := &DisposalService{gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
+
+	result := service.SweepAllInert(context.Background(), snapshot)
+
+	if result.Status != SweepCompleted || len(result.Candidates) != 2 || fake.inspects != 2 || fake.uninstalls != 2 {
+		t.Fatalf("result=%#v inspect=%d cleanup=%d", result, fake.inspects, fake.uninstalls)
+	}
+	if result.Candidates[0].Namespace != "alpha" || result.Candidates[0].ReleaseName != first || result.Candidates[1].Namespace != "zeta" || result.Candidates[1].ReleaseName != second {
+		t.Fatalf("candidates=%#v", result.Candidates)
+	}
+	if fmt.Sprint(fake.inspectedNamespaces) != "[alpha zeta]" {
+		t.Fatalf("inspected namespaces=%v", fake.inspectedNamespaces)
+	}
 }
 func (f *fakeInertSweeper) CleanupAcceleratorSweepCandidate(ctx context.Context, _ *rest.Config, _ *helm.AcceleratorSweepCandidate) helm.AcceleratorSweepProofStatus {
 	f.uninstalls++

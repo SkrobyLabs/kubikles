@@ -2,6 +2,7 @@ package acceleratorprovision
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -320,6 +321,185 @@ func (c *Coordinator) Disable(contextName string) {
 			s.state = CoordinatorDirectOnly
 		}
 		s.mu.Unlock()
+	}
+}
+
+// DisableAndRemove is the explicit UI removal contract. It fences activation,
+// immediately disposes the exact retained workload, and does not return until
+// cleanup has completed (or the caller stops waiting).
+func (c *Coordinator) DisableAndRemove(ctx context.Context, contextName string) error {
+	if c == nil {
+		return fmt.Errorf("accelerator lifecycle is unavailable")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	c.mu.Lock()
+	if c.closed || c.quiesced || c.switching || contextName == "" || contextName != c.currentName {
+		c.mu.Unlock()
+		return fmt.Errorf("accelerator context %q is not current", contextName)
+	}
+	s := c.slots[c.currentEpoch]
+	c.mu.Unlock()
+	if s == nil {
+		return nil
+	}
+	debug.LogHelm("Accelerator exact removal started", map[string]interface{}{"context": contextName})
+
+	s.navigationMu.Lock()
+	defer s.navigationMu.Unlock()
+	s.mu.Lock()
+	s.enabled = false
+	s.advanceSessionLeaseEpochLocked(false)
+	if s.workerCancel != nil {
+		s.workerCancel()
+	}
+	s.pendingWorkerRun = nil
+	s.operationEpoch++
+	workload, workerDone := s.workload, s.workerDone
+	if workload != nil {
+		s.state = CoordinatorDisposing
+	} else if s.state != CoordinatorClosed {
+		s.state = CoordinatorDirectOnly
+	}
+	s.mu.Unlock()
+
+	var removalErr error
+	if workload != nil {
+		if done := c.startCoordinatedDisposeNow(s, workload); done != nil {
+			select {
+			case <-done:
+			case <-ctx.Done():
+				return fmt.Errorf("removing Accelerator workload: %w", ctx.Err())
+			}
+		}
+		if result, ok := completedWorkloadDisposal(workload); ok && !disposalRemovedWorkload(result) {
+			removalErr = acceleratorRemovalError(contextName, result)
+		}
+	}
+	if workerDone != nil {
+		select {
+		case <-workerDone:
+		case <-ctx.Done():
+			return fmt.Errorf("stopping Accelerator deployment: %w", ctx.Err())
+		}
+	}
+
+	// A canceled worker must not normally retain a workload, but recheck the
+	// slot so the method remains exact under a completion race.
+	s.mu.Lock()
+	remaining := s.workload
+	s.mu.Unlock()
+	if remaining != nil && remaining != workload {
+		if done := c.startCoordinatedDisposeNow(s, remaining); done != nil {
+			select {
+			case <-done:
+			case <-ctx.Done():
+				return fmt.Errorf("removing completed Accelerator workload: %w", ctx.Err())
+			}
+		}
+		if result, ok := completedWorkloadDisposal(remaining); ok && !disposalRemovedWorkload(result) {
+			removalErr = acceleratorRemovalError(contextName, result)
+		}
+	}
+	s.mu.Lock()
+	if s.state != CoordinatorClosed {
+		s.state = CoordinatorDirectOnly
+	}
+	s.mu.Unlock()
+	if removalErr != nil {
+		return removalErr
+	}
+	debug.LogHelm("Accelerator exact removal finished", map[string]interface{}{"context": contextName})
+	return nil
+}
+
+func acceleratorRemovalError(contextName string, result DisposalResult) error {
+	debug.LogHelm("Accelerator exact removal failed", map[string]interface{}{
+		"context":       contextName,
+		"ownership":     result.Ownership,
+		"uninstall":     result.Uninstall,
+		"disappearance": result.Disappearance,
+	})
+	return fmt.Errorf("accelerator workload removal failed (ownership=%s, uninstall=%s, disappearance=%s)", result.Ownership, result.Uninstall, result.Disappearance)
+}
+
+func completedWorkloadDisposal(workload *ProvisionedWorkload) (DisposalResult, bool) {
+	if workload == nil || workload.connectorState == nil {
+		return DisposalResult{}, false
+	}
+	workload.connectorState.mu.Lock()
+	defer workload.connectorState.mu.Unlock()
+	operation := workload.connectorState.disposal
+	if operation == nil {
+		return DisposalResult{}, false
+	}
+	select {
+	case <-operation.done:
+		return operation.result, true
+	default:
+		return DisposalResult{}, false
+	}
+}
+
+func disposalRemovedWorkload(result DisposalResult) bool {
+	if result.Disappearance != DisappearanceSucceeded && result.Disappearance != DisappearanceUIDReplaced {
+		return false
+	}
+	if result.Ownership == OwnershipAlreadyGone {
+		return result.Uninstall == UninstallNotNeeded
+	}
+	return result.Ownership == OwnershipProven && result.Uninstall == UninstallSucceeded
+}
+
+// RemoveAll disables the current exact workload and then removes every other
+// provably inactive Accelerator release visible across the current cluster.
+func (c *Coordinator) RemoveAll(ctx context.Context, contextName string) error {
+	if err := c.DisableAndRemove(ctx, contextName); err != nil {
+		return err
+	}
+	if c.contexts == nil {
+		return fmt.Errorf("accelerator context provider is unavailable")
+	}
+	snapshot, err := c.contexts.SnapshotCurrentContext(contextName)
+	if err != nil {
+		return fmt.Errorf("snapshot Accelerator context: %w", err)
+	}
+	sweeper, ok := c.disposer.(coordinatorAllInertSweeper)
+	if !ok || sweeper == nil {
+		return fmt.Errorf("accelerator cluster cleanup is unavailable")
+	}
+	result := sweeper.SweepAllInert(ctx, snapshot)
+	cleaned, retained, failed := 0, 0, 0
+	for _, candidate := range result.Candidates {
+		if candidate.Status == SweepCleaned || candidate.Status == SweepAlreadyGone {
+			cleaned++
+		} else {
+			retained++
+			if candidate.Status == SweepCandidateCleanupFailed {
+				failed++
+			}
+		}
+	}
+	debug.LogHelm("Accelerator remove-all request finished", map[string]interface{}{
+		"context":  contextName,
+		"status":   result.Status,
+		"cleaned":  cleaned,
+		"retained": retained,
+		"failed":   failed,
+	})
+	switch result.Status {
+	case SweepCompleted:
+		if failed > 0 {
+			return fmt.Errorf("failed to remove %d stale Accelerator release(s)", failed)
+		}
+		return nil
+	case SweepTimedOut:
+		return fmt.Errorf("removing all Accelerators timed out")
+	case SweepBoundedLimit:
+		return fmt.Errorf("too many Accelerator releases to remove safely in one request")
+	default:
+		return fmt.Errorf("failed to remove all Accelerators")
 	}
 }
 

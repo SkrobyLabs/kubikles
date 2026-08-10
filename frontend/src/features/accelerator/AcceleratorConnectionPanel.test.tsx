@@ -6,15 +6,17 @@ import AcceleratorConnectionPanel from './AcceleratorConnectionPanel';
 
 const retry = vi.fn();
 const disable = vi.fn();
+const removeAll = vi.fn();
 const setConfig = vi.fn();
+const updateConfig = vi.fn();
 const writeText = vi.fn();
 let acceleratorStatus: any = { state: 'direct_only', enabled: false, namespace: '', available: false };
 let acceleratorConfig: any = { enabledByDefault: false, defaultNamespace: '', customImage: '', customChart: '', connectionOverrides: [] };
 vi.mock('~/context', () => ({
-  useConfig: () => ({ config: { accelerator: acceleratorConfig }, setConfig }),
+  useConfig: () => ({ config: { accelerator: acceleratorConfig }, setConfig, updateConfig }),
   useK8s: () => ({ currentContext: 'prod', setSelectedNamespaces: vi.fn() }),
   useUI: () => ({ navigateWithSearch: vi.fn() }),
-  useAccelerator: () => ({ status: acceleratorStatus, enable: vi.fn(), retry, disable }),
+  useAccelerator: () => ({ status: acceleratorStatus, enable: vi.fn(), retry, disable, removeAll }),
 }));
 
 describe('AcceleratorConnectionPanel', () => {
@@ -23,7 +25,9 @@ describe('AcceleratorConnectionPanel', () => {
     acceleratorConfig = { enabledByDefault: false, defaultNamespace: '', customImage: '', customChart: '', connectionOverrides: [] };
     retry.mockReset();
     disable.mockReset();
+    removeAll.mockReset();
     setConfig.mockReset();
+    updateConfig.mockReset();
     writeText.mockReset();
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
   });
@@ -63,6 +67,36 @@ describe('AcceleratorConnectionPanel', () => {
     await waitFor(() => expect(disable).toHaveBeenCalledOnce());
     expect(confirm).not.toHaveBeenCalled();
     expect(setConfig).toHaveBeenCalledWith('accelerator.connectionOverrides', [{ contextName: 'prod', enabled: false }]);
+    confirm.mockRestore();
+  });
+
+  it('can cancel and remove an in-progress deployment', async () => {
+    acceleratorStatus = { state: 'provisioning', enabled: true, namespace: 'default', available: false };
+    render(<AcceleratorConnectionPanel contextName="prod" contextNamespace="default" onOpenSettings={vi.fn()} />);
+
+    const button = screen.getByRole('button', { name: 'Disable & Remove' });
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(button);
+
+    await waitFor(() => expect(disable).toHaveBeenCalledWith('prod'));
+  });
+
+  it('replaces reset overrides with a confirmed cluster-wide removal action', async () => {
+    acceleratorConfig = { ...acceleratorConfig, enabledByDefault: true, connectionOverrides: [{ contextName: 'prod', enabled: true, namespace: 'tools' }] };
+    acceleratorStatus = { state: 'active', enabled: true, namespace: 'tools', available: true };
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<AcceleratorConnectionPanel contextName="prod" contextNamespace="default" onOpenSettings={vi.fn()} />);
+
+    expect(screen.queryByRole('button', { name: 'Reset overrides' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove all Accelerators' }));
+
+    await waitFor(() => expect(removeAll).toHaveBeenCalledWith('prod'));
+    expect(updateConfig).toHaveBeenCalledWith(expect.objectContaining({
+      accelerator: expect.objectContaining({
+        enabledByDefault: false,
+        connectionOverrides: [{ contextName: 'prod', enabled: false, namespace: 'tools' }],
+      }),
+    }));
     confirm.mockRestore();
   });
 

@@ -466,6 +466,7 @@ export function GetAcceleratorStatus(...args) { return AppProxy.GetAcceleratorSt
 export function EnableAccelerator(...args) { return AppProxy.EnableAccelerator(...args); }
 export function RetryAccelerator(...args) { return AppProxy.RetryAccelerator(...args); }
 export function DisableAccelerator(...args) { return AppProxy.DisableAccelerator(...args); }
+export function RemoveAllAccelerators(...args) { return AppProxy.RemoveAllAccelerators(...args); }
 
 // Also export the proxy itself for dynamic access
 export default AppProxy;

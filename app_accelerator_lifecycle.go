@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -67,10 +68,38 @@ func (a *App) RetryAccelerator(contextName string) {
 }
 
 //kubikles:dispatch exclude
-func (a *App) DisableAccelerator(contextName string) {
+func (a *App) DisableAccelerator(contextName string) error {
 	if a != nil && a.runtimeMode == RuntimeModeDesktop {
+		if lifecycle, ok := a.acceleratorLifecycle.(interface {
+			DisableAndRemove(context.Context, string) error
+		}); ok {
+			ctx := a.ctx
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			return lifecycle.DisableAndRemove(ctx, contextName)
+		}
 		if lifecycle, ok := a.acceleratorLifecycle.(interface{ Disable(string) }); ok {
 			lifecycle.Disable(contextName)
 		}
 	}
+	return nil
+}
+
+//kubikles:dispatch exclude
+func (a *App) RemoveAllAccelerators(contextName string) error {
+	if a == nil || a.runtimeMode != RuntimeModeDesktop {
+		return nil
+	}
+	lifecycle, ok := a.acceleratorLifecycle.(interface {
+		RemoveAll(context.Context, string) error
+	})
+	if !ok {
+		return fmt.Errorf("accelerator cluster cleanup is unavailable")
+	}
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return lifecycle.RemoveAll(ctx, contextName)
 }

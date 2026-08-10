@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"testing"
 
 	"kubikles/pkg/acceleratorprovision"
@@ -13,12 +14,38 @@ type capturingAcceleratorLifecycle struct {
 	contextName string
 	namespace   string
 	options     acceleratorprovision.DeploymentOptions
+	disabled    string
+	removeAll   string
+}
+
+func (l *capturingAcceleratorLifecycle) DisableAndRemove(_ context.Context, contextName string) error {
+	l.disabled = contextName
+	return nil
+}
+
+func (l *capturingAcceleratorLifecycle) RemoveAll(_ context.Context, contextName string) error {
+	l.removeAll = contextName
+	return nil
 }
 
 func (l *capturingAcceleratorLifecycle) EnableWithOptions(contextName, namespace string, options acceleratorprovision.DeploymentOptions) {
 	l.contextName = contextName
 	l.namespace = namespace
 	l.options = options
+}
+
+func TestAcceleratorRemovalActionsForwardToSynchronousLifecycle(t *testing.T) {
+	lifecycle := &capturingAcceleratorLifecycle{}
+	app := &App{runtimeMode: RuntimeModeDesktop, acceleratorLifecycle: lifecycle}
+	if err := app.DisableAccelerator("ctx"); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.RemoveAllAccelerators("ctx"); err != nil {
+		t.Fatal(err)
+	}
+	if lifecycle.disabled != "ctx" || lifecycle.removeAll != "ctx" {
+		t.Fatalf("disabled=%q removeAll=%q", lifecycle.disabled, lifecycle.removeAll)
+	}
 }
 
 func TestEnableAcceleratorValidatesAndForwardsArtifactOptions(t *testing.T) {

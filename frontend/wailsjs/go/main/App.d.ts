@@ -533,6 +533,8 @@ export function ReloadIssueRules():Promise<Array<issuedetector.RuleInfo>>;
 
 export function ReloadThemes():Promise<Array<main.Theme>>;
 
+export function RemoveAllAccelerators(arg1:string):Promise<void>;
+
 export function RemoveHelmRepository(arg1:string):Promise<void>;
 
 export function RemoveOCIRegistry(arg1:string):Promise<void>;

@@ -1,13 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useConfig } from './ConfigContext';
 import { useK8s } from './K8sContext';
-import { DisableAccelerator, EnableAccelerator, GetAcceleratorStatus, RetryAccelerator } from '~/lib/wailsjs-adapter/go/main/App';
+import { DisableAccelerator, EnableAccelerator, GetAcceleratorStatus, RemoveAllAccelerators, RetryAccelerator } from '~/lib/wailsjs-adapter/go/main/App';
 import { acceleratorPolicy } from '~/features/accelerator/acceleratorConfig';
 import Logger from '~/utils/Logger';
 
 export type AcceleratorDiagnostic = { timestamp: string; phase: string; reason: string; attempt?: number };
 type Status = { state: string; enabled: boolean; namespace: string; available: boolean; versionMismatchWarning?: boolean; diagnostics?: AcceleratorDiagnostic[]; workload?: unknown };
-type Value = { status: Status; enable: (namespaceOverride?: string) => Promise<void>; retry: () => Promise<void>; disable: () => Promise<void> };
+type Value = { status: Status; enable: (namespaceOverride?: string) => Promise<void>; retry: () => Promise<void>; disable: (contextName?: string) => Promise<void>; removeAll: (contextName?: string) => Promise<void> };
 const Context = createContext<Value | undefined>(undefined);
 const direct: Status = { state: 'direct_only', enabled: false, namespace: '', available: false };
 
@@ -42,7 +42,8 @@ export function AcceleratorProvider({ children }: { children: React.ReactNode })
   }, [currentContext, deploymentOptions, policy.enabled, policy.namespace, refresh]);
   const enable = useCallback(async (namespaceOverride?: string) => { Logger.info('Enabling Accelerator deployment', { context: currentContext, namespace: namespaceOverride ?? policy.namespace }, 'helm'); await EnableAccelerator(currentContext, namespaceOverride ?? policy.namespace, deploymentOptions); await refresh(); }, [currentContext, deploymentOptions, policy.namespace, refresh]);
   const retry = useCallback(async () => { Logger.info('Retrying Accelerator deployment', { context: currentContext }, 'helm'); await RetryAccelerator(currentContext); await refresh(); }, [currentContext, refresh]);
-  const disable = useCallback(async () => { Logger.info('Removing Accelerator deployment', { context: currentContext }, 'helm'); await DisableAccelerator(currentContext); await refresh(); }, [currentContext, refresh]);
-  return <Context.Provider value={{ status, enable, retry, disable }}>{children}</Context.Provider>;
+  const disable = useCallback(async (contextName = currentContext) => { Logger.info('Removing Accelerator deployment', { context: contextName }, 'helm'); await DisableAccelerator(contextName); await refresh(); }, [currentContext, refresh]);
+  const removeAll = useCallback(async (contextName = currentContext) => { Logger.info('Removing all Accelerator deployments from cluster', { context: contextName }, 'helm'); await RemoveAllAccelerators(contextName); await refresh(); }, [currentContext, refresh]);
+  return <Context.Provider value={{ status, enable, retry, disable, removeAll }}>{children}</Context.Provider>;
 }
 export const useAccelerator = () => { const value = useContext(Context); if (!value) throw new Error('AcceleratorProvider missing'); return value; };

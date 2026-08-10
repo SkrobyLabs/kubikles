@@ -12,6 +12,7 @@
 // kubikles:dispatch exclude ListIntegratedHelmReleaseMetadata (app_integrated_secrets.go)
 // kubikles:dispatch exclude ListIntegratedSecretsMetadata (app_integrated_secrets.go)
 // kubikles:dispatch exclude ReleaseIntegratedSecretReads (app_integrated_secrets.go)
+// kubikles:dispatch exclude RemoveAllAccelerators (app_accelerator_lifecycle.go)
 // kubikles:dispatch exclude RetainIntegratedSecretReads (app_integrated_secrets.go)
 // kubikles:dispatch exclude RetryAccelerator (app_accelerator_lifecycle.go)
 // kubikles:dispatch exclude SubscribeIntegratedSecretWatcher (app_integrated_secrets.go)

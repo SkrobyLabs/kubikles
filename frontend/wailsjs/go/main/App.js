@@ -1042,6 +1042,10 @@ export function ReloadThemes() {
   return window['go']['main']['App']['ReloadThemes']();
 }
 
+export function RemoveAllAccelerators(arg1) {
+  return window['go']['main']['App']['RemoveAllAccelerators'](arg1);
+}
+
 export function RemoveHelmRepository(arg1) {
   return window['go']['main']['App']['RemoveHelmRepository'](arg1);
 }

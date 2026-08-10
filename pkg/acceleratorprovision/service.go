@@ -269,6 +269,12 @@ type namespaceOverrideSnapshot struct {
 }
 
 func (s namespaceOverrideSnapshot) Namespace() string { return s.namespace }
+func (s namespaceOverrideSnapshot) ContextName() string {
+	if named, ok := s.ContextSnapshot.(interface{ ContextName() string }); ok {
+		return named.ContextName()
+	}
+	return ""
+}
 
 func releaseMutationGateKey(snapshot ContextSnapshot) string {
 	if snapshot == nil || snapshot.Identity() == "" || snapshot.Namespace() == "" {

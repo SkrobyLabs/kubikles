@@ -9,6 +9,7 @@ const { bridge, logger, state } = vi.hoisted(() => ({
     DisableAccelerator: vi.fn(),
     EnableAccelerator: vi.fn(),
     GetAcceleratorStatus: vi.fn(),
+    RemoveAllAccelerators: vi.fn(),
     RetryAccelerator: vi.fn(),
   },
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
@@ -30,6 +31,7 @@ describe('AcceleratorProvider diagnostics', () => {
     state.accelerator = { enabledByDefault: false, defaultNamespace: '', connectionOverrides: [] };
     state.currentNamespace = 'default';
     bridge.EnableAccelerator.mockResolvedValue(undefined);
+    bridge.RemoveAllAccelerators.mockResolvedValue(undefined);
     bridge.GetAcceleratorStatus.mockResolvedValue({ state: 'direct_only', enabled: false, namespace: '', available: false });
   });
 

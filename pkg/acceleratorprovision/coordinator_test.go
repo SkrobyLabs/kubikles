@@ -178,6 +178,14 @@ func (s *coordinatorTestServices) SweepInert(ctx context.Context, snapshot Conte
 	}
 	return SweepResult{Status: SweepCompleted}
 }
+func (s *coordinatorTestServices) SweepAllInert(ctx context.Context, snapshot ContextSnapshot) SweepResult {
+	s.sweepCalls.Add(1)
+	s.record("sweep-all")
+	if s.sweepHook != nil {
+		s.sweepHook(ctx, snapshot)
+	}
+	return SweepResult{Status: SweepCompleted}
+}
 func (s *coordinatorTestServices) DisposeNow(_ context.Context, workload *ProvisionedWorkload) DisposalResult {
 	s.disposeCalls.Add(1)
 	s.record("dispose")
@@ -907,6 +915,58 @@ func TestDisableDrainsAndDisposesOnce(t *testing.T) {
 	if services.drainCalls.Load() != 1 || services.disposeCalls.Load() != 0 {
 		t.Fatalf("drain=%d dispose=%d", services.drainCalls.Load(), services.disposeCalls.Load())
 	}
+	stopCoordinator(t, coordinator)
+}
+
+func TestRemoveAllWaitsForExactRemovalBeforeClusterSweep(t *testing.T) {
+	coordinator, services, clock := newCoordinatorHarness(t)
+	workload := coordinatorWorkload(t)
+	session, _ := coordinatorSession(workload, clock, 1)
+	services.provisionHook = func(context.Context, int, Request) Result { return available(workload) }
+	services.connectHook = func(context.Context, int, *ProvisionedWorkload) ConnectResult {
+		return ConnectResult{Availability: Available, Session: session}
+	}
+	removeEntered, releaseRemove := make(chan struct{}), make(chan struct{})
+	services.disposeHook = func(drain bool, candidate *ProvisionedWorkload) {
+		if drain || candidate != workload {
+			t.Fatalf("unexpected disposal drain=%t workload=%p", drain, candidate)
+		}
+		close(removeEntered)
+		<-releaseRemove
+	}
+	demand := coordinator.AcquireSecretDemand(context.Background(), "ctx").Lease
+	coordinator.Enable("ctx", "kubikles-system")
+	waitCoordinatorState(t, coordinator, CoordinatorActive)
+
+	completed := make(chan error, 1)
+	go func() { completed <- coordinator.RemoveAll(context.Background(), "ctx") }()
+	<-removeEntered
+	select {
+	case err := <-completed:
+		t.Fatalf("remove-all returned before exact removal: %v", err)
+	default:
+	}
+	close(releaseRemove)
+	if err := <-completed; err != nil {
+		t.Fatal(err)
+	}
+	if got := coordinator.Snapshot("ctx"); got.State != CoordinatorDirectOnly || got.Enabled || got.Workload != nil {
+		t.Fatalf("snapshot=%#v", got)
+	}
+	events := services.events()
+	disposeIndex, sweepIndex := -1, -1
+	for index, event := range events {
+		if event == "dispose" {
+			disposeIndex = index
+		}
+		if event == "sweep-all" {
+			sweepIndex = index
+		}
+	}
+	if disposeIndex < 0 || sweepIndex <= disposeIndex {
+		t.Fatalf("events=%v", events)
+	}
+	demand.Close()
 	stopCoordinator(t, coordinator)
 }
 
