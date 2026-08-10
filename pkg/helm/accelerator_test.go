@@ -23,6 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"kubikles/pkg/debug"
+	"kubikles/pkg/events"
+
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -54,6 +57,44 @@ type acceleratorPullerFake struct {
 	ref    string
 	result *registry.PullResult
 	err    error
+}
+
+func TestAcceleratorChartPullLogsUnderlyingRegistryError(t *testing.T) {
+	eventsCh := make(chan []interface{}, 1)
+	debug.Init(events.EmitterFunc(func(name string, data ...interface{}) {
+		if name == "debug:log" {
+			eventsCh <- data
+		}
+	}))
+	debug.SetEnabled(true)
+	t.Cleanup(func() {
+		debug.SetEnabled(false)
+		debug.Init(&events.NoopEmitter{})
+	})
+
+	rawErr := errors.New("registry GET failed: dial tcp 192.0.2.10:443: connection refused")
+	request := acceleratorTestRequest()
+	chartRequest := AcceleratorChartRequest{Reference: request.ChartReference, Digest: request.ChartDigest, BuildVersion: request.BuildVersion}
+	if _, err := pullAcceleratorChart(context.Background(), &acceleratorPullerFake{err: rawErr}, chartRequest); !errors.Is(err, ErrAcceleratorUnavailable) {
+		t.Fatalf("pull error=%v", err)
+	}
+
+	select {
+	case data := <-eventsCh:
+		if len(data) != 1 {
+			t.Fatalf("debug event=%#v", data)
+		}
+		payload, ok := data[0].(map[string]interface{})
+		if !ok || payload["category"] != debug.CategoryHelm || payload["message"] != "Accelerator chart pull failed" {
+			t.Fatalf("debug payload=%#v", data[0])
+		}
+		details, ok := payload["details"].(map[string]interface{})
+		if !ok || details["stage"] != "registry_pull" || details["reference"] != chartRequest.Reference || details["digest"] != chartRequest.Digest || details["error"] != rawErr.Error() {
+			t.Fatalf("debug details=%#v", payload["details"])
+		}
+	case <-time.After(time.Second):
+		t.Fatal("chart pull debug event was not emitted")
+	}
 }
 
 type acceleratorHostileDriver struct {

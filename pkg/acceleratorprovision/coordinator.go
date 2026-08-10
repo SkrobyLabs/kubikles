@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"kubikles/pkg/acceleratorrelease"
+	"kubikles/pkg/debug"
 	"kubikles/pkg/k8s"
 )
 
@@ -553,8 +554,8 @@ func (c *Coordinator) recordDiagnostic(s *contextSlot, fence operationFence, pha
 		return
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if !s.matchesLocked(fence) {
+		s.mu.Unlock()
 		return
 	}
 	entry := CoordinatorDiagnostic{Timestamp: c.clock.Now().UTC().Format(time.RFC3339), Phase: phase, Reason: reason, Attempt: attempt}
@@ -562,6 +563,18 @@ func (c *Coordinator) recordDiagnostic(s *contextSlot, fence operationFence, pha
 	if len(s.diagnostics) > coordinatorDiagnosticLimit {
 		s.diagnostics = append([]CoordinatorDiagnostic(nil), s.diagnostics[len(s.diagnostics)-coordinatorDiagnosticLimit:]...)
 	}
+	contextName := s.contextName
+	s.mu.Unlock()
+
+	// Emit from the backend operation boundary, once per recorded attempt. The
+	// UI keeps its concise bounded deployment history and does not mirror status
+	// polling into Debug logs.
+	debug.LogHelm("Accelerator deployment failed", map[string]interface{}{
+		"context": contextName,
+		"phase":   phase,
+		"reason":  reason,
+		"attempt": attempt,
+	})
 }
 
 func (c *Coordinator) disposeIfRetained(s *contextSlot, workload *ProvisionedWorkload) {

@@ -19,6 +19,8 @@ import (
 	"kubikles/pkg/acceleratorrelease"
 	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
+	"kubikles/pkg/debug"
+	"kubikles/pkg/events"
 	"kubikles/pkg/server"
 )
 
@@ -478,6 +480,18 @@ func TestCoordinatorFailureClassificationClosedTable(t *testing.T) {
 }
 
 func TestCoordinatorSnapshotReportsDeploymentFailure(t *testing.T) {
+	debugEvents := make(chan []interface{}, 1)
+	debug.Init(events.EmitterFunc(func(name string, data ...interface{}) {
+		if name == "debug:log" {
+			debugEvents <- data
+		}
+	}))
+	debug.SetEnabled(true)
+	t.Cleanup(func() {
+		debug.SetEnabled(false)
+		debug.Init(&events.NoopEmitter{})
+	})
+
 	coordinator, services, _ := newCoordinatorHarness(t)
 	services.resolveHook = func(context.Context, int) acceleratorrelease.Resolution {
 		return acceleratorrelease.Resolution{Availability: acceleratorrelease.Unavailable, Reason: acceleratorrelease.InvalidLocalBuild}
@@ -491,6 +505,22 @@ func TestCoordinatorSnapshotReportsDeploymentFailure(t *testing.T) {
 	got := snapshot.Diagnostics[0]
 	if got.Phase != "release resolution" || got.Reason != string(acceleratorrelease.InvalidLocalBuild) || got.Attempt != 1 || got.Timestamp == "" {
 		t.Fatalf("diagnostic=%#v", got)
+	}
+	select {
+	case data := <-debugEvents:
+		if len(data) != 1 {
+			t.Fatalf("debug event=%#v", data)
+		}
+		payload, ok := data[0].(map[string]interface{})
+		if !ok || payload["category"] != debug.CategoryHelm || payload["message"] != "Accelerator deployment failed" {
+			t.Fatalf("debug payload=%#v", data[0])
+		}
+		details, ok := payload["details"].(map[string]interface{})
+		if !ok || details["context"] != "ctx" || details["phase"] != "release resolution" || details["reason"] != string(acceleratorrelease.InvalidLocalBuild) || details["attempt"] != 1 {
+			t.Fatalf("debug details=%#v", payload["details"])
+		}
+	case <-time.After(time.Second):
+		t.Fatal("backend debug event was not emitted")
 	}
 	stopCoordinator(t, coordinator)
 }

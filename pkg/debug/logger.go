@@ -91,7 +91,15 @@ func Log(category, message string, details map[string]interface{}) {
 		fmt.Printf("DEBUG [%s] [%s] %s\n", timestamp, category, message)
 	}
 
-	emitter.Emit("debug:log", category, message, details)
+	// Keep the event payload as one value. The desktop Wails transport supports
+	// variadic event arguments, but the browser/server transport forwards one
+	// JSON value per event. A structured payload preserves the message and
+	// details in both runtimes.
+	emitter.Emit("debug:log", map[string]interface{}{
+		"category": category,
+		"message":  message,
+		"details":  details,
+	})
 }
 
 // Convenience functions for each category

@@ -140,11 +140,27 @@ export const DebugProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
     }, []);
 
-    // Listen for backend debug events (Wails "debug:log")
+    // Listen for backend debug events (Wails "debug:log"). Newer backends use
+    // one structured value so browser/server mode preserves the whole event;
+    // accept the legacy desktop positional form during upgrades as well.
     useEffect(() => {
-        const handler = (category: string, message: string, details?: unknown): void => {
+        const handler = (payload: unknown, legacyMessage?: unknown, legacyDetails?: unknown): void => {
             if (!isDebugModeRef.current) return;
-            addLogEntry(DEBUG_SOURCE.BACKEND, category as DebugCategory, message, details || null);
+            let category: unknown;
+            let message: unknown;
+            let details: unknown;
+            if (payload !== null && typeof payload === 'object' && !Array.isArray(payload)) {
+                const event = payload as { category?: unknown; message?: unknown; details?: unknown };
+                category = event.category;
+                message = event.message;
+                details = event.details;
+            } else {
+                category = payload;
+                message = legacyMessage;
+                details = legacyDetails;
+            }
+            if (typeof category !== 'string' || typeof message !== 'string') return;
+            addLogEntry(DEBUG_SOURCE.BACKEND, category as DebugCategory, message, details ?? null);
         };
         const cancel = EventsOn('debug:log', handler);
         return () => { cancel(); };

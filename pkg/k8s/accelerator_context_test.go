@@ -169,15 +169,16 @@ func assertAcceleratorSnapshotDebugEvent(t *testing.T, calls []acceleratorDebugE
 		t.Fatalf("expected one debug event, got %#v", calls)
 	}
 	call := calls[0]
-	if call.name != "debug:log" || len(call.data) != 3 {
+	if call.name != "debug:log" || len(call.data) != 1 {
 		t.Fatalf("unexpected debug event: %#v", call)
 	}
-	if call.data[0] != debug.CategoryHelm || call.data[1] != "Accelerator context snapshot failed" {
-		t.Fatalf("unexpected debug event metadata: %#v", call.data)
+	payload, ok := call.data[0].(map[string]interface{})
+	if !ok || payload["category"] != debug.CategoryHelm || payload["message"] != "Accelerator context snapshot failed" {
+		t.Fatalf("unexpected debug event payload: %#v", call.data)
 	}
-	details, ok := call.data[2].(map[string]interface{})
+	details, ok := payload["details"].(map[string]interface{})
 	if !ok || details["context"] != contextName || details["stage"] != stage || details["error"] != reason {
-		t.Fatalf("unexpected debug event details: %#v", call.data[2])
+		t.Fatalf("unexpected debug event details: %#v", payload["details"])
 	}
 }
 

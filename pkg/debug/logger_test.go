@@ -42,11 +42,21 @@ func TestLog_EmitsWhenEnabled(t *testing.T) {
 	if rec.calls[0].name != "debug:log" {
 		t.Errorf("expected event name 'debug:log', got %q", rec.calls[0].name)
 	}
-	if rec.calls[0].data[0] != CategoryK8s {
-		t.Errorf("expected category %q, got %v", CategoryK8s, rec.calls[0].data[0])
+	if len(rec.calls[0].data) != 1 {
+		t.Fatalf("expected one structured payload, got %#v", rec.calls[0].data)
 	}
-	if rec.calls[0].data[1] != "test message" {
-		t.Errorf("expected message 'test message', got %v", rec.calls[0].data[1])
+	payload, ok := rec.calls[0].data[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected structured payload, got %#v", rec.calls[0].data[0])
+	}
+	if payload["category"] != CategoryK8s {
+		t.Errorf("expected category %q, got %v", CategoryK8s, payload["category"])
+	}
+	if payload["message"] != "test message" {
+		t.Errorf("expected message 'test message', got %v", payload["message"])
+	}
+	if details, ok := payload["details"].(map[string]interface{}); !ok || details["key"] != "val" {
+		t.Errorf("expected details to survive payload, got %#v", payload["details"])
 	}
 }
 
@@ -156,8 +166,9 @@ func TestConvenienceFunctions_RouteCategory(t *testing.T) {
 			cleanup()
 			continue
 		}
-		if rec.calls[0].data[0] != tc.expected {
-			t.Errorf("expected category %q, got %v", tc.expected, rec.calls[0].data[0])
+		payload, ok := rec.calls[0].data[0].(map[string]interface{})
+		if !ok || payload["category"] != tc.expected {
+			t.Errorf("expected category %q, got %#v", tc.expected, rec.calls[0].data[0])
 		}
 		cleanup()
 	}

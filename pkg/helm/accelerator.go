@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"kubikles/pkg/debug"
+
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -99,6 +101,7 @@ var acceleratorRegistryTransportForTest = func(transport http.RoundTripper) http
 // every SDK request to the caller's bounded context.
 func PullAcceleratorChart(ctx context.Context, request AcceleratorChartRequest) (*chart.Chart, error) {
 	if !validAcceleratorChartRequest(request) {
+		logAcceleratorChartFailure(request, "validate_request", ErrAcceleratorIntegrity, nil)
 		return nil, ErrAcceleratorIntegrity
 	}
 	bound, cancel := context.WithTimeout(ctx, acceleratorRegistryTimeout)
@@ -114,6 +117,7 @@ func PullAcceleratorChart(ctx context.Context, request AcceleratorChartRequest) 
 		registry.ClientOptAuthorizer(authorizer),
 	)
 	if err != nil {
+		logAcceleratorChartFailure(request, "create_registry_client", err, nil)
 		return nil, ErrAcceleratorUnavailable
 	}
 	return pullAcceleratorChart(bound, client, request)
@@ -132,10 +136,12 @@ func validAcceleratorChartRequest(request AcceleratorChartRequest) bool {
 
 func pullAcceleratorChart(ctx context.Context, puller acceleratorRegistryPuller, request AcceleratorChartRequest) (*chart.Chart, error) {
 	if !validAcceleratorChartRequest(request) {
+		logAcceleratorChartFailure(request, "validate_request", ErrAcceleratorIntegrity, nil)
 		return nil, ErrAcceleratorIntegrity
 	}
 	result, err := puller.Pull(request.Reference, registry.PullOptWithChart(true), registry.PullOptWithProv(false))
 	if err != nil {
+		logAcceleratorChartFailure(request, "registry_pull", err, ctx.Err())
 		if errors.Is(err, content.ErrMismatchedDigest) {
 			return nil, ErrAcceleratorIntegrity
 		}
@@ -145,12 +151,34 @@ func pullAcceleratorChart(ctx context.Context, puller acceleratorRegistryPuller,
 		return nil, ErrAcceleratorUnavailable
 	}
 	if result == nil || result.Manifest == nil || (request.Digest != "" && result.Manifest.Digest != request.Digest) || result.Chart == nil || result.Chart.Meta == nil || result.Config == nil {
+		logAcceleratorChartFailure(request, "validate_registry_response", errors.New("registry response is incomplete or does not match the requested digest"), nil)
 		return nil, ErrAcceleratorIntegrity
 	}
 	if !exactAcceleratorManifestLayers(result.Manifest.Data) {
+		logAcceleratorChartFailure(request, "validate_manifest", errors.New("registry manifest has unexpected chart layers"), nil)
 		return nil, ErrAcceleratorIntegrity
 	}
-	return loadAcceleratorArchive(result.Chart.Data, request)
+	loaded, err := loadAcceleratorArchive(result.Chart.Data, request)
+	if err != nil {
+		logAcceleratorChartFailure(request, "load_and_validate_chart", err, nil)
+		return nil, err
+	}
+	return loaded, nil
+}
+
+func logAcceleratorChartFailure(request AcceleratorChartRequest, stage string, err, contextErr error) {
+	details := map[string]interface{}{
+		"reference": request.Reference,
+		"digest":    request.Digest,
+		"stage":     stage,
+	}
+	if err != nil {
+		details["error"] = err.Error()
+	}
+	if contextErr != nil {
+		details["contextError"] = contextErr.Error()
+	}
+	debug.LogHelm("Accelerator chart pull failed", details)
 }
 
 func exactAcceleratorManifestLayers(data []byte) bool {
