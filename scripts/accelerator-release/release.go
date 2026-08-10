@@ -1081,7 +1081,6 @@ func VerifyReleaseAssetNames(buildVersion string, names []string) error {
 		"kubikles-accelerator-release-" + buildVersion + ".json.sha256",
 		"kubikles-accelerator-image-linux-amd64-" + buildVersion + ".spdx.json",
 		"kubikles-accelerator-chart-" + buildVersion + ".spdx.json",
-		"kubikles-accelerator-attestations-" + buildVersion + ".jsonl",
 	}
 	sort.Strings(want)
 	got := append([]string(nil), names...)

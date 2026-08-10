@@ -15,13 +15,6 @@ import (
 
 const (
 	ToolchainSchemaVersion = 1
-	ImageRepository        = "ghcr.io/skrobylabs/kubikles-accelerator"
-	ChartRepository        = "ghcr.io/skrobylabs/helm/kubikles-accelerator"
-	Repository             = "SkrobyLabs/kubikles"
-	ReleaseWorkflow        = "SkrobyLabs/kubikles/.github/workflows/release.yml"
-	OIDCIssuer             = "https://token.actions.githubusercontent.com"
-	SLSAPredicate          = "https://slsa.dev/provenance/v1"
-	SPDXPredicate          = "https://spdx.dev/Document/v2.3"
 )
 
 var (
@@ -50,7 +43,6 @@ type Toolchain struct {
 }
 
 var expectedActions = []ActionPin{
-	{"actions/attest", "508db95dd578ae2727ebd6217d5ba78e4fbda05d", "v4.2.1"},
 	{"actions/checkout", "11bd71901bbe5b1630ceea73d27597364c9af683", "v4.2.2"},
 	{"actions/download-artifact", "d3f86a106a0bac45b974a628896c90dbdf5c8093", "v4.3.0"},
 	{"actions/setup-go", "d35c59abb061a4a6fb18e82ac0862c26744d6ab5", "v5.5.0"},
@@ -119,7 +111,6 @@ func StableAssetNames(version string) ([]string, error) {
 	return []string{
 		"kubikles-accelerator-image-linux-amd64-" + version + ".spdx.json",
 		"kubikles-accelerator-chart-" + version + ".spdx.json",
-		"kubikles-accelerator-attestations-" + version + ".jsonl",
 	}, nil
 }
 

@@ -45,7 +45,6 @@ type artifactContract struct {
 	Descriptor         string   `json:"descriptor"`
 	DescriptorChecksum string   `json:"descriptorChecksum"`
 	SBOMs              []string `json:"sboms"`
-	Attestations       []string `json:"attestations"`
 }
 
 type planContract struct {
@@ -58,7 +57,7 @@ type planContract struct {
 var expectedMethods = []string{"CancelListRequest", "GetSecretData", "GetSecretYaml", "ListSecretsMetadata", "SubscribeSecretWatcher", "UnsubscribeSecretWatcher"}
 var expectedPlanIDs = []string{"020e8648", "1cec4c3a", "1ff2446c", "2289380c", "2d45b95b", "2e710408", "2fe9439f", "4026deaf", "44ea1f82", "53dfebec", "63140918", "66f24342", "70e5466d", "71facaab", "8ebf3759", "a02bce49", "ac978c3f", "b1854aa3", "b3ffc033", "d0eb9876", "d4f712fd", "dd19f7b6", "e590da1e", "e6c23dbd", "f256001c", "f2769f29", "f604c5fb"}
 var expectedAuthorityInputs = []string{
-	"Dockerfile.accelerator", "accelerator_lifecycle_contract.go", "accelerator_secret_router.go", "app_integrated_secrets.go", "deploy/charts/kubikles-accelerator/Chart.yaml", "deploy/charts/kubikles-accelerator/templates/clusterrole.yaml", "deploy/charts/kubikles-accelerator/templates/clusterrolebinding.yaml", "deploy/charts/kubikles-accelerator/templates/creator-verifier-secret.yaml", "deploy/charts/kubikles-accelerator/templates/job.yaml", "deploy/charts/kubikles-accelerator/templates/serviceaccount.yaml", "deploy/charts/kubikles-accelerator/values.schema.json", "internal/acceleratoracceptance/contract.go", "internal/acceleratoracceptance/report.go", "pkg/acceleratorprovision/coordinator.go", "pkg/acceleratorprovision/disposer.go", "pkg/acceleratorrelease/descriptor.go", "pkg/acceleratorsecret/contracts.go", "pkg/agent/call_context.go", "pkg/agent/lifecycle.go", "pkg/agent/policy.go", "pkg/agent/protocol.go", "pkg/k8s/accelerator_capabilities.go", "pkg/server/accelerator_idle.go", "pkg/server/accelerator_rpc.go", "release/accelerator-release.schema.json", "scripts/accelerator-supply-chain/attestation.go", "scripts/accelerator-supply-chain/evidence.go", "security/accelerator-toolchain.json", "security/accelerator-vulnerability-exceptions.schema.json", "test/accelerator/acceptance-v1.json",
+	"Dockerfile.accelerator", "accelerator_lifecycle_contract.go", "accelerator_secret_router.go", "app_integrated_secrets.go", "deploy/charts/kubikles-accelerator/Chart.yaml", "deploy/charts/kubikles-accelerator/templates/clusterrole.yaml", "deploy/charts/kubikles-accelerator/templates/clusterrolebinding.yaml", "deploy/charts/kubikles-accelerator/templates/creator-verifier-secret.yaml", "deploy/charts/kubikles-accelerator/templates/job.yaml", "deploy/charts/kubikles-accelerator/templates/serviceaccount.yaml", "deploy/charts/kubikles-accelerator/values.schema.json", "internal/acceleratoracceptance/contract.go", "internal/acceleratoracceptance/report.go", "pkg/acceleratorprovision/coordinator.go", "pkg/acceleratorprovision/disposer.go", "pkg/acceleratorrelease/descriptor.go", "pkg/acceleratorsecret/contracts.go", "pkg/agent/call_context.go", "pkg/agent/lifecycle.go", "pkg/agent/policy.go", "pkg/agent/protocol.go", "pkg/k8s/accelerator_capabilities.go", "pkg/server/accelerator_idle.go", "pkg/server/accelerator_rpc.go", "release/accelerator-release.schema.json", "scripts/accelerator-supply-chain/evidence.go", "security/accelerator-toolchain.json", "security/accelerator-vulnerability-exceptions.schema.json", "test/accelerator/acceptance-v1.json",
 }
 
 func loadContract(root string) (contract, error) {
@@ -123,7 +122,7 @@ func validateContract(c contract) error {
 	if !equal(ids, expectedPlanIDs) || !equal(c.AuthorityInputs, expectedAuthorityInputs) {
 		return errors.New("DOC-CONTRACT-AUTHORITY")
 	}
-	for _, values := range [][]string{c.Commands, c.TroubleshootingIDs, c.Pages, c.Artifacts.SBOMs, c.Artifacts.Attestations} {
+	for _, values := range [][]string{c.Commands, c.TroubleshootingIDs, c.Pages, c.Artifacts.SBOMs} {
 		if !sortedUnique(values) {
 			return errors.New("DOC-CONTRACT-ORDER")
 		}

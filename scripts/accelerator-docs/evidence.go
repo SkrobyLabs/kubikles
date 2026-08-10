@@ -65,7 +65,7 @@ var hex40 = regexp.MustCompile(`^[0-9a-f]{40}$`)
 var hex64 = regexp.MustCompile(`^[0-9a-f]{64}$`)
 var evidenceOwners = []string{"2fe9439f", "4026deaf", "dd19f7b6"}
 var ownerCommands = map[string]string{"dd19f7b6": "make test-accelerator-00-kind", "2fe9439f": "make test-accelerator-e2e", "4026deaf": "make test-accelerator-supply-chain"}
-var allowedMeasurements = map[string]map[string]bool{"dd19f7b6": {"exactPodLoopback": true}, "2fe9439f": {"acceptanceCases": true}, "4026deaf": {"attestations": true, "sbomSubjects": true}}
+var allowedMeasurements = map[string]map[string]bool{"dd19f7b6": {"exactPodLoopback": true}, "2fe9439f": {"acceptanceCases": true}, "4026deaf": {"sbomSubjects": true}}
 
 func strictDecode(b []byte, v any) error {
 	d := json.NewDecoder(bytes.NewReader(b))
@@ -156,6 +156,6 @@ func renderEvidence(m evidenceManifest, records map[string]evidenceRecord) []byt
 		r := records[f.Owner]
 		fmt.Fprintf(&b, "| `%s` | `%s` | pass | %d ms | [%s](evidence/%s) |\n", r.Owner, r.Command, r.DurationMS, f.Path, f.Path)
 	}
-	b.WriteString("\nThe observed durations describe this run only. They are not performance claims. Runtime clusters do not enforce signatures, SBOMs, provenance, or vulnerability verification.\n\n[Back to the Accelerator overview](../features/accelerator.md)\n")
+	b.WriteString("\nThe observed durations describe this run only. They are not performance claims. Runtime clusters do not enforce SBOM or vulnerability verification.\n\n[Back to the Accelerator overview](../features/accelerator.md)\n")
 	return []byte(b.String())
 }

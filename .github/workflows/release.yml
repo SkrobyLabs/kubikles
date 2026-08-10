@@ -125,10 +125,6 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    outputs:
-      image_index: ${{ steps.evidence.outputs.image_index }}
-      image_amd64: ${{ steps.evidence.outputs.image_amd64 }}
-      chart_digest: ${{ steps.evidence.outputs.chart_digest }}
     steps:
       - name: Check out source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -177,17 +173,6 @@ jobs:
         run: |
           export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
           make test-accelerator-supply-chain BUILD_VERSION="$BUILD_VERSION"
-      - id: evidence
-        name: Record artifact digests
-        shell: bash
-        run: |
-          evidence="$RUNNER_TEMP/accelerator-prepared/image-evidence.json"
-          source="$RUNNER_TEMP/accelerator-prepared/source.json"
-          {
-            echo "image_index=$(jq -er .imageDigest "$evidence")"
-            echo "image_amd64=$(jq -er '.platforms[]|select(.architecture=="amd64")|.manifestDigest' "$evidence")"
-            echo "chart_digest=$(jq -er .chartDigest "$source")"
-          } >> "$GITHUB_OUTPUT"
       - name: Upload Accelerator build artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -250,106 +235,14 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-  accelerator-attest:
-    name: Generate Accelerator attestations
-    needs: [preflight, accelerator-prepare, accelerator-publish]
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      packages: write
-      actions: read
-      id-token: write
-      attestations: write
-      artifact-metadata: write
-    steps:
-      - name: Check out source
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Download Accelerator build artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: kubikles-accelerator-prepared
-          path: ${{ runner.temp }}/accelerator-transfer
-      - name: Download Accelerator release metadata
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: kubikles-accelerator-release
-          path: ${{ runner.temp }}/accelerator-release
-      - id: extract
-        name: Verify Accelerator build artifacts
-        env:
-          BUILD_VERSION: ${{ needs.preflight.outputs.build_version }}
-          SOURCE_COMMIT: ${{ needs.preflight.outputs.source_commit }}
-        run: |
-          archive="$RUNNER_TEMP/accelerator-transfer/kubikles-accelerator-prepared-$BUILD_VERSION.tar"
-          go run ./scripts/accelerator-supply-chain/cmd/accelerator-supply-chain bundle-verify "$archive" "$archive.sha256" "$RUNNER_TEMP/accelerator-prepared" "$BUILD_VERSION" "$SOURCE_COMMIT"
-      - name: Generate Accelerator image provenance
-        id: image-provenance
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
-        with:
-          subject-name: ghcr.io/skrobylabs/kubikles-accelerator
-          subject-digest: ${{ needs.accelerator-prepare.outputs.image_index }}
-          push-to-registry: true
-      - name: Generate Accelerator chart provenance
-        id: chart-provenance
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
-        with:
-          subject-name: ghcr.io/skrobylabs/helm/kubikles-accelerator
-          subject-digest: ${{ needs.accelerator-prepare.outputs.chart_digest }}
-          push-to-registry: true
-      - name: Generate release metadata provenance
-        id: descriptor-provenance
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
-        with:
-          subject-path: ${{ runner.temp }}/accelerator-release/kubikles-accelerator-release-${{ needs.preflight.outputs.build_version }}.json
-      - name: Attach Accelerator image SBOM
-        id: image-amd64-spdx
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
-        with:
-          subject-name: ghcr.io/skrobylabs/kubikles-accelerator
-          subject-digest: ${{ needs.accelerator-prepare.outputs.image_amd64 }}
-          sbom-path: ${{ runner.temp }}/accelerator-prepared/kubikles-accelerator-image-linux-amd64-${{ needs.preflight.outputs.build_version }}.spdx.json
-          push-to-registry: true
-      - name: Attach Accelerator chart SBOM
-        id: chart-spdx
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
-        with:
-          subject-name: ghcr.io/skrobylabs/helm/kubikles-accelerator
-          subject-digest: ${{ needs.accelerator-prepare.outputs.chart_digest }}
-          sbom-path: ${{ runner.temp }}/accelerator-prepared/kubikles-accelerator-chart-${{ needs.preflight.outputs.build_version }}.spdx.json
-          push-to-registry: true
-      - name: Package Accelerator attestations
-        env:
-          BUILD_VERSION: ${{ needs.preflight.outputs.build_version }}
-          BUNDLE_1: ${{ steps.image-provenance.outputs.bundle-path }}
-          BUNDLE_2: ${{ steps.chart-provenance.outputs.bundle-path }}
-          BUNDLE_3: ${{ steps.descriptor-provenance.outputs.bundle-path }}
-          BUNDLE_4: ${{ steps.image-amd64-spdx.outputs.bundle-path }}
-          BUNDLE_5: ${{ steps.chart-spdx.outputs.bundle-path }}
-        run: |
-          set -euo pipefail
-          output="$RUNNER_TEMP/accelerator-supply-chain"; mkdir -m 0700 "$output"
-          for bundle in "$BUNDLE_1" "$BUNDLE_2" "$BUNDLE_3" "$BUNDLE_4" "$BUNDLE_5"; do jq -c . "$bundle"; done > "$output/kubikles-accelerator-attestations-$BUILD_VERSION.jsonl"
-          install -m 0600 "$RUNNER_TEMP/accelerator-prepared/kubikles-accelerator-image-linux-amd64-$BUILD_VERSION.spdx.json" "$output/"
-          install -m 0600 "$RUNNER_TEMP/accelerator-prepared/kubikles-accelerator-chart-$BUILD_VERSION.spdx.json" "$output/"
-          [ "$(wc -l < "$output/kubikles-accelerator-attestations-$BUILD_VERSION.jsonl")" = 5 ]
-      - name: Upload Accelerator attestations
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: kubikles-accelerator-supply-chain
-          path: ${{ runner.temp }}/accelerator-supply-chain/*
-          retention-days: 1
-          if-no-files-found: error
-
   release:
     name: Create GitHub release
-    needs: [preflight, build, accelerator-attest]
+    needs: [preflight, build, accelerator-publish]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
       packages: read
       actions: read
-      attestations: read
-      artifact-metadata: read
     steps:
       - name: Check out source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -372,7 +265,7 @@ jobs:
           set -euo pipefail
           export PATH="$RUNNER_TEMP/accelerator-tools:$PATH"
           assets="$RUNNER_TEMP/release-assets"; mkdir -m 0700 "$assets"
-          find "$RUNNER_TEMP/artifacts" -type f \( -name '*.zip' -o -name 'kubikles-accelerator-release-*.json' -o -name 'kubikles-accelerator-release-*.json.sha256' -o -name '*.spdx.json' -o -name 'kubikles-accelerator-attestations-*.jsonl' \) -exec cp {} "$assets/" \;
+          find "$RUNNER_TEMP/artifacts" -type f \( -name '*.zip' -o -name 'kubikles-accelerator-release-*.json' -o -name 'kubikles-accelerator-release-*.json.sha256' -o -name '*.spdx.json' \) -exec cp {} "$assets/" \;
           find "$assets" -type f -printf '%f\n' | LC_ALL=C sort > "$RUNNER_TEMP/assets.txt"
           go run ./scripts/accelerator-release verify-release-assets "$BUILD_VERSION" "$RUNNER_TEMP/assets.txt"
           ACCELERATOR_SUPPLY_CHAIN_ASSET_ROOT="$assets" make verify-accelerator-supply-chain-ghcr BUILD_VERSION="$BUILD_VERSION"

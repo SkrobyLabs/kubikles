@@ -53,7 +53,7 @@ func ValidateWorkflows(root string, toolchain Toolchain) error {
 	if !strings.Contains(string(main), "branches: [main]") || !acceptanceHasOfflinePrerequisites(string(main)) || !strings.Contains(string(main), "make test-accelerator-supply-chain BUILD_VERSION=v0.0.0") || strings.Contains(string(main), "packages: write") || strings.Contains(string(main), "id-token: write") {
 		return errors.New("main authority invalid")
 	}
-	if !strings.Contains(string(release), "cancel-in-progress: false") || !strings.Contains(string(release), "release-acceptance:") || !acceptanceHasOfflinePrerequisites(string(release)) || !strings.Contains(string(release), "accelerator-prepare:") || !strings.Contains(string(release), "accelerator-publish:") || !strings.Contains(string(release), "accelerator-attest:") || strings.Count(string(release), "actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d") != 5 {
+	if !strings.Contains(string(release), "cancel-in-progress: false") || !strings.Contains(string(release), "release-acceptance:") || !acceptanceHasOfflinePrerequisites(string(release)) || !strings.Contains(string(release), "accelerator-prepare:") || !strings.Contains(string(release), "accelerator-publish:") || strings.Contains(string(release), "actions/attest@") || strings.Contains(string(release), "attestations: write") {
 		return errors.New("release authority invalid")
 	}
 	return nil

@@ -1,7 +1,6 @@
 {
   "schemaVersion": 1,
   "actions": [
-    {"name":"actions/attest","revision":"508db95dd578ae2727ebd6217d5ba78e4fbda05d","version":"v4.2.1"},
     {"name":"actions/checkout","revision":"11bd71901bbe5b1630ceea73d27597364c9af683","version":"v4.2.2"},
     {"name":"actions/download-artifact","revision":"d3f86a106a0bac45b974a628896c90dbdf5c8093","version":"v4.3.0"},
     {"name":"actions/setup-go","revision":"d35c59abb061a4a6fb18e82ac0862c26744d6ab5","version":"v5.5.0"},

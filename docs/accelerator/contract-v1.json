@@ -35,8 +35,7 @@
     "sboms": [
       "kubikles-accelerator-chart-vX.Y.Z.spdx.json",
       "kubikles-accelerator-image-linux-amd64-vX.Y.Z.spdx.json"
-    ],
-    "attestations": ["chart-provenance", "chart-spdx", "descriptor-provenance", "image-amd64-spdx", "image-index-provenance"]
+    ]
   },
   "commands": [
     "make test-accelerator-00-kind",
@@ -89,7 +88,6 @@
     "pkg/server/accelerator_idle.go",
     "pkg/server/accelerator_rpc.go",
     "release/accelerator-release.schema.json",
-    "scripts/accelerator-supply-chain/attestation.go",
     "scripts/accelerator-supply-chain/evidence.go",
     "security/accelerator-toolchain.json",
     "security/accelerator-vulnerability-exceptions.schema.json",

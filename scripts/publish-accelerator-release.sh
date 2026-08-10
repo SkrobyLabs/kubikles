@@ -451,8 +451,7 @@ write_local_asset_contract() {
     Kubikles-windows-amd64.zip Kubikles-windows-arm64.zip \
     "$(basename "$descriptor")" "$(basename "$descriptor.sha256")" \
     "kubikles-accelerator-image-linux-amd64-$version.spdx.json" \
-    "kubikles-accelerator-chart-$version.spdx.json" \
-    "kubikles-accelerator-attestations-$version.jsonl" > "$directory/assets.txt"
+    "kubikles-accelerator-chart-$version.spdx.json" > "$directory/assets.txt"
 }
 
 expect_publication_failure() {

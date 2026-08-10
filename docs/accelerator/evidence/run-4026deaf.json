@@ -26,7 +26,6 @@
     "trivy": "Version: 0.70.0"
   },
   "measurements": {
-    "attestations": 6,
     "sbomSubjects": 3
   }
 }

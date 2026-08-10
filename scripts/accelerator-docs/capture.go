@@ -55,7 +55,7 @@ func captureEvidence(root string) error {
 	gates := []gate{
 		{"dd19f7b6", "make test-accelerator-00-kind", "disposable exact-Pod loopback and Direct baseline", map[string]int64{"exactPodLoopback": 1}},
 		{"2fe9439f", "make test-accelerator-e2e", "closed offline Integrated acceptance", map[string]int64{"acceptanceCases": 18}},
-		{"4026deaf", "make test-accelerator-supply-chain", "reproducible linux/amd64 image and chart release set", map[string]int64{"attestations": 5, "sbomSubjects": 2}},
+		{"4026deaf", "make test-accelerator-supply-chain", "reproducible linux/amd64 image and chart release set", map[string]int64{"sbomSubjects": 2}},
 	}
 	records := map[string]evidenceRecord{}
 	for _, g := range gates {

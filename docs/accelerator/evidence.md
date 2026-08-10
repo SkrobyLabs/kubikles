@@ -12,6 +12,6 @@ Kubikles Accelerator is referred to here as Accelerator. This generated page rec
 | `4026deaf` | `make test-accelerator-supply-chain` | pass | 147731 ms | [run-4026deaf.json](evidence/run-4026deaf.json) |
 | `dd19f7b6` | `make test-accelerator-00-kind` | pass | 58068 ms | [run-dd19f7b6.json](evidence/run-dd19f7b6.json) |
 
-The observed durations describe this run only. They are not performance claims. Runtime clusters do not enforce signatures, SBOMs, provenance, or vulnerability verification.
+The observed durations describe this run only. They are not performance claims. Runtime clusters do not enforce SBOM or vulnerability verification.
 
 [Back to the Accelerator overview](../features/accelerator.md)

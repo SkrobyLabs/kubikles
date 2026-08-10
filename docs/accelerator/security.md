@@ -26,6 +26,6 @@ Cluster-wide Secret read is a substantial blast radius. The role is minimal for 
 
 ## Non-goals
 
-Accelerator is not a generic proxy, mutation service, public server, HA service, compatibility bridge, or user-configurable authorization system. It does not promise universal Kubernetes compatibility, latency improvement, attack resistance, or automatic recovery under every failure. Runtime signature/admission enforcement is outside the product; release verification evidence is documented separately.
+Accelerator is not a generic proxy, mutation service, public server, HA service, compatibility bridge, or user-configurable authorization system. It does not promise universal Kubernetes compatibility, latency improvement, attack resistance, or automatic recovery under every failure. Registry admission enforcement is outside the product; release verification evidence is documented separately.
 
 [Operations and release verification](operations.md) · [Acceptance evidence](evidence.md) · [Back to overview](../features/accelerator.md)

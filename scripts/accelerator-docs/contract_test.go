@@ -19,7 +19,7 @@ func TestDocumentationContractExactV1(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(c.Plans) != 27 || len(c.Operations) != 6 || len(c.AuthorityInputs) != 30 {
+	if len(c.Plans) != 27 || len(c.Operations) != 6 || len(c.AuthorityInputs) != 29 {
 		t.Fatal("closed contract cardinality drifted")
 	}
 }

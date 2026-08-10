@@ -6,7 +6,7 @@ Kubikles Accelerator is referred to here as Accelerator. It is deployed only aft
 
 The desktop needs working Kubernetes credentials plus access to create the fixed Helm release. The chart owns exactly five objects: ServiceAccount, ClusterRole, ClusterRoleBinding, verifier Secret, and Job. The ClusterRole is cluster-wide because the v1 contract reads Secrets in all namespaces. Its only core Secret verbs are `get`, `list`, and `watch`; there are no Secret writes, workload verbs, impersonation, escalation, bind, self-review permission, or configurable permission modes.
 
-`get` is necessary because explicit detail and YAML responses contain values. Lists and watches project only name, namespace, UID, creation timestamp, type, and data-key count. They exclude values, key names, labels, annotations, last-applied content, and raw objects. Values may exist only in the requested detail response and transient UI/client memory—not in lists, watches, progress, logs, diagnostics, reports, bundles, SBOMs, attestations, or CI artifacts.
+`get` is necessary because explicit detail and YAML responses contain values. Lists and watches project only name, namespace, UID, creation timestamp, type, and data-key count. They exclude values, key names, labels, annotations, last-applied content, and raw objects. Values may exist only in the requested detail response and transient UI/client memory—not in lists, watches, progress, logs, diagnostics, reports, bundles, SBOMs, or CI artifacts.
 
 Permission preview can be checked without reading a Secret:
 
@@ -26,7 +26,7 @@ Settings > Accelerator > Development overrides can select a target release versi
 
 The image repository is `ghcr.io/skrobylabs/kubikles-accelerator`; the chart repository is `oci://ghcr.io/skrobylabs/helm/kubikles-accelerator`. Accelerator images currently support only `linux/amd64`; `linux/arm64` publication is deferred. Consumers use descriptor and digest identity, not `latest`, a mutable channel, or a tag-only install. A stable tag `vX.Y.Z`, `BuildVersion` `vX.Y.Z`, and chart version `X.Y.Z` identify the same release. Stable tags must point to protected `main`, produce ordinary GitHub Releases, and remain immutable.
 
-Canonical SemVer prerelease tags such as `v1.4.0-alpha.1`, `v1.4.0-beta.2`, or `v1.4.0-rc.1` run the same build, acceptance, digest read-back, SBOM, attestation, and descriptor pipeline. They may point to a development-branch commit and are published as GitHub prereleases. The repository exposes one moving prerelease slot: after the new prerelease is completely created and verified, older non-draft GitHub prereleases are deleted. Stable releases, drafts, Git tags, and digest-addressed GHCR artifacts are never removed by slot replacement. All release publications are serialized to prevent two prerelease tags racing the slot.
+Canonical SemVer prerelease tags such as `v1.4.0-alpha.1`, `v1.4.0-beta.2`, or `v1.4.0-rc.1` run the same build, acceptance, digest read-back, SBOM, and descriptor pipeline. They may point to a development-branch commit and are published as GitHub prereleases. The repository exposes one moving prerelease slot: after the new prerelease is completely created and verified, older non-draft GitHub prereleases are deleted. Stable releases, drafts, Git tags, and digest-addressed GHCR artifacts are never removed by slot replacement. All release publications are serialized to prevent two prerelease tags racing the slot.
 
 Push the appropriate exact tag to publish:
 
@@ -40,7 +40,7 @@ git push origin v1.4.0
 
 An officially published prerelease desktop resolves its matching Accelerator descriptor automatically. Development overrides remain available for custom descriptor hosting and mismatched local builds.
 
-Each release includes `kubikles-accelerator-release-VERSION.json` and its checksum, plus two SPDX files: the chart and linux/amd64 image SBOMs. Five attestations cover chart provenance/SBOM, image provenance and linux/amd64 SBOM, and release provenance. Vulnerability policy covers LOW through CRITICAL; HIGH/CRITICAL exceptions require the exact vulnerability ID, purl, artifact, owner, justification, and an exclusive `expiresOn` date. Verification fixes the GitHub workflow identity to this repository and release workflow.
+Each release includes `kubikles-accelerator-release-VERSION.json` and its checksum, plus two SPDX files: the chart and linux/amd64 image SBOMs. Vulnerability policy covers LOW through CRITICAL; HIGH/CRITICAL exceptions require the exact vulnerability ID, purl, artifact, owner, justification, and an exclusive `expiresOn` date.
 
 Run the bounded checks rather than copying mutable registry commands:
 
@@ -51,7 +51,7 @@ make verify-accelerator-release-ghcr BUILD_VERSION=vX.Y.Z
 make verify-accelerator-supply-chain-ghcr BUILD_VERSION=vX.Y.Z
 ```
 
-Desktop resolution verifies the descriptor checksum, image/chart digests, and `BuildVersion`. Runtime clusters do not enforce signatures, SBOMs, provenance, or vulnerability policy; those are publication and verification controls, not admission controls.
+Desktop resolution verifies the descriptor checksum, image/chart digests, and `BuildVersion`. Runtime clusters do not enforce SBOM or vulnerability policy; those are publication and verification controls, not admission controls.
 
 ## Troubleshooting
 
