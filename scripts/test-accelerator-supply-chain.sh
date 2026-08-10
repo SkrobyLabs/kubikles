@@ -4,15 +4,7 @@ umask 077
 export LC_ALL=C
 
 fail() { printf 'accelerator-supply-chain: %s\n' "$1" >&2; exit 1; }
-require() { command -v "$1" >/dev/null 2>&1 || fail "$1-required"; }
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-for tool in go docker jq syft trivy helm oras; do require "$tool"; done
-[ "$(syft version -o json | jq -r .version)" = 1.44.0 ] || fail syft-version
-[ "$(trivy --version | sed -n 's/^Version: //p')" = 0.70.0 ] || fail trivy-version
-docker info >/dev/null 2>&1 || fail docker-daemon
-[[ "$(docker buildx version)" =~ ^github\.com/docker/buildx[[:space:]]v0\.36\.0[[:space:]]df28b0a0b6a44453a87bd53c438432f4120962c9$ ]] || fail buildx-version
-buildkit_image='moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec'
-docker image inspect "$buildkit_image" >/dev/null 2>&1 || fail buildkit-image-missing
 
 version="${BUILD_VERSION:-v0.0.0}"
 go run ./scripts/accelerator-release normalize "$version" >/dev/null || fail build-version

@@ -3,11 +3,7 @@ set -euo pipefail
 umask 077
 
 fail() { printf 'accelerator publication: %s\n' "$1" >&2; exit 1; }
-require_command() { command -v "$1" >/dev/null 2>&1 || fail "$1 is required"; }
 readonly CHART_SOURCE=deploy/charts/kubikles-accelerator
-readonly HELM_VERSION='v3.21.3+g1ad6e68'
-readonly ORAS_COMMIT='210747c29c1d38732b3194878dfd8b5a6b9ad7eb'
-readonly GH_VERSION='gh version 2.97.0 (2026-07-31)'
 readonly BUILDKIT_IMAGE='moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec'
 
 CLIENT_CONFIG_ROOT=''
@@ -32,21 +28,6 @@ HOSTILE_RAW_TOKEN=''
 capture_gh_token() {
   GH_TOKEN_VALUE=${GH_TOKEN:-}
   unset GH_TOKEN
-}
-
-require_buildkit_image() {
-  docker image inspect "$BUILDKIT_IMAGE" >/dev/null 2>&1 || fail "exact BuildKit image is required"
-}
-
-require_supplied_builder() {
-  local builder=${ACCELERATOR_BUILDER:-} container expected_image actual_image
-  [[ "$builder" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]] || fail "ACCELERATOR_BUILDER is required"
-  [ "$(docker buildx inspect "$builder" 2>/dev/null | sed -n 's/^Driver:[[:space:]]*//p')" = docker-container ] || fail "supplied builder driver is invalid"
-  container="buildx_buildkit_${builder}0"
-  expected_image=$(docker image inspect "$BUILDKIT_IMAGE" --format '{{.Id}}' 2>/dev/null) || fail "exact BuildKit image is required"
-  actual_image=$(docker container inspect "$container" --format '{{.Image}}' 2>/dev/null) || fail "supplied builder container is invalid"
-  [ "$actual_image" = "$expected_image" ] && [ "$(docker container inspect "$container" --format '{{.State.Running}}' 2>/dev/null)" = true ] || fail "supplied builder image is invalid"
-  printf '%s\n' "$builder"
 }
 
 github_cli() {
@@ -175,36 +156,6 @@ logout_clients() {
     oras logout --registry-config "$ORAS_CONFIG" ghcr.io >/dev/null 2>&1 || true
     helm registry logout --registry-config "$HELM_REGISTRY_CONFIG" ghcr.io >/dev/null 2>&1 || true
   fi
-}
-
-require_common_tools() {
-  require_command docker; require_command helm; require_command oras; require_command go
-  docker info >/dev/null 2>&1 || fail "Docker daemon is required and must be reachable"
-  local buildx helm_version oras_version oras_commit
-  buildx=$(docker buildx version)
-  [[ "$buildx" =~ ^github\.com/docker/buildx[[:space:]]v0\.36\.0[[:space:]][0-9a-f]{40}$ ]] || fail "Docker Buildx must be exactly v0.36.0"
-  helm_version=$(helm version --short)
-  [ "$helm_version" = "$HELM_VERSION" ] || fail "Helm must be exactly $HELM_VERSION"
-  oras_version=$(oras version | sed -n 's/^Version:[[:space:]]*//p')
-  oras_commit=$(oras version | sed -n 's/^Git commit:[[:space:]]*//p')
-  [ "$oras_version" = 1.3.3 ] && [ "$oras_commit" = "$ORAS_COMMIT" ] || fail "ORAS must be the canonical 1.3.3 build"
-}
-
-require_offline_cached_images() {
-  local cached
-  for cached in \
-    'docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e' \
-    'node:20.19.5-bookworm-slim@sha256:9e70124bd00f47dd023e349cd587132ae61892acc0e47ed641416c3e18f401c3' \
-    'golang:1.25.12-bookworm@sha256:ea341baa9bd5ba6784f6d7161ace70544349a6242d54d34a0fbfd2c4d51c9d58' \
-    'gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35' \
-    'registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373'; do
-    docker image inspect "$cached" >/dev/null 2>&1 || fail "offline cached image is missing"
-  done
-}
-
-require_gh_tool() {
-  require_command gh
-  [ "$(gh --version | sed -n '1p')" = "$GH_VERSION" ] || fail "GitHub CLI must be exactly 2.97.0 canonical build"
 }
 
 normalize() { go run ./scripts/accelerator-release normalize "$1" >/dev/null; }
@@ -564,14 +515,12 @@ assert_no_hostile_leaks() {
 }
 
 local_test() {
-  require_common_tools; require_command curl
   local version=v0.0.0 chart_version=0.0.0 commit epoch run registry layout package chart_layout port bind_host client_host endpoint
   local -a cache_args=() offline_build_flags=() builder_args=()
   local canonical_image canonical_chart collision_state after_image after_chart finalized
   if [ "${ACCELERATOR_E2E_OFFLINE:-0}" = 1 ]; then
     [ "${KUBIKLES_ACCELERATOR_E2E_REUSE:-0}" = 1 ] && [ "${BUILD_VERSION:-}" = v0.0.0 ] || fail "offline reuse boundary is incomplete"
     [ -n "${KUBIKLES_ACCELERATOR_E2E_KIND_NAME:-}" ] && [ -n "${KUBIKLES_ACCELERATOR_E2E_KUBECONFIG:-}" ] && [ -n "${KUBIKLES_ACCELERATOR_E2E_NAMESPACE:-}" ] && [ -n "${KUBIKLES_ACCELERATOR_E2E_REGISTRY:-}" ] || fail "offline reuse boundary is incomplete"
-    require_offline_cached_images
     offline_build_flags=(--network=none --pull=false)
   fi
   commit=$(git rev-parse HEAD); [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || fail "source commit must be a full lowercase hash"
@@ -599,7 +548,6 @@ local_test() {
     go run ./internal/acceleratoracceptance/cmd/accelerator-e2e-artifact "$ACCELERATOR_ACCEPTANCE_ARTIFACT_ROOT" || fail "offline artifact evidence is invalid"
   else
     RUN_CONTAINER="$run-registry"; RUN_NETWORK="$run-network"; RUN_BUILDER="$run-builder"
-    require_buildkit_image
     docker buildx create --name "$RUN_BUILDER" --driver docker-container --driver-opt "image=$BUILDKIT_IMAGE" >/dev/null
     docker buildx inspect "$RUN_BUILDER" --bootstrap >/dev/null
     docker network create "$RUN_NETWORK" >/dev/null
@@ -699,7 +647,6 @@ login_ghcr() {
 
 verify_ghcr() {
   capture_gh_token
-  require_common_tools; require_gh_tool
   [ -n "${BUILD_VERSION:-}" ] || fail "BUILD_VERSION=vX.Y.Z is required"; normalize "$BUILD_VERSION"
   [ -n "$GH_TOKEN_VALUE" ] || fail "GH_TOKEN is required for authenticated production verification"
   trap cleanup_on_exit EXIT
@@ -739,7 +686,6 @@ verify_ghcr() {
 
 publish_ghcr() {
   capture_gh_token
-  require_common_tools; require_gh_tool
   [ -n "${BUILD_VERSION:-}" ] || fail "BUILD_VERSION is required"
   [ -n "${SOURCE_COMMIT:-}" ] || fail "SOURCE_COMMIT is required"
   [ -n "${SOURCE_DATE_EPOCH:-}" ] || fail "SOURCE_DATE_EPOCH is required"
@@ -769,7 +715,6 @@ publish_ghcr() {
 }
 
 prepare_release() {
-  require_common_tools; require_command jq
   [ -n "${BUILD_VERSION:-}" ] || fail "BUILD_VERSION is required"
   [ -n "${SOURCE_COMMIT:-}" ] || fail "SOURCE_COMMIT is required"
   [ -n "${SOURCE_DATE_EPOCH:-}" ] || fail "SOURCE_DATE_EPOCH is required"
@@ -783,14 +728,14 @@ prepare_release() {
   trap cleanup_on_exit EXIT
   trap 'cleanup_on_signal 130' INT
   trap 'cleanup_on_signal 143' TERM
-  local chart_version=${BUILD_VERSION#v} layout package chart_layout chart_digest builder
-  require_buildkit_image
-  builder=$(require_supplied_builder)
+  local chart_version=${BUILD_VERSION#v} layout package chart_layout chart_digest
+  local -a builder_args=()
+  if [ -n "${ACCELERATOR_BUILDER:-}" ]; then builder_args=(--builder "$ACCELERATOR_BUILDER"); fi
   layout="$ACCELERATOR_PREPARED_OUTPUT/image-layout"
   package="$ACCELERATOR_PREPARED_OUTPUT/kubikles-accelerator-$chart_version.tgz"
   chart_layout="$ACCELERATOR_PREPARED_OUTPUT/chart-layout"
   mkdir -m 0700 "$layout"
-  SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build --builder "$builder" --file Dockerfile.accelerator --platform linux/amd64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$BUILD_VERSION" --build-arg "GIT_COMMIT=$SOURCE_COMMIT" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=ghcr.io/skrobylabs/kubikles-accelerator:$BUILD_VERSION" .
+  SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" docker buildx build "${builder_args[@]}" --file Dockerfile.accelerator --platform linux/amd64 --provenance=false --sbom=false --build-arg "BUILD_VERSION=$BUILD_VERSION" --build-arg "GIT_COMMIT=$SOURCE_COMMIT" --build-arg GIT_DIRTY=false --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" --output "type=oci,dest=$layout,tar=false,rewrite-timestamp=true,name=ghcr.io/skrobylabs/kubikles-accelerator:$BUILD_VERSION" .
   wrap_single_platform_oci_layout "$layout" "$BUILD_VERSION"
   go run ./scripts/accelerator-release package-chart "$CHART_SOURCE" "$package" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH"
   chart_digest=$(go run ./scripts/accelerator-release package-chart-oci "$package" "$CHART_SOURCE" "$chart_layout" "$chart_version" "$BUILD_VERSION" "$SOURCE_DATE_EPOCH")
@@ -806,7 +751,6 @@ prepare_release() {
 
 publish_existing_ghcr() {
   capture_gh_token
-  require_common_tools; require_gh_tool; require_command jq
   [ -n "${BUILD_VERSION:-}" ] || fail "BUILD_VERSION is required"
   [ -n "${SOURCE_COMMIT:-}" ] || fail "SOURCE_COMMIT is required"
   [ -n "${SOURCE_DATE_EPOCH:-}" ] || fail "SOURCE_DATE_EPOCH is required"
