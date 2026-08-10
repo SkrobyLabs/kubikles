@@ -1,28 +1,49 @@
+<!-- solution-docs:begin feature-accelerator -->
 # Kubikles Accelerator
 
-Kubikles Accelerator is an optional, explicitly enabled, connection-scoped disposable Kubernetes Job that can move a narrowly defined set of Secret reads closer to the API server. Accelerator is disabled by default. Direct access remains immediate and authoritative whenever acceleration is unavailable or unsafe.
+Kubikles Accelerator is an optional, explicitly enabled companion that moves a
+narrow set of Secret reads closer to the Kubernetes API. It exists for clusters
+where those reads benefit from running in-cluster without changing how the rest of
+Kubikles works. Direct desktop access remains authoritative and immediately
+available whenever Accelerator is disabled, unavailable, or unsafe to use.
 
-Enable & Deploy is owned by the selected connection, never by the Secrets view. The Settings default can enable a connection and set a namespace; a connection can override either value. Namespace resolution is connection override, Settings default, kubeconfig context namespace, then `default`. The connection control shows safe lifecycle progress and can Retry a settled failure or Disable & Remove an owned workload. Exact release and Pod metadata navigate to the existing Helm Releases and Pods views; Kubikles does not expose deployment logs, credentials, Secret values, or raw backend errors.
+## What it does
 
-## Choose a mode
+Accelerator is owned by the selected connection and deployed as a disposable
+workload in that connection's cluster. Once its identity, access, and authenticated
+session are valid, Kubikles can use it for Secret list, detail, and watch requests.
+Users can enable, retry, redeploy, or remove it from the connection controls; they
+do not choose a separate routing or permission mode.
 
-| Mode | When it applies | What it can do | What it never does |
-|---|---|---|---|
-| Direct | Always, including every fallback | All ordinary desktop operations through the desktop Kubernetes client | Depend on the disposable Job |
-| Integrated | Automatically after exact identity, version, authentication, and capability checks | Secret list, detail, and watch reads | Mutations or non-Secret reads |
+| Path | Purpose | Boundary |
+|---|---|---|
+| Direct | All ordinary Kubernetes operations and every fallback | Never depends on Accelerator |
+| Integrated | Secret list, detail, and watch reads | Never handles mutations or non-Secret resources |
 
-There is no routing or RBAC mode for users to select. Integrated covers exactly three user-visible read categories. Its six technical operations are maintained in the [development contract](../accelerator/development.md#exact-operation-boundary).
+The architecture and fallback flow live in [Architecture](../architecture.md#optional-accelerator-path);
+this page deliberately does not repeat the component mechanics.
 
-## Exact compatibility and fallback
+## Why the boundary is narrow
 
-Desktop and Accelerator must report literal, nonempty `BuildVersion` equality. Versions are opaque strings: there are no ranges, semantic-version rules, N−1 support, capability compatibility bridge, or backward-compatibility promise. On the first mismatch, the desktop disposes the workload, resolves a fresh descriptor, and may create one replacement. If that replacement also mismatches, it is disposed, no third workload is created, and Direct is latched for the current desktop session or continuous-demand epoch.
+Accelerator uses a dedicated, fixed read-only Kubernetes identity. Collection
+views expose Secret metadata without values, while an explicitly requested detail
+may return values to the desktop. Keeping the capability fixed makes fallback
+predictable and prevents the companion from becoming a general-purpose proxy.
 
-Permission self-review and every provisioning, authentication, connection, or routing failure fail closed to Direct. Accelerator is an optimization, never an availability prerequisite.
+Every identity, permission, compatibility, authentication, or connection failure
+returns reads to Direct. Accelerator is an optimization, not an availability or
+performance guarantee.
 
-## Read next
+## Honest security boundaries
 
-- [Architecture and lifecycle](../accelerator/architecture.md)
-- [Operations and release verification](../accelerator/operations.md)
-- [Security and privacy](../accelerator/security.md)
-- [Maintainer contract](../accelerator/development.md)
-- [Acceptance evidence](../accelerator/evidence.md)
+The workload's cluster-wide Secret read authority has a substantial blast radius.
+Accelerator reduces what crosses collection views and what operations can be
+routed through it, but it cannot protect Secret values from a compromised desktop,
+cluster node, control plane, or authorized service account. It is not a mutation
+service, public server, high-availability service, compatibility bridge, or
+user-configurable authorization system.
+
+Code entry point: [Accelerator integration](../../accelerator_lifecycle_contract.go).
+
+_Generated by solution-docs against commit `0643b24` on 2026-08-10._
+<!-- solution-docs:end feature-accelerator -->
