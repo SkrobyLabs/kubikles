@@ -295,6 +295,16 @@ func splitDigestReference(reference string) (repository, digest string) {
 	return "", ""
 }
 
+func effectiveAttemptImageReference(attempt chartAttempt) string {
+	if attempt.ImageReference != "" {
+		return attempt.ImageReference
+	}
+	if attempt.ImageRepository != "" && attempt.ImageDigest != "" {
+		return attempt.ImageRepository + "@" + attempt.ImageDigest
+	}
+	return ""
+}
+
 type gateEntry struct {
 	token chan struct{}
 	refs  int

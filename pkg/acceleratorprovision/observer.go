@@ -2,8 +2,11 @@ package acceleratorprovision
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
+
+	"kubikles/pkg/debug"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -207,9 +210,11 @@ func observerErrorReason(ctx context.Context, err error, fallback UnavailableRea
 func evaluateWorkload(job *batchv1.Job, podMap map[string]*corev1.Pod, attempt chartAttempt) (ObjectIdentity, ObjectIdentity, UnavailableReason, bool) {
 	if job != nil {
 		if !validObservedJob(job, attempt) {
+			logObservedWorkloadFailure("validate_job", JobFailed, attempt, job, nil)
 			return ObjectIdentity{}, ObjectIdentity{}, JobFailed, true
 		}
 		if reason := jobState(job); reason != "" {
+			logObservedWorkloadFailure("job_state", reason, attempt, job, nil)
 			return ObjectIdentity{}, ObjectIdentity{}, reason, true
 		}
 	}
@@ -218,6 +223,7 @@ func evaluateWorkload(job *batchv1.Job, podMap map[string]*corev1.Pod, attempt c
 		pods = append(pods, pod)
 	}
 	if len(pods) > 1 {
+		logObservedWorkloadFailure("multiple_pods", PodFailed, attempt, job, nil)
 		return ObjectIdentity{}, ObjectIdentity{}, PodFailed, true
 	}
 	if len(pods) == 0 {
@@ -231,9 +237,11 @@ func evaluateWorkload(job *batchv1.Job, podMap map[string]*corev1.Pod, attempt c
 		return ObjectIdentity{}, ObjectIdentity{}, "", false
 	}
 	if !validObservedPod(pod, job, attempt) {
+		logObservedWorkloadFailure("validate_pod", PodFailed, attempt, job, pod)
 		return ObjectIdentity{}, ObjectIdentity{}, PodFailed, true
 	}
 	if reason := podState(pod); reason != "" {
+		logObservedWorkloadFailure("pod_state", reason, attempt, job, pod)
 		return ObjectIdentity{}, ObjectIdentity{}, reason, true
 	}
 	if usablePod(pod) {
@@ -243,19 +251,21 @@ func evaluateWorkload(job *batchv1.Job, podMap map[string]*corev1.Pod, attempt c
 }
 
 func validObservedJob(job *batchv1.Job, attempt chartAttempt) bool {
+	expectedImage := effectiveAttemptImageReference(attempt)
 	if job == nil || attempt.JobUID == "" || job.Name != attempt.JobName || job.Namespace != attempt.Namespace || string(job.UID) != attempt.JobUID || job.DeletionTimestamp != nil ||
 		job.Labels["kubikles.io/workload-session-id"] != attempt.Session || job.Labels["app.kubernetes.io/instance"] != attempt.ReleaseName || job.Labels["app.kubernetes.io/managed-by"] != "Helm" ||
 		job.Annotations["kubikles.io/build-version"] != attempt.BuildVersion || job.Spec.Template.Labels["kubikles.io/workload-session-id"] != attempt.Session ||
-		job.Spec.Template.Annotations["kubikles.io/build-version"] != attempt.BuildVersion || len(job.Spec.Template.Spec.Containers) != 1 {
+		job.Spec.Template.Annotations["kubikles.io/build-version"] != attempt.BuildVersion || len(job.Spec.Template.Spec.Containers) != 1 || expectedImage == "" {
 		return false
 	}
-	return job.Spec.Template.Spec.Containers[0].Image == attempt.ImageRepository+"@"+attempt.ImageDigest
+	return job.Spec.Template.Spec.Containers[0].Image == expectedImage
 }
 
 func validObservedPod(pod *corev1.Pod, job *batchv1.Job, attempt chartAttempt) bool {
+	expectedImage := effectiveAttemptImageReference(attempt)
 	if pod == nil || pod.Namespace != attempt.Namespace || pod.Name == "" || pod.UID == "" || pod.DeletionTimestamp != nil ||
 		pod.Labels["kubikles.io/workload-session-id"] != attempt.Session || pod.Labels["app.kubernetes.io/instance"] != attempt.ReleaseName || pod.Labels["app.kubernetes.io/managed-by"] != "Helm" ||
-		pod.Annotations["kubikles.io/build-version"] != attempt.BuildVersion || len(pod.Spec.Containers) != 1 || pod.Spec.Containers[0].Image != attempt.ImageRepository+"@"+attempt.ImageDigest {
+		pod.Annotations["kubikles.io/build-version"] != attempt.BuildVersion || len(pod.Spec.Containers) != 1 || expectedImage == "" || pod.Spec.Containers[0].Image != expectedImage {
 		return false
 	}
 	for _, owner := range pod.OwnerReferences {
@@ -264,6 +274,64 @@ func validObservedPod(pod *corev1.Pod, job *batchv1.Job, attempt chartAttempt) b
 		}
 	}
 	return false
+}
+
+func logObservedWorkloadFailure(stage string, reason UnavailableReason, attempt chartAttempt, job *batchv1.Job, pod *corev1.Pod) {
+	details := map[string]interface{}{
+		"stage":          stage,
+		"reason":         reason,
+		"namespace":      attempt.Namespace,
+		"release":        attempt.ReleaseName,
+		"expectedJob":    attempt.JobName,
+		"expectedJobUID": attempt.JobUID,
+		"expectedImage":  effectiveAttemptImageReference(attempt),
+	}
+	if job != nil {
+		details["job"] = job.Name
+		details["jobUID"] = string(job.UID)
+		details["jobActive"] = job.Status.Active
+		details["jobFailed"] = job.Status.Failed
+		details["jobSucceeded"] = job.Status.Succeeded
+		details["jobConditions"] = observedJobConditions(job)
+		if len(job.Spec.Template.Spec.Containers) == 1 {
+			details["jobImage"] = job.Spec.Template.Spec.Containers[0].Image
+		}
+	}
+	if pod != nil {
+		details["pod"] = pod.Name
+		details["podUID"] = string(pod.UID)
+		details["podPhase"] = pod.Status.Phase
+		if len(pod.Spec.Containers) == 1 {
+			details["podImage"] = pod.Spec.Containers[0].Image
+		}
+		if len(pod.Status.ContainerStatuses) == 1 {
+			status := pod.Status.ContainerStatuses[0]
+			details["containerReady"] = status.Ready
+			switch {
+			case status.State.Waiting != nil:
+				details["containerState"] = "waiting"
+				details["containerReason"] = status.State.Waiting.Reason
+			case status.State.Running != nil:
+				details["containerState"] = "running"
+			case status.State.Terminated != nil:
+				details["containerState"] = "terminated"
+				details["containerReason"] = status.State.Terminated.Reason
+				details["containerExitCode"] = status.State.Terminated.ExitCode
+			}
+		}
+	}
+	debug.LogK8s("Accelerator workload observation failed", details)
+}
+
+func observedJobConditions(job *batchv1.Job) []string {
+	if job == nil || len(job.Status.Conditions) == 0 {
+		return nil
+	}
+	conditions := make([]string, 0, len(job.Status.Conditions))
+	for _, condition := range job.Status.Conditions {
+		conditions = append(conditions, fmt.Sprintf("%s=%s reason=%s message=%s", condition.Type, condition.Status, condition.Reason, condition.Message))
+	}
+	return conditions
 }
 
 func jobState(job *batchv1.Job) UnavailableReason {

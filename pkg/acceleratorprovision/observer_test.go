@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"kubikles/pkg/debug"
+	"kubikles/pkg/events"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -159,6 +162,58 @@ func TestObserveExactWorkloadUsable(t *testing.T) {
 	})
 }
 
+func TestObserveExactWorkloadWithTaggedImageReference(t *testing.T) {
+	attempt := observerAttempt()
+	attempt.ImageReference = "registry.example.test/team/accelerator:dev"
+	attempt.ImageRepository = ""
+	attempt.ImageDigest = ""
+	job := observedJob(attempt)
+	pod := observedPod(attempt, job)
+	api := &scriptedWorkloadAPI{jobs: &batchv1.JobList{Items: []batchv1.Job{*job}}, pods: &corev1.PodList{Items: []corev1.Pod{*pod}}}
+	gotJob, gotPod, reason := (KubernetesObserver{API: api}).Observe(context.Background(), attempt, nil, func() UnavailableReason { return "" })
+	if reason != "" || gotJob.UID != "job-uid" || gotPod.UID != "pod-uid" {
+		t.Fatalf("tagged workload rejected: job=%#v pod=%#v reason=%s", gotJob, gotPod, reason)
+	}
+}
+
+func TestObserveFailureLogsBackendWorkloadDetails(t *testing.T) {
+	debugEvents := make(chan []interface{}, 1)
+	debug.Init(events.EmitterFunc(func(name string, data ...interface{}) {
+		if name == "debug:log" {
+			debugEvents <- data
+		}
+	}))
+	debug.SetEnabled(true)
+	t.Cleanup(func() {
+		debug.SetEnabled(false)
+		debug.Init(&events.NoopEmitter{})
+	})
+
+	attempt := observerAttempt()
+	job := observedJob(attempt)
+	job.Spec.Template.Spec.Containers[0].Image = "registry.example.test/wrong:dev"
+	_, _, reason := (KubernetesObserver{API: &scriptedWorkloadAPI{jobs: &batchv1.JobList{Items: []batchv1.Job{*job}}, pods: &corev1.PodList{}}}).Observe(context.Background(), attempt, nil, func() UnavailableReason { return "" })
+	if reason != JobFailed {
+		t.Fatalf("reason=%s", reason)
+	}
+	select {
+	case data := <-debugEvents:
+		if len(data) != 1 {
+			t.Fatalf("debug event=%#v", data)
+		}
+		payload, ok := data[0].(map[string]interface{})
+		if !ok || payload["category"] != debug.CategoryK8s || payload["message"] != "Accelerator workload observation failed" {
+			t.Fatalf("debug payload=%#v", data[0])
+		}
+		details, ok := payload["details"].(map[string]interface{})
+		if !ok || details["stage"] != "validate_job" || details["reason"] != JobFailed || details["expectedImage"] != effectiveAttemptImageReference(attempt) || details["jobImage"] != "registry.example.test/wrong:dev" {
+			t.Fatalf("debug details=%#v", payload["details"])
+		}
+	case <-time.After(time.Second):
+		t.Fatal("backend workload failure was not logged")
+	}
+}
+
 func TestObserveTerminalStates(t *testing.T) {
 	attempt := observerAttempt()
 	tests := map[string]struct {
@@ -267,10 +322,11 @@ func TestObserveCleanWatchClosureBacksOffBeforeRelist(t *testing.T) {
 }
 
 func observerAttempt() chartAttempt {
+	digest := "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	return chartAttempt{
 		ReleaseName: "kubikles-accelerator-202122232425262728292a2b2c2d2e2f", Namespace: "default",
 		Session: "202122232425262728292a2b2c2d2e2f", BuildVersion: "v1.2.3",
-		ImageRepository: imageRepository, ImageDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		ImageReference: imageRepository + "@" + digest, ImageRepository: imageRepository, ImageDigest: digest,
 		JobName: "kubikles-accelerator-202122232425262728292a2b2c2d2e2f-kubikles", JobUID: "job-uid",
 	}
 }
@@ -280,7 +336,7 @@ func observedJob(attempt chartAttempt) *batchv1.Job {
 		ObjectMeta: metav1.ObjectMeta{Name: attempt.JobName, Namespace: attempt.Namespace, UID: types.UID("job-uid"), ResourceVersion: "10", Labels: map[string]string{
 			"kubikles.io/workload-session-id": attempt.Session, "app.kubernetes.io/instance": attempt.ReleaseName, "app.kubernetes.io/managed-by": "Helm",
 		}, Annotations: map[string]string{"kubikles.io/build-version": attempt.BuildVersion}},
-		Spec: batchv1.JobSpec{Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"kubikles.io/workload-session-id": attempt.Session}, Annotations: map[string]string{"kubikles.io/build-version": attempt.BuildVersion}}, Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "accelerator", Image: attempt.ImageRepository + "@" + attempt.ImageDigest}}}}},
+		Spec: batchv1.JobSpec{Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"kubikles.io/workload-session-id": attempt.Session}, Annotations: map[string]string{"kubikles.io/build-version": attempt.BuildVersion}}, Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "accelerator", Image: effectiveAttemptImageReference(attempt)}}}}},
 	}
 }
 
@@ -290,7 +346,7 @@ func observedPod(attempt chartAttempt, job *batchv1.Job) *corev1.Pod {
 		ObjectMeta: metav1.ObjectMeta{Name: "accelerator-pod", Namespace: attempt.Namespace, UID: types.UID("pod-uid"), ResourceVersion: "12", Labels: map[string]string{
 			"kubikles.io/workload-session-id": attempt.Session, "app.kubernetes.io/instance": attempt.ReleaseName, "app.kubernetes.io/managed-by": "Helm",
 		}, Annotations: map[string]string{"kubikles.io/build-version": attempt.BuildVersion}, OwnerReferences: []metav1.OwnerReference{{APIVersion: "batch/v1", Kind: "Job", Name: job.Name, UID: job.UID, Controller: &controller}}},
-		Spec:   corev1.PodSpec{Containers: []corev1.Container{{Name: "accelerator", Image: attempt.ImageRepository + "@" + attempt.ImageDigest}}},
+		Spec:   corev1.PodSpec{Containers: []corev1.Container{{Name: "accelerator", Image: effectiveAttemptImageReference(attempt)}}},
 		Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{{Name: "accelerator", Ready: true, State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.Now()}}}}},
 	}
 }

@@ -32,4 +32,10 @@ describe('ConfigSection', () => {
     render(<ConfigSection section="accelerator" config={{ accelerator: { ...config.accelerator, customImage: 'ghcr.io/example/accelerator:test' } }} onFieldChange={vi.fn()} searchResults={null} />);
     expect(screen.getByRole('alert').textContent).toContain('Custom Accelerator artifacts are active');
   });
+
+  it('renders Accelerator artifact overrides at twice the default text width', () => {
+    render(<ConfigSection section="accelerator" config={config} onFieldChange={vi.fn()} searchResults={null} />);
+    expect(screen.getByPlaceholderText('ghcr.io/skrobylabs/kubikles-accelerator:v1.4.0-alpha.2').className).toContain('w-[32rem]');
+    expect(screen.getByPlaceholderText('ghcr.io/skrobylabs/helm/kubikles-accelerator:1.4.0-alpha.2').className).toContain('w-[32rem]');
+  });
 });

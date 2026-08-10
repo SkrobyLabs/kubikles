@@ -117,6 +117,7 @@ export default function ConfigField({ schema, value, onChange, isModified, async
                     onChange={onChange}
                     isModified={isModified}
                     placeholder={schema.placeholder}
+                    wide={schema.wide}
                 />
             );
     }

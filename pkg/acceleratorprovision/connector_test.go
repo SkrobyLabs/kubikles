@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"kubikles/pkg/acceleratorsecret"
 	"kubikles/pkg/agent"
+	localk8s "kubikles/pkg/k8s"
 	"kubikles/pkg/server"
 )
 
@@ -852,7 +853,7 @@ func connectorForEndpoint(t *testing.T, rawURL string, validation connectorValid
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &Connector{buildVersion: "v1.2.3", validate: validation, startTunnel: func(context.Context, ContextSnapshot, string, string) (tunnel, error) {
+	return &Connector{buildVersion: "v1.2.3", validate: validation, readyClock: &fakeResumeClock{now: time.Now()}, startTunnel: func(context.Context, ContextSnapshot, string, string) (tunnel, error) {
 		active := newRecordedTunnel(order)
 		active.port = port
 		return active, nil
@@ -894,6 +895,51 @@ func TestConnectorOutcomeMatrix(t *testing.T) {
 	wrongVersion.BuildVersion = "v1.2.4"
 	if got := connector.Connect(context.Background(), wrongVersion); got.Reason != InvalidWorkload {
 		t.Fatalf("version mismatch reason=%s", got.Reason)
+	}
+}
+
+func TestWaitForAcceleratorInfoRetriesStartupTransportFailure(t *testing.T) {
+	clock := &fakeResumeClock{now: time.Now()}
+	want := server.AuthenticatedAcceleratorInfo{Runtime: "accelerator", InstanceID: "instance-a"}
+	calls := 0
+	got, err, attempts := waitForAcceleratorInfo(context.Background(), "127.0.0.1:43123", creatorAuthorizationLease{}, clock, func(context.Context, string, creatorAuthorizationLease) (server.AuthenticatedAcceleratorInfo, error) {
+		calls++
+		if calls < 3 {
+			return server.AuthenticatedAcceleratorInfo{}, errors.New("connect: connection refused")
+		}
+		return want, nil
+	})
+	if err != nil || got.Runtime != want.Runtime || got.InstanceID != want.InstanceID || attempts != 3 || calls != 3 || !reflect.DeepEqual(clock.sleeps, []time.Duration{acceleratorReadyPoll, acceleratorReadyPoll}) {
+		t.Fatalf("info=%#v error=%v attempts=%d calls=%d sleeps=%v", got, err, attempts, calls, clock.sleeps)
+	}
+
+	calls = 0
+	clock.sleeps = nil
+	_, err, attempts = waitForAcceleratorInfo(context.Background(), "127.0.0.1:43123", creatorAuthorizationLease{}, clock, func(context.Context, string, creatorAuthorizationLease) (server.AuthenticatedAcceleratorInfo, error) {
+		calls++
+		return server.AuthenticatedAcceleratorInfo{}, httpStatusAttemptError{status: http.StatusUnauthorized}
+	})
+	if err == nil || attempts != 1 || calls != 1 || len(clock.sleeps) != 0 {
+		t.Fatalf("terminal startup failure error=%v attempts=%d calls=%d sleeps=%v", err, attempts, calls, clock.sleeps)
+	}
+}
+
+func TestDesktopTunnelUnwrapsNamespaceOverrideSnapshot(t *testing.T) {
+	base := &localk8s.AcceleratorContextSnapshot{}
+	for name, source := range map[string]ContextSnapshot{
+		"direct":           base,
+		"override value":   namespaceOverrideSnapshot{ContextSnapshot: base, namespace: "team-a"},
+		"override pointer": &namespaceOverrideSnapshot{ContextSnapshot: base, namespace: "team-a"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, ok := desktopAcceleratorTunnelSnapshot(source)
+			if !ok || got != base {
+				t.Fatalf("snapshot=%p ok=%t want=%p", got, ok, base)
+			}
+		})
+	}
+	if got, ok := desktopAcceleratorTunnelSnapshot(fakeSnapshot{}); ok || got != nil {
+		t.Fatalf("accepted non-desktop snapshot: %p", got)
 	}
 }
 

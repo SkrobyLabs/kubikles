@@ -18,6 +18,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"kubikles/pkg/agent"
+	"kubikles/pkg/debug"
 	localk8s "kubikles/pkg/k8s"
 	"kubikles/pkg/server"
 )
@@ -32,6 +33,8 @@ const (
 	infoBodyLimit         = 16 << 10
 	policyBodyLimit       = 256
 	connectedFrameLimit   = 4 << 10
+	acceleratorReadyPoll  = 100 * time.Millisecond
+	acceleratorReadyTries = 51
 )
 
 type ConnectUnavailableReason string
@@ -139,6 +142,7 @@ type Connector struct {
 	buildVersion         string
 	allowVersionMismatch bool
 	clock                resumeClock
+	readyClock           resumeClock
 	startTunnel          connectorTunnelStarter
 	validate             connectorValidator
 	validateDetailed     connectorDetailedValidator
@@ -156,10 +160,11 @@ func NewConnector(buildVersion string) *Connector {
 	return &Connector{
 		buildVersion:     buildVersion,
 		clock:            processResumeClock{},
+		readyClock:       processResumeClock{},
 		validate:         revalidateWorkload,
 		validateDetailed: revalidateWorkloadDetailed,
 		startTunnel: func(ctx context.Context, source ContextSnapshot, namespace, pod string) (tunnel, error) {
-			snapshot, ok := source.(*localk8s.AcceleratorContextSnapshot)
+			snapshot, ok := desktopAcceleratorTunnelSnapshot(source)
 			if !ok {
 				return nil, localk8s.ErrAcceleratorContextUnavailable
 			}
@@ -170,6 +175,25 @@ func NewConnector(buildVersion string) *Connector {
 			return &acceleratorPodTunnel{AcceleratorPodTunnel: started}, connectorTunnelFailure(err)
 		},
 	}
+}
+
+func desktopAcceleratorTunnelSnapshot(source ContextSnapshot) (*localk8s.AcceleratorContextSnapshot, bool) {
+	for source != nil {
+		switch snapshot := source.(type) {
+		case *localk8s.AcceleratorContextSnapshot:
+			return snapshot, snapshot != nil
+		case namespaceOverrideSnapshot:
+			source = snapshot.ContextSnapshot
+		case *namespaceOverrideSnapshot:
+			if snapshot == nil {
+				return nil, false
+			}
+			source = snapshot.ContextSnapshot
+		default:
+			return nil, false
+		}
+	}
+	return nil, false
 }
 
 func unavailableConnect(reason ConnectUnavailableReason) ConnectResult {
@@ -335,9 +359,19 @@ func (c *Connector) connectExactAttempt(ctx context.Context, lease connectorLeas
 	phase := attemptInfo
 	err = lease.credential.withCreatorAuthorization(sealedOp, func(authCtx context.Context, authorization creatorAuthorizationLease) error {
 		var fetchErr error
-		info, fetchErr = fetchInfo(authCtx, endpoint, authorization)
+		var readinessAttempts int
+		info, fetchErr, readinessAttempts = waitForAcceleratorInfo(authCtx, endpoint, authorization, c.readyClock, fetchInfo)
 		if fetchErr != nil {
+			details := map[string]interface{}{"attempts": readinessAttempts, "error": fetchErr.Error()}
+			var statusErr httpStatusAttemptError
+			if errors.As(fetchErr, &statusErr) {
+				details["status"] = statusErr.status
+			}
+			debug.LogPortforward("Accelerator endpoint readiness failed", details)
 			return fetchErr
+		}
+		if readinessAttempts > 1 {
+			debug.LogPortforward("Accelerator endpoint became ready", map[string]interface{}{"attempts": readinessAttempts})
 		}
 		if infoFailure := authenticatedInfoFailureWithPolicy(info, c.buildVersion, exactWorkload.BuildVersion, c.allowVersionMismatch); infoFailure != nil {
 			return infoFailure
@@ -646,6 +680,52 @@ func fetchInfo(ctx context.Context, endpoint string, authorization creatorAuthor
 		return server.AuthenticatedAcceleratorInfo{}, protocolAttemptError{}
 	}
 	return info, nil
+}
+
+type acceleratorInfoFetcher func(context.Context, string, creatorAuthorizationLease) (server.AuthenticatedAcceleratorInfo, error)
+
+func waitForAcceleratorInfo(ctx context.Context, endpoint string, authorization creatorAuthorizationLease, clock resumeClock, fetch acceleratorInfoFetcher) (server.AuthenticatedAcceleratorInfo, error, int) {
+	if ctx == nil || endpoint == "" || fetch == nil {
+		return server.AuthenticatedAcceleratorInfo{}, protocolAttemptError{}, 0
+	}
+	if clock == nil {
+		clock = processResumeClock{}
+	}
+	var lastErr error
+	for attempt := 1; attempt <= acceleratorReadyTries; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return server.AuthenticatedAcceleratorInfo{}, err, attempt - 1
+		}
+		info, err := fetch(ctx, endpoint, authorization)
+		if err == nil {
+			return info, nil, attempt
+		}
+		lastErr = err
+		if attempt == acceleratorReadyTries || !retryableAcceleratorStartupFailure(ctx, err) {
+			return server.AuthenticatedAcceleratorInfo{}, err, attempt
+		}
+		if err = clock.Sleep(ctx, acceleratorReadyPoll); err != nil {
+			return server.AuthenticatedAcceleratorInfo{}, err, attempt
+		}
+	}
+	return server.AuthenticatedAcceleratorInfo{}, lastErr, acceleratorReadyTries
+}
+
+func retryableAcceleratorStartupFailure(ctx context.Context, err error) bool {
+	if err == nil || ctx == nil || ctx.Err() != nil {
+		return false
+	}
+	var statusErr httpStatusAttemptError
+	if errors.As(err, &statusErr) {
+		switch statusErr.status {
+		case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+			return true
+		default:
+			return false
+		}
+	}
+	var protocolErr protocolAttemptError
+	return !errors.As(err, &protocolErr)
 }
 
 const policyCanaryBody = "{\"method\":\"GetVersionInfo\",\"args\":[]}\n"
