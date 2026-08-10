@@ -70,7 +70,6 @@ const (
 	acceleratorChartRepository = "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator@"
 	acceleratorImageRepository = "ghcr.io/skrobylabs/kubikles-accelerator"
 	acceleratorRegistryTimeout = 60 * time.Second
-	acceleratorSchemaSHA256    = "ed7e27cb666c4fd24bfe45379286a4628c4165dd433f5fc8cc5d43db2f2311dc"
 )
 
 type AcceleratorChartRequest struct {
@@ -96,7 +95,7 @@ type acceleratorRegistryPuller interface {
 
 var acceleratorRegistryTransportForTest = func(transport http.RoundTripper) http.RoundTripper { return transport }
 
-// PullAcceleratorChart pulls an anonymous, digest-pinned OCI chart entirely in
+// PullAcceleratorChart pulls the selected anonymous OCI chart entirely in
 // memory. Helm's Pull has no context argument, so the request transport binds
 // every SDK request to the caller's bounded context.
 func PullAcceleratorChart(ctx context.Context, request AcceleratorChartRequest) (*chart.Chart, error) {
@@ -158,9 +157,9 @@ func pullAcceleratorChart(ctx context.Context, puller acceleratorRegistryPuller,
 		logAcceleratorChartFailure(request, "validate_manifest", errors.New("registry manifest has unexpected chart layers"), nil)
 		return nil, ErrAcceleratorIntegrity
 	}
-	loaded, err := loadAcceleratorArchive(result.Chart.Data, request)
+	loaded, err := loadAcceleratorArchive(result.Chart.Data)
 	if err != nil {
-		logAcceleratorChartFailure(request, "load_and_validate_chart", err, nil)
+		logAcceleratorChartFailure(request, "load_chart", err, nil)
 		return nil, err
 	}
 	return loaded, nil
@@ -197,27 +196,12 @@ func exactAcceleratorManifestLayers(data []byte) bool {
 	return manifest.Layers[0].MediaType == registry.ChartLayerMediaType
 }
 
-func loadAcceleratorArchive(data []byte, request AcceleratorChartRequest) (*chart.Chart, error) {
+func loadAcceleratorArchive(data []byte) (*chart.Chart, error) {
 	loaded, err := loader.LoadArchive(bytes.NewReader(data))
 	if err != nil {
 		return nil, ErrAcceleratorIntegrity
 	}
-	return validateAcceleratorChart(loaded, request)
-}
-
-func validateAcceleratorChart(loaded *chart.Chart, request AcceleratorChartRequest) (*chart.Chart, error) {
-	if request.BuildVersion == "" || loaded == nil || loaded.Metadata == nil || loaded.Metadata.Name != "kubikles-accelerator" || loaded.Metadata.Type != "application" || !exactAcceleratorSchema(loaded.Schema) {
-		return nil, ErrAcceleratorIntegrity
-	}
-	if !request.AllowVersionMismatch && (!acceleratorVersion.MatchString(request.BuildVersion) || loaded.Metadata.Version != strings.TrimPrefix(request.BuildVersion, "v") || loaded.Metadata.AppVersion != request.BuildVersion) {
-		return nil, ErrAcceleratorIntegrity
-	}
 	return loaded, nil
-}
-
-func exactAcceleratorSchema(schema []byte) bool {
-	digest := sha256.Sum256(schema)
-	return hex.EncodeToString(digest[:]) == acceleratorSchemaSHA256
 }
 
 func validAcceleratorReleaseRequest(request AcceleratorReleaseRequest) bool {
@@ -227,8 +211,10 @@ func validAcceleratorReleaseRequest(request AcceleratorReleaseRequest) bool {
 		request.ReleaseName == "kubikles-accelerator-"+request.WorkloadSession && request.ReleaseNamespace != ""
 }
 
-// PrepareAcceleratorRelease performs exact pull, schema validation, client-only
-// render, and strict five-object validation before any cluster mutation.
+// PrepareAcceleratorRelease pulls the selected chart, renders it client-side,
+// and validates the runtime objects needed to install and clean up the release.
+// Explicit overrides bypass the chart's values schema because compatibility is
+// owned by the user who selected the artifact.
 func (c *Client) PrepareAcceleratorRelease(ctx context.Context, request AcceleratorReleaseRequest) (*AcceleratorPreparedRelease, AcceleratorFailure) {
 	if !validAcceleratorReleaseRequest(request) {
 		return nil, AcceleratorIntegrity
@@ -243,9 +229,9 @@ func (c *Client) PrepareAcceleratorRelease(ctx context.Context, request Accelera
 	return RenderAcceleratorRelease(loaded, request)
 }
 
-// RenderAcceleratorRelease validates and renders an already digest-verified
-// in-memory chart. It exists so callers can settle context cancellation between
-// the pull and render boundaries without rereading kubeconfig.
+// RenderAcceleratorRelease validates and renders an already pulled in-memory
+// chart. It exists so callers can settle context cancellation between the pull
+// and render boundaries without rereading kubeconfig.
 func RenderAcceleratorRelease(loaded *chart.Chart, request AcceleratorReleaseRequest) (*AcceleratorPreparedRelease, AcceleratorFailure) {
 	return prepareAcceleratorRelease(loaded, request)
 }
@@ -254,12 +240,14 @@ func prepareAcceleratorRelease(loaded *chart.Chart, request AcceleratorReleaseRe
 	if !validAcceleratorReleaseRequest(request) {
 		return nil, AcceleratorIntegrity
 	}
-	if _, err := validateAcceleratorChart(loaded, AcceleratorChartRequest{request.ChartReference, request.ChartDigest, request.BuildVersion, request.AllowVersionMismatch}); err != nil {
-		return nil, AcceleratorIntegrity
+	if loaded == nil {
+		return nil, AcceleratorRender
 	}
 	values := acceleratorValues(request)
-	if err := chartutil.ValidateAgainstSchema(loaded, values); err != nil {
-		return nil, AcceleratorIntegrity
+	if !request.AllowVersionMismatch {
+		if err := chartutil.ValidateAgainstSchema(loaded, values); err != nil {
+			return nil, AcceleratorIntegrity
+		}
 	}
 	actionConfig := &action.Configuration{}
 	install := action.NewInstall(actionConfig)
@@ -272,7 +260,7 @@ func prepareAcceleratorRelease(loaded *chart.Chart, request AcceleratorReleaseRe
 	install.Namespace = request.ReleaseNamespace
 	install.IncludeCRDs = false
 	install.SkipCRDs = true
-	install.SkipSchemaValidation = false
+	install.SkipSchemaValidation = request.AllowVersionMismatch
 	rendered, err := install.Run(loaded, values)
 	if err != nil || rendered == nil || rendered.Manifest == "" {
 		return nil, AcceleratorRender

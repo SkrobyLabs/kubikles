@@ -262,16 +262,6 @@ func TestPullAcceleratorChartByDigestSDKOnly(t *testing.T) {
 			body["layers"] = append(body["layers"].([]interface{}), map[string]interface{}{"mediaType": registry.ChartLayerMediaType})
 			result.Manifest.Data, _ = json.Marshal(body)
 		}},
-		{name: "missing schema", edit: func(result *registry.PullResult) {
-			bad, _ := acceleratorTestChart(t)
-			bad.Schema = nil
-			result.Chart.Data = acceleratorArchive(t, bad)
-		}},
-		{name: "wrong metadata", edit: func(result *registry.PullResult) {
-			bad, _ := acceleratorTestChart(t)
-			bad.Metadata.Name = "other"
-			result.Chart.Data = acceleratorArchive(t, bad)
-		}},
 	}
 	for _, mutation := range mutations {
 		t.Run(mutation.name, func(t *testing.T) {
@@ -284,6 +274,29 @@ func TestPullAcceleratorChartByDigestSDKOnly(t *testing.T) {
 			_, gotErr := pullAcceleratorChart(context.Background(), &acceleratorPullerFake{result: &copyResult}, chartRequest)
 			if !errors.Is(gotErr, ErrAcceleratorIntegrity) {
 				t.Fatalf("error=%v", gotErr)
+			}
+		})
+	}
+
+	for name, mutateChart := range map[string]func(*chart.Chart){
+		"missing schema": func(chart *chart.Chart) { chart.Schema = nil },
+		"other metadata": func(chart *chart.Chart) {
+			chart.Metadata.Name = "other"
+			chart.Metadata.Version = "9.0.0-dev"
+			chart.Metadata.AppVersion = "custom-build"
+		},
+	} {
+		t.Run("accept "+name, func(t *testing.T) {
+			copyResult := *puller.result
+			manifestCopy, chartCopy := *puller.result.Manifest, *puller.result.Chart
+			manifestCopy.Data = append([]byte(nil), manifestCopy.Data...)
+			bad, _ := acceleratorTestChart(t)
+			mutateChart(bad)
+			chartCopy.Data = acceleratorArchive(t, bad)
+			copyResult.Manifest, copyResult.Chart = &manifestCopy, &chartCopy
+			got, gotErr := pullAcceleratorChart(context.Background(), &acceleratorPullerFake{result: &copyResult}, chartRequest)
+			if gotErr != nil || got == nil {
+				t.Fatalf("selected chart rejected: chart=%#v error=%v", got, gotErr)
 			}
 		})
 	}
@@ -367,11 +380,22 @@ func TestRenderAcceleratorReleaseExact(t *testing.T) {
 		t.Fatalf("accepted invalid image reference: %#v %s", prepared, failure)
 	}
 
-	t.Run("schema is the exact closed chart contract", func(t *testing.T) {
+	t.Run("selected chart schema is not locally pinned", func(t *testing.T) {
 		bad := *loaded
 		bad.Schema = []byte(`{"type":"object","additionalProperties":true}`)
-		if prepared, failure := prepareAcceleratorRelease(&bad, request); prepared != nil || failure != AcceleratorIntegrity {
-			t.Fatalf("accepted permissive schema: %#v %s", prepared, failure)
+		if prepared, failure := prepareAcceleratorRelease(&bad, request); prepared == nil || failure != AcceleratorOK {
+			t.Fatalf("selected chart schema rejected: %#v %s", prepared, failure)
+		}
+	})
+
+	t.Run("selected chart metadata is not locally pinned", func(t *testing.T) {
+		bad := *loaded
+		metadata := *loaded.Metadata
+		metadata.Version = "9.0.0-dev"
+		metadata.AppVersion = "custom-build"
+		bad.Metadata = &metadata
+		if prepared, failure := prepareAcceleratorRelease(&bad, request); prepared == nil || failure != AcceleratorOK {
+			t.Fatalf("selected chart metadata rejected: %#v %s", prepared, failure)
 		}
 	})
 
@@ -402,6 +426,7 @@ func TestRenderAcceleratorReleaseWithCustomTaggedArtifacts(t *testing.T) {
 	loaded, _ := acceleratorTestChart(t)
 	loaded.Metadata.Version = "9.0.0-dev"
 	loaded.Metadata.AppVersion = "custom-build"
+	loaded.Schema = []byte(`{"type":"object","required":["unsupported"]}`)
 	request := acceleratorTestRequest()
 	request.ChartReference = "oci://registry.example.test/charts/accelerator:dev"
 	request.ChartDigest = ""
