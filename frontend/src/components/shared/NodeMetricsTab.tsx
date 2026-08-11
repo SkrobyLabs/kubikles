@@ -5,16 +5,22 @@ import { formatBytes, formatChartTime as formatTime } from '~/utils/formatting';
 import { MARKER_COLORS, type EventMarker } from './metrics/MetricsChart';
 
 // Format time for display
-// Node resource chart with toggleable lines:
-// - Usage (blue), Allocatable (gray dashed), Uncommitted (green) visible by default
-// - Committed (orange) toggleable, off by default
+// Node resource chart with toggleable scheduling lines. The memory variant also
+// exposes OS and kubelet pressure signals so low requests can be compared with
+// the memory the kernel and root cgroup actually account for.
 // Memoized to prevent re-renders when parent updates with same props
-const NodeResourceChart = React.memo(({ data, color, label, formatValue, duration, markers, onZoomSelect }: { data: any; color: string; label: string; formatValue: (value: number) => string; duration: string; markers?: EventMarker[]; onZoomSelect?: (startMs: number, endMs: number) => void }) => {
+const NodeResourceChart = React.memo(({ data, color, label, formatValue, duration, memoryDetails = false, markers, onZoomSelect }: { data: any; color: string; label: string; formatValue: (value: number) => string; duration: string; memoryDetails?: boolean; markers?: EventMarker[]; onZoomSelect?: (startMs: number, endMs: number) => void }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-    const [showCommitted, setShowCommitted] = useState(true);
+    const [showCommitted, setShowCommitted] = useState(!memoryDetails);
     const [showReserved, setShowReserved] = useState(false);
+    const [showAvailable, setShowAvailable] = useState(true);
+    const [showKubeletAvailable, setShowKubeletAvailable] = useState(true);
+    const [showWorkingSet, setShowWorkingSet] = useState(true);
+    const [showPageCache, setShowPageCache] = useState(false);
+    const [showSlab, setShowSlab] = useState(false);
+    const [showSharedMemory, setShowSharedMemory] = useState(false);
     const [showMarkers, setShowMarkers] = useState(true);
     const [containerWidth, setContainerWidth] = useState(500);
     const [isDragging, setIsDragging] = useState(false);
@@ -38,6 +44,12 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
     const hasAllocatable = data?.allocatable?.length > 0;
     const hasReserved = data?.reserved?.length > 0;
     const hasCommitted = data?.committed?.length > 0;
+    const hasAvailable = memoryDetails && data?.available?.length > 0;
+    const hasKubeletAvailable = memoryDetails && data?.kubeletAvailable?.length > 0;
+    const hasWorkingSet = memoryDetails && data?.workingSet?.length > 0;
+    const hasPageCache = memoryDetails && data?.pageCache?.length > 0;
+    const hasSlab = memoryDetails && data?.slab?.length > 0;
+    const hasSharedMemory = memoryDetails && data?.sharedMemory?.length > 0;
 
     if (!hasUsage) {
         return (
@@ -54,13 +66,25 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
     const allocatable = data.allocatable || [];
     const reserved = data.reserved || [];
     const committed = data.committed || [];
+    const available = data.available || [];
+    const kubeletAvailable = data.kubeletAvailable || [];
+    const workingSet = data.workingSet || [];
+    const pageCache = data.pageCache || [];
+    const slab = data.slab || [];
+    const sharedMemory = data.sharedMemory || [];
 
     // Calculate Y-axis bounds
     const allValues = [
         ...usage.map((d: any) => d.value),
         ...allocatable.map((d: any) => d.value),
         ...(showReserved ? reserved.map((d: any) => d.value) : []),
-        ...(showCommitted ? committed.map((d: any) => d.value) : [])
+        ...(showCommitted ? committed.map((d: any) => d.value) : []),
+        ...(showAvailable ? available.map((d: any) => d.value) : []),
+        ...(showKubeletAvailable ? kubeletAvailable.map((d: any) => d.value) : []),
+        ...(showWorkingSet ? workingSet.map((d: any) => d.value) : []),
+        ...(showPageCache ? pageCache.map((d: any) => d.value) : []),
+        ...(showSlab ? slab.map((d: any) => d.value) : []),
+        ...(showSharedMemory ? sharedMemory.map((d: any) => d.value) : [])
     ];
     const max = Math.max(...allValues) || 1;
     const min = 0;
@@ -92,6 +116,12 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
     const allocatablePoints = hasAllocatable ? generatePoints(allocatable) : [];
     const reservedPoints = hasReserved ? generatePoints(reserved) : [];
     const committedPoints = hasCommitted ? generatePoints(committed) : [];
+    const availablePoints = hasAvailable ? generatePoints(available) : [];
+    const kubeletAvailablePoints = hasKubeletAvailable ? generatePoints(kubeletAvailable) : [];
+    const workingSetPoints = hasWorkingSet ? generatePoints(workingSet) : [];
+    const pageCachePoints = hasPageCache ? generatePoints(pageCache) : [];
+    const slabPoints = hasSlab ? generatePoints(slab) : [];
+    const sharedMemoryPoints = hasSharedMemory ? generatePoints(sharedMemory) : [];
 
     const createPath = (points: any[]) => points.map((p: any, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
@@ -220,25 +250,94 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
     const hoveredAllocatable = hoveredIndex !== null && allocatablePoints[hoveredIndex];
     const hoveredReserved = hoveredIndex !== null && reservedPoints[hoveredIndex];
     const hoveredCommitted = hoveredIndex !== null && committedPoints[hoveredIndex];
+    const hoveredAvailable = hoveredIndex !== null && availablePoints[hoveredIndex];
+    const hoveredKubeletAvailable = hoveredIndex !== null && kubeletAvailablePoints[hoveredIndex];
+    const hoveredWorkingSet = hoveredIndex !== null && workingSetPoints[hoveredIndex];
+    const hoveredPageCache = hoveredIndex !== null && pageCachePoints[hoveredIndex];
+    const hoveredSlab = hoveredIndex !== null && slabPoints[hoveredIndex];
+    const hoveredSharedMemory = hoveredIndex !== null && sharedMemoryPoints[hoveredIndex];
     const hoveredMarker = hoveredIndex !== null && showMarkers
         ? markerPositions.find((m: any) => Math.abs(m.dataIndex - hoveredIndex) <= 1)
         : null;
 
     return (
         <div className="relative">
-            <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-300">{label}</span>
+            <div className="flex items-start justify-between gap-3 mb-2">
+                <div className="flex items-start gap-3 min-w-0">
+                    <span className="text-sm font-medium text-gray-300 shrink-0 pt-0.5">{label}</span>
                     {/* Legend - clickable to toggle */}
-                    <div className="flex items-center gap-2 text-xs">
-                        <span className="flex items-center gap-1 text-blue-400">
+                    <div className="flex flex-wrap items-center gap-1 text-xs">
+                        <span
+                            className="flex items-center gap-1 text-blue-400"
+                            title={memoryDetails ? 'MemTotal minus MemAvailable; falls back to summed pod working sets when node-exporter is unavailable' : undefined}
+                        >
                             <span className="w-3 h-0.5 bg-blue-500"></span>
-                            Usage
+                            {memoryDetails ? 'Used' : 'Usage'}
                         </span>
                         <span className="flex items-center gap-1 text-gray-400">
                             <span className="w-3 h-0.5 bg-gray-500 border-dashed"></span>
                             Allocatable
                         </span>
+                        {hasAvailable && (
+                            <button
+                                onClick={() => setShowAvailable(!showAvailable)}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${!showAvailable ? 'opacity-40' : ''}`}
+                                title="Linux MemAvailable: the kernel estimate of memory available without swapping"
+                            >
+                                <span className={`w-3 h-0.5 ${showAvailable ? 'bg-emerald-500' : 'bg-gray-500'}`}></span>
+                                <span className={showAvailable ? 'text-emerald-400' : 'text-gray-500'}>OS available</span>
+                            </button>
+                        )}
+                        {hasKubeletAvailable && (
+                            <button
+                                onClick={() => setShowKubeletAvailable(!showKubeletAvailable)}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${!showKubeletAvailable ? 'opacity-40' : ''}`}
+                                title="Kubelet eviction estimate: node capacity minus the root-cgroup working set"
+                            >
+                                <span className={`w-3 h-0.5 border-t border-dashed ${showKubeletAvailable ? 'border-lime-400' : 'border-gray-500'}`}></span>
+                                <span className={showKubeletAvailable ? 'text-lime-300' : 'text-gray-500'}>Eviction available</span>
+                            </button>
+                        )}
+                        {hasWorkingSet && (
+                            <button
+                                onClick={() => setShowWorkingSet(!showWorkingSet)}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${!showWorkingSet ? 'opacity-40' : ''}`}
+                                title="Root-cgroup working set used by kubelet to estimate memory.available"
+                            >
+                                <span className={`w-3 h-0.5 ${showWorkingSet ? 'bg-purple-500' : 'bg-gray-500'}`}></span>
+                                <span className={showWorkingSet ? 'text-purple-400' : 'text-gray-500'}>Root working set</span>
+                            </button>
+                        )}
+                        {hasPageCache && (
+                            <button
+                                onClick={() => setShowPageCache(!showPageCache)}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${!showPageCache ? 'opacity-40' : ''}`}
+                                title="Filesystem page cache and block-device buffers; generally reclaimable"
+                            >
+                                <span className={`w-3 h-0.5 ${showPageCache ? 'bg-cyan-500' : 'bg-gray-500'}`}></span>
+                                <span className={showPageCache ? 'text-cyan-400' : 'text-gray-500'}>Page cache</span>
+                            </button>
+                        )}
+                        {hasSlab && (
+                            <button
+                                onClick={() => setShowSlab(!showSlab)}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${!showSlab ? 'opacity-40' : ''}`}
+                                title="Kernel slab allocations"
+                            >
+                                <span className={`w-3 h-0.5 ${showSlab ? 'bg-rose-500' : 'bg-gray-500'}`}></span>
+                                <span className={showSlab ? 'text-rose-400' : 'text-gray-500'}>Slab</span>
+                            </button>
+                        )}
+                        {hasSharedMemory && (
+                            <button
+                                onClick={() => setShowSharedMemory(!showSharedMemory)}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-white/10 ${!showSharedMemory ? 'opacity-40' : ''}`}
+                                title="Shared memory, including memory-backed tmpfs filesystems"
+                            >
+                                <span className={`w-3 h-0.5 ${showSharedMemory ? 'bg-pink-500' : 'bg-gray-500'}`}></span>
+                                <span className={showSharedMemory ? 'text-pink-400' : 'text-gray-500'}>Shmem/tmpfs</span>
+                            </button>
+                        )}
                         {hasReserved && (
                             <button
                                 onClick={() => setShowReserved(!showReserved)}
@@ -272,8 +371,8 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                         )}
                     </div>
                 </div>
-                <span className="text-sm text-gray-400">
-                    Current: <span className={`font-medium ${color.replace('stroke-', 'text-')}`}>
+                <span className="text-sm text-gray-400 shrink-0">
+                    Current{memoryDetails ? ' used' : ''}: <span className={`font-medium ${color.replace('stroke-', 'text-')}`}>
                         {formatValue(currentUsage)}
                     </span>
                 </span>
@@ -344,6 +443,26 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                         <path d={createPath(committedPoints)} fill="none" className="stroke-orange-500" strokeWidth="1.5" />
                     )}
 
+                    {/* Memory pressure signals (memory chart only) */}
+                    {showAvailable && availablePoints.length > 0 && (
+                        <path d={createPath(availablePoints)} fill="none" className="stroke-emerald-500" strokeWidth="1.5" />
+                    )}
+                    {showKubeletAvailable && kubeletAvailablePoints.length > 0 && (
+                        <path d={createPath(kubeletAvailablePoints)} fill="none" className="stroke-lime-400" strokeWidth="1.5" strokeDasharray="6,3" />
+                    )}
+                    {showWorkingSet && workingSetPoints.length > 0 && (
+                        <path d={createPath(workingSetPoints)} fill="none" className="stroke-purple-500" strokeWidth="1.5" />
+                    )}
+                    {showPageCache && pageCachePoints.length > 0 && (
+                        <path d={createPath(pageCachePoints)} fill="none" className="stroke-cyan-500" strokeWidth="1.5" />
+                    )}
+                    {showSlab && slabPoints.length > 0 && (
+                        <path d={createPath(slabPoints)} fill="none" className="stroke-rose-500" strokeWidth="1.5" />
+                    )}
+                    {showSharedMemory && sharedMemoryPoints.length > 0 && (
+                        <path d={createPath(sharedMemoryPoints)} fill="none" className="stroke-pink-500" strokeWidth="1.5" />
+                    )}
+
                     {/* Usage area fill */}
                     <path d={areaPath} className="fill-blue-500 opacity-20" />
 
@@ -393,6 +512,30 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                                 <circle cx={hoveredCommitted.x} cy={hoveredCommitted.y} r="3"
                                     className="fill-orange-500" stroke="white" strokeWidth="1.5" />
                             )}
+                            {showAvailable && hoveredAvailable && (
+                                <circle cx={hoveredAvailable.x} cy={hoveredAvailable.y} r="3"
+                                    className="fill-emerald-500" stroke="white" strokeWidth="1.5" />
+                            )}
+                            {showKubeletAvailable && hoveredKubeletAvailable && (
+                                <circle cx={hoveredKubeletAvailable.x} cy={hoveredKubeletAvailable.y} r="3"
+                                    className="fill-lime-400" stroke="white" strokeWidth="1.5" />
+                            )}
+                            {showWorkingSet && hoveredWorkingSet && (
+                                <circle cx={hoveredWorkingSet.x} cy={hoveredWorkingSet.y} r="3"
+                                    className="fill-purple-500" stroke="white" strokeWidth="1.5" />
+                            )}
+                            {showPageCache && hoveredPageCache && (
+                                <circle cx={hoveredPageCache.x} cy={hoveredPageCache.y} r="3"
+                                    className="fill-cyan-500" stroke="white" strokeWidth="1.5" />
+                            )}
+                            {showSlab && hoveredSlab && (
+                                <circle cx={hoveredSlab.x} cy={hoveredSlab.y} r="3"
+                                    className="fill-rose-500" stroke="white" strokeWidth="1.5" />
+                            )}
+                            {showSharedMemory && hoveredSharedMemory && (
+                                <circle cx={hoveredSharedMemory.x} cy={hoveredSharedMemory.y} r="3"
+                                    className="fill-pink-500" stroke="white" strokeWidth="1.5" />
+                            )}
                         </>
                     )}
                 </svg>
@@ -402,15 +545,15 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                     <div
                         className="absolute z-10 pointer-events-none bg-surface border border-border rounded-lg shadow-lg px-3 py-2"
                         style={{
-                            left: Math.min(mousePos.x + 10, (containerRef.current?.offsetWidth ?? 0) - 170 || 0),
-                            top: mousePos.y - 80
+                            left: Math.min(mousePos.x + 10, (containerRef.current?.offsetWidth ?? 0) - 210 || 0),
+                            top: Math.max(4, mousePos.y - 100)
                         }}
                     >
                         <div className="text-xs text-gray-400 mb-1">
                             {new Date(hoveredPoint.timestamp).toLocaleString()}
                         </div>
                         <div className="text-sm font-medium text-blue-400">
-                            Usage: {formatValue(hoveredPoint.value)}
+                            {memoryDetails ? 'Used' : 'Usage'}: {formatValue(hoveredPoint.value)}
                         </div>
                         {hoveredAllocatable && (
                             <div className="text-xs text-gray-400">Allocatable: {formatValue(hoveredAllocatable.value)}</div>
@@ -420,6 +563,24 @@ const NodeResourceChart = React.memo(({ data, color, label, formatValue, duratio
                         )}
                         {showCommitted && hoveredCommitted && (
                             <div className="text-xs text-orange-400">Committed: {formatValue(hoveredCommitted.value)}</div>
+                        )}
+                        {showAvailable && hoveredAvailable && (
+                            <div className="text-xs text-emerald-400">OS available: {formatValue(hoveredAvailable.value)}</div>
+                        )}
+                        {showKubeletAvailable && hoveredKubeletAvailable && (
+                            <div className="text-xs text-lime-300">Eviction available: {formatValue(hoveredKubeletAvailable.value)}</div>
+                        )}
+                        {showWorkingSet && hoveredWorkingSet && (
+                            <div className="text-xs text-purple-400">Root working set: {formatValue(hoveredWorkingSet.value)}</div>
+                        )}
+                        {showPageCache && hoveredPageCache && (
+                            <div className="text-xs text-cyan-400">Page cache: {formatValue(hoveredPageCache.value)}</div>
+                        )}
+                        {showSlab && hoveredSlab && (
+                            <div className="text-xs text-rose-400">Slab: {formatValue(hoveredSlab.value)}</div>
+                        )}
+                        {showSharedMemory && hoveredSharedMemory && (
+                            <div className="text-xs text-pink-400">Shmem/tmpfs: {formatValue(hoveredSharedMemory.value)}</div>
                         )}
                         {hoveredMarker && (
                             <div className="border-t border-border mt-1 pt-1">
@@ -1049,6 +1210,7 @@ export default function NodeMetricsTab({ nodeName, isStale }: { nodeName: string
                                 label="Memory"
                                 formatValue={formatBytes}
                                 duration={effectiveDuration}
+                                memoryDetails
                                 markers={filteredMarkers}
                                 onZoomSelect={handleZoomSelect}
                             />

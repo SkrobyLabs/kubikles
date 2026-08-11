@@ -548,10 +548,16 @@ type NodeMetricsHistory struct {
 
 // NodeResourceMetrics holds CPU or memory metrics for a node
 type NodeResourceMetrics struct {
-	Usage       []MetricsDataPoint `json:"usage"`
-	Allocatable []MetricsDataPoint `json:"allocatable"`
-	Reserved    []MetricsDataPoint `json:"reserved"`
-	Committed   []MetricsDataPoint `json:"committed"`
+	Usage            []MetricsDataPoint `json:"usage"`
+	Allocatable      []MetricsDataPoint `json:"allocatable"`
+	Reserved         []MetricsDataPoint `json:"reserved"`
+	Committed        []MetricsDataPoint `json:"committed"`
+	Available        []MetricsDataPoint `json:"available,omitempty"`        // Memory only: Linux MemAvailable
+	KubeletAvailable []MetricsDataPoint `json:"kubeletAvailable,omitempty"` // Memory only: capacity minus root-cgroup working set
+	WorkingSet       []MetricsDataPoint `json:"workingSet,omitempty"`       // Memory only: root-cgroup working set
+	PageCache        []MetricsDataPoint `json:"pageCache,omitempty"`        // Memory only: cached pages and buffers
+	Slab             []MetricsDataPoint `json:"slab,omitempty"`             // Memory only: kernel slab allocations
+	SharedMemory     []MetricsDataPoint `json:"sharedMemory,omitempty"`     // Memory only: shmem, including tmpfs
 }
 
 // NodePodMetrics holds pod count metrics for a node
@@ -615,6 +621,52 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 		unameNodeMatcher, nodeName,
 	)
 	result.Memory.Usage = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memUsageQuery, start, end, step)
+
+	// Linux MemAvailable is the kernel's estimate of memory available without
+	// swapping. It is useful context, but is not the signal kubelet uses for
+	// eviction decisions.
+	memAvailableQuery := fmt.Sprintf(
+		`sum(node_memory_MemAvailable_bytes * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"})`,
+		unameNodeMatcher,
+	)
+	result.Memory.Available = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memAvailableQuery, start, end, step)
+
+	// Kubelet calculates memory.available from node capacity minus the root
+	// cgroup's working set. Prefer a direct node label and fall back to joining
+	// the cAdvisor target to its Kubernetes node. Clusters that do not retain
+	// the root-cgroup series simply return no data for these optional lines.
+	rootWorkingSetQuery := fmt.Sprintf(
+		`max(container_memory_working_set_bytes{node="%s", id="/"}) or max(container_memory_working_set_bytes{id="/"} * on(instance) group_left(node) kubelet_node_name{node="%s"})`,
+		nodeName, nodeName,
+	)
+	result.Memory.WorkingSet = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rootWorkingSetQuery, start, end, step)
+
+	kubeletAvailableQuery := fmt.Sprintf(
+		`clamp_min(max(kube_node_status_capacity{node="%s", resource="memory"}) - (max(container_memory_working_set_bytes{node="%s", id="/"}) or max(container_memory_working_set_bytes{id="/"} * on(instance) group_left(node) kubelet_node_name{node="%s"})), 0)`,
+		nodeName, nodeName, nodeName,
+	)
+	result.Memory.KubeletAvailable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, kubeletAvailableQuery, start, end, step)
+
+	// Breakdown metrics explain gaps between pod memory and node memory. Cached
+	// pages are generally reclaimable; slab and shmem/tmpfs can remain resident
+	// and contribute to pressure even when pod requests are low.
+	pageCacheQuery := fmt.Sprintf(
+		`sum((node_memory_Cached_bytes + node_memory_Buffers_bytes) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"})`,
+		unameNodeMatcher,
+	)
+	result.Memory.PageCache = c.queryRangeToDataPointsWithContext(ctx, contextName, info, pageCacheQuery, start, end, step)
+
+	slabQuery := fmt.Sprintf(
+		`sum(node_memory_Slab_bytes * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"})`,
+		unameNodeMatcher,
+	)
+	result.Memory.Slab = c.queryRangeToDataPointsWithContext(ctx, contextName, info, slabQuery, start, end, step)
+
+	sharedMemoryQuery := fmt.Sprintf(
+		`sum(node_memory_Shmem_bytes * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"})`,
+		unameNodeMatcher,
+	)
+	result.Memory.SharedMemory = c.queryRangeToDataPointsWithContext(ctx, contextName, info, sharedMemoryQuery, start, end, step)
 
 	// Memory Allocatable
 	memAllocatableQuery := fmt.Sprintf(

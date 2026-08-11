@@ -1439,6 +1439,12 @@ export namespace k8s {
 	    allocatable: MetricsDataPoint[];
 	    reserved: MetricsDataPoint[];
 	    committed: MetricsDataPoint[];
+	    available?: MetricsDataPoint[];
+	    kubeletAvailable?: MetricsDataPoint[];
+	    workingSet?: MetricsDataPoint[];
+	    pageCache?: MetricsDataPoint[];
+	    slab?: MetricsDataPoint[];
+	    sharedMemory?: MetricsDataPoint[];
 	
 	    static createFrom(source: any = {}) {
 	        return new NodeResourceMetrics(source);
@@ -1450,6 +1456,12 @@ export namespace k8s {
 	        this.allocatable = this.convertValues(source["allocatable"], MetricsDataPoint);
 	        this.reserved = this.convertValues(source["reserved"], MetricsDataPoint);
 	        this.committed = this.convertValues(source["committed"], MetricsDataPoint);
+	        this.available = this.convertValues(source["available"], MetricsDataPoint);
+	        this.kubeletAvailable = this.convertValues(source["kubeletAvailable"], MetricsDataPoint);
+	        this.workingSet = this.convertValues(source["workingSet"], MetricsDataPoint);
+	        this.pageCache = this.convertValues(source["pageCache"], MetricsDataPoint);
+	        this.slab = this.convertValues(source["slab"], MetricsDataPoint);
+	        this.sharedMemory = this.convertValues(source["sharedMemory"], MetricsDataPoint);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
