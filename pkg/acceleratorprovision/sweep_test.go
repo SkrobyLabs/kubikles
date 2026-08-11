@@ -268,6 +268,11 @@ func TestSweepProvisionAndOwnedDisposalShareExactReleaseMutationGate(t *testing.
 	const candidateName = "kubikles-accelerator-00000000000000000000000000000001"
 	snapshot := fakeSnapshot{identity: "snapshot", namespace: "team-a", client: fakeClientset(observedJob(observerAttempt()), observedPod(observerAttempt(), observedJob(observerAttempt())))}
 	key := releaseMutationGateKey(snapshot)
+	targetRequest := func() Request {
+		request := validRequest()
+		request.NamespaceOverride = snapshot.Namespace()
+		return request
+	}
 
 	t.Run("provision before sweep", func(t *testing.T) {
 		contexts := &fakeContexts{current: "ctx", snapshot: snapshot}
@@ -280,7 +285,7 @@ func TestSweepProvisionAndOwnedDisposalShareExactReleaseMutationGate(t *testing.
 		disposer.acceptSweepSnapshot = func(ContextSnapshot) bool { return true }
 
 		provisioned := make(chan Result, 1)
-		go func() { provisioned <- provisioner.Provision(context.Background(), validRequest()) }()
+		go func() { provisioned <- provisioner.Provision(context.Background(), targetRequest()) }()
 		<-charts.prepareEntered
 		swept := make(chan SweepResult, 1)
 		go func() { swept <- disposer.SweepInert(context.Background(), snapshot) }()
@@ -315,7 +320,7 @@ func TestSweepProvisionAndOwnedDisposalShareExactReleaseMutationGate(t *testing.
 		go func() { swept <- disposer.SweepInert(context.Background(), snapshot) }()
 		<-cleanupEntered
 		provisioned := make(chan Result, 1)
-		go func() { provisioned <- provisioner.Provision(context.Background(), validRequest()) }()
+		go func() { provisioned <- provisioner.Provision(context.Background(), targetRequest()) }()
 		waitForGateReferences(t, &provisioner.gates, key, 2)
 		charts.mu.Lock()
 		calls := len(charts.calls)
@@ -422,7 +427,7 @@ func TestSweepProvisionAndOwnedDisposalShareExactReleaseMutationGate(t *testing.
 		}
 
 		provisioned := make(chan Result, 1)
-		go func() { provisioned <- provisioner.Provision(context.Background(), validRequest()) }()
+		go func() { provisioned <- provisioner.Provision(context.Background(), targetRequest()) }()
 		<-charts.prepareEntered
 		workload := connectorWorkload(t)
 		disposed := make(chan DisposalResult, 1)

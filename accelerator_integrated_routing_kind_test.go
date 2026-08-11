@@ -706,7 +706,7 @@ func runAcceleratorIntegratedRoutingKind(t *testing.T) integratedRoutingKindAcce
 	assertIntegratedRoutingKindOriginProof(t, originProbe, expectedOrigin, "integrated routing initial Direct origin proof failed")
 	// Retained Secret demand must stay Direct until the connection owner
 	// explicitly enables its Accelerator lifecycle.
-	coordinator.Enable(contextName, "")
+	coordinator.Enable(contextName, fixtureNamespace)
 	diagnostic.set(integratedRoutingKindStageReady)
 	firstToken := waitIntegratedRoutingKindInitialToken(t, diagnostic, ready, coordinator, coordinatorProbe, contextName, &clientConstructions)
 
@@ -919,7 +919,7 @@ func runAcceleratorIntegratedRoutingKind(t *testing.T) integratedRoutingKindAcce
 	assertIntegratedRoutingKindOriginProof(t, originProbe, expectedOrigin, "integrated routing mismatch Direct origin proof failed")
 	// Mismatch recovery is connection-owned just like the healthy path. Browser
 	// demand alone must remain Direct until its owner explicitly enables it.
-	mismatchCoordinator.Enable(contextName, "")
+	mismatchCoordinator.Enable(contextName, fixtureNamespace)
 	diagnostic.set(integratedRoutingKindStageMismatch)
 	waitIntegratedRoutingKindMismatch(t, mismatchCoordinator, mismatchProbe, contextName, integratedRoutingKindMismatchTimeout)
 	select {

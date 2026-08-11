@@ -433,9 +433,11 @@ func TestProvisionWaiterRefreshRequiresSameCompleteMutationGateKey(t *testing.T)
 			observer := &fakeObserver{}
 			service := New(contexts, charts, observer)
 			service.entropy = &repeatReader{}
+			request := validRequest()
+			request.NamespaceOverride = "*"
 
 			first := make(chan Result, 1)
-			go func() { first <- service.Provision(context.Background(), validRequest()) }()
+			go func() { first <- service.Provision(context.Background(), request) }()
 			for want := 1; want <= 2; want++ {
 				if got := <-calls; got != want {
 					t.Fatalf("snapshot call=%d want=%d", got, want)
@@ -444,7 +446,7 @@ func TestProvisionWaiterRefreshRequiresSameCompleteMutationGateKey(t *testing.T)
 			<-charts.prepareEntered
 
 			waiter := make(chan Result, 1)
-			go func() { waiter <- service.Provision(context.Background(), validRequest()) }()
+			go func() { waiter <- service.Provision(context.Background(), request) }()
 			if got := <-calls; got != 3 {
 				t.Fatalf("waiter initial snapshot call=%d", got)
 			}
@@ -539,7 +541,7 @@ func TestProvisionOutcomeMatrix(t *testing.T) {
 			}
 			result := service.Provision(context.Background(), request)
 			if test.wantAvailable {
-				if result.Availability != Available || result.Workload == nil || result.Workload.ContextName != "ctx" || result.Workload.ReleaseNamespace != "default" || result.Workload.BuildVersion != "v1.2.3" || result.Workload.ImageDigest != "sha256:"+strings.Repeat("a", 64) || result.Workload.ChartDigest != "sha256:"+strings.Repeat("b", 64) || result.Workload.credential == nil {
+				if result.Availability != Available || result.Workload == nil || result.Workload.ContextName != "ctx" || result.Workload.ReleaseNamespace != DefaultAcceleratorNamespace || result.Workload.BuildVersion != "v1.2.3" || result.Workload.ImageDigest != "sha256:"+strings.Repeat("a", 64) || result.Workload.ChartDigest != "sha256:"+strings.Repeat("b", 64) || result.Workload.credential == nil {
 					t.Fatalf("invalid success: %#v", result)
 				}
 			} else if result.Availability != Unavailable || result.Reason != test.wantReason || result.Cleanup != test.wantCleanup || result.Workload != nil {

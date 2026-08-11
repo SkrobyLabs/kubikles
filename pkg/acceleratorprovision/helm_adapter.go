@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"kubikles/pkg/debug"
 	"kubikles/pkg/helm"
 
 	helmchart "helm.sh/helm/v3/pkg/chart"
@@ -76,6 +77,16 @@ func (h *helmChartInstaller) Install(ctx context.Context, snapshot ContextSnapsh
 	if !ok || implementation == nil || implementation.prepared == nil || snapshot == nil {
 		return nil, InstallFailed, false
 	}
+	if implementation.attempt.Namespace != snapshot.Namespace() {
+		debug.LogHelm("Accelerator install namespace mismatch", map[string]interface{}{
+			"preparedNamespace": implementation.attempt.Namespace,
+			"snapshotNamespace": snapshot.Namespace(),
+		})
+		return nil, InstallFailed, false
+	}
+	if reason := ensureDefaultAcceleratorNamespace(ctx, snapshot); reason != "" {
+		return nil, reason, false
+	}
 	receipt, failure, ownershipUnproven := h.client.InstallAcceleratorRelease(ctx, snapshot.RESTConfig(), implementation.prepared)
 	if receipt != nil {
 		_, jobUID, valid := createdAcceleratorResources(receipt)
@@ -93,6 +104,85 @@ func (h *helmChartInstaller) Install(ctx context.Context, snapshot ContextSnapsh
 	}
 	// An install error with no exact record is deliberately not ownership.
 	return nil, mapHelmFailure(failure), ownershipUnproven
+}
+
+func ensureDefaultAcceleratorNamespace(ctx context.Context, snapshot ContextSnapshot) UnavailableReason {
+	if snapshot == nil || snapshot.Namespace() != DefaultAcceleratorNamespace {
+		return ""
+	}
+	if ctx == nil || snapshot.Clientset() == nil {
+		debug.LogHelm("Accelerator namespace creation failed", map[string]interface{}{
+			"namespace": DefaultAcceleratorNamespace,
+			"error":     "Kubernetes client is unavailable",
+		})
+		return InstallFailed
+	}
+
+	namespaces := snapshot.Clientset().CoreV1().Namespaces()
+	_, getErr := namespaces.Get(ctx, DefaultAcceleratorNamespace, metav1.GetOptions{})
+	if getErr == nil {
+		return ""
+	}
+	if apierrors.IsUnauthorized(getErr) {
+		debug.LogHelm("Accelerator namespace lookup failed", map[string]interface{}{
+			"namespace": DefaultAcceleratorNamespace,
+			"error":     getErr.Error(),
+		})
+		return PermissionDenied
+	}
+	if !apierrors.IsNotFound(getErr) && !apierrors.IsForbidden(getErr) {
+		debug.LogHelm("Accelerator namespace lookup failed", map[string]interface{}{
+			"namespace": DefaultAcceleratorNamespace,
+			"error":     getErr.Error(),
+		})
+		return namespaceFailureReason(ctx, getErr)
+	}
+
+	created, createErr := namespaces.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: DefaultAcceleratorNamespace,
+		Labels: map[string]string{
+			"app.kubernetes.io/name":       "kubikles-app",
+			"app.kubernetes.io/part-of":    "kubikles",
+			"app.kubernetes.io/managed-by": "kubikles",
+		},
+	}}, metav1.CreateOptions{})
+	if createErr == nil {
+		details := map[string]interface{}{"namespace": DefaultAcceleratorNamespace}
+		if created != nil && created.UID != "" {
+			details["uid"] = string(created.UID)
+		}
+		debug.LogHelm("Kubikles created Accelerator namespace", details)
+		return ""
+	}
+	if apierrors.IsAlreadyExists(createErr) {
+		return ""
+	}
+	if apierrors.IsForbidden(getErr) && apierrors.IsForbidden(createErr) {
+		debug.LogHelm("Accelerator namespace could not be verified or created; continuing to Helm install", map[string]interface{}{
+			"namespace":   DefaultAcceleratorNamespace,
+			"lookupError": getErr.Error(),
+			"createError": createErr.Error(),
+		})
+		return ""
+	}
+	debug.LogHelm("Accelerator namespace creation failed", map[string]interface{}{
+		"namespace": DefaultAcceleratorNamespace,
+		"error":     createErr.Error(),
+	})
+	if apierrors.IsForbidden(createErr) || apierrors.IsUnauthorized(createErr) {
+		return PermissionDenied
+	}
+	return namespaceFailureReason(ctx, createErr)
+}
+
+func namespaceFailureReason(ctx context.Context, err error) UnavailableReason {
+	if ctx != nil && ctx.Err() != nil {
+		return contextReason(ctx)
+	}
+	if apierrors.IsForbidden(err) || apierrors.IsUnauthorized(err) {
+		return PermissionDenied
+	}
+	return InstallFailed
 }
 
 func createdResourcesMatchPrepared(receipt *helm.AcceleratorOwnershipReceipt, prepared *helm.AcceleratorPreparedRelease) bool {

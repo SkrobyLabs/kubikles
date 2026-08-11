@@ -281,7 +281,12 @@ func stopCoordinator(t *testing.T, coordinator *Coordinator) {
 func TestExplicitEnableActivationOrderAndDirectAvailability(t *testing.T) {
 	coordinator, services, clock := newCoordinatorHarness(t)
 	sweepEntered, releaseSweep := make(chan struct{}), make(chan struct{})
-	services.sweepHook = func(context.Context, ContextSnapshot) { close(sweepEntered); <-releaseSweep }
+	sweptNamespace := ""
+	services.sweepHook = func(_ context.Context, snapshot ContextSnapshot) {
+		sweptNamespace = snapshot.Namespace()
+		close(sweepEntered)
+		<-releaseSweep
+	}
 	workload := coordinatorWorkload(t)
 	session, _ := coordinatorSession(workload, clock, 1)
 	services.provisionHook = func(context.Context, int, Request) Result { return available(workload) }
@@ -299,6 +304,9 @@ func TestExplicitEnableActivationOrderAndDirectAvailability(t *testing.T) {
 	case <-sweepEntered:
 	case <-time.After(time.Second):
 		t.Fatal("sweep did not start")
+	}
+	if sweptNamespace != "kubikles-system" {
+		t.Fatalf("sweep namespace=%q", sweptNamespace)
 	}
 	if _, ok := result.Lease.TrySession(); ok {
 		t.Fatal("session published before Connect")
@@ -553,7 +561,33 @@ func TestCoordinatorRetryRedeploysActiveWorkload(t *testing.T) {
 	stopCoordinator(t, coordinator)
 }
 
-func TestCoordinatorAllNamespacesMarkerUsesContextNamespaceOnRetry(t *testing.T) {
+func TestCoordinatorBlankNamespaceUsesBuiltInDefaultForSweepAndProvision(t *testing.T) {
+	coordinator, services, _ := newCoordinatorHarness(t)
+	sweptNamespaces := make(chan string, 1)
+	requests := make(chan Request, 1)
+	services.sweepHook = func(_ context.Context, snapshot ContextSnapshot) {
+		sweptNamespaces <- snapshot.Namespace()
+	}
+	services.provisionHook = func(_ context.Context, _ int, request Request) Result {
+		requests <- request
+		return unavailable(ContextUnavailable, CleanupNotNeeded)
+	}
+
+	coordinator.Enable("ctx", "")
+	waitCoordinatorState(t, coordinator, CoordinatorUnavailable)
+	if namespace := <-sweptNamespaces; namespace != DefaultAcceleratorNamespace {
+		t.Fatalf("sweep namespace=%q", namespace)
+	}
+	if request := <-requests; request.NamespaceOverride != DefaultAcceleratorNamespace {
+		t.Fatalf("provision namespace=%q", request.NamespaceOverride)
+	}
+	if snapshot := coordinator.Snapshot("ctx"); snapshot.Namespace != DefaultAcceleratorNamespace {
+		t.Fatalf("stored namespace=%q", snapshot.Namespace)
+	}
+	stopCoordinator(t, coordinator)
+}
+
+func TestCoordinatorPreservesAllNamespacesMarkerAndRepairsEmptyRetryNamespace(t *testing.T) {
 	coordinator, services, _ := newCoordinatorHarness(t)
 	requests := make(chan Request, 2)
 	services.provisionHook = func(_ context.Context, _ int, request Request) Result {
@@ -563,10 +597,10 @@ func TestCoordinatorAllNamespacesMarkerUsesContextNamespaceOnRetry(t *testing.T)
 
 	coordinator.Enable("ctx", "*")
 	waitCoordinatorState(t, coordinator, CoordinatorUnavailable)
-	if first := <-requests; first.NamespaceOverride != "" {
+	if first := <-requests; first.NamespaceOverride != "*" {
 		t.Fatalf("initial namespace override=%q", first.NamespaceOverride)
 	}
-	if snapshot := coordinator.Snapshot("ctx"); snapshot.Namespace != "" {
+	if snapshot := coordinator.Snapshot("ctx"); snapshot.Namespace != "*" {
 		t.Fatalf("stored namespace=%q", snapshot.Namespace)
 	}
 
@@ -575,7 +609,7 @@ func TestCoordinatorAllNamespacesMarkerUsesContextNamespaceOnRetry(t *testing.T)
 	stale := coordinator.slots[coordinator.currentEpoch]
 	coordinator.mu.Unlock()
 	stale.mu.Lock()
-	stale.namespace = "*"
+	stale.namespace = ""
 	stale.mu.Unlock()
 
 	coordinator.Retry("ctx")
@@ -586,7 +620,7 @@ func TestCoordinatorAllNamespacesMarkerUsesContextNamespaceOnRetry(t *testing.T)
 	if services.provisionCalls.Load() != 2 {
 		t.Fatalf("provision calls=%d", services.provisionCalls.Load())
 	}
-	if retry := <-requests; retry.NamespaceOverride != "" {
+	if retry := <-requests; retry.NamespaceOverride != DefaultAcceleratorNamespace {
 		t.Fatalf("retry namespace override=%q", retry.NamespaceOverride)
 	}
 	stopCoordinator(t, coordinator)

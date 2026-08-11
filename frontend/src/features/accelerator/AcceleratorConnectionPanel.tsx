@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CheckIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 import { useAccelerator, useConfig, useK8s, useUI } from '~/context';
 import { acceleratorPolicy, upsertAcceleratorOverride } from './acceleratorConfig';
+import { DEFAULT_ACCELERATOR_NAMESPACE } from './constants';
 import { acceleratorStateLabel } from './AcceleratorStatusBadge';
 import type { AcceleratorDiagnostic } from '~/context/AcceleratorContext';
 import Logger from '~/utils/Logger';
@@ -110,8 +111,8 @@ export default function AcceleratorConnectionPanel({ contextName, contextNamespa
     <p className="text-xs text-gray-500">Connection overrides inherit the global defaults. <button type="button" onClick={onOpenSettings} className="text-primary hover:underline">Open Settings &gt; Accelerator</button></p>
     <div>
       <label className="mb-1 block text-xs text-gray-400">Deployment namespace</label>
-      <input value={namespace} onChange={event => setNamespace(event.target.value)} placeholder={contextNamespace && contextNamespace !== '*' ? contextNamespace : 'context namespace'} className="w-full rounded border border-border bg-surface px-2.5 py-1.5 text-sm text-white focus:border-primary focus:outline-none" />
-      <p className="mt-1 text-xs text-gray-500">Resolved: <span className="font-mono text-gray-300">{namespace || policy.namespace || 'context namespace'}</span> ({namespace === '' ? policy.namespaceSource : 'connection override'}). The namespace must already exist.</p>
+      <input value={namespace} onChange={event => setNamespace(event.target.value)} placeholder={DEFAULT_ACCELERATOR_NAMESPACE} className="w-full rounded border border-border bg-surface px-2.5 py-1.5 text-sm text-white focus:border-primary focus:outline-none" />
+      <p className="mt-1 text-xs text-gray-500">Resolved: <span className="font-mono text-gray-300">{namespace || policy.namespace}</span> ({namespace === '' ? policy.namespaceSource : 'connection override'}). Kubikles creates <span className="font-mono">{DEFAULT_ACCELERATOR_NAMESPACE}</span> when needed; custom namespaces must already exist.</p>
     </div>
     <div className="flex flex-wrap gap-2">
       {!shown.enabled && <button disabled={busy} onClick={() => void runAction('Enable', deploy)} className="rounded bg-primary px-3 py-1.5 text-sm text-white disabled:cursor-wait disabled:opacity-50">{pendingAction === 'Enable' ? 'Starting...' : 'Enable & Deploy'}</button>}

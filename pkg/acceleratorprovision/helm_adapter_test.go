@@ -236,6 +236,100 @@ func (f *prepareMutationTripwire) PurgeOwnedAcceleratorRelease(context.Context, 
 	return helm.AcceleratorCleanup
 }
 
+func TestEnsureDefaultAcceleratorNamespaceCreatesMissingNamespace(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	snapshot := fakeSnapshot{identity: "identity", namespace: DefaultAcceleratorNamespace, client: client}
+
+	if reason := ensureDefaultAcceleratorNamespace(context.Background(), snapshot); reason != "" {
+		t.Fatalf("reason=%s", reason)
+	}
+	created, err := client.CoreV1().Namespaces().Get(context.Background(), DefaultAcceleratorNamespace, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantLabels := map[string]string{
+		"app.kubernetes.io/name":       "kubikles-app",
+		"app.kubernetes.io/part-of":    "kubikles",
+		"app.kubernetes.io/managed-by": "kubikles",
+	}
+	for key, want := range wantLabels {
+		if created.Labels[key] != want {
+			t.Fatalf("label %s=%q want=%q", key, created.Labels[key], want)
+		}
+	}
+}
+
+func TestInstallEnsuresDefaultAcceleratorNamespaceBeforeHelm(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	operations := &prepareMutationTripwire{}
+	installer := &helmChartInstaller{client: operations}
+	prepared := &preparedChart{implementation: &helmPreparedChart{
+		prepared: &helm.AcceleratorPreparedRelease{},
+		attempt:  chartAttempt{Namespace: DefaultAcceleratorNamespace},
+	}}
+	snapshot := fakeSnapshot{identity: "identity", namespace: DefaultAcceleratorNamespace, client: client}
+
+	owned, reason, unproven := installer.Install(context.Background(), snapshot, prepared)
+	if owned != nil || reason != InstallFailed || unproven {
+		t.Fatalf("owned=%#v reason=%s unproven=%v", owned, reason, unproven)
+	}
+	if strings.Join(operations.calls, ",") != "install" {
+		t.Fatalf("Helm calls=%v", operations.calls)
+	}
+	if _, err := client.CoreV1().Namespaces().Get(context.Background(), DefaultAcceleratorNamespace, metav1.GetOptions{}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEnsureDefaultAcceleratorNamespaceLeavesExistingAndCustomNamespacesAlone(t *testing.T) {
+	existing := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: DefaultAcceleratorNamespace}}
+	client := fake.NewSimpleClientset(existing)
+	if reason := ensureDefaultAcceleratorNamespace(context.Background(), fakeSnapshot{identity: "identity", namespace: DefaultAcceleratorNamespace, client: client}); reason != "" {
+		t.Fatalf("existing reason=%s", reason)
+	}
+	if actions := client.Actions(); len(actions) != 1 || actions[0].GetVerb() != "get" {
+		t.Fatalf("existing actions=%#v", actions)
+	}
+
+	customClient := fake.NewSimpleClientset()
+	if reason := ensureDefaultAcceleratorNamespace(context.Background(), fakeSnapshot{identity: "identity", namespace: "team-a", client: customClient}); reason != "" {
+		t.Fatalf("custom reason=%s", reason)
+	}
+	if len(customClient.Actions()) != 0 {
+		t.Fatalf("custom namespace actions=%#v", customClient.Actions())
+	}
+}
+
+func TestEnsureDefaultAcceleratorNamespaceMapsCreatePermissionFailure(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	client.PrependReactor("create", "namespaces", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewForbidden(schema.GroupResource{Resource: "namespaces"}, DefaultAcceleratorNamespace, errors.New("create denied"))
+	})
+	snapshot := fakeSnapshot{identity: "identity", namespace: DefaultAcceleratorNamespace, client: client}
+
+	if reason := ensureDefaultAcceleratorNamespace(context.Background(), snapshot); reason != PermissionDenied {
+		t.Fatalf("reason=%s", reason)
+	}
+}
+
+func TestEnsureDefaultAcceleratorNamespaceContinuesWhenClusterScopedLookupIsForbidden(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	client.PrependReactor("get", "namespaces", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewForbidden(schema.GroupResource{Resource: "namespaces"}, DefaultAcceleratorNamespace, errors.New("get denied"))
+	})
+	client.PrependReactor("create", "namespaces", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewForbidden(schema.GroupResource{Resource: "namespaces"}, DefaultAcceleratorNamespace, errors.New("create denied"))
+	})
+	snapshot := fakeSnapshot{identity: "identity", namespace: DefaultAcceleratorNamespace, client: client}
+
+	if reason := ensureDefaultAcceleratorNamespace(context.Background(), snapshot); reason != "" {
+		t.Fatalf("reason=%s", reason)
+	}
+	if actions := client.Actions(); len(actions) != 2 || actions[0].GetVerb() != "get" || actions[1].GetVerb() != "create" {
+		t.Fatalf("actions=%#v", actions)
+	}
+}
+
 func TestPublicPullIntegrityFailureStopsServiceBeforeMutation(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	contexts := &fakeContexts{current: "ctx", snapshot: fakeSnapshot{identity: "identity", namespace: "default", client: clientset}}

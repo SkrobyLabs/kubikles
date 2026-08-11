@@ -977,7 +977,7 @@ func requiredKindEnv(t *testing.T, name string) string {
 }
 
 func kindRequest(contextName, chartDigest, imageDigest string) Request {
-	return Request{ContextName: contextName, Resolution: acceleratorrelease.Resolution{
+	return Request{ContextName: contextName, NamespaceOverride: kindNamespace(), Resolution: acceleratorrelease.Resolution{
 		Availability: acceleratorrelease.Available, Source: acceleratorrelease.SourceBuiltIn,
 		Release: acceleratorrelease.VerifiedRelease{
 			BuildVersion:   kindBuildVersion(),

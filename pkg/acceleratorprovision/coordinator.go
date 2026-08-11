@@ -179,8 +179,8 @@ func (c *Coordinator) EnableWithOptions(contextName, namespace string, options D
 	if c == nil || contextName == "" || ValidateDeploymentOptions(options) != nil {
 		return
 	}
-	if namespace == "*" {
-		namespace = ""
+	if namespace == "" {
+		namespace = DefaultAcceleratorNamespace
 	}
 	c.mu.Lock()
 	if c.closed || c.quiesced || c.switching || contextName != c.currentName {
@@ -250,8 +250,8 @@ func (c *Coordinator) Retry(contextName string) {
 	}
 	s.mismatchLatched, s.unavailableUntil = false, time.Time{}
 	s.diagnostics = nil
-	if s.namespace == "*" {
-		s.namespace = ""
+	if s.namespace == "" {
+		s.namespace = DefaultAcceleratorNamespace
 	}
 	if s.workload != nil {
 		if s.workerCancel != nil {
@@ -631,6 +631,12 @@ func (c *Coordinator) runActivation(ctx context.Context, s *contextSlot, fence o
 		if c.contexts != nil {
 			snapshot, _ = c.contexts.SnapshotCurrentContext(s.contextName)
 		}
+		s.mu.Lock()
+		namespace := s.namespace
+		s.mu.Unlock()
+		if snapshot != nil && namespace != "" && namespace != "*" {
+			snapshot = namespaceOverrideSnapshot{ContextSnapshot: snapshot, namespace: namespace}
+		}
 		if c.disposer != nil && c.claimSweep(snapshot) {
 			_ = c.disposer.SweepInert(ctx, snapshot)
 		}
@@ -830,6 +836,9 @@ func (c *Coordinator) provision(ctx context.Context, contextName string, resolut
 		s.mu.Lock()
 		namespace = s.namespace
 		s.mu.Unlock()
+	}
+	if namespace == "" {
+		namespace = DefaultAcceleratorNamespace
 	}
 	return c.provisioner.Provision(ctx, Request{ContextName: contextName, NamespaceOverride: namespace, Resolution: resolution})
 }

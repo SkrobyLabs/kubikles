@@ -1,16 +1,19 @@
 import type { AcceleratorConnectionOverride } from '~/context/ConfigContext';
+import { DEFAULT_ACCELERATOR_NAMESPACE } from './constants';
 
 export type AcceleratorSettings = { enabledByDefault: boolean; defaultNamespace: string; connectionOverrides: AcceleratorConnectionOverride[] };
 export function acceleratorPolicy(settings: AcceleratorSettings, contextName: string, contextNamespace = 'default') {
   const override = settings.connectionOverrides.find(item => item.contextName === contextName);
   const inheritedNamespace = contextNamespace === '*' ? '' : contextNamespace;
   const overrideNamespace = override?.namespace;
-  const usesContextNamespace = overrideNamespace === '' || overrideNamespace === '*' || (overrideNamespace === undefined && (!settings.defaultNamespace || settings.defaultNamespace === '*'));
-  const namespace = usesContextNamespace ? inheritedNamespace : (overrideNamespace ?? settings.defaultNamespace);
+  const configuredDefault = settings.defaultNamespace || DEFAULT_ACCELERATOR_NAMESPACE;
+  const usesContextNamespace = overrideNamespace === '*' || (overrideNamespace === undefined && settings.defaultNamespace === '*');
+  const hasConnectionOverride = overrideNamespace !== undefined && overrideNamespace !== '' && overrideNamespace !== '*';
+  const namespace = usesContextNamespace ? inheritedNamespace : (hasConnectionOverride ? overrideNamespace : configuredDefault);
   return {
     enabled: override?.enabled ?? settings.enabledByDefault,
     namespace,
-    namespaceSource: usesContextNamespace ? 'context namespace' : (overrideNamespace !== undefined ? 'connection override' : 'Kubikles Settings'),
+    namespaceSource: usesContextNamespace ? 'context namespace' : (hasConnectionOverride ? 'connection override' : 'Kubikles Settings'),
     override,
   };
 }

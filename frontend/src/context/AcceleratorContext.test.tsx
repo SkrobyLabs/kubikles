@@ -58,7 +58,7 @@ describe('AcceleratorProvider diagnostics', () => {
     state.accelerator = { enabledByDefault: true, defaultNamespace: '', connectionOverrides: [] };
     const view = render(<AcceleratorProvider><div /></AcceleratorProvider>);
 
-    await waitFor(() => expect(bridge.EnableAccelerator).toHaveBeenCalledWith('selected', '', expect.any(String)));
+    await waitFor(() => expect(bridge.EnableAccelerator).toHaveBeenCalledWith('selected', 'kubikles-app', expect.any(String)));
     state.currentNamespace = 'other-view-namespace';
     view.rerender(<AcceleratorProvider><div /></AcceleratorProvider>);
 

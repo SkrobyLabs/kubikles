@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { SetRequestCancellationEnabled, SetForceHTTP1, SetClientPoolSize } from 'wailsjs/go/main/App';
 import { validateConfig } from '~/lib/validation';
 import type { SidebarLayoutSection } from '~/constants/menuStructure';
+import { DEFAULT_ACCELERATOR_NAMESPACE } from '~/features/accelerator/constants';
 
 interface LogSearchConfig {
     debounceMs: number;
@@ -183,7 +184,7 @@ const defaultConfig: AppConfig = {
     },
     accelerator: {
         enabledByDefault: false,
-        defaultNamespace: '',
+        defaultNamespace: DEFAULT_ACCELERATOR_NAMESPACE,
         customImage: '',
         customChart: '',
         connectionOverrides: []
@@ -197,6 +198,10 @@ const migrateConfig = (config: any): AppConfig => {
     if (migrated.accelerator?.development) {
         const { development: _removed, ...accelerator } = migrated.accelerator;
         migrated.accelerator = accelerator;
+    }
+
+    if (migrated.accelerator && !migrated.accelerator.defaultNamespace) {
+        migrated.accelerator.defaultNamespace = DEFAULT_ACCELERATOR_NAMESPACE;
     }
 
     // Migrate metrics.pollIntervalMs -> kubernetes.metricsPollIntervalMs

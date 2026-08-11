@@ -19,11 +19,12 @@ import (
 )
 
 const (
-	ProvisionTimeout    = 3 * time.Minute
-	ContextPollInterval = 250 * time.Millisecond
-	CleanupTimeout      = 45 * time.Second
-	imageRepository     = "ghcr.io/skrobylabs/kubikles-accelerator"
-	chartRepository     = "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator"
+	ProvisionTimeout            = 3 * time.Minute
+	ContextPollInterval         = 250 * time.Millisecond
+	CleanupTimeout              = 45 * time.Second
+	DefaultAcceleratorNamespace = "kubikles-app"
+	imageRepository             = "ghcr.io/skrobylabs/kubikles-accelerator"
+	chartRepository             = "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator"
 )
 
 var digestRE = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
@@ -115,7 +116,9 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	if !validRelease(request.Resolution) {
 		return unavailable(ArtifactUnavailable, CleanupNotNeeded)
 	}
-	if request.NamespaceOverride == "*" {
+	if request.NamespaceOverride == "" {
+		request.NamespaceOverride = DefaultAcceleratorNamespace
+	} else if request.NamespaceOverride == "*" {
 		request.NamespaceOverride = ""
 	}
 	if request.ContextName == "" || strings.TrimSpace(request.ContextName) != request.ContextName {
