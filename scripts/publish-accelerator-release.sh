@@ -458,7 +458,7 @@ exercise_hostile_credentials() {
   printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$registry" "$registry_auth" > "$private/oras.json"
   printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$registry" "$helm_auth" > "$private/helm.json"
   printf 'example.invalid:\n    oauth_token: %s\n' "$HOSTILE_RAW_TOKEN" > "$private/gh/hosts.yml"
-  printf 'image:\n  reference: %s/kubikles-accelerator:%s\n  version: %s\naccelerator:\n  workloadSessionId: credential-probe\n  allowVersionMismatch: false\nauth:\n  creatorVerifier: %s\n' \
+  printf 'image:\n  reference: %s/kubikles-accelerator:%s\n  version: %s\naccelerator:\n  workloadSessionId: credential-probe\n  allowVersionMismatch: false\nauth:\n  creatorVerifier: %s\nownership:\n  installationId: 101112131415161718191a1b1c1d1e1f\n' \
     "$registry" "$version" "$version" "$HOSTILE_VERIFIER" > "$private/render-values.yaml"
   chmod 600 "$private/oras.json" "$private/helm.json" "$private/gh/hosts.yml" "$private/render-values.yaml"
 
@@ -650,7 +650,7 @@ verify_ghcr() {
   chart_archive=$(single_chart_archive "$tmp/chart/package")
   go run ./scripts/accelerator-release inspect-chart-manifest "$tmp/chart/manifest.json" "$tmp/chart/config.json" "$chart_archive" "$CHART_SOURCE" "$chart_version" "$BUILD_VERSION" "$epoch" "$chart_digest"
   go run ./scripts/accelerator-release inspect-chart "$chart_archive" "$CHART_SOURCE" "$chart_version" "$BUILD_VERSION" "$epoch"
-  helm template release "$chart_archive" --namespace release-verification --set-string image.reference="$image_ref" --set-string image.version="$BUILD_VERSION" --set-string accelerator.workloadSessionId=release-verification --set-string auth.creatorVerifier=w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM >/dev/null
+  helm template release "$chart_archive" --namespace release-verification --set-string image.reference="$image_ref" --set-string image.version="$BUILD_VERSION" --set-string accelerator.workloadSessionId=release-verification --set-string auth.creatorVerifier=w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM --set-string ownership.installationId=101112131415161718191a1b1c1d1e1f >/dev/null
   SUCCESS_MESSAGE="accelerator production verification: passed for $BUILD_VERSION"
 }
 

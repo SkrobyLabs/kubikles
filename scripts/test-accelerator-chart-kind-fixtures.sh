@@ -92,6 +92,13 @@ accelerator_chart_kind_validate_api_server_address '0.0.0.0'
 accelerator_chart_kind_validate_api_server_host '127.0.0.1'
 accelerator_chart_kind_validate_api_server_host 'host.docker.internal'
 
+fixture_image='example.invalid/kubikles-accelerator@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+accelerator_chart_kind_write_values "$tmp/values.json" "$fixture_image" v0.0.0 amd64 'w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM' '101112131415161718191a1b1c1d1e1f'
+jq -e --arg image "$fixture_image" '. == {image:{reference:$image,version:"v0.0.0",architecture:"amd64"},accelerator:{workloadSessionId:"smoke-session-1",allowVersionMismatch:false},auth:{creatorVerifier:"w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM"},ownership:{installationId:"101112131415161718191a1b1c1d1e1f"}}' "$tmp/values.json" >/dev/null || {
+  echo "accelerator-chart-kind-fixtures: Helm values are not exact" >&2
+  exit 1
+}
+
 mkdir "$tmp/bin"
 printf '%s\n' \
   '#!/usr/bin/env bash' \
@@ -134,7 +141,7 @@ for fixture in 'no yes' 'yes no' 'invalid no'; do
   fi
 done
 
-image='example.invalid/kubikles-accelerator@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+image="$fixture_image"
 verifier='accelerator-smoke-kubikles-accelerator-verifier'
 pod_prefix='{"spec":{"containers":[{"name":"accelerator","image":"'"$image"'","imagePullPolicy":"IfNotPresent","securityContext":{"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":true,"capabilities":{"drop":["ALL"]}},"resources":{"requests":{"cpu":"100m","memory":"128Mi"},"limits":{"cpu":"1","memory":"512Mi"}},"env":[{"name":"KUBIKLES_ACCELERATOR_CREATOR_VERIFIER","valueFrom":{"secretKeyRef":{"name":"'"$verifier"'","key":"creatorVerifier"}}}],"volumeMounts":[{"name":"serviceaccount","mountPath":"/var/run/secrets/kubernetes.io/serviceaccount","readOnly":true}]}],"volumes":[{"name":"serviceaccount","projected":{"defaultMode":292,"sources":[{"serviceAccountToken":{"path":"token","expirationSeconds":3600}},{"configMap":{"name":"kube-root-ca.crt","items":[{"key":"ca.crt","path":"ca.crt"}]}},{"downwardAPI":{"items":[{"path":"namespace","fieldRef":{'
 pod_suffix='"fieldPath":"metadata.namespace"}}]}}]}}]}}'

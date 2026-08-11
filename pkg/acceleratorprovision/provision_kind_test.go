@@ -124,10 +124,15 @@ func TestAcceleratorDesktopProvisionKind(t *testing.T) {
 		t.Fatalf("success provisioning outcome availability=%s reason=%s cleanup=%s", result.Availability, result.Reason, result.Cleanup)
 	}
 	workload := result.Workload
-	if workload.ContextName != request.ContextName || workload.ReleaseNamespace != kindNamespace() || workload.ReleaseName != "kubikles-accelerator-"+workload.WorkloadSessionID ||
-		workload.Job.Name == "" || workload.Job.UID == "" || workload.Pod.Name == "" || workload.Pod.UID == "" ||
-		workload.BuildVersion != kindBuildVersion() || workload.ImageDigest != imageDigest || workload.ChartDigest != chartDigest {
-		t.Fatalf("handle mismatch: %#v", workload)
+	contextMatches := workload.ContextName == request.ContextName
+	namespaceMatches := workload.ReleaseNamespace == kindNamespace()
+	releaseMatches := workload.ReleaseName == "kubikles-accelerator-"+workload.WorkloadSessionID
+	jobNamePresent, jobUIDPresent := workload.Job.Name != "", workload.Job.UID != ""
+	podNamePresent, podUIDPresent := workload.Pod.Name != "", workload.Pod.UID != ""
+	buildMatches := workload.BuildVersion == kindBuildVersion()
+	imageMatches, chartMatches := workload.ImageDigest == imageDigest, workload.ChartDigest == chartDigest
+	if !contextMatches || !namespaceMatches || !releaseMatches || !jobNamePresent || !jobUIDPresent || !podNamePresent || !podUIDPresent || !buildMatches || !imageMatches || !chartMatches {
+		t.Fatalf("handle mismatch context=%t namespace=%t release=%t job-name=%t job-uid=%t pod-name=%t pod-uid=%t build=%t image=%t chart=%t", contextMatches, namespaceMatches, releaseMatches, jobNamePresent, jobUIDPresent, podNamePresent, podUIDPresent, buildMatches, imageMatches, chartMatches)
 	}
 	assertKindReleaseObjects(t, ctx, k8sClient, workload)
 	if os.Getenv("ACCELERATOR_DISPOSAL_KIND") == "1" {
@@ -634,13 +639,13 @@ func exerciseDisposalKind(t *testing.T, service *Service, helmClient *helm.Clien
 	sweepCtx, sweepCancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	sweep := NewDisposalService(service).SweepInert(sweepCtx, snapshot)
 	sweepCancel()
-	cleaned, retained, malformedRetained := false, false, false
+	cleaned, retained, malformedIgnored := false, false, true
 	for _, candidate := range sweep.Candidates {
 		cleaned = cleaned || candidate.ReleaseName == orphanName && candidate.Status == SweepCleaned
 		retained = retained || candidate.ReleaseName == active.ReleaseName && candidate.Status == SweepActiveOrAmbiguous
-		malformedRetained = malformedRetained || candidate.ReleaseName == malformed && candidate.Status == SweepUnsupportedMalformed
+		malformedIgnored = malformedIgnored && candidate.ReleaseName != malformed
 	}
-	if sweep.Status != SweepCompleted || !cleaned || !retained || !malformedRetained {
+	if sweep.Status != SweepCompleted || !cleaned || !retained || !malformedIgnored {
 		orphanStage := helmClient.AcceleratorSweepProofStageForTest(context.Background(), snapshot.RESTConfig(), snapshot.Namespace(), orphanName)
 		activeStage := helmClient.AcceleratorSweepProofStageForTest(context.Background(), snapshot.RESTConfig(), snapshot.Namespace(), active.ReleaseName)
 		t.Fatalf("sweep status=%s candidates=%v orphan-stage=%s active-stage=%s", sweep.Status, sweep.Candidates, orphanStage, activeStage)

@@ -100,6 +100,13 @@ accelerator_chart_kind_write_config() {
     "  apiServerAddress: \"$address\"" >"$config_file"
 }
 
+accelerator_chart_kind_write_values() {
+  local values_file="${1-}" reference="${2-}" version="${3-}" architecture="${4-}" verifier="${5-}" installation_id="${6-}"
+  [ "$#" -eq 6 ] && [ -n "$values_file" ] && [ -n "$reference" ] && [ -n "$version" ] && [ -n "$architecture" ] && [ -n "$verifier" ] && [ -n "$installation_id" ] || return 1
+  jq -n --arg reference "$reference" --arg version "$version" --arg architecture "$architecture" --arg verifier "$verifier" --arg installation_id "$installation_id" \
+    '{image:{reference:$reference,version:$version,architecture:$architecture},accelerator:{workloadSessionId:"smoke-session-1",allowVersionMismatch:false},auth:{creatorVerifier:$verifier},ownership:{installationId:$installation_id}}' >"$values_file"
+}
+
 accelerator_chart_kind_rewrite_kubeconfig() {
   local kubeconfig_file="${1-}" bind_address="${2-}" endpoint_host="${3-}"
   local before current_context context_count cluster_name cluster_count server prefix port endpoint after
@@ -145,6 +152,7 @@ job="${release}-kubikles-accelerator"
 sa="system:serviceaccount:${namespace}:${job}"
 pod=""
 creator_verifier='w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM'
+installation_owner='101112131415161718191a1b1c1d1e1f'
 preload_image=""
 port_forward_pid=""
 cluster_created=false
@@ -258,7 +266,7 @@ if [ "$reuse_mode" = standalone ]; then
   cluster_absent_at_start=true
 fi
 execution_architecture="$(accelerator_e2e_execution_architecture)" || fail "execution-architecture"
-jq -n --arg reference "$image" --arg version "$ACCELERATOR_IMAGE_VERSION" --arg architecture "$execution_architecture" --arg verifier "$creator_verifier" '{image:{reference:$reference,version:$version,architecture:$architecture},accelerator:{workloadSessionId:"smoke-session-1",allowVersionMismatch:false},auth:{creatorVerifier:$verifier}}' >"$tmp/values.yaml"
+accelerator_chart_kind_write_values "$tmp/values.yaml" "$image" "$ACCELERATOR_IMAGE_VERSION" "$execution_architecture" "$creator_verifier" "$installation_owner" || fail "values-write"
 if [ "$reuse_mode" = standalone ]; then
   cluster_create_attempted=true
   kind create cluster --name "$cluster" --config "$kind_config" --kubeconfig "$kubeconfig" >"$tmp/kind-create" 2>&1 || fail "kind-create"
