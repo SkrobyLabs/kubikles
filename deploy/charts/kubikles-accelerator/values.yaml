@@ -7,3 +7,5 @@ accelerator:
   allowVersionMismatch: false
 auth:
   creatorVerifier: ""
+ownership:
+  installationId: ""

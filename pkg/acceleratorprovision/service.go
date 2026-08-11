@@ -42,6 +42,7 @@ type ContextSnapshot interface {
 }
 
 type chartAttempt struct {
+	InstallationID       string
 	ReleaseName          string
 	Namespace            string
 	Session              string
@@ -90,21 +91,24 @@ func (p desktopContexts) CurrentContext() string {
 }
 
 type Service struct {
-	contexts ContextProvider
-	charts   ChartInstaller
-	observer WorkloadObserver
-	entropy  io.Reader
-	gates    gateSet
+	contexts          ContextProvider
+	charts            ChartInstaller
+	observer          WorkloadObserver
+	entropy           io.Reader
+	installationOwner installationOwnerProvider
+	gates             gateSet
 }
 
 func New(contexts ContextProvider, charts ChartInstaller, observer WorkloadObserver) *Service {
-	return &Service{contexts: contexts, charts: charts, observer: observer, entropy: rand.Reader}
+	return &Service{contexts: contexts, charts: charts, observer: observer, entropy: rand.Reader, installationOwner: staticInstallationOwner("00000000000000000000000000000001")}
 }
 
 // NewDesktopService composes the dormant production adapters. Construction is
 // side-effect free; provisioning occurs only after an explicit Provision call.
 func NewDesktopService(k8sClient *k8s.Client, helmClient *helm.Client) *Service {
-	return New(desktopContexts{client: k8sClient}, &helmChartInstaller{client: helmClient, pollWait: realDisposalPollWait}, KubernetesObserver{})
+	service := New(desktopContexts{client: k8sClient}, &helmChartInstaller{client: helmClient, pollWait: realDisposalPollWait}, KubernetesObserver{})
+	service.installationOwner = newPersistentInstallationOwner("")
+	return service
 }
 
 func (s *Service) Provision(ctx context.Context, request Request) Result {
@@ -122,7 +126,7 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 		logProvisionContextUnavailable(request, "validate_namespace_override", nil, "", nil)
 		return unavailable(ContextUnavailable, CleanupNotNeeded)
 	}
-	if ctx == nil || s == nil || s.contexts == nil || s.charts == nil || s.observer == nil || s.entropy == nil {
+	if ctx == nil || s == nil || s.contexts == nil || s.charts == nil || s.observer == nil || s.entropy == nil || s.installationOwner == nil {
 		logProvisionContextUnavailable(request, "validate_service", nil, "", nil)
 		return unavailable(ContextUnavailable, CleanupNotNeeded)
 	}
@@ -160,6 +164,11 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	if reason := boundary(); reason != "" {
 		return unavailable(reason, CleanupNotNeeded)
 	}
+	installationID, err := s.installationOwner.InstallationID()
+	if err != nil {
+		debug.LogHelm("Accelerator installation ownership unavailable", map[string]interface{}{"context": request.ContextName, "error": err.Error()})
+		return unavailable(InstallationIdentityUnavailable, CleanupNotNeeded)
+	}
 	credential, err := generateCreatorCredential(s.entropy)
 	if err != nil {
 		return unavailable(EntropyUnavailable, CleanupNotNeeded)
@@ -168,7 +177,8 @@ func (s *Service) Provision(ctx context.Context, request Request) Result {
 	imageRepository, imageDigest := splitDigestReference(release.ImageReference)
 	_, chartDigest := splitDigestReference(release.ChartReference)
 	attempt := chartAttempt{
-		ReleaseName: credential.releaseName(), Namespace: snapshot.Namespace(), Session: credential.session,
+		InstallationID: installationID,
+		ReleaseName:    credential.releaseName(), Namespace: snapshot.Namespace(), Session: credential.session,
 		BuildVersion: release.BuildVersion, ImageReference: release.ImageReference, ImageRepository: imageRepository,
 		ImageDigest:    imageDigest,
 		ChartReference: release.ChartReference,

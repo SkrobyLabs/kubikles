@@ -160,6 +160,7 @@ type DisposalService struct {
 	sweeper             acceleratorInertSweeper
 	acceptSweepSnapshot func(ContextSnapshot) bool
 	phaseContext        func(context.Context, time.Duration) (context.Context, context.CancelFunc)
+	installationOwner   installationOwnerProvider
 }
 
 // NewDisposalService creates an explicit, dormant disposal primitive. Passing
@@ -167,6 +168,7 @@ type DisposalService struct {
 func NewDisposalService(provisioner *Service) *DisposalService {
 	service := &DisposalService{acceptSweepSnapshot: trustedProductionSweepSnapshot, phaseContext: context.WithTimeout}
 	if provisioner != nil {
+		service.installationOwner = provisioner.installationOwner
 		service.gates = &provisioner.gates
 		service.observeDrain = observeExactDrainJobSettled
 		if cleaner, ok := provisioner.charts.(interface {

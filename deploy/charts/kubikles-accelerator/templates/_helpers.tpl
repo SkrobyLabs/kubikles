@@ -11,4 +11,5 @@ app.kubernetes.io/instance: {{ .Release.Name | quote }}
 app.kubernetes.io/component: accelerator
 app.kubernetes.io/part-of: kubikles
 app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+kubikles.io/owner-id: {{ .Values.ownership.installationId | quote }}
 {{- end }}

@@ -50,11 +50,11 @@ func (c *Client) UninstallOwnedAcceleratorRelease(context.Context, *rest.Config,
 	return AcceleratorOwnedCleanupFailed
 }
 
-func (c *Client) ListAcceleratorSweepReleaseNames(context.Context, *rest.Config, string) ([]string, bool) {
+func (c *Client) ListAcceleratorSweepReleaseNames(context.Context, *rest.Config, string, string) ([]string, bool) {
 	return nil, false
 }
 
-func (c *Client) InspectAcceleratorSweepCandidate(context.Context, *rest.Config, string, string) (*AcceleratorSweepCandidate, AcceleratorSweepProofStatus) {
+func (c *Client) InspectAcceleratorSweepCandidate(context.Context, *rest.Config, string, string, string) (*AcceleratorSweepCandidate, AcceleratorSweepProofStatus) {
 	return nil, AcceleratorSweepUnsupportedMalformed
 }
 

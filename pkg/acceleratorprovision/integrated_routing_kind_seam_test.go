@@ -70,6 +70,7 @@ func TestIntegratedRoutingKindProvisionerRecordsClosedOutcomeBuckets(t *testing.
 		{name: "context unavailable", result: Result{Availability: Unavailable, Reason: ContextUnavailable}, want: IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: 1, ProvisionUnavailable: true, ProvisionContextInput: true}},
 		{name: "context changed", result: Result{Availability: Unavailable, Reason: ContextChanged}, want: IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: 1, ProvisionUnavailable: true, ProvisionContextInput: true}},
 		{name: "entropy unavailable", result: Result{Availability: Unavailable, Reason: EntropyUnavailable}, want: IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: 1, ProvisionUnavailable: true, ProvisionContextInput: true}},
+		{name: "installation identity unavailable", result: Result{Availability: Unavailable, Reason: InstallationIdentityUnavailable}, want: IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: 1, ProvisionUnavailable: true, ProvisionContextInput: true}},
 		{name: "chart pull", result: Result{Availability: Unavailable, Reason: ChartPullFailed}, want: IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: 1, ProvisionUnavailable: true, ProvisionChartPull: true}},
 		{name: "chart integrity", result: Result{Availability: Unavailable, Reason: ChartIntegrityFailed}, want: IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: 1, ProvisionUnavailable: true, ProvisionChartIntegrityRender: true}},
 		{name: "render", result: Result{Availability: Unavailable, Reason: RenderFailed}, want: IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: 1, ProvisionUnavailable: true, ProvisionChartIntegrityRender: true}},
@@ -83,7 +84,7 @@ func TestIntegratedRoutingKindProvisionerRecordsClosedOutcomeBuckets(t *testing.
 		{name: "cancelled", result: Result{Availability: Unavailable, Reason: Cancelled}, want: IntegratedRoutingKindCoordinatorProbeSnapshot{ProvisionAttempts: 1, ProvisionUnavailable: true, ProvisionTimeoutCancel: true}},
 	}
 	closedReasons := []UnavailableReason{
-		ArtifactUnavailable, ContextUnavailable, ContextChanged, EntropyUnavailable,
+		ArtifactUnavailable, ContextUnavailable, ContextChanged, EntropyUnavailable, InstallationIdentityUnavailable,
 		ChartPullFailed, ChartIntegrityFailed, RenderFailed, ReleaseConflict, PermissionDenied,
 		InstallFailed, JobFailed, PodFailed, ImagePullFailed, TimedOut, Cancelled,
 	}

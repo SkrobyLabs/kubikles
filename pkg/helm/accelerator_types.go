@@ -8,6 +8,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+const AcceleratorOwnerLabel = "kubikles.io/owner-id"
+
 // AcceleratorFailure is a closed, value-free classification used by the
 // provisioning service. Registry, Helm, manifest, and Kubernetes errors never
 // cross this boundary.
@@ -25,6 +27,7 @@ const (
 )
 
 type AcceleratorReleaseRequest struct {
+	InstallationID       string
 	ChartReference       string
 	ChartDigest          string
 	BuildVersion         string
@@ -92,11 +95,11 @@ const (
 )
 
 type AcceleratorSweepCandidate struct {
-	name, namespace, session, renderHash string
-	storage                              AcceleratorStorageIdentity
-	resources                            []AcceleratorDeletionIdentity
-	pods                                 []AcceleratorDeletionIdentity
-	authority                            *acceleratorSweepAuthority
+	name, namespace, session, installationID, renderHash string
+	storage                                              AcceleratorStorageIdentity
+	resources                                            []AcceleratorDeletionIdentity
+	pods                                                 []AcceleratorDeletionIdentity
+	authority                                            *acceleratorSweepAuthority
 }
 
 // acceleratorSweepAuthority is an unforgeable package-private capability.

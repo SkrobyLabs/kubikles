@@ -452,7 +452,8 @@ func TestCoordinatorFailureClassificationClosedTable(t *testing.T) {
 	}
 	provision := map[UnavailableReason]failureClass{
 		ArtifactUnavailable: failureAuthoritative, ContextUnavailable: failureAuthoritative, ContextChanged: failureCancelled,
-		EntropyUnavailable: failureAuthoritative, ChartPullFailed: failureTemporary, ChartIntegrityFailed: failureAuthoritative,
+		EntropyUnavailable: failureAuthoritative, InstallationIdentityUnavailable: failureAuthoritative,
+		ChartPullFailed: failureTemporary, ChartIntegrityFailed: failureAuthoritative,
 		RenderFailed: failureAuthoritative, ReleaseConflict: failureAuthoritative, PermissionDenied: failureAuthoritative,
 		InstallFailed: failureTemporary, JobFailed: failureAuthoritative, PodFailed: failureAuthoritative,
 		ImagePullFailed: failureTemporary, TimedOut: failureTemporary, Cancelled: failureCancelled,

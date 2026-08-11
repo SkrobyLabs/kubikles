@@ -151,6 +151,10 @@ type fakeCharts struct {
 	consumedInputs    []string
 }
 
+type failingInstallationOwner struct{ err error }
+
+func (o failingInstallationOwner) InstallationID() (string, error) { return "", o.err }
+
 func (f *fakeCharts) record(call string) {
 	f.mu.Lock()
 	f.calls = append(f.calls, call)
@@ -483,6 +487,7 @@ func TestProvisionOutcomeMatrix(t *testing.T) {
 		name              string
 		mutateResolution  func(*Request)
 		contextErr        error
+		installationOwner installationOwnerProvider
 		entropy           io.Reader
 		prepareReason     UnavailableReason
 		installReason     UnavailableReason
@@ -499,6 +504,7 @@ func TestProvisionOutcomeMatrix(t *testing.T) {
 		{name: "artifact unavailable", mutateResolution: func(request *Request) { request.Resolution.Availability = acceleratorrelease.Unavailable }, wantReason: ArtifactUnavailable, wantCleanup: CleanupNotNeeded},
 		{name: "malformed release", mutateResolution: func(request *Request) { request.Resolution.Release.ImageReference = "not an image" }, wantReason: ArtifactUnavailable, wantCleanup: CleanupNotNeeded},
 		{name: "context unavailable", contextErr: errors.New("secret kubeconfig path"), wantReason: ContextUnavailable, wantCleanup: CleanupNotNeeded},
+		{name: "installation identity", installationOwner: failingInstallationOwner{err: errors.New("read installation identity")}, wantReason: InstallationIdentityUnavailable, wantCleanup: CleanupNotNeeded},
 		{name: "entropy", entropy: bytes.NewReader(make([]byte, 31)), wantReason: EntropyUnavailable, wantCleanup: CleanupNotNeeded},
 		{name: "pull", prepareReason: ChartPullFailed, wantReason: ChartPullFailed, wantCleanup: CleanupNotNeeded},
 		{name: "integrity", prepareReason: ChartIntegrityFailed, wantReason: ChartIntegrityFailed, wantCleanup: CleanupNotNeeded},
@@ -523,6 +529,9 @@ func TestProvisionOutcomeMatrix(t *testing.T) {
 			charts := &fakeCharts{prepareReason: test.prepareReason, installReason: test.installReason, installOwned: test.installOwned, missingJobUID: test.missingJobUID, ownershipUnproven: test.ownershipUnproven}
 			observer := &fakeObserver{reason: test.observeReason}
 			service := New(contexts, charts, observer)
+			if test.installationOwner != nil {
+				service.installationOwner = test.installationOwner
+			}
 			if test.entropy != nil {
 				service.entropy = test.entropy
 			} else {

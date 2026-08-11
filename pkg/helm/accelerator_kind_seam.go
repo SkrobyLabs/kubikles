@@ -52,7 +52,12 @@ func (c *Client) AcceleratorSweepProofStageForTest(ctx context.Context, config *
 	if len(history) != 1 {
 		return "history_count"
 	}
-	if _, _, _, _, stage := proveStoredSweepReleaseStage(history[0], namespace, name); stage != "" {
+	ownership, ok := history[0].Config["ownership"].(map[string]interface{})
+	installationID, okID := ownership["installationId"].(string)
+	if !ok || !okID {
+		return "stored_config"
+	}
+	if _, _, _, _, stage := proveStoredSweepReleaseStage(history[0], namespace, name, installationID); stage != "" {
 		return "stored_" + stage
 	}
 	storage, err := client.CoreV1().Secrets(namespace).Get(ctx, acceleratorStorageName(name), metav1.GetOptions{})

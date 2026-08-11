@@ -189,7 +189,7 @@ func (p integratedRoutingKindProvisioner) Provision(ctx context.Context, request
 
 func (p *IntegratedRoutingKindCoordinatorProbe) recordProvisionFailure(reason UnavailableReason) {
 	switch reason {
-	case ArtifactUnavailable, ContextUnavailable, ContextChanged, EntropyUnavailable:
+	case ArtifactUnavailable, ContextUnavailable, ContextChanged, EntropyUnavailable, InstallationIdentityUnavailable:
 		p.provisionContextInput.Store(true)
 	case ChartPullFailed:
 		p.provisionChartPull.Store(true)

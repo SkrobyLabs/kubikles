@@ -542,6 +542,7 @@ func adapterPreparedRelease(t *testing.T) (*helm.AcceleratorPreparedRelease, hel
 	loaded.Metadata.Version, loaded.Metadata.AppVersion = "1.2.3", "v1.2.3"
 	chartDigest := "sha256:" + strings.Repeat("b", 64)
 	request := helm.AcceleratorReleaseRequest{
+		InstallationID: "101112131415161718191a1b1c1d1e1f",
 		ChartReference: "oci://ghcr.io/skrobylabs/helm/kubikles-accelerator@" + chartDigest, ChartDigest: chartDigest,
 		BuildVersion: "v1.2.3", ImageRepository: imageRepository, ImageDigest: "sha256:" + strings.Repeat("a", 64),
 		WorkloadSession: "202122232425262728292a2b2c2d2e2f", CreatorVerifier: "w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM",

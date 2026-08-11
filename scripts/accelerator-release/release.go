@@ -306,7 +306,7 @@ func validateRenderedChart(path, version, appVersion string) error {
 	}
 	defer os.RemoveAll(tmp)
 	valuesPath := filepath.Join(tmp, "values.yaml")
-	values := "image:\n  reference: example.invalid/kubikles-accelerator@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n  version: " + appVersion + "\naccelerator:\n  workloadSessionId: release-contract\n  allowVersionMismatch: false\nauth:\n  creatorVerifier: w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM\n"
+	values := "image:\n  reference: example.invalid/kubikles-accelerator@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n  version: " + appVersion + "\naccelerator:\n  workloadSessionId: release-contract\n  allowVersionMismatch: false\nauth:\n  creatorVerifier: w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM\nownership:\n  installationId: 101112131415161718191a1b1c1d1e1f\n"
 	if err := os.WriteFile(valuesPath, []byte(values), 0600); err != nil {
 		return errors.New("write chart inspection values")
 	}
@@ -364,7 +364,7 @@ func validateRenderedChart(path, version, appVersion string) error {
 	if len(sources) != 3 || chartNested(sources[0], "serviceAccountToken", "path") != "token" || chartNested(sources[0], "serviceAccountToken", "expirationSeconds") != float64(3600) || chartNested(sources[1], "configMap", "name") != "kube-root-ca.crt" || chartNested(sources[2], "downwardAPI", "items") == nil {
 		return errors.New("packaged Accelerator service account projection differs")
 	}
-	if chartNested(job, "spec", "template", "metadata", "annotations", "kubikles.io/build-version") != appVersion || chartNested(job, "spec", "template", "spec", "securityContext", "runAsUser") != float64(65532) || chartNested(job, "spec", "template", "spec", "securityContext", "runAsGroup") != float64(65532) || chartNested(job, "spec", "template", "spec", "securityContext", "runAsNonRoot") != true || chartNested(job, "spec", "template", "spec", "securityContext", "seccompProfile", "type") != "RuntimeDefault" {
+	if chartNested(job, "spec", "template", "metadata", "annotations", "kubikles.io/build-version") != appVersion || chartNested(job, "spec", "template", "metadata", "labels", "kubikles.io/owner-id") != "101112131415161718191a1b1c1d1e1f" || chartNested(job, "spec", "template", "spec", "securityContext", "runAsUser") != float64(65532) || chartNested(job, "spec", "template", "spec", "securityContext", "runAsGroup") != float64(65532) || chartNested(job, "spec", "template", "spec", "securityContext", "runAsNonRoot") != true || chartNested(job, "spec", "template", "spec", "securityContext", "seccompProfile", "type") != "RuntimeDefault" {
 		return errors.New("packaged Accelerator Pod identity contract differs")
 	}
 	role := objects["ClusterRole"]
@@ -382,7 +382,7 @@ func validateRenderedChart(path, version, appVersion string) error {
 	}
 	for kind, object := range objects {
 		labels, _ := chartNested(object, "metadata", "labels").(map[string]any)
-		if labels["app.kubernetes.io/name"] != "kubikles-accelerator" || labels["app.kubernetes.io/instance"] != "release" || labels["app.kubernetes.io/component"] != "accelerator" || labels["app.kubernetes.io/part-of"] != "kubikles" || labels["app.kubernetes.io/managed-by"] != "Helm" {
+		if labels["app.kubernetes.io/name"] != "kubikles-accelerator" || labels["app.kubernetes.io/instance"] != "release" || labels["app.kubernetes.io/component"] != "accelerator" || labels["app.kubernetes.io/part-of"] != "kubikles" || labels["app.kubernetes.io/managed-by"] != "Helm" || labels["kubikles.io/owner-id"] != "101112131415161718191a1b1c1d1e1f" {
 			return fmt.Errorf("packaged Accelerator %s ownership contract differs", kind)
 		}
 	}

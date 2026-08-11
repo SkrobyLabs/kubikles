@@ -118,13 +118,25 @@ func acceleratorHelmMetadata(object metav1.Object, request AcceleratorReleaseReq
 		return false
 	}
 	labels, annotations := object.GetLabels(), object.GetAnnotations()
-	wantLabels := acceleratorLabels(request.ReleaseName)
+	if annotations["helm.sh/hook"] != "" || annotations["helm.sh/resource-policy"] != "" {
+		return false
+	}
+	wantLabels := acceleratorLabels(request.ReleaseName, request.InstallationID)
 	wantAnnotations := map[string]string{"meta.helm.sh/release-name": request.ReleaseName, "meta.helm.sh/release-namespace": request.ReleaseNamespace}
 	if _, ok := object.(*batchv1.Job); ok {
 		wantLabels["kubikles.io/workload-session-id"] = request.WorkloadSession
 		wantAnnotations["kubikles.io/build-version"] = request.BuildVersion
 	}
-	return equalStringMap(labels, wantLabels) && equalStringMap(annotations, wantAnnotations)
+	return containsStringMap(labels, wantLabels) && containsStringMap(annotations, wantAnnotations)
+}
+
+func containsStringMap(actual, required map[string]string) bool {
+	for key, value := range required {
+		if actual[key] != value {
+			return false
+		}
+	}
+	return true
 }
 
 func getAcceleratorLiveObject(ctx context.Context, client kubernetes.Interface, identity AcceleratorResourceIdentity) (metav1.Object, error) {

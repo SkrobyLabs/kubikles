@@ -1,5 +1,6 @@
-// Package acceleratorprovision owns one fresh, memory-only Accelerator
-// workload attempt. It deliberately has no App, UI, logging, or persistence.
+// Package acceleratorprovision owns Accelerator workload attempts. Session
+// credentials remain memory-only; a non-secret installation ID is persisted
+// separately so restart cleanup can identify releases created by this install.
 package acceleratorprovision
 
 import (
@@ -22,21 +23,22 @@ const (
 type UnavailableReason string
 
 const (
-	ArtifactUnavailable  UnavailableReason = "artifact_unavailable"
-	ContextUnavailable   UnavailableReason = "context_unavailable"
-	ContextChanged       UnavailableReason = "context_changed"
-	EntropyUnavailable   UnavailableReason = "entropy_unavailable"
-	ChartPullFailed      UnavailableReason = "chart_pull_failed"
-	ChartIntegrityFailed UnavailableReason = "chart_integrity_failed"
-	RenderFailed         UnavailableReason = "render_failed"
-	ReleaseConflict      UnavailableReason = "release_conflict"
-	PermissionDenied     UnavailableReason = "permission_denied"
-	InstallFailed        UnavailableReason = "install_failed"
-	JobFailed            UnavailableReason = "job_failed"
-	PodFailed            UnavailableReason = "pod_failed"
-	ImagePullFailed      UnavailableReason = "image_pull_failed"
-	TimedOut             UnavailableReason = "timeout"
-	Cancelled            UnavailableReason = "cancelled"
+	ArtifactUnavailable             UnavailableReason = "artifact_unavailable"
+	ContextUnavailable              UnavailableReason = "context_unavailable"
+	ContextChanged                  UnavailableReason = "context_changed"
+	EntropyUnavailable              UnavailableReason = "entropy_unavailable"
+	InstallationIdentityUnavailable UnavailableReason = "installation_identity_unavailable"
+	ChartPullFailed                 UnavailableReason = "chart_pull_failed"
+	ChartIntegrityFailed            UnavailableReason = "chart_integrity_failed"
+	RenderFailed                    UnavailableReason = "render_failed"
+	ReleaseConflict                 UnavailableReason = "release_conflict"
+	PermissionDenied                UnavailableReason = "permission_denied"
+	InstallFailed                   UnavailableReason = "install_failed"
+	JobFailed                       UnavailableReason = "job_failed"
+	PodFailed                       UnavailableReason = "pod_failed"
+	ImagePullFailed                 UnavailableReason = "image_pull_failed"
+	TimedOut                        UnavailableReason = "timeout"
+	Cancelled                       UnavailableReason = "cancelled"
 )
 
 type CleanupStatus string

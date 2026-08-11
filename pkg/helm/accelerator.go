@@ -207,7 +207,7 @@ func loadAcceleratorArchive(data []byte) (*chart.Chart, error) {
 func validAcceleratorReleaseRequest(request AcceleratorReleaseRequest) bool {
 	return validAcceleratorChartRequest(AcceleratorChartRequest{request.ChartReference, request.ChartDigest, request.BuildVersion, request.AllowVersionMismatch}) &&
 		validAcceleratorImageReference(effectiveAcceleratorImageReference(request)) &&
-		acceleratorSession.MatchString(request.WorkloadSession) && acceleratorVerifier.MatchString(request.CreatorVerifier) &&
+		acceleratorSession.MatchString(request.InstallationID) && acceleratorSession.MatchString(request.WorkloadSession) && acceleratorVerifier.MatchString(request.CreatorVerifier) &&
 		request.ReleaseName == "kubikles-accelerator-"+request.WorkloadSession && request.ReleaseNamespace != ""
 }
 
@@ -284,6 +284,7 @@ func acceleratorValues(request AcceleratorReleaseRequest) map[string]interface{}
 		"image":       map[string]interface{}{"reference": effectiveAcceleratorImageReference(request), "version": request.BuildVersion, "architecture": acceleratorRuntimeArchitecture()},
 		"accelerator": map[string]interface{}{"workloadSessionId": request.WorkloadSession, "allowVersionMismatch": request.AllowVersionMismatch},
 		"auth":        map[string]interface{}{"creatorVerifier": request.CreatorVerifier},
+		"ownership":   map[string]interface{}{"installationId": request.InstallationID},
 	}
 }
 
@@ -319,10 +320,11 @@ func acceleratorClusterName(namespace, releaseName string) string {
 	return base + "-" + hex.EncodeToString(digest[:])[:8]
 }
 
-func acceleratorLabels(releaseName string) map[string]string {
+func acceleratorLabels(releaseName, installationID string) map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name": "kubikles-accelerator", "app.kubernetes.io/instance": releaseName,
 		"app.kubernetes.io/component": "accelerator", "app.kubernetes.io/part-of": "kubikles", "app.kubernetes.io/managed-by": "Helm",
+		AcceleratorOwnerLabel: installationID,
 	}
 }
 
@@ -359,7 +361,7 @@ func validateAcceleratorManifest(manifest string, request AcceleratorReleaseRequ
 			return nil, "", "", false
 		}
 		labels := u.GetLabels()
-		wantLabels := acceleratorLabels(request.ReleaseName)
+		wantLabels := acceleratorLabels(request.ReleaseName, request.InstallationID)
 		if key == "batch/v1/Job" {
 			wantLabels["kubikles.io/workload-session-id"] = request.WorkloadSession
 		}
@@ -450,7 +452,7 @@ func validateAcceleratorJob(job *unstructured.Unstructured, request AcceleratorR
 		return false
 	}
 	templateLabels, _, _ := unstructured.NestedStringMap(object, "spec", "template", "metadata", "labels")
-	wantTemplateLabels := acceleratorLabels(request.ReleaseName)
+	wantTemplateLabels := acceleratorLabels(request.ReleaseName, request.InstallationID)
 	wantTemplateLabels["kubikles.io/workload-session-id"] = request.WorkloadSession
 	templateAnnotations, _, _ := unstructured.NestedStringMap(object, "spec", "template", "metadata", "annotations")
 	nodeSelector, nodeSelectorFound, _ := unstructured.NestedStringMap(object, "spec", "template", "spec", "nodeSelector")
@@ -669,6 +671,7 @@ type acceleratorAttemptRecorder struct {
 	unresolved             []AcceleratorResourceIdentity
 	inFlight               *AcceleratorResourceIdentity
 	requireStorageIdentity bool
+	installationID         string
 }
 
 func (r *acceleratorAttemptRecorder) recordStorage(name string, uid types.UID, resourceVersion string) {
@@ -771,7 +774,12 @@ type acceleratorReceiptSecretClient struct {
 
 func (c acceleratorReceiptSecretClient) Create(ctx context.Context, secret *corev1.Secret, options metav1.CreateOptions) (*corev1.Secret, error) {
 	c.recorder.recordStorageAttempt()
-	created, err := c.SecretInterface.Create(ctx, secret, options)
+	owned := secret.DeepCopy()
+	if owned.Labels == nil {
+		owned.Labels = make(map[string]string)
+	}
+	owned.Labels[AcceleratorOwnerLabel] = c.recorder.installationID
+	created, err := c.SecretInterface.Create(ctx, owned, options)
 	if err == nil && created != nil {
 		c.recorder.recordStorage(created.Name, created.UID, created.ResourceVersion)
 	}
@@ -947,7 +955,7 @@ func (c *Client) InstallAcceleratorRelease(ctx context.Context, config *rest.Con
 	if err != nil {
 		return nil, AcceleratorPermission, false
 	}
-	recorder := &acceleratorAttemptRecorder{requireStorageIdentity: true}
+	recorder := &acceleratorAttemptRecorder{requireStorageIdentity: true, installationID: prepared.request.InstallationID}
 	getter, ok := actionConfig.RESTClientGetter.(acceleratorRESTClientGetter)
 	if !ok {
 		return nil, AcceleratorPermission, false
@@ -1108,14 +1116,14 @@ func inspectAcceleratorOwnershipStatusWith(ctx context.Context, actionConfig *ac
 	if err != nil || len(history) != 1 {
 		return AcceleratorOwnedCleanupOwnershipChanged
 	}
-	if _, stage := proveClosedAcceleratorRelease(history[0], prepared.request.ReleaseNamespace, prepared.request.ReleaseName, prepared); stage != "" {
+	if _, stage := proveClosedAcceleratorRelease(history[0], prepared.request.ReleaseNamespace, prepared.request.ReleaseName, prepared.request.InstallationID, prepared); stage != "" {
 		return AcceleratorOwnedCleanupOwnershipChanged
 	}
 	stored, err := clientset.CoreV1().Secrets(prepared.request.ReleaseNamespace).Get(ctx, receipt.storageName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return AcceleratorOwnedCleanupAlreadyGone
 	}
-	if err != nil || stored.UID != receipt.storageUID || stored.ResourceVersion != receipt.storageResourceVersion {
+	if err != nil || stored.UID != receipt.storageUID || stored.ResourceVersion != receipt.storageResourceVersion || stored.Labels[AcceleratorOwnerLabel] != prepared.request.InstallationID {
 		return AcceleratorOwnedCleanupOwnershipChanged
 	}
 	return AcceleratorOwnedCleanupSucceeded

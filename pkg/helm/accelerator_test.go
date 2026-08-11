@@ -339,7 +339,7 @@ func TestRenderAcceleratorReleaseExact(t *testing.T) {
 	if failure != AcceleratorOK || prepared == nil || prepared.JobName() == "" || len(prepared.ResourceIdentities()) != 5 || len(prepared.renderHash) != 64 {
 		t.Fatalf("prepare failure=%s prepared=%#v", failure, prepared)
 	}
-	if got := countLeaves(prepared.values); got != 6 {
+	if got := countLeaves(prepared.values); got != 7 {
 		t.Fatalf("values leaves=%d", got)
 	}
 	if strings.Contains(prepared.manifest, request.CreatorVerifier) || strings.Count(prepared.manifest, "dzJnTHJYTk5JTEdETG1SRHl6bTJzQW12UnNkdV9mYlFwem1yeVBLLWhsTQ==") != 1 {
@@ -587,7 +587,7 @@ func TestAcceleratorOwnershipIsExactRevisionAndStorageIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	storageName := acceleratorStorageName(prepared.request.ReleaseName)
-	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: storageName, Namespace: prepared.request.ReleaseNamespace, UID: "storage-uid", ResourceVersion: "7"}}
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: storageName, Namespace: prepared.request.ReleaseNamespace, UID: "storage-uid", ResourceVersion: "7", Labels: map[string]string{AcceleratorOwnerLabel: prepared.request.InstallationID}}}
 	client := k8sfake.NewSimpleClientset(secret)
 	created := make([]AcceleratorDeletionIdentity, 0, len(prepared.resources))
 	for _, identity := range prepared.resources {
@@ -596,6 +596,11 @@ func TestAcceleratorOwnershipIsExactRevisionAndStorageIdentity(t *testing.T) {
 	receipt := &AcceleratorOwnershipReceipt{request: prepared.request, renderHash: prepared.renderHash, storageName: storageName, storageUID: "storage-uid", storageResourceVersion: "7", created: created}
 	if !inspectAcceleratorOwnershipWith(context.Background(), config, client, prepared, receipt) {
 		t.Fatal("exact revision-one receipt rejected")
+	}
+	foreignStorage := secret.DeepCopy()
+	foreignStorage.Labels[AcceleratorOwnerLabel] = "ffffffffffffffffffffffffffffffff"
+	if inspectAcceleratorOwnershipWith(context.Background(), config, k8sfake.NewSimpleClientset(foreignStorage), prepared, receipt) {
+		t.Fatal("foreign storage ownership label accepted")
 	}
 
 	replacement := *receipt
@@ -610,6 +615,22 @@ func TestAcceleratorOwnershipIsExactRevisionAndStorageIdentity(t *testing.T) {
 	}
 	if inspectAcceleratorOwnershipWith(context.Background(), config, client, prepared, receipt) {
 		t.Fatal("revision two insertion accepted")
+	}
+}
+
+func TestAcceleratorStorageSecretIsStampedWithoutMutatingHelmInput(t *testing.T) {
+	client := k8sfake.NewSimpleClientset()
+	recorder := &acceleratorAttemptRecorder{installationID: acceleratorTestRequest().InstallationID}
+	storage := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "sh.helm.release.v1.test.v1", Namespace: "default", Labels: map[string]string{"owner": "helm"}}}
+	created, err := (acceleratorReceiptSecretClient{SecretInterface: client.CoreV1().Secrets("default"), recorder: recorder}).Create(context.Background(), storage, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Labels[AcceleratorOwnerLabel] != recorder.installationID || created.Labels["owner"] != "helm" {
+		t.Fatalf("created labels=%v", created.Labels)
+	}
+	if storage.Labels[AcceleratorOwnerLabel] != "" {
+		t.Fatal("Helm storage input was mutated")
 	}
 }
 
@@ -652,7 +673,7 @@ func newAcceleratorSweepTestFixtureForRequest(t *testing.T, request AcceleratorR
 		names[identity.Kind] = identity.Name
 	}
 	metadata := func(name, namespace string) metav1.ObjectMeta {
-		return metav1.ObjectMeta{Name: name, Namespace: namespace, UID: types.UID("uid-" + name), Labels: acceleratorLabels(prepared.request.ReleaseName), Annotations: map[string]string{"meta.helm.sh/release-name": prepared.request.ReleaseName, "meta.helm.sh/release-namespace": prepared.request.ReleaseNamespace}}
+		return metav1.ObjectMeta{Name: name, Namespace: namespace, UID: types.UID("uid-" + name), Labels: acceleratorLabels(prepared.request.ReleaseName, prepared.request.InstallationID), Annotations: map[string]string{"meta.helm.sh/release-name": prepared.request.ReleaseName, "meta.helm.sh/release-namespace": prepared.request.ReleaseNamespace}}
 	}
 	immutable, automount, controller := true, false, true
 	jobMeta := metadata(names["Job"], prepared.request.ReleaseNamespace)
@@ -675,7 +696,7 @@ func newAcceleratorSweepTestFixtureForRequest(t *testing.T, request AcceleratorR
 			{DownwardAPI: &corev1.DownwardAPIProjection{Items: []corev1.DownwardAPIVolumeFile{{Path: "namespace", FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"}}}}},
 		}}}}},
 	}
-	templateMeta := metav1.ObjectMeta{Labels: acceleratorLabels(prepared.request.ReleaseName), Annotations: map[string]string{"kubikles.io/build-version": prepared.request.BuildVersion}}
+	templateMeta := metav1.ObjectMeta{Labels: acceleratorLabels(prepared.request.ReleaseName, prepared.request.InstallationID), Annotations: map[string]string{"kubikles.io/build-version": prepared.request.BuildVersion}}
 	templateMeta.Labels["kubikles.io/workload-session-id"] = prepared.request.WorkloadSession
 	job := &batchv1.Job{ObjectMeta: jobMeta, Spec: batchv1.JobSpec{Completions: &one, Parallelism: &one, BackoffLimit: &zero, TTLSecondsAfterFinished: &ttl, Template: corev1.PodTemplateSpec{ObjectMeta: templateMeta, Spec: *podSpec.DeepCopy()}}, Status: batchv1.JobStatus{Conditions: []batchv1.JobCondition{{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}}}}
 	secret := &corev1.Secret{ObjectMeta: metadata(names["Secret"], prepared.request.ReleaseNamespace), Immutable: &immutable, Type: corev1.SecretTypeOpaque, Data: map[string][]byte{"creatorVerifier": []byte(prepared.request.CreatorVerifier)}}
@@ -717,8 +738,21 @@ func TestCleanupRejectsCustomBuildVersionWithoutExplicitOverride(t *testing.T) {
 	request := acceleratorTestRequest()
 	values := acceleratorValues(request)
 	values["image"].(map[string]interface{})["version"] = "dev"
-	if _, _, ok := decodeSweepValues(values, request.ReleaseNamespace, request.ReleaseName); ok {
+	if _, _, ok := decodeSweepValues(values, request.ReleaseNamespace, request.ReleaseName, request.InstallationID); ok {
 		t.Fatal("custom build version accepted without explicit override")
+	}
+}
+
+func TestSweepRequiresCurrentInstallationOwnershipInStoredValues(t *testing.T) {
+	request := acceleratorTestRequest()
+	values := acceleratorValues(request)
+	delete(values, "ownership")
+	if _, _, ok := decodeSweepValues(values, request.ReleaseNamespace, request.ReleaseName, request.InstallationID); ok {
+		t.Fatal("legacy unstamped release was accepted")
+	}
+	values = acceleratorValues(request)
+	if _, _, ok := decodeSweepValues(values, request.ReleaseNamespace, request.ReleaseName, "ffffffffffffffffffffffffffffffff"); ok {
+		t.Fatal("release owned by another installation was accepted")
 	}
 }
 
@@ -730,7 +764,7 @@ func (f *acceleratorSweepTestFixture) client(objects ...runtime.Object) *k8sfake
 }
 
 func (f *acceleratorSweepTestFixture) inspect(client *k8sfake.Clientset) (*AcceleratorSweepCandidate, AcceleratorSweepProofStatus) {
-	return inspectAcceleratorSweepCandidateWith(context.Background(), f.config, client, f.prepared.request.ReleaseNamespace, f.prepared.request.ReleaseName)
+	return inspectAcceleratorSweepCandidateWith(context.Background(), f.config, client, f.prepared.request.ReleaseNamespace, f.prepared.request.ReleaseName, f.prepared.request.InstallationID)
 }
 
 func (f *acceleratorSweepTestFixture) ownedReceipt() *AcceleratorOwnershipReceipt {
@@ -776,7 +810,7 @@ func TestOwnedFinalProofRejectsEveryStoredContractMutationBeforeRun(t *testing.T
 	}
 }
 
-func TestOwnedFinalLiveProofRejectsChartControlledMutationBeforeRun(t *testing.T) {
+func TestOwnedFinalLiveProofUsesStableOwnershipAndIgnoresAdmissionMutatedPodSpec(t *testing.T) {
 	mutations := map[string]func(*acceleratorSweepTestFixture){
 		"job template label": func(f *acceleratorSweepTestFixture) { delete(f.job.Spec.Template.Labels, "app.kubernetes.io/name") },
 		"job template annotation": func(f *acceleratorSweepTestFixture) {
@@ -960,6 +994,16 @@ func TestOwnedFinalLiveProofRejectsChartControlledMutationBeforeRun(t *testing.T
 			f.binding.Subjects[0].APIGroup = rbacv1.GroupName
 		},
 	}
+	admissionMutablePodSpec := map[string]bool{
+		"pod image": true, "pod nonzero priority": true, "pod priority class": true,
+		"pod missing priority": true, "pod missing preemption": true, "pod wrong preemption": true,
+		"pod missing default tolerations": true, "pod partial default tolerations": true,
+		"pod wrong default toleration key": true, "pod wrong default toleration effect": true,
+		"pod wrong default toleration operator": true, "pod wrong default toleration value": true,
+		"pod nil default toleration seconds": true, "pod altered default toleration": true,
+		"pod extra toleration": true, "pod node selector": true, "pod empty node name": true,
+		"pod env reference": true, "pod volume": true,
+	}
 	for name, mutate := range mutations {
 		t.Run(name, func(t *testing.T) {
 			fixture := newAcceleratorSweepTestFixture(t)
@@ -967,11 +1011,18 @@ func TestOwnedFinalLiveProofRejectsChartControlledMutationBeforeRun(t *testing.T
 			mutate(fixture)
 			client := fixture.client()
 			pod := AcceleratorDeletionIdentity{Resource: AcceleratorResourceIdentity{APIVersion: "v1", Kind: "Pod", Namespace: fixture.pod.Namespace, Name: fixture.pod.Name}, UID: fixture.pod.UID}
-			if status := uninstallOwnedAcceleratorReleaseWith(context.Background(), fixture.config, client, fixture.prepared, fixture.ownedReceipt(), pod); status != AcceleratorOwnedCleanupOwnershipChanged {
+			status := uninstallOwnedAcceleratorReleaseWith(context.Background(), fixture.config, client, fixture.prepared, fixture.ownedReceipt(), pod)
+			if admissionMutablePodSpec[name] {
+				if status != AcceleratorOwnedCleanupSucceeded {
+					t.Fatalf("admission-mutated Pod status=%s", status)
+				}
+				return
+			}
+			if status != AcceleratorOwnedCleanupOwnershipChanged {
 				t.Fatalf("status=%s", status)
 			}
 			if _, err := fixture.config.Releases.Get(fixture.prepared.request.ReleaseName, 1); err != nil {
-				t.Fatalf("live mutation reached Helm Run: %v", err)
+				t.Fatalf("ownership mutation reached Helm Run: %v", err)
 			}
 		})
 	}
@@ -1052,7 +1103,7 @@ func TestSweepCandidateRequiresExactStoredAndLiveContract(t *testing.T) {
 	candidate, status := fixture.inspect(fixture.client())
 	if status != AcceleratorSweepEligible || candidate == nil {
 		stored, _ := fixture.config.Releases.Get(fixture.prepared.request.ReleaseName, 1)
-		closed, stage := proveClosedAcceleratorRelease(stored, fixture.prepared.request.ReleaseNamespace, fixture.prepared.request.ReleaseName, nil)
+		closed, stage := proveClosedAcceleratorRelease(stored, fixture.prepared.request.ReleaseNamespace, fixture.prepared.request.ReleaseName, fixture.prepared.request.InstallationID, nil)
 		names := map[string]string{}
 		for _, identity := range closed.resources {
 			names[identity.Kind] = identity.Name
@@ -1683,7 +1734,7 @@ func TestSweepStructuralStatusMatchesSecretDriverPersistence(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		request, resources, jobName, hash, ok := proveStoredSweepRelease(stored, prepared.request.ReleaseNamespace, prepared.request.ReleaseName)
+		request, resources, jobName, hash, ok := proveStoredSweepRelease(stored, prepared.request.ReleaseNamespace, prepared.request.ReleaseName, prepared.request.InstallationID)
 		if stored.Info == nil || stored.Info.Status != release.StatusPendingInstall || !ok {
 			t.Fatalf("secret-backed release rejected: status=%v", stored.Info)
 		}
@@ -1701,10 +1752,10 @@ func TestSweepStructuralStatusMatchesSecretDriverPersistence(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, _, _, _, stage := proveStoredSweepReleaseStage(stored, prepared.request.ReleaseNamespace, prepared.request.ReleaseName); stored.Info == nil || stored.Info.Status != release.StatusDeployed || stage != "status_deployed" {
+		if _, _, _, _, stage := proveStoredSweepReleaseStage(stored, prepared.request.ReleaseNamespace, prepared.request.ReleaseName, prepared.request.InstallationID); stored.Info == nil || stored.Info.Status != release.StatusDeployed || stage != "status_deployed" {
 			t.Fatalf("memory-backed status=%v stage=%s", stored.Info, stage)
 		}
-		if _, _, _, _, ok := proveStoredSweepRelease(stored, prepared.request.ReleaseNamespace, prepared.request.ReleaseName); ok {
+		if _, _, _, _, ok := proveStoredSweepRelease(stored, prepared.request.ReleaseNamespace, prepared.request.ReleaseName, prepared.request.InstallationID); ok {
 			t.Fatal("memory-only deployed status satisfied the secret-backed storage contract")
 		}
 	})
@@ -1867,6 +1918,7 @@ func TestAcceleratorRawErrorCorpusNeverPersists(t *testing.T) {
 func acceleratorTestRequest() AcceleratorReleaseRequest {
 	chartDigest := "sha256:" + strings.Repeat("b", 64)
 	return AcceleratorReleaseRequest{
+		InstallationID: "101112131415161718191a1b1c1d1e1f",
 		ChartReference: acceleratorChartRepository + chartDigest, ChartDigest: chartDigest,
 		BuildVersion: "v1.2.3", ImageRepository: acceleratorImageRepository,
 		ImageDigest: "sha256:" + strings.Repeat("a", 64), WorkloadSession: "202122232425262728292a2b2c2d2e2f",

@@ -17,6 +17,7 @@ import (
 const (
 	validVerifier = "w2gLrXNNILGDLmRDyzm2sAmvRsdu_fbQpzmryPK-hlM"
 	validImage    = "example.invalid/kubikles-accelerator:v1.2.3"
+	validOwner    = "101112131415161718191a1b1c1d1e1f"
 )
 
 func chartDir(t *testing.T) string {
@@ -63,7 +64,7 @@ func lint(t *testing.T, values string, wantOK bool) {
 }
 
 func values(extra string) string {
-	return "image:\n  reference: " + validImage + "\n  version: v1.2.3\naccelerator:\n  workloadSessionId: desktop-session-1\n  allowVersionMismatch: false\nauth:\n  creatorVerifier: " + validVerifier + "\n" + extra
+	return "image:\n  reference: " + validImage + "\n  version: v1.2.3\naccelerator:\n  workloadSessionId: desktop-session-1\n  allowVersionMismatch: false\nauth:\n  creatorVerifier: " + validVerifier + "\nownership:\n  installationId: " + validOwner + "\n" + extra
 }
 
 func objects(t *testing.T, manifest []byte) []map[string]any {
@@ -117,10 +118,12 @@ func TestValuesSchemaRejectsInvalidInputs(t *testing.T) {
 		strings.Replace(values(""), "image:\n  reference: "+validImage+"\n  version: v1.2.3\n", "", 1),
 		strings.Replace(values(""), "accelerator:\n  workloadSessionId: desktop-session-1\n  allowVersionMismatch: false\n", "", 1),
 		strings.Replace(values(""), "auth:\n  creatorVerifier: "+validVerifier+"\n", "", 1),
+		strings.Replace(values(""), "ownership:\n  installationId: "+validOwner+"\n", "", 1),
 		strings.Replace(values(""), "  reference: "+validImage+"\n", "", 1),
 		strings.Replace(values(""), "  version: v1.2.3\n", "", 1),
 		strings.Replace(values(""), "  workloadSessionId: desktop-session-1\n", "", 1),
 		strings.Replace(values(""), "  creatorVerifier: "+validVerifier+"\n", "", 1),
+		strings.Replace(values(""), "  installationId: "+validOwner+"\n", "", 1),
 		values("token: raw-token\n"),
 		values("credentials: {}\n"),
 		values("rbac: {}\n"),
@@ -132,6 +135,7 @@ func TestValuesSchemaRejectsInvalidInputs(t *testing.T) {
 		strings.Replace(values(""), "  workloadSessionId: desktop-session-1\n", "  workloadSessionId: desktop-session-1\n  ttlSecondsAfterFinished: 1\n", 1),
 		strings.Replace(values(""), "  creatorVerifier: "+validVerifier+"\n", "  creatorVerifier: "+validVerifier+"\n  rawToken: raw-token\n", 1),
 		strings.Replace(values(""), "creatorVerifier: "+validVerifier, "creatorVerifier: invalid", 1),
+		strings.Replace(values(""), "installationId: "+validOwner, "installationId: invalid", 1),
 		strings.Replace(values(""), "reference: "+validImage, "reference: ''", 1),
 		strings.Replace(values(""), "reference: "+validImage, "reference: "+strings.Repeat("x", 513), 1),
 		strings.Replace(values(""), "version: v1.2.3", "version: "+strings.Repeat("x", 129), 1),
@@ -206,7 +210,7 @@ func TestRenderPinsRBACCredentialsAndHardening(t *testing.T) {
 	for _, object := range result {
 		metadata := nested(object, "metadata").(map[string]any)
 		labels := metadata["labels"].(map[string]any)
-		if labels["app.kubernetes.io/name"] != "kubikles-accelerator" || labels["app.kubernetes.io/instance"] != "release" || labels["app.kubernetes.io/component"] != "accelerator" || labels["app.kubernetes.io/part-of"] != "kubikles" || labels["app.kubernetes.io/managed-by"] != "Helm" {
+		if labels["app.kubernetes.io/name"] != "kubikles-accelerator" || labels["app.kubernetes.io/instance"] != "release" || labels["app.kubernetes.io/component"] != "accelerator" || labels["app.kubernetes.io/part-of"] != "kubikles" || labels["app.kubernetes.io/managed-by"] != "Helm" || labels["kubikles.io/owner-id"] != validOwner {
 			t.Fatalf("object %s lacks exact ownership labels", object["kind"])
 		}
 	}
@@ -269,6 +273,9 @@ func TestRenderPinsRBACCredentialsAndHardening(t *testing.T) {
 	}
 	if nested(job, "spec", "template", "metadata", "labels", "kubikles.io/workload-session-id") != "desktop-session-1" || nested(job, "spec", "template", "metadata", "annotations", "kubikles.io/build-version") != "v1.2.3" {
 		t.Fatal("Pod template workload correlation is not exact")
+	}
+	if nested(job, "spec", "template", "metadata", "labels", "kubikles.io/owner-id") != validOwner {
+		t.Fatal("Pod template installation ownership is missing")
 	}
 	volume := nested(job, "spec", "template", "spec", "volumes").([]any)[0].(map[string]any)
 	if volume["name"] != "serviceaccount" || nested(volume, "projected", "defaultMode") != float64(292) || len(nested(volume, "projected", "sources").([]any)) != 3 || nested(container, "volumeMounts").([]any)[0].(map[string]any)["readOnly"] != true {

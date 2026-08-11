@@ -10,6 +10,7 @@ const busyStates = new Set(['sweeping', 'resolving', 'provisioning', 'connecting
 const failureDescriptions: Record<string, string> = {
   invalid_local_build: 'This desktop build does not have a publishable Accelerator release version.',
   invalid_reference: 'The configured Accelerator image or chart reference is invalid.',
+  installation_identity_unavailable: 'Kubikles could not load or create its local Accelerator installation identity. See Debug for the file error.',
   chart_pull_failed: 'The Accelerator Helm chart could not be pulled.',
   chart_integrity_failed: 'The Accelerator Helm chart failed integrity validation.',
   render_failed: 'The Accelerator Helm chart could not be rendered.',

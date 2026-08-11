@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "additionalProperties": false,
-  "required": ["image", "accelerator", "auth"],
+  "required": ["image", "accelerator", "auth", "ownership"],
   "properties": {
     "image": {
       "type": "object", "additionalProperties": false,
@@ -25,6 +25,11 @@
       "type": "object", "additionalProperties": false,
       "required": ["creatorVerifier"],
       "properties": {"creatorVerifier": {"type": "string", "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$"}}
+    },
+    "ownership": {
+      "type": "object", "additionalProperties": false,
+      "required": ["installationId"],
+      "properties": {"installationId": {"type": "string", "pattern": "^[0-9a-f]{32}$"}}
     }
   }
 }

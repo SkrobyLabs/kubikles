@@ -38,11 +38,13 @@ type fakeInertSweeper struct {
 	inspectedNamespaces  []string
 }
 
-func (f *fakeInertSweeper) ListAcceleratorSweepReleaseNames(context.Context, *rest.Config, string) ([]string, bool) {
+const testInstallationID = "00000000000000000000000000000001"
+
+func (f *fakeInertSweeper) ListAcceleratorSweepReleaseNames(context.Context, *rest.Config, string, string) ([]string, bool) {
 	f.lists++
 	return append([]string(nil), f.names...), f.listOK
 }
-func (f *fakeInertSweeper) InspectAcceleratorSweepCandidate(ctx context.Context, _ *rest.Config, namespace, _ string) (*helm.AcceleratorSweepCandidate, helm.AcceleratorSweepProofStatus) {
+func (f *fakeInertSweeper) InspectAcceleratorSweepCandidate(ctx context.Context, _ *rest.Config, namespace, _, _ string) (*helm.AcceleratorSweepCandidate, helm.AcceleratorSweepProofStatus) {
 	f.inspects++
 	f.inspectedNamespaces = append(f.inspectedNamespaces, namespace)
 	if f.onInspect != nil {
@@ -55,17 +57,18 @@ func TestSweepAllInertFindsAcceleratorsAcrossNamespaces(t *testing.T) {
 	const first = "kubikles-accelerator-00000000000000000000000000000001"
 	const second = "kubikles-accelerator-00000000000000000000000000000002"
 	secret := func(namespace, releaseName, version string) *corev1.Secret {
-		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "sh.helm.release.v1." + releaseName + ".v" + version, Labels: map[string]string{"owner": "helm", "name": releaseName, "version": version}}}
+		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "sh.helm.release.v1." + releaseName + ".v" + version, Labels: map[string]string{"owner": "helm", "name": releaseName, "version": version, helm.AcceleratorOwnerLabel: testInstallationID}}}
 	}
 	client := k8sfake.NewSimpleClientset(
 		secret("zeta", second, "1"),
 		secret("alpha", first, "1"),
 		secret("alpha", first, "2"),
 		secret("default", "unrelated", "1"),
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "foreign", Name: "sh.helm.release.v1.kubikles-accelerator-00000000000000000000000000000003.v1", Labels: map[string]string{"owner": "helm", "name": "kubikles-accelerator-00000000000000000000000000000003", "version": "1", helm.AcceleratorOwnerLabel: "ffffffffffffffffffffffffffffffff"}}},
 	)
 	snapshot := fakeSnapshot{identity: "identity", namespace: "default", client: client}
 	fake := &fakeInertSweeper{listOK: true, proof: helm.AcceleratorSweepEligible}
-	service := &DisposalService{gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
+	service := &DisposalService{installationOwner: staticInstallationOwner(testInstallationID), gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
 
 	result := service.SweepAllInert(context.Background(), snapshot)
 
@@ -107,7 +110,7 @@ func TestSweepBoundsBeforeAnyCandidateMutation(t *testing.T) {
 				}
 			}
 			fake := &fakeInertSweeper{names: test.names, listOK: true, proof: helm.AcceleratorSweepEligible}
-			service := &DisposalService{gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
+			service := &DisposalService{installationOwner: staticInstallationOwner(testInstallationID), gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
 			result := service.SweepInert(context.Background(), snapshot)
 			if result.Status != SweepBoundedLimit || fake.inspects != 0 || fake.uninstalls != 0 || len(result.Candidates) != 0 {
 				t.Fatalf("result=%#v inspect=%d uninstall=%d", result, fake.inspects, fake.uninstalls)
@@ -129,7 +132,7 @@ func TestSweepRejectsUntrustedSnapshotBeforeIO(t *testing.T) {
 func TestSweepEligibleCandidatesAreSequentiallyProvedAndCleaned(t *testing.T) {
 	snapshot := fakeSnapshot{identity: "identity", namespace: "default", client: fakeClientset(observedJob(observerAttempt()), observedPod(observerAttempt(), observedJob(observerAttempt())))}
 	fake := &fakeInertSweeper{names: []string{"kubikles-accelerator-00000000000000000000000000000001", "unrelated"}, listOK: true, proof: helm.AcceleratorSweepEligible}
-	service := &DisposalService{gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
+	service := &DisposalService{installationOwner: staticInstallationOwner(testInstallationID), gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
 	result := service.SweepInert(context.Background(), snapshot)
 	if result.Status != SweepCompleted || len(result.Candidates) != 1 || result.Candidates[0].Status != SweepCleaned || fake.inspects != 1 || fake.uninstalls != 1 {
 		t.Fatalf("result=%#v inspect=%d uninstall=%d", result, fake.inspects, fake.uninstalls)
@@ -155,7 +158,7 @@ func TestSweepLogsKubiklesClusterCleanup(t *testing.T) {
 	const releaseName = "kubikles-accelerator-00000000000000000000000000000001"
 	snapshot := fakeSnapshot{identity: "identity", namespace: "default", client: fakeClientset(observedJob(observerAttempt()), observedPod(observerAttempt(), observedJob(observerAttempt())))}
 	fake := &fakeInertSweeper{names: []string{releaseName}, listOK: true, proof: helm.AcceleratorSweepEligible}
-	service := &DisposalService{gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
+	service := &DisposalService{installationOwner: staticInstallationOwner(testInstallationID), gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
 	if result := service.SweepInert(context.Background(), snapshot); result.Status != SweepCompleted {
 		t.Fatalf("status=%s", result.Status)
 	}
@@ -187,7 +190,7 @@ func TestSweepCancellationStopsBeforeMutationOrNextCandidate(t *testing.T) {
 
 	t.Run("while waiting for release gate", func(t *testing.T) {
 		fake := &fakeInertSweeper{names: []string{first}, listOK: true, proof: helm.AcceleratorSweepEligible}
-		service := &DisposalService{gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
+		service := &DisposalService{installationOwner: staticInstallationOwner(testInstallationID), gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
 		release := service.gates.acquire(context.Background(), releaseMutationGateKey(snapshot))
 		if release == nil {
 			t.Fatal("failed to hold release gate")
@@ -212,7 +215,7 @@ func TestSweepCancellationStopsBeforeMutationOrNextCandidate(t *testing.T) {
 				cancel()
 			},
 		}
-		service := &DisposalService{gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
+		service := &DisposalService{installationOwner: staticInstallationOwner(testInstallationID), gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
 		result := service.SweepInert(ctx, snapshot)
 		if result.Status != SweepTimedOut || fake.inspects != 1 || fake.uninstalls != 0 || len(result.Candidates) != 0 {
 			t.Fatalf("result=%#v inspect=%d cleanup=%d", result, fake.inspects, fake.uninstalls)
@@ -230,7 +233,7 @@ func TestSweepCancellationStopsBeforeMutationOrNextCandidate(t *testing.T) {
 				cancel()
 			},
 		}
-		service := &DisposalService{gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
+		service := &DisposalService{installationOwner: staticInstallationOwner(testInstallationID), gates: &gateSet{}, sweeper: fake, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
 		result := service.SweepInert(ctx, snapshot)
 		if result.Status != SweepTimedOut || fake.inspects != 1 || fake.uninstalls != 1 || len(result.Candidates) != 1 || result.Candidates[0].Status != SweepCleaned {
 			t.Fatalf("result=%#v inspect=%d cleanup=%d", result, fake.inspects, fake.uninstalls)
@@ -450,7 +453,7 @@ func TestSweepResultRedactionAndDirectBoundaryTripwires(t *testing.T) {
 
 	snapshot := fakeSnapshot{identity: "identity", namespace: "default", client: fakeClientset(observedJob(observerAttempt()), observedPod(observerAttempt(), observedJob(observerAttempt())))}
 	sweeper := &fakeInertSweeper{names: []string{"kubikles-accelerator-00000000000000000000000000000001"}, listOK: true, proof: helm.AcceleratorSweepUnsupportedMalformed}
-	sweepService := &DisposalService{gates: &gateSet{}, sweeper: sweeper, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
+	sweepService := &DisposalService{installationOwner: staticInstallationOwner(testInstallationID), gates: &gateSet{}, sweeper: sweeper, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
 	sweepResult := sweepService.SweepInert(context.Background(), snapshot)
 	if sweepResult.Status != SweepCompleted || len(sweepResult.Candidates) != 1 || sweepResult.Candidates[0].Status != SweepUnsupportedMalformed {
 		t.Fatalf("sweep status=%s candidates=%d", sweepResult.Status, len(sweepResult.Candidates))
@@ -530,7 +533,7 @@ func TestInvalidOrMalformedSweepLeavesDirectKubernetesMethodCallable(t *testing.
 	job := observedJob(observerAttempt())
 	snapshot := fakeSnapshot{identity: "identity", namespace: "default", client: fakeClientset(job, observedPod(observerAttempt(), job))}
 	sweeper := &fakeInertSweeper{names: []string{"kubikles-accelerator-00000000000000000000000000000001"}, listOK: true, proof: helm.AcceleratorSweepUnsupportedMalformed}
-	service := &DisposalService{gates: &gateSet{}, sweeper: sweeper, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
+	service := &DisposalService{installationOwner: staticInstallationOwner(testInstallationID), gates: &gateSet{}, sweeper: sweeper, acceptSweepSnapshot: func(ContextSnapshot) bool { return true }}
 	malformed := service.SweepInert(context.Background(), snapshot)
 	if malformed.Status != SweepCompleted || len(malformed.Candidates) != 1 || malformed.Candidates[0].Status != SweepUnsupportedMalformed {
 		t.Fatalf("malformed status=%s candidates=%d", malformed.Status, len(malformed.Candidates))

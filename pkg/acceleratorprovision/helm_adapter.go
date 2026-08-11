@@ -414,6 +414,7 @@ func jobHasSuspendedCondition(job *batchv1.Job) bool {
 
 func helmRequest(attempt chartAttempt) helm.AcceleratorReleaseRequest {
 	return helm.AcceleratorReleaseRequest{
+		InstallationID: attempt.InstallationID,
 		ChartReference: attempt.ChartReference, ChartDigest: attempt.ChartDigest, BuildVersion: attempt.BuildVersion,
 		ImageReference: attempt.ImageReference, ImageRepository: attempt.ImageRepository, ImageDigest: attempt.ImageDigest, AllowVersionMismatch: attempt.AllowVersionMismatch, WorkloadSession: attempt.Session,
 		CreatorVerifier: attempt.Verifier, ReleaseName: attempt.ReleaseName, ReleaseNamespace: attempt.Namespace,

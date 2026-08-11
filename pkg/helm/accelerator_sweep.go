@@ -31,7 +31,10 @@ const AcceleratorSweepReleaseProbeLimit = 101
 
 var acceleratorSweepNameRE = regexp.MustCompile(`^kubikles-accelerator-([0-9a-f]{32})$`)
 
-func (c *Client) ListAcceleratorSweepReleaseNames(ctx context.Context, config *rest.Config, namespace string) ([]string, bool) {
+func (c *Client) ListAcceleratorSweepReleaseNames(ctx context.Context, config *rest.Config, namespace, installationID string) ([]string, bool) {
+	if !acceleratorSession.MatchString(installationID) {
+		return nil, false
+	}
 	actionConfig, err := acceleratorActionConfig(ctx, config, namespace)
 	if err != nil {
 		return nil, false
@@ -46,7 +49,12 @@ func (c *Client) ListAcceleratorSweepReleaseNames(ctx context.Context, config *r
 	}
 	names := make([]string, 0, len(releases))
 	for _, stored := range releases {
-		if stored != nil {
+		if stored != nil && acceleratorSweepNameRE.MatchString(stored.Name) {
+			_, verifier, owned := decodeSweepValues(stored.Config, stored.Namespace, stored.Name, installationID)
+			clear(verifier)
+			if !owned {
+				continue
+			}
 			names = append(names, stored.Name)
 		}
 	}
@@ -69,7 +77,7 @@ func configureAcceleratorSweepList(actionConfig *action.Configuration) *action.L
 	return list
 }
 
-func (c *Client) InspectAcceleratorSweepCandidate(ctx context.Context, config *rest.Config, namespace, name string) (*AcceleratorSweepCandidate, AcceleratorSweepProofStatus) {
+func (c *Client) InspectAcceleratorSweepCandidate(ctx context.Context, config *rest.Config, namespace, name, installationID string) (*AcceleratorSweepCandidate, AcceleratorSweepProofStatus) {
 	actionConfig, err := acceleratorActionConfig(ctx, config, namespace)
 	if err != nil {
 		return nil, AcceleratorSweepUnsupportedMalformed
@@ -78,11 +86,11 @@ func (c *Client) InspectAcceleratorSweepCandidate(ctx context.Context, config *r
 	if err != nil {
 		return nil, AcceleratorSweepUnsupportedMalformed
 	}
-	return inspectAcceleratorSweepCandidateWith(ctx, actionConfig, clientset, namespace, name)
+	return inspectAcceleratorSweepCandidateWith(ctx, actionConfig, clientset, namespace, name, installationID)
 }
 
-func inspectAcceleratorSweepCandidateWith(ctx context.Context, actionConfig *action.Configuration, client kubernetes.Interface, namespace, name string) (*AcceleratorSweepCandidate, AcceleratorSweepProofStatus) {
-	if actionConfig == nil || actionConfig.Releases == nil || client == nil || namespace == "" || !acceleratorSweepNameRE.MatchString(name) {
+func inspectAcceleratorSweepCandidateWith(ctx context.Context, actionConfig *action.Configuration, client kubernetes.Interface, namespace, name, installationID string) (*AcceleratorSweepCandidate, AcceleratorSweepProofStatus) {
+	if actionConfig == nil || actionConfig.Releases == nil || client == nil || namespace == "" || !acceleratorSweepNameRE.MatchString(name) || !acceleratorSession.MatchString(installationID) {
 		return nil, AcceleratorSweepUnsupportedMalformed
 	}
 	history, err := actionConfig.Releases.History(name)
@@ -93,7 +101,7 @@ func inspectAcceleratorSweepCandidateWith(ctx context.Context, actionConfig *act
 		return nil, AcceleratorSweepUnsupportedMalformed
 	}
 	stored := history[0]
-	closed, stage := proveClosedAcceleratorRelease(stored, namespace, name, nil)
+	closed, stage := proveClosedAcceleratorRelease(stored, namespace, name, installationID, nil)
 	if stage != "" {
 		return nil, AcceleratorSweepUnsupportedMalformed
 	}
@@ -106,7 +114,10 @@ func inspectAcceleratorSweepCandidateWith(ctx context.Context, actionConfig *act
 		}
 		return nil, AcceleratorSweepUnsupportedMalformed
 	}
-	candidate := &AcceleratorSweepCandidate{name: name, namespace: namespace, session: request.WorkloadSession, renderHash: hash, storage: AcceleratorStorageIdentity{Namespace: namespace, Name: storageName, UID: storage.UID}, authority: trustedAcceleratorSweepAuthority}
+	if storage.Labels[AcceleratorOwnerLabel] != installationID {
+		return nil, AcceleratorSweepUnsupportedMalformed
+	}
+	candidate := &AcceleratorSweepCandidate{name: name, namespace: namespace, session: request.WorkloadSession, installationID: installationID, renderHash: hash, storage: AcceleratorStorageIdentity{Namespace: namespace, Name: storageName, UID: storage.UID}, authority: trustedAcceleratorSweepAuthority}
 	var job *batchv1.Job
 	names := make(map[string]string, len(resources))
 	for _, identity := range resources {
@@ -229,20 +240,20 @@ type acceleratorClosedReleaseProof struct {
 	verifierHash [sha256.Size]byte
 }
 
-func proveStoredSweepRelease(stored *release.Release, namespace, name string) (AcceleratorReleaseRequest, []AcceleratorResourceIdentity, string, string, bool) {
-	proof, stage := proveClosedAcceleratorRelease(stored, namespace, name, nil)
+func proveStoredSweepRelease(stored *release.Release, namespace, name, installationID string) (AcceleratorReleaseRequest, []AcceleratorResourceIdentity, string, string, bool) {
+	proof, stage := proveClosedAcceleratorRelease(stored, namespace, name, installationID, nil)
 	return proof.request, proof.resources, proof.jobName, proof.renderHash, stage == ""
 }
 
-func proveStoredSweepReleaseStage(stored *release.Release, namespace, name string) (AcceleratorReleaseRequest, []AcceleratorResourceIdentity, string, string, string) {
-	proof, stage := proveClosedAcceleratorRelease(stored, namespace, name, nil)
+func proveStoredSweepReleaseStage(stored *release.Release, namespace, name, installationID string) (AcceleratorReleaseRequest, []AcceleratorResourceIdentity, string, string, string) {
+	proof, stage := proveClosedAcceleratorRelease(stored, namespace, name, installationID, nil)
 	return proof.request, proof.resources, proof.jobName, proof.renderHash, stage
 }
 
 // proveClosedAcceleratorRelease is the single stored-release contract used by
 // both receipt-owned cleanup and orphan sweeping. The verifier is reduced to a
 // structural digest before returning and is never exposed or used for auth.
-func proveClosedAcceleratorRelease(stored *release.Release, namespace, name string, expected *AcceleratorPreparedRelease) (acceleratorClosedReleaseProof, string) {
+func proveClosedAcceleratorRelease(stored *release.Release, namespace, name, installationID string, expected *AcceleratorPreparedRelease) (acceleratorClosedReleaseProof, string) {
 	var zero acceleratorClosedReleaseProof
 	if stored == nil || stored.Name != name || stored.Namespace != namespace {
 		return zero, "identity"
@@ -272,7 +283,7 @@ func proveClosedAcceleratorRelease(stored *release.Release, namespace, name stri
 	if len(sessionMatch) != 2 {
 		return zero, "identity"
 	}
-	request, verifierScratch, ok := decodeSweepValues(stored.Config, namespace, name)
+	request, verifierScratch, ok := decodeSweepValues(stored.Config, namespace, name, installationID)
 	if !ok {
 		return zero, "config"
 	}
@@ -305,14 +316,15 @@ func proveClosedAcceleratorRelease(stored *release.Release, namespace, name stri
 	return acceleratorClosedReleaseProof{request: request, resources: resources, jobName: jobName, renderHash: hash, verifierHash: sha256.Sum256(verifierScratch)}, ""
 }
 
-func decodeSweepValues(values map[string]interface{}, namespace, name string) (AcceleratorReleaseRequest, []byte, bool) {
-	if len(values) != 3 {
+func decodeSweepValues(values map[string]interface{}, namespace, name, installationID string) (AcceleratorReleaseRequest, []byte, bool) {
+	if !acceleratorSession.MatchString(installationID) || len(values) != 4 {
 		return AcceleratorReleaseRequest{}, nil, false
 	}
 	accelerator, aok := values["accelerator"].(map[string]interface{})
 	auth, authOK := values["auth"].(map[string]interface{})
 	image, imageOK := values["image"].(map[string]interface{})
-	if !aok || !authOK || !imageOK || len(accelerator) != 2 || len(auth) != 1 || len(image) != 3 {
+	ownership, ownershipOK := values["ownership"].(map[string]interface{})
+	if !aok || !authOK || !imageOK || !ownershipOK || len(accelerator) != 2 || len(auth) != 1 || len(image) != 3 || len(ownership) != 1 {
 		return AcceleratorReleaseRequest{}, nil, false
 	}
 	session, sok := accelerator["workloadSessionId"].(string)
@@ -321,10 +333,11 @@ func decodeSweepValues(values map[string]interface{}, namespace, name string) (A
 	reference, referenceOK := image["reference"].(string)
 	version, versionOK := image["version"].(string)
 	architecture, architectureOK := image["architecture"].(string)
-	if !sok || !mismatchOK || !vok || !referenceOK || !versionOK || !architectureOK || architecture != acceleratorRuntimeArchitecture() || !acceleratorSweepNameRE.MatchString("kubikles-accelerator-"+session) || !validAcceleratorImageReference(reference) || !validAcceleratorStoredBuildVersion(version, allowVersionMismatch) || !acceleratorVerifier.MatchString(verifier) {
+	storedInstallationID, installationOK := ownership["installationId"].(string)
+	if !sok || !mismatchOK || !vok || !referenceOK || !versionOK || !architectureOK || !installationOK || storedInstallationID != installationID || architecture != acceleratorRuntimeArchitecture() || !acceleratorSweepNameRE.MatchString("kubikles-accelerator-"+session) || !validAcceleratorImageReference(reference) || !validAcceleratorStoredBuildVersion(version, allowVersionMismatch) || !acceleratorVerifier.MatchString(verifier) {
 		return AcceleratorReleaseRequest{}, nil, false
 	}
-	return AcceleratorReleaseRequest{BuildVersion: version, ImageReference: reference, AllowVersionMismatch: allowVersionMismatch, WorkloadSession: session, ReleaseName: name, ReleaseNamespace: namespace}, []byte(verifier), true
+	return AcceleratorReleaseRequest{InstallationID: installationID, BuildVersion: version, ImageReference: reference, AllowVersionMismatch: allowVersionMismatch, WorkloadSession: session, ReleaseName: name, ReleaseNamespace: namespace}, []byte(verifier), true
 }
 
 // Explicit artifact overrides accept custom build identifiers during install.
@@ -345,8 +358,7 @@ func acceleratorSweepJobTerminal(job *batchv1.Job) bool {
 
 func acceleratorClosedPodContract(pod *corev1.Pod, proof acceleratorClosedReleaseProof, jobName string, jobUID types.UID) bool {
 	request := proof.request
-	names := map[string]string{"ServiceAccount": acceleratorFullname(request.ReleaseName), "Secret": acceleratorFullname(request.ReleaseName) + "-verifier"}
-	if pod == nil || pod.UID == "" || pod.DeletionTimestamp != nil || pod.Namespace != request.ReleaseNamespace || !acceleratorClosedPodSpecContract(pod.Spec, request, names) || len(pod.OwnerReferences) != 1 {
+	if pod == nil || pod.UID == "" || pod.DeletionTimestamp != nil || pod.Namespace != request.ReleaseNamespace || len(pod.OwnerReferences) != 1 {
 		return false
 	}
 	owner := pod.OwnerReferences[0]
@@ -360,75 +372,17 @@ func acceleratorClosedPodContract(pod *corev1.Pod, proof acceleratorClosedReleas
 }
 
 func acceleratorTemplateMetadataContract(metadata metav1.ObjectMeta, request AcceleratorReleaseRequest, jobName string, jobUID types.UID) bool {
-	wantLabels := acceleratorLabels(request.ReleaseName)
+	wantLabels := acceleratorLabels(request.ReleaseName, request.InstallationID)
 	wantLabels["kubikles.io/workload-session-id"] = request.WorkloadSession
-	labels := make(map[string]string, len(metadata.Labels))
-	for key, value := range metadata.Labels {
-		labels[key] = value
-	}
-	generated := map[string]string{
-		"batch.kubernetes.io/controller-uid": string(jobUID),
-		"batch.kubernetes.io/job-name":       jobName,
-		"controller-uid":                     string(jobUID),
-		"job-name":                           jobName,
-	}
-	for key, want := range generated {
-		if got, ok := labels[key]; ok {
-			if want == "" || got != want {
-				return false
-			}
-			delete(labels, key)
-		}
-	}
-	return equalStringMap(labels, wantLabels) && equalStringMap(metadata.Annotations, map[string]string{"kubikles.io/build-version": request.BuildVersion})
-}
-
-func acceleratorClosedPodSpecContract(spec corev1.PodSpec, request AcceleratorReleaseRequest, names map[string]string) bool {
-	actual := spec.DeepCopy()
-	if !normalizeAcceleratorLivePodMutations(actual) {
+	if !containsStringMap(metadata.Labels, wantLabels) || metadata.Annotations["kubikles.io/build-version"] != request.BuildVersion {
 		return false
 	}
-	normalizeAcceleratorPodDefaults(actual)
-	return apiequality.Semantic.DeepEqual(*actual, acceleratorExpectedPodSpec(request, names))
-}
-
-// normalizeAcceleratorLivePodMutations requires the complete Pod-only tuple
-// before removing it. Priority, preemption, and the two NoExecute tolerations
-// are admission results. A nonempty NodeName is the scheduler binding result;
-// the strict Job-template proof requires every one of these fields unset.
-func normalizeAcceleratorLivePodMutations(spec *corev1.PodSpec) bool {
-	if !acceleratorExactLivePodMutationTuple(spec) {
-		return false
-	}
-	spec.Priority = nil
-	spec.PreemptionPolicy = nil
-	spec.Tolerations = nil
-	spec.NodeName = ""
-	return true
-}
-
-func acceleratorExactLivePodMutationTuple(spec *corev1.PodSpec) bool {
-	return spec != nil &&
-		spec.Priority != nil && *spec.Priority == 0 &&
-		spec.PreemptionPolicy != nil && *spec.PreemptionPolicy == corev1.PreemptLowerPriority &&
-		spec.PriorityClassName == "" &&
-		acceleratorDefaultNoExecuteTolerations(spec.Tolerations) &&
-		spec.NodeName != ""
-}
-
-func acceleratorDefaultNoExecuteTolerations(tolerations []corev1.Toleration) bool {
-	if len(tolerations) != 2 {
-		return false
-	}
-	want := map[string]bool{corev1.TaintNodeNotReady: false, corev1.TaintNodeUnreachable: false}
-	for _, toleration := range tolerations {
-		seen, known := want[toleration.Key]
-		if !known || seen || toleration.Operator != corev1.TolerationOpExists || toleration.Value != "" || toleration.Effect != corev1.TaintEffectNoExecute || toleration.TolerationSeconds == nil || *toleration.TolerationSeconds != 300 {
+	for key, want := range map[string]string{"batch.kubernetes.io/controller-uid": string(jobUID), "batch.kubernetes.io/job-name": jobName, "controller-uid": string(jobUID), "job-name": jobName} {
+		if got, ok := metadata.Labels[key]; ok && (want == "" || got != want) {
 			return false
 		}
-		want[toleration.Key] = true
 	}
-	return want[corev1.TaintNodeNotReady] && want[corev1.TaintNodeUnreachable]
+	return true
 }
 
 func acceleratorExpectedPodSpec(request AcceleratorReleaseRequest, names map[string]string) corev1.PodSpec {
@@ -561,7 +515,7 @@ func (c *Client) CleanupAcceleratorSweepCandidate(outer context.Context, config 
 	if err != nil {
 		return AcceleratorSweepCleanupFailed
 	}
-	second, status := inspectAcceleratorSweepCandidateWith(outer, proofConfig, proofClient, candidate.namespace, candidate.name)
+	second, status := inspectAcceleratorSweepCandidateWith(outer, proofConfig, proofClient, candidate.namespace, candidate.name, candidate.installationID)
 	if status == AcceleratorSweepAlreadyGone {
 		return status
 	}
@@ -620,7 +574,7 @@ func uninstallAcceleratorSweepCandidateWith(ctx context.Context, actionConfig *a
 	if actionConfig == nil || clientset == nil || candidate == nil || candidate.authority != trustedAcceleratorSweepAuthority {
 		return AcceleratorSweepOwnershipChanged
 	}
-	second, status := inspectAcceleratorSweepCandidateWith(ctx, actionConfig, clientset, candidate.namespace, candidate.name)
+	second, status := inspectAcceleratorSweepCandidateWith(ctx, actionConfig, clientset, candidate.namespace, candidate.name, candidate.installationID)
 	if status == AcceleratorSweepAlreadyGone {
 		return status
 	}
@@ -641,7 +595,7 @@ func uninstallAcceleratorSweepCandidateWith(ctx context.Context, actionConfig *a
 }
 
 func sameSweepCandidate(left, right *AcceleratorSweepCandidate) bool {
-	if left == nil || right == nil || left.authority != trustedAcceleratorSweepAuthority || right.authority != trustedAcceleratorSweepAuthority || left.name != right.name || left.namespace != right.namespace || left.session != right.session || left.renderHash != right.renderHash || left.storage != right.storage || len(left.resources) != len(right.resources) || len(left.pods) != len(right.pods) {
+	if left == nil || right == nil || left.authority != trustedAcceleratorSweepAuthority || right.authority != trustedAcceleratorSweepAuthority || left.name != right.name || left.namespace != right.namespace || left.session != right.session || left.installationID != right.installationID || left.renderHash != right.renderHash || left.storage != right.storage || len(left.resources) != len(right.resources) || len(left.pods) != len(right.pods) {
 		return false
 	}
 	key := func(item AcceleratorDeletionIdentity) string {

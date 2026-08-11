@@ -79,8 +79,8 @@ func (r SweepResult) MarshalJSON() ([]byte, error) {
 }
 
 type acceleratorInertSweeper interface {
-	ListAcceleratorSweepReleaseNames(context.Context, *rest.Config, string) ([]string, bool)
-	InspectAcceleratorSweepCandidate(context.Context, *rest.Config, string, string) (*helm.AcceleratorSweepCandidate, helm.AcceleratorSweepProofStatus)
+	ListAcceleratorSweepReleaseNames(context.Context, *rest.Config, string, string) ([]string, bool)
+	InspectAcceleratorSweepCandidate(context.Context, *rest.Config, string, string, string) (*helm.AcceleratorSweepCandidate, helm.AcceleratorSweepProofStatus)
 	CleanupAcceleratorSweepCandidate(context.Context, *rest.Config, *helm.AcceleratorSweepCandidate) helm.AcceleratorSweepProofStatus
 }
 
@@ -88,7 +88,13 @@ func (s *DisposalService) SweepInert(ctx context.Context, snapshot ContextSnapsh
 	if s == nil || s.sweeper == nil || s.acceptSweepSnapshot == nil || ctx == nil || snapshot == nil || !s.acceptSweepSnapshot(snapshot) || snapshot.Identity() == "" || snapshot.Namespace() == "" || snapshot.RESTConfig() == nil || snapshot.Clientset() == nil {
 		return SweepResult{Status: SweepInvalidSnapshot}
 	}
+	installationID, err := s.sweepInstallationID()
+	if err != nil {
+		debug.LogHelm("Accelerator stale release sweep skipped", map[string]interface{}{"error": err.Error()})
+		return SweepResult{Status: SweepFailed}
+	}
 	logScope := acceleratorSweepLogScope(snapshot)
+	logScope["installationId"] = installationID
 	debug.LogHelm("Accelerator stale release sweep started", logScope)
 	defer func() {
 		details := acceleratorSweepLogScope(snapshot)
@@ -105,7 +111,7 @@ func (s *DisposalService) SweepInert(ctx context.Context, snapshot ContextSnapsh
 	}()
 	op, cancel := s.withPhaseTimeout(ctx, SweepTimeout)
 	defer cancel()
-	names, ok := s.sweeper.ListAcceleratorSweepReleaseNames(op, snapshot.RESTConfig(), snapshot.Namespace())
+	names, ok := s.sweeper.ListAcceleratorSweepReleaseNames(op, snapshot.RESTConfig(), snapshot.Namespace(), installationID)
 	if !ok {
 		if op.Err() != nil {
 			return SweepResult{Status: SweepTimedOut}
@@ -141,7 +147,7 @@ func (s *DisposalService) SweepInert(ctx context.Context, snapshot ContextSnapsh
 			result.Status = SweepTimedOut
 			return result
 		}
-		candidate, proof := s.sweeper.InspectAcceleratorSweepCandidate(op, snapshot.RESTConfig(), snapshot.Namespace(), name)
+		candidate, proof := s.sweeper.InspectAcceleratorSweepCandidate(op, snapshot.RESTConfig(), snapshot.Namespace(), name, installationID)
 		status := mapSweepProof(proof)
 		if proof == helm.AcceleratorSweepEligible {
 			if op.Err() != nil {
@@ -173,15 +179,21 @@ func (s *DisposalService) SweepInert(ctx context.Context, snapshot ContextSnapsh
 	return result
 }
 
-// SweepAllInert removes every provably inactive Kubikles Accelerator release
-// visible in the current cluster, regardless of its release namespace. Active
-// or ambiguous releases are deliberately retained so another desktop session
+// SweepAllInert removes every provably inactive Accelerator release owned by
+// this Kubikles installation, regardless of its release namespace. Active or
+// ambiguous releases are retained so another process from this installation
 // cannot be disrupted.
 func (s *DisposalService) SweepAllInert(ctx context.Context, snapshot ContextSnapshot) (result SweepResult) {
 	if s == nil || s.sweeper == nil || s.acceptSweepSnapshot == nil || ctx == nil || snapshot == nil || !s.acceptSweepSnapshot(snapshot) || snapshot.Identity() == "" || snapshot.RESTConfig() == nil || snapshot.Clientset() == nil {
 		return SweepResult{Status: SweepInvalidSnapshot}
 	}
+	installationID, err := s.sweepInstallationID()
+	if err != nil {
+		debug.LogHelm("Accelerator all-namespace stale release sweep skipped", map[string]interface{}{"error": err.Error()})
+		return SweepResult{Status: SweepFailed}
+	}
 	logScope := acceleratorSweepLogScope(snapshot)
+	logScope["installationId"] = installationID
 	debug.LogHelm("Accelerator all-namespace stale release sweep started", logScope)
 	defer func() {
 		details := acceleratorSweepLogScope(snapshot)
@@ -199,7 +211,7 @@ func (s *DisposalService) SweepAllInert(ctx context.Context, snapshot ContextSna
 
 	op, cancel := s.withPhaseTimeout(ctx, SweepTimeout)
 	defer cancel()
-	candidates, status := listAllAcceleratorSweepCandidates(op, snapshot)
+	candidates, status := listAllAcceleratorSweepCandidates(op, snapshot, installationID)
 	if status != SweepCompleted {
 		return SweepResult{Status: status}
 	}
@@ -220,7 +232,7 @@ func (s *DisposalService) SweepAllInert(ctx context.Context, snapshot ContextSna
 			result.Status = SweepTimedOut
 			return result
 		}
-		proofCandidate, proof := s.sweeper.InspectAcceleratorSweepCandidate(op, snapshot.RESTConfig(), candidate.namespace, candidate.name)
+		proofCandidate, proof := s.sweeper.InspectAcceleratorSweepCandidate(op, snapshot.RESTConfig(), candidate.namespace, candidate.name, installationID)
 		candidateStatus := mapSweepProof(proof)
 		if proof == helm.AcceleratorSweepEligible {
 			if op.Err() != nil {
@@ -250,13 +262,13 @@ func (s *DisposalService) SweepAllInert(ctx context.Context, snapshot ContextSna
 	return result
 }
 
-func listAllAcceleratorSweepCandidates(ctx context.Context, snapshot ContextSnapshot) ([]sweepCandidate, SweepStatus) {
-	if ctx == nil || snapshot == nil || snapshot.Clientset() == nil {
+func listAllAcceleratorSweepCandidates(ctx context.Context, snapshot ContextSnapshot, installationID string) ([]sweepCandidate, SweepStatus) {
+	if ctx == nil || snapshot == nil || snapshot.Clientset() == nil || !installationOwnerID.MatchString(installationID) {
 		return nil, SweepInvalidSnapshot
 	}
 	candidates := make(map[string]sweepCandidate)
 	seen := 0
-	options := metav1.ListOptions{LabelSelector: "owner=helm", Limit: SweepSecretPageSize}
+	options := metav1.ListOptions{LabelSelector: "owner=helm," + helm.AcceleratorOwnerLabel + "=" + installationID, Limit: SweepSecretPageSize}
 	for {
 		secrets, err := snapshot.Clientset().CoreV1().Secrets("").List(ctx, options)
 		if err != nil {
@@ -296,6 +308,13 @@ func listAllAcceleratorSweepCandidates(ctx context.Context, snapshot ContextSnap
 		return result[i].namespace < result[j].namespace
 	})
 	return result, SweepCompleted
+}
+
+func (s *DisposalService) sweepInstallationID() (string, error) {
+	if s == nil || s.installationOwner == nil {
+		return "", fmt.Errorf("Accelerator installation ownership is unavailable")
+	}
+	return s.installationOwner.InstallationID()
 }
 
 func acceleratorSweepLogScope(snapshot ContextSnapshot) map[string]interface{} {
