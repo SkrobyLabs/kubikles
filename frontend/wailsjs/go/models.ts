@@ -1370,6 +1370,40 @@ export namespace k8s {
 	    }
 	}
 	
+	export class NodeMemoryContributor {
+	    namespace: string;
+	    pod: string;
+	    workingSet: MetricsDataPoint[];
+	
+	    static createFrom(source: any = {}) {
+	        return new NodeMemoryContributor(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.namespace = source["namespace"];
+	        this.pod = source["pod"];
+	        this.workingSet = this.convertValues(source["workingSet"], MetricsDataPoint);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class NodeMetrics {
 	    name: string;
 	    cpuUsage: number;
@@ -1445,6 +1479,10 @@ export namespace k8s {
 	    pageCache?: MetricsDataPoint[];
 	    slab?: MetricsDataPoint[];
 	    sharedMemory?: MetricsDataPoint[];
+	    capacity?: MetricsDataPoint[];
+	    podWorkingSet?: MetricsDataPoint[];
+	    unexplained?: MetricsDataPoint[];
+	    memoryPressure?: MetricsDataPoint[];
 	
 	    static createFrom(source: any = {}) {
 	        return new NodeResourceMetrics(source);
@@ -1462,6 +1500,10 @@ export namespace k8s {
 	        this.pageCache = this.convertValues(source["pageCache"], MetricsDataPoint);
 	        this.slab = this.convertValues(source["slab"], MetricsDataPoint);
 	        this.sharedMemory = this.convertValues(source["sharedMemory"], MetricsDataPoint);
+	        this.capacity = this.convertValues(source["capacity"], MetricsDataPoint);
+	        this.podWorkingSet = this.convertValues(source["podWorkingSet"], MetricsDataPoint);
+	        this.unexplained = this.convertValues(source["unexplained"], MetricsDataPoint);
+	        this.memoryPressure = this.convertValues(source["memoryPressure"], MetricsDataPoint);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1488,6 +1530,10 @@ export namespace k8s {
 	    memory?: NodeResourceMetrics;
 	    pods?: NodePodMetrics;
 	    network?: NetworkMetrics;
+	    memoryContributors?: NodeMemoryContributor[];
+	    rangeStartMs: number;
+	    rangeEndMs: number;
+	    stepMs: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new NodeMetricsHistory(source);
@@ -1500,6 +1546,10 @@ export namespace k8s {
 	        this.memory = this.convertValues(source["memory"], NodeResourceMetrics);
 	        this.pods = this.convertValues(source["pods"], NodePodMetrics);
 	        this.network = this.convertValues(source["network"], NetworkMetrics);
+	        this.memoryContributors = this.convertValues(source["memoryContributors"], NodeMemoryContributor);
+	        this.rangeStartMs = source["rangeStartMs"];
+	        this.rangeEndMs = source["rangeEndMs"];
+	        this.stepMs = source["stepMs"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

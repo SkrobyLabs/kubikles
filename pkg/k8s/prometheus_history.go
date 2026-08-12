@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"time"
 
@@ -537,13 +538,96 @@ func (c *Client) queryRangeToDataPointsWithContext(ctx context.Context, contextN
 	return points
 }
 
+func nodeMemoryBucketQuery(aggregation, expression string, step time.Duration) string {
+	return fmt.Sprintf(`%s_over_time((%s)[%ds:])`, aggregation, expression, int(step.Seconds()))
+}
+
+func nodeMemoryContributorQuery(nodeName string, step time.Duration) string {
+	expression := fmt.Sprintf(`sum by(namespace, pod) (container_memory_working_set_bytes{node="%s", container!="", container!="POD"})`, nodeName)
+	return fmt.Sprintf(`topk(5, %s)`, nodeMemoryBucketQuery("max", expression, step))
+}
+
+func parseNodeMemoryContributors(series []struct {
+	Metric map[string]string `json:"metric"`
+	Value  []interface{}     `json:"value"`
+	Values [][]interface{}   `json:"values"`
+}) []NodeMemoryContributor {
+	contributors := make([]NodeMemoryContributor, 0, len(series))
+	for _, result := range series {
+		namespace, pod := result.Metric["namespace"], result.Metric["pod"]
+		if namespace == "" || pod == "" {
+			continue
+		}
+		points := make([]MetricsDataPoint, 0, len(result.Values))
+		for _, value := range result.Values {
+			if len(value) < 2 {
+				continue
+			}
+			ts, ok := value[0].(float64)
+			if !ok {
+				continue
+			}
+			valueString, ok := value[1].(string)
+			if !ok {
+				continue
+			}
+			metricValue, err := strconv.ParseFloat(valueString, 64)
+			if err != nil {
+				continue
+			}
+			points = append(points, MetricsDataPoint{Timestamp: int64(ts * 1000), Value: metricValue})
+		}
+		if len(points) > 0 {
+			contributors = append(contributors, NodeMemoryContributor{Namespace: namespace, Pod: pod, WorkingSet: points})
+		}
+	}
+	sort.Slice(contributors, func(i, j int) bool {
+		peak := func(points []MetricsDataPoint) float64 {
+			value := points[0].Value
+			for _, point := range points[1:] {
+				if point.Value > value {
+					value = point.Value
+				}
+			}
+			return value
+		}
+		left, right := peak(contributors[i].WorkingSet), peak(contributors[j].WorkingSet)
+		if left != right {
+			return left > right
+		}
+		if contributors[i].Namespace != contributors[j].Namespace {
+			return contributors[i].Namespace < contributors[j].Namespace
+		}
+		return contributors[i].Pod < contributors[j].Pod
+	})
+	if len(contributors) > 5 {
+		contributors = contributors[:5]
+	}
+	return contributors
+}
+
+func (c *Client) queryNodeMemoryContributorsWithContext(ctx context.Context, contextName string, info *PrometheusInfo, query string, start, end time.Time, step time.Duration) []NodeMemoryContributor {
+	result, err := c.QueryPrometheusRangeWithContext(ctx, contextName, info, query, start, end, step)
+	if err != nil {
+		if !isCancelledError(err) {
+			debug.LogK8s("Prometheus node memory contributor query failed (silent)", map[string]interface{}{"error": err.Error(), "query": query})
+		}
+		return []NodeMemoryContributor{}
+	}
+	return parseNodeMemoryContributors(result.Data.Result)
+}
+
 // NodeMetricsHistory holds historical metrics for a node
 type NodeMetricsHistory struct {
-	NodeName string               `json:"nodeName"`
-	CPU      *NodeResourceMetrics `json:"cpu"`
-	Memory   *NodeResourceMetrics `json:"memory"`
-	Pods     *NodePodMetrics      `json:"pods"`
-	Network  *NetworkMetrics      `json:"network"`
+	NodeName           string                  `json:"nodeName"`
+	CPU                *NodeResourceMetrics    `json:"cpu"`
+	Memory             *NodeResourceMetrics    `json:"memory"`
+	Pods               *NodePodMetrics         `json:"pods"`
+	Network            *NetworkMetrics         `json:"network"`
+	MemoryContributors []NodeMemoryContributor `json:"memoryContributors,omitempty"`
+	RangeStartMs       int64                   `json:"rangeStartMs"`
+	RangeEndMs         int64                   `json:"rangeEndMs"`
+	StepMs             int64                   `json:"stepMs"`
 }
 
 // NodeResourceMetrics holds CPU or memory metrics for a node
@@ -558,6 +642,17 @@ type NodeResourceMetrics struct {
 	PageCache        []MetricsDataPoint `json:"pageCache,omitempty"`        // Memory only: cached pages and buffers
 	Slab             []MetricsDataPoint `json:"slab,omitempty"`             // Memory only: kernel slab allocations
 	SharedMemory     []MetricsDataPoint `json:"sharedMemory,omitempty"`     // Memory only: shmem, including tmpfs
+	Capacity         []MetricsDataPoint `json:"capacity,omitempty"`         // Memory only: node capacity
+	PodWorkingSet    []MetricsDataPoint `json:"podWorkingSet,omitempty"`    // Memory only: summed pod working sets
+	Unexplained      []MetricsDataPoint `json:"unexplained,omitempty"`      // Memory only: root working set minus pods
+	MemoryPressure   []MetricsDataPoint `json:"memoryPressure,omitempty"`   // Memory only: kube-state-metrics condition
+}
+
+// NodeMemoryContributor is a bounded pod working-set history for a node.
+type NodeMemoryContributor struct {
+	Namespace  string             `json:"namespace"`
+	Pod        string             `json:"pod"`
+	WorkingSet []MetricsDataPoint `json:"workingSet"`
 }
 
 // NodePodMetrics holds pod count metrics for a node
@@ -572,11 +667,15 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 	step := calculateMetricsStep(start, end, maxDataPoints)
 
 	result := &NodeMetricsHistory{
-		NodeName: nodeName,
-		CPU:      &NodeResourceMetrics{},
-		Memory:   &NodeResourceMetrics{},
-		Pods:     &NodePodMetrics{},
-		Network:  &NetworkMetrics{},
+		NodeName:           nodeName,
+		CPU:                &NodeResourceMetrics{},
+		Memory:             &NodeResourceMetrics{},
+		Pods:               &NodePodMetrics{},
+		Network:            &NetworkMetrics{},
+		MemoryContributors: []NodeMemoryContributor{},
+		RangeStartMs:       start.UnixMilli(),
+		RangeEndMs:         end.UnixMilli(),
+		StepMs:             step.Milliseconds(),
 	}
 
 	// node_uname_info's nodename is the OS hostname, which can differ in case from the
@@ -625,48 +724,62 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 	// Linux MemAvailable is the kernel's estimate of memory available without
 	// swapping. It is useful context, but is not the signal kubelet uses for
 	// eviction decisions.
-	memAvailableQuery := fmt.Sprintf(
+	memAvailableQuery := nodeMemoryBucketQuery("min", fmt.Sprintf(
 		`sum(node_memory_MemAvailable_bytes * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"})`,
 		unameNodeMatcher,
-	)
+	), step)
 	result.Memory.Available = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memAvailableQuery, start, end, step)
 
 	// Kubelet calculates memory.available from node capacity minus the root
 	// cgroup's working set. Prefer a direct node label and fall back to joining
 	// the cAdvisor target to its Kubernetes node. Clusters that do not retain
 	// the root-cgroup series simply return no data for these optional lines.
-	rootWorkingSetQuery := fmt.Sprintf(
+	rootWorkingSetQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(
 		`max(container_memory_working_set_bytes{node="%s", id="/"}) or max(container_memory_working_set_bytes{id="/"} * on(instance) group_left(node) kubelet_node_name{node="%s"})`,
 		nodeName, nodeName,
-	)
+	), step)
 	result.Memory.WorkingSet = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rootWorkingSetQuery, start, end, step)
 
-	kubeletAvailableQuery := fmt.Sprintf(
+	kubeletAvailableQuery := nodeMemoryBucketQuery("min", fmt.Sprintf(
 		`clamp_min(max(kube_node_status_capacity{node="%s", resource="memory"}) - (max(container_memory_working_set_bytes{node="%s", id="/"}) or max(container_memory_working_set_bytes{id="/"} * on(instance) group_left(node) kubelet_node_name{node="%s"})), 0)`,
 		nodeName, nodeName, nodeName,
-	)
+	), step)
 	result.Memory.KubeletAvailable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, kubeletAvailableQuery, start, end, step)
 
 	// Breakdown metrics explain gaps between pod memory and node memory. Cached
 	// pages are generally reclaimable; slab and shmem/tmpfs can remain resident
 	// and contribute to pressure even when pod requests are low.
-	pageCacheQuery := fmt.Sprintf(
+	pageCacheQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(
 		`sum((node_memory_Cached_bytes + node_memory_Buffers_bytes) * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"})`,
 		unameNodeMatcher,
-	)
+	), step)
 	result.Memory.PageCache = c.queryRangeToDataPointsWithContext(ctx, contextName, info, pageCacheQuery, start, end, step)
 
-	slabQuery := fmt.Sprintf(
+	slabQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(
 		`sum(node_memory_Slab_bytes * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"})`,
 		unameNodeMatcher,
-	)
+	), step)
 	result.Memory.Slab = c.queryRangeToDataPointsWithContext(ctx, contextName, info, slabQuery, start, end, step)
 
-	sharedMemoryQuery := fmt.Sprintf(
+	sharedMemoryQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(
 		`sum(node_memory_Shmem_bytes * on(instance) group_left(nodename) node_uname_info{nodename=~"%s"})`,
 		unameNodeMatcher,
-	)
+	), step)
 	result.Memory.SharedMemory = c.queryRangeToDataPointsWithContext(ctx, contextName, info, sharedMemoryQuery, start, end, step)
+
+	capacityQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(`kube_node_status_capacity{node="%s", resource="memory"}`, nodeName), step)
+	result.Memory.Capacity = c.queryRangeToDataPointsWithContext(ctx, contextName, info, capacityQuery, start, end, step)
+
+	podWorkingSetExpr := fmt.Sprintf(`sum(container_memory_working_set_bytes{node="%s", container!="", container!="POD"})`, nodeName)
+	result.Memory.PodWorkingSet = c.queryRangeToDataPointsWithContext(ctx, contextName, info, nodeMemoryBucketQuery("max", podWorkingSetExpr, step), start, end, step)
+
+	unexplainedExpr := fmt.Sprintf(`clamp_min((max(container_memory_working_set_bytes{node="%s", id="/"}) or max(container_memory_working_set_bytes{id="/"} * on(instance) group_left(node) kubelet_node_name{node="%s"})) - (%s), 0)`, nodeName, nodeName, podWorkingSetExpr)
+	result.Memory.Unexplained = c.queryRangeToDataPointsWithContext(ctx, contextName, info, nodeMemoryBucketQuery("max", unexplainedExpr, step), start, end, step)
+
+	pressureQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(`max(kube_node_status_condition{node="%s", condition="MemoryPressure", status="true"})`, nodeName), step)
+	result.Memory.MemoryPressure = c.queryRangeToDataPointsWithContext(ctx, contextName, info, pressureQuery, start, end, step)
+
+	result.MemoryContributors = c.queryNodeMemoryContributorsWithContext(ctx, contextName, info, nodeMemoryContributorQuery(nodeName, step), start, end, step)
 
 	// Memory Allocatable
 	memAllocatableQuery := fmt.Sprintf(
