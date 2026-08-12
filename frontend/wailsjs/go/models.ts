@@ -1,5 +1,5 @@
 export namespace helm {
-	
+
 	export class ChartVersion {
 	    version: string;
 	    appVersion: string;
@@ -7,11 +7,11 @@ export namespace helm {
 	    // Go type: time
 	    created: any;
 	    deprecated: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ChartVersion(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.version = source["version"];
@@ -1374,18 +1374,18 @@ export namespace k8s {
 	    namespace: string;
 	    pod: string;
 	    workingSet: MetricsDataPoint[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new NodeMemoryContributor(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.namespace = source["namespace"];
 	        this.pod = source["pod"];
 	        this.workingSet = this.convertValues(source["workingSet"], MetricsDataPoint);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -14847,4 +14847,3 @@ export namespace v2 {
 	
 
 }
-

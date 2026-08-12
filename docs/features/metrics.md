@@ -40,6 +40,14 @@ richer view "just works" on clusters that have it.
   Its usage falls back to the per-container working-set sum, which omits memory
   not charged to a pod container (OS, kubelet, system daemons) and so reads lower
   than metrics-server. Scheduling node-exporter onto that pool is the only fix.
+- The node Metrics tab keeps its scheduling Overview and adds focused Memory
+  diagnostics for pressure, allocation, and breakdown. These views retain short
+  incidents in display buckets, show gaps when samples are stale, and correlate
+  the existing node lifecycle markers. They depend on retained node-exporter,
+  cAdvisor, and kube-state-metrics series; missing sources are shown as
+  unavailable rather than healthy or zero. Breakdown values are partial
+  attribution, not a total-memory accounting, and event correlation inherits
+  Kubernetes event retention.
 
 Code entry points: `app_perfmetrics.go`, `app_prometheus.go`, `pkg/k8s/metrics.go`,
 the `pkg/k8s/prometheus*.go` files, and `frontend/src/features/cluster/metrics/`.

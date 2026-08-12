@@ -3,6 +3,7 @@ import { ChartBarIcon, ExclamationTriangleIcon, ArrowUturnLeftIcon } from '@hero
 import { DetectPrometheus, GetNodeMetricsHistory, GetNodeMetricsHistoryRange, GetMetricsEventMarkers } from 'wailsjs/go/main/App';
 import { formatBytes, formatChartTime as formatTime } from '~/utils/formatting';
 import { MARKER_COLORS, type EventMarker } from './metrics/MetricsChart';
+import NodeMemoryDiagnostics from './NodeMemoryDiagnosticView';
 
 // Format time for display
 // Node resource chart with toggleable scheduling lines. The memory variant also
@@ -1003,6 +1004,7 @@ export default function NodeMetricsTab({ nodeName, isStale }: { nodeName: string
     const [duration, setDuration] = useState('1h');
     const [eventMarkers, setEventMarkers] = useState<EventMarker[]>([]);
     const [zoomRange, setZoomRange] = useState<{ startMs: number; endMs: number } | null>(null);
+    const [mode, setMode] = useState<'overview' | 'memory'>('overview');
     const requestIdRef = useRef(0); // Track current request to cancel stale ones
 
     useEffect(() => {
@@ -1176,7 +1178,7 @@ export default function NodeMetricsTab({ nodeName, isStale }: { nodeName: string
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-auto p-4">
+                <div className="flex-1 overflow-auto p-4">
                 {loading && !metricsData && (
                     <div className="flex items-center justify-center h-full text-gray-500">
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary mr-2"></div>
@@ -1193,40 +1195,17 @@ export default function NodeMetricsTab({ nodeName, isStale }: { nodeName: string
 
                 {enrichedMetricsData && (
                     <div className="space-y-6">
-                        {/* CPU and Memory charts */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <NodeResourceChart
-                                data={enrichedMetricsData.cpu}
-                                color="stroke-blue-500"
-                                label="CPU"
-                                formatValue={formatCPU}
-                                duration={effectiveDuration}
-                                markers={filteredMarkers}
-                                onZoomSelect={handleZoomSelect}
-                            />
-                            <NodeResourceChart
-                                data={enrichedMetricsData.memory}
-                                color="stroke-blue-500"
-                                label="Memory"
-                                formatValue={formatBytes}
-                                duration={effectiveDuration}
-                                memoryDetails
-                                markers={filteredMarkers}
-                                onZoomSelect={handleZoomSelect}
-                            />
+                        <div className="flex gap-1 border-b border-border pb-3">
+                            <button onClick={() => setMode('overview')} className={`px-3 py-1 text-xs ${mode === 'overview' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}>Overview</button>
+                            <button onClick={() => setMode('memory')} className={`px-3 py-1 text-xs ${mode === 'memory' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}>Memory diagnostics</button>
                         </div>
-
-                        {/* Pods and Network */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <PodCountChart
-                                data={enrichedMetricsData.pods}
-                                duration={duration}
-                            />
-                            <NetworkChart
-                                data={enrichedMetricsData.network}
-                                duration={duration}
-                            />
-                        </div>
+                        {mode === 'overview' ? <>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <NodeResourceChart data={enrichedMetricsData.cpu} color="stroke-blue-500" label="CPU" formatValue={formatCPU} duration={effectiveDuration} markers={filteredMarkers} onZoomSelect={handleZoomSelect} />
+                                <NodeResourceChart data={enrichedMetricsData.memory} color="stroke-blue-500" label="Memory" formatValue={formatBytes} duration={effectiveDuration} markers={filteredMarkers} onZoomSelect={handleZoomSelect} />
+                            </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><PodCountChart data={enrichedMetricsData.pods} duration={duration} /><NetworkChart data={enrichedMetricsData.network} duration={duration} /></div>
+                        </> : <NodeMemoryDiagnostics memory={enrichedMetricsData.memory} contributors={enrichedMetricsData.memoryContributors} rangeEndMs={Number(enrichedMetricsData.rangeEndMs)} stepMs={Number(enrichedMetricsData.stepMs)} markers={filteredMarkers} onZoomSelect={handleZoomSelect} />}
                     </div>
                 )}
             </div>
