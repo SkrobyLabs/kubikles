@@ -1205,7 +1205,7 @@ export default function NodeMetricsTab({ nodeName, isStale }: { nodeName: string
                                 <NodeResourceChart data={enrichedMetricsData.memory} color="stroke-blue-500" label="Memory" formatValue={formatBytes} duration={effectiveDuration} markers={filteredMarkers} onZoomSelect={handleZoomSelect} />
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><PodCountChart data={enrichedMetricsData.pods} duration={duration} /><NetworkChart data={enrichedMetricsData.network} duration={duration} /></div>
-                        </> : <NodeMemoryDiagnostics memory={enrichedMetricsData.memory} contributors={enrichedMetricsData.memoryContributors} rangeEndMs={Number(enrichedMetricsData.rangeEndMs)} stepMs={Number(enrichedMetricsData.stepMs)} markers={filteredMarkers} onZoomSelect={handleZoomSelect} />}
+                        </> : <NodeMemoryDiagnostics memory={enrichedMetricsData.memory} contributors={enrichedMetricsData.memoryContributors} rangeStartMs={Number(enrichedMetricsData.rangeStartMs)} rangeEndMs={Number(enrichedMetricsData.rangeEndMs)} stepMs={Number(enrichedMetricsData.stepMs)} markers={filteredMarkers} onZoomSelect={handleZoomSelect} />}
                     </div>
                 )}
             </div>
