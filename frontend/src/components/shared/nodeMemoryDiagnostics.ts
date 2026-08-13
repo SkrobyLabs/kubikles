@@ -1,5 +1,7 @@
 export interface MemoryPoint { timestamp: number; value: number }
 export interface MemoryContributor { namespace: string; pod: string; workingSet: MemoryPoint[] }
+export interface TimelineLine { label: string; data?: MemoryPoint[]; condition?: boolean }
+export interface TimelineTooltip { timestamp: number; values: Array<{ label: string; value: number; condition?: boolean }>; markers: Array<{ reason: string; severity: string }> }
 
 const points = (series?: MemoryPoint[]) => (series || []).filter(point => Number.isFinite(point.timestamp) && Number.isFinite(point.value));
 
@@ -39,6 +41,36 @@ export function segmentSeries(series: MemoryPoint[] | undefined, stepMs: number)
         else current.push(point);
     }
     return result;
+}
+
+export function timelineTimeTicks(startMs: number, endMs: number, count = 5): Array<{ timestamp: number; ratio: number }> {
+    const safeCount = Math.max(2, count);
+    const range = Math.max(endMs - startMs, 1);
+    return Array.from({ length: safeCount }, (_, index) => ({
+        timestamp: startMs + (range * index) / (safeCount - 1),
+        ratio: index / (safeCount - 1),
+    }));
+}
+
+export function timelineValueTicks(maxValue: number, count = 5): Array<{ value: number; ratio: number }> {
+    const safeCount = Math.max(2, count);
+    const max = Math.max(maxValue, 1);
+    return Array.from({ length: safeCount }, (_, index) => ({
+        value: max - (max * index) / (safeCount - 1),
+        ratio: index / (safeCount - 1),
+    }));
+}
+
+export function timelineTooltip(lines: TimelineLine[], timestamp: number, stepMs: number, markers: Array<{ timestamp: number; reason: string; severity: string }> = []): TimelineTooltip {
+    const tolerance = Math.max(stepMs / 2, 1);
+    return {
+        timestamp,
+        values: lines.flatMap(line => {
+            const value = alignedValue(line.data, timestamp, stepMs);
+            return value === undefined ? [] : [{ label: line.label, value, condition: line.condition }];
+        }).slice(0, 8),
+        markers: markers.filter(marker => Math.abs(marker.timestamp - timestamp) <= tolerance).map(marker => ({ reason: marker.reason, severity: marker.severity })).slice(0, 3),
+    };
 }
 
 export function contributorSummaries(contributors?: MemoryContributor[]) {

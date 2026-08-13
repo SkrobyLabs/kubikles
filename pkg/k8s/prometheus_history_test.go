@@ -11,6 +11,7 @@ func TestNodeMemoryDiagnosticQueriesUseBucketSemantics(t *testing.T) {
 	available := nodeMemoryBucketQuery("min", `node_memory_MemAvailable_bytes{node="node-a"}`, step)
 	workingSet := nodeMemoryBucketQuery("max", `container_memory_working_set_bytes{node="node-a", id="/"}`, step)
 	contributors := nodeMemoryContributorQuery("node-a", step)
+	headroom := nodeMemoryAllocatableHeadroomQuery("node-a", step)
 
 	if !strings.Contains(available, "min_over_time") || !strings.Contains(available, "[300s:]") {
 		t.Fatalf("availability query must use a minimum step bucket: %s", available)
@@ -20,6 +21,12 @@ func TestNodeMemoryDiagnosticQueriesUseBucketSemantics(t *testing.T) {
 	}
 	if !strings.Contains(contributors, `topk(5, max_over_time`) || !strings.Contains(contributors, `node="node-a"`) {
 		t.Fatalf("contributor query must preserve node identity and bounded maximum buckets: %s", contributors)
+	}
+	if !strings.Contains(headroom, "min_over_time") || !strings.Contains(headroom, `kube_node_status_allocatable{node="node-a", resource="memory"}`) || !strings.Contains(headroom, `on(node) sum by(node)`) || !strings.Contains(headroom, `container!="", container!="POD"`) {
+		t.Fatalf("allocatable headroom must use node-scoped allocatable capacity and workload working sets: %s", headroom)
+	}
+	if strings.Contains(headroom, `id="/"`) || strings.Contains(headroom, "MemAvailable") {
+		t.Fatalf("allocatable headroom must not present optional root-cgroup or OS availability as eviction headroom: %s", headroom)
 	}
 }
 

@@ -547,6 +547,14 @@ func nodeMemoryContributorQuery(nodeName string, step time.Duration) string {
 	return fmt.Sprintf(`topk(5, %s)`, nodeMemoryBucketQuery("max", expression, step))
 }
 
+// nodeMemoryAllocatableHeadroomQuery reports the allocatable memory remaining
+// after the working sets of scheduled workload containers. This is distinct
+// from kubelet eviction headroom, which requires an observable root cgroup.
+func nodeMemoryAllocatableHeadroomQuery(nodeName string, step time.Duration) string {
+	expression := fmt.Sprintf(`clamp_min(kube_node_status_allocatable{node="%s", resource="memory"} - on(node) sum by(node) (container_memory_working_set_bytes{node="%s", container!="", container!="POD"}), 0)`, nodeName, nodeName)
+	return nodeMemoryBucketQuery("min", expression, step)
+}
+
 func parseNodeMemoryContributors(series []struct {
 	Metric map[string]string `json:"metric"`
 	Value  []interface{}     `json:"value"`
@@ -637,7 +645,7 @@ type NodeResourceMetrics struct {
 	Reserved         []MetricsDataPoint `json:"reserved"`
 	Committed        []MetricsDataPoint `json:"committed"`
 	Available        []MetricsDataPoint `json:"available,omitempty"`        // Memory only: Linux MemAvailable
-	KubeletAvailable []MetricsDataPoint `json:"kubeletAvailable,omitempty"` // Memory only: capacity minus root-cgroup working set
+	KubeletAvailable []MetricsDataPoint `json:"kubeletAvailable,omitempty"` // Memory only: allocatable capacity minus workload working sets
 	WorkingSet       []MetricsDataPoint `json:"workingSet,omitempty"`       // Memory only: root-cgroup working set
 	PageCache        []MetricsDataPoint `json:"pageCache,omitempty"`        // Memory only: cached pages and buffers
 	Slab             []MetricsDataPoint `json:"slab,omitempty"`             // Memory only: kernel slab allocations
@@ -730,21 +738,16 @@ func (c *Client) GetNodeMetricsHistoryWithContext(ctx context.Context, contextNa
 	), step)
 	result.Memory.Available = c.queryRangeToDataPointsWithContext(ctx, contextName, info, memAvailableQuery, start, end, step)
 
-	// Kubelet calculates memory.available from node capacity minus the root
-	// cgroup's working set. Prefer a direct node label and fall back to joining
-	// the cAdvisor target to its Kubernetes node. Clusters that do not retain
-	// the root-cgroup series simply return no data for these optional lines.
+	// Root-cgroup working-set series are optional and not retained in some
+	// clusters, so they cannot provide a reliable kubelet eviction signal here.
+	// Keep root working set independently when available for allocation context.
 	rootWorkingSetQuery := nodeMemoryBucketQuery("max", fmt.Sprintf(
 		`max(container_memory_working_set_bytes{node="%s", id="/"}) or max(container_memory_working_set_bytes{id="/"} * on(instance) group_left(node) kubelet_node_name{node="%s"})`,
 		nodeName, nodeName,
 	), step)
 	result.Memory.WorkingSet = c.queryRangeToDataPointsWithContext(ctx, contextName, info, rootWorkingSetQuery, start, end, step)
 
-	kubeletAvailableQuery := nodeMemoryBucketQuery("min", fmt.Sprintf(
-		`clamp_min(max(kube_node_status_capacity{node="%s", resource="memory"}) - (max(container_memory_working_set_bytes{node="%s", id="/"}) or max(container_memory_working_set_bytes{id="/"} * on(instance) group_left(node) kubelet_node_name{node="%s"})), 0)`,
-		nodeName, nodeName, nodeName,
-	), step)
-	result.Memory.KubeletAvailable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, kubeletAvailableQuery, start, end, step)
+	result.Memory.KubeletAvailable = c.queryRangeToDataPointsWithContext(ctx, contextName, info, nodeMemoryAllocatableHeadroomQuery(nodeName, step), start, end, step)
 
 	// Breakdown metrics explain gaps between pod memory and node memory. Cached
 	// pages are generally reclaimable; slab and shmem/tmpfs can remain resident

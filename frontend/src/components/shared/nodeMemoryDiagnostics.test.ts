@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alignedValue, contributorSummaries, freshness, minimumPoint, nonNegative, pressureEpisodes, segmentSeries } from './nodeMemoryDiagnostics';
+import { alignedValue, contributorSummaries, freshness, minimumPoint, nonNegative, pressureEpisodes, segmentSeries, timelineTimeTicks, timelineTooltip, timelineValueTicks } from './nodeMemoryDiagnostics';
 
 describe('node memory diagnostics helpers', () => {
     it('aligns timestamps without array indexes and keeps residuals non-negative', () => {
@@ -23,5 +23,30 @@ describe('node memory diagnostics helpers', () => {
         ]);
         expect(summaries.map(item => `${item.namespace}/${item.pod}`)).toEqual(['a/z', 'z/a']);
         expect(summaries[0].last?.timestamp).toBe(2);
+    });
+
+    it('builds readable axis ticks and only shows observed values in a bounded hover tooltip', () => {
+        expect(timelineTimeTicks(1_000, 5_000, 3)).toEqual([
+            { timestamp: 1_000, ratio: 0 },
+            { timestamp: 3_000, ratio: 0.5 },
+            { timestamp: 5_000, ratio: 1 },
+        ]);
+        expect(timelineValueTicks(100, 3)).toEqual([
+            { value: 100, ratio: 0 },
+            { value: 50, ratio: 0.5 },
+            { value: 0, ratio: 1 },
+        ]);
+
+        const tooltip = timelineTooltip([
+            { label: 'Allocatable headroom', data: [{ timestamp: 2_000, value: 10 }] },
+            { label: 'Missing source', data: [{ timestamp: 3_000, value: 20 }] },
+            { label: 'MemoryPressure=True', condition: true, data: [{ timestamp: 2_000, value: 1 }] },
+        ], 2_000, 500, [{ timestamp: 2_100, reason: 'NodeNotReady', severity: 'warning' }]);
+
+        expect(tooltip.values).toEqual([
+            { label: 'Allocatable headroom', value: 10, condition: undefined },
+            { label: 'MemoryPressure=True', value: 1, condition: true },
+        ]);
+        expect(tooltip.markers).toEqual([{ reason: 'NodeNotReady', severity: 'warning' }]);
     });
 });
