@@ -271,6 +271,26 @@ func (a *App) GetNodeMetricsHistory(requestId, prometheusNamespace, prometheusSe
 	return a.k8sClient.GetNodeMetricsHistoryWithContext(ctx, currentContext, info, nodeName, start, end, 150)
 }
 
+// GetNodeMemoryDiagnosticsHistory retrieves optional memory diagnostics for a node.
+// It deliberately has its own request surface so the Metrics overview does not
+// execute diagnostic Prometheus queries.
+func (a *App) GetNodeMemoryDiagnosticsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, nodeName, duration string) (*k8s.NodeMemoryDiagnosticsHistory, error) {
+	currentContext := a.GetCurrentContext()
+	debug.LogPerformance("GetNodeMemoryDiagnosticsHistory called", map[string]interface{}{"context": currentContext, "node": nodeName, "duration": duration, "requestId": requestId})
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+
+	dur := parseMetricsDuration(duration)
+	end := time.Now()
+	start := end.Add(-dur)
+	info := &k8s.PrometheusInfo{Available: true, Namespace: prometheusNamespace, Service: prometheusService, Port: prometheusPort}
+	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
+
+	return a.k8sClient.GetNodeMemoryDiagnosticsHistoryWithContext(ctx, currentContext, info, nodeName, start, end, 150)
+}
+
 // GetNamespaceMetricsHistory retrieves historical metrics for a namespace
 func (a *App) GetNamespaceMetricsHistory(requestId, prometheusNamespace, prometheusService string, prometheusPort int, namespace, duration string) (*k8s.NamespaceMetricsHistory, error) {
 	currentContext := a.GetCurrentContext()
@@ -370,6 +390,23 @@ func (a *App) GetNodeMetricsHistoryRange(requestId, prometheusNamespace, prometh
 	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
 
 	return a.k8sClient.GetNodeMetricsHistoryWithContext(ctx, currentContext, info, nodeName, start, end, 150)
+}
+
+// GetNodeMemoryDiagnosticsHistoryRange retrieves memory diagnostics for a selected range.
+func (a *App) GetNodeMemoryDiagnosticsHistoryRange(requestId, prometheusNamespace, prometheusService string, prometheusPort int, nodeName string, startMs, endMs int64) (*k8s.NodeMemoryDiagnosticsHistory, error) {
+	currentContext := a.GetCurrentContext()
+	debug.LogPerformance("GetNodeMemoryDiagnosticsHistoryRange called", map[string]interface{}{"context": currentContext, "node": nodeName, "startMs": startMs, "endMs": endMs, "requestId": requestId})
+	if a.k8sClient == nil {
+		return nil, fmt.Errorf("k8s client not initialized")
+	}
+
+	start := time.UnixMilli(startMs)
+	end := time.UnixMilli(endMs)
+	info := &k8s.PrometheusInfo{Available: true, Namespace: prometheusNamespace, Service: prometheusService, Port: prometheusPort}
+	ctx, seq := a.metricsRequestManager.StartRequest(requestId)
+	defer a.metricsRequestManager.CompleteRequest(requestId, seq)
+
+	return a.k8sClient.GetNodeMemoryDiagnosticsHistoryWithContext(ctx, currentContext, info, nodeName, start, end, 150)
 }
 
 // GetNamespaceMetricsHistoryRange retrieves historical namespace metrics for an explicit time range (zoom)

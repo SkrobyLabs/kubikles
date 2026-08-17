@@ -562,6 +562,14 @@ export function GetNetworkPolicyYaml(arg1, arg2) {
   return window['go']['main']['App']['GetNetworkPolicyYaml'](arg1, arg2);
 }
 
+export function GetNodeMemoryDiagnosticsHistory(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['GetNodeMemoryDiagnosticsHistory'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function GetNodeMemoryDiagnosticsHistoryRange(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetNodeMemoryDiagnosticsHistoryRange'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
 export function GetNodeMetrics() {
   return window['go']['main']['App']['GetNodeMetrics']();
 }

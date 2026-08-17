@@ -1625,6 +1625,64 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		}
 		result, err := c.app.GetNetworkPolicyYaml(p0, p1)
 		return result, err
+	case "GetNodeMemoryDiagnosticsHistory":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[string](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		p2, err := unmarshalArg[string](args, 2)
+		if err != nil {
+			return nil, err
+		}
+		p3, err := unmarshalArg[int](args, 3)
+		if err != nil {
+			return nil, err
+		}
+		p4, err := unmarshalArg[string](args, 4)
+		if err != nil {
+			return nil, err
+		}
+		p5, err := unmarshalArg[string](args, 5)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.GetNodeMemoryDiagnosticsHistory(p0, p1, p2, p3, p4, p5)
+		return result, err
+	case "GetNodeMemoryDiagnosticsHistoryRange":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[string](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		p2, err := unmarshalArg[string](args, 2)
+		if err != nil {
+			return nil, err
+		}
+		p3, err := unmarshalArg[int](args, 3)
+		if err != nil {
+			return nil, err
+		}
+		p4, err := unmarshalArg[string](args, 4)
+		if err != nil {
+			return nil, err
+		}
+		p5, err := unmarshalArg[int64](args, 5)
+		if err != nil {
+			return nil, err
+		}
+		p6, err := unmarshalArg[int64](args, 6)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.GetNodeMemoryDiagnosticsHistoryRange(p0, p1, p2, p3, p4, p5, p6)
+		return result, err
 	case "GetNodeMetrics":
 		result, err := c.app.GetNodeMetrics()
 		return result, err
@@ -2853,16 +2911,6 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		}
 		result, err := c.app.RunIssueScan(p0, p1, p2, p3)
 		return result, err
-	case "SaveDebugLogs":
-		p0, err := unmarshalArg[string](args, 0)
-		if err != nil {
-			return nil, err
-		}
-		p1, err := unmarshalArg[string](args, 1)
-		if err != nil {
-			return nil, err
-		}
-		return nil, c.app.SaveDebugLogs(p0, p1)
 	case "SaveDataEntryValue":
 		p0, err := unmarshalArg[k8s.DataEntry](args, 0)
 		if err != nil {
@@ -2873,6 +2921,16 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return nil, c.app.SaveDataEntryValue(p0, p1)
+	case "SaveDebugLogs":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[string](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		return nil, c.app.SaveDebugLogs(p0, p1)
 	case "SaveLogFile":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {

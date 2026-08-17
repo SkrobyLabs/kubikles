@@ -7,9 +7,11 @@ import { DetailRow, DetailSection, StatusBadge, CopyableLabel } from './DetailCo
 import { entriesFromObject, matchesSearch, normalizeSearchTerm, NoSectionMatches, useSectionSearch } from './detailSearch';
 import { LazyYamlEditor as YamlEditor } from '../lazy';
 import NodeMetricsTab from './NodeMetricsTab';
+import NodeMemoryDiagnosticsTab from './NodeMemoryDiagnosticsTab';
 
 const TAB_BASIC = 'basic';
 const TAB_METRICS = 'metrics';
+const TAB_DIAGNOSTICS = 'diagnostics';
 
 function formatBytes(bytes: any) {
     if (!bytes) return 'N/A';
@@ -38,6 +40,7 @@ export default function NodeDetails({ node, tabContext = '' }: any) {
     const tabs = useMemo(() => [
         { id: TAB_BASIC, label: 'Basic' },
         { id: TAB_METRICS, label: 'Metrics' },
+        { id: TAB_DIAGNOSTICS, label: 'Diagnostics' },
     ], []);
 
     const name = node.metadata?.name;
@@ -220,6 +223,11 @@ export default function NodeDetails({ node, tabContext = '' }: any) {
             {/* Content Area */}
             {activeTab === TAB_METRICS ? (
                 <NodeMetricsTab
+                    nodeName={name}
+                    isStale={isStale}
+                />
+            ) : activeTab === TAB_DIAGNOSTICS ? (
+                <NodeMemoryDiagnosticsTab
                     nodeName={name}
                     isStale={isStale}
                 />

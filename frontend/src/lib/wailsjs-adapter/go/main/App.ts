@@ -222,6 +222,8 @@ export function GetNamespaceMetricsHistoryRange(...args) { return AppProxy.GetNa
 export function GetNamespaceResourceCounts(...args) { return AppProxy.GetNamespaceResourceCounts(...args); }
 export function GetNamespaceYAML(...args) { return AppProxy.GetNamespaceYAML(...args); }
 export function GetNetworkPolicyYaml(...args) { return AppProxy.GetNetworkPolicyYaml(...args); }
+export function GetNodeMemoryDiagnosticsHistory(...args) { return AppProxy.GetNodeMemoryDiagnosticsHistory(...args); }
+export function GetNodeMemoryDiagnosticsHistoryRange(...args) { return AppProxy.GetNodeMemoryDiagnosticsHistoryRange(...args); }
 export function GetNodeMetrics(...args) { return AppProxy.GetNodeMetrics(...args); }
 export function GetNodeMetricsFromPrometheus(...args) { return AppProxy.GetNodeMetricsFromPrometheus(...args); }
 export function GetNodeMetricsHistory(...args) { return AppProxy.GetNodeMetricsHistory(...args); }

@@ -1370,6 +1370,136 @@ export namespace k8s {
 	    }
 	}
 	
+	export class NodeMemoryContributor {
+	    namespace: string;
+	    pod: string;
+	    workingSet: MetricsDataPoint[];
+	
+	    static createFrom(source: any = {}) {
+	        return new NodeMemoryContributor(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.namespace = source["namespace"];
+	        this.pod = source["pod"];
+	        this.workingSet = this.convertValues(source["workingSet"], MetricsDataPoint);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NodeResourceMetrics {
+	    usage: MetricsDataPoint[];
+	    allocatable: MetricsDataPoint[];
+	    reserved: MetricsDataPoint[];
+	    committed: MetricsDataPoint[];
+	    available?: MetricsDataPoint[];
+	    kubeletAvailable?: MetricsDataPoint[];
+	    workingSet?: MetricsDataPoint[];
+	    pageCache?: MetricsDataPoint[];
+	    slab?: MetricsDataPoint[];
+	    sharedMemory?: MetricsDataPoint[];
+	    capacity?: MetricsDataPoint[];
+	    podWorkingSet?: MetricsDataPoint[];
+	    unexplained?: MetricsDataPoint[];
+	    memoryPressure?: MetricsDataPoint[];
+	
+	    static createFrom(source: any = {}) {
+	        return new NodeResourceMetrics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.usage = this.convertValues(source["usage"], MetricsDataPoint);
+	        this.allocatable = this.convertValues(source["allocatable"], MetricsDataPoint);
+	        this.reserved = this.convertValues(source["reserved"], MetricsDataPoint);
+	        this.committed = this.convertValues(source["committed"], MetricsDataPoint);
+	        this.available = this.convertValues(source["available"], MetricsDataPoint);
+	        this.kubeletAvailable = this.convertValues(source["kubeletAvailable"], MetricsDataPoint);
+	        this.workingSet = this.convertValues(source["workingSet"], MetricsDataPoint);
+	        this.pageCache = this.convertValues(source["pageCache"], MetricsDataPoint);
+	        this.slab = this.convertValues(source["slab"], MetricsDataPoint);
+	        this.sharedMemory = this.convertValues(source["sharedMemory"], MetricsDataPoint);
+	        this.capacity = this.convertValues(source["capacity"], MetricsDataPoint);
+	        this.podWorkingSet = this.convertValues(source["podWorkingSet"], MetricsDataPoint);
+	        this.unexplained = this.convertValues(source["unexplained"], MetricsDataPoint);
+	        this.memoryPressure = this.convertValues(source["memoryPressure"], MetricsDataPoint);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NodeMemoryDiagnosticsHistory {
+	    nodeName: string;
+	    memory?: NodeResourceMetrics;
+	    memoryContributors: NodeMemoryContributor[];
+	    rangeStartMs: number;
+	    rangeEndMs: number;
+	    stepMs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NodeMemoryDiagnosticsHistory(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.nodeName = source["nodeName"];
+	        this.memory = this.convertValues(source["memory"], NodeResourceMetrics);
+	        this.memoryContributors = this.convertValues(source["memoryContributors"], NodeMemoryContributor);
+	        this.rangeStartMs = source["rangeStartMs"];
+	        this.rangeEndMs = source["rangeEndMs"];
+	        this.stepMs = source["stepMs"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class NodeMetrics {
 	    name: string;
 	    cpuUsage: number;
@@ -1434,60 +1564,15 @@ export namespace k8s {
 		    return a;
 		}
 	}
-	export class NodeResourceMetrics {
-	    usage: MetricsDataPoint[];
-	    allocatable: MetricsDataPoint[];
-	    reserved: MetricsDataPoint[];
-	    committed: MetricsDataPoint[];
-	    available?: MetricsDataPoint[];
-	    kubeletAvailable?: MetricsDataPoint[];
-	    workingSet?: MetricsDataPoint[];
-	    pageCache?: MetricsDataPoint[];
-	    slab?: MetricsDataPoint[];
-	    sharedMemory?: MetricsDataPoint[];
-	
-	    static createFrom(source: any = {}) {
-	        return new NodeResourceMetrics(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.usage = this.convertValues(source["usage"], MetricsDataPoint);
-	        this.allocatable = this.convertValues(source["allocatable"], MetricsDataPoint);
-	        this.reserved = this.convertValues(source["reserved"], MetricsDataPoint);
-	        this.committed = this.convertValues(source["committed"], MetricsDataPoint);
-	        this.available = this.convertValues(source["available"], MetricsDataPoint);
-	        this.kubeletAvailable = this.convertValues(source["kubeletAvailable"], MetricsDataPoint);
-	        this.workingSet = this.convertValues(source["workingSet"], MetricsDataPoint);
-	        this.pageCache = this.convertValues(source["pageCache"], MetricsDataPoint);
-	        this.slab = this.convertValues(source["slab"], MetricsDataPoint);
-	        this.sharedMemory = this.convertValues(source["sharedMemory"], MetricsDataPoint);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 	export class NodeMetricsHistory {
 	    nodeName: string;
 	    cpu?: NodeResourceMetrics;
 	    memory?: NodeResourceMetrics;
 	    pods?: NodePodMetrics;
 	    network?: NetworkMetrics;
+	    rangeStartMs: number;
+	    rangeEndMs: number;
+	    stepMs: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new NodeMetricsHistory(source);
@@ -1500,6 +1585,9 @@ export namespace k8s {
 	        this.memory = this.convertValues(source["memory"], NodeResourceMetrics);
 	        this.pods = this.convertValues(source["pods"], NodePodMetrics);
 	        this.network = this.convertValues(source["network"], NetworkMetrics);
+	        this.rangeStartMs = source["rangeStartMs"];
+	        this.rangeEndMs = source["rangeEndMs"];
+	        this.stepMs = source["stepMs"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

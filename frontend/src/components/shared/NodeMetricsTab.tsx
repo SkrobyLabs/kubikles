@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ChartBarIcon, ExclamationTriangleIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
-import { DetectPrometheus, GetNodeMetricsHistory, GetNodeMetricsHistoryRange, GetMetricsEventMarkers } from 'wailsjs/go/main/App';
+import { DetectPrometheus, GetNodeMetricsHistory, GetNodeMetricsHistoryRange, GetMetricsEventMarkers, CancelMetricsRequest } from 'wailsjs/go/main/App';
 import { formatBytes, formatChartTime as formatTime } from '~/utils/formatting';
 import { MARKER_COLORS, type EventMarker } from './metrics/MetricsChart';
 
@@ -1033,7 +1033,7 @@ export default function NodeMetricsTab({ nodeName, isStale }: { nodeName: string
         // Increment request ID to invalidate any in-flight requests
         const currentRequestId = ++requestIdRef.current;
         // Use stable ID for backend cancellation (without counter)
-        const requestIdString = `node-metrics-${nodeName}`;
+        const requestIdString = `node-metrics-overview-${nodeName}`;
 
         const fetchMetrics = async () => {
             setLoading(true);
@@ -1072,6 +1072,11 @@ export default function NodeMetricsTab({ nodeName, isStale }: { nodeName: string
         };
 
         fetchMetrics();
+
+        return () => {
+            requestIdRef.current++;
+            CancelMetricsRequest(requestIdString);
+        };
     }, [prometheusInfo, nodeName, duration, isStale, zoomRange]);
 
     // Pass through metrics data (reserved data comes from backend if available)
@@ -1176,7 +1181,7 @@ export default function NodeMetricsTab({ nodeName, isStale }: { nodeName: string
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-auto p-4">
+                <div className="flex-1 overflow-auto p-4">
                 {loading && !metricsData && (
                     <div className="flex items-center justify-center h-full text-gray-500">
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary mr-2"></div>
@@ -1193,40 +1198,11 @@ export default function NodeMetricsTab({ nodeName, isStale }: { nodeName: string
 
                 {enrichedMetricsData && (
                     <div className="space-y-6">
-                        {/* CPU and Memory charts */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <NodeResourceChart
-                                data={enrichedMetricsData.cpu}
-                                color="stroke-blue-500"
-                                label="CPU"
-                                formatValue={formatCPU}
-                                duration={effectiveDuration}
-                                markers={filteredMarkers}
-                                onZoomSelect={handleZoomSelect}
-                            />
-                            <NodeResourceChart
-                                data={enrichedMetricsData.memory}
-                                color="stroke-blue-500"
-                                label="Memory"
-                                formatValue={formatBytes}
-                                duration={effectiveDuration}
-                                memoryDetails
-                                markers={filteredMarkers}
-                                onZoomSelect={handleZoomSelect}
-                            />
+                            <NodeResourceChart data={enrichedMetricsData.cpu} color="stroke-blue-500" label="CPU" formatValue={formatCPU} duration={effectiveDuration} markers={filteredMarkers} onZoomSelect={handleZoomSelect} />
+                            <NodeResourceChart data={enrichedMetricsData.memory} color="stroke-blue-500" label="Memory" formatValue={formatBytes} duration={effectiveDuration} markers={filteredMarkers} onZoomSelect={handleZoomSelect} />
                         </div>
-
-                        {/* Pods and Network */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <PodCountChart
-                                data={enrichedMetricsData.pods}
-                                duration={duration}
-                            />
-                            <NetworkChart
-                                data={enrichedMetricsData.network}
-                                duration={duration}
-                            />
-                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><PodCountChart data={enrichedMetricsData.pods} duration={duration} /><NetworkChart data={enrichedMetricsData.network} duration={duration} /></div>
                     </div>
                 )}
             </div>

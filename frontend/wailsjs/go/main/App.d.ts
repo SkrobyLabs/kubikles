@@ -290,6 +290,10 @@ export function GetNamespaceYAML(arg1:string):Promise<string>;
 
 export function GetNetworkPolicyYaml(arg1:string,arg2:string):Promise<string>;
 
+export function GetNodeMemoryDiagnosticsHistory(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:string):Promise<k8s.NodeMemoryDiagnosticsHistory>;
+
+export function GetNodeMemoryDiagnosticsHistoryRange(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string,arg6:number,arg7:number):Promise<k8s.NodeMemoryDiagnosticsHistory>;
+
 export function GetNodeMetrics():Promise<k8s.NodeMetricsResult>;
 
 export function GetNodeMetricsFromPrometheus(arg1:string,arg2:string,arg3:number):Promise<k8s.NodeMetricsResult>;
