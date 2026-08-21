@@ -8,8 +8,9 @@ import {
     GetAllPodsLogsBefore, GetAllPodsLogsAfter, StartAllPodsLogStream
 } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
-import { appendUniqueLogEntries, parseLogLines } from './logUtils';
+import { appendUniqueLogEntries, drainLogPages, parseLogLines } from './logUtils';
 import { useK8s } from '~/context';
+import { runWithPollingBudget } from '~/utils/pollingBudget';
 
 // Special constants for "All" modes
 export const ALL_CONTAINERS = '__ALL__';
@@ -367,27 +368,22 @@ export function useLogStream({
 
     const pollNewerLogs = useCallback(async () => {
         if (pollingAfterRef.current) return;
-        let cursor = getLastTimestamp();
+        const cursor = getLastTimestamp();
         if (!cursor) return;
         pollingAfterRef.current = true;
         try {
-            let hasMore = true;
-            while (hasMore) {
-                let result;
+            const drained = await drainLogPages((pageCursor) => runWithPollingBudget(async () => {
                 const podPairs = buildPodContainerPairs();
                 if (isAllPods && podPairs.length > 0) {
-                    result = await GetAllPodsLogsAfter(namespace, podPairs, isAllContainers, true, showPrevious, cursor, CHUNK_SIZE);
+                    return GetAllPodsLogsAfter(namespace, podPairs, isAllContainers, true, showPrevious, pageCursor, CHUNK_SIZE);
                 } else if (isAllContainers && containers?.length > 0) {
-                    result = await GetAllContainersLogsAfter(namespace, pod, containers, true, showPrevious, cursor, CHUNK_SIZE);
-                } else {
-                    result = await GetPodLogsAfter(namespace, pod, container, true, showPrevious, cursor, CHUNK_SIZE);
+                    return GetAllContainersLogsAfter(namespace, pod, containers, true, showPrevious, pageCursor, CHUNK_SIZE);
                 }
-                const entries = result.logs?.trim() ? parseLogLines(result.logs, 'poll') : [];
-                if (entries.length === 0) break;
-                setLogs(prev => appendUniqueLogEntries(prev, entries));
-                cursor = entries.slice().reverse().find((entry: any) => entry.timestamp)?.timestamp || cursor;
-                hasMore = Boolean(result.hasMore);
-            }
+                return GetPodLogsAfter(namespace, pod, container, true, showPrevious, pageCursor, CHUNK_SIZE);
+            }), cursor);
+            if (drained.entries.length > 0) setLogs(prev => appendUniqueLogEntries(prev, drained.entries));
+            if (drained.truncated) setFetchError('Log polling caught up partially; remaining pages will be fetched on the next interval.');
+            else setFetchError(null);
         } catch (err: any) {
             setFetchError(`Error polling logs: ${err}`);
         } finally {

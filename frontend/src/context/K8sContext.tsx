@@ -4,6 +4,7 @@ import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
 import { runContextSwitchTransaction } from './contextSwitch';
 import { isImmediateWatchClosure, isStreamTransportError, isStreamingWarningDismissed, restoreConnectionMode, streamingWarningDismissalKey } from '../utils/streamingCompatibility';
+import { runWithPollingBudget } from '../utils/pollingBudget';
 
 // ============================================================================
 // Type Definitions
@@ -54,6 +55,7 @@ interface WatcherErrorEvent {
     context?: string;
     premature?: boolean;
     receivedAny?: boolean;
+    openDurationMillis?: number;
 }
 
 interface WatcherStatusEvent {
@@ -607,7 +609,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         let cancelled = false;
         let timer: number | undefined;
         const poll = async () => {
-            await refreshNamespacesInternal({ background: true, context: currentContext });
+            await runWithPollingBudget(() => refreshNamespacesInternal({ background: true, context: currentContext }));
             if (!cancelled) timer = window.setTimeout(poll, 9_000 + Math.random() * 2_000);
         };
         timer = window.setTimeout(poll, 9_000 + Math.random() * 2_000);
@@ -804,7 +806,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!(window as any).runtime) return;
 
         const handleWatcherError = (event: WatcherErrorEvent): void => {
-            const { resourceType, namespace, error, recoverable, context, premature, receivedAny } = event;
+            const { resourceType, namespace, error, recoverable, context, premature, receivedAny, openDurationMillis } = event;
 
             // Ignore errors from a different context (stale events after context switch)
             if (context && context !== currentContextRef.current) {
@@ -816,7 +818,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             const errorStr = String(error);
             const streamError = isStreamTransportError(errorStr);
-            if (isImmediateWatchClosure({ premature, receivedAny }) && connectionMode === 'streaming' && !streamingWarningDismissedRef.current) {
+            if (isImmediateWatchClosure({ premature, receivedAny, openDurationMillis }) && connectionMode === 'streaming' && !streamingWarningDismissedRef.current) {
                 setStreamingUnsupported(true);
             } else if (streamError && connectionMode === 'streaming') {
                 const key = `${resourceType}:${namespace || ''}`;

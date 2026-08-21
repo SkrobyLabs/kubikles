@@ -25,6 +25,7 @@ busy clusters. See [Overview](docs/overview.md) for the full argument.
 
 - **[Real-time resource browsing](docs/features/resource-browsing.md)** — watch, filter, and edit workloads, config, storage, network, and RBAC resources live.
 - **[Workload access](docs/features/workload-access.md)** — stream logs, open interactive shells, and browse/transfer files in pods.
+- **[Non-streaming access](docs/features/non-streaming-access.md)** — use bounded polling through proxies that do not support Kubernetes watches or streaming logs.
 - **[Port & ingress forwarding](docs/features/forwarding.md)** — persistent, browser-friendly forwards to pods, services, and ingresses.
 - **[Dependency & topology graphs](docs/features/dependency-graph.md)** — visualise how a resource relates to the things around it.
 - **[Metrics & monitoring](docs/features/metrics.md)** — live CPU/memory from metrics-server plus optional Prometheus history.

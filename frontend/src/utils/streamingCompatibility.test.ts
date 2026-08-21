@@ -3,8 +3,9 @@ import { isImmediateWatchClosure, isStreamTransportError, isStreamingWarningDism
 
 describe('streaming compatibility detection', () => {
     it('detects the Paralus HTTP-200-then-close signal without waiting for two errors', () => {
-        expect(isImmediateWatchClosure({ premature: true, receivedAny: false })).toBe(true);
+        expect(isImmediateWatchClosure({ premature: true, receivedAny: false, openDurationMillis: 250 })).toBe(true);
         expect(isImmediateWatchClosure({ premature: true, receivedAny: true })).toBe(false);
+        expect(isImmediateWatchClosure({ premature: true, receivedAny: false, openDurationMillis: 30_000 })).toBe(false);
     });
 
     it('recognizes common proxy stream failures', () => {

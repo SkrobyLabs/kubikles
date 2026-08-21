@@ -24,3 +24,10 @@ func TestNextLogSinceTimeIsExclusiveForIdenticalTimestamps(t *testing.T) {
 		t.Fatal("cursor must advance to prevent duplicate pages; identical-timestamp lines beyond one page are an API limitation")
 	}
 }
+
+func TestPollingLogByteLimitBoundsEachAPIResponse(t *testing.T) {
+	limit := pollingLogByteLimit()
+	if limit == nil || *limit != 4*1024*1024 {
+		t.Fatalf("polling log byte limit = %v, want 4 MiB", limit)
+	}
+}

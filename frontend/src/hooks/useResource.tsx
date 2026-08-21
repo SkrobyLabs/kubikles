@@ -7,6 +7,7 @@ import { CancelListRequest } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
 import { nextPollingDelay } from './useCompletionPolling';
+import { runWithPollingBudget } from '../utils/pollingBudget';
 
 // K8s resource with metadata
 interface K8sResource {
@@ -163,16 +164,19 @@ export function createNamespacedResourceHook<T extends K8sResource>(
                 setLoading(true);
                 let skipLoadingReset = false;
                 try {
+                    const listWithBudget = (requestId: string, namespace: string) => connectionMode === 'polling'
+                        ? runWithPollingBudget(() => listFn(requestId, namespace))
+                        : listFn(requestId, namespace);
                     const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
 
                     if (optimized === null) {
                         if (!isCancelled) setDataMap(new Map());
                     } else if (optimized === '') {
-                        const list = await listFn(newRequestId, '');
+                        const list = await listWithBudget(newRequestId, '');
                         if (!isCancelled) setDataMap(arrayToMap(list || []));
                     } else {
                         const allResults = await Promise.all(
-                            optimized.map((ns: any) => listFn(newRequestId, ns).catch((err: any) => {
+                            optimized.map((ns: any) => listWithBudget(newRequestId, ns).catch((err: any) => {
                                 // Don't log cancelled request errors
                                 if (!err?.message?.includes('cancelled')) {
                                     console.error(`Failed to fetch ${resourceType} from namespace ${ns}`, err);
@@ -329,7 +333,9 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
                 setLoading(true);
                 let skipLoadingReset = false;
                 try {
-                    const list = await listFn(requestId);
+                    const list = await (connectionMode === 'polling'
+                        ? runWithPollingBudget(() => listFn(requestId))
+                        : listFn(requestId));
                     if (!isCancelled) {
                         setDataMap(arrayToMap(list || []));
                         setError(null);

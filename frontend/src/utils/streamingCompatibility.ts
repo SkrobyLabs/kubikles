@@ -4,7 +4,7 @@ export const restoreConnectionMode = (context: string, storage: Pick<Storage, 'g
 
 export const isStreamTransportError = (error: unknown): boolean => /watch|stream|upgrade|method not allowed|status code 405|unexpected eof|context deadline exceeded|awaiting headers|connection reset|http2.*closed|proxy.*closed/i.test(String(error));
 
-export const isImmediateWatchClosure = (event: { premature?: boolean; receivedAny?: boolean }): boolean => event.premature === true && event.receivedAny !== true;
+export const isImmediateWatchClosure = (event: { premature?: boolean; receivedAny?: boolean; openDurationMillis?: number }): boolean => event.premature === true && event.receivedAny !== true && (event.openDurationMillis ?? 0) < 5_000;
 
 export const streamingWarningDismissalKey = (context: string): string => `kubikles_streaming_warning_dismissed_${context}`;
 

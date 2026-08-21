@@ -80,6 +80,29 @@ export const appendUniqueLogEntries = (existing: any[], incoming: any[]): any[] 
     return unique.length ? [...existing, ...unique] : existing;
 };
 
+export const MAX_LOG_PAGES_PER_POLL = 5;
+
+export async function drainLogPages(
+    fetchPage: (cursor: string) => Promise<{ logs?: string; hasMore?: boolean }>,
+    initialCursor: string,
+    maxPages: number = MAX_LOG_PAGES_PER_POLL
+): Promise<{ entries: any[]; cursor: string; truncated: boolean }> {
+    let cursor = initialCursor;
+    let entries: any[] = [];
+    for (let page = 0; page < maxPages; page += 1) {
+        const result = await fetchPage(cursor);
+        const pageEntries = result.logs?.trim() ? parseLogLines(result.logs, 'poll') : [];
+        if (pageEntries.length === 0) return { entries, cursor, truncated: false };
+        entries = appendUniqueLogEntries(entries, pageEntries);
+        const nextCursor = pageEntries.slice().reverse().find((entry: any) => entry.timestamp)?.timestamp;
+        if (!nextCursor || nextCursor === cursor || !result.hasMore) {
+            return { entries, cursor: nextCursor || cursor, truncated: false };
+        }
+        cursor = nextCursor;
+    }
+    return { entries, cursor, truncated: true };
+}
+
 /**
  * Highlight search matches in HTML while preserving ANSI color tags.
  * This handles cases where ANSI codes split text (e.g., ERR<code>]<code>text can match ERR]text).

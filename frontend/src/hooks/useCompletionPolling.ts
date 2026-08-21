@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { runWithPollingBudget } from '../utils/pollingBudget';
 
 export const nextPollingDelay = (
     baseMs: number = 10_000,
@@ -14,7 +15,7 @@ export function startCompletionPolling(
     let timer: ReturnType<typeof setTimeout> | undefined;
     const run = async () => {
         try {
-            await poll(() => !cancelled);
+            await runWithPollingBudget(() => poll(() => !cancelled));
         } catch (error) {
             if (!cancelled) console.error('Background poll failed', error);
         } finally {

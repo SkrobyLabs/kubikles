@@ -16,6 +16,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const maxPollingLogBytes int64 = 4 * 1024 * 1024
+
+func pollingLogByteLimit() *int64 {
+	limit := maxPollingLogBytes
+	return &limit
+}
+
 func (c *Client) GetPodLogs(namespace, podName, containerName string, timestamps bool, previous bool, sinceTime string) (string, error) {
 	// When sinceTime is set, we need to get logs starting from that time (first N lines after sinceTime)
 	// Kubernetes TailLines gives last N lines, so we fetch all and truncate to first 200
@@ -134,7 +141,7 @@ func (c *Client) GetPodLogsBefore(namespace, podName, containerName string, time
 func (c *Client) GetPodLogsAfter(namespace, podName, containerName string, timestamps bool, previous bool, afterTime string, lineLimit int) (string, bool, error) {
 	sinceTime := nextLogSinceTime(afterTime)
 	// Always fetch with timestamps so we can properly compare
-	allLogs, err := c.getPodLogsWithOptions(namespace, podName, containerName, nil, true, previous, sinceTime)
+	allLogs, err := c.getPodLogsWithOptionsLimit(namespace, podName, containerName, nil, true, previous, sinceTime, pollingLogByteLimit())
 	if err != nil {
 		return "", false, err
 	}
@@ -196,6 +203,10 @@ func nextLogSinceTime(afterTime string) string {
 }
 
 func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string, tailLines *int64, timestamps bool, previous bool, sinceTime string) (string, error) {
+	return c.getPodLogsWithOptionsLimit(namespace, podName, containerName, tailLines, timestamps, previous, sinceTime, nil)
+}
+
+func (c *Client) getPodLogsWithOptionsLimit(namespace, podName, containerName string, tailLines *int64, timestamps bool, previous bool, sinceTime string, limitBytes *int64) (string, error) {
 	if IsDebugClusterContext(c.GetCurrentContext()) {
 		return "", fmt.Errorf("logs are not available on the debug cluster")
 	}
@@ -209,6 +220,7 @@ func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string,
 
 	opts := &v1.PodLogOptions{
 		TailLines:  tailLines,
+		LimitBytes: limitBytes,
 		Timestamps: timestamps,
 		Previous:   previous,
 	}
@@ -398,7 +410,7 @@ func (c *Client) getAllContainersLogs(namespace, podName string, containerNames 
 		go func(cn string) {
 			defer wg.Done()
 			// Always fetch with timestamps so we can sort
-			logs, err := c.getPodLogsWithOptions(namespace, podName, cn, nil, true, previous, sinceTime)
+			logs, err := c.getPodLogsWithOptionsLimit(namespace, podName, cn, nil, true, previous, sinceTime, pollingLogByteLimit())
 			results <- containerLogs{containerName: cn, logs: logs, err: err}
 		}(containerName)
 	}
@@ -835,7 +847,7 @@ func (c *Client) getAllPodsLogs(namespace string, pods []PodContainerPair, allCo
 				wg.Add(1)
 				go func(podName, containerName string) {
 					defer wg.Done()
-					logs, err := c.getPodLogsWithOptions(namespace, podName, containerName, nil, true, previous, sinceTime)
+					logs, err := c.getPodLogsWithOptionsLimit(namespace, podName, containerName, nil, true, previous, sinceTime, pollingLogByteLimit())
 					results <- podContainerLogs{podName: podName, containerName: containerName, logs: logs, err: err}
 				}(p.PodName, cn)
 			}
@@ -848,7 +860,7 @@ func (c *Client) getAllPodsLogs(namespace string, pods []PodContainerPair, allCo
 			wg.Add(1)
 			go func(podName, cn string) {
 				defer wg.Done()
-				logs, err := c.getPodLogsWithOptions(namespace, podName, cn, nil, true, previous, sinceTime)
+				logs, err := c.getPodLogsWithOptionsLimit(namespace, podName, cn, nil, true, previous, sinceTime, pollingLogByteLimit())
 				results <- podContainerLogs{podName: podName, containerName: cn, logs: logs, err: err}
 			}(p.PodName, containerName)
 		}

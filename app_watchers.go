@@ -29,13 +29,14 @@ type ResourceEvent struct {
 
 // WatcherErrorEvent is emitted when a watcher encounters an error
 type WatcherErrorEvent struct {
-	ResourceType string `json:"resourceType"` // Resource type that failed
-	Namespace    string `json:"namespace"`    // Namespace being watched
-	Error        string `json:"error"`        // Error message
-	Recoverable  bool   `json:"recoverable"`  // Whether the watcher will retry
-	Premature    bool   `json:"premature"`    // Stream opened but closed unexpectedly
-	ReceivedAny  bool   `json:"receivedAny"`  // Stream delivered an event before closing
-	Context      string `json:"context"`      // K8s context this error belongs to
+	ResourceType       string `json:"resourceType"`       // Resource type that failed
+	Namespace          string `json:"namespace"`          // Namespace being watched
+	Error              string `json:"error"`              // Error message
+	Recoverable        bool   `json:"recoverable"`        // Whether the watcher will retry
+	Premature          bool   `json:"premature"`          // Stream opened but closed unexpectedly
+	ReceivedAny        bool   `json:"receivedAny"`        // Stream delivered an event before closing
+	OpenDurationMillis int64  `json:"openDurationMillis"` // Time the stream remained open
+	Context            string `json:"context"`            // K8s context this error belongs to
 }
 
 // WatcherStatusEvent is emitted when watcher status changes
@@ -46,11 +47,11 @@ type WatcherStatusEvent struct {
 	Context      string `json:"context"`      // K8s context this status belongs to
 }
 
-func prematureWatchError(resourceType, namespace, context string, receivedAny bool) WatcherErrorEvent {
+func prematureWatchError(resourceType, namespace, context string, receivedAny bool, openDuration time.Duration) WatcherErrorEvent {
 	return WatcherErrorEvent{
 		ResourceType: resourceType, Namespace: namespace,
 		Error: "watch stream closed unexpectedly", Recoverable: true,
-		Premature: true, ReceivedAny: receivedAny, Context: context,
+		Premature: true, ReceivedAny: receivedAny, OpenDurationMillis: openDuration.Milliseconds(), Context: context,
 	}
 }
 
@@ -221,6 +222,7 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 		// Process events from this watcher
 		watcherDone := false
 		receivedAny := false
+		openedAt := time.Now()
 		for !watcherDone {
 			select {
 			case <-ctx.Done():
@@ -231,10 +233,19 @@ func (a *App) watchResourceLoop(ctx context.Context, resourceType, namespace str
 					debug.LogWatcher("Resource watcher channel closed, will reconnect", map[string]interface{}{"type": resourceType})
 					watcher.Stop()
 					watcherDone = true
-					consecutiveFailures++
-					a.emitEvent("watcher-error", prematureWatchError(resourceType, namespace, a.GetCurrentContext(), receivedAny))
+					openDuration := time.Since(openedAt)
+					immediateClosure := !receivedAny && openDuration < 5*time.Second
+					if immediateClosure {
+						consecutiveFailures++
+						a.emitEvent("watcher-error", prematureWatchError(resourceType, namespace, a.GetCurrentContext(), false, openDuration))
+					} else {
+						consecutiveFailures = 0
+					}
 					a.emitEvent("watcher-status", WatcherStatusEvent{ResourceType: resourceType, Namespace: namespace, Status: "reconnecting", Context: a.GetCurrentContext()})
-					delay := baseDelay * time.Duration(1<<uint(min(consecutiveFailures, 7))) //nolint:gosec
+					delay := baseDelay
+					if immediateClosure {
+						delay = baseDelay * time.Duration(1<<uint(min(consecutiveFailures, 7))) //nolint:gosec
+					}
 					if delay > maxDelay {
 						delay = maxDelay
 					}
@@ -448,6 +459,7 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 		// Process events from this watcher
 		watcherDone := false
 		receivedAny := false
+		openedAt := time.Now()
 		for !watcherDone {
 			select {
 			case <-ctx.Done():
@@ -458,10 +470,19 @@ func (a *App) watchCRDLoop(ctx context.Context, group, version, resource, namesp
 					debug.LogWatcher("CRD watcher channel closed, will reconnect", map[string]interface{}{"group": group, "version": version, "resource": resource})
 					watcher.Stop()
 					watcherDone = true
-					consecutiveFailures++
-					a.emitEvent("watcher-error", prematureWatchError(crdResourceType, namespace, a.GetCurrentContext(), receivedAny))
+					openDuration := time.Since(openedAt)
+					immediateClosure := !receivedAny && openDuration < 5*time.Second
+					if immediateClosure {
+						consecutiveFailures++
+						a.emitEvent("watcher-error", prematureWatchError(crdResourceType, namespace, a.GetCurrentContext(), false, openDuration))
+					} else {
+						consecutiveFailures = 0
+					}
 					a.emitEvent("watcher-status", WatcherStatusEvent{ResourceType: crdResourceType, Namespace: namespace, Status: "reconnecting", Context: a.GetCurrentContext()})
-					delay := baseDelay * time.Duration(1<<uint(min(consecutiveFailures, 7))) //nolint:gosec
+					delay := baseDelay
+					if immediateClosure {
+						delay = baseDelay * time.Duration(1<<uint(min(consecutiveFailures, 7))) //nolint:gosec
+					}
 					if delay > maxDelay {
 						delay = maxDelay
 					}
