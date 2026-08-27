@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"path/filepath"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -13,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 	"sigs.k8s.io/yaml"
 )
 
@@ -22,9 +20,7 @@ func (c *Client) getApiExtensionsClientForContext(contextName string) (*apiexten
 		return nil, fmt.Errorf("CRDs are not supported on the debug cluster")
 	}
 
-	home := homedir.HomeDir()
-	kubeconfigPath := filepath.Join(home, ".kube", "config")
-	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
+	loadingRules := c.getLoadingRules()
 
 	configOverrides := &clientcmd.ConfigOverrides{}
 	if contextName != "" {
@@ -177,9 +173,7 @@ func (c *Client) getDynamicClientForContext(contextName string) (dynamic.Interfa
 		return nil, fmt.Errorf("custom resources are not supported on the debug cluster")
 	}
 
-	home := homedir.HomeDir()
-	kubeconfigPath := filepath.Join(home, ".kube", "config")
-	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
+	loadingRules := c.getLoadingRules()
 
 	configOverrides := &clientcmd.ConfigOverrides{}
 	if contextName != "" {

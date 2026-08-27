@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespaces, StartAutoStartPortForwards, ListCRDs, GetK8sInitError, SubscribeResourceWatcher, UnsubscribeWatcher } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
+import { runContextSwitchTransaction } from './contextSwitch';
 
 // ============================================================================
 // Type Definitions
@@ -593,39 +594,31 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Without this guard, watchers are stopped but the useEffect keyed on
         // currentContext won't re-run (value unchanged), leaving the UI stuck
         // in an infinite "connecting" state.
-        if (newContext === currentContext) return;
-
         try {
             Logger.info("Switching context...", { from: currentContext, to: newContext }, 'k8s');
 
-            // Update ref IMMEDIATELY so any in-flight requests see the new context
-            // and ignore their stale results. This must happen before any async calls.
-            currentContextRef.current = newContext;
-
-            // Clear previous errors and show connecting state
-            setConnectionError(null);
-            setIsConnecting(true);
-
-            // Clear state immediately to prevent stale data display
-            setNamespaces([]);
-            namespacesRef.current = [];
-            setSelectedNamespaces([]);
-
-            // Set loading flag to prevent saves during switch
-            setIsLoadingNamespaces(true);
-
-            // This cancels pending connection tests and switches context
-            await SwitchContext(newContext);
-
-            // Update UI state - connection test happens in the data loading effect
-            setCurrentContext(newContext);
-            updateContextAccessTime(newContext);
-            localStorage.setItem('kubikles_last_context', newContext);
-            Logger.debug("Context switched, data loading will follow", { context: newContext }, 'k8s');
+            await runContextSwitchTransaction({
+                currentContext,
+                nextContext: newContext,
+                switchBackend: SwitchContext,
+                setPending: (pending) => {
+                    setIsConnecting(pending);
+                    setIsLoadingNamespaces(pending);
+                },
+                commit: () => {
+                    currentContextRef.current = newContext;
+                    setConnectionError(null);
+                    setNamespaces([]);
+                    namespacesRef.current = [];
+                    setSelectedNamespaces([]);
+                    setCurrentContext(newContext);
+                    updateContextAccessTime(newContext);
+                    localStorage.setItem('kubikles_last_context', newContext);
+                    Logger.debug("Context switched, data loading will follow", { context: newContext }, 'k8s');
+                },
+            });
         } catch (err: any) {
             Logger.error("Failed to switch context", err, 'k8s');
-            setIsConnecting(false);
-            setIsLoadingNamespaces(false);
         }
     }, [currentContext, updateContextAccessTime]);
 

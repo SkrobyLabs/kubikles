@@ -177,7 +177,7 @@ func (c *Client) getLoadingRules() *clientcmd.ClientConfigLoadingRules {
 	primary := filepath.Join(home, ".kube", "config")
 
 	c.mu.RLock()
-	extra := c.extraKubeconfigPaths
+	extra := append([]string(nil), c.extraKubeconfigPaths...)
 	c.mu.RUnlock()
 
 	if len(extra) == 0 {
@@ -253,94 +253,95 @@ func NewClient() (*Client, error) {
 }
 
 func (c *Client) loadConfig(contextName string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	forceHTTP1 := c.forceHTTP1
+	clientPoolSize := c.clientPoolSize
+	c.mu.RUnlock()
 
-	home := homedir.HomeDir()
-	kubeconfigPath := filepath.Join(home, ".kube", "config")
-
-	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
+	loadingRules := c.getLoadingRules()
 	configOverrides := &clientcmd.ConfigOverrides{}
 
 	if contextName != "" {
 		configOverrides.CurrentContext = contextName
 	}
 
-	c.configLoading = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+	configLoading := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
 
-	config, err := c.configLoading.ClientConfig()
+	config, err := configLoading.ClientConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load client config: %w", err)
 	}
 
-	// Apply HTTP protocol settings
-	if c.forceHTTP1 {
-		// Force HTTP/1.1 by disabling HTTP/2 ALPN negotiation
-		if config.TLSClientConfig.NextProtos == nil {
-			config.TLSClientConfig.NextProtos = []string{"http/1.1"}
-		}
-		// Also need to disable HTTP/2 at the transport level
-		config.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
-			if t, ok := rt.(*http.Transport); ok {
-				t.TLSNextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
-				t.ForceAttemptHTTP2 = false
-			}
-			return rt
-		}
-		log.Printf("[K8s Client] Using HTTP/1.1 (HTTP/2 disabled)")
-	}
+	applyHTTPProtocolSettings(config, forceHTTP1)
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return fmt.Errorf("failed to create clientset: %w", err)
 	}
 
-	c.clientset = clientset
-	c.metricsClient = nil // Reset metrics client so it's recreated for the new context
-
 	// Create additional client connections for rotation (improves parallelism)
-	c.clientPool = nil
-	if c.clientPoolSize > 0 {
-		c.clientPool = make([]kubernetes.Interface, c.clientPoolSize)
-		for i := 0; i < c.clientPoolSize; i++ {
+	var clientPool []kubernetes.Interface
+	if clientPoolSize > 0 {
+		clientPool = make([]kubernetes.Interface, clientPoolSize)
+		for i := 0; i < clientPoolSize; i++ {
 			// Create a fresh config for each pool member to ensure separate connections
-			poolConfig, err := c.configLoading.ClientConfig()
+			poolConfig, err := configLoading.ClientConfig()
 			if err != nil {
 				return fmt.Errorf("failed to load pool client config: %w", err)
 			}
-			// Apply same HTTP settings
-			if c.forceHTTP1 {
-				if poolConfig.TLSClientConfig.NextProtos == nil {
-					poolConfig.TLSClientConfig.NextProtos = []string{"http/1.1"}
-				}
-				poolConfig.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
-					if t, ok := rt.(*http.Transport); ok {
-						t.TLSNextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
-						t.ForceAttemptHTTP2 = false
-					}
-					return rt
-				}
-			}
+			applyHTTPProtocolSettings(poolConfig, forceHTTP1)
 			poolCs, err := kubernetes.NewForConfig(poolConfig)
 			if err != nil {
 				return fmt.Errorf("failed to create pool clientset %d: %w", i, err)
 			}
-			c.clientPool[i] = poolCs
+			clientPool[i] = poolCs
 		}
-		log.Printf("[K8s Client] Created %d additional client connections (%d total)", c.clientPoolSize, c.clientPoolSize+1)
+		log.Printf("[K8s Client] Created %d additional client connections (%d total)", clientPoolSize, clientPoolSize+1)
 	}
 
-	// Update current context
-	rawConfig, err := c.configLoading.RawConfig()
-	if err == nil {
-		if contextName != "" {
-			c.currentContext = contextName
-		} else {
-			c.currentContext = rawConfig.CurrentContext
-		}
+	rawConfig, err := configLoading.RawConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load raw client config: %w", err)
 	}
+	effectiveContext := rawConfig.CurrentContext
+	if contextName != "" {
+		effectiveContext = contextName
+	}
+	if effectiveContext == "" {
+		return fmt.Errorf("failed to determine current context")
+	}
+
+	// Publish all context-derived state together only after every fallible step succeeds.
+	c.mu.Lock()
+	c.configLoading = configLoading
+	c.clientset = clientset
+	c.metricsClient = nil // Reset metrics client so it's recreated for the new context
+	c.clientPool = clientPool
+	c.clientPoolIdx = 0
+	c.currentContext = effectiveContext
+	c.mu.Unlock()
 
 	return nil
+}
+
+func applyHTTPProtocolSettings(config *rest.Config, forceHTTP1 bool) {
+	if !forceHTTP1 {
+		return
+	}
+
+	// Force HTTP/1.1 by disabling HTTP/2 ALPN negotiation.
+	if config.TLSClientConfig.NextProtos == nil {
+		config.TLSClientConfig.NextProtos = []string{"http/1.1"}
+	}
+	// Also need to disable HTTP/2 at the transport level.
+	config.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
+		if t, ok := rt.(*http.Transport); ok {
+			t.TLSNextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
+			t.ForceAttemptHTTP2 = false
+		}
+		return rt
+	}
+	log.Printf("[K8s Client] Using HTTP/1.1 (HTTP/2 disabled)")
 }
 
 func (c *Client) SwitchContext(contextName string) error {
@@ -601,9 +602,7 @@ func (c *Client) getClientForContext(contextName string) (kubernetes.Interface, 
 	// if it's shared.
 	// Simplest way: create a new loader.
 
-	home := homedir.HomeDir()
-	kubeconfigPath := filepath.Join(home, ".kube", "config")
-	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
+	loadingRules := c.getLoadingRules()
 	configOverrides := &clientcmd.ConfigOverrides{CurrentContext: contextName}
 
 	configLoader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
@@ -620,9 +619,7 @@ func (c *Client) GetRestConfigForContext(contextName string) (*rest.Config, erro
 		return nil, fmt.Errorf("no REST config for debug cluster (exec/port-forward/logs are not supported)")
 	}
 
-	home := homedir.HomeDir()
-	kubeconfigPath := filepath.Join(home, ".kube", "config")
-	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
+	loadingRules := c.getLoadingRules()
 
 	configOverrides := &clientcmd.ConfigOverrides{}
 	if contextName != "" {
@@ -651,10 +648,7 @@ func (c *Client) getClientsetForContext(contextName string) (kubernetes.Interfac
 	}
 
 	// Need to create a new client for different context
-	home := homedir.HomeDir()
-	kubeconfigPath := filepath.Join(home, ".kube", "config")
-
-	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath}
+	loadingRules := c.getLoadingRules()
 	configOverrides := &clientcmd.ConfigOverrides{CurrentContext: contextName}
 
 	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)

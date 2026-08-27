@@ -42,13 +42,16 @@ func (a *App) SwitchContext(name string) error {
 	if a.k8sClient == nil {
 		return fmt.Errorf("k8s client not initialized")
 	}
+	oldContext := a.k8sClient.GetCurrentContext()
+	if err := a.k8sClient.SwitchContext(name); err != nil {
+		return err
+	}
 
 	// Cancel any pending connection test
 	a.CancelConnectionTest()
 
 	// Stop non-KeepAlive port forwards from the departing context
 	if a.portForwardManager != nil {
-		oldContext := a.k8sClient.GetCurrentContext()
 		debug.LogK8s("SwitchContext: Stopping port forwards for context", map[string]any{"context": oldContext})
 		a.portForwardManager.StopAllForContext(oldContext)
 	}
@@ -64,7 +67,7 @@ func (a *App) SwitchContext(name string) error {
 		a.watcherManager.StopAll()
 	}
 
-	return a.k8sClient.SwitchContext(name)
+	return nil
 }
 
 // TestConnection performs a quick connectivity check to the current cluster.
