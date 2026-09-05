@@ -474,6 +474,10 @@ export default function MetricsList({ isVisible }: { isVisible: boolean }) {
                             <div>
                                 <label className="block text-gray-400 mb-1">Namespace</label>
                                 <input
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="text"
                                     value={customEndpoint.namespace}
                                     onChange={(e: any) => setCustomEndpoint(prev => ({ ...prev, namespace: e.target.value }))}
@@ -484,6 +488,10 @@ export default function MetricsList({ isVisible }: { isVisible: boolean }) {
                             <div>
                                 <label className="block text-gray-400 mb-1">Service</label>
                                 <input
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="text"
                                     value={customEndpoint.service}
                                     onChange={(e: any) => setCustomEndpoint(prev => ({ ...prev, service: e.target.value }))}

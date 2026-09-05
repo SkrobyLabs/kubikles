@@ -11,6 +11,10 @@ export default function TextField({ label, description, value, onChange, isModif
                 <p className="text-xs text-text-muted mb-2">{description}</p>
             )}
             <input
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 type="text"
                 value={value ?? ''}
                 onChange={(e: any) => onChange(e.target.value)}

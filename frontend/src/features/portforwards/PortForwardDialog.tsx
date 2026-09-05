@@ -180,6 +180,10 @@ export default function PortForwardDialog({
                                     Label (optional)
                                 </label>
                                 <input
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="text"
                                     {...form.getFieldProps('label')}
                                     placeholder="My Port Forward"
@@ -224,6 +228,10 @@ export default function PortForwardDialog({
                                     Label (optional)
                                 </label>
                                 <input
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="text"
                                     {...form.getFieldProps('label')}
                                     placeholder="My Port Forward"
@@ -258,6 +266,10 @@ export default function PortForwardDialog({
                                     Namespace
                                 </label>
                                 <input
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="text"
                                     {...form.getFieldProps('namespace')}
                                     placeholder="default"
@@ -303,6 +315,10 @@ export default function PortForwardDialog({
                                     {form.values.resourceType === 'pod' ? 'Pod Name' : 'Service Name'}
                                 </label>
                                 <input
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="text"
                                     {...form.getFieldProps('resourceName')}
                                     placeholder={form.values.resourceType === 'pod' ? 'my-pod-abc123' : 'my-service'}

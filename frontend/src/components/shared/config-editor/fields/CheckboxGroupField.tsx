@@ -99,6 +99,10 @@ export default function CheckboxGroupField({ label, description, value, onChange
             {/* Free-text input for external tools */}
             <div className="flex items-center gap-2">
                 <input
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                     type="text"
                     value={customInput}
                     onChange={(e: any) => setCustomInput(e.target.value)}

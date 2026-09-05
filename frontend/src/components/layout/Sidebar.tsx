@@ -312,6 +312,10 @@ export default function Sidebar({
                     <div className="relative">
                         <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                         <input
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             type="search"
                             value={menuSearch}
                             onChange={(event) => setMenuSearch(event.target.value)}

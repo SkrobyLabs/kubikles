@@ -137,6 +137,10 @@ const NodeShellTab = ({ nodeName, context }: any) => {
                             Or enter custom image:
                         </label>
                         <input
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             type="text"
                             value={customImage}
                             onChange={(e: any) => setCustomImage(e.target.value)}

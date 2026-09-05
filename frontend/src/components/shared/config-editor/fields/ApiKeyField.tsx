@@ -70,6 +70,10 @@ export default function ApiKeyField({ label, description }: Props) {
                 ) : isEditing ? (
                     <div className="flex items-center gap-1.5">
                         <input
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             type="password"
                             value={inputValue}
                             onChange={e => setInputValue(e.target.value)}

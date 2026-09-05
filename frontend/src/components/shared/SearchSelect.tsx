@@ -234,6 +234,7 @@ export default function SearchSelect({
                         <div className="relative">
                             <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-2 top-1/2 transform -translate-y-1/2" />
                             <input
+                                autoCapitalize="off"
                                 ref={inputRef}
                                 type="text"
                                 className="w-full bg-background border border-border rounded pl-8 pr-2 py-1 text-sm text-text focus:outline-none focus:border-primary"

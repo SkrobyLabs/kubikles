@@ -280,6 +280,7 @@ export default function PortForwardList({ isVisible }: { isVisible: boolean }) {
                     <div className="relative max-w-md w-full">
                         <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                         <input
+                            autoCapitalize="off"
                             ref={searchInputRef}
                             type="text"
                             value={searchTerm}

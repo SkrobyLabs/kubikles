@@ -130,6 +130,10 @@ export default function ModelSelectField({ label, description, value, onChange, 
                             ) : (
                                 <div className="px-3 py-1.5 flex gap-1">
                                     <input
+                                        autoComplete="off"
+                                        autoCorrect="off"
+                                        autoCapitalize="off"
+                                        spellCheck={false}
                                         ref={inputRef}
                                         type="text"
                                         value={customInput}

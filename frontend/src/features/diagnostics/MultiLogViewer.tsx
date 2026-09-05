@@ -414,6 +414,9 @@ export default function MultiLogViewer({
                                 Label Selector (e.g., app=nginx, tier=frontend)
                             </label>
                             <input
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                                 type="text"
                                 value={labelSelector}
                                 onChange={(e: any) => setLabelSelector(e.target.value)}
@@ -429,6 +432,9 @@ export default function MultiLogViewer({
                     <div className="flex items-center gap-2">
                         <label className="text-xs text-gray-400">Container:</label>
                         <input
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             type="text"
                             value={container}
                             onChange={(e: any) => setContainer(e.target.value)}
@@ -523,6 +529,9 @@ export default function MultiLogViewer({
                         <div className="relative">
                             <MagnifyingGlassIcon className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-500" />
                             <input
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e: any) => setSearchQuery(e.target.value)}

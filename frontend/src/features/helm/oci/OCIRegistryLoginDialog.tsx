@@ -75,6 +75,10 @@ export default function OCIRegistryLoginDialog({ onClose, onSuccess }: any) {
                             Registry URL
                         </label>
                         <input
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             type="text"
                             {...form.getFieldProps('registry')}
                             placeholder="e.g., myregistry.azurecr.io"
@@ -120,6 +124,10 @@ export default function OCIRegistryLoginDialog({ onClose, onSuccess }: any) {
                                     Username
                                 </label>
                                 <input
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="text"
                                     {...form.getFieldProps('username')}
                                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -134,6 +142,10 @@ export default function OCIRegistryLoginDialog({ onClose, onSuccess }: any) {
                                     Password / Token
                                 </label>
                                 <input
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="password"
                                     {...form.getFieldProps('password')}
                                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-text placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"

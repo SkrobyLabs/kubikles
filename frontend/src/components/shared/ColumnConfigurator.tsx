@@ -95,6 +95,9 @@ export default function ColumnConfigurator({
                         <div className="relative">
                             <MagnifyingGlassIcon className="w-3.5 h-3.5 text-gray-500 absolute left-2 top-1/2 -translate-y-1/2" />
                             <input
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                                 ref={searchInputRef}
                                 type="text"
                                 value={searchTerm}

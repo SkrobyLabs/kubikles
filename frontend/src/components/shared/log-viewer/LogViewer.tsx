@@ -927,6 +927,7 @@ export default function LogViewer({
                     <div className="relative flex-1 max-w-md">
                         <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                         <input
+                            autoCapitalize="off"
                             ref={search.searchInputRef}
                             type="text"
                             placeholder={search.isRegex ? (search.searchOnEnter ? "Search (regex, Enter)..." : "Search (regex)...") : (search.searchOnEnter ? "Search (Enter)..." : "Search...")}

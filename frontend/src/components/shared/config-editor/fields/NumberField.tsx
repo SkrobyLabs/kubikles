@@ -38,6 +38,10 @@ export default function NumberField({ label, description, value, onChange, isMod
             <div className="flex items-center gap-2">
                 <div className="relative inline-flex">
                     <input
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                         type="text"
                         inputMode="decimal"
                         value={value}

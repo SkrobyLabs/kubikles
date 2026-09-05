@@ -200,6 +200,9 @@ export default function RBACChecker({
                         <div>
                             <label className="block text-xs text-gray-400 mb-1">Name</label>
                             <input
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                                 type="text"
                                 value={subjectName}
                                 onChange={(e: any) => setSubjectName(e.target.value)}
@@ -212,6 +215,9 @@ export default function RBACChecker({
                             <div>
                                 <label className="block text-xs text-gray-400 mb-1">SA Namespace</label>
                                 <input
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="text"
                                     value={subjectNamespace}
                                     onChange={(e: any) => setSubjectNamespace(e.target.value)}
@@ -253,6 +259,9 @@ export default function RBACChecker({
                             </label>
                             {customResource ? (
                                 <input
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="text"
                                     value={resource}
                                     onChange={(e: any) => setResource(e.target.value)}
@@ -275,6 +284,9 @@ export default function RBACChecker({
                         <div>
                             <label className="block text-xs text-gray-400 mb-1">Target Namespace</label>
                             <input
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                                 type="text"
                                 value={namespace}
                                 onChange={(e: any) => setNamespace(e.target.value)}
@@ -286,6 +298,9 @@ export default function RBACChecker({
                         <div>
                             <label className="block text-xs text-gray-400 mb-1">Resource Name (optional)</label>
                             <input
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                                 type="text"
                                 value={resourceName}
                                 onChange={(e: any) => setResourceName(e.target.value)}
@@ -299,6 +314,9 @@ export default function RBACChecker({
                         <div className="mt-2">
                             <label className="block text-xs text-gray-400 mb-1">API Group</label>
                             <input
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                                 type="text"
                                 value={apiGroup}
                                 onChange={(e: any) => setApiGroup(e.target.value)}

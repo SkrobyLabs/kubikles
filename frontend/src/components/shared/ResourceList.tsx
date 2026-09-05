@@ -1077,6 +1077,7 @@ export default function ResourceList({
                             <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2 z-30" />
                             <SearchHighlightOverlay query={searchInput} />
                             <input
+                                autoCapitalize="off"
                                 type="text"
                                 placeholder={resourceType ? `Search... (name:"x" status:Running)` : `Search ${title}...`}
                                 className={`relative z-10 w-full bg-transparent border border-border rounded-md pl-9 pr-4 py-1.5 text-sm caret-text focus:outline-none focus:border-primary transition-colors ${
@@ -1536,6 +1537,9 @@ export default function ResourceList({
                                     </div>
                                 )}
                                 <input
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="text"
                                     value={regexDraft}
                                     onChange={(e: any) => setRegexDraft(e.target.value)}
@@ -1637,6 +1641,9 @@ export default function ResourceList({
                             <>
                                 <div className="p-2 border-b border-border">
                                     <input
+                                        autoCorrect="off"
+                                        autoCapitalize="off"
+                                        spellCheck={false}
                                         type="text"
                                         value={columnFilterSearch}
                                         onChange={(e: any) => setColumnFilterSearch(e.target.value)}

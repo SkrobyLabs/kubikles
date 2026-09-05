@@ -200,6 +200,10 @@ export default function PVCDetails({ pvc, tabContext = '' }: { pvc: any; tabCont
                                     New Size
                                 </label>
                                 <input
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="text"
                                     value={newSize}
                                     onChange={(e: any) => setNewSize(e.target.value)}

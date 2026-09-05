@@ -78,6 +78,10 @@ function TextField({ label, value, onChange, placeholder, readOnly, mono }: {
         <div>
             <label className="block text-xs text-gray-400 mb-1">{label}</label>
             <input
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 type="text"
                 value={value}
                 onChange={e => onChange?.(e.target.value)}
@@ -538,6 +542,10 @@ export default function ContextEditor({ contextName, onBack, onSaved }: ContextE
                                         <div key={i} className="flex items-center gap-1">
                                             <span className="text-xs text-gray-600 w-5 text-right shrink-0">{i}:</span>
                                             <input
+                                                autoComplete="off"
+                                                autoCorrect="off"
+                                                autoCapitalize="off"
+                                                spellCheck={false}
                                                 type="text"
                                                 value={arg}
                                                 onChange={e => updateExecArg(i, e.target.value)}
@@ -574,6 +582,10 @@ export default function ContextEditor({ contextName, onBack, onSaved }: ContextE
                                     {execEnv.map((ev, i) => (
                                         <div key={i} className="flex items-center gap-1">
                                             <input
+                                                autoComplete="off"
+                                                autoCorrect="off"
+                                                autoCapitalize="off"
+                                                spellCheck={false}
                                                 type="text"
                                                 value={ev.name}
                                                 onChange={e => updateExecEnvVar(i, 'name', e.target.value)}
@@ -582,6 +594,10 @@ export default function ContextEditor({ contextName, onBack, onSaved }: ContextE
                                             />
                                             <span className="text-xs text-gray-600">=</span>
                                             <input
+                                                autoComplete="off"
+                                                autoCorrect="off"
+                                                autoCapitalize="off"
+                                                spellCheck={false}
                                                 type="text"
                                                 value={ev.value}
                                                 onChange={e => updateExecEnvVar(i, 'value', e.target.value)}

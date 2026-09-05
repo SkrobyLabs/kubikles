@@ -349,6 +349,7 @@ export default function SecretEditor({ namespace, resourceName, onClose, tabCont
                             <div className="relative w-48">
                                 <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-2.5 top-1/2 transform -translate-y-1/2" />
                                 <input
+                                    autoCapitalize="off"
                                     type="text"
                                     value={keySearchTerm}
                                     onChange={(e: any) => setKeySearchTerm(e.target.value)}

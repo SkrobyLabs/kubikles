@@ -159,6 +159,10 @@ export default function ServicePortForwardDialog({
                             Label
                         </label>
                         <input
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             type="text"
                             {...form.getFieldProps('label') as any}
                             className="w-full px-3 py-2 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"

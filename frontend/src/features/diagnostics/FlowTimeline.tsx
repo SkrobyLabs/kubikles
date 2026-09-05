@@ -434,6 +434,9 @@ export default function FlowTimeline({
                             <div className="relative">
                                 <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                                 <input
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e: any) => setSearchQuery(e.target.value)}

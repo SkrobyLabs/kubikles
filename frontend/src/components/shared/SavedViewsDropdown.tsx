@@ -171,6 +171,9 @@ export default function SavedViewsDropdown({
                         <div className="px-3 py-2 border-b border-border">
                             <div className="flex items-center gap-2">
                                 <input
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                     ref={inputRef}
                                     type="text"
                                     value={newViewName}
@@ -210,6 +213,10 @@ export default function SavedViewsDropdown({
                                 >
                                     {editingId === view.id ? (
                                         <input
+                                            autoComplete="off"
+                                            autoCorrect="off"
+                                            autoCapitalize="off"
+                                            spellCheck={false}
                                             type="text"
                                             value={editName}
                                             onChange={(e: any) => setEditName(e.target.value)}

@@ -161,6 +161,10 @@ function SortableSection({
                 </button>
                 {editing ? (
                     <input
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                         autoFocus
                         value={editValue}
                         onChange={e => setEditValue(e.target.value)}
@@ -689,6 +693,10 @@ export default function SidebarLayoutEditor({ value, onChange }: SidebarLayoutEd
                                                                 <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-surface">
                                                                     {def.icon && <def.icon className="w-4 h-4 text-gray-400 shrink-0" />}
                                                                     <input
+                                                                        autoComplete="off"
+                                                                        autoCorrect="off"
+                                                                        autoCapitalize="off"
+                                                                        spellCheck={false}
                                                                         autoFocus
                                                                         value={editingItemValue}
                                                                         onChange={e => setEditingItemValue(e.target.value)}

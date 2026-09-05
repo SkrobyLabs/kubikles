@@ -210,6 +210,10 @@ export default function ContextManager({ onClose, onContextsChanged }: ContextMa
                                             {renamingContext === ctx.name ? (
                                                 <div className="flex items-center gap-1">
                                                     <input
+                                                        autoComplete="off"
+                                                        autoCorrect="off"
+                                                        autoCapitalize="off"
+                                                        spellCheck={false}
                                                         type="text"
                                                         value={renameValue}
                                                         onChange={e => setRenameValue(e.target.value)}

@@ -185,6 +185,8 @@ export default function CommandPalette({ isOpen, onClose, onCreateResource, onTo
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
                     <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 shrink-0" />
                     <input
+                        autoCorrect="off"
+                        autoCapitalize="off"
                         ref={inputRef}
                         type="text"
                         value={query}

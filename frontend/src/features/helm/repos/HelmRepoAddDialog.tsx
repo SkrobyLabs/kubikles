@@ -74,6 +74,10 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }: any) {
                             Repository Name
                         </label>
                         <input
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             id="repo-name"
                             type="text"
                             {...form.getFieldProps('name')}
@@ -92,6 +96,10 @@ export default function HelmRepoAddDialog({ onClose, onSuccess }: any) {
                             Repository URL
                         </label>
                         <input
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             id="repo-url"
                             type="text"
                             {...form.getFieldProps('url')}

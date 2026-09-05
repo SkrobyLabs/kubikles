@@ -52,6 +52,10 @@ export function TimePickerModal({
                 <h3 className="text-sm font-medium text-white mb-2">Jump to Time</h3>
                 <p className="text-xs text-gray-400 mb-3">Show logs starting from this time (server time).</p>
                 <input
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                     type="text"
                     {...form.getFieldProps('inputTime') as any}
                     onKeyDown={(e: any) => {

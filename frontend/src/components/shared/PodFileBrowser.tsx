@@ -566,6 +566,10 @@ export default function PodFileBrowser({
                 <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-surface/50">
                     <FolderPlusIcon className="h-4 w-4 text-gray-500" />
                     <input
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                         ref={newFolderInputRef}
                         type="text"
                         placeholder="New folder name..."
