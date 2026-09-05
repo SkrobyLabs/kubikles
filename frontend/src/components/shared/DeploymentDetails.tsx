@@ -10,8 +10,11 @@ import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } 
 import ControllerMetricsTab from './ControllerMetricsTab';
 import ResourceEventsTab from './ResourceEventsTab';
 import ScaleModal from './ScaleModal';
-import { ScaleDeployment, RestartDeployment } from '~/lib/wailsjs-adapter/go/main/App';
+import { ScaleDeployment, RestartDeployment, GetDeploymentYaml } from '~/lib/wailsjs-adapter/go/main/App';
 import { useResourceWatcher } from '~/hooks/useResourceWatcher';
+import { useCompletionPolling } from '~/hooks/useCompletionPolling';
+// @ts-ignore - no declaration file for js-yaml
+import yaml from 'js-yaml';
 
 const TAB_BASIC = 'basic';
 const TAB_EVENTS = 'events';
@@ -55,6 +58,10 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
         handleWatcherEvent,
         Boolean(namespace && !isStale)
     );
+    useCompletionPolling(Boolean(namespace && name && !isStale), async (isCurrent) => {
+        const latest = yaml.load(await GetDeploymentYaml(namespace, name));
+        if (latest && isCurrent()) setDeployment(latest);
+    }, [namespace, name, resourceContext], true);
     const spec = deployment.spec || {};
     const status = deployment.status || {};
 

@@ -43,6 +43,15 @@ vi.mock('wailsjs/go/models', () => ({
 }));
 
 import { createNamespaceKey, createNamespacedRequestId, createClusterScopedRequestId } from './useResource';
+import { nextPollingDelay } from './useCompletionPolling';
+
+describe('nextPollingDelay', () => {
+    it('applies bounded jitter to avoid synchronized customer request bursts', () => {
+        expect(nextPollingDelay(10_000, 0)).toBe(9_000);
+        expect(nextPollingDelay(10_000, 0.5)).toBe(10_000);
+        expect(nextPollingDelay(10_000, 1)).toBe(11_000);
+    });
+});
 
 describe('createNamespacedRequestId', () => {
     it('includes resource type and namespace key', () => {

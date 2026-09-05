@@ -8,6 +8,9 @@ import { DetailRow, DetailSection, LabelsDisplay, AnnotationsDisplay, StatusBadg
 import { LazyYamlEditor as YamlEditor, LazyDependencyGraph as DependencyGraph } from '../lazy';
 import { GetCustomResourceYaml, UpdateCustomResourceYaml, GetCustomResourceEvents } from 'wailsjs/go/main/App';
 import { useCRDWatcher } from '~/hooks/useResourceWatcher';
+import { useCompletionPolling } from '~/hooks/useCompletionPolling';
+// @ts-ignore - no declaration file for js-yaml
+import yaml from 'js-yaml';
 
 const TAB_BASIC = 'basic';
 const TAB_EVENTS = 'events';
@@ -74,32 +77,37 @@ export default function CustomResourceDetails({ resource: initialResource, crdIn
         handleWatcherEvent,
         Boolean(!isStale)
     );
+    useCompletionPolling(Boolean(name && !isStale), async (isCurrent) => {
+        const latest = yaml.load(await GetCustomResourceYaml(crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name));
+        if (latest && isCurrent()) setResource(latest);
+    }, [crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name, resourceContext], true);
 
-    // Fetch events when Events tab is active
-    useEffect(() => {
+    const fetchEvents = useCallback(async (isCurrent: () => boolean = () => true) => {
         if (activeTab !== TAB_EVENTS || isStale || !name) return;
+        setEventsLoading(true);
+        try {
+            const list = await GetCustomResourceEvents(
+                crdInfo.group,
+                crdInfo.version,
+                crdInfo.resource,
+                namespace,
+                name,
+                crdInfo.kind
+            );
+            if (isCurrent()) setEvents(list || []);
+        } catch (err: any) {
+            console.error('Failed to fetch custom resource events:', err);
+        } finally {
+            if (isCurrent()) setEventsLoading(false);
+        }
+    }, [activeTab, namespace, name, crdInfo.group, crdInfo.version, crdInfo.resource, crdInfo.kind, isStale]);
 
-        const fetchEvents = async () => {
-            setEventsLoading(true);
-            try {
-                const list = await GetCustomResourceEvents(
-                    crdInfo.group,
-                    crdInfo.version,
-                    crdInfo.resource,
-                    namespace,
-                    name,
-                    crdInfo.kind
-                );
-                setEvents(list || []);
-            } catch (err: any) {
-                console.error('Failed to fetch custom resource events:', err);
-            } finally {
-                setEventsLoading(false);
-            }
-        };
-
-        fetchEvents();
-    }, [activeTab, currentContext, namespace, name, crdInfo.group, crdInfo.version, crdInfo.resource, crdInfo.kind, isStale, lastRefresh]);
+    useEffect(() => {
+        let current = true;
+        fetchEvents(() => current);
+        return () => { current = false; };
+    }, [fetchEvents, currentContext, lastRefresh]);
+    useCompletionPolling(activeTab === TAB_EVENTS && !isStale, fetchEvents, [fetchEvents]);
 
     // Sort events by last timestamp (most recent first)
     const sortedEvents = useMemo(() => {

@@ -18,6 +18,7 @@ import {
 import SearchSelect from './SearchSelect';
 import BulkActionBar from './BulkActionBar';
 import ColumnConfigurator from './ColumnConfigurator';
+import RefreshControls from './RefreshControls';
 import SavedViewsDropdown from './SavedViewsDropdown';
 import { createFilter, getFieldsMetadata } from '~/utils/search';
 import { useSavedViews } from '~/hooks/useSavedViews';
@@ -1170,6 +1171,7 @@ export default function ResourceList({
                             />
                         </div>
                     )}
+                    <RefreshControls />
                 </div>
             </div>
 

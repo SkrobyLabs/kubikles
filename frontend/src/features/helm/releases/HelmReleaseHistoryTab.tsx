@@ -5,6 +5,7 @@ import { useK8s } from '~/context';
 import { useUI } from '~/context';
 import { useNotification } from '~/context';
 import Logger from '~/utils/Logger';
+import { useCompletionPolling } from '~/hooks/useCompletionPolling';
 
 const formatDate = (timestamp: any) => {
     if (!timestamp) return '-';
@@ -37,7 +38,7 @@ export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0
     const currentRevision = history.find((h: any) => h.status?.toLowerCase() === 'deployed')?.revision || release?.revision || 0;
 
     // Fetch history function
-    const fetchHistory = useCallback(async () => {
+    const fetchHistory = useCallback(async (isCurrent: () => boolean = () => true) => {
         if (!currentContext || !release || isStale) return;
 
         setLoading(true);
@@ -45,19 +46,22 @@ export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0
         try {
             Logger.info("Fetching Helm release history", { namespace: release.namespace, name: release.name }, 'helm');
             const data = await GetHelmReleaseHistory(release.namespace, release.name);
-            setHistory(data || []);
+            if (isCurrent()) setHistory(data || []);
         } catch (err: any) {
             Logger.error("Failed to fetch Helm release history", err, 'helm');
-            setError(err.message || String(err));
+            if (isCurrent()) setError(err.message || String(err));
         } finally {
-            setLoading(false);
+            if (isCurrent()) setLoading(false);
         }
     }, [currentContext, release, isStale]);
 
     // Fetch on mount and when dependencies change
     useEffect(() => {
-        fetchHistory();
+        let current = true;
+        fetchHistory(() => current);
+        return () => { current = false; };
     }, [fetchHistory, lastRefresh, refreshKey]);
+    useCompletionPolling(!isStale, fetchHistory, [fetchHistory]);
 
     const handleRollback = (revision: any) => {
         openModal({

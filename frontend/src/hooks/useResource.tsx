@@ -6,6 +6,7 @@ import { createResourceEventHandler, createNamespacedResourceEventHandler } from
 import { CancelListRequest } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
+import { runWithPollingBudget } from '../utils/pollingBudget';
 
 // K8s resource with metadata
 interface K8sResource {
@@ -105,7 +106,7 @@ export function createNamespacedResourceHook<T extends K8sResource>(
         const [loading, setLoading] = useState<boolean>(false);
         const [error, setError] = useState<Error | null>(null);
         const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
-        const { namespaces: allNamespaces, lastRefresh, checkConnectionError, reconcileToken } = useK8s();
+        const { namespaces: allNamespaces, lastRefresh, checkConnectionError, reconcileToken, connectionMode, registerPolling } = useK8s();
         const requestIdRef = useRef<string | null>(null);
         const fetchInProgressRef = useRef<string | null>(null); // Prevent duplicate fetches from StrictMode
 
@@ -156,20 +157,26 @@ export function createNamespacedResourceHook<T extends K8sResource>(
             requestIdRef.current = newRequestId;
             fetchInProgressRef.current = queryKey;
 
+            let running = false;
             const fetchData = async (): Promise<void> => {
+                if (running || isCancelled) return;
+                running = true;
                 setLoading(true);
                 let skipLoadingReset = false;
                 try {
+                    const listWithBudget = (requestId: string, namespace: string) => connectionMode === 'polling'
+                        ? runWithPollingBudget(() => isCancelled ? Promise.resolve([]) : listFn(requestId, namespace))
+                        : listFn(requestId, namespace);
                     const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
 
                     if (optimized === null) {
                         if (!isCancelled) setDataMap(new Map());
                     } else if (optimized === '') {
-                        const list = await listFn(newRequestId, '');
+                        const list = await listWithBudget(newRequestId, '');
                         if (!isCancelled) setDataMap(arrayToMap(list || []));
                     } else {
                         const allResults = await Promise.all(
-                            optimized.map((ns: any) => listFn(newRequestId, ns).catch((err: any) => {
+                            optimized.map((ns: any) => listWithBudget(newRequestId, ns).catch((err: any) => {
                                 // Don't log cancelled request errors
                                 if (!err?.message?.includes('cancelled')) {
                                     console.error(`Failed to fetch ${resourceType} from namespace ${ns}`, err);
@@ -199,6 +206,7 @@ export function createNamespacedResourceHook<T extends K8sResource>(
                         skipLoadingReset = true;
                     }
                 } finally {
+                    running = false;
                     if (!isCancelled && !skipLoadingReset) setLoading(false);
                     // Clear fetch-in-progress flag when done
                     if (fetchInProgressRef.current === queryKey) {
@@ -208,6 +216,7 @@ export function createNamespacedResourceHook<T extends K8sResource>(
             };
 
             fetchData();
+            const unregister = connectionMode === 'polling' ? registerPolling(fetchData) : undefined;
 
             // Cleanup: mark as cancelled and cancel backend request
             return () => {
@@ -217,8 +226,9 @@ export function createNamespacedResourceHook<T extends K8sResource>(
                 if (requestIdRef.current) {
                     CancelListRequest(requestIdRef.current).catch(() => {});
                 }
+                unregister?.();
             };
-        }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh, checkConnectionError]);
+        }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh, connectionMode, registerPolling, checkConnectionError]);
 
         // Create selected namespaces array for event filtering
         const selectedNamespacesList = useMemo((): string[] => {
@@ -277,7 +287,7 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
         const [loading, setLoading] = useState<boolean>(false);
         const [error, setError] = useState<Error | null>(null);
         const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
-        const { lastRefresh, checkConnectionError, reconcileToken } = useK8s();
+        const { lastRefresh, checkConnectionError, reconcileToken, connectionMode, registerPolling } = useK8s();
         const requestIdRef = useRef<string | null>(null);
         const fetchInProgressRef = useRef<string | null>(null); // Prevent duplicate fetches from StrictMode
 
@@ -316,11 +326,16 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
             requestIdRef.current = requestId;
             fetchInProgressRef.current = queryKey;
 
+            let running = false;
             const fetchData = async (): Promise<void> => {
+                if (running || isCancelled) return;
+                running = true;
                 setLoading(true);
                 let skipLoadingReset = false;
                 try {
-                    const list = await listFn(requestId);
+                    const list = await (connectionMode === 'polling'
+                        ? runWithPollingBudget(() => isCancelled ? Promise.resolve([]) : listFn(requestId))
+                        : listFn(requestId));
                     if (!isCancelled) {
                         setDataMap(arrayToMap(list || []));
                         setError(null);
@@ -339,6 +354,7 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
                         skipLoadingReset = true;
                     }
                 } finally {
+                    running = false;
                     if (!isCancelled && !skipLoadingReset) setLoading(false);
                     // Clear fetch-in-progress flag when done
                     if (fetchInProgressRef.current === queryKey) {
@@ -348,6 +364,7 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
             };
 
             fetchData();
+            const unregister = connectionMode === 'polling' ? registerPolling(fetchData) : undefined;
 
             return () => {
                 isCancelled = true;
@@ -356,8 +373,9 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
                 if (requestIdRef.current) {
                     CancelListRequest(requestIdRef.current).catch(() => {});
                 }
+                unregister?.();
             };
-        }, [currentContext, isVisible, lastRefresh, checkConnectionError]);
+        }, [currentContext, isVisible, lastRefresh, connectionMode, registerPolling, checkConnectionError]);
 
         const refetch = useCallback(async (): Promise<void> => {
             if (!currentContext || !isVisible) return;

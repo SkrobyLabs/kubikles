@@ -4,10 +4,51 @@ import {
     stripAnsiCodes,
     toRFC3339,
     parseLogLines,
+    appendUniqueLogEntries,
+    drainLogPages,
     highlightMatchesInHtml,
     logsToVisibleString,
     logsToDebugString
 } from './logUtils';
+
+describe('appendUniqueLogEntries', () => {
+    it('appends new lines while deduplicating an inclusive timestamp boundary', () => {
+        const existing = [{ timestamp: '2026-01-01T00:00:00.000000001Z', content: 'one', source: 'initial' }];
+        const incoming = [
+            { timestamp: '2026-01-01T00:00:00.000000001Z', content: 'one', source: 'poll' },
+            { timestamp: '2026-01-01T00:00:00.000000001Z', content: 'two', source: 'poll' },
+        ];
+        expect(appendUniqueLogEntries(existing, incoming)).toEqual([existing[0], incoming[1]]);
+    });
+
+    it('preserves the existing array when a poll contains only duplicates', () => {
+        const existing = [{ timestamp: '2026-01-01T00:00:00Z', content: 'one' }];
+        expect(appendUniqueLogEntries(existing, [{ ...existing[0], source: 'poll' }])).toBe(existing);
+    });
+});
+
+describe('drainLogPages', () => {
+    it('bounds a noisy polling cycle and returns unique entries', async () => {
+        let calls = 0;
+        const result = await drainLogPages(async () => {
+            calls += 1;
+            return { logs: `2026-01-01T00:00:0${calls}.000000001Z line-${calls}`, hasMore: true };
+        }, '2026-01-01T00:00:00.000000001Z', 3);
+        expect(calls).toBe(3);
+        expect(result.entries).toHaveLength(3);
+        expect(result.truncated).toBe(true);
+    });
+
+    it('stops when an inclusive cursor cannot advance', async () => {
+        let calls = 0;
+        const result = await drainLogPages(async () => {
+            calls += 1;
+            return { logs: '2026-01-01T00:00:00.000000001Z duplicate', hasMore: true };
+        }, '2026-01-01T00:00:00.000000001Z');
+        expect(calls).toBe(1);
+        expect(result.truncated).toBe(false);
+    });
+});
 
 describe('normalizeAnsiCodes', () => {
     it('normalizes 4-digit foreground color codes', () => {

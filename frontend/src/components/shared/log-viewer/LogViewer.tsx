@@ -44,7 +44,7 @@ export default function LogViewer({
     resolveFreshPods,
     tabContext = ''
 }: { namespace: any; pod: any; containers?: any; siblingPods?: any; podContainerMap?: any; ownerName?: any; podCreationTime?: any; resolveFreshPods?: any; tabContext?: any }) {
-    const { currentContext } = useK8s();
+    const { currentContext, connectionMode, lastRefresh } = useK8s();
     const { getConfig } = useConfig();
     const [logTarget, setLogTarget] = useState(() => ({
         namespace: initialNamespace,
@@ -226,26 +226,36 @@ export default function LogViewer({
     useEffect(() => {
         // Use isFetching() for synchronous check to avoid React batching race condition
         // where stream.loading might still be false when this effect runs
-        if (isFollowing && namespace && selectedPod && !stream.loading && !stream.isFetching()) {
+        if (connectionMode === 'streaming' && isFollowing && namespace && selectedPod && !stream.loading && !stream.isFetching()) {
             stream.startStreaming();
         } else {
             stream.stopStreaming();
         }
         return () => stream.stopStreaming();
-    }, [isFollowing, namespace, selectedPod, selectedContainer, stream.loading]);
+    }, [isFollowing, namespace, selectedPod, selectedContainer, stream.loading, connectionMode]);
 
-    // Keyboard shortcut for refresh
     useEffect(() => {
-        const handleKeyDown = (e: any) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
-                if (namespace && selectedPod) {
-                    stream.fetchLogs({ refreshTarget: true });
-                }
-            }
+        if (connectionMode !== 'polling' || !isFollowing || !namespace || !selectedPod) return;
+        let cancelled = false;
+        let timer: number | undefined;
+        const poll = async () => {
+            await stream.pollNewerLogs();
+            if (!cancelled) timer = window.setTimeout(poll, 4_500 + Math.random() * 1_000);
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [namespace, selectedPod, selectedContainer, showPrevious, sinceTime, viewMode, stream.fetchLogs]);
+        timer = window.setTimeout(poll, 4_500 + Math.random() * 1_000);
+        return () => {
+            cancelled = true;
+            if (timer !== undefined) window.clearTimeout(timer);
+        };
+    }, [connectionMode, isFollowing, namespace, selectedPod, selectedContainer, stream.pollNewerLogs]);
+
+    // Toolbar refresh and the application refresh shortcut share one signal.
+    const previousRefresh = useRef(lastRefresh);
+    useEffect(() => {
+        if (previousRefresh.current === lastRefresh) return;
+        previousRefresh.current = lastRefresh;
+        if (!isStale && namespace && selectedPod) stream.fetchLogs({ refreshTarget: true });
+    }, [lastRefresh, isStale, namespace, selectedPod, stream.fetchLogs]);
 
     // Paint a precise selection overlay on each mounted line within the
     // recorded buffer range. Native ::selection is hidden via CSS because

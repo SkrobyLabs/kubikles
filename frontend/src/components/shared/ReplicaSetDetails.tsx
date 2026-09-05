@@ -12,6 +12,10 @@ import ResourceEventsTab from './ResourceEventsTab';
 import ScaleModal from './ScaleModal';
 import { ScaleReplicaSet } from '~/lib/wailsjs-adapter/go/main/App';
 import { useResourceWatcher } from '~/hooks/useResourceWatcher';
+import { useCompletionPolling } from '~/hooks/useCompletionPolling';
+import { GetReplicaSetYaml } from '~/lib/wailsjs-adapter/go/main/App';
+// @ts-ignore - no declaration file for js-yaml
+import yaml from 'js-yaml';
 
 const TAB_BASIC = 'basic';
 const TAB_EVENTS = 'events';
@@ -55,6 +59,10 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
         handleWatcherEvent,
         Boolean(namespace && !isStale)
     );
+    useCompletionPolling(Boolean(namespace && name && !isStale), async (isCurrent) => {
+        const latest = yaml.load(await GetReplicaSetYaml(namespace, name));
+        if (latest && isCurrent()) setReplicaSet(latest);
+    }, [namespace, name, resourceContext], true);
     const spec = replicaSet.spec || {};
     const status = replicaSet.status || {};
     const ownerReferences = replicaSet.metadata?.ownerReferences || [];
