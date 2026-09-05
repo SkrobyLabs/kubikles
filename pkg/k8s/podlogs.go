@@ -4,6 +4,7 @@ package k8s
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -17,6 +18,8 @@ import (
 )
 
 const maxPollingLogBytes int64 = 4 * 1024 * 1024
+
+var errLogPageTooLarge = errors.New("log page exceeds the 4 MiB limit; narrow the log time range to continue without losing data")
 
 func pollingLogByteLimit() *int64 {
 	limit := maxPollingLogBytes
@@ -139,14 +142,14 @@ func (c *Client) GetPodLogsBefore(namespace, podName, containerName string, time
 // The afterTime should be in RFC3339 format.
 // Returns the logs and a boolean indicating if there are more logs after these.
 func (c *Client) GetPodLogsAfter(namespace, podName, containerName string, timestamps bool, previous bool, afterTime string, lineLimit int) (string, bool, error) {
-	sinceTime := nextLogSinceTime(afterTime)
-	// Always fetch with timestamps so we can properly compare
-	allLogs, err := c.getPodLogsWithOptionsLimit(namespace, podName, containerName, nil, true, previous, sinceTime, pollingLogByteLimit())
-	if err != nil {
-		return "", false, err
-	}
 	if lineLimit <= 0 {
 		lineLimit = 200
+	}
+	sinceTime := nextLogSinceTime(afterTime)
+	// Always fetch with timestamps so we can properly compare
+	allLogs, err := c.getPodLogsWithOptionsLimit(namespace, podName, containerName, nil, true, previous, sinceTime, pollingLogByteLimit(), lineLimit+1)
+	if err != nil {
+		return "", false, err
 	}
 
 	lines := strings.Split(allLogs, "\n")
@@ -203,10 +206,10 @@ func nextLogSinceTime(afterTime string) string {
 }
 
 func (c *Client) getPodLogsWithOptions(namespace, podName, containerName string, tailLines *int64, timestamps bool, previous bool, sinceTime string) (string, error) {
-	return c.getPodLogsWithOptionsLimit(namespace, podName, containerName, tailLines, timestamps, previous, sinceTime, nil)
+	return c.getPodLogsWithOptionsLimit(namespace, podName, containerName, tailLines, timestamps, previous, sinceTime, nil, 0)
 }
 
-func (c *Client) getPodLogsWithOptionsLimit(namespace, podName, containerName string, tailLines *int64, timestamps bool, previous bool, sinceTime string, limitBytes *int64) (string, error) {
+func (c *Client) getPodLogsWithOptionsLimit(namespace, podName, containerName string, tailLines *int64, timestamps bool, previous bool, sinceTime string, limitBytes *int64, maxLines int) (string, error) {
 	if IsDebugClusterContext(c.GetCurrentContext()) {
 		return "", fmt.Errorf("logs are not available on the debug cluster")
 	}
@@ -220,9 +223,12 @@ func (c *Client) getPodLogsWithOptionsLimit(namespace, podName, containerName st
 
 	opts := &v1.PodLogOptions{
 		TailLines:  tailLines,
-		LimitBytes: limitBytes,
 		Timestamps: timestamps,
 		Previous:   previous,
+	}
+	if sinceTime == "" && maxLines > 0 && tailLines == nil {
+		tail := int64(maxLines)
+		opts.TailLines = &tail
 	}
 	if containerName != "" {
 		opts.Container = containerName
@@ -243,12 +249,38 @@ func (c *Client) getPodLogsWithOptionsLimit(namespace, podName, containerName st
 	}
 	defer podLogs.Close()
 
+	if limitBytes != nil {
+		return readBoundedLogPage(podLogs, *limitBytes, maxLines)
+	}
+
 	buf := new(strings.Builder)
 	_, err = io.Copy(buf, podLogs)
 	if err != nil {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+// Read complete lines locally: Kubernetes LimitBytes can end in the middle of
+// a line, which would advance a timestamp cursor past bytes we never received.
+// A page that cannot fit fails explicitly, leaving the caller's cursor intact.
+func readBoundedLogPage(source io.Reader, byteLimit int64, maxLines int) (string, error) {
+	reader := bufio.NewReader(io.LimitReader(source, byteLimit+1))
+	var page strings.Builder
+	for lines := 0; maxLines <= 0 || lines < maxLines; lines++ {
+		line, err := reader.ReadString('\n')
+		if int64(page.Len()+len(line)) > byteLimit {
+			return "", errLogPageTooLarge
+		}
+		page.WriteString(line)
+		if err == io.EOF {
+			return page.String(), nil
+		}
+		if err != nil {
+			return "", err
+		}
+	}
+	return page.String(), nil
 }
 
 // StreamPodLogs streams logs from a pod container and calls the callback for each line.
@@ -410,7 +442,7 @@ func (c *Client) getAllContainersLogs(namespace, podName string, containerNames 
 		go func(cn string) {
 			defer wg.Done()
 			// Always fetch with timestamps so we can sort
-			logs, err := c.getPodLogsWithOptionsLimit(namespace, podName, cn, nil, true, previous, sinceTime, pollingLogByteLimit())
+			logs, err := c.getPodLogsWithOptionsLimit(namespace, podName, cn, nil, true, previous, sinceTime, pollingLogByteLimit(), maxLines)
 			results <- containerLogs{containerName: cn, logs: logs, err: err}
 		}(containerName)
 	}
@@ -421,6 +453,9 @@ func (c *Client) getAllContainersLogs(namespace, podName string, containerNames 
 	// Collect all log lines with timestamps
 	var allLines []timestampedLogLine
 	for result := range results {
+		if errors.Is(result.err, errLogPageTooLarge) {
+			return "", result.err
+		}
 		if result.err != nil {
 			// Add error as a log line
 			allLines = append(allLines, timestampedLogLine{
@@ -524,6 +559,9 @@ func (c *Client) GetAllContainersLogsAll(namespace, podName string, containerNam
 	// Collect and merge all log lines
 	var allLines []timestampedLogLine
 	for result := range results {
+		if errors.Is(result.err, errLogPageTooLarge) {
+			return "", result.err
+		}
 		if result.err != nil {
 			allLines = append(allLines, timestampedLogLine{
 				timestamp: time.Now().Format(time.RFC3339Nano),
@@ -847,7 +885,7 @@ func (c *Client) getAllPodsLogs(namespace string, pods []PodContainerPair, allCo
 				wg.Add(1)
 				go func(podName, containerName string) {
 					defer wg.Done()
-					logs, err := c.getPodLogsWithOptionsLimit(namespace, podName, containerName, nil, true, previous, sinceTime, pollingLogByteLimit())
+					logs, err := c.getPodLogsWithOptionsLimit(namespace, podName, containerName, nil, true, previous, sinceTime, pollingLogByteLimit(), maxLines)
 					results <- podContainerLogs{podName: podName, containerName: containerName, logs: logs, err: err}
 				}(p.PodName, cn)
 			}
@@ -860,7 +898,7 @@ func (c *Client) getAllPodsLogs(namespace string, pods []PodContainerPair, allCo
 			wg.Add(1)
 			go func(podName, cn string) {
 				defer wg.Done()
-				logs, err := c.getPodLogsWithOptionsLimit(namespace, podName, cn, nil, true, previous, sinceTime, pollingLogByteLimit())
+				logs, err := c.getPodLogsWithOptionsLimit(namespace, podName, cn, nil, true, previous, sinceTime, pollingLogByteLimit(), maxLines)
 				results <- podContainerLogs{podName: podName, containerName: cn, logs: logs, err: err}
 			}(p.PodName, containerName)
 		}
@@ -876,6 +914,9 @@ func (c *Client) getAllPodsLogs(namespace string, pods []PodContainerPair, allCo
 			prefix = result.podName + "/" + result.containerName
 		}
 
+		if errors.Is(result.err, errLogPageTooLarge) {
+			return "", result.err
+		}
 		if result.err != nil {
 			allLines = append(allLines, timestampedLogLine{
 				timestamp: time.Now().Format(time.RFC3339Nano),
@@ -997,6 +1038,9 @@ func (c *Client) GetAllPodsLogsAll(namespace string, pods []PodContainerPair, al
 			prefix = result.podName + "/" + result.containerName
 		}
 
+		if errors.Is(result.err, errLogPageTooLarge) {
+			return "", result.err
+		}
 		if result.err != nil {
 			allLines = append(allLines, timestampedLogLine{
 				timestamp: time.Now().Format(time.RFC3339Nano),

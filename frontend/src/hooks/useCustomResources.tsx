@@ -41,7 +41,7 @@ export const useCustomResources = (
     const [resourceMap, setResourceMap] = useState<Map<string, K8sResource>>(new Map());
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
-    const { namespaces: allNamespaces, lastRefresh, connectionMode } = useK8s();
+    const { namespaces: allNamespaces, lastRefresh } = useK8s();
 
     // Derive array from map for consumers
     const resources = useMemo(() => Array.from(resourceMap.values()), [resourceMap]);
@@ -92,7 +92,7 @@ export const useCustomResources = (
         fetchResources(() => current);
         return () => { current = false; };
     }, [fetchResources, lastRefresh]);
-    useCompletionPolling(connectionMode === 'polling' && isVisible, fetchResources, [fetchResources]);
+    useCompletionPolling(isVisible, fetchResources, [fetchResources]);
 
     // Handle real-time watcher events with O(1) Map operations
     const handleWatcherEvent = useCallback((event: any) => {

@@ -38,7 +38,7 @@ interface CustomResourceDetailsProps {
 }
 
 export default function CustomResourceDetails({ resource: initialResource, crdInfo, tabContext = '' }: CustomResourceDetailsProps) {
-    const { currentContext, lastRefresh, connectionMode } = useK8s();
+    const { currentContext, lastRefresh } = useK8s();
     const { openTab, closeTab, getDetailTab, setDetailTab } = useUI();
     const activeTab = getDetailTab('customresource', TAB_BASIC);
     const setActiveTab = (tab: string) => setDetailTab('customresource', tab);
@@ -77,10 +77,10 @@ export default function CustomResourceDetails({ resource: initialResource, crdIn
         handleWatcherEvent,
         Boolean(!isStale)
     );
-    useCompletionPolling(connectionMode === 'polling' && Boolean(name && !isStale), async (isCurrent) => {
+    useCompletionPolling(Boolean(name && !isStale), async (isCurrent) => {
         const latest = yaml.load(await GetCustomResourceYaml(crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name));
         if (latest && isCurrent()) setResource(latest);
-    }, [crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name, resourceContext]);
+    }, [crdInfo.group, crdInfo.version, crdInfo.resource, namespace, name, resourceContext], true);
 
     const fetchEvents = useCallback(async (isCurrent: () => boolean = () => true) => {
         if (activeTab !== TAB_EVENTS || isStale || !name) return;
@@ -107,7 +107,7 @@ export default function CustomResourceDetails({ resource: initialResource, crdIn
         fetchEvents(() => current);
         return () => { current = false; };
     }, [fetchEvents, currentContext, lastRefresh]);
-    useCompletionPolling(connectionMode === 'polling' && activeTab === TAB_EVENTS && !isStale, fetchEvents, [fetchEvents]);
+    useCompletionPolling(activeTab === TAB_EVENTS && !isStale, fetchEvents, [fetchEvents]);
 
     // Sort events by last timestamp (most recent first)
     const sortedEvents = useMemo(() => {

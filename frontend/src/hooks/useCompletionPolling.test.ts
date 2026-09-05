@@ -2,6 +2,19 @@ import { describe, expect, it, vi } from 'vitest';
 import { startCompletionPolling } from './useCompletionPolling';
 
 describe('startCompletionPolling', () => {
+    it.each([5_000, 10_000, 30_000, 60_000])('uses the selected %i ms interval', async interval => {
+        vi.useFakeTimers();
+        const poll = vi.fn().mockResolvedValue(undefined);
+        const cancel = startCompletionPolling(poll, interval, () => 0.5);
+        await vi.advanceTimersByTimeAsync(interval - 1);
+        expect(poll).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(poll).toHaveBeenCalledTimes(1);
+        cancel();
+        await vi.advanceTimersByTimeAsync(interval * 2);
+        expect(poll).toHaveBeenCalledTimes(1);
+        vi.useRealTimers();
+    });
     it('does not start another poll while a slow request is active', async () => {
         vi.useFakeTimers();
         let finish!: () => void;

@@ -22,7 +22,7 @@ const TAB_EVENTS = 'events';
 const TAB_METRICS = 'metrics';
 
 export default function StatefulSetDetails({ statefulSet: initialStatefulSet, tabContext = '' }: { statefulSet: any; tabContext?: string }) {
-    const { currentContext, connectionMode } = useK8s();
+    const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
     const { addNotification } = useNotification();
     const activeTab = getDetailTab('statefulset', TAB_BASIC);
@@ -59,10 +59,10 @@ export default function StatefulSetDetails({ statefulSet: initialStatefulSet, ta
         handleWatcherEvent,
         Boolean(namespace && !isStale)
     );
-    useCompletionPolling(connectionMode === 'polling' && Boolean(namespace && name && !isStale), async (isCurrent) => {
+    useCompletionPolling(Boolean(namespace && name && !isStale), async (isCurrent) => {
         const latest = yaml.load(await GetStatefulSetYaml(namespace, name));
         if (latest && isCurrent()) setStatefulSet(latest);
-    }, [namespace, name, resourceContext]);
+    }, [namespace, name, resourceContext], true);
     const spec = statefulSet.spec || {};
     const status = statefulSet.status || {};
 

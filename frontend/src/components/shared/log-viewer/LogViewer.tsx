@@ -44,7 +44,7 @@ export default function LogViewer({
     resolveFreshPods,
     tabContext = ''
 }: { namespace: any; pod: any; containers?: any; siblingPods?: any; podContainerMap?: any; ownerName?: any; podCreationTime?: any; resolveFreshPods?: any; tabContext?: any }) {
-    const { currentContext, connectionMode } = useK8s();
+    const { currentContext, connectionMode, lastRefresh } = useK8s();
     const { getConfig } = useConfig();
     const [logTarget, setLogTarget] = useState(() => ({
         namespace: initialNamespace,
@@ -249,18 +249,13 @@ export default function LogViewer({
         };
     }, [connectionMode, isFollowing, namespace, selectedPod, selectedContainer, stream.pollNewerLogs]);
 
-    // Keyboard shortcut for refresh
+    // Toolbar refresh and the application refresh shortcut share one signal.
+    const previousRefresh = useRef(lastRefresh);
     useEffect(() => {
-        const handleKeyDown = (e: any) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
-                if (namespace && selectedPod) {
-                    stream.fetchLogs({ refreshTarget: true });
-                }
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [namespace, selectedPod, selectedContainer, showPrevious, sinceTime, viewMode, stream.fetchLogs]);
+        if (previousRefresh.current === lastRefresh) return;
+        previousRefresh.current = lastRefresh;
+        if (!isStale && namespace && selectedPod) stream.fetchLogs({ refreshTarget: true });
+    }, [lastRefresh, isStale, namespace, selectedPod, stream.fetchLogs]);
 
     // Paint a precise selection overlay on each mounted line within the
     // recorded buffer range. Native ::selection is hidden via CSS because

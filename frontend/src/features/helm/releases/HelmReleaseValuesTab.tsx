@@ -9,7 +9,7 @@ import yaml from 'js-yaml';
 import { useCompletionPolling } from '~/hooks/useCompletionPolling';
 
 export default function HelmReleaseValuesTab({ release, isStale, refreshKey = 0 }: any) {
-    const { currentContext, lastRefresh, connectionMode } = useK8s();
+    const { currentContext, lastRefresh } = useK8s();
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<any>(null);
@@ -46,7 +46,7 @@ export default function HelmReleaseValuesTab({ release, isStale, refreshKey = 0 
         fetchValues(() => current);
         return () => { current = false; };
     }, [fetchValues, lastRefresh, refreshKey]);
-    useCompletionPolling(connectionMode === 'polling' && !isStale, fetchValues, [fetchValues]);
+    useCompletionPolling(!isStale, fetchValues, [fetchValues]);
 
     // Format content when raw values or format changes
     useEffect(() => {

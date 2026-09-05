@@ -48,7 +48,7 @@ export const useHelmReleases = (
     const [releases, setReleases] = useState<K8sHelmRelease[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
-    const { namespaces: allNamespaces, lastRefresh, connectionMode } = useK8s();
+    const { namespaces: allNamespaces, lastRefresh } = useK8s();
 
     // Fetch releases
     const fetchReleases = useCallback(async (isCurrent: () => boolean = () => true): Promise<void> => {
@@ -89,7 +89,7 @@ export const useHelmReleases = (
         fetchReleases(() => current);
         return () => { current = false; };
     }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh, fetchReleases]);
-    useCompletionPolling(connectionMode === 'polling' && isVisible, fetchReleases, [fetchReleases]);
+    useCompletionPolling(isVisible, fetchReleases, [fetchReleases]);
 
     // Get release details
     const getRelease = useCallback(async (namespace: string, name: string): Promise<K8sHelmRelease> => {

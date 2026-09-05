@@ -322,7 +322,7 @@ export default function NodeTopology({
     metricsAvailable,
     nodeActions,
 }: NodeTopologyProps) {
-    const { currentContext, lastRefresh, connectionMode } = useK8s();
+    const { currentContext, lastRefresh } = useK8s();
     const { openTab, openModal, closeModal } = useUI();
     const { addNotification } = useNotification();
 
@@ -398,7 +398,7 @@ export default function NodeTopology({
         }
     }, [visibleNodeNames, currentContext, isVisible, fetchGeneration]);
 
-    useCompletionPolling(connectionMode === 'polling' && isVisible, async (isCurrent) => {
+    useCompletionPolling(isVisible, async (isCurrent) => {
         const names = Array.from(visibleNodeNames);
         const results = await Promise.all(names.map(async (name) => ({
             name,

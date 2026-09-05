@@ -22,7 +22,7 @@ const TAB_EVENTS = 'events';
 const TAB_METRICS = 'metrics';
 
 export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabContext = '' }: { replicaSet: any; tabContext?: string }) {
-    const { currentContext, connectionMode } = useK8s();
+    const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
     const { addNotification } = useNotification();
     const activeTab = getDetailTab('replicaset', TAB_BASIC);
@@ -59,10 +59,10 @@ export default function ReplicaSetDetails({ replicaSet: initialReplicaSet, tabCo
         handleWatcherEvent,
         Boolean(namespace && !isStale)
     );
-    useCompletionPolling(connectionMode === 'polling' && Boolean(namespace && name && !isStale), async (isCurrent) => {
+    useCompletionPolling(Boolean(namespace && name && !isStale), async (isCurrent) => {
         const latest = yaml.load(await GetReplicaSetYaml(namespace, name));
         if (latest && isCurrent()) setReplicaSet(latest);
-    }, [namespace, name, resourceContext]);
+    }, [namespace, name, resourceContext], true);
     const spec = replicaSet.spec || {};
     const status = replicaSet.status || {};
     const ownerReferences = replicaSet.metadata?.ownerReferences || [];

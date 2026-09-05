@@ -46,7 +46,7 @@ export const useResourceWatcher = (
     }, [onEvent]);
 
     useEffect(() => {
-        if (!enabled || connectionMode === 'polling') return;
+        if (!enabled || connectionMode !== 'streaming') return;
 
         const namespacesToWatch = Array.isArray(namespaces) ? namespaces : [namespaces];
 
@@ -135,7 +135,7 @@ export const useCRDWatcher = (
     const crdResourceType = `crd:${group}/${version}/${resource}`;
 
     useEffect(() => {
-        if (!enabled || connectionMode === 'polling') return;
+        if (!enabled || connectionMode !== 'streaming') return;
 
         const namespacesToWatch = Array.isArray(namespaces) ? namespaces : [namespaces];
 

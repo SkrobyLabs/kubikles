@@ -22,7 +22,7 @@ help:
 	@echo "Development:"
 	@echo "  dev                Start development server with hot-reload"
 	@echo ""
-	@echo "  run                Build and launch the application"
+	@echo "  run                Stop any running instance, build and launch the application"
 	@echo ""
 	@echo "Build:"
 	@echo "  build              Build for current platform (includes Helm)"
@@ -141,7 +141,31 @@ dev: .require-wails check-rollup
 build: .require-wails check-rollup appicon
 	$(WAILS) build -tags "$(BUILD_TAGS)" -ldflags "$(VERSION_LDFLAGS)"
 
-run: build
+# Keep shutdown and build sequential, including under make -j.
+run:
+ifeq ($(DETECTED_OS),Windows)
+	@instances=$$(MSYS_NO_PATHCONV=1 tasklist /FI "IMAGENAME eq kubikles.exe" /NH) || exit $$?; \
+	if echo "$$instances" | grep -qi '^kubikles\.exe '; then \
+		MSYS_NO_PATHCONV=1 taskkill /IM kubikles.exe /F; \
+	fi
+else
+	@pids=$$(pgrep -u "$$(id -u)" -x kubikles); status=$$?; \
+	if [ "$$status" -gt 1 ]; then exit "$$status"; fi; \
+	if [ -n "$$pids" ]; then \
+		echo "Stopping running Kubikles instance(s)..."; \
+		for pid in $$pids; do \
+			kill "$$pid" 2>/dev/null || ! kill -0 "$$pid" 2>/dev/null || exit 1; \
+		done; \
+		for pid in $$pids; do \
+			attempt=0; \
+			while kill -0 "$$pid" 2>/dev/null && [ "$$attempt" -lt 50 ]; do \
+				sleep 0.1; attempt=$$((attempt + 1)); \
+			done; \
+			if kill -0 "$$pid" 2>/dev/null; then kill -KILL "$$pid" || exit 1; fi; \
+		done; \
+	fi
+endif
+	$(MAKE) build
 ifeq ($(DETECTED_OS),Windows)
 	./build/bin/kubikles.exe
 else ifeq ($(DETECTED_OS),Darwin)

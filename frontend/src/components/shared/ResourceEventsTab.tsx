@@ -31,7 +31,7 @@ function labelsMatch(podLabels: Record<string, string> | undefined, matchLabels:
 }
 
 export default function ResourceEventsTab({ kind, namespace, name, uid, isStale, matchLabels }: ResourceEventsTabProps) {
-    const { currentContext, lastRefresh, connectionMode } = useK8s();
+    const { currentContext, lastRefresh } = useK8s();
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     // Set of related UIDs (child pods) for matching events
@@ -81,7 +81,7 @@ export default function ResourceEventsTab({ kind, namespace, name, uid, isStale,
         fetchEvents(() => current);
         return () => { current = false; };
     }, [fetchEvents, lastRefresh]);
-    useCompletionPolling(connectionMode === 'polling' && !isStale, fetchEvents, [fetchEvents]);
+    useCompletionPolling(!isStale, fetchEvents, [fetchEvents]);
 
     // Handle real-time event updates
     const handleEvent = useCallback((event: any) => {

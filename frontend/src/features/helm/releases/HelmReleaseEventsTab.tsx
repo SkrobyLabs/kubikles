@@ -16,7 +16,7 @@ const EventTypeIcon = ({ type }: any) => {
 };
 
 export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 }: any) {
-    const { currentContext, lastRefresh, connectionMode } = useK8s();
+    const { currentContext, lastRefresh } = useK8s();
     const [events, setEvents] = useState<any[]>([]);
     const [resources, setResources] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -78,7 +78,7 @@ export default function HelmReleaseEventsTab({ release, isStale, refreshKey = 0 
         fetchData(() => current);
         return () => { current = false; };
     }, [fetchData, lastRefresh, refreshKey]);
-    useCompletionPolling(connectionMode === 'polling' && !isStale, fetchData, [fetchData]);
+    useCompletionPolling(!isStale, fetchData, [fetchData]);
 
     // Handle real-time event updates
     const handleEvent = useCallback((event: any) => {

@@ -9,7 +9,6 @@ import {
 } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import { appendUniqueLogEntries, drainLogPages, parseLogLines } from './logUtils';
-import { useK8s } from '~/context';
 import { runWithPollingBudget } from '~/utils/pollingBudget';
 
 // Special constants for "All" modes
@@ -39,7 +38,6 @@ export function useLogStream({
     currentContext,
     resolveFreshLogTarget
 }: { namespace: any; pod: any; container: any; containers: any; siblingPods: any; podContainerMap: any; showPrevious: any; sinceTime: any; viewMode: any; initialPosition: any; isStale: any; currentContext: any; resolveFreshLogTarget?: any }) {
-    const { reportStreamingFailure } = useK8s();
     const isAllContainers = container === ALL_CONTAINERS;
     const isAllPods = pod === ALL_PODS;
 
@@ -359,6 +357,7 @@ export function useLogStream({
             }
         } catch (err: any) {
             console.error('Failed to load newer logs:', err);
+            setFetchError(`Error loading newer logs: ${err}`);
             setHasMoreAfter(false);
         } finally {
             loadingAfterRef.current = false;
@@ -474,9 +473,8 @@ export function useLogStream({
             streamIdRef.current = streamId;
         } catch (err: any) {
             console.error('Failed to start log stream:', err);
-            reportStreamingFailure(err);
         }
-    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs, reportStreamingFailure]);
+    }, [namespace, pod, container, containers, isAllContainers, isAllPods, buildPodContainerPairs]);
 
     const stopStreaming = useCallback(() => {
         if (streamIdRef.current) {
@@ -542,7 +540,6 @@ export function useLogStream({
 
             if (event.error) {
                 console.error('Log stream error:', event.error);
-                reportStreamingFailure(event.error);
                 streamIdRef.current = null;
                 streamDisconnectedRef.current = true;
                 setStreamDisconnected(true);
@@ -569,7 +566,7 @@ export function useLogStream({
             cancelLogStream();
             cancelLogBatch();
         };
-    }, [reportStreamingFailure]);
+    }, []);
 
     // Cleanup on unmount
     useEffect(() => {

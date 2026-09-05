@@ -21,7 +21,7 @@ const TAB_EVENTS = 'events';
 const TAB_METRICS = 'metrics';
 
 export default function DeploymentDetails({ deployment: initialDeployment, tabContext = '' }: { deployment: any; tabContext?: string }) {
-    const { currentContext, connectionMode } = useK8s();
+    const { currentContext } = useK8s();
     const { openTab, closeTab, navigateWithSearch, getDetailTab, setDetailTab } = useUI();
     const { addNotification } = useNotification();
     const activeTab = getDetailTab('deployment', TAB_BASIC);
@@ -58,10 +58,10 @@ export default function DeploymentDetails({ deployment: initialDeployment, tabCo
         handleWatcherEvent,
         Boolean(namespace && !isStale)
     );
-    useCompletionPolling(connectionMode === 'polling' && Boolean(namespace && name && !isStale), async (isCurrent) => {
+    useCompletionPolling(Boolean(namespace && name && !isStale), async (isCurrent) => {
         const latest = yaml.load(await GetDeploymentYaml(namespace, name));
         if (latest && isCurrent()) setDeployment(latest);
-    }, [namespace, name, resourceContext]);
+    }, [namespace, name, resourceContext], true);
     const spec = deployment.spec || {};
     const status = deployment.status || {};
 

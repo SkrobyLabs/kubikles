@@ -26,7 +26,7 @@ const getStatusIcon = (status: any) => {
 };
 
 export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0 }: any) {
-    const { currentContext, lastRefresh, triggerRefresh, connectionMode } = useK8s();
+    const { currentContext, lastRefresh, triggerRefresh } = useK8s();
     const { openModal, closeModal } = useUI();
     const { addNotification } = useNotification();
     const [history, setHistory] = useState<any[]>([]);
@@ -61,7 +61,7 @@ export default function HelmReleaseHistoryTab({ release, isStale, refreshKey = 0
         fetchHistory(() => current);
         return () => { current = false; };
     }, [fetchHistory, lastRefresh, refreshKey]);
-    useCompletionPolling(connectionMode === 'polling' && !isStale, fetchHistory, [fetchHistory]);
+    useCompletionPolling(!isStale, fetchHistory, [fetchHistory]);
 
     const handleRollback = (revision: any) => {
         openModal({

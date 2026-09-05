@@ -17,7 +17,7 @@ export const useCRDs = (
     const [crds, setCRDs] = useState<K8sCustomResourceDefinition[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
-    const { lastRefresh, connectionMode } = useK8s();
+    const { lastRefresh } = useK8s();
 
     const fetchCRDs = useCallback(async (isCurrent: () => boolean = () => true): Promise<void> => {
         if (!currentContext || !isVisible) return;
@@ -40,7 +40,7 @@ export const useCRDs = (
         fetchCRDs(() => current);
         return () => { current = false; };
     }, [fetchCRDs, lastRefresh]);
-    useCompletionPolling(connectionMode === 'polling' && isVisible, fetchCRDs, [fetchCRDs]);
+    useCompletionPolling(isVisible, fetchCRDs, [fetchCRDs]);
 
     return { crds, loading, error };
 };

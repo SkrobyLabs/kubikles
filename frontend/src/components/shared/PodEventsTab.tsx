@@ -15,7 +15,7 @@ const EventTypeIcon = ({ type }: { type: string }) => {
 };
 
 export default function PodEventsTab({ pod, isStale }: { pod: any; isStale: any }) {
-    const { currentContext, lastRefresh, connectionMode } = useK8s();
+    const { currentContext, lastRefresh } = useK8s();
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -46,7 +46,7 @@ export default function PodEventsTab({ pod, isStale }: { pod: any; isStale: any 
         fetchEvents(() => current);
         return () => { current = false; };
     }, [fetchEvents, lastRefresh]);
-    useCompletionPolling(connectionMode === 'polling' && !isStale, fetchEvents, [fetchEvents]);
+    useCompletionPolling(!isStale, fetchEvents, [fetchEvents]);
 
     // Handle real-time event updates
     const handleEvent = useCallback((event: any) => {

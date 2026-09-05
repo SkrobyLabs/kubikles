@@ -3,7 +3,9 @@ import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNam
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
 import { runContextSwitchTransaction } from './contextSwitch';
-import { isImmediateWatchClosure, isStreamTransportError, isStreamingWarningDismissed, restoreConnectionMode, streamingWarningDismissalKey } from '../utils/streamingCompatibility';
+import { isImmediateWatchClosure, isStreamTransportError, restoreConnectionMode, restorePollingInterval, WatchFailureWindow, type ConnectionMode } from '../utils/streamingCompatibility';
+import { startCompletionPolling } from '../utils/completionPolling';
+import { useNotification } from './NotificationContext';
 import { runWithPollingBudget } from '../utils/pollingBudget';
 
 // ============================================================================
@@ -108,11 +110,11 @@ interface K8sContextValue {
     isConnecting: boolean;
     retryConnection: () => void;
     checkConnectionError: (error: unknown) => boolean;
-    connectionMode: 'streaming' | 'polling';
-    setConnectionMode: (mode: 'streaming' | 'polling') => void;
-    streamingUnsupported: boolean;
-    dismissStreamingWarning: () => void;
-    reportStreamingFailure: (error: unknown) => void;
+    connectionMode: ConnectionMode;
+    setConnectionMode: (mode: ConnectionMode) => void;
+    registerPolling: (poll: () => Promise<void>) => () => void;
+    pollingInterval: number;
+    setPollingInterval: (interval: number) => void;
 }
 
 // ============================================================================
@@ -324,10 +326,25 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [connectionError, setConnectionError] = useState<ConnectionError | null>(null); // { title, message, suggestion, provider, raw }
     const [isConnecting, setIsConnecting] = useState<boolean>(true); // Initial loading state
     const [retryToken, setRetryToken] = useState<number>(0); // Incremented to force data loading effect to re-run
-    const [connectionMode, setConnectionModeState] = useState<'streaming' | 'polling'>('streaming');
-    const [streamingUnsupported, setStreamingUnsupported] = useState(false);
-    const streamingWarningDismissedRef = useRef(false);
-    const watcherFailureCountRef = useRef<Record<string, number>>({});
+    const { addNotification } = useNotification();
+    const [connectionMode, setConnectionModeState] = useState<ConnectionMode>('streaming');
+    const connectionModeRef = useRef<ConnectionMode>('streaming');
+    const [pollingInterval, setPollingIntervalState] = useState(10_000);
+    const watcherFailuresRef = useRef(new WatchFailureWindow());
+    const pollingSubscribers = useRef(new Set<() => Promise<void>>());
+    const registerPolling = useCallback((poll: () => Promise<void>) => {
+        pollingSubscribers.current.add(poll);
+        return () => { pollingSubscribers.current.delete(poll); };
+    }, []);
+
+    // One completion-scheduled clock for resource refreshes. Slow requests finish
+    // before the next interval starts; log following has its own cadence.
+    useEffect(() => {
+        if (!currentContext || connectionMode !== 'polling') return;
+        return startCompletionPolling(async () => {
+            await Promise.allSettled([...pollingSubscribers.current].map(poll => poll()));
+        }, pollingInterval, () => 0.5);
+    }, [currentContext, connectionMode, pollingInterval]);
 
     // Track when each context was last accessed (for sorting)
     const [contextAccessTimes, setContextAccessTimes] = useState<ContextAccessTimes>(() => {
@@ -349,37 +366,27 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Derived single-namespace value for components using single-namespace API
     const currentNamespace = selectedNamespaces.length === 1 ? selectedNamespaces[0] : '';
 
-    const setConnectionMode = useCallback((mode: 'streaming' | 'polling') => {
+    const setConnectionMode = useCallback((mode: ConnectionMode) => {
+        connectionModeRef.current = mode;
+        watcherFailuresRef.current = new WatchFailureWindow();
         setConnectionModeState(mode);
-        setStreamingUnsupported(false);
-        if (currentContextRef.current) {
-            localStorage.setItem(`kubikles_connection_mode_${currentContextRef.current}`, mode);
-        }
-        if (mode === 'polling') StopAllWatchers().catch(() => {});
+        if (currentContextRef.current) localStorage.setItem(`kubikles_connection_mode_${currentContextRef.current}`, mode);
+        if (mode !== 'streaming') StopAllWatchers().catch((error: unknown) => Logger.warn('Failed to stop watchers', error, 'k8s'));
     }, []);
 
-    const dismissStreamingWarning = useCallback(() => {
-        setStreamingUnsupported(false);
-        streamingWarningDismissedRef.current = true;
-        if (currentContextRef.current) {
-            localStorage.setItem(streamingWarningDismissalKey(currentContextRef.current), 'true');
-        }
+    const setPollingInterval = useCallback((interval: number) => {
+        if (![5_000, 10_000, 30_000, 60_000].includes(interval)) return;
+        setPollingIntervalState(interval);
+        if (currentContextRef.current) localStorage.setItem(`kubikles_polling_interval_${currentContextRef.current}`, String(interval / 1000));
     }, []);
-
-    const reportStreamingFailure = useCallback((error: unknown) => {
-        if (connectionMode !== 'streaming') return;
-        if (isStreamTransportError(error) && !streamingWarningDismissedRef.current) {
-            setStreamingUnsupported(true);
-        }
-    }, [connectionMode]);
 
     useEffect(() => {
         const restoredMode = restoreConnectionMode(currentContext);
+        connectionModeRef.current = restoredMode;
         setConnectionModeState(restoredMode);
-        if (restoredMode === 'polling') StopAllWatchers().catch(() => {});
-        streamingWarningDismissedRef.current = isStreamingWarningDismissed(currentContext);
-        setStreamingUnsupported(false);
-        watcherFailureCountRef.current = {};
+        setPollingIntervalState(restorePollingInterval(currentContext));
+        if (restoredMode !== 'streaming') StopAllWatchers().catch((error: unknown) => Logger.warn('Failed to stop watchers', error, 'k8s'));
+        watcherFailuresRef.current = new WatchFailureWindow();
     }, [currentContext]);
 
     // Persistence Helpers
@@ -607,17 +614,11 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     useEffect(() => {
         if (!currentContext || connectionMode !== 'polling') return;
         let cancelled = false;
-        let timer: number | undefined;
-        const poll = async () => {
-            await runWithPollingBudget(() => refreshNamespacesInternal({ background: true, context: currentContext }));
-            if (!cancelled) timer = window.setTimeout(poll, 9_000 + Math.random() * 2_000);
-        };
-        timer = window.setTimeout(poll, 9_000 + Math.random() * 2_000);
-        return () => {
-            cancelled = true;
-            if (timer !== undefined) window.clearTimeout(timer);
-        };
-    }, [currentContext, connectionMode, refreshNamespacesInternal]);
+        const unregister = registerPolling(async () => {
+            await runWithPollingBudget(() => cancelled ? Promise.resolve() : refreshNamespacesInternal({ background: true, context: currentContext }));
+        });
+        return () => { cancelled = true; unregister(); };
+    }, [currentContext, connectionMode, registerPolling, refreshNamespacesInternal]);
 
     const loadNamespaces = useCallback(async (context: string): Promise<string[] | void> => {
         return refreshNamespacesInternal({ background: false, context });
@@ -818,13 +819,18 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             const errorStr = String(error);
             const streamError = isStreamTransportError(errorStr);
-            if (isImmediateWatchClosure({ premature, receivedAny, openDurationMillis }) && connectionMode === 'streaming' && !streamingWarningDismissedRef.current) {
-                setStreamingUnsupported(true);
-            } else if (streamError && connectionMode === 'streaming') {
-                const key = `${resourceType}:${namespace || ''}`;
-                const failures = (watcherFailureCountRef.current[key] || 0) + 1;
-                watcherFailureCountRef.current[key] = failures;
-                if (failures >= 2 && !streamingWarningDismissedRef.current) setStreamingUnsupported(true);
+            if (connectionModeRef.current === 'streaming' &&
+                (streamError || isImmediateWatchClosure({ premature, receivedAny, openDurationMillis }))) {
+                const key = JSON.stringify([resourceType, namespace || '']);
+                if (watcherFailuresRef.current.fail(key, Date.now())) {
+                    setPollingInterval(10_000);
+                    setConnectionMode('polling');
+                    addNotification({
+                        type: 'warning',
+                        title: 'Switched to polling',
+                        message: 'Live updates couldn’t stay connected. Switched to refreshing every 10 seconds. Select Watcher in the refresh menu to retry.',
+                    });
+                }
             }
 
             // Check if this is an auth/connection error that should show the connection error UI
@@ -856,6 +862,8 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return;
             }
 
+            watcherFailuresRef.current.status(JSON.stringify([resourceType, namespace || '']), status, Date.now());
+
             Logger.debug("Watcher status changed", { resourceType, namespace, status }, 'k8s');
 
             // Detect reconnection: if a watcher transitions reconnecting → connected,
@@ -876,7 +884,6 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             // Clear connection error if a watcher successfully connects
             if (status === 'running' || status === 'connected') {
-                watcherFailureCountRef.current[`${resourceType}:${namespace || ''}`] = 0;
                 setConnectionError(null);
                 setIsConnecting(false);
             }
@@ -889,11 +896,11 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             cancelError();
             cancelStatus();
         };
-    }, [connectionMode]);
+    }, [connectionMode, setConnectionMode, setPollingInterval, addNotification]);
 
     // Keep namespace selector options current with a cluster-scoped namespace watcher.
     useEffect(() => {
-        if (!(window as any).runtime || !currentContext || connectionMode === 'polling') return;
+        if (!(window as any).runtime || !currentContext || connectionMode !== 'streaming') return;
 
         const contextForWatcher = currentContext;
         const subscribedKeys: string[] = [];
@@ -1072,9 +1079,9 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         checkConnectionError,
         connectionMode,
         setConnectionMode,
-        streamingUnsupported,
-        dismissStreamingWarning,
-        reportStreamingFailure,
+        pollingInterval,
+        setPollingInterval,
+        registerPolling,
     }), [
         contexts,
         sortedContexts,
@@ -1098,9 +1105,9 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         checkConnectionError,
         connectionMode,
         setConnectionMode,
-        streamingUnsupported,
-        dismissStreamingWarning,
-        reportStreamingFailure,
+        pollingInterval,
+        setPollingInterval,
+        registerPolling,
     ]);
 
     return (

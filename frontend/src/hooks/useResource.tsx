@@ -6,7 +6,6 @@ import { createResourceEventHandler, createNamespacedResourceEventHandler } from
 import { CancelListRequest } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
-import { nextPollingDelay } from './useCompletionPolling';
 import { runWithPollingBudget } from '../utils/pollingBudget';
 
 // K8s resource with metadata
@@ -107,8 +106,7 @@ export function createNamespacedResourceHook<T extends K8sResource>(
         const [loading, setLoading] = useState<boolean>(false);
         const [error, setError] = useState<Error | null>(null);
         const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
-        const { namespaces: allNamespaces, lastRefresh, checkConnectionError, reconcileToken, connectionMode } = useK8s();
-        const [pollingTick, setPollingTick] = useState(0);
+        const { namespaces: allNamespaces, lastRefresh, checkConnectionError, reconcileToken, connectionMode, registerPolling } = useK8s();
         const requestIdRef = useRef<string | null>(null);
         const fetchInProgressRef = useRef<string | null>(null); // Prevent duplicate fetches from StrictMode
 
@@ -147,7 +145,6 @@ export function createNamespacedResourceHook<T extends K8sResource>(
 
             // Track if this effect instance is still current
             let isCancelled = false;
-            let pollTimer: number | undefined;
 
             // Generate unique request ID for this effect instance
             // Using incrementing counter guarantees uniqueness even within same millisecond
@@ -160,12 +157,15 @@ export function createNamespacedResourceHook<T extends K8sResource>(
             requestIdRef.current = newRequestId;
             fetchInProgressRef.current = queryKey;
 
+            let running = false;
             const fetchData = async (): Promise<void> => {
+                if (running || isCancelled) return;
+                running = true;
                 setLoading(true);
                 let skipLoadingReset = false;
                 try {
                     const listWithBudget = (requestId: string, namespace: string) => connectionMode === 'polling'
-                        ? runWithPollingBudget(() => listFn(requestId, namespace))
+                        ? runWithPollingBudget(() => isCancelled ? Promise.resolve([]) : listFn(requestId, namespace))
                         : listFn(requestId, namespace);
                     const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
 
@@ -206,18 +206,17 @@ export function createNamespacedResourceHook<T extends K8sResource>(
                         skipLoadingReset = true;
                     }
                 } finally {
+                    running = false;
                     if (!isCancelled && !skipLoadingReset) setLoading(false);
                     // Clear fetch-in-progress flag when done
                     if (fetchInProgressRef.current === queryKey) {
                         fetchInProgressRef.current = null;
                     }
-                    if (!isCancelled && connectionMode === 'polling') {
-                        pollTimer = window.setTimeout(() => setPollingTick(t => t + 1), nextPollingDelay());
-                    }
                 }
             };
 
             fetchData();
+            const unregister = connectionMode === 'polling' ? registerPolling(fetchData) : undefined;
 
             // Cleanup: mark as cancelled and cancel backend request
             return () => {
@@ -227,9 +226,9 @@ export function createNamespacedResourceHook<T extends K8sResource>(
                 if (requestIdRef.current) {
                     CancelListRequest(requestIdRef.current).catch(() => {});
                 }
-                if (pollTimer !== undefined) window.clearTimeout(pollTimer);
+                unregister?.();
             };
-        }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh, pollingTick, connectionMode, checkConnectionError]);
+        }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh, connectionMode, registerPolling, checkConnectionError]);
 
         // Create selected namespaces array for event filtering
         const selectedNamespacesList = useMemo((): string[] => {
@@ -288,8 +287,7 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
         const [loading, setLoading] = useState<boolean>(false);
         const [error, setError] = useState<Error | null>(null);
         const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
-        const { lastRefresh, checkConnectionError, reconcileToken, connectionMode } = useK8s();
-        const [pollingTick, setPollingTick] = useState(0);
+        const { lastRefresh, checkConnectionError, reconcileToken, connectionMode, registerPolling } = useK8s();
         const requestIdRef = useRef<string | null>(null);
         const fetchInProgressRef = useRef<string | null>(null); // Prevent duplicate fetches from StrictMode
 
@@ -317,7 +315,6 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
             }
 
             let isCancelled = false;
-            let pollTimer: number | undefined;
 
             // Generate unique request ID for this effect instance
             const requestId = createClusterScopedRequestId(resourceType);
@@ -329,12 +326,15 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
             requestIdRef.current = requestId;
             fetchInProgressRef.current = queryKey;
 
+            let running = false;
             const fetchData = async (): Promise<void> => {
+                if (running || isCancelled) return;
+                running = true;
                 setLoading(true);
                 let skipLoadingReset = false;
                 try {
                     const list = await (connectionMode === 'polling'
-                        ? runWithPollingBudget(() => listFn(requestId))
+                        ? runWithPollingBudget(() => isCancelled ? Promise.resolve([]) : listFn(requestId))
                         : listFn(requestId));
                     if (!isCancelled) {
                         setDataMap(arrayToMap(list || []));
@@ -354,18 +354,17 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
                         skipLoadingReset = true;
                     }
                 } finally {
+                    running = false;
                     if (!isCancelled && !skipLoadingReset) setLoading(false);
                     // Clear fetch-in-progress flag when done
                     if (fetchInProgressRef.current === queryKey) {
                         fetchInProgressRef.current = null;
                     }
-                    if (!isCancelled && connectionMode === 'polling') {
-                        pollTimer = window.setTimeout(() => setPollingTick(t => t + 1), nextPollingDelay());
-                    }
                 }
             };
 
             fetchData();
+            const unregister = connectionMode === 'polling' ? registerPolling(fetchData) : undefined;
 
             return () => {
                 isCancelled = true;
@@ -374,9 +373,9 @@ export function createClusterScopedResourceHook<T extends K8sResource>(
                 if (requestIdRef.current) {
                     CancelListRequest(requestIdRef.current).catch(() => {});
                 }
-                if (pollTimer !== undefined) window.clearTimeout(pollTimer);
+                unregister?.();
             };
-        }, [currentContext, isVisible, lastRefresh, pollingTick, connectionMode, checkConnectionError]);
+        }, [currentContext, isVisible, lastRefresh, connectionMode, registerPolling, checkConnectionError]);
 
         const refetch = useCallback(async (): Promise<void> => {
             if (!currentContext || !isVisible) return;
