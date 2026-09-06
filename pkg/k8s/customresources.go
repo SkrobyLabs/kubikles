@@ -33,7 +33,7 @@ func (c *Client) getApiExtensionsClientForContext(contextName string) (*apiexten
 		return nil, fmt.Errorf("failed to load client config for context %s: %w", contextName, err)
 	}
 
-	return apiextensionsclientset.NewForConfig(config)
+	return newAuthenticatedClient(config, apiextensionsclientset.NewForConfigAndClient)
 }
 
 // CustomResourceDefinition operations (cluster-scoped)
@@ -186,7 +186,7 @@ func (c *Client) getDynamicClientForContext(contextName string) (dynamic.Interfa
 		return nil, fmt.Errorf("failed to load client config for context %s: %w", contextName, err)
 	}
 
-	return dynamic.NewForConfig(config)
+	return newAuthenticatedClient(config, dynamic.NewForConfigAndClient)
 }
 
 // ListCustomResources lists instances of a custom resource

@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"kubikles/pkg/k8s"
+
 	"github.com/google/uuid"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
@@ -617,6 +619,11 @@ func (m *PortForwardManager) runPortForward(af *ActivePortForward) (bool, error)
 	transport, upgrader, err := spdy.RoundTripperFor(restConfig)
 	if err != nil {
 		return false, fmt.Errorf("failed to create transport: %w", err)
+	}
+
+	transport, err = k8s.GuardExecAuthTransport(restConfig, transport)
+	if err != nil {
+		return false, fmt.Errorf("failed to guard port-forward authentication: %w", err)
 	}
 
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", u)

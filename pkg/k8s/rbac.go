@@ -76,7 +76,7 @@ func (c *Client) CheckRBACAccess(req RBACCheckRequest) (*RBACCheckResult, error)
 	}
 
 	// Create impersonated client
-	impClient, err := kubernetes.NewForConfig(impConfig)
+	impClient, err := newAuthenticatedClient(impConfig, kubernetes.NewForConfigAndClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create impersonated client: %w", err)
 	}

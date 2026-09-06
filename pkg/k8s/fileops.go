@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/client-go/transport/spdy"
 )
 
 const (
@@ -534,7 +535,15 @@ func (c *Client) execInPodStream(ctx context.Context, namespace, pod, container 
 			TTY:       false,
 		}, scheme.ParameterCodec)
 
-	exec, err := remotecommand.NewSPDYExecutor(restConfig, "POST", req.URL())
+	transport, upgrader, err := spdy.RoundTripperFor(restConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create exec transport: %w", err)
+	}
+	transport, err = GuardExecAuthTransport(restConfig, transport)
+	if err != nil {
+		return fmt.Errorf("failed to guard exec authentication: %w", err)
+	}
+	exec, err := remotecommand.NewSPDYExecutorForTransports(transport, upgrader, "POST", req.URL())
 	if err != nil {
 		return fmt.Errorf("failed to create executor: %w", err)
 	}

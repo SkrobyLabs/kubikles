@@ -900,7 +900,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Keep namespace selector options current with a cluster-scoped namespace watcher.
     useEffect(() => {
-        if (!(window as any).runtime || !currentContext || connectionMode !== 'streaming') return;
+        if (!(window as any).runtime || !currentContext || isConnecting || connectionError || connectionMode !== 'streaming') return;
 
         const contextForWatcher = currentContext;
         const subscribedKeys: string[] = [];
@@ -953,7 +953,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 });
             });
         };
-    }, [currentContext, applyNamespaceEvent, connectionMode]);
+    }, [currentContext, applyNamespaceEvent, connectionMode, isConnecting, connectionError]);
 
     // Keep context ref in sync for event handlers (avoids stale closures)
     useEffect(() => {

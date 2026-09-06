@@ -87,7 +87,7 @@ func (c *Client) GetNodeMetrics() (*NodeMetricsResult, error) {
 			c.mu.Unlock()
 			return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
 		}
-		mc, err := metricsclientset.NewForConfig(config)
+		mc, err := newAuthenticatedClient(config, metricsclientset.NewForConfigAndClient)
 		if err != nil {
 			c.mu.Unlock()
 			return &NodeMetricsResult{Available: false, Error: err.Error()}, nil
@@ -727,7 +727,7 @@ func (c *Client) GetPodMetrics() (*PodMetricsResult, error) {
 			c.mu.Unlock()
 			return &PodMetricsResult{Available: false, Error: err.Error()}, nil
 		}
-		mc, err := metricsclientset.NewForConfig(config)
+		mc, err := newAuthenticatedClient(config, metricsclientset.NewForConfigAndClient)
 		if err != nil {
 			c.mu.Unlock()
 			return &PodMetricsResult{Available: false, Error: err.Error()}, nil
