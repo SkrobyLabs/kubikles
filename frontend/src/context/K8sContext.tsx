@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespaces, StartAutoStartPortForwards, ListCRDs, GetK8sInitError, SubscribeResourceWatcher, UnsubscribeWatcher, StopAllWatchers } from 'wailsjs/go/main/App';
+import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespacesForContext, StartAutoStartPortForwards, ListCRDs, GetK8sInitError, SubscribeResourceWatcher, UnsubscribeWatcher, StopAllWatchers } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
 import { runContextSwitchTransaction } from './contextSwitch';
@@ -565,7 +565,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
 
             try {
-                const list: Namespace[] = await ListNamespaces(contextForRequest);
+                const list: Namespace[] = await ListNamespacesForContext(contextForRequest);
 
                 if (currentContextRef.current !== contextForRequest) {
                     Logger.debug("Namespace refresh completed for stale context, ignoring", {
@@ -619,6 +619,14 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         return () => { cancelled = true; unregister(); };
     }, [currentContext, connectionMode, registerPolling, refreshNamespacesInternal]);
+
+    // Reconcile selector options as well as resource lists after a watch gap.
+    const namespaceReconcileTokenRef = useRef(reconcileToken);
+    useEffect(() => {
+        if (namespaceReconcileTokenRef.current === reconcileToken) return;
+        namespaceReconcileTokenRef.current = reconcileToken;
+        void fetchNamespaces();
+    }, [reconcileToken, fetchNamespaces]);
 
     const loadNamespaces = useCallback(async (context: string): Promise<string[] | void> => {
         return refreshNamespacesInternal({ background: false, context });
@@ -804,8 +812,6 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Listen for watcher error and status events
     useEffect(() => {
-        if (!(window as any).runtime) return;
-
         const handleWatcherError = (event: WatcherErrorEvent): void => {
             const { resourceType, namespace, error, recoverable, context, premature, receivedAny, openDurationMillis } = event;
 
@@ -900,7 +906,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Keep namespace selector options current with a cluster-scoped namespace watcher.
     useEffect(() => {
-        if (!(window as any).runtime || !currentContext || isConnecting || connectionError || connectionMode !== 'streaming') return;
+        if (!currentContext || isConnecting || connectionError || connectionMode !== 'streaming') return;
 
         const contextForWatcher = currentContext;
         const subscribedKeys: string[] = [];
@@ -939,9 +945,9 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
         };
 
-        subscribe();
         const cancelEvent = EventsOn("resource-event", handleEvent);
         const cancelBatch = EventsOn("resource-events-batch", handleBatchEvents);
+        void subscribe();
 
         return () => {
             isMounted = false;
