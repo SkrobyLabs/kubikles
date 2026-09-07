@@ -8,6 +8,7 @@ interface ResourceEvent {
     type: string;
     resourceType: string;
     namespace?: string;
+    context?: string;
     resource?: any;
 }
 
@@ -32,10 +33,13 @@ export const useResourceWatcher = (
     resourceType: string,
     namespaces: string | string[],
     onEvent: ResourceEventHandler,
-    enabled: boolean = true
+    enabled: boolean = true,
+    onError?: (error: unknown, namespace: string) => void,
 ): void => {
-    const { connectionMode } = useK8s();
+    const { connectionMode, currentContext } = useK8s();
     const onEventRef = useRef<ResourceEventHandler>(onEvent);
+    const onErrorRef = useRef(onError);
+    onErrorRef.current = onError;
 
     // Create stable namespace key to avoid unnecessary effect re-runs on array reorder
     const namespaceKey = useMemo(() => createNamespaceKey(namespaces), [namespaces]);
@@ -67,16 +71,15 @@ export const useResourceWatcher = (
                         UnsubscribeWatcher(key).catch(() => {});
                     }
                 } catch (err: any) {
+                    if (isMounted) onErrorRef.current?.(err, ns || '');
                     console.error(`Failed to subscribe to ${resourceType} watcher:`, err);
                 }
             }
         };
 
-        subscribe();
-
         // Event listener (filters by resourceType, checks mount state to prevent updates after cleanup)
         const handleEvent = (event: ResourceEvent): void => {
-            if (isMounted && event.resourceType === resourceType) {
+            if (isMounted && (!event.context || event.context === currentContext) && event.resourceType === resourceType) {
                 onEventRef.current(event);
             }
         };
@@ -85,7 +88,7 @@ export const useResourceWatcher = (
         const handleBatchEvents = (events: ResourceEvent[]): void => {
             if (!isMounted || !Array.isArray(events)) return;
             for (const event of events) {
-                if (event.resourceType === resourceType) {
+                if ((!event.context || event.context === currentContext) && event.resourceType === resourceType) {
                     onEventRef.current(event);
                 }
             }
@@ -93,6 +96,7 @@ export const useResourceWatcher = (
 
         const cancelEvent = EventsOn("resource-event", handleEvent);
         const cancelBatch = EventsOn("resource-events-batch", handleBatchEvents);
+        void subscribe();
 
         // Cleanup: cancel only our listeners, then unsubscribe backend watchers
         return () => {
@@ -106,7 +110,7 @@ export const useResourceWatcher = (
                 });
             });
         };
-    }, [resourceType, namespaceKey, enabled, connectionMode]);
+    }, [resourceType, namespaceKey, enabled, connectionMode, currentContext]);
 };
 
 /**
@@ -118,10 +122,13 @@ export const useCRDWatcher = (
     resource: string,
     namespaces: string | string[],
     onEvent: ResourceEventHandler,
-    enabled: boolean = true
+    enabled: boolean = true,
+    onError?: (error: unknown, namespace: string) => void,
 ): void => {
-    const { connectionMode } = useK8s();
+    const { connectionMode, currentContext } = useK8s();
     const onEventRef = useRef<ResourceEventHandler>(onEvent);
+    const onErrorRef = useRef(onError);
+    onErrorRef.current = onError;
 
     // Create stable namespace key to avoid unnecessary effect re-runs on array reorder
     const namespaceKey = useMemo(() => createNamespaceKey(namespaces), [namespaces]);
@@ -155,16 +162,15 @@ export const useCRDWatcher = (
                         UnsubscribeWatcher(key).catch(() => {});
                     }
                 } catch (err: any) {
+                    if (isMounted) onErrorRef.current?.(err, ns || '');
                     console.error(`Failed to subscribe to CRD watcher ${group}/${version}/${resource}:`, err);
                 }
             }
         };
 
-        subscribe();
-
         // Event listener (filters by CRD resourceType, checks mount state to prevent updates after cleanup)
         const handleEvent = (event: ResourceEvent): void => {
-            if (isMounted && event.resourceType === crdResourceType) {
+            if (isMounted && (!event.context || event.context === currentContext) && event.resourceType === crdResourceType) {
                 onEventRef.current(event);
             }
         };
@@ -173,7 +179,7 @@ export const useCRDWatcher = (
         const handleBatchEvents = (events: ResourceEvent[]): void => {
             if (!isMounted || !Array.isArray(events)) return;
             for (const event of events) {
-                if (event.resourceType === crdResourceType) {
+                if ((!event.context || event.context === currentContext) && event.resourceType === crdResourceType) {
                     onEventRef.current(event);
                 }
             }
@@ -181,6 +187,7 @@ export const useCRDWatcher = (
 
         const cancelEvent = EventsOn("resource-event", handleEvent);
         const cancelBatch = EventsOn("resource-events-batch", handleBatchEvents);
+        void subscribe();
 
         // Cleanup: cancel only our listeners, then unsubscribe backend watchers
         return () => {
@@ -194,5 +201,5 @@ export const useCRDWatcher = (
                 });
             });
         };
-    }, [group, version, resource, crdResourceType, namespaceKey, enabled, connectionMode]);
+    }, [group, version, resource, crdResourceType, namespaceKey, enabled, connectionMode, currentContext]);
 };

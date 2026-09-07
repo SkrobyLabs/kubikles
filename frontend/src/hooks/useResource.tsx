@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useK8s } from '../context';
 import { optimizeNamespaceQuery } from './useNamespaceOptimization';
 import { useResourceWatcher } from './useResourceWatcher';
-import { createResourceEventHandler, createNamespacedResourceEventHandler } from './useResourceEventHandler';
+import { createResourceEventHandler } from './useResourceEventHandler';
 import { CancelListRequest } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
 import { runWithPollingBudget } from '../utils/pollingBudget';
+import { chooseNamespaceScope, namespaceSelection, observeNamespaceList, listNamespaceScope, isNamespaceForbidden, type NamespaceQueryObservation } from '../utils/namespaceQuery';
 
 // K8s resource with metadata
 interface K8sResource {
@@ -95,177 +96,160 @@ function arrayToMap<T extends K8sResource>(items: T[]): Map<string, T> {
 export function createNamespacedResourceHook<T extends K8sResource>(
     resourceType: string,
     listFn: NamespacedListFn<T>,
-    stateName: string
+    stateName: string,
+    useWatcher = useResourceWatcher,
 ) {
+    // Share lightweight measurements across mounts of this resource hook, never resource data.
+    const observations = new Map<string, NamespaceQueryObservation>();
+    const scopedLatency = new Map<string, number>();
     return function useNamespacedResource(
         currentContext: string | null,
         selectedNamespaces: string | string[] | null | undefined,
         isVisible: boolean
     ): NamespacedResourceHookReturn<T> {
-        const [dataMap, setDataMap] = useState<Map<string, T>>(new Map());
-        const [loading, setLoading] = useState<boolean>(false);
+        const dataKey = JSON.stringify([currentContext, resourceType]);
+        const [snapshot, setSnapshot] = useState({ context: dataKey, scopeKey: '', map: new Map<string, T>() });
+        const [loading, setLoading] = useState(false);
         const [error, setError] = useState<Error | null>(null);
         const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
         const { namespaces: allNamespaces, lastRefresh, checkConnectionError, reconcileToken, connectionMode, registerPolling } = useK8s();
-        const requestIdRef = useRef<string | null>(null);
-        const fetchInProgressRef = useRef<string | null>(null); // Prevent duplicate fetches from StrictMode
+        const [broadDenied, setBroadDenied] = useState<string | null>(null);
+        const loadedScope = useRef<{ context: string | null; key: string } | null>(null);
+        const eventJournal = useRef<Map<string, any> | null>(null);
+        const selectionKey = JSON.stringify(namespaceSelection(selectedNamespaces));
+        const selected: string[] = useMemo(() => JSON.parse(selectionKey), [selectionKey]);
+        const availableKey = JSON.stringify([...new Set(allNamespaces.filter(Boolean))].sort());
+        // Explicit refresh retries permissions; polling does not repeatedly probe a denied scope.
+        const permissionKey = JSON.stringify([dataKey, lastRefresh]);
+        const scope = useMemo(() => chooseNamespaceScope(selected, JSON.parse(availableKey),
+            observations.get(dataKey), {
+                broadDenied: broadDenied === permissionKey,
+                reuseBroad: loadedScope.current?.context === dataKey && loadedScope.current?.key === '[""]',
+                scopedDurationMs: scopedLatency.get(dataKey),
+            }), [selectionKey, availableKey, dataKey, broadDenied, permissionKey]);
+        const scopeKey = JSON.stringify(scope);
+        const broad = scope.length === 1 && scope[0] === '';
+        const selectedSet = useMemo(() => new Set(selected), [selectionKey]);
+        const selectionRef = useRef(selectedSet);
+        selectionRef.current = selectedSet;
+        const data = useMemo(() => {
+            if (snapshot.context !== dataKey || !selected.length) return [];
+            return Array.from(snapshot.map.values()).filter(item => selectedSet.has('*') || selectedSet.has(item.metadata?.namespace));
+        }, [snapshot, dataKey, selectedSet]);
 
-        // Derive array from map for consumers
-        const data = useMemo(() => Array.from(dataMap.values()), [dataMap]);
-
-        // Listen for paginated list progress events
         useEffect(() => {
             if (!loading) return;
-            const cancel = EventsOn("list-progress", (event: any) => {
-                if (event?.resourceType === resourceType) {
-                    setLoadingProgress({ loaded: event.loaded, total: event.total });
-                }
+            const cancel = EventsOn('list-progress', (event: any) => {
+                if (event?.resourceType === resourceType) setLoadingProgress({ loaded: event.loaded, total: event.total });
             });
             return () => { cancel(); setLoadingProgress(null); };
         }, [loading]);
 
-        // Calculate optimized namespaces for watching
-        const optimizedNamespaces = useMemo((): string[] => {
-            const optimized = optimizeNamespaceQuery(selectedNamespaces || [], allNamespaces);
-            if (optimized === null) return [];
-            if (optimized === '') return ['']; // Watch all namespaces
-            return optimized;
-        }, [selectedNamespaces, allNamespaces]);
-
-        // Fetch initial list with cancellation support
+        // Selection changes that retain the same fetch scope only update the local filter.
         useEffect(() => {
-            if (!currentContext || selectedNamespaces === null || selectedNamespaces === undefined || !isVisible) return;
-
-            // Prevent duplicate fetches from React StrictMode double-mount
-            // Check if we're already fetching for the same query
-            const queryKey = `${resourceType}-${createNamespaceKey(selectedNamespaces)}-${currentContext}`;
-            if (fetchInProgressRef.current === queryKey) {
-                return; // Already fetching for this exact query
-            }
-
-            // Track if this effect instance is still current
-            let isCancelled = false;
-
-            // Generate unique request ID for this effect instance
-            // Using incrementing counter guarantees uniqueness even within same millisecond
-            const newRequestId = createNamespacedRequestId(resourceType, selectedNamespaces);
-
-            // Cancel previous request if it's different
-            if (requestIdRef.current && requestIdRef.current !== newRequestId) {
-                CancelListRequest(requestIdRef.current).catch(() => {});
-            }
-            requestIdRef.current = newRequestId;
-            fetchInProgressRef.current = queryKey;
-
+            if (!currentContext || !isVisible) return;
+            let cancelled = false;
             let running = false;
+            const activeRequests = new Set<string>();
+            const namespaces: string[] = JSON.parse(scopeKey);
             const fetchData = async (): Promise<void> => {
-                if (running || isCancelled) return;
+                if (cancelled || running) return;
                 running = true;
-                setLoading(true);
-                let skipLoadingReset = false;
+                const journal = new Map<string, any>();
+                eventJournal.current = journal;
+                const sameScope = loadedScope.current?.context === dataKey && loadedScope.current?.key === scopeKey;
+                if (!sameScope) setLoading(true);
                 try {
-                    const listWithBudget = (requestId: string, namespace: string) => connectionMode === 'polling'
-                        ? runWithPollingBudget(() => isCancelled ? Promise.resolve([]) : listFn(requestId, namespace))
-                        : listFn(requestId, namespace);
-                    const optimized = optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
-
-                    if (optimized === null) {
-                        if (!isCancelled) setDataMap(new Map());
-                    } else if (optimized === '') {
-                        const list = await listWithBudget(newRequestId, '');
-                        if (!isCancelled) setDataMap(arrayToMap(list || []));
-                    } else {
-                        const allResults = await Promise.all(
-                            optimized.map((ns: any) => listWithBudget(newRequestId, ns).catch((err: any) => {
-                                // Don't log cancelled request errors
-                                if (!err?.message?.includes('cancelled')) {
-                                    console.error(`Failed to fetch ${resourceType} from namespace ${ns}`, err);
+                    const started = performance.now();
+                    const items = await listNamespaceScope(namespaces, async namespace => {
+                        const requestId = createNamespacedRequestId(resourceType, namespace);
+                        const request = async () => {
+                            if (cancelled) return [];
+                            activeRequests.add(requestId);
+                            const requestStarted = performance.now();
+                            try {
+                                const result = await listFn(requestId, namespace);
+                                if (namespace && !cancelled) {
+                                    const duration = performance.now() - requestStarted;
+                                    const previous = scopedLatency.get(dataKey);
+                                    scopedLatency.set(dataKey, previous === undefined ? duration : previous * 0.75 + duration * 0.25);
+                                    if (scopedLatency.size > 64) scopedLatency.delete(scopedLatency.keys().next().value!);
                                 }
-                                return [] as T[];
-                            }))
-                        );
-                        // Check cancellation after all async operations complete
-                        if (isCancelled) return;
-
-                        // O(n) deduplication using Map
-                        const merged = allResults.flat().filter(Boolean);
-                        setDataMap(arrayToMap(merged));
+                                return result || [];
+                            } finally {
+                                activeRequests.delete(requestId);
+                            }
+                        };
+                        return connectionMode === 'polling' ? runWithPollingBudget(request) : request();
+                    }, () => !cancelled);
+                    if (cancelled) return;
+                    if (broad) {
+                        observations.set(dataKey, observeNamespaceList(items, performance.now() - started));
+                        if (observations.size > 64) observations.delete(observations.keys().next().value!);
                     }
-                    if (!isCancelled) setError(null);
-                } catch (err: any) {
-                    // Don't show error for cancelled requests
-                    const wasCancelledByBackend = (err as any)?.message?.includes('cancelled');
-                    if (!isCancelled && !wasCancelledByBackend) {
-                        console.error(`Failed to fetch ${resourceType}`, err);
+                    let map = arrayToMap(items);
+                    // Preserve updates/deletions received while the list was in flight.
+                    const apply = createResourceEventHandler<T>(update => { map = typeof update === 'function' ? update(map) : update; });
+                    for (const event of journal.values()) apply(event);
+                    setSnapshot({ context: dataKey, scopeKey, map });
+                    loadedScope.current = { context: dataKey, key: scopeKey };
+                    setError(null);
+                } catch (err) {
+                    if (cancelled) return;
+                    if (broad && !selectionRef.current.has('*') && isNamespaceForbidden(err)) {
+                        setBroadDenied(permissionKey);
+                    } else {
                         setError(err instanceof Error ? err : new Error(String(err)));
-                        // Check if this is a connection/auth error
                         checkConnectionError(err);
                     }
-                    // If cancelled, don't reset loading - another request is likely pending
-                    if (isCancelled || wasCancelledByBackend) {
-                        skipLoadingReset = true;
-                    }
                 } finally {
+                    if (eventJournal.current === journal) eventJournal.current = null;
                     running = false;
-                    if (!isCancelled && !skipLoadingReset) setLoading(false);
-                    // Clear fetch-in-progress flag when done
-                    if (fetchInProgressRef.current === queryKey) {
-                        fetchInProgressRef.current = null;
-                    }
+                    if (!cancelled) setLoading(false);
                 }
             };
-
-            fetchData();
+            void fetchData();
             const unregister = connectionMode === 'polling' ? registerPolling(fetchData) : undefined;
-
-            // Cleanup: mark as cancelled and cancel backend request
             return () => {
-                isCancelled = true;
-                // Clear fetch-in-progress flag on cleanup to allow re-fetch
-                fetchInProgressRef.current = null;
-                if (requestIdRef.current) {
-                    CancelListRequest(requestIdRef.current).catch(() => {});
-                }
+                cancelled = true;
+                activeRequests.forEach(id => { void CancelListRequest(id).catch(() => {}); });
                 unregister?.();
             };
-        }, [currentContext, selectedNamespaces, isVisible, allNamespaces, lastRefresh, connectionMode, registerPolling, checkConnectionError]);
+        }, [currentContext, scopeKey, isVisible, lastRefresh, reconcileToken, connectionMode, registerPolling, checkConnectionError, resourceType, listFn]);
 
-        // Create selected namespaces array for event filtering
-        const selectedNamespacesList = useMemo((): string[] => {
-            if (!selectedNamespaces) return [];
-            return Array.isArray(selectedNamespaces) ? selectedNamespaces : [selectedNamespaces];
-        }, [selectedNamespaces]);
+        const handleEvent = useCallback((event: any) => {
+            if (event.context && event.context !== currentContext) return;
+            const namespace = event.resource?.metadata?.namespace ?? event.namespace;
+            if (!broad && !scope.includes(namespace)) return;
+            const uid = event.resource?.metadata?.uid;
+            if (!uid) return;
+            eventJournal.current?.set(uid, event);
+            setSnapshot(previous => {
+                if (previous.context !== dataKey || previous.scopeKey !== scopeKey) return previous;
+                let map = previous.map;
+                createResourceEventHandler<T>(update => { map = typeof update === 'function' ? update(map) : update; })(event);
+                return map === previous.map ? previous : { ...previous, map };
+            });
+        }, [dataKey, scopeKey]);
 
-        // Subscribe to resource events
-        const handleEvent = useCallback(
-            createNamespacedResourceEventHandler(setDataMap as any, selectedNamespacesList),
-            [selectedNamespacesList]
-        );
+        const handleWatchError = useCallback((err: unknown, namespace: string) => {
+            if (broad && namespace === '' && !selectedSet.has('*') && isNamespaceForbidden(err)) {
+                setBroadDenied(permissionKey);
+            } else {
+                setError(err instanceof Error ? err : new Error(String(err)));
+            }
+        }, [broad, selectedSet, permissionKey]);
+        useEffect(() => {
+            if (!isVisible || !currentContext || connectionMode !== 'streaming') return;
+            return EventsOn('watcher-error', (event: any) => {
+                if (event?.resourceType !== resourceType || (event.context && event.context !== currentContext)) return;
+                if (!scope.includes(event.namespace || '')) return;
+                if (isNamespaceForbidden(event.error)) handleWatchError(event.error, event.namespace || '');
+            });
+        }, [currentContext, scopeKey, handleWatchError, isVisible, connectionMode]);
+        useWatcher(resourceType, scope, handleEvent, Boolean(currentContext && isVisible && scope.length), handleWatchError);
 
-        useResourceWatcher(
-            resourceType,
-            optimizedNamespaces,
-            handleEvent as any,
-            Boolean(currentContext && isVisible && optimizedNamespaces.length > 0)
-        );
-
-        // Silent reconciliation after watcher reconnection.
-        // Only removes ghost resources (items deleted during disconnect window).
-        // No loading flash, no scroll jump, no selection loss.
-        useGhostReconciliation(
-            resourceType, reconcileToken, setDataMap,
-            listFn as any,
-            currentContext, selectedNamespaces, allNamespaces, isVisible
-        );
-
-        // Return with dynamic key name for backwards compatibility
-        const result: NamespacedResourceHookReturn<T> = {
-            loading,
-            error,
-            loadingProgress,
-            [stateName]: data
-        };
-        return result;
+        return { loading, error, loadingProgress, [stateName]: data };
     };
 }
 
@@ -455,7 +439,7 @@ function useGhostReconciliation<T extends K8sResource>(
             Logger.debug(`[ghost-reconcile] Starting for ${resourceType} (token=${reconcileToken})`);
 
             try {
-                const optimized = optimizeNamespaceQuery(selectedNamespaces ?? [], allNamespaces);
+                const optimized = selectedNamespaces == null ? '' : optimizeNamespaceQuery(selectedNamespaces, allNamespaces);
 
                 let freshItems: T[];
                 const requestId = `reconcile-${resourceType}-${++requestCounter}`;
@@ -468,10 +452,7 @@ function useGhostReconciliation<T extends K8sResource>(
                     // All namespaces
                     freshItems = await listFn(requestId, '');
                 } else {
-                    const results = await Promise.all(
-                        optimized.map(ns => listFn(requestId, ns).catch(() => [] as T[]))
-                    );
-                    freshItems = results.flat().filter(Boolean);
+                    freshItems = await listNamespaceScope(optimized, ns => listFn(`${requestId}-${ns}`, ns), () => !cancelled);
                 }
 
                 if (cancelled) return;

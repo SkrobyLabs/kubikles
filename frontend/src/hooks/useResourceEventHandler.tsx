@@ -1,9 +1,12 @@
-import { K8sResource } from '../types/k8s';
+// Event processing only requires identity and deletion metadata.
+interface WatchableResource {
+    metadata?: { uid?: string; deletionTimestamp?: string };
+}
 
 /**
  * Resource watch event from Wails backend
  */
-interface ResourceEvent<T extends K8sResource = K8sResource> {
+interface ResourceEvent<T extends WatchableResource = WatchableResource> {
     type: 'ADDED' | 'MODIFIED' | 'DELETED';
     resource: T;
     namespace?: string;
@@ -12,13 +15,13 @@ interface ResourceEvent<T extends K8sResource = K8sResource> {
 /**
  * Resource event handler function type
  */
-type ResourceEventHandler<T extends K8sResource = K8sResource> = (event: ResourceEvent<T>) => void;
+type ResourceEventHandler<T extends WatchableResource = WatchableResource> = (event: ResourceEvent<T>) => void;
 
 /**
  * React setState function type for resource maps (UID -> resource).
  * Using Map<string, T> for O(1) lookups on watch events.
  */
-type SetResourceMapState<T extends K8sResource = K8sResource> = React.Dispatch<React.SetStateAction<Map<string, T>>>;
+type SetResourceMapState<T extends WatchableResource = WatchableResource> = React.Dispatch<React.SetStateAction<Map<string, T>>>;
 
 /**
  * Creates a state updater function for resource watch events.
@@ -28,7 +31,7 @@ type SetResourceMapState<T extends K8sResource = K8sResource> = React.Dispatch<R
  * const handleEvent = useCallback(createResourceEventHandler(setDataMap), []);
  * useResourceWatcher("namespaces", "", handleEvent, isVisible);
  */
-export const createResourceEventHandler = <T extends K8sResource = K8sResource>(
+export const createResourceEventHandler = <T extends WatchableResource = WatchableResource>(
     setState: SetResourceMapState<T>
 ): ResourceEventHandler<T> => (event: ResourceEvent<T>): void => {
     const { type, resource } = event;
@@ -84,7 +87,7 @@ export const createResourceEventHandler = <T extends K8sResource = K8sResource>(
  *   [selectedNamespaces]
  * );
  */
-export const createNamespacedResourceEventHandler = <T extends K8sResource = K8sResource>(
+export const createNamespacedResourceEventHandler = <T extends WatchableResource = WatchableResource>(
     setState: SetResourceMapState<T>,
     selectedNamespaces: string[]
 ): ResourceEventHandler<T> => (event: ResourceEvent<T>): void => {
