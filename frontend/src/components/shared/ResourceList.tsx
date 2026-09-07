@@ -1,3 +1,5 @@
+import ResourceLoadingStatus from './ResourceLoadingStatus';
+import type { ResourceLoadState } from '~/hooks/useResource';
 import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import { TableVirtuoso } from 'react-virtuoso';
@@ -79,6 +81,7 @@ interface ResourceListProps {
     columns: any[];
     data: any[];
     isLoading: boolean;
+    loadState?: ResourceLoadState;
     loadingProgress?: LoadingProgress | null;
     namespaces?: string[];
     currentNamespace?: any;
@@ -161,6 +164,7 @@ export default function ResourceList({
     columns,
     data,
     isLoading,
+    loadState,
     loadingProgress: externalProgress = null,
     namespaces = [],
     currentNamespace,
@@ -191,7 +195,7 @@ export default function ResourceList({
     // Loading progress: prefer external prop, fall back to internal listener
     const [internalProgress, setInternalProgress] = useState<LoadingProgress | null>(null);
     useEffect(() => {
-        if (!isLoading || !resourceType) {
+        if (!isLoading || !resourceType || loadState) {
             setInternalProgress(null);
             return;
         }
@@ -201,8 +205,8 @@ export default function ResourceList({
             }
         });
         return () => { cancel(); setInternalProgress(null); };
-    }, [isLoading, resourceType]);
-    const loadingProgress = externalProgress ?? internalProgress;
+    }, [isLoading, resourceType, loadState]);
+    const loadingProgress = loadState?.progress ?? externalProgress ?? internalProgress;
     const largeDatasetThreshold = getConfig('ui.largeDatasetThreshold') ?? 5000;
     const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: string }>(initialSort || { key: null, direction: 'asc' });
     const [searchInput, setSearchInput] = useState(''); // Immediate input value
@@ -1218,16 +1222,20 @@ export default function ResourceList({
             {/* Large Dataset Banner */}
             <LargeDatasetBanner
                 isLoading={isLoading}
-                progress={loadingProgress}
+                progress={loadState ? null : loadingProgress}
                 dataCount={data.length}
                 threshold={largeDatasetThreshold}
             />
 
-            {/* Table Content */}
-            <div className="flex-1 overflow-hidden">
-                {customBody ? customBody : isLoading ? (
+            {/* Table Content — loading feedback floats above rows and the bulk action bar. */}
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+                {customBody ? customBody : (isLoading || loadState?.phase === 'incomplete') && data.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-gray-500">
-                        Loading...
+                        {loadState?.phase === 'incomplete' ? 'Resource list unavailable' : 'Loading…'}
+                    </div>
+                ) : sortedData.length === 0 && loadState && loadState.phase !== 'complete' ? (
+                    <div className="flex items-center justify-center h-full text-gray-500">
+                        No matching resources loaded yet. The resource list is not complete.
                     </div>
                 ) : sortedData.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3">
@@ -1315,6 +1323,7 @@ export default function ResourceList({
                                                         <div className="flex items-center justify-center">
                                                             <TriStateCheckbox
                                                                 state={selectionState}
+                                                                label="Select all displayed resources"
                                                                 onChange={handleHeaderCheckboxClick}
                                                             />
                                                         </div>
@@ -1483,6 +1492,7 @@ export default function ResourceList({
                         )}
                     />
                 )}
+                <ResourceLoadingStatus state={loadState} displayed={sortedData.length} />
             </div>
 
             {/* Bulk Action Bar - Bottom */}

@@ -17,7 +17,7 @@ import { CopyableLabel } from '~/components/shared/DetailComponents';
 export default function IngressList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { ingresses, loading } = useIngresses(currentContext, selectedNamespaces, isVisible) as any;
+    const { ingresses, loading, loadState } = useIngresses(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useIngressActions();
     const selection = useSelection();
 
@@ -415,7 +415,7 @@ export default function IngressList({ isVisible }: { isVisible: boolean }) {
 
             {/* Resource List */}
             <div className="flex-1 min-h-0">
-                <ResourceList
+                <ResourceList loadState={loadState}
                     title="Ingresses"
                     columns={columns}
                     data={ingresses}

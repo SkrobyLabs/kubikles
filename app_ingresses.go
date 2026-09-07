@@ -18,7 +18,7 @@ func (a *App) ListIngresses(requestId, namespace string) ([]networkingv1.Ingress
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListIngressesWithContext(ctx, namespace, a.listProgressCallback("ingresses"))
@@ -63,7 +63,7 @@ func (a *App) ListIngressClasses(requestId string) ([]networkingv1.IngressClass,
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListIngressClassesWithContext(ctx, currentContext, a.listProgressCallback("ingressclasses"))

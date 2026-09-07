@@ -5,7 +5,7 @@ const harness = vi.hoisted(() => ({
     stateIndex: 0, refIndex: 0,
 }));
 const api = vi.hoisted(() => ({
-    ListNamespacesForContext: vi.fn(), SubscribeResourceWatcher: vi.fn(), UnsubscribeWatcher: vi.fn(),
+    ListNamespacesForContext: vi.fn(), StartAutoStartPortForwards: vi.fn().mockResolvedValue(undefined), SubscribeResourceWatcher: vi.fn(), UnsubscribeWatcher: vi.fn(),
 }));
 const events = vi.hoisted(() => new Map<string, (event: any) => void>());
 vi.mock('react', async importOriginal => ({
@@ -47,7 +47,7 @@ beforeEach(() => {
     harness.states = [];
     harness.refs = [];
     vi.stubGlobal('window', {}); // Browser/server mode has no Wails runtime.
-    vi.stubGlobal('localStorage', { getItem: () => null });
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: vi.fn() });
     render();
     harness.states[1] = 'cluster-a';
     harness.states[8] = false; // Connected.
@@ -113,5 +113,30 @@ describe('namespace selector freshness', () => {
         } finally {
             vi.useRealTimers();
         }
+    });
+});
+
+describe('initial namespace loading', () => {
+    it('starts the namespace request directly and keeps loading visible until completion', async () => {
+        let finish!: (value: any) => void;
+        api.ListNamespacesForContext.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+        render();
+        const cleanup = effectContaining('loadNamespacesAndRestoreState');
+        expect(api.ListNamespacesForContext).toHaveBeenCalledWith('cluster-a');
+        expect(api.StartAutoStartPortForwards).not.toHaveBeenCalled();
+        finish([{ metadata: { name: 'default' } }]);
+        for (let i = 0; i < 12; i++) await Promise.resolve();
+        expect(render().namespaces).toEqual(['', 'default']);
+        expect(api.StartAutoStartPortForwards).toHaveBeenCalledWith('cluster-a');
+        cleanup();
+    });
+    it('does not auto-start forwards after a namespace request fails', async () => {
+        api.ListNamespacesForContext.mockRejectedValue(new Error('connection refused'));
+        render();
+        const cleanup = effectContaining('loadNamespacesAndRestoreState');
+        for (let i = 0; i < 12; i++) await Promise.resolve();
+        expect(render().connectionError).toBeTruthy();
+        expect(api.StartAutoStartPortForwards).not.toHaveBeenCalled();
+        cleanup();
     });
 });

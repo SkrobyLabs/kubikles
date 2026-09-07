@@ -20,7 +20,7 @@ func (a *App) ListJobs(requestId, namespace string) ([]batchv1.Job, error) {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListJobsWithContext(ctx, currentContext, namespace, a.listProgressCallback("jobs"))
@@ -64,7 +64,7 @@ func (a *App) ListCronJobs(requestId, namespace string) ([]batchv1.CronJob, erro
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListCronJobsWithContext(ctx, currentContext, namespace, a.listProgressCallback("cronjobs"))

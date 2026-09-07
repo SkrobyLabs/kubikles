@@ -67,7 +67,7 @@ func (a *App) ListCustomResources(requestId, group, version, resource, namespace
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListCustomResourcesWithContext(ctx, currentContext, group, version, resource, namespace, a.listProgressCallback("customresources"))

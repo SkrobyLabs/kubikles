@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function IngressClassList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { ingressClasses, loading } = useIngressClasses(currentContext, isVisible) as any;
+    const { ingressClasses, loading, loadState } = useIngressClasses(currentContext, isVisible) as any;
     const { handleEditYaml } = useIngressClassActions();
     const selection = useSelection();
 
@@ -72,7 +72,7 @@ export default function IngressClassList({ isVisible }: { isVisible: boolean }) 
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Ingress Classes"
                 columns={columns}
                 data={ingressClasses}

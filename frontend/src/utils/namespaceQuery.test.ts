@@ -69,3 +69,12 @@ describe('namespace list batching', () => {
         expect(list).toHaveBeenCalledTimes(1);
     });
 });
+
+it('bounds payload measurement work on large lists', () => {
+    const serialize = vi.fn(() => ({ value: 'large' }));
+    const items = Array.from({ length: 10000 }, () => ({ toJSON: serialize }));
+    const result = observeNamespaceList(items, 10);
+    expect(serialize).toHaveBeenCalledTimes(32);
+    expect(result.count).toBe(10000);
+    expect(result.bytes).toBeGreaterThan(10000);
+});

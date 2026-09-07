@@ -43,8 +43,21 @@ export function chooseNamespaceScope(
 }
 
 export function observeNamespaceList(items: unknown[], durationMs: number): NamespaceQueryObservation {
-    return { count: items.length, bytes: new TextEncoder().encode(JSON.stringify(items)).byteLength,
-        durationMs, observedAt: Date.now() };
+    // This is a query-planning estimate, not a transport measurement. Bound work
+    // independently of cluster size and sample across the complete list.
+    const sampleSize = Math.min(items.length, 32);
+    const encoder = new TextEncoder();
+    let largest = 0;
+    let total = 2; // JSON array brackets
+    for (let i = 0; i < sampleSize; i++) {
+        const index = sampleSize === items.length ? i : Math.floor(i * items.length / sampleSize);
+        const bytes = encoder.encode(JSON.stringify(items[index]) ?? 'null').byteLength;
+        largest = Math.max(largest, bytes);
+        total += bytes + (i ? 1 : 0);
+    }
+    // Prefer a conservative estimate when sampling heterogeneous objects.
+    const bytes = items.length <= sampleSize ? total : 2 + items.length * (largest + 1);
+    return { count: items.length, bytes, durationMs, observedAt: Date.now() };
 }
 
 export function isNamespaceForbidden(error: unknown): boolean {

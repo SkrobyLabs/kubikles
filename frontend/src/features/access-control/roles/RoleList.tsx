@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function RoleList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { roles, loading } = useRoles(currentContext, selectedNamespaces, isVisible) as any;
+    const { roles, loading, loadState } = useRoles(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useRoleActions();
     const selection = useSelection();
 
@@ -66,7 +66,7 @@ export default function RoleList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Roles"
                 columns={columns}
                 data={roles}

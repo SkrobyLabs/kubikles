@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function LeaseList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { leases, loading } = useLeases(currentContext, selectedNamespaces, isVisible) as any;
+    const { leases, loading, loadState } = useLeases(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useLeaseActions();
     const selection = useSelection();
 
@@ -78,7 +78,7 @@ export default function LeaseList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Leases"
                 columns={columns}
                 data={leases}

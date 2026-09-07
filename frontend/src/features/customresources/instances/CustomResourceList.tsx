@@ -137,7 +137,7 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
     // Fetch CRD printer columns
     const { columns: printerColumns } = useCRDPrinterColumns(crdInfo.group, crdInfo.resource, isVisible);
 
-    const { resources, loading, error } = useCustomResources(
+    const { resources, loading, error, loadState } = useCustomResources(
         currentContext,
         crdInfo.group,
         crdInfo.version,
@@ -232,7 +232,7 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title={crdInfo.kind}
                 columns={columns}
                 data={resources}

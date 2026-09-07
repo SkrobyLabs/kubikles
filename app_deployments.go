@@ -18,7 +18,7 @@ func (a *App) ListDeployments(requestId, namespace string) ([]appsv1.Deployment,
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListDeploymentsWithContext(ctx, namespace, a.listProgressCallback("deployments"))

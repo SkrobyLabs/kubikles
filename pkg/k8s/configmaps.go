@@ -277,6 +277,7 @@ func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace s
 			}
 		}
 
+		pageStart := len(allItems)
 		// Convert rows to SecretListItem
 		for _, row := range table.Rows {
 			item := SecretListItem{}
@@ -327,6 +328,10 @@ func (c *Client) ListSecretsMetadataWithContext(ctx context.Context, namespace s
 			}
 
 			allItems = append(allItems, item)
+		}
+
+		if pageStart > 0 || table.Metadata.Continue != "" {
+			emitListPage(ctx, allItems[pageStart:], len(allItems), table.Metadata.RemainingItemCount, table.Metadata.Continue != "")
 		}
 
 		// Report progress

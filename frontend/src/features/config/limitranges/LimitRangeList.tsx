@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function LimitRangeList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { limitRanges, loading } = useLimitRanges(currentContext, selectedNamespaces, isVisible) as any;
+    const { limitRanges, loading, loadState } = useLimitRanges(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useLimitRangeActions();
     const selection = useSelection();
 
@@ -64,7 +64,7 @@ export default function LimitRangeList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Limit Ranges"
                 columns={columns}
                 data={limitRanges}

@@ -31,7 +31,7 @@ export default function CronJobList({ isVisible }: { isVisible: boolean }) {
         getYamlApi: GetCronJobYaml,
 
     });
-    const { cronJobs, loading } = useCronJobs(currentContext, selectedNamespaces, isVisible) as any;
+    const { cronJobs, loading, loadState } = useCronJobs(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleViewLogs, handleEditYaml, handleShowDependencies, handleRunNow, handleSuspend } = useCronJobActions();
 
     // Format duration for future time (reverse of formatAge)
@@ -206,7 +206,7 @@ export default function CronJobList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="CronJobs"
                 columns={columns}
                 data={cronJobs}

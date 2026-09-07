@@ -52,7 +52,7 @@ export default function EventList({ isVisible }: { isVisible: boolean }) {
         getYamlApi: GetEventYAML,
 
     });
-    const { events, loading } = useEventsList(currentContext, selectedNamespaces, isVisible) as any;
+    const { events, loading, loadState } = useEventsList(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useEventActions();
 
     const columns = useMemo(() => [
@@ -179,7 +179,7 @@ export default function EventList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Events"
                 columns={columns}
                 data={events}

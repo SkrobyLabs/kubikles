@@ -22,7 +22,7 @@ func (a *App) ListNetworkPolicies(requestId, namespace string) ([]networkingv1.N
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListNetworkPoliciesWithContext(ctx, namespace, a.listProgressCallback("networkpolicies"))
@@ -65,7 +65,7 @@ func (a *App) ListHPAs(requestId, namespace string) ([]autoscalingv2.HorizontalP
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListHPAsWithContext(ctx, namespace, a.listProgressCallback("hpas"))
@@ -108,7 +108,7 @@ func (a *App) ListPDBs(requestId, namespace string) ([]policyv1.PodDisruptionBud
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListPDBsWithContext(ctx, namespace, a.listProgressCallback("pdbs"))
@@ -151,7 +151,7 @@ func (a *App) ListResourceQuotas(requestId, namespace string) ([]v1.ResourceQuot
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListResourceQuotasWithContext(ctx, namespace, a.listProgressCallback("resourcequotas"))
@@ -194,7 +194,7 @@ func (a *App) ListLimitRanges(requestId, namespace string) ([]v1.LimitRange, err
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListLimitRangesWithContext(ctx, namespace, a.listProgressCallback("limitranges"))
@@ -236,7 +236,7 @@ func (a *App) ListEndpoints(requestId, namespace string) ([]v1.Endpoints, error)
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListEndpointsWithContext(ctx, namespace, a.listProgressCallback("endpoints"))
@@ -279,7 +279,7 @@ func (a *App) ListEndpointSlices(requestId, namespace string) ([]discoveryv1.End
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListEndpointSlicesWithContext(ctx, namespace, a.listProgressCallback("endpointslices"))

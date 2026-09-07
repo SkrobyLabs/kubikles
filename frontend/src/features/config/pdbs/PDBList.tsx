@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function PDBList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { pdbs, loading } = usePDBs(currentContext, selectedNamespaces, isVisible) as any;
+    const { pdbs, loading, loadState } = usePDBs(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = usePDBActions();
     const selection = useSelection();
 
@@ -74,7 +74,7 @@ export default function PDBList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Pod Disruption Budgets"
                 columns={columns}
                 data={pdbs}

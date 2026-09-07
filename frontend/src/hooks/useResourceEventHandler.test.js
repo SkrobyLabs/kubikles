@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createResourceEventHandler, createNamespacedResourceEventHandler } from './useResourceEventHandler';
+import { applyResourceEvents, createResourceEventHandler, createNamespacedResourceEventHandler } from './useResourceEventHandler';
 
 describe('createResourceEventHandler', () => {
     const createMockResource = (uid, name = 'test-resource') => ({
@@ -363,5 +363,28 @@ describe('createNamespacedResourceEventHandler', () => {
             const result = updater(new Map()); // Empty map = DELETE already processed
             expect(result.size).toBe(0); // Should NOT re-add
         });
+    });
+});
+
+describe('batched resource events', () => {
+    it('preserves ordering, deletion guards and the previous snapshot', () => {
+        const existing = { metadata: { uid: 'a' } };
+        const previous = new Map([['a', existing]]);
+        const result = applyResourceEvents(previous, [
+            { type: 'DELETED', resource: existing },
+            { type: 'MODIFIED', resource: { metadata: { uid: 'a', deletionTimestamp: 'now' } } },
+            { type: 'ADDED', resource: { metadata: { uid: 'b' }, value: 1 } },
+            { type: 'MODIFIED', resource: { metadata: { uid: 'b' }, value: 2 } },
+        ]);
+        expect([...result.keys()]).toEqual(['b']);
+        expect(result.get('b').value).toBe(2);
+        expect(previous.get('a')).toBe(existing);
+    });
+    it('uses a single state update for a batch and retains identity for no-ops', () => {
+        const setter = vi.fn();
+        createResourceEventHandler(setter).batch([{ type: 'DELETED', resource: { metadata: { uid: 'missing' } } }]);
+        expect(setter).toHaveBeenCalledTimes(1);
+        const previous = new Map();
+        expect(setter.mock.calls[0][0](previous)).toBe(previous);
     });
 });

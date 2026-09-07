@@ -152,7 +152,7 @@ describe('namespaced resource fetching and filtering', () => {
     });
     it('cancels every active request and does not launch queued requests after hiding', async () => {
         const resolvers: Array<(value: any[]) => void> = [];
-        const list = vi.fn(() => new Promise<any[]>(resolve => resolvers.push(resolve)));
+        const list = vi.fn((_requestId: string) => new Promise<any[]>(resolve => resolvers.push(resolve)));
         const view = setup(list, ns(10));
         expect(list).toHaveBeenCalledTimes(4);
         view.hide();
@@ -252,5 +252,91 @@ describe('custom resources and watcher integration', () => {
             await view.flush();
             expect(mocks.subscribe.mock.calls.map(call => call[1])).toEqual(['', ...ns(4)]);
         } finally { spy.mockRestore(); }
+    });
+});
+
+describe('navigation snapshots', () => {
+    it('shows cached resources while refreshing and reconciles missed deletions', async () => {
+        const list = vi.fn().mockResolvedValue([item('ns-1', 'old')]);
+        const hook = createNamespacedResourceHook('cache-test', list, 'pods');
+        const first = setup(list, ['*'], { useHook: hook });
+        await first.flush();
+        runner.slots.forEach(slot => slot.cleanup?.());
+        runner.slots = []; runner.index = 0;
+        let finish!: (value: any[]) => void;
+        list.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+        const second = setup(list, ['*'], { useHook: hook });
+        expect(second.render().pods).toEqual([item('ns-1', 'old')]);
+        expect(second.render().loadState.phase).toBe('refreshing');
+        finish([item('ns-1', 'new')]);
+        expect((await second.flush()).pods).toEqual([item('ns-1', 'new')]);
+        expect(second.render().loadState.phase).toBe('complete');
+        const switching = second.context('b');
+        expect(switching.loading).toBe(true);
+        expect(switching.loadState.phase).not.toBe('complete');
+        expect(second.render().pods).toEqual([]);
+    });
+    it('retains rows on failed refresh with an explicit error and retry', async () => {
+        const list = vi.fn().mockResolvedValue([item('ns-1')]);
+        const view = setup(list);
+        await view.flush();
+        list.mockRejectedValue(new Error('network unavailable'));
+        view.render().loadState.retry();
+        const result = await view.flush();
+        expect(result.pods).toEqual([item('ns-1')]);
+        expect(result.loadState.phase).toBe('incomplete');
+        list.mockResolvedValue([]);
+        result.loadState.retry();
+        expect((await view.flush()).loadState.phase).toBe('complete');
+    });
+});
+
+describe('progressive resource loading', () => {
+    const emit = (event: any) => mocks.events.get('list-page')?.forEach(listener => listener(event));
+    it('renders correlated pages before completion and replays deletions over later pages', async () => {
+        let finish!: (value: any[]) => void;
+        const list = vi.fn((_requestId: string) => new Promise<any[]>(resolve => { finish = resolve; }));
+        const hook = createNamespacedResourceHook('pages-order', list, 'pods');
+        const view = setup(list, ['*'], { useHook: hook });
+        const requestId = list.mock.calls[0][0];
+        emit({ requestId: 'unrelated', items: [item('ns-1', 'wrong')], loaded: 1, total: 3 });
+        expect(view.render().pods).toEqual([]);
+        emit({ requestId, context: 'b', items: [item('ns-1', 'wrong')], loaded: 1, total: 3 });
+        expect(view.render().pods).toEqual([]);
+        emit({ requestId, items: [item('ns-1', 'a')], loaded: 1, total: null });
+        expect(view.render().pods).toEqual([item('ns-1', 'a')]);
+        expect(view.render().loadState.phase).toBe('loading');
+        expect(view.render().loadingProgress).toEqual({ loaded: 1, total: 0 });
+        view.event({ type: 'DELETED', resource: item('ns-1', 'a') });
+        emit({ requestId, items: [item('ns-1', 'a'), item('ns-1', 'b')], loaded: 3, total: 3 });
+        expect(view.render().pods).toEqual([item('ns-1', 'b')]);
+        expect(view.render().loading).toBe(true);
+        finish([item('ns-1', 'a'), item('ns-1', 'b')]);
+        expect((await view.flush()).pods).toEqual([item('ns-1', 'b')]);
+        expect(view.render().loadState.phase).toBe('complete');
+    });
+    it('retains partial rows on failure and ignores late pages after cancellation', async () => {
+        let fail!: (error: Error) => void;
+        const list = vi.fn((_requestId: string) => new Promise<any[]>((_resolve, reject) => { fail = reject; }));
+        const hook = createNamespacedResourceHook('pages-failure', list, 'pods');
+        const view = setup(list, ['*'], { useHook: hook });
+        const requestId = list.mock.calls[0][0];
+        emit({ requestId, items: [item('ns-1')], loaded: 1, total: 2 });
+        fail(new Error('connection interrupted'));
+        expect((await view.flush()).loadState.phase).toBe('incomplete');
+        expect(view.render().pods).toEqual([item('ns-1')]);
+        view.context('b');
+        emit({ requestId, items: [item('ns-1', 'late')], loaded: 2, total: 2 });
+        expect(view.render().pods).toEqual([]);
+    });
+    it('aggregates independent namespace progress without claiming an unknown total', async () => {
+        const list = vi.fn((_requestId: string) => new Promise<any[]>(() => {}));
+        const hook = createNamespacedResourceHook('pages-multi', list, 'pods');
+        const view = setup(list, ['ns-1', 'ns-2'], { useHook: hook });
+        emit({ requestId: list.mock.calls[0][0], items: [item('ns-1')], loaded: 1, total: 2 });
+        expect(view.render().loadingProgress).toEqual({ loaded: 1, total: 0 });
+        emit({ requestId: list.mock.calls[1][0], items: [item('ns-2')], loaded: 1, total: 4 });
+        expect(view.render().loadingProgress).toEqual({ loaded: 2, total: 6 });
+        expect(view.render().pods).toHaveLength(2);
     });
 });

@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function EndpointsList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { endpoints, loading } = useEndpoints(currentContext, selectedNamespaces, isVisible) as any;
+    const { endpoints, loading, loadState } = useEndpoints(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useEndpointsActions();
     const selection = useSelection();
 
@@ -97,7 +97,7 @@ export default function EndpointsList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Endpoints"
                 columns={columns}
                 data={endpoints}

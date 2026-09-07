@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function MutatingWebhookList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { mutatingWebhookConfigurations, loading } = useMutatingWebhookConfigurations(currentContext, isVisible) as any;
+    const { mutatingWebhookConfigurations, loading, loadState } = useMutatingWebhookConfigurations(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useMutatingWebhookActions();
     const selection = useSelection();
 
@@ -82,7 +82,7 @@ export default function MutatingWebhookList({ isVisible }: { isVisible: boolean 
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Mutating Webhook Configurations"
                 columns={columns}
                 data={mutatingWebhookConfigurations}

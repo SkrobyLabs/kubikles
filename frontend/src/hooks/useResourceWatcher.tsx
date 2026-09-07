@@ -13,7 +13,7 @@ interface ResourceEvent {
 }
 
 // Event handler callback type
-type ResourceEventHandler = (event: ResourceEvent) => void;
+type ResourceEventHandler = ((event: ResourceEvent) => void) & { batch?: (events: ResourceEvent[]) => void };
 
 /**
  * Creates a stable key from namespaces array that doesn't change on array reordering.
@@ -87,11 +87,9 @@ export const useResourceWatcher = (
         // Batch event listener (for coalesced events from 60fps frame batching)
         const handleBatchEvents = (events: ResourceEvent[]): void => {
             if (!isMounted || !Array.isArray(events)) return;
-            for (const event of events) {
-                if ((!event.context || event.context === currentContext) && event.resourceType === resourceType) {
-                    onEventRef.current(event);
-                }
-            }
+            const matching = events.filter(event => (!event.context || event.context === currentContext) && event.resourceType === resourceType);
+            if (onEventRef.current.batch) onEventRef.current.batch(matching);
+            else matching.forEach(event => onEventRef.current(event));
         };
 
         const cancelEvent = EventsOn("resource-event", handleEvent);
@@ -178,11 +176,9 @@ export const useCRDWatcher = (
         // Batch event listener (for coalesced events from 60fps frame batching)
         const handleBatchEvents = (events: ResourceEvent[]): void => {
             if (!isMounted || !Array.isArray(events)) return;
-            for (const event of events) {
-                if ((!event.context || event.context === currentContext) && event.resourceType === crdResourceType) {
-                    onEventRef.current(event);
-                }
-            }
+            const matching = events.filter(event => (!event.context || event.context === currentContext) && event.resourceType === crdResourceType);
+            if (onEventRef.current.batch) onEventRef.current.batch(matching);
+            else matching.forEach(event => onEventRef.current(event));
         };
 
         const cancelEvent = EventsOn("resource-event", handleEvent);

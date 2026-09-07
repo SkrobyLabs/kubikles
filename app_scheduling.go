@@ -19,7 +19,7 @@ func (a *App) ListPriorityClasses(requestId string) ([]schedulingv1.PriorityClas
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListPriorityClassesWithContext(ctx, a.listProgressCallback("priorityclasses"))
@@ -63,7 +63,7 @@ func (a *App) ListLeases(requestId, namespace string) ([]coordinationv1.Lease, e
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListLeasesWithContext(ctx, currentContext, namespace, a.listProgressCallback("leases"))

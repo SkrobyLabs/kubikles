@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function ClusterRoleBindingList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { clusterRoleBindings, loading } = useClusterRoleBindings(currentContext, isVisible) as any;
+    const { clusterRoleBindings, loading, loadState } = useClusterRoleBindings(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useClusterRoleBindingActions();
     const selection = useSelection();
 
@@ -79,7 +79,7 @@ export default function ClusterRoleBindingList({ isVisible }: { isVisible: boole
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Cluster Role Bindings"
                 columns={columns}
                 data={clusterRoleBindings}

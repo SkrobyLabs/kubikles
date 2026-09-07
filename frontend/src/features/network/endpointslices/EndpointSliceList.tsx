@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function EndpointSliceList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { endpointSlices, loading } = useEndpointSlices(currentContext, selectedNamespaces, isVisible) as any;
+    const { endpointSlices, loading, loadState } = useEndpointSlices(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useEndpointSliceActions();
     const selection = useSelection();
 
@@ -91,7 +91,7 @@ export default function EndpointSliceList({ isVisible }: { isVisible: boolean })
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Endpoint Slices"
                 columns={columns}
                 data={endpointSlices}

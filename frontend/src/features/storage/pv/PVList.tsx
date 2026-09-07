@@ -69,7 +69,7 @@ const renderAccessModes = (modes: any) => {
 export default function PVList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { pvs, loading } = usePVs(currentContext, isVisible) as any;
+    const { pvs, loading, loadState } = usePVs(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = usePVActions();
     const selection = useSelection();
 
@@ -152,7 +152,7 @@ export default function PVList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Persistent Volumes"
                 columns={columns}
                 data={pvs}

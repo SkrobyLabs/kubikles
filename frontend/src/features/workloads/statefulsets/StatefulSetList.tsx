@@ -36,7 +36,7 @@ export default function StatefulSetList({ isVisible }: { isVisible: boolean }) {
         getYamlApi: GetStatefulSetYaml,
 
     });
-    const { statefulSets, loading: statefulSetsLoading } = useStatefulSets(currentContext, selectedNamespaces, isVisible) as any;
+    const { statefulSets, loading: statefulSetsLoading, loadState } = useStatefulSets(currentContext, selectedNamespaces, isVisible) as any;
     // Defer pods fetch until statefulsets are loaded to prioritize showing the list first
     const statefulSetsReady = !statefulSetsLoading && statefulSets.length > 0;
     const { pods: allPods, loading: podsLoading } = usePods(currentContext, selectedNamespaces, isVisible && statefulSetsReady) as any;
@@ -157,7 +157,7 @@ export default function StatefulSetList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="StatefulSets"
                 columns={columns}
                 data={statefulSets}

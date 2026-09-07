@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function NetworkPolicyList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { networkPolicies, loading } = useNetworkPolicies(currentContext, selectedNamespaces, isVisible) as any;
+    const { networkPolicies, loading, loadState } = useNetworkPolicies(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useNetworkPolicyActions();
     const selection = useSelection();
 
@@ -77,7 +77,7 @@ export default function NetworkPolicyList({ isVisible }: { isVisible: boolean })
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Network Policies"
                 columns={columns}
                 data={networkPolicies}

@@ -52,7 +52,7 @@ export default function NamespaceList({ isVisible }: { isVisible: boolean }) {
         getYamlApi: GetNamespaceYAML,
 
     });
-    const { namespaces, loading } = useNamespacesList(currentContext, isVisible) as any;
+    const { namespaces, loading, loadState } = useNamespacesList(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useNamespaceActions();
 
     // Load metrics after namespaces are loaded
@@ -155,7 +155,7 @@ export default function NamespaceList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Namespaces"
                 columns={columns}
                 data={namespaces}

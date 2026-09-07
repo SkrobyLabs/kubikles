@@ -18,7 +18,7 @@ func (a *App) ListPods(requestId, namespace string) ([]v1.Pod, error) {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListPodsWithContext(ctx, namespace, a.listProgressCallback("pods"))

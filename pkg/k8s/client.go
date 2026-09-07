@@ -86,6 +86,10 @@ func paginatedList[T any](
 		pages++
 
 		allItems = append(allItems, items...)
+		// A single-page response is already ready to return; avoid sending it twice.
+		if pages > 1 || continueToken != "" {
+			emitListPage(ctx, items, len(allItems), remaining, continueToken != "")
+		}
 
 		// Report progress
 		total := len(allItems)

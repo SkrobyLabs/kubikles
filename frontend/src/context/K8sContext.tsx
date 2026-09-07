@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ListContexts, GetCurrentContext, SwitchContext, TestConnection, ListNamespacesForContext, StartAutoStartPortForwards, ListCRDs, GetK8sInitError, SubscribeResourceWatcher, UnsubscribeWatcher, StopAllWatchers } from 'wailsjs/go/main/App';
+import { ListContexts, GetCurrentContext, SwitchContext, ListNamespacesForContext, StartAutoStartPortForwards, ListCRDs, GetK8sInitError, SubscribeResourceWatcher, UnsubscribeWatcher, StopAllWatchers } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
 import Logger from '../utils/Logger';
 import { runContextSwitchTransaction } from './contextSwitch';
@@ -120,23 +120,6 @@ interface K8sContextValue {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-// Helper to get connection test timeout (seconds) from settings
-const getConnectionTestTimeout = (): number => {
-    try {
-        const saved = localStorage.getItem('kubikles_settings');
-        if (saved) {
-            const settings = JSON.parse(saved);
-            const timeout = settings?.kubernetes?.connectionTestTimeoutSeconds;
-            if (typeof timeout === 'number' && timeout > 0) {
-                return timeout;
-            }
-        }
-    } catch (e: any) {
-        Logger.error('Failed to read connection test timeout setting', e, 'k8s');
-    }
-    return 5; // Default 5 seconds
-};
 
 const K8sContext = createContext<K8sContextValue | undefined>(undefined);
 
@@ -587,7 +570,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return nextNamespaces;
             } catch (err: any) {
                 Logger.error(background ? "Failed to refresh namespaces in background" : "Failed to fetch namespaces", err, 'k8s');
-                if (!background) {
+                if (!background && currentContextRef.current === contextForRequest) {
                     const parsed = parseConnectionError(err);
                     setConnectionError({
                         ...parsed,
@@ -731,46 +714,20 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const loadNamespacesAndRestoreState = async (): Promise<void> => {
             setIsLoadingNamespaces(true);
 
-            // Quick connectivity check - fail fast if cluster unreachable
-            const connectionTimeout = getConnectionTestTimeout();
-            Logger.debug("Testing connection to cluster...", { context: contextForThisEffect, timeoutSeconds: connectionTimeout }, 'k8s');
-            try {
-                await TestConnection(connectionTimeout);
-                // Check if context changed while we were waiting
-                if (cancelled || currentContextRef.current !== contextForThisEffect) {
-                    Logger.debug("Connection test completed but context changed, ignoring", {
-                        testedContext: contextForThisEffect,
-                        currentContext: currentContextRef.current
-                    }, 'k8s');
-                    return;
-                }
-                Logger.info("Connection test passed", { context: contextForThisEffect }, 'k8s');
-            } catch (connErr) {
-                // Check if context changed while we were waiting
-                if (cancelled || currentContextRef.current !== contextForThisEffect) {
-                    Logger.debug("Connection test failed but context changed, ignoring", {
-                        testedContext: contextForThisEffect,
-                        currentContext: currentContextRef.current
-                    }, 'k8s');
-                    return;
-                }
-                Logger.error("Connection test failed", { context: contextForThisEffect, error: connErr }, 'k8s');
-                const parsed = parseConnectionError(String(connErr));
-                setConnectionError({
-                    ...parsed,
-                    raw: String(connErr)
-                });
-                setIsConnecting(false);
-                setIsLoadingNamespaces(false);
-                return; // Don't proceed with namespace loading if connection fails
-            }
-
+            // The namespace request establishes connectivity and already has a
+            // backend API deadline; avoid a separate /api request on the critical path.
             const loadedNamespaces = await loadNamespaces(contextForThisEffect);
 
             // Check again after namespace fetch
             if (cancelled || currentContextRef.current !== contextForThisEffect) {
                 Logger.debug("Namespace fetch completed but context changed, ignoring", undefined, 'k8s');
                 return;
+            }
+
+            if (!loadedNamespaces) {
+                setIsLoadingNamespaces(false);
+                setIsConnecting(false);
+                return; // Keep the namespace request's error and do not start forwards.
             }
 
             // After namespaces are loaded, restore saved state

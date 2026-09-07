@@ -31,49 +31,28 @@ type SetResourceMapState<T extends WatchableResource = WatchableResource> = Reac
  * const handleEvent = useCallback(createResourceEventHandler(setDataMap), []);
  * useResourceWatcher("namespaces", "", handleEvent, isVisible);
  */
+export function applyResourceEvents<T extends WatchableResource>(previous: Map<string, T>, events: ResourceEvent<T>[]): Map<string, T> {
+    let next = previous;
+    for (const { type, resource } of events) {
+        const uid = resource?.metadata?.uid;
+        if (!uid) continue;
+        const exists = next.has(uid);
+        if (type === 'ADDED' && exists) continue;
+        if (type === 'DELETED' && !exists) continue;
+        if (type === 'MODIFIED' && !exists && resource.metadata?.deletionTimestamp) continue;
+        if (type !== 'ADDED' && type !== 'MODIFIED' && type !== 'DELETED') continue;
+        if (next === previous) next = new Map(previous);
+        if (type === 'DELETED') next.delete(uid);
+        else next.set(uid, resource);
+    }
+    return next;
+}
+
 export const createResourceEventHandler = <T extends WatchableResource = WatchableResource>(
     setState: SetResourceMapState<T>
-): ResourceEventHandler<T> => (event: ResourceEvent<T>): void => {
-    const { type, resource } = event;
-
-    setState(prev => {
-        const uid = resource?.metadata?.uid;
-        if (!uid) return prev;
-
-        switch (type) {
-            case 'ADDED':
-                // Avoid duplicates - O(1) check
-                if (prev.has(uid)) return prev;
-                { const next = new Map(prev); next.set(uid, resource); return next; }
-
-            case 'MODIFIED': {
-                // Replace existing or add if not found (handles race condition)
-                if (prev.has(uid)) {
-                    const next = new Map(prev);
-                    next.set(uid, resource);
-                    return next;
-                }
-                // MODIFIED arrived before ADDED - treat as add, but NOT if the
-                // resource is being deleted (has deletionTimestamp). A MODIFIED
-                // for a non-existent resource with deletionTimestamp means the
-                // DELETE was already processed and this is a stale event.
-                if (resource?.metadata?.deletionTimestamp) {
-                    return prev;
-                }
-                const next = new Map(prev);
-                next.set(uid, resource);
-                return next;
-            }
-
-            case 'DELETED':
-                // O(1) check and removal
-                if (!prev.has(uid)) return prev;
-                { const next = new Map(prev); next.delete(uid); return next; }
-
-            default:
-                return prev;
-        }
-    });
+) => {
+    const batch = (events: ResourceEvent<T>[]) => setState(previous => applyResourceEvents(previous, events));
+    return Object.assign((event: ResourceEvent<T>) => batch([event]), { batch });
 };
 
 /**

@@ -41,8 +41,9 @@ export default function DeploymentList({ isVisible }: DeploymentListProps) {
         getYamlApi: GetDeploymentYaml,
     });
     // console.log("DeploymentList rendering");
-    const { deployments, loading: deploymentsLoading } = useDeployments(currentContext, selectedNamespaces, isVisible) as unknown as {
+    const { deployments, loading: deploymentsLoading, loadState } = useDeployments(currentContext, selectedNamespaces, isVisible) as unknown as {
         deployments: K8sDeployment[];
+        loadState: import('~/hooks/useResource').ResourceLoadState;
         loading: boolean;
     };
     // Defer pods fetch until deployments are loaded to prioritize showing deployment list first
@@ -210,7 +211,7 @@ export default function DeploymentList({ isVisible }: DeploymentListProps) {
     return (
         <>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Deployments"
                 columns={columns as any}
                 data={deployments}

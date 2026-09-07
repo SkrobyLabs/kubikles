@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function ValidatingWebhookList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { validatingWebhookConfigurations, loading } = useValidatingWebhookConfigurations(currentContext, isVisible) as any;
+    const { validatingWebhookConfigurations, loading, loadState } = useValidatingWebhookConfigurations(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useValidatingWebhookActions();
     const selection = useSelection();
 
@@ -73,7 +73,7 @@ export default function ValidatingWebhookList({ isVisible }: { isVisible: boolea
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Validating Webhook Configurations"
                 columns={columns}
                 data={validatingWebhookConfigurations}

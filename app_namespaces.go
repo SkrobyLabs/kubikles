@@ -22,7 +22,7 @@ func (a *App) ListNamespaces(requestId string) ([]v1.Namespace, error) {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListNamespacesWithContext(ctx, a.listProgressCallback("namespaces"))

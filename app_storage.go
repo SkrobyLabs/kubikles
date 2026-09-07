@@ -21,7 +21,7 @@ func (a *App) ListPVCs(requestId, namespace string) ([]v1.PersistentVolumeClaim,
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListPVCsWithContext(ctx, currentContext, namespace, a.listProgressCallback("pvcs"))
@@ -75,7 +75,7 @@ func (a *App) ListPVs(requestId string) ([]v1.PersistentVolume, error) {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListPVsWithContext(ctx, currentContext, a.listProgressCallback("pvs"))
@@ -120,7 +120,7 @@ func (a *App) ListStorageClasses(requestId string) ([]storagev1.StorageClass, er
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListStorageClassesWithContext(ctx, currentContext, a.listProgressCallback("storageclasses"))

@@ -19,7 +19,7 @@ func (a *App) ListServiceAccounts(requestId, namespace string) ([]v1.ServiceAcco
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListServiceAccountsWithContext(ctx, namespace, a.listProgressCallback("serviceaccounts"))
@@ -62,7 +62,7 @@ func (a *App) ListRoles(requestId, namespace string) ([]rbacv1.Role, error) {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListRolesWithContext(ctx, namespace, a.listProgressCallback("roles"))
@@ -105,7 +105,7 @@ func (a *App) ListClusterRoles(requestId string) ([]rbacv1.ClusterRole, error) {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListClusterRolesWithContext(ctx, a.listProgressCallback("clusterroles"))
@@ -148,7 +148,7 @@ func (a *App) ListRoleBindings(requestId, namespace string) ([]rbacv1.RoleBindin
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListRoleBindingsWithContext(ctx, namespace, a.listProgressCallback("rolebindings"))
@@ -191,7 +191,7 @@ func (a *App) ListClusterRoleBindings(requestId string) ([]rbacv1.ClusterRoleBin
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListClusterRoleBindingsWithContext(ctx, a.listProgressCallback("clusterrolebindings"))

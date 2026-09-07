@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useMemo, useState } from 'react';
 import {
     K8sProvider, useK8s,
     UIProvider, useUI,
@@ -15,16 +15,56 @@ import BottomPanel from '~/components/layout/BottomPanel';
 import AIPanel from '~/components/layout/AIPanel';
 import ToastContainer from '~/components/shared/ToastContainer';
 // Feature imports - organized by category
-import { PodList, DeploymentList, StatefulSetList, DaemonSetList, ReplicaSetList, JobList, CronJobList } from '~/features/workloads';
-import { NodeList, NamespaceList, EventList, MetricsList, MetricsOverview, ValidatingWebhookList, MutatingWebhookList, PriorityClassList, EmbeddedBrowser } from '~/features/cluster';
-import { ServiceList, IngressList, IngressClassList, NetworkPolicyList, EndpointsList, EndpointSliceList } from '~/features/network';
-import { ConfigMapList, SecretList, HPAList, PDBList, ResourceQuotaList, LimitRangeList, LeaseList } from '~/features/config';
-import { PVCList, PVList, StorageClassList, CSIDriverList, CSINodeList } from '~/features/storage';
-import { ServiceAccountList, RoleList, ClusterRoleList, RoleBindingList, ClusterRoleBindingList } from '~/features/access-control';
-import { CRDList, CustomResourceList } from '~/features/customresources';
-import { HelmReleaseList, HelmRepoList } from '~/features/helm';
-import { PortForwardList } from '~/features/portforwards';
-import { FlowTimeline, MultiLogViewer, ResourceDiff, RBACChecker, IssueDetector, ScratchPad } from '~/features/diagnostics';
+const PodList = lazy(() => import('~/features/workloads/pods/PodList'));
+const DeploymentList = lazy(() => import('~/features/workloads/deployments/DeploymentList'));
+const StatefulSetList = lazy(() => import('~/features/workloads/statefulsets/StatefulSetList'));
+const DaemonSetList = lazy(() => import('~/features/workloads/daemonsets/DaemonSetList'));
+const ReplicaSetList = lazy(() => import('~/features/workloads/replicasets/ReplicaSetList'));
+const JobList = lazy(() => import('~/features/workloads/jobs/JobList'));
+const CronJobList = lazy(() => import('~/features/workloads/cronjobs/CronJobList'));
+const NodeList = lazy(() => import('~/features/cluster/nodes/NodeList'));
+const NamespaceList = lazy(() => import('~/features/cluster/namespaces/NamespaceList'));
+const EventList = lazy(() => import('~/features/cluster/events/EventList'));
+const MetricsList = lazy(() => import('~/features/cluster/metrics/MetricsList'));
+const MetricsOverview = lazy(() => import('~/features/cluster/metrics/MetricsOverview'));
+const ValidatingWebhookList = lazy(() => import('~/features/cluster/webhooks/ValidatingWebhookList'));
+const MutatingWebhookList = lazy(() => import('~/features/cluster/webhooks/MutatingWebhookList'));
+const PriorityClassList = lazy(() => import('~/features/cluster/priorityclasses/PriorityClassList'));
+const EmbeddedBrowser = lazy(() => import('~/features/cluster/embeddedbrowser/EmbeddedBrowser'));
+const ServiceList = lazy(() => import('~/features/network/services/ServiceList'));
+const IngressList = lazy(() => import('~/features/network/ingresses/IngressList'));
+const IngressClassList = lazy(() => import('~/features/network/ingressclasses/IngressClassList'));
+const NetworkPolicyList = lazy(() => import('~/features/network/networkpolicies/NetworkPolicyList'));
+const EndpointsList = lazy(() => import('~/features/network/endpoints/EndpointsList'));
+const EndpointSliceList = lazy(() => import('~/features/network/endpointslices/EndpointSliceList'));
+const ConfigMapList = lazy(() => import('~/features/config/configmaps/ConfigMapList'));
+const SecretList = lazy(() => import('~/features/config/secrets/SecretList'));
+const HPAList = lazy(() => import('~/features/config/hpas/HPAList'));
+const PDBList = lazy(() => import('~/features/config/pdbs/PDBList'));
+const ResourceQuotaList = lazy(() => import('~/features/config/resourcequotas/ResourceQuotaList'));
+const LimitRangeList = lazy(() => import('~/features/config/limitranges/LimitRangeList'));
+const LeaseList = lazy(() => import('~/features/config/leases/LeaseList'));
+const PVCList = lazy(() => import('~/features/storage/pvc/PVCList'));
+const PVList = lazy(() => import('~/features/storage/pv/PVList'));
+const StorageClassList = lazy(() => import('~/features/storage/storageclass/StorageClassList'));
+const CSIDriverList = lazy(() => import('~/features/storage/csidrivers/CSIDriverList'));
+const CSINodeList = lazy(() => import('~/features/storage/csinodes/CSINodeList'));
+const ServiceAccountList = lazy(() => import('~/features/access-control/serviceaccounts/ServiceAccountList'));
+const RoleList = lazy(() => import('~/features/access-control/roles/RoleList'));
+const ClusterRoleList = lazy(() => import('~/features/access-control/clusterroles/ClusterRoleList'));
+const RoleBindingList = lazy(() => import('~/features/access-control/rolebindings/RoleBindingList'));
+const ClusterRoleBindingList = lazy(() => import('~/features/access-control/clusterrolebindings/ClusterRoleBindingList'));
+const CRDList = lazy(() => import('~/features/customresources/definitions/CRDList'));
+const CustomResourceList = lazy(() => import('~/features/customresources/instances/CustomResourceList'));
+const HelmReleaseList = lazy(() => import('~/features/helm/releases/HelmReleaseList'));
+const HelmRepoList = lazy(() => import('~/features/helm/repos/HelmRepoList'));
+const PortForwardList = lazy(() => import('~/features/portforwards/PortForwardList'));
+const FlowTimeline = lazy(() => import('~/features/diagnostics/FlowTimeline'));
+const MultiLogViewer = lazy(() => import('~/features/diagnostics/MultiLogViewer'));
+const ResourceDiff = lazy(() => import('~/features/diagnostics/ResourceDiff'));
+const RBACChecker = lazy(() => import('~/features/diagnostics/RBACChecker'));
+const IssueDetector = lazy(() => import('~/features/diagnostics/IssueDetector'));
+const ScratchPad = lazy(() => import('~/features/diagnostics/ScratchPad'));
 import { usePerformancePanel } from '~/hooks/usePerformancePanel';
 import { LogMessage, SetEventCoalescerFrameInterval, SetExtraKubeconfigPaths, SetK8sAPITimeout } from 'wailsjs/go/main/App';
 import { EventsOn } from 'wailsjs/runtime/runtime';
@@ -730,7 +770,13 @@ function MainLayout() {
                                 data-selectable-region
                                 tabIndex={-1}
                             >
-                                {renderContent()}
+                                <Suspense key={activeView} fallback={
+                                    <div role="status" aria-live="polite" className="flex h-full items-center justify-center text-gray-400">
+                                        Loading view…
+                                    </div>
+                                }>
+                                    {renderContent()}
+                                </Suspense>
                             </div>
 
                             {/* Bottom Pane */}

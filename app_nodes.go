@@ -18,7 +18,7 @@ func (a *App) ListNodes(requestId string) ([]v1.Node, error) {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListNodesWithContext(ctx, a.listProgressCallback("nodes"))

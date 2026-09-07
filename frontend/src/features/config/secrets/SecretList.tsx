@@ -17,7 +17,7 @@ const HELM_RELEASE_SECRET_TYPE = 'helm.sh/release.v1';
 export default function SecretList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { secrets, loading } = useSecrets(currentContext, selectedNamespaces, isVisible) as any;
+    const { secrets, loading, loadState } = useSecrets(currentContext, selectedNamespaces, isVisible) as any;
     const [hideHelmSecrets, setHideHelmSecrets] = useState(true);
 
     // Filter out Helm release secrets if toggle is enabled
@@ -108,7 +108,7 @@ export default function SecretList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Secrets"
                 columns={columns}
                 data={filteredSecrets}

@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function ServiceAccountList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { serviceAccounts, loading } = useServiceAccounts(currentContext, selectedNamespaces, isVisible) as any;
+    const { serviceAccounts, loading, loadState } = useServiceAccounts(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useServiceAccountActions();
     const selection = useSelection();
 
@@ -66,7 +66,7 @@ export default function ServiceAccountList({ isVisible }: { isVisible: boolean }
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Service Accounts"
                 columns={columns}
                 data={serviceAccounts}

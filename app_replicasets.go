@@ -20,7 +20,7 @@ func (a *App) ListReplicaSets(requestId, namespace string) ([]appsv1.ReplicaSet,
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListReplicaSetsWithContext(ctx, currentContext, namespace, a.listProgressCallback("replicasets"))

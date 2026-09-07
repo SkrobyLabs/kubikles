@@ -49,7 +49,7 @@ export default function ReplicaSetList({ isVisible }: { isVisible: boolean }) {
         getYamlApi: GetReplicaSetYaml,
 
     });
-    const { replicaSets, loading } = useReplicaSets(currentContext, selectedNamespaces, isVisible) as any;
+    const { replicaSets, loading, loadState } = useReplicaSets(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useReplicaSetActions();
     const { addNotification } = useNotification();
     const [scaleTarget, setScaleTarget] = useState<any>(null);
@@ -134,7 +134,7 @@ export default function ReplicaSetList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="ReplicaSets"
                 columns={columns}
                 data={replicaSets}

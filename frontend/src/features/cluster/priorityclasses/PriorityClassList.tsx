@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function PriorityClassList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { priorityClasses, loading } = usePriorityClasses(currentContext, isVisible) as any;
+    const { priorityClasses, loading, loadState } = usePriorityClasses(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = usePriorityClassActions();
     const selection = useSelection();
 
@@ -90,7 +90,7 @@ export default function PriorityClassList({ isVisible }: { isVisible: boolean })
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Priority Classes"
                 columns={columns}
                 data={priorityClasses}

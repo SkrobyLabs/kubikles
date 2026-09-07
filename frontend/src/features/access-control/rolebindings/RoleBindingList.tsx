@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function RoleBindingList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { roleBindings, loading } = useRoleBindings(currentContext, selectedNamespaces, isVisible) as any;
+    const { roleBindings, loading, loadState } = useRoleBindings(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useRoleBindingActions();
     const selection = useSelection();
 
@@ -80,7 +80,7 @@ export default function RoleBindingList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Role Bindings"
                 columns={columns}
                 data={roleBindings}

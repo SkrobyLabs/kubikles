@@ -18,7 +18,7 @@ func (a *App) ListValidatingWebhookConfigurations(requestId string) ([]admission
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListValidatingWebhookConfigurationsWithContext(ctx, a.listProgressCallback("validatingwebhookconfigurations"))
@@ -61,7 +61,7 @@ func (a *App) ListMutatingWebhookConfigurations(requestId string) ([]admissionre
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListMutatingWebhookConfigurationsWithContext(ctx, a.listProgressCallback("mutatingwebhookconfigurations"))

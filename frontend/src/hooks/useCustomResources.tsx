@@ -1,13 +1,14 @@
 import { useMemo } from 'react';
 import { ListCustomResources } from 'wailsjs/go/main/App';
 import { useCRDWatcher } from './useResourceWatcher';
-import { createNamespacedResourceHook } from './useResource';
+import { createNamespacedResourceHook, type ResourceLoadState } from './useResource';
 import { K8sResource } from '../types/k8s';
 
 interface UseCustomResourcesResult {
     resources: K8sResource[];
     loading: boolean;
     error: Error | null;
+    loadState: ResourceLoadState;
 }
 
 /** Custom resources use the same query planning, cancellation and filtering as built-in resources. */
@@ -28,5 +29,5 @@ export const useCustomResources = (
     ), [group, version, resource]);
     const result = useResources(currentContext, isNamespaced ? selectedNamespaces : ['*'],
         Boolean(isVisible && group && version && resource));
-    return { resources: result.resources as K8sResource[], loading: result.loading, error: result.error };
+    return { resources: result.resources as K8sResource[], loading: result.loading, error: result.error, loadState: result.loadState };
 };

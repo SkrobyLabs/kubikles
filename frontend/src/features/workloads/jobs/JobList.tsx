@@ -48,7 +48,7 @@ export default function JobList({ isVisible }: { isVisible: boolean }) {
         getYamlApi: GetJobYaml,
 
     });
-    const { jobs, loading } = useJobs(currentContext, selectedNamespaces, isVisible) as any;
+    const { jobs, loading, loadState } = useJobs(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useJobActions();
 
     const getCompletions = (job: any) => {
@@ -216,7 +216,7 @@ export default function JobList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Jobs"
                 columns={columns}
                 data={jobs}

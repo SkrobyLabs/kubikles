@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function HPAList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { hpas, loading } = useHPAs(currentContext, selectedNamespaces, isVisible) as any;
+    const { hpas, loading, loadState } = useHPAs(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useHPAActions();
     const selection = useSelection();
 
@@ -78,7 +78,7 @@ export default function HPAList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Horizontal Pod Autoscalers"
                 columns={columns}
                 data={hpas}

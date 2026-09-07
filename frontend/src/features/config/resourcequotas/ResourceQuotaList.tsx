@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function ResourceQuotaList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { resourceQuotas, loading } = useResourceQuotas(currentContext, selectedNamespaces, isVisible) as any;
+    const { resourceQuotas, loading, loadState } = useResourceQuotas(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = useResourceQuotaActions();
     const selection = useSelection();
 
@@ -64,7 +64,7 @@ export default function ResourceQuotaList({ isVisible }: { isVisible: boolean })
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Resource Quotas"
                 columns={columns}
                 data={resourceQuotas}

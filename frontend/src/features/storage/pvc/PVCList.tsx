@@ -54,7 +54,7 @@ const renderAccessModes = (modes: any) => {
 export default function PVCList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { pvcs, loading } = usePVCs(currentContext, selectedNamespaces, isVisible) as any;
+    const { pvcs, loading, loadState } = usePVCs(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies } = usePVCActions();
     const selection = useSelection();
 
@@ -144,7 +144,7 @@ export default function PVCList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Persistent Volume Claims"
                 columns={columns}
                 data={pvcs}

@@ -41,7 +41,7 @@ const getBindingModeColor = (mode: any) => {
 export default function StorageClassList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { storageClasses, loading } = useStorageClasses(currentContext, isVisible) as any;
+    const { storageClasses, loading, loadState } = useStorageClasses(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useStorageClassActions();
     const selection = useSelection();
 
@@ -123,7 +123,7 @@ export default function StorageClassList({ isVisible }: { isVisible: boolean }) 
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Storage Classes"
                 columns={columns}
                 data={storageClasses}

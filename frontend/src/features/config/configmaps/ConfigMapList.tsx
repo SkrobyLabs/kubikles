@@ -113,7 +113,7 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
             if (err && err.toString() !== '') addNotification({ type: 'error', title: 'Failed to save backup', message: String(err) });
         }
     }, []);
-    const { configMaps, loading } = useConfigMaps(currentContext, selectedNamespaces, isVisible) as any;
+    const { configMaps, loading, loadState } = useConfigMaps(currentContext, selectedNamespaces, isVisible) as any;
     const { handleEditYaml, handleEditKeyValue, handleShowDependencies, handleDelete } = useConfigMapActions();
 
     // Filter out system ConfigMaps if toggle is enabled
@@ -195,7 +195,7 @@ export default function ConfigMapList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="ConfigMaps"
                 columns={columns}
                 data={filteredConfigMaps}

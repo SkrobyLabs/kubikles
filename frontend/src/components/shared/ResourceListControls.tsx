@@ -36,12 +36,13 @@ export const SearchHighlightOverlay = React.memo(({ query }: { query: string }) 
 // Tri-state checkbox props
 export interface TriStateCheckboxProps {
     state: 'none' | 'some' | 'all';
+    label?: string;
     onChange: () => void;
     disabled?: boolean;
 }
 
 // Tri-state checkbox component for header (memoized to prevent re-renders)
-export const TriStateCheckbox = React.memo(({ state, onChange, disabled = false }: TriStateCheckboxProps) => {
+export const TriStateCheckbox = React.memo(({ state, onChange, disabled = false, label = 'Select all' }: TriStateCheckboxProps) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         e.stopPropagation();
         if (!disabled) onChange();
@@ -50,6 +51,8 @@ export const TriStateCheckbox = React.memo(({ state, onChange, disabled = false 
     return (
         <input
             type="checkbox"
+            aria-label={label}
+            title={label}
             checked={state === 'all'}
             ref={(el) => { if (el) el.indeterminate = state === 'some'; }}
             onChange={handleChange}

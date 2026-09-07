@@ -111,7 +111,7 @@ const STORAGE_KEY = 'kubikles-nodes-view';
 export default function NodeList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { nodes, loading, refetch } = useNodes(currentContext, isVisible) as any;
+    const { nodes, loading, refetch, loadState } = useNodes(currentContext, isVisible) as any;
     // Delay metrics fetch until nodes are loaded to prioritize showing node list first
     const { metrics, available: metricsAvailable } = useNodeMetrics(isVisible, !loading && nodes.length > 0);
     const nodeActions = useNodeActions(refetch);
@@ -394,7 +394,7 @@ export default function NodeList({ isVisible }: { isVisible: boolean }) {
 
     if (viewMode === 'topology') {
         return (
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Nodes"
                 columns={columns}
                 data={nodes}

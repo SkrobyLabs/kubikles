@@ -33,7 +33,7 @@ export default function DaemonSetList({ isVisible }: { isVisible: boolean }) {
         getYamlApi: GetDaemonSetYaml,
 
     });
-    const { daemonSets, loading } = useDaemonSets(currentContext, selectedNamespaces, isVisible) as any;
+    const { daemonSets, loading, loadState } = useDaemonSets(currentContext, selectedNamespaces, isVisible) as any;
     const { handleShowDetails, handleEditYaml, handleShowDependencies, handleViewLogs } = useDaemonSetActions();
 
     const columns = useMemo(() => [
@@ -139,7 +139,7 @@ export default function DaemonSetList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="DaemonSets"
                 columns={columns}
                 data={daemonSets}

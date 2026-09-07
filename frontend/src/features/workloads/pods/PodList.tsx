@@ -53,7 +53,7 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
         getYamlApi: GetPodYaml,
 
     });
-    const { pods: rawPods, loading } = usePods(currentContext, selectedNamespaces, isVisible) as any;
+    const { pods: rawPods, loading, loadState } = usePods(currentContext, selectedNamespaces, isVisible) as any;
     const pods: any[] = rawPods || [];
     // Delay metrics fetch until pods are loaded to prioritize showing pod list first
     const { metrics, available: metricsAvailable } = usePodMetrics(isVisible, !loading && pods.length > 0);
@@ -426,7 +426,7 @@ export default function PodList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Pods"
                 columns={columns}
                 data={pods}

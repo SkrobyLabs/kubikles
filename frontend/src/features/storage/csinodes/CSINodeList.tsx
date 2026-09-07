@@ -15,7 +15,7 @@ import { useMenuPosition } from '~/hooks/useMenuPosition';
 export default function CSINodeList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { csiNodes, loading } = useCSINodes(currentContext, isVisible) as any;
+    const { csiNodes, loading, loadState } = useCSINodes(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useCSINodeActions();
     const selection = useSelection();
 
@@ -83,7 +83,7 @@ export default function CSINodeList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="CSI Nodes"
                 columns={columns}
                 data={csiNodes}

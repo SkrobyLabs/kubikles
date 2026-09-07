@@ -22,7 +22,7 @@ const BooleanIcon = ({ value }: any) => {
 export default function CSIDriverList({ isVisible }: { isVisible: boolean }) {
     const { currentContext } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { csiDrivers, loading } = useCSIDrivers(currentContext, isVisible) as any;
+    const { csiDrivers, loading, loadState } = useCSIDrivers(currentContext, isVisible) as any;
     const { handleShowDetails, handleEditYaml } = useCSIDriverActions();
     const selection = useSelection();
 
@@ -104,7 +104,7 @@ export default function CSIDriverList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="CSI Drivers"
                 columns={columns}
                 data={csiDrivers}

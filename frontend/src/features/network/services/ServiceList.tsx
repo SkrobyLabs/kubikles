@@ -18,7 +18,7 @@ const getPortsDisplay = (item: any) => item.spec?.ports?.map((p: any) => `${p.po
 export default function ServiceList({ isVisible }: { isVisible: boolean }) {
     const { currentContext, selectedNamespaces, setSelectedNamespaces, namespaces } = useK8s();
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
-    const { services, loading } = useServices(currentContext, selectedNamespaces, isVisible) as any;
+    const { services, loading, loadState } = useServices(currentContext, selectedNamespaces, isVisible) as any;
     const { handleEditYaml, handleShowDependencies, handleShowDetails } = useServiceActions();
     const selection = useSelection();
 
@@ -102,7 +102,7 @@ export default function ServiceList({ isVisible }: { isVisible: boolean }) {
 
     return (
         <>
-            <ResourceList
+            <ResourceList loadState={loadState}
                 title="Services"
                 columns={columns}
                 data={services}

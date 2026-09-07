@@ -18,7 +18,7 @@ func (a *App) ListServices(requestId, namespace string) ([]v1.Service, error) {
 		return nil, fmt.Errorf("k8s client not initialized")
 	}
 	if requestId != "" {
-		ctx, seq := a.listRequestManager.StartRequest(requestId)
+		ctx, seq := a.startResourceListRequest(requestId)
 		defer a.listRequestManager.CompleteRequest(requestId, seq)
 
 		result, err := a.k8sClient.ListServicesWithContext(ctx, namespace, a.listProgressCallback("services"))
