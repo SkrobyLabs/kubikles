@@ -13,6 +13,7 @@ This index groups the docs by purpose.
 ## Features
 
 - [Real-time Resource Browsing](features/resource-browsing.md)
+- [Operator Actions and CRD Coverage](operator-actions.md)
 - [Workload Access: Logs, Shell & Files](features/workload-access.md)
 - [Port & Ingress Forwarding](features/forwarding.md)
 - [Dependency & Topology Graphs](features/dependency-graph.md)

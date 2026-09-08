@@ -266,6 +266,10 @@ export function EvictPod(arg1, arg2) {
   return window['go']['main']['App']['EvictPod'](arg1, arg2);
 }
 
+export function ExecuteResourceAction(arg1) {
+  return window['go']['main']['App']['ExecuteResourceAction'](arg1);
+}
+
 export function ExpandDependencyNode(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['ExpandDependencyNode'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -666,6 +670,10 @@ export function GetReplicaSetYaml(arg1, arg2) {
   return window['go']['main']['App']['GetReplicaSetYaml'](arg1, arg2);
 }
 
+export function GetResourceActions(arg1, arg2) {
+  return window['go']['main']['App']['GetResourceActions'](arg1, arg2);
+}
+
 export function GetResourceDependencies(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetResourceDependencies'](arg1, arg2, arg3);
 }
@@ -996,6 +1004,10 @@ export function OpenIssueRulesDir() {
 
 export function OpenThemesDir() {
   return window['go']['main']['App']['OpenThemesDir']();
+}
+
+export function PrepareResourceAction(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PrepareResourceAction'](arg1, arg2, arg3);
 }
 
 export function RefreshIngressHostnames(arg1) {

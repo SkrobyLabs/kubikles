@@ -451,3 +451,7 @@ export function UploadToPod(...args) { return AppProxy.UploadToPod(...args); }
 
 // Also export the proxy itself for dynamic access
 export default AppProxy;
+
+export function GetResourceActions(group, resource) { return AppProxy.GetResourceActions(group, resource); }
+export function PrepareResourceAction(ref, actionID, mode) { return AppProxy.PrepareResourceAction(ref, actionID, mode); }
+export function ExecuteResourceAction(plan) { return AppProxy.ExecuteResourceAction(plan); }

@@ -305,12 +305,13 @@ func extractPkgRefs(typeStr string, refs map[string]bool) {
 
 // knownPackages maps short package names to their import paths.
 var knownPackages = map[string]string{
-	"helm":          "kubikles/pkg/helm",
-	"k8s":           "kubikles/pkg/k8s",
-	"terminal":      "kubikles/pkg/terminal",
-	"events":        "kubikles/pkg/events",
-	"tools":         "kubikles/pkg/tools",
-	"issuedetector": "kubikles/pkg/issuedetector",
+	"resourceactions": "kubikles/pkg/resourceactions",
+	"helm":            "kubikles/pkg/helm",
+	"k8s":             "kubikles/pkg/k8s",
+	"terminal":        "kubikles/pkg/terminal",
+	"events":          "kubikles/pkg/events",
+	"tools":           "kubikles/pkg/tools",
+	"issuedetector":   "kubikles/pkg/issuedetector",
 }
 
 // generateDispatcher produces the Go source code for the dispatch file.

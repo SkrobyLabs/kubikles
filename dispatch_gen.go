@@ -9,6 +9,7 @@ import (
 	"kubikles/pkg/events"
 	"kubikles/pkg/helm"
 	"kubikles/pkg/k8s"
+	"kubikles/pkg/resourceactions"
 	"kubikles/pkg/server"
 	"kubikles/pkg/terminal"
 )
@@ -681,6 +682,13 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 			return nil, err
 		}
 		return nil, c.app.EvictPod(p0, p1)
+	case "ExecuteResourceAction":
+		p0, err := unmarshalArg[resourceactions.Plan](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.ExecuteResourceAction(p0)
+		return result, err
 	case "ExpandDependencyNode":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2060,6 +2068,16 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		}
 		result, err := c.app.GetReplicaSetYaml(p0, p1)
 		return result, err
+	case "GetResourceActions":
+		p0, err := unmarshalArg[string](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[string](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		return c.app.GetResourceActions(p0, p1), nil
 	case "GetResourceDependencies":
 		p0, err := unmarshalArg[string](args, 0)
 		if err != nil {
@@ -2771,6 +2789,21 @@ func (c *AppMethodCaller) CallMethod(methodName string, args []json.RawMessage) 
 		return nil, c.app.OpenIssueRulesDir()
 	case "OpenThemesDir":
 		return nil, c.app.OpenThemesDir()
+	case "PrepareResourceAction":
+		p0, err := unmarshalArg[resourceactions.ResourceRef](args, 0)
+		if err != nil {
+			return nil, err
+		}
+		p1, err := unmarshalArg[string](args, 1)
+		if err != nil {
+			return nil, err
+		}
+		p2, err := unmarshalArg[string](args, 2)
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.app.PrepareResourceAction(p0, p1, p2)
+		return result, err
 	case "RefreshIngressHostnames":
 		p0, err := unmarshalArg[[]string](args, 0)
 		if err != nil {

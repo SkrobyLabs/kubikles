@@ -1,3 +1,4 @@
+import { useOperatorActions } from '../actions/useOperatorActions';
 import React, { useMemo, useCallback } from 'react';
 import ResourceList from '~/components/shared/ResourceList';
 import BulkActionModal from '~/components/shared/BulkActionModal';
@@ -100,6 +101,7 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
     const { activeMenuId, menuPosition, handleMenuOpenChange } = useMenuPosition();
     const { handleShowDetails, handleEditYaml } = useCustomResourceActions(crdInfo);
     const selection = useSelection();
+    const operator = useOperatorActions(crdInfo, currentContext);
 
     // Wrap APIs to match useBulkActions signature:
     // namespaced: (namespace, name), cluster-scoped: (name)
@@ -214,6 +216,8 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
             render: (item: any) => (
                 <CustomResourceActionsMenu
                     resource={item}
+                    operatorActions={operator.actions}
+                    onOperatorAction={operator.openAction}
                     isOpen={activeMenuId === `cr-${item.metadata?.uid}`}
                     menuPosition={menuPosition}
                     onOpenChange={(isOpen: any, buttonElement: any) => handleMenuOpenChange(isOpen, `cr-${item.metadata?.uid}`, buttonElement)}
@@ -228,7 +232,7 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
         });
 
         return cols;
-    }, [activeMenuId, menuPosition, handleMenuOpenChange, handleShowDetails, handleEditYaml, openBulkDelete, showNamespaceColumn, printerColumns]);
+    }, [activeMenuId, menuPosition, handleMenuOpenChange, handleShowDetails, handleEditYaml, openBulkDelete, showNamespaceColumn, printerColumns, operator.actions, operator.openAction]);
 
     return (
         <>
@@ -249,6 +253,7 @@ export default function CustomResourceList({ crdInfo, isVisible }: any) {
                 selection={selection}
                 onBulkDelete={openBulkDelete}
             />
+            {operator.dialog}
             <BulkActionModal
                 {...bulkModalProps}
                 action="delete"

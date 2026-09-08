@@ -1,3 +1,5 @@
+import OperatorActionsDropdown from '~/features/customresources/actions/OperatorActionsDropdown';
+import { useOperatorActions } from '~/features/customresources/actions/useOperatorActions';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { PencilSquareIcon, ShareIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import { ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
@@ -50,6 +52,7 @@ export default function CustomResourceDetails({ resource: initialResource, crdIn
 
     const isStale = tabContext && tabContext !== currentContext;
     const resourceContext = tabContext || currentContext;
+    const operator = useOperatorActions(crdInfo, resourceContext);
 
     const name = resource.metadata?.name;
     const namespace = resource.metadata?.namespace || '';
@@ -181,6 +184,7 @@ export default function CustomResourceDetails({ resource: initialResource, crdIn
                 </div>
             )}
 
+            {operator.dialog}
             {/* Header Bar */}
             <div className="flex items-center px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
@@ -204,6 +208,8 @@ export default function CustomResourceDetails({ resource: initialResource, crdIn
                             </button>
                         ))}
                     </div>
+                    <OperatorActionsDropdown actions={operator.actions} disabled={!!isStale}
+                        onAction={action => operator.openAction(action, resource)} />
                     {/* Action Icons */}
                     <div className="flex items-center gap-1 ml-2">
                         <button

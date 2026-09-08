@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PencilSquareIcon, TrashIcon, EllipsisVerticalIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 
-export default function CustomResourceActionsMenu({ resource, isOpen, menuPosition, onOpenChange, onShowDetails, onEditYaml, onDelete }: any) {
+export default function CustomResourceActionsMenu({ resource, isOpen, menuPosition, onOpenChange, onShowDetails, onEditYaml, onDelete, operatorActions = [], onOperatorAction }: any) {
     const buttonRef = useRef<any>(null);
     const menuRef = useRef<any>(null);
 
@@ -61,6 +61,10 @@ export default function CustomResourceActionsMenu({ resource, isOpen, menuPositi
                 <PencilSquareIcon className="h-4 w-4" />
                 Edit YAML
             </button>
+            {operatorActions.map((action: any) => <button key={action.id}
+                onClick={(e) => { e.stopPropagation(); handleAction(() => onOperatorAction(action, resource)); }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-surface-hover"
+            >{action.label}</button>)}
             <div className="h-px bg-surface-hover my-1" />
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(() => onDelete(resource)); }}
