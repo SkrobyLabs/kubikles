@@ -23,6 +23,7 @@ import ColumnConfigurator from './ColumnConfigurator';
 import RefreshControls from './RefreshControls';
 import SavedViewsDropdown from './SavedViewsDropdown';
 import { createFilter, getFieldsMetadata } from '~/utils/search';
+import { namespaceSelection } from '~/utils/namespaceQuery';
 import { useSavedViews } from '~/hooks/useSavedViews';
 import type { SavedView } from '~/hooks/useSavedViews';
 import { useConfig, useK8s, useUI } from '~/context';
@@ -1239,59 +1240,38 @@ export default function ResourceList({
                     </div>
                 ) : sortedData.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3">
-                        {/* Message and action buttons based on why no results */}
                         {(() => {
-                            const namespaceArray = Array.isArray(currentNamespace) ? currentNamespace : (currentNamespace ? [currentNamespace] : []);
-                            const hasNoNamespace = namespaceArray.length === 0;
-                            const hasSearchFilter = searchTerm && data.length > 0;
-                            const hasPartialNamespaces = namespaceArray.length > 0 && namespaceArray.length < namespaces.length;
+                            const namespaceArray = namespaceSelection(currentNamespace);
+                            const hasSearchFilter = Boolean(searchTerm.trim());
+                            const hasNamespaceFilter = showNamespaceSelector && onNamespaceChange && !namespaceArray.includes('*');
 
-                            // Priority 1: No namespace selected (namespace-scoped resources only)
-                            if (hasNoNamespace && namespaces.length > 0 && onNamespaceChange) {
-                                return (
-                                    <>
-                                        <span>No namespace selected</span>
-                                        <button
-                                            onClick={() => onNamespaceChange(multiSelectNamespaces ? ['*'] : namespaces[0])}
-                                            className="px-3 py-1.5 text-xs font-medium text-primary hover:text-white bg-primary/10 hover:bg-primary/20 rounded transition-colors"
-                                        >
-                                            View all namespaces
-                                        </button>
-                                    </>
-                                );
-                            }
-
-                            // Priority 2: Search is filtering everything out
-                            if (hasSearchFilter) {
-                                return (
-                                    <>
-                                        <span>No matching resources</span>
-                                        <button
-                                            onClick={() => { setSearchInput(''); setSearchTerm(''); }}
-                                            className="px-3 py-1.5 text-xs font-medium text-primary hover:text-white bg-primary/10 hover:bg-primary/20 rounded transition-colors"
-                                        >
-                                            Clear search
-                                        </button>
-                                    </>
-                                );
-                            }
-
-                            // Priority 3: Less than all namespaces selected (and not using '*' marker)
-                            if (hasPartialNamespaces && !namespaceArray.includes('*') && onNamespaceChange) {
-                                return (
-                                    <>
-                                        <span>No resources found in selected namespaces</span>
-                                        <button
-                                            onClick={() => onNamespaceChange(multiSelectNamespaces ? ['*'] : namespaces[0])}
-                                            className="px-3 py-1.5 text-xs font-medium text-primary hover:text-white bg-primary/10 hover:bg-primary/20 rounded transition-colors"
-                                        >
-                                            View all namespaces
-                                        </button>
-                                    </>
-                                );
-                            }
-
-                            return <span>No resources found</span>;
+                            return (
+                                <>
+                                    {hasSearchFilter && (
+                                        <div className="flex flex-col items-center gap-3">
+                                            <span>No resources match the current query</span>
+                                            <button
+                                                onClick={() => { setSearchInput(''); setSearchTerm(''); }}
+                                                className="px-3 py-1.5 text-xs font-medium text-primary hover:text-white bg-primary/10 hover:bg-primary/20 rounded transition-colors"
+                                            >
+                                                Clear query
+                                            </button>
+                                        </div>
+                                    )}
+                                    {hasNamespaceFilter && (
+                                        <div className="flex flex-col items-center gap-3">
+                                            <span>{namespaceArray.length === 0 ? 'No namespace selected' : 'No resources found in selected namespaces'}</span>
+                                            <button
+                                                onClick={() => onNamespaceChange(multiSelectNamespaces ? ['*'] : '')}
+                                                className="px-3 py-1.5 text-xs font-medium text-primary hover:text-white bg-primary/10 hover:bg-primary/20 rounded transition-colors"
+                                            >
+                                                Reset namespace filter
+                                            </button>
+                                        </div>
+                                    )}
+                                    {!hasSearchFilter && !hasNamespaceFilter && <span>No resources found</span>}
+                                </>
+                            );
                         })()}
                     </div>
                 ) : (
