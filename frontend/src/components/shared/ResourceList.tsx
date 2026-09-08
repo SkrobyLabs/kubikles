@@ -30,6 +30,49 @@ import { useConfig, useK8s, useUI } from '~/context';
 import { type ColumnDef, type ColumnWidths, MIN_COLUMN_WIDTHS, DEFAULT_COLUMN_WIDTHS, calculateColumnWidths, formatCount } from './resourceListColumns';
 import { SearchHighlightOverlay, TriStateCheckbox, RowCheckbox, SortableHeader } from './ResourceListControls';
 
+interface ResourceTableContext {
+    highlightedUid?: string | null;
+    selectable: boolean;
+    selection?: SelectionState;
+    onRowClick?: (item: any) => void;
+}
+
+// Component types must stay stable across resource updates. Replacing them remounts
+// the table and resets the hovered row (including any native cell tooltip).
+const virtuosoComponents = {
+    Table: ({ style, context, ...props }: any) => (
+        <table
+            {...props}
+            className="text-left border-collapse w-full"
+            style={{ ...style, tableLayout: 'fixed' as const }}
+        />
+    ),
+    TableHead: forwardRef<HTMLTableSectionElement>(({ context, ...props }: any, ref) => (
+        <thead {...props} ref={ref} className="bg-surface sticky top-0 z-10" />
+    )),
+    TableBody: forwardRef<HTMLTableSectionElement>(({ context, ...props }: any, ref) => (
+        <tbody {...props} ref={ref} className="divide-y divide-border" />
+    )),
+    TableRow: ({ item, context, ...props }: any) => {
+        const { highlightedUid, selectable, selection, onRowClick } = context as ResourceTableContext;
+        const isHighlighted = highlightedUid === item?.metadata?.uid;
+        const isSelected = selectable && selection?.isSelected(item?.metadata?.uid);
+        return (
+            <tr
+                {...props}
+                className={`transition-colors ${
+                    isSelected
+                        ? 'bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-primary)_24%,transparent)]'
+                        : isHighlighted
+                            ? 'bg-white/5'
+                            : 'hover:bg-white/5'
+                } ${onRowClick ? 'cursor-pointer' : ''}`}
+                onClick={() => onRowClick && onRowClick(item)}
+            />
+        );
+    }
+};
+
 // Internal filter type used by columnFilters state
 interface ColumnFilter {
     type: 'select' | 'regex' | 'numeric';
@@ -237,7 +280,6 @@ export default function ResourceList({
     const columnFilterDropdownRef = useRef<HTMLDivElement>(null); // ref for the fixed-position dropdown
     const [showSearchHelp, setShowSearchHelp] = useState(false);
     const searchHelpRef = useRef<HTMLDivElement>(null);
-    const tableRef = useRef<HTMLTableElement>(null);
 
     // Column reordering state (user-saved order)
     const [columnOrder, setColumnOrder] = useState<string[]>(() => {
@@ -1033,39 +1075,8 @@ export default function ResourceList({
         setColumnOrder(newOrder);
     }, [sortableColumnIds]);
 
-    // Memoize virtuoso components to prevent recreation on every render
-    const virtuosoComponents = useMemo(() => ({
-        Table: ({ style, ...props }: any) => (
-            <table
-                {...props}
-                ref={tableRef}
-                className="text-left border-collapse w-full"
-                style={{ ...style, tableLayout: 'fixed' as const }}
-            />
-        ),
-        TableHead: forwardRef<HTMLTableSectionElement>((props, ref) => (
-            <thead {...props} ref={ref} className="bg-surface sticky top-0 z-10" />
-        )),
-        TableBody: forwardRef<HTMLTableSectionElement>((props, ref) => (
-            <tbody {...props} ref={ref} className="divide-y divide-border" />
-        )),
-        TableRow: ({ item, ...props }: any) => {
-            const isHighlighted = highlightedUid === item?.metadata?.uid;
-            const isSelected = selectable && selection?.isSelected(item?.metadata?.uid);
-            return (
-                <tr
-                    {...props}
-                    className={`transition-colors ${
-                        isSelected
-                            ? 'bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-primary)_24%,transparent)]'
-                            : isHighlighted
-                                ? 'bg-white/5'
-                                : 'hover:bg-white/5'
-                    } ${onRowClick ? 'cursor-pointer' : ''}`}
-                    onClick={() => onRowClick && onRowClick(item)}
-                />
-            );
-        }
+    const tableContext = useMemo(() => ({
+        highlightedUid, selectable, selection, onRowClick,
     }), [highlightedUid, selectable, selection, onRowClick]);
 
     return (
@@ -1280,6 +1291,7 @@ export default function ResourceList({
                         data={sortedData}
                         overscan={50}
                         components={virtuosoComponents}
+                        context={tableContext}
                         fixedHeaderContent={() => (
                             <DndContext sensors={dndSensors} onDragEnd={handleColumnDragEnd}>
                                 <SortableContext items={sortableColumnIds} strategy={horizontalListSortingStrategy}>
