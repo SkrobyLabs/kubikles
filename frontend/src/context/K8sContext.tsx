@@ -299,7 +299,16 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const currentContextRef = useRef<string>(''); // Ref for event handlers to avoid stale closures
     const [namespaces, setNamespaces] = useState<string[]>([]);
     const namespacesRef = useRef<string[]>([]);
-    const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>(['default']);
+    const [selectedNamespaces, setSelectedNamespacesState] = useState<string[]>(['*']);
+    // Namespace scope must never be empty, including while switching contexts
+    // or after the last selected namespace is removed.
+    const setSelectedNamespaces = useCallback((next: React.SetStateAction<string[]>) => {
+        setSelectedNamespacesState(previous => {
+            const selection = typeof next === 'function' ? next(previous) : next;
+            const normalized = selection.length > 0 ? selection : ['*'];
+            return areStringArraysEqual(previous, normalized) ? previous : normalized;
+        });
+    }, []);
     const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
     const [isLoadingNamespaces, setIsLoadingNamespaces] = useState<boolean>(false);
     const [reconcileToken, setReconcileToken] = useState(0);
@@ -389,7 +398,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 Logger.error("Failed to parse saved state", e, 'k8s');
             }
         }
-        return { namespaces: ['default'] };
+        return { namespaces: ['*'] };
     };
 
     const saveContextState = (ctx: string, ns: string | string[]): void => {
@@ -664,7 +673,7 @@ export const K8sProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     setConnectionError(null);
                     setNamespaces([]);
                     namespacesRef.current = [];
-                    setSelectedNamespaces([]);
+                    setSelectedNamespaces(['*']);
                     setCurrentContext(newContext);
                     updateContextAccessTime(newContext);
                     localStorage.setItem('kubikles_last_context', newContext);

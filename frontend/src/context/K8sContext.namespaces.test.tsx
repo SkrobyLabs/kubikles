@@ -5,7 +5,7 @@ const harness = vi.hoisted(() => ({
     stateIndex: 0, refIndex: 0,
 }));
 const api = vi.hoisted(() => ({
-    ListNamespacesForContext: vi.fn(), StartAutoStartPortForwards: vi.fn().mockResolvedValue(undefined), SubscribeResourceWatcher: vi.fn(), UnsubscribeWatcher: vi.fn(),
+    SwitchContext: vi.fn(), ListNamespacesForContext: vi.fn(), StartAutoStartPortForwards: vi.fn().mockResolvedValue(undefined), SubscribeResourceWatcher: vi.fn(), UnsubscribeWatcher: vi.fn(),
 }));
 const events = vi.hoisted(() => new Map<string, (event: any) => void>());
 vi.mock('react', async importOriginal => ({
@@ -55,6 +55,7 @@ beforeEach(() => {
     api.ListNamespacesForContext.mockResolvedValue([{ metadata: { name: 'default' } }]);
     api.SubscribeResourceWatcher.mockResolvedValue('namespace-watch');
     api.UnsubscribeWatcher.mockResolvedValue(undefined);
+    api.SwitchContext.mockResolvedValue(undefined);
 });
 
 afterEach(() => vi.unstubAllGlobals());
@@ -137,6 +138,62 @@ describe('initial namespace loading', () => {
         for (let i = 0; i < 12; i++) await Promise.resolve();
         expect(render().connectionError).toBeTruthy();
         expect(api.StartAutoStartPortForwards).not.toHaveBeenCalled();
+        cleanup();
+    });
+});
+
+
+describe('non-empty namespace selection', () => {
+    it('defaults to all namespaces and treats clearing selection as all', () => {
+        expect(render().selectedNamespaces).toEqual(['*']);
+        render().setSelectedNamespaces(['default']);
+        expect(render().selectedNamespaces).toEqual(['default']);
+        render().setSelectedNamespaces([]);
+        expect(render().selectedNamespaces).toEqual(['*']);
+    });
+
+    it('selects all immediately after switching contexts', async () => {
+        render().setSelectedNamespaces(['old-namespace']);
+        await render().switchContext('cluster-b');
+        expect(render().currentContext).toBe('cluster-b');
+        expect(render().selectedNamespaces).toEqual(['*']);
+    });
+
+    it.each([
+        [null, ['*']],
+        [[], ['*']],
+        [['removed'], ['*']],
+        [['default', 'removed'], ['default']],
+        [['default'], ['default']],
+        [['*'], ['*']],
+    ])('restores saved selection %j with a valid fallback', async (saved, expected) => {
+        vi.stubGlobal('localStorage', {
+            getItem: (key: string) => key === 'kubikles_state_cluster-b' && saved !== null
+                ? JSON.stringify({ namespaces: saved }) : null,
+            setItem: vi.fn(),
+        });
+        await render().switchContext('cluster-b');
+        render();
+        const cleanup = effectContaining('loadNamespacesAndRestoreState');
+        for (let i = 0; i < 12; i++) await Promise.resolve();
+        expect(render().selectedNamespaces).toEqual(expected);
+        cleanup();
+    });
+
+    it('falls back to all when a refresh removes the last selected namespace', async () => {
+        render().setSelectedNamespaces(['removed']);
+        await render().refreshNamespaces();
+        expect(render().selectedNamespaces).toEqual(['*']);
+    });
+
+    it('falls back to all when the watcher deletes the last selected namespace', async () => {
+        await render().refreshNamespaces();
+        render().setSelectedNamespaces(['default']);
+        render();
+        const cleanup = effectContaining('resource-events-batch');
+        await Promise.resolve();
+        events.get('resource-event')!({ resourceType: 'namespaces', type: 'DELETED', context: 'cluster-a', resource: 'default' });
+        expect(render().selectedNamespaces).toEqual(['*']);
         cleanup();
     });
 });
