@@ -30,6 +30,7 @@ import { useLogStream, ALL_CONTAINERS, ALL_PODS } from './useLogStream';
 import { useLogSearch } from './useLogSearch';
 import { LogLine, Spinner } from './LogLine';
 import { TimePickerModal } from './TimePickerModal';
+import LogClock from './LogClock';
 import { logsToVisibleString, logsToDebugString, stripAnsiCodes } from './logUtils';
 import { GetAllContainersLogsAll, GetAllPodsLogsAll } from 'wailsjs/go/main/App';
 
@@ -738,7 +739,7 @@ export default function LogViewer({
             )}
 
             {/* Header Bar */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
+            <div className="flex flex-wrap items-center gap-y-2 justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500">Pod:</span>
@@ -919,6 +920,7 @@ export default function LogViewer({
                         </Tooltip>
                     )}
                 </div>
+                <LogClock />
             </div>
 
             {/* Search Bar */}
