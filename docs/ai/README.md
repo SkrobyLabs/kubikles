@@ -27,6 +27,8 @@ Quick-access reference for AI assistants. This document eliminates the need to r
 kubikles/
 ├── main.go                 # Entry point, Wails setup, menus
 ├── main_desktop.go         # Desktop mode entry
+├── e2e_hook.go             # Desktop test hook ("e2e" build tag): token-guarded loopback /eval and /window, off unless KUBIKLES_E2E_PORT and KUBIKLES_E2E_TOKEN are set
+├── e2e_hook_off.go         # No-op stand-ins for builds without the "e2e" tag
 ├── main_headless.go        # Headless mode entry
 ├── server_mode.go          # Server mode logic
 ├── app.go                  # App struct & lifecycle
