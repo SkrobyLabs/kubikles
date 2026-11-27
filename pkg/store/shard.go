@@ -575,13 +575,16 @@ func (s *Shard) run(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		if res.receivedAny {
+		// An "unsupported" error event is a failure of the round, not a sign of health: without
+		// this the retry delay would never grow past its first step.
+		if res.receivedAny && res.kind != outcomeUnsupported {
 			failures = 0
 		}
-		// Only real traffic shows the stream is healthy. The Gone error that ends a stale watch
-		// is an event too, and counting it would reset the pacing on every round of a server
-		// that accepts the watch and then rejects its version.
-		if res.gotData {
+		// Only real traffic, or a watch that stayed open for a while, shows the stream is healthy.
+		// The Gone error that ends a stale watch is an event too, and counting it would reset the
+		// pacing on every round of a server that accepts the watch and then rejects its version.
+		// A quiet resource whose watch simply expires after minutes must not be paced either.
+		if res.gotData || res.open >= prematureWindow {
 			staleRelists = 0
 		}
 		switch res.kind {
@@ -746,6 +749,7 @@ func (s *Shard) consume(ctx context.Context, w watch.Interface, rv *string) cons
 			if res, stop := s.applyEvents(events, rv); stop {
 				res.receivedAny = true
 				res.gotData = gotData
+				res.open = s.cfg.clock.Now().Sub(openedAt)
 				return res
 			}
 		}

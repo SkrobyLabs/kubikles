@@ -775,3 +775,28 @@ func TestGoneOnTheStreamRepeatedlyBacksOff(t *testing.T) {
 		t.Fatalf("list calls = %d, want no relist until the wait is over", n)
 	}
 }
+
+// A watch on a quiet resource can stay open for a long time with no events and then expire. That
+// is normal, not a server rejecting every watch, so however often it happens the relist that
+// follows is not delayed.
+func TestGoneAfterALongQuietWatchIsNotPaced(t *testing.T) {
+	f := newFixture(t)
+	f.api.setItems("10", pod("a", "p1", "1"))
+	gone := &metav1.Status{Status: metav1.StatusFailure, Reason: metav1.StatusReasonGone, Code: 410, Message: "too old"}
+	w := f.api.newWatcher()
+	l := f.acquire(t, podsKey, Hint{})
+	defer l.Release()
+	waitSynced(t, l)
+
+	for round := 1; round <= 3; round++ {
+		next := f.api.newWatcher()
+		f.clock.Advance(time.Minute)
+		w.Error(gone)
+		want := round + 1
+		eventually(t, "relist after a quiet expiry", func() bool { return f.api.calls() >= want })
+		w = next
+	}
+	if waits := f.clock.Waits(); len(waits) != 0 {
+		t.Fatalf("expiry of long-lived watches must not be paced, waits = %v", waits)
+	}
+}
